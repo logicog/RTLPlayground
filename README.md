@@ -65,6 +65,12 @@ Overlay 1                    Overlay 2                 Overlay n
 
 --------- 0xffff ---------   -------- 0xffff --------  -------- 0xffff
 ```
+The RTL837x firmware images are organized as follows: common code starts at
+0x0002 in the image and has length 0x3ffd, the first bank starts at 0x4000
+in the image, is mapped to 0x4000 and has length 0xc000. The second bank
+starts at 0x10000, is mapped to 0x4000 and has length 0xc000.
+There are about 30 banks.
+
 
 ### Hardware supported by the code so far
 
