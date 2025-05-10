@@ -67,16 +67,17 @@ Overlay 1                    Overlay 2                 Overlay n
 ```
 
 ### Hardware supported by the code so far
-The following hardware is supported:
-Clock generation, including different divider settings
-Interrupt control for timer, serial, external irqs 0, 1
-Serial console via SFRs
-Flash operations via SFRs
-Access to Switch registers via SFRs
+
+- The following hardware is supported:
+- Clock generation, including different divider settings
+- Interrupt control for timer, serial, external irqs 0, 1
+- Serial console via SFRs
+- Flash operations via SFRs
+- Access to Switch registers via SFRs
   - LED setup
   - Reset
   - Some switch settings
-Access to PHYs via MDIO (only conceptually, not tested):
+- Access to PHYs via MDIO (only conceptually, not tested):
   - Clause 22? via SFR
   - Clause 45 via SFR
 
@@ -92,13 +93,14 @@ ANY OTHER EQUIPMENT INVOLVED OR HARM YOURSELF.
 
 There is no support for uploading the firmware via ethernet. Instead you
 need to open the switch and flash the image directly onto the flash chip,
-which is done easiest using a SOIC-8 clip:
+which is done easiest using a SOIC-8 clip (alternatively you de-solder the
+flash chip and install a SOIC adapter):
 - Disconnect power from switch
 - Attach the clip onto the flash chip
 - Connect USB of flash programmer, the power LED on the switch will light
   up, check cabling if not. Don't panic, mixing up GND and 3.3V does not
   seem to destroy the switch (at leasts the on I did this to).
-- Use IMSProg to detect the clip
+- Use IMSProg (flashrom should work, too) to detect the clip
 - MAKE A BACKUP OF THE EXISTING FIRMWARE!
 - then load the firmware into IMSProg
 - and program flash
