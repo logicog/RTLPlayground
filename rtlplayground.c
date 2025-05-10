@@ -784,7 +784,7 @@ void bootloader(void)
 					print_short(cmd_words_b[3]); print_string("\r\n");
 				}
 				
-				if (cmd_compare(0, "reset")
+				if (cmd_compare(0, "reset"))
 					reset_chip();
 			}
 			l++;
