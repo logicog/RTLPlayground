@@ -17,7 +17,7 @@
    and can be selected on all known HW (Register 0x6040)
 */
 #define CLOCK_HZ 125000000
-// #define CLOCK_HZ 20800000
+//#define CLOCK_HZ 20800000
 
 // Derive the divider settings for the internal clock
 #if CLOCK_HZ == 20800000
@@ -324,7 +324,9 @@ void setup_clock(void)
 {
 	reg_read(0x6040);
 	SFR_DATA_0 &= ~0x30;
+#if CLOCK_DIV != 0
 	SFR_DATA_0 |= CLOCK_DIV << 4; // Divider in bits 4 & 5
+#endif
 	SFR_DATA_8 |= 0x01;  // This is set in managed mode 125MHz
 	reg_write(0x6040);
 
@@ -662,11 +664,14 @@ unsigned char cmd_compare(unsigned char start, unsigned char * __code cmd)
 	signed char j = 0;
 
 	for (i = cmd_words_b[start]; i < cmd_words_b[start + 1] && sbuf[i] != ' '; i++) {
+//		print_short(i); write_char(':'); print_short(j); write_char('#'); print_string("\r\n");
+//		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(sbuf[i]); print_string("\r\n");
 		if (!cmd[j])
 			return 1;
-		if (sbuf[i++] != cmd[j++])
+		if (sbuf[i] != cmd[j++])
 			break;
 	}
+//	write_char('.'); print_short(i); write_char(':'); print_short(i);
 	if (i >= cmd_words_b[start + 1] || sbuf[i] == ' ')
 		return 1;
 	return 0;
@@ -706,23 +711,16 @@ void bootloader(void)
 	print_string("  > OK\r\n current status: ");
 	print_short(flash_read_status());
 
-	print_string("\r\n  READ JEDEC-ID\r\n");
-	flash_read_jedecid();
-	print_string("\r\n  Testing read UID\r\n");
-	flash_read_uid();
+	// The following will only show something else then 0xff if it was programmed for a managed switch
 	print_string("\r\n  Testing read Securty Register 1\r\n");
 	flash_read_security(0x0001000, 40);
 	print_string("\r\n  Testing read Securty Register 2\r\n");
 	flash_read_security(0x0002000, 40);
 	print_string("\r\n  Testing read Securty Register 3\r\n");
 	flash_read_security(0x0003000, 40);
-//	flash_read_uid();
-//	flash_write_enable();
 
-	print_string("  > status: ");
+	print_string("  > Flash status: ");
 	print_short(flash_read_status());
-	print_string("\r\n  Dumping flash at 0x0\r\n");
-	flash_dump(0, 252);
 	print_string("\r\n  Dumping flash at 0x100\r\n");
 	flash_dump(0x100, 252);
 	print_string("\r\nREADING PHY 0x1, 0x4, 0: ");
@@ -742,6 +740,8 @@ void bootloader(void)
 	print_phy_reg(0x7, 0x1f, 0xa412);
 	print_string("\r\nCPU version: ");
 	print_reg(0x4);
+	print_string("\r\nClock register: ");
+	print_reg(0x6040);
 
 	
 	print_string("\r\n> ");
@@ -775,17 +775,31 @@ void bootloader(void)
 
 				// Identify command
 				signed char i = cmd_words_b[0];
-				if (i >= 0) {
-					print_string("\r\n  THERE may be a command: ");
-					print_short(i); print_string("\r\n");
-					print_short(cmd_words_b[0]); print_string("\r\n");
-					print_short(cmd_words_b[1]); print_string("\r\n");
-					print_short(cmd_words_b[2]); print_string("\r\n");
-					print_short(cmd_words_b[3]); print_string("\r\n");
+				if (i >= 0 && cmd_words_b[1] >= 0) {
+					// print_string("\r\n  THERE may be a command: ");
+					// print_short(i); print_string("\r\n");
+					// print_short(cmd_words_b[0]); print_string("\r\n");
+					// print_short(cmd_words_b[1]); print_string("\r\n");
+					// print_short(cmd_words_b[2]); print_string("\r\n");
+					// print_short(cmd_words_b[3]); print_string("\r\n");
+					if (cmd_compare(0, "reset")) {
+						print_string("\r\nRESET\n\n");
+						reset_chip();
+					}
+					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'd') {
+						print_string("\r\nDUMPING FLASH\n\n");
+						flash_dump(0, 255);
+					}
+					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'j') {
+						print_string("\r\nJEDEC ID\n\n");
+						flash_read_jedecid();
+					}
+					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'u') {
+						print_string("\r\nUNIQUE ID\n\n");
+						flash_read_uid();
+					}
 				}
-				
-				if (cmd_compare(0, "reset"))
-					reset_chip();
+				print_string("\r\n> ");
 			}
 			l++;
 			l &= (SBUF_SIZE - 1);
