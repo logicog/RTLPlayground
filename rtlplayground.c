@@ -798,6 +798,13 @@ void bootloader(void)
 						print_string("\r\nUNIQUE ID\n\n");
 						flash_read_uid();
 					}
+					// Switch to flash 62.5 MHz mode
+					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 's') {
+						print_string("\r\nFLASH FAST MODE\n\n");
+						flash_init_fast();
+						print_string("\r\nNow dumping flash\n\n");
+						flash_dump_fast(0, 255);
+					}
 				}
 				print_string("\r\n> ");
 			}
