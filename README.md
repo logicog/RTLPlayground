@@ -34,8 +34,7 @@ deployment was tested on, including:
 - keepLINK KP-9000-6XHML-X2, same as above, but Managed
 - keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+)
 - keepLINK kp-9000-9xh-x-eu (2 x RTL8373, one slaved to the other via MDIO: 8x 2.5GBit + 1x 10GBit SFP+)
-- Lianguo LG-SWTGW218AS (2 x RTL8373, one slaved to the other via MDIO: 8x 2.5GBit + 1x 10GBit SFP+)
-- No-Name ZX-SWTGW215AS, same but Managed
+- Lianguo LG-SWTGW218AS (RTL8373 + RTL8224 PHY: 8x 2.5GBit + 1x 10GBit SFP+)
 - No-Name ZX-SWTGW215AS, managed version of kp-9000-6hx-x, ordered on
   AliExpress as keepLINK 5+1 port managed
 
@@ -68,8 +67,11 @@ Overlay 1                    Overlay 2                 Overlay n
 The RTL837x firmware images are organized as follows: common code starts at
 0x0002 in the image and has length 0x3ffd, the first bank starts at 0x4000
 in the image, is mapped to 0x4000 and has length 0xc000. The second bank
-starts at 0x10000, is mapped to 0x4000 and has length 0xc000.
-There are about 30 banks.
+starts at 0x10000, is mapped to 0x4000 and has length 0xc000. The third
+bank would start at 0x1c000 and would again be mapped to 0x4000.
+There are about 30 banks in use for managed switches, unmanaged ones use
+2-3, while the hardware would allow to use 0x3f banks, i.e. up to 4 MB of
+flash.
 
 
 ### Hardware supported by the code so far
@@ -91,11 +93,44 @@ Access to CPU-Port NIC via a different set of SFRs and external IRQ1 is conceptu
 included because without proper switch register configuration it cannot be
 tested.
 
+The RTL8372/3 have 256 bytes of internal RAM (INTMEM) accessible through MOV
+instructions, which are used for the stack and important globals. Some of
+these are bit-adressable, e.g. for storing global flags.
+
+Additionally, 64kB of extended RAM (XMEM) is built in, which is accessed
+through the MOVX instruction. It is used for global variables, for most
+of the function argument passing that is not done using the 8 registers
+R0-R7 or registers A/B, and for local variables (which requires extremely
+careful planning). The flash memory is transparently accessible for code
+being executed and can be used to store configuration. Access is done through
+the MOVC instruction, possibly setting the bank register before and
+resetting it to access the entire 4MB space. Code is prefetched from flash
+and cached in a small RAM automatically by the HW.
+
+The peripherial functions are accessed through 2 different mechanisms:
+- Special Function Registers (SFRs, 0x80-0xff) for banking, timers, UART, access to
+  switch registers, MDIO, SPI (flash) and NIC transfers. Some SFRs are not
+  used for HW purposes and can be used as RAM. Some SFRs are bit-adressable,
+  allowing for very tight event wait loops (a single 2-byte instruction).
+- 0x10000 switch registers, which appear to be very similar to the registers
+  of the RTL838x, for which source code and datasheets are available. This
+  controls clock dividers, GPIO/LEDs and general  switch functionality. 
+There should be an I2C controller that reads the SFP EEPROMs, but it is not
+clear whether this is bit-banged GPIO like for the RTL83xx or dedicated HW
+as for the RTL93xx.
+
+The playground image shows access to the different types of memory using the
+SDCC compiler. Any support of Linux or e.g. Zephyr would require porting gcc.
+There are FreeRTOS ports to 8051 processors using sdcc, however.
+
+
 ### Installation on an actual switch
 
-NOTE THAT WHILE THIS PROCEDURE HAS BEEN SUCCESSFULLY TESTED ON ALL DEVICES ABOVE,
-ABSOLUTELY NO WARRANTY CAN BE GIVEN THAT YOU WILL NOT DESTROY YOUR SWITCH,
-ANY OTHER EQUIPMENT INVOLVED OR HARM YOURSELF.
+> [!CAUTION]
+> NOTE THAT WHILE THIS PROCEDURE HAS BEEN SUCCESSFULLY TESTED ON ALL DEVICES ABOVE,
+> ABSOLUTELY NO GUARANTY CAN BE GIVEN THAT YOU WILL NOT DESTROY YOUR SWITCH,
+> ANY OTHER EQUIPMENT INVOLVED OR HARM YOURSELF BY OPENING THE ELECTRONIC
+> DEVICE. OPENING THE SWITCH WILL VOID ITS WARRANTY.
 
 There is no support for uploading the firmware via ethernet. Instead you
 need to open the switch and flash the image directly onto the flash chip,
