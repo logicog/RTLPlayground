@@ -56,7 +56,7 @@ __sfr __at(0x9c) SFR_FLASH_CONF_RCMD;
 __sfr __at(0x9d) SFR_FLASH_DUMMYCICLES;
 __sfr __at(0x9a) SFR_FLASH_MODEB;
 
-__sfr __at(0x9e) SFR_FLASH_TLEN;
+__sfr __at(0x9e) SFR_FLASH_TCONF;
 
 __sfr __at(0xaf) SFR_FLASH_DATA24;
 __sfr __at(0xae) SFR_FLASH_DATA16;

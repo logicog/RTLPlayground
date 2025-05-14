@@ -53,6 +53,7 @@ __xdata unsigned sbuf[SBUF_SIZE];
 __code unsigned char * __code greeting = "HI! This is a minimal prompt to explore the RTL8372!\r\n";
 __code unsigned char * __code hex = "0123456789abcdef";
 
+__xdata uint8_t flash_buf[256];
 
 #define N_COMMANDS 1
 struct command {
@@ -707,7 +708,7 @@ void bootloader(void)
 // 	port_leds_on();
 	print_string("\r\nStarting up...\r\n");
 	print_string("  Flash controller\r\n");
-	flash_init();
+	flash_init(0);
 	print_string("  > OK\r\n current status: ");
 	print_short(flash_read_status());
 
@@ -787,23 +788,33 @@ void bootloader(void)
 						reset_chip();
 					}
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'd') {
-						print_string("\r\nDUMPING FLASH\n\n");
+						print_string("\r\nDUMPING FLASH\r\n");
 						flash_dump(0, 255);
 					}
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'j') {
-						print_string("\r\nJEDEC ID\n\n");
+						print_string("\r\nJEDEC ID\r\n");
 						flash_read_jedecid();
 					}
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'u') {
-						print_string("\r\nUNIQUE ID\n\n");
+						print_string("\r\nUNIQUE ID\r\n");
 						flash_read_uid();
 					}
 					// Switch to flash 62.5 MHz mode
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 's') {
-						print_string("\r\nFLASH FAST MODE\n\n");
-						flash_init_fast();
-						print_string("\r\nNow dumping flash\n\n");
-						flash_dump_fast(0, 255);
+						print_string("\r\nFLASH FAST MODE\r\n");
+						flash_init(1);
+						print_string("\r\nNow dumping flash\r\n");
+						flash_dump(0, 255);
+					}
+					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'e') {
+						print_string("\r\nFLASH erase\r\n");
+						flash_block_erase(0x20000);
+					}
+					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'w') {
+						print_string("\r\nFLASH write\r\n");
+						for (unsigned char i = 0; i < 20; i++)
+							flash_buf[i] = greeting[i];
+						flash_write_bytes(0x20000, flash_buf, 20);
 					}
 				}
 				print_string("\r\n> ");
