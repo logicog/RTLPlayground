@@ -5,7 +5,7 @@
 #include "rtl837x_flash.h"
 
 #define SYS_TICK_HZ 100
-#define SERIAL_BAUD_RATE 57600
+#define SERIAL_BAUD_RATE 115200
 
 /* All RTL839x switches have an external 25MHz Oscillator,
    VALID RTL8372/3 CPU frequencies found in switches are:
@@ -352,22 +352,107 @@ void print_sfr_data(void)
 	write_char(hex[SFR_DATA_0 & 0xf]);
 }
 
-
+void print_phy_data(void)
+{
+	write_char('0');
+	write_char('x');
+	write_char(hex[SFR_DATA_8 >> 4]);
+	write_char(hex[SFR_DATA_8 & 0xf]);
+	write_char(hex[SFR_DATA_0 >> 4]);
+	write_char(hex[SFR_DATA_0 & 0xf]);
+}
 /*
  * Write a register reg of phy phy_id, in page page
  * Data to be written must be in SFR a6/a7
  */
-void phy_write(unsigned char phy_mask, unsigned char dev_id, unsigned short reg, unsigned short v)
+void phy_write(unsigned short phy_mask, unsigned char dev_id, unsigned short reg, unsigned short v)
 {
 	SFR_DATA_8 = v >> 8;
 	SFR_DATA_0 = v;
 	SFR_SMI_PHYMASK = phy_mask;
 	SFR_SMI_REG_H = reg >> 8;
 	SFR_SMI_REG_L = reg;
-	SFR_SMI_DEV = dev_id  << 3 | 2; //
+	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // bit 2 can also be set for some option
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
+}
+
+void setmasked_data_0(unsigned char mask, unsigned char set)
+{
+	unsigned char b = SFR_DATA_0;
+	b &= ~mask;
+	b |= set;
+	SFR_DATA_0 = b;
+}
+
+void setmasked_data_8(unsigned char mask, unsigned char set)
+{
+	unsigned char b = SFR_DATA_8;
+	b &= ~mask;
+	b |= set;
+	SFR_DATA_8 = b;
+}
+
+void setmasked_data_16(unsigned char mask, unsigned char set)
+{
+	unsigned char b = SFR_DATA_16;
+	b &= ~mask;
+	b |= set;
+	SFR_DATA_16 = b;
+}
+
+void setmasked_data_24(unsigned char mask, unsigned char set)
+{
+	unsigned char b = SFR_DATA_24;
+	b &= ~mask;
+	b |= set;
+	SFR_DATA_24 = b;
+}
+
+
+/*
+ * Read a phy register via MDIO clause 45
+ * Input must be: phy_id < 64,  device_id < 32,  reg < 0x10000)
+ * The result is in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
+ */
+void phy_read(unsigned char phy_id, unsigned char device, unsigned short reg)
+{
+	SFR_SMI_REG_H = reg >> 8;	// c3
+	SFR_SMI_REG_L = reg;		// c2
+	SFR_SMI_PHY = phy_id;		// a5
+	SFR_SMI_DEV = device << 3 | 2;	// c4
+
+	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
+
+void phy_read_raw(unsigned char phy_id, unsigned char device, unsigned short reg)
+{
+	SFR_SMI_REG_H = reg >> 8;	// c3
+	SFR_SMI_REG_L = reg;		// c2
+	SFR_SMI_PHY = phy_id;		// a5
+//	SFR_SMI_DEV = device << 3 | 2;	// c4
+	SFR_SMI_DEV = device;
+}
+
+
+void phy22_read(unsigned char phy_id, unsigned short reg, unsigned char opt)
+{
+	SFR_93 = phy_id;		// 93
+	SFR_94 = reg << 1 | opt;	// 94
+	SFR_EXEC_GO = 5;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
+
+void print_reg(unsigned short reg)
+{
+	reg_read(reg);
+	print_sfr_data();
 }
 
 
@@ -376,37 +461,40 @@ void rtl8372_init(void)
 	// From run, set bits 0-1 to 1
 	print_string("rtl8372_init called\r\n");
 	reg_read(0x7f90);
-	SFR_DATA_0 &= 0xfc;
-	SFR_DATA_0 |= 0x01;
+	setmasked_data_0(3, 1);
 	reg_write(0x7f90);
 
 	reg_read(0x6330);
-	SFR_DATA_0 |= 0xc0; // Set Bits 6, 7
-	SFR_DATA_16 &= 0xfc; // Delete bits 16, 17
+	setmasked_data_0(0, 0xc0);	// Set Bits 6, 7
+	setmasked_data_16(3, 0);	 // Delete bits 16, 17
 	reg_write(0x6330);
 	reg_read(0x6334);	// Also in sdsMode_set
-	SFR_DATA_8 |= 0x01;  	// Set bits 3-8, On RTL8373+8224 set bits 0-7
-	SFR_DATA_0 |= 0xf8;
+	setmasked_data_8(0, 0x01); // Set bits 3-8, On RTL8373+8224 set bits 0-7
+	setmasked_data_0(0, 0xf8);
 	reg_write(0x6334);
 
 	// Enable MDC
 	reg_read(RTL837X_REG_SMI_CTRL);
-	SFR_DATA_8 |= 0x70; // Set bits 0xc-0xe to enable MDC for SMI0-SMI2
+	setmasked_data_8(0, 0x70); // Set bits 0xc-0xe to enable MDC for SMI0-SMI2
 	reg_write(RTL837X_REG_SMI_CTRL);
+
+	print_string("SMI_CTRL: ");
+	print_reg(0x6454);
+
+//	p001e.000d:9535
+	print_string(", phy-reg read: ");
+	phy_read(0, 0x1e, 0xd);
+	print_phy_data();
+	print_string("\r\n");
 
 /*	FUN_CODE_2023();
 	FUN_CODE_01a6();
 */
 	reg_read(RTL837X_REG_LED_MODE);
-//	SFR_DATA_24 = 0x00;
-	SFR_DATA_16 &= 0x1f; // Mask blink rate field (0xe0)
-	SFR_DATA_16 |= 0x23; // Set blink rate and LED to solid (set bit 1 = bit 17 overall)
-
+	setmasked_data_16(0xe0, 0x23); // Mask blink rate field (0xe0), set blink rate and LED to solid (set bit 1 = bit 17 overall)
 	// Configure led-mode (serial?)
-	SFR_DATA_8 &= 0xe3; // 0xe0;
-	SFR_DATA_8 |= 0x0c;
-	SFR_DATA_0 &= 0x1f; // 0xf0;
-	SFR_DATA_0 |= 0xe0;
+	setmasked_data_8(0x1c, 0x0c);
+	setmasked_data_0(0xe0, 0xe0);
 	reg_write(RTL837X_REG_LED_MODE);
 /*
 	BEFORE: 0x0021fdb0
@@ -426,7 +514,7 @@ void rtl8372_init(void)
 
 	// Clear bits 0,1 of 0x65f8
 	reg_read(0x65f8);
-	SFR_DATA_0 &= 0xfc;
+	setmasked_data_0(0x03, 0);
 	reg_write(0x65f8);
 
 	// Set 0x65fc to 0xfffff000
@@ -438,7 +526,7 @@ void rtl8372_init(void)
 
 	// Set bits 0-3 of 0x6600 to 0xf
 	reg_read(0x6600);
-	SFR_DATA_0 |= 0x0f;
+	setmasked_data_0(0, 0x0f);
 	reg_write(0x6600);
 
 	// Set bit 0x1d of 0x65dc, clear bit 1b
@@ -469,12 +557,12 @@ void rtl8372_init(void)
 
 	// Part of the SDS configuration, see sdsMode_set, set bits 0xa-0xe to 0
 	reg_read(0x6450);
-	SFR_DATA_8 &= 0x83;
+	setmasked_data_8(0x7c, 0);
 	reg_write(0x6450);
 
 	// SDS bits 10-1f set to 0
 	reg_read(0x644c);
-	SFR_DATA_8 &= 0xe0;
+	setmasked_data_8(0x1f, 0);
 	reg_write(0x644c);
 /*
 	FUN_CODE_018d(0,1,0,8);
@@ -483,8 +571,8 @@ void rtl8372_init(void)
 
 	// Set the SerDes mode. Bits 0-4: SDS 0, Bits 5-9: SDS 1. Bits set to 1f
 	reg_read(0x7b20);
-	SFR_DATA_8 |= 0x03;
-	SFR_DATA_0 = 0xff;
+	setmasked_data_8(0, 0x03);
+	setmasked_data_0(0,0xff);
 	reg_write(0x7b20);
 /*	
 	calll_4464_bank1();
@@ -499,6 +587,7 @@ void rtl8372_init(void)
 	*/
 
 	reg_read(0xa90);
+	setmasked_data_0(0x0f,0x0c);
 	SFR_DATA_0 &= 0xf0;
 	SFR_DATA_0 |= 0xc;
 	reg_write(0xa90);
@@ -554,28 +643,9 @@ void rtl8372_init(void)
 
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
 	reg_read(0x632c);
-	SFR_DATA_8 &= 0x8f;
-	SFR_DATA_8 |= 0x80;
-	SFR_DATA_16 &= 0xe0;
-	SFR_DATA_16 |= 0x1f;
+	setmasked_data_8(0x70, 0x80);
+	setmasked_data_16(0x10, 0x1f);
 	reg_write(0x632c);
-}
-
-
-/*
- * Read a phy register via MDIO clause 45
- * Input must be: phy_id < 64,  device_id < 32,  reg < 0x10000)
- * The result is in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
- */
-void phy_read(unsigned char phy_id, unsigned char device, unsigned short reg)
-{
-	SFR_SMI_PHY = phy_id;
-	SFR_SMI_REG_H = reg >> 8;
-	SFR_SMI_REG_L = reg;
-	SFR_SMI_DEV = device << 3 | 2;
-	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
-	do {
-	} while (SFR_EXEC_STATUS != 0);
 }
 
 
@@ -639,18 +709,10 @@ void setup_serial(void)
 }
 
 
-void print_reg(unsigned short reg)
+void print_phy22_reg(unsigned char phy_id, unsigned char reg, unsigned char opt)
 {
-	reg_read(reg);
-	print_sfr_data();
-}
-
-
-void print_phy_reg(unsigned char phy_id, unsigned char device, unsigned short reg)
-{
-	phy_read(phy_id, device, reg);
-	SFR_DATA_16 = SFR_DATA_24 = 0;
-	print_sfr_data();
+	phy22_read(phy_id, reg, opt);
+	print_phy_data();
 }
 
 
@@ -684,7 +746,7 @@ void bootloader(void)
 	ticks = 0;
 	sbuf_ptr = 0;
 
-	CKCON = 0;
+	CKCON = 0;	// Initial Clock configuration
 	SFR_97 = 0;
 
 	// Set in managed mode:
@@ -724,27 +786,34 @@ void bootloader(void)
 	print_short(flash_read_status());
 	print_string("\r\n  Dumping flash at 0x100\r\n");
 	flash_dump(0x100, 252);
-	print_string("\r\nREADING PHY 0x1, 0x4, 0: ");
-	print_phy_reg(0x1, 0x4, 0);
 	rtl8372_init();
 
 	print_string(greeting);
-	print_string("READING PHY 0x4, 0x1, 0: ");
-	print_phy_reg(0x4, 0x1, 0);
-	print_string("\r\nREADING PHY 0x1, 0x4, 0: ");
-	print_phy_reg(0x1, 0x4, 0);
-	print_string("\r\nREADING PHY 0x5, 0x1, 1: ");
-	print_phy_reg(0x5, 0x1, 1);
-	print_string("\r\nREADING PHY 0x1, 0x1, 0: ");
-	print_phy_reg(0x1, 0x1, 0);
-	print_string("\r\nREADING PHY 0x7, 0x1f, 0xa412:");
-	print_phy_reg(0x7, 0x1f, 0xa412);
 	print_string("\r\nCPU version: ");
 	print_reg(0x4);
 	print_string("\r\nClock register: ");
 	print_reg(0x6040);
 
-	
+/*
+	print_string("\r\n");
+	for (int i = 0; i < 32; i ++) {
+		for (int j = 0; j < 32; j ++) {
+			print_phy22_reg(i, j, 0);
+			write_char(' ');
+		}
+		print_string("\r\n");
+	}
+
+	print_string("\r\n");
+	for (int i = 0; i < 32; i ++) {
+		for (int j = 0; j < 32; j ++) {
+			print_phy22_reg(i, j, 1);
+			write_char(' ');
+		}
+		print_string("\r\n");
+	}
+*/
+
 	print_string("\r\n> ");
 	char l = sbuf_ptr;
 	char line_ptr = l;
