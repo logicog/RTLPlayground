@@ -64,7 +64,7 @@ Overlay 1                    Overlay 2                 Overlay n
 
 --------- 0xffff ---------   -------- 0xffff --------  -------- 0xffff
 ```
-The RTL837x firmware images are organized as follows: 
+The RTL837x firmware images are organized as follows:
 The first 2 bytes of the image give the size of the prefetched data at the
 start of the CPU power up. The default is 0x4000 (bytes: 0x00 0x40), which
 means that the entire shared area of the code memory in all banks,
