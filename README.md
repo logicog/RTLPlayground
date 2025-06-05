@@ -153,7 +153,7 @@ flash chip and install a SOIC adapter):
 - and program flash
 
 Now you can connect a serial cable to the UART port found on all the
-devices, set 8N1 @ 57600 baud and power up the switch.
+devices, set 8N1 @ 115200 baud and power up the switch.
 
 The device will perform some examples and provide a minimal console, which
 currently only allows to do a reset.
