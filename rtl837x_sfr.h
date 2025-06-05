@@ -42,6 +42,10 @@ __sfr __at(0x97) SFR_97;
 __sfr __at(0xb9) SFR_b9;
 __sfr __at(0xba) SFR_ba;
 
+// Clause 22 PHY access ???
+__sfr __at(0x93) SFR_93;
+__sfr __at(0x94) SFR_94;
+
 /* FLASH controller SFRs */
 __sfr __at(0x80) SFR_FLASH_EXEC;
 __sbit __at(0x82) SFR_FLASH_EXEC_GO;
