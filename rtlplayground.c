@@ -33,6 +33,7 @@
 #define RTL837X_REG_LED_MODE 0x6520
 #define RTL837X_REG_SMI_CTRL 0x6454
 #define RTL837X_REG_RESET 0x0024
+#define RTL837X_REG_SEC_COUNTER 0x06f4
 
 // Blink rate is defined by setAsicRegBits(0x6520,0xe00000,rate);
 #define SFR_EXEC_READ_REG 1
@@ -40,7 +41,9 @@
 #define SFR_EXEC_READ_SMI 9
 #define SFR_EXEC_WRITE_SMI 11
 
-__xdata unsigned short ticks;
+volatile __xdata unsigned long ticks;
+volatile __xdata unsigned char sec_counter;
+__xdata unsigned long sleep_until;
 
 #define N_WORDS 10
 __xdata signed char cmd_words_b[N_WORDS];
@@ -68,6 +71,7 @@ void isr_timer0(void) __interrupt(1)
 	TH0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) >> 8;
 	TL0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) % 0xff;
 	ticks++;
+	sec_counter++;
 	
 	/*
 	SFR_DATA_24 = 0x00;
@@ -118,6 +122,14 @@ void print_short(unsigned short a)
 	}
 }
 
+
+void print_long(unsigned long a)
+{
+	print_string("0x");
+	for (signed char i = 28; i >= 0; i -= 4) {
+		write_char(hex[(a >> i) & 0xf]);
+	}
+}
 
 void print_byte(unsigned char a)
 {
@@ -276,6 +288,43 @@ unsigned char read_flash(unsigned char bank, __code unsigned char *addr)
 	return v;
 }
 
+
+void idle(void)
+{
+	PCON |= 1;
+	if (sec_counter >= 60) {
+		sec_counter -= 60;
+		reg_read(RTL837X_REG_SEC_COUNTER);
+		unsigned char v = SFR_DATA_0;
+		v++;
+		SFR_DATA_0 = v;
+		if (!v) {
+			v = SFR_DATA_8;
+			v++;
+			SFR_DATA_8 = v;
+			if (!v) {
+				v = SFR_DATA_16;
+				v++;
+				SFR_DATA_16 = v;
+				if (!v) {
+					v = SFR_DATA_24;
+					v++;
+					SFR_DATA_24 = v;
+				}
+			}
+		}
+		reg_write(RTL837X_REG_SEC_COUNTER);
+	}
+}
+
+
+// Sleep the given number of ticks
+void sleep(unsigned short t)
+{
+	sleep_until = ticks + t;
+	while (sleep_until <= ticks)
+		idle();
+}
 
 void reset_chip(void)
 {
@@ -823,7 +872,7 @@ void bootloader(void)
 			write_char(sbuf[l]);
 			// Check whether there is a full line:
 			if (sbuf[l] == '\n' || sbuf[l] == '\r') {
-				print_short(ticks);
+				print_long(ticks);
 				// Print line and parse command into words
 				print_string("\r\n  CMD: ");
 				is_white = 1;
@@ -891,6 +940,6 @@ void bootloader(void)
 			l++;
 			l &= (SBUF_SIZE - 1);
 		}
-		PCON |= 1; // Enter Idle mode until interrupt occurs
+		idle(); // Enter Idle mode until interrupt occurs
 	}
 }
