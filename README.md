@@ -1,5 +1,18 @@
 # RTLPlayground
-A Playground for Firmware development for RTL8372/RTL8373 based 2.5GBit Switches
+A Playground for Firmware development for RTL8372/RTL8373 based 2.5GBit Switches.
+It provides a minimal alternative firmware for the unmanaged switches. At this point,
+the firmware can be installed on the hardware as given below, how much of the switch
+will actually work as a switch, will vary. On the 
+keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+),
+at present the system will provide switching capabilities between the 5 Ethernet ports.
+The ports served by the RTL8372 will be 1G/2.5G auto-detect. Port 5 connected via the
+RTL8221B, will only work in 2.5GBit mode. All configuration must be done via serial
+connection (there is no web-interface), so soldering skills are required. Flashing
+must be done via a SOIC-8 PatchClamp or by soldering a socket for the flash chip.
+The SFP+ port does not work. There is no access to the CPU-port (NIC).
+
+If you don't want to solder, you can use this to learn about the devices by looking at
+the image using e.g. Ghidra.
 
 ## Compiling
 Install the following particular build requisites (Debian 12, should work on Ubuntu)
