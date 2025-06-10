@@ -4,6 +4,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_flash.h"
 
+#include "rtl837x_regs.h"
 #define SYS_TICK_HZ 100
 #define SERIAL_BAUD_RATE 115200
 
@@ -30,13 +31,8 @@
 #define CLOCK_DIV 0
 #endif
 
-#define RTL837X_REG_LED_MODE 0x6520
-#define RTL837X_REG_SMI_CTRL 0x6454
-#define RTL837X_REG_RESET 0x0024
-#define RTL837X_REG_SEC_COUNTER 0x06f4
-#define RTL837X_REG_SDS_MODES 0x7b20
 
-// Blink rate is defined by setAsicRegBits(0x6520,0xe00000,rate);
+
 #define SFR_EXEC_READ_REG 1
 #define SFR_EXEC_WRITE_REG 3
 #define SFR_EXEC_READ_SMI 9
@@ -64,6 +60,8 @@ __code unsigned short bit_mask[16] = {
 	0x0001, 0x0002, 0x0004,0x0008,0x0010,0x0020,0x0040, 0x0080,
 	0x0100, 0x0200, 0x0400,0x0800,0x1000,0x2000,0x4000, 0x8000
 };
+
+__xdata unsigned char linkbits_last[4];
 
 #define N_COMMANDS 1
 struct command {
@@ -142,11 +140,12 @@ void print_byte(unsigned char a)
  */
 void isr_ext0(void) __interrupt(0)
 {
-	EX0 = 0;
+	EX0 = 0;	// Disable interrupt for the moment
 	write_char('X');
-	IT0 = 1;
-	EX0 = 1;	// TODO: we should handle this here
+	IT0 = 1;	// Trigger on falling edge of external interrupt
+	EX0 = 1;	// Re-enable interrupt
 }
+
 
 /*
  * External IRQ 1 Service Routine, triggered by the NIC recieving a packet
@@ -155,10 +154,10 @@ void isr_ext0(void) __interrupt(0)
  */
 void isr_ext1(void) __interrupt(2)
 {
-	
 	// This flag should only be reset after all packets have been read
 	EX1 = 0;
 	write_char('Y');
+	EX1 = 1;
 }
 
 /*
@@ -305,6 +304,42 @@ unsigned char read_flash(unsigned char bank, __code unsigned char *addr)
 	return v;
 }
 
+
+void print_long_x(__xdata unsigned char v[])
+{
+	write_char('0');
+	write_char('x');
+	write_char(hex[v[0] >> 4]);
+	write_char(hex[v[0] & 0xf]);
+	write_char(hex[v[1] >> 4]);
+	write_char(hex[v[1] & 0xf]);
+	write_char(hex[v[2] >> 4]);
+	write_char(hex[v[2] & 0xf]);
+	write_char(hex[v[3] >> 4]);
+	write_char(hex[v[4] & 0xf]);
+}
+
+
+char cmp_4(__xdata unsigned char a[], __xdata unsigned char b[])
+{
+	for (int i = 0; i < 4; i++) {
+		if (a[i] == b[i])
+			continue;
+		if (a[i] < b[i])
+			return -1;
+		else
+			return 1;
+	}
+	return 0;
+}
+
+void cpy_4(__xdata unsigned char dest[], __xdata unsigned char source[])
+{
+	for (int i = 0; i < 4; i++)
+		dest[i] = source[i];
+}
+
+
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
 //
@@ -333,6 +368,14 @@ void idle(void)
 			}
 		}
 		reg_write_m(RTL837X_REG_SEC_COUNTER);
+	}
+
+	reg_read_m(RTL837X_REG_LINKS);
+	if (cmp_4(sfr_data, linkbits_last)) {
+		print_string("\r\n<new link: ");
+		print_long_x(sfr_data);
+		print_string(">\r\n");
+		cpy_4(linkbits_last, sfr_data);
 	}
 }
 
@@ -391,7 +434,7 @@ void reset_rtl8224(void)
  */
 void setup_clock(void)
 {
-	reg_read_m(0x6040);
+	reg_read_m(RTL837X_REG_HW_CONF);
 	sfr_mask_data(0, 0x30, 0);
 #if CLOCK_DIV != 0
 	 // Divider in bits 4 & 5
@@ -399,7 +442,7 @@ void setup_clock(void)
 #endif
 	// This is set in managed mode 125MHz
 	sfr_mask_data(1, 0, 0x01);
-	reg_write_m(0x6040);
+	reg_write_m(RTL837X_REG_HW_CONF);
 
 	reg_read_m(0x7f90);
 	sfr_mask_data(0, 0x1, 0x1);
@@ -420,6 +463,9 @@ void print_sfr_data(void)
 	write_char(hex[SFR_DATA_0 >> 4]);
 	write_char(hex[SFR_DATA_0 & 0xf]);
 }
+
+
+
 
 void print_phy_data(void)
 {
@@ -864,10 +910,10 @@ void rtl8372_init(void)
 	print_reg(0x0b7c);
 
 	print_string("\r\nB Reg 0x6040: ");
-	print_reg(0x6040);
-	reg_bit_set(0x6040, 0);
+	print_reg(RTL837X_REG_HW_CONF);
+	reg_bit_set(RTL837X_REG_HW_CONF, 0);
 	print_string("\r\nA Reg 0x6040: ");
-	print_reg(0x6040);
+	print_reg(RTL837X_REG_HW_CONF);
 
 	// TODO: patch the PHYs
 
