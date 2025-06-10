@@ -168,7 +168,7 @@ flash chip and install a SOIC adapter):
 Now you can connect a serial cable to the UART port found on all the
 devices, set 8N1 @ 115200 baud and power up the switch.
 
-The device will perform some examples and provide a minimal console, which
-currently only allows to do a reset.
+The device will perform some examples and provide a minimal console, the
+documentation of which can be found in the source code rtlplayground.c`.
 
 Enjoy playing!
