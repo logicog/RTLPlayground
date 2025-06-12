@@ -8,12 +8,29 @@
 // Defines the LED Mode for steering the Port LEDS and the System LED
 // BIT 17 set: LED solid on
 // Bytes 0/1 hold the LED mode, e.g. serial, RTL8231?
+// Blink rate is defined by setAsicRegBits(0x6520,0xe00000,rate);
+
 #define RTL837X_REG_SMI_CTRL 0x6454
 #define RTL837X_REG_RESET 0x0024
+// Writing 0x01 into this register causes a reset of the entire SoC
 #define RTL837X_REG_SEC_COUNTER 0x06f4
-#define RTL837X_REG_SDS_MODES 0x7b20
-#define RTL837X_REG_LINKS 0x63f0
+// Used for counting seconds
 
-// Blink rate is defined by setAsicRegBits(0x6520,0xe00000,rate);
+#define RTL837X_REG_SDS_MODES 0x7b20
+/*
+ * 5 Bits each give the state of the 2 SerDes of the RTL8372
+ * Values are:
+ * 0x1A: 10GBit USXGMII?
+ * 0x5: 2.5GBit: HISGMII ???
+ * 0x4: 1GBit: SGMII
+ */
+
+#define RTL837X_REG_LINKS 0x63f0
+/* Each nibble encodes the link state of a port.
+   Port 0 appears to be the CPU port
+   The RTL8372 serves ports 4-7, port 3 is the RTL8221
+   2: 1Gbit
+   5: 2.5Gbit
+  */
 
 #endif
