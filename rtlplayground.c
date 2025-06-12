@@ -108,7 +108,6 @@ void print_string(__code char *p)
 		write_char(*p++);
 }
 
-
 void print_short(unsigned short a)
 {
 	print_string("0x");
@@ -307,16 +306,93 @@ unsigned char read_flash(unsigned char bank, __code unsigned char *addr)
 
 void print_long_x(__xdata unsigned char v[])
 {
+	write_char('0'); write_char('x');
+	for (int i=0; i < 4; i++) {
+		write_char(hex[v[i] >> 4]);
+		write_char(hex[v[i] & 0xf]);
+	}
+}
+
+/*
+ * Read a SerDes register in the SoC
+ * Input must be: sds_id = 0/1, page < 128,  reg <= 0xff
+ * The result is in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
+ */
+void sds_read(unsigned char sds_id, unsigned char page, unsigned char reg)
+{
+	SFR_93 = reg;			// 93
+	SFR_94 = page << 1 | sds_id;	// 94
+	SFR_EXEC_GO = 5;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
+
+/*
+ * Write a SerDes register in the SoC
+ * Input must be: sds_id = 0/1, page < 128,  reg <= 0xff
+ * The value written must be in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
+ */
+void sds_write(unsigned char sds_id, unsigned char page, unsigned char reg)
+{
+	SFR_93 = reg;
+	SFR_94 = page << 1 | sds_id;
+	SFR_EXEC_GO = 5;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
+
+void sds_write_v(unsigned char sds_id, unsigned char page, unsigned char reg, unsigned short v)
+{
+	SFR_DATA_8 = v >> 8;
+	SFR_DATA_0 = v;
+	SFR_93 = reg;
+	SFR_94 = page << 1 | sds_id;
+	SFR_EXEC_GO = 5;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
+
+
+void print_sfr_data(void)
+{
 	write_char('0');
 	write_char('x');
-	write_char(hex[v[0] >> 4]);
-	write_char(hex[v[0] & 0xf]);
-	write_char(hex[v[1] >> 4]);
-	write_char(hex[v[1] & 0xf]);
-	write_char(hex[v[2] >> 4]);
-	write_char(hex[v[2] & 0xf]);
-	write_char(hex[v[3] >> 4]);
-	write_char(hex[v[4] & 0xf]);
+	write_char(hex[SFR_DATA_24 >> 4]);
+	write_char(hex[SFR_DATA_24 & 0xf]);
+	write_char(hex[SFR_DATA_16 >> 4]);
+	write_char(hex[SFR_DATA_16 & 0xf]);
+	write_char(hex[SFR_DATA_8 >> 4]);
+	write_char(hex[SFR_DATA_8 & 0xf]);
+	write_char(hex[SFR_DATA_0 >> 4]);
+	write_char(hex[SFR_DATA_0 & 0xf]);
+}
+
+
+void print_phy_data(void)
+{
+	write_char('0');
+	write_char('x');
+	write_char(hex[SFR_DATA_8 >> 4]);
+	write_char(hex[SFR_DATA_8 & 0xf]);
+	write_char(hex[SFR_DATA_0 >> 4]);
+	write_char(hex[SFR_DATA_0 & 0xf]);
+}
+
+
+void print_reg(unsigned short reg)
+{
+	reg_read(reg);
+	print_sfr_data();
+}
+
+
+void print_sds_reg(unsigned char sds_id, unsigned char page, unsigned char reg)
+{
+	sds_read(sds_id, page, reg);
+	print_phy_data();
 }
 
 
@@ -337,6 +413,72 @@ void cpy_4(__xdata unsigned char dest[], __xdata unsigned char source[])
 {
 	for (int i = 0; i < 4; i++)
 		dest[i] = source[i];
+}
+
+
+void sds_config_p5(unsigned char mode)
+{
+// 2.5G
+// Q002110:6480 Q002113:0400 Q002118:6d02 Q00211b:424e Q00211d:0002 Q00361c:1390 Q003614:003f
+// Q003610:0200 Q002804:0080 Q002807:1201 Q002809:0601 Q00280b:232c Q00280c:9217 Q00280f:5b50 Q002815:e7f1 Q002816:0443 Q00281d:abb0
+// Q000612:5078 Q000706:9401 Q000708:9401 Q00070a:9401 Q00070c:9401 Q001f0b:0003 Q000603:c45c Q00061f:2100
+
+// 1G
+// Q002110:6480 Q002113:0400 Q002118:6d02 Q00211b:424e Q00211d:0002 Q00361c:1390 Q003614:003f
+// Q003610:0300 Q002404:0080 Q002407:1201 Q002409:0601 Q00240b:232c Q00240c:9217 Q00240f:5b50 Q002415:e7c1 Q002416:0443 Q00241d:abb0
+// Q000612:5078 Q000706:9401 Q000708:9401 Q00070a:9401 Q00070c:9401 Q001f0b:0003 Q000603:c45c Q00061f:2100
+
+	reg_read_m(RTL837X_REG_SDS_MODES);
+	sfr_mask_data(0, 0x1f, mode);
+	reg_write_m(RTL837X_REG_SDS_MODES);
+	print_string("\r\nRTL837X_REG_SDS_MODES: ");
+	print_reg(RTL837X_REG_SDS_MODES);
+
+	sds_write_v(0, 0x21, 0x10, 0x6400); // Q002110:6480
+	sds_write_v(0, 0x21, 0x13, 0x0400); // Q002113:0400
+	sds_write_v(0, 0x21, 0x18, 0x6d02); // Q002118:6d02
+	sds_write_v(0, 0x21, 0x1b, 0x424e); // Q00211b:424e
+	sds_write_v(0, 0x21, 0x1d, 0x0002); // 00211d:0002
+	sds_write_v(0, 0x36, 0x1c, 0x1390); // Q00361c:1390
+	sds_write_v(0, 0x36, 0x14, 0x003f); // Q003614:003f
+
+	unsigned char page = 0;
+	SFR_DATA_0 = 0x00;
+	switch (mode) {
+	case 0x02:
+		print_string("SDS mode set to 0x02\r\n");
+		SFR_DATA_8 = 0x03;
+		page = 0x24;
+		break;
+	case 0x12:
+		print_string("SDS mode set to 0x12\r\n");
+		SFR_DATA_8 = 0x02;
+		page = 0x28;
+		break;
+	default:
+		print_string("Error in SDS Mode\r\n");
+		return;
+	}
+	sds_write(0, 0x36, 0x10); // Q003610:0200
+
+	sds_write_v(0, page, 0x04, 0x0080); // Q002804:0080
+	sds_write_v(0, page, 0x07, 0x1201); // Q002807:1201
+	sds_write_v(0, page, 0x09, 0x0601); // Q002809:0601
+	sds_write_v(0, page, 0x0b, 0x232c); // Q00280b:232c
+	sds_write_v(0, page, 0x0c, 0x9217); // Q00280c:9217
+	sds_write_v(0, page, 0x0f, 0x5b50); // Q00280f:5b50
+	sds_write_v(0, page, 0x15, 0xe7f1); // Q002815:e7f1
+	sds_write_v(0, page, 0x16, 0x0443); // Q002816:0443
+	sds_write_v(0, page, 0x1d, 0xabb0); // Q00281d:abb0
+
+	sds_write_v(0, 0x06, 0x12, 0x5078); // Q000612:5078
+	sds_write_v(0, 0x07, 0x06, 0x9401); // Q000706:9401
+	sds_write_v(0, 0x07, 0x08, 0x9401); // Q000708:9401
+	sds_write_v(0, 0x07, 0x0a, 0x9401); // Q00070a:9401
+	sds_write_v(0, 0x07, 0x0c, 0x9401); // Q00070c:9401
+	sds_write_v(0, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
+	sds_write_v(0, 0x06, 0x03, 0xc45c); // Q000603:c45c
+	sds_write_v(0, 0x06, 0x1f, 0x2100); // Q00061f:2100
 }
 
 
@@ -374,8 +516,22 @@ void idle(void)
 	if (cmp_4(sfr_data, linkbits_last)) {
 		print_string("\r\n<new link: ");
 		print_long_x(sfr_data);
+		print_string(", was ");
+		print_long_x(linkbits_last);
 		print_string(">\r\n");
+		unsigned char p5 = sfr_data[2] >> 4;
+		unsigned char p5_last = linkbits_last[2] >> 4;
 		cpy_4(linkbits_last, sfr_data);
+		if (p5_last != p5) {
+			if (p5 == 0x5) // 2.5GBit Mode
+				sds_config_p5(0x12);
+			else if (p5 == 0x2) // 1GBit
+				sds_config_p5(0x2);
+			print_string("\r\n: q01011d:8000: ");
+			print_sds_reg(0x01, 0x01, 0x1d);
+			print_string("\r\n: q00011d:8000: ");
+			print_sds_reg(0x00, 0x01, 0x1d);
+		}
 	}
 }
 
@@ -450,32 +606,6 @@ void setup_clock(void)
 }
 
 
-void print_sfr_data(void)
-{
-	write_char('0');
-	write_char('x');
-	write_char(hex[SFR_DATA_24 >> 4]);
-	write_char(hex[SFR_DATA_24 & 0xf]);
-	write_char(hex[SFR_DATA_16 >> 4]);
-	write_char(hex[SFR_DATA_16 & 0xf]);
-	write_char(hex[SFR_DATA_8 >> 4]);
-	write_char(hex[SFR_DATA_8 & 0xf]);
-	write_char(hex[SFR_DATA_0 >> 4]);
-	write_char(hex[SFR_DATA_0 & 0xf]);
-}
-
-
-
-
-void print_phy_data(void)
-{
-	write_char('0');
-	write_char('x');
-	write_char(hex[SFR_DATA_8 >> 4]);
-	write_char(hex[SFR_DATA_8 & 0xf]);
-	write_char(hex[SFR_DATA_0 >> 4]);
-	write_char(hex[SFR_DATA_0 & 0xf]);
-}
 /*
  * Write a register reg of phy phy_id, in page page
  * Data to be written must be in SFR a6/a7
@@ -509,23 +639,6 @@ void phy_read(unsigned char phy_id, unsigned char device, unsigned short reg)
 	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
-}
-
-
-void phy22_read(unsigned char phy_id, unsigned short reg, unsigned char opt)
-{
-	SFR_93 = phy_id;		// 93
-	SFR_94 = reg << 1 | opt;	// 94
-	SFR_EXEC_GO = 5;
-	do {
-	} while (SFR_EXEC_STATUS != 0);
-}
-
-
-void print_reg(unsigned short reg)
-{
-	reg_read(reg);
-	print_sfr_data();
 }
 
 
@@ -993,13 +1106,6 @@ void setup_serial(void)
 }
 
 
-void print_phy22_reg(unsigned char phy_id, unsigned char reg, unsigned char opt)
-{
-	phy22_read(phy_id, reg, opt);
-	print_phy_data();
-}
-
-
 __code struct command commands[N_COMMANDS] = {
 	{ "reset", 1 },
 };
@@ -1078,25 +1184,11 @@ void bootloader(void)
 	print_string("\r\nClock register: ");
 	print_reg(0x6040);
 
-/*
-	print_string("\r\n");
-	for (int i = 0; i < 32; i ++) {
-		for (int j = 0; j < 32; j ++) {
-			print_phy22_reg(i, j, 0);
-			write_char(' ');
-		}
-		print_string("\r\n");
-	}
-
-	print_string("\r\n");
-	for (int i = 0; i < 32; i ++) {
-		for (int j = 0; j < 32; j ++) {
-			print_phy22_reg(i, j, 1);
-			write_char(' ');
-		}
-		print_string("\r\n");
-	}
-*/
+	// q01011d:8000
+	print_string("\r\n: q01011d:8000: ");
+	print_sds_reg(0x01, 0x01, 0x1d);
+	print_string("\r\n: q00011d:8000: ");
+	print_sds_reg(0x00, 0x01, 0x1d);
 
 	print_string("\r\n> ");
 	char l = sbuf_ptr;
