@@ -527,10 +527,6 @@ void idle(void)
 				sds_config_p5(0x12);
 			else if (p5 == 0x2) // 1GBit
 				sds_config_p5(0x2);
-			print_string("\r\n: q01011d:8000: ");
-			print_sds_reg(0x01, 0x01, 0x1d);
-			print_string("\r\n: q00011d:8000: ");
-			print_sds_reg(0x00, 0x01, 0x1d);
 		}
 	}
 }
@@ -1183,12 +1179,6 @@ void bootloader(void)
 	print_reg(0x4);
 	print_string("\r\nClock register: ");
 	print_reg(0x6040);
-
-	// q01011d:8000
-	print_string("\r\n: q01011d:8000: ");
-	print_sds_reg(0x01, 0x01, 0x1d);
-	print_string("\r\n: q00011d:8000: ");
-	print_sds_reg(0x00, 0x01, 0x1d);
 
 	print_string("\r\n> ");
 	char l = sbuf_ptr;
