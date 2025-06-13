@@ -6,7 +6,9 @@ will actually work as a switch, will vary. On the
 keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+),
 at present the system will provide switching capabilities between the 5 Ethernet ports.
 The ports served by the RTL8372 will be 100M/1G/2.5G auto-detect. Port 5 to RTL8221B PHY
-SerDes configuration works and supports 1GBit and 2.5GBit Ethernet (SGMII/HISGMII). 
+SerDes configuration works and supports 1GBit and 2.5GBit Ethernet (SGMII/HISGMII).
+SFP module insert/removal identification and reading of the SFP EEProm works. SFP
+module configuration works, too, tested for 1G modules.
 All configuration must be done via serial
 connection (there is no web-interface), so soldering skills are required. Flashing
 must be done via a SOIC-8 PatchClamp or by soldering a socket for the flash chip.
