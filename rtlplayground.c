@@ -38,9 +38,9 @@
 #define SFR_EXEC_READ_SMI 9
 #define SFR_EXEC_WRITE_SMI 11
 
-volatile __xdata unsigned long ticks;
-volatile __xdata unsigned char sec_counter;
-__xdata unsigned long sleep_until;
+volatile __xdata uint32_t ticks;
+volatile __xdata uint8_t sec_counter;
+__xdata uint32_t sleep_until;
 
 #define N_WORDS 10
 __xdata signed char cmd_words_b[N_WORDS];
@@ -48,25 +48,26 @@ __xdata signed char cmd_words_b[N_WORDS];
 // Buffer for serial input, SBUF_SIZE must be power of 2 < 256
 #define SBUF_SIZE 32
 __xdata char sbuf_ptr;
-__xdata unsigned sbuf[SBUF_SIZE];
-__xdata unsigned char sfr_data[4];
+__xdata uint8_t sbuf[SBUF_SIZE];
+__xdata uint8_t sfr_data[4];
 
-__code unsigned char * __code greeting = "A minimal prompt to explore the RTL8372!\r\n";
-__code unsigned char * __code hex = "0123456789abcdef";
+__code uint8_t * __code greeting = "A minimal prompt to explore the RTL8372!\r\n";
+__code uint8_t * __code hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[256];
 
-__code unsigned short bit_mask[16] = {
+__code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004,0x0008,0x0010,0x0020,0x0040, 0x0080,
 	0x0100, 0x0200, 0x0400,0x0800,0x1000,0x2000,0x4000, 0x8000
 };
 
-__xdata unsigned char linkbits_last[4];
+__xdata uint8_t linkbits_last[4];
+__xdata uint8_t sfp_pins_last;
 
 #define N_COMMANDS 1
 struct command {
-	unsigned char *cmd;
-	unsigned char id;
+	uint8_t *cmd;
+	uint8_t id;
 };
 
 
@@ -108,7 +109,7 @@ void print_string(__code char *p)
 		write_char(*p++);
 }
 
-void print_short(unsigned short a)
+void print_short(uint16_t a)
 {
 	print_string("0x");
 	for (signed char i = 12; i >= 0; i -= 4) {
@@ -117,7 +118,7 @@ void print_short(unsigned short a)
 }
 
 
-void print_long(unsigned long a)
+void print_long(uint32_t a)
 {
 	print_string("0x");
 	for (signed char i = 28; i >= 0; i -= 4) {
@@ -125,7 +126,7 @@ void print_long(unsigned long a)
 	}
 }
 
-void print_byte(unsigned char a)
+void print_byte(uint8_t a)
 {
 	write_char(hex[(a >> 4) & 0xf]);
 	write_char(hex[a & 0xf]);
@@ -251,7 +252,7 @@ void reg_write_m(uint16_t reg_addr)
  */
 void reg_bit_set(uint16_t reg_addr, char bit)
 {
-	unsigned char bit_mask = 1 << (bit & 0x7);
+	uint8_t bit_mask = 1 << (bit & 0x7);
 
 	bit >>= 3;
 	reg_read_m(reg_addr);
@@ -265,7 +266,7 @@ void reg_bit_set(uint16_t reg_addr, char bit)
  */
 void reg_bit_clear(uint16_t reg_addr, char bit)
 {
-	unsigned char bit_mask = 1 << (bit & 0x7);
+	uint8_t bit_mask = 1 << (bit & 0x7);
 
 	bit >>= 3;
 	reg_read_m(reg_addr);
@@ -277,9 +278,9 @@ void reg_bit_clear(uint16_t reg_addr, char bit)
 /*
  * This masks the sfr data fields, first &-ing with ~mask, the setting the bits in set
  */
-void sfr_mask_data(unsigned char n, unsigned char mask, unsigned char set)
+void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 {
-	unsigned char b = sfr_data[3-n];
+	uint8_t b = sfr_data[3-n];
 	b &= ~mask;
 	b |= set;
 	sfr_data[3-n] = b;
@@ -292,10 +293,10 @@ void sfr_mask_data(unsigned char n, unsigned char mask, unsigned char set)
  * Note that the address in the flash memory is not simply 0xbbaddr, because
  * the size of a bank is merely 0xc000.
  */
-unsigned char read_flash(unsigned char bank, __code unsigned char *addr)
+uint8_t read_flash(uint8_t bank, __code uint8_t *addr)
 {
-	unsigned char v;
-	unsigned char current_bank = SFR_BANK;
+	uint8_t v;
+	uint8_t current_bank = SFR_BANK;
 
 	SFR_BANK = bank;
 	v = *addr;
@@ -304,7 +305,7 @@ unsigned char read_flash(unsigned char bank, __code unsigned char *addr)
 }
 
 
-void print_long_x(__xdata unsigned char v[])
+void print_long_x(__xdata uint8_t v[])
 {
 	write_char('0'); write_char('x');
 	for (int i=0; i < 4; i++) {
@@ -318,7 +319,7 @@ void print_long_x(__xdata unsigned char v[])
  * Input must be: sds_id = 0/1, page < 128,  reg <= 0xff
  * The result is in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
  */
-void sds_read(unsigned char sds_id, unsigned char page, unsigned char reg)
+void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg)
 {
 	SFR_93 = reg;			// 93
 	SFR_94 = page << 1 | sds_id;	// 94
@@ -333,7 +334,7 @@ void sds_read(unsigned char sds_id, unsigned char page, unsigned char reg)
  * Input must be: sds_id = 0/1, page < 128,  reg <= 0xff
  * The value written must be in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
  */
-void sds_write(unsigned char sds_id, unsigned char page, unsigned char reg)
+void sds_write(uint8_t sds_id, uint8_t page, uint8_t reg)
 {
 	SFR_93 = reg;
 	SFR_94 = page << 1 | sds_id;
@@ -343,7 +344,7 @@ void sds_write(unsigned char sds_id, unsigned char page, unsigned char reg)
 }
 
 
-void sds_write_v(unsigned char sds_id, unsigned char page, unsigned char reg, unsigned short v)
+void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v)
 {
 	SFR_DATA_8 = v >> 8;
 	SFR_DATA_0 = v;
@@ -382,21 +383,21 @@ void print_phy_data(void)
 }
 
 
-void print_reg(unsigned short reg)
+void print_reg(uint16_t reg)
 {
 	reg_read(reg);
 	print_sfr_data();
 }
 
 
-void print_sds_reg(unsigned char sds_id, unsigned char page, unsigned char reg)
+void print_sds_reg(uint8_t sds_id, uint8_t page, uint8_t reg)
 {
 	sds_read(sds_id, page, reg);
 	print_phy_data();
 }
 
 
-char cmp_4(__xdata unsigned char a[], __xdata unsigned char b[])
+char cmp_4(__xdata uint8_t a[], __xdata uint8_t b[])
 {
 	for (int i = 0; i < 4; i++) {
 		if (a[i] == b[i])
@@ -409,49 +410,49 @@ char cmp_4(__xdata unsigned char a[], __xdata unsigned char b[])
 	return 0;
 }
 
-void cpy_4(__xdata unsigned char dest[], __xdata unsigned char source[])
+void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 {
 	for (int i = 0; i < 4; i++)
 		dest[i] = source[i];
 }
 
 
-void sds_config_p5(unsigned char mode)
+void sds_config(uint8_t sds, uint8_t mode)
 {
-// 2.5G
-// Q002110:6480 Q002113:0400 Q002118:6d02 Q00211b:424e Q00211d:0002 Q00361c:1390 Q003614:003f
-// Q003610:0200 Q002804:0080 Q002807:1201 Q002809:0601 Q00280b:232c Q00280c:9217 Q00280f:5b50 Q002815:e7f1 Q002816:0443 Q00281d:abb0
-// Q000612:5078 Q000706:9401 Q000708:9401 Q00070a:9401 Q00070c:9401 Q001f0b:0003 Q000603:c45c Q00061f:2100
-
-// 1G
-// Q002110:6480 Q002113:0400 Q002118:6d02 Q00211b:424e Q00211d:0002 Q00361c:1390 Q003614:003f
-// Q003610:0300 Q002404:0080 Q002407:1201 Q002409:0601 Q00240b:232c Q00240c:9217 Q00240f:5b50 Q002415:e7c1 Q002416:0443 Q00241d:abb0
-// Q000612:5078 Q000706:9401 Q000708:9401 Q00070a:9401 Q00070c:9401 Q001f0b:0003 Q000603:c45c Q00061f:2100
-
+	print_string("\r\nBEFORE RTL837X_REG_SDS_MODES: ");
+	print_reg(RTL837X_REG_SDS_MODES);
 	reg_read_m(RTL837X_REG_SDS_MODES);
-	sfr_mask_data(0, 0x1f, mode);
+	if (!sds) {
+		sfr_mask_data(0, 0x1f, mode);
+	} else {
+		sfr_mask_data(0, 0xe0, mode << 5);
+		sfr_mask_data(1, 0x03, mode >> 3);
+	}
 	reg_write_m(RTL837X_REG_SDS_MODES);
 	print_string("\r\nRTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
 
-	sds_write_v(0, 0x21, 0x10, 0x6400); // Q002110:6480
-	sds_write_v(0, 0x21, 0x13, 0x0400); // Q002113:0400
-	sds_write_v(0, 0x21, 0x18, 0x6d02); // Q002118:6d02
-	sds_write_v(0, 0x21, 0x1b, 0x424e); // Q00211b:424e
-	sds_write_v(0, 0x21, 0x1d, 0x0002); // 00211d:0002
-	sds_write_v(0, 0x36, 0x1c, 0x1390); // Q00361c:1390
-	sds_write_v(0, 0x36, 0x14, 0x003f); // Q003614:003f
+	sds_write_v(sds, 0x21, 0x10, 0x6400); // Q002110:6480
+	sds_write_v(sds, 0x21, 0x13, 0x0400); // Q002113:0400
+	sds_write_v(sds, 0x21, 0x18, 0x6d02); // Q002118:6d02
+	sds_write_v(sds, 0x21, 0x1b, 0x424e); // Q00211b:424e
+	sds_write_v(sds, 0x21, 0x1d, 0x0002); // 00211d:0002
+	sds_write_v(sds, 0x36, 0x1c, 0x1390); // Q00361c:1390
+	sds_write_v(sds, 0x36, 0x14, 0x003f); // Q003614:003f
 
-	unsigned char page = 0;
+	uint8_t page = 0;
 	SFR_DATA_0 = 0x00;
+	print_string("\r\nTrying to set SDS mode to 0x");
+	print_byte(mode);
+	print_string("\r\n");
+
 	switch (mode) {
 	case 0x02:
-		print_string("SDS mode set to 0x02\r\n");
+	case 0x04:
 		SFR_DATA_8 = 0x03;
 		page = 0x24;
 		break;
 	case 0x12:
-		print_string("SDS mode set to 0x12\r\n");
 		SFR_DATA_8 = 0x02;
 		page = 0x28;
 		break;
@@ -459,26 +460,52 @@ void sds_config_p5(unsigned char mode)
 		print_string("Error in SDS Mode\r\n");
 		return;
 	}
-	sds_write(0, 0x36, 0x10); // Q003610:0200
+	sds_write(sds, 0x36, 0x10); // Q003610:0200
 
-	sds_write_v(0, page, 0x04, 0x0080); // Q002804:0080
-	sds_write_v(0, page, 0x07, 0x1201); // Q002807:1201
-	sds_write_v(0, page, 0x09, 0x0601); // Q002809:0601
-	sds_write_v(0, page, 0x0b, 0x232c); // Q00280b:232c
-	sds_write_v(0, page, 0x0c, 0x9217); // Q00280c:9217
-	sds_write_v(0, page, 0x0f, 0x5b50); // Q00280f:5b50
-	sds_write_v(0, page, 0x15, 0xe7f1); // Q002815:e7f1
-	sds_write_v(0, page, 0x16, 0x0443); // Q002816:0443
-	sds_write_v(0, page, 0x1d, 0xabb0); // Q00281d:abb0
+	sds_write_v(sds, page, 0x04, 0x0080); // Q002804:0080
+	sds_write_v(sds, page, 0x07, 0x1201); // Q002807:1201
+	sds_write_v(sds, page, 0x09, 0x0601); // Q002809:0601
+	sds_write_v(sds, page, 0x0b, 0x232c); // Q00280b:232c
+	sds_write_v(sds, page, 0x0c, 0x9217); // Q00280c:9217
+	sds_write_v(sds, page, 0x0f, 0x5b50); // Q00280f:5b50
+	sds_write_v(sds, page, 0x15, 0xe7f1); // Q002815:e7f1
+	sds_write_v(sds, page, 0x16, 0x0443); // Q002816:0443
+	sds_write_v(sds, page, 0x1d, 0xabb0); // Q00281d:abb0
 
-	sds_write_v(0, 0x06, 0x12, 0x5078); // Q000612:5078
-	sds_write_v(0, 0x07, 0x06, 0x9401); // Q000706:9401
-	sds_write_v(0, 0x07, 0x08, 0x9401); // Q000708:9401
-	sds_write_v(0, 0x07, 0x0a, 0x9401); // Q00070a:9401
-	sds_write_v(0, 0x07, 0x0c, 0x9401); // Q00070c:9401
-	sds_write_v(0, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
-	sds_write_v(0, 0x06, 0x03, 0xc45c); // Q000603:c45c
-	sds_write_v(0, 0x06, 0x1f, 0x2100); // Q00061f:2100
+	sds_write_v(sds, 0x06, 0x12, 0x5078); // Q000612:5078
+	sds_write_v(sds, 0x07, 0x06, 0x9401); // Q000706:9401
+	sds_write_v(sds, 0x07, 0x08, 0x9401); // Q000708:9401
+	sds_write_v(sds, 0x07, 0x0a, 0x9401); // Q00070a:9401
+	sds_write_v(sds, 0x07, 0x0c, 0x9401); // Q00070c:9401
+	sds_write_v(sds, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
+	sds_write_v(sds, 0x06, 0x03, 0xc45c); // Q000603:c45c
+	sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
+}
+
+
+/*
+ * Read a register of the EEPROM via I2C
+ */
+uint8_t sfp_read_reg(uint8_t reg)
+{
+	reg_read_m(0x0418);
+	sfr_mask_data(1, 0xf0, 0x70);
+	reg_write_m(0x0418);
+
+	SFR_DATA_24 = SFR_DATA_16 = SFR_DATA_8 = 0;
+	SFR_DATA_0 = reg;
+	reg_write(0x0420);
+
+	// Execute I2C Read
+	reg_bit_set(0x418, 0);
+
+	// Wait for execution to finish
+	do {
+		reg_read_m(0x418);
+	} while (sfr_data[3] & 0x1);
+
+	reg_read_m(0x0424);
+	return sfr_data[3];
 }
 
 
@@ -491,7 +518,7 @@ void idle(void)
 	if (sec_counter >= 60) {
 		sec_counter -= 60;
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
-		unsigned char v = sfr_data[3];
+		uint8_t v = sfr_data[3];
 		v++;
 		sfr_data[3] = v;
 		if (!v) {
@@ -519,21 +546,56 @@ void idle(void)
 		print_string(", was ");
 		print_long_x(linkbits_last);
 		print_string(">\r\n");
-		unsigned char p5 = sfr_data[2] >> 4;
-		unsigned char p5_last = linkbits_last[2] >> 4;
+		uint8_t p5 = sfr_data[2] >> 4;
+		uint8_t p5_last = linkbits_last[2] >> 4;
 		cpy_4(linkbits_last, sfr_data);
 		if (p5_last != p5) {
 			if (p5 == 0x5) // 2.5GBit Mode
-				sds_config_p5(0x12);
+				sds_config(0, 0x12);
 			else if (p5 == 0x2) // 1GBit
-				sds_config_p5(0x2);
+				sds_config(0, 0x2);
 		}
+	}
+
+	reg_read_m(RTL837X_REG_GPIOB);
+	if ((sfp_pins_last & 0x1) && (!(sfr_data[0] & 0x40))) {
+		sfp_pins_last &= ~0x01;
+		print_string("\r\n<MODULE INSERTED> ");
+		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
+		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
+		uint8_t rate = sfp_read_reg(12);
+		print_string("\r\nRate: ");
+		print_byte(rate);
+		print_string("\r\n");
+		for (uint8_t i = 20; i < 60; i++) {
+			uint8_t c = sfp_read_reg(i);
+			if (c)
+				write_char(c);
+		}
+		print_string("\r\n");
+		if (rate == 0xd)
+			sds_config(1, 0x4);
+
+	}
+	if ((!(sfp_pins_last & 0x1)) && (sfr_data[0] & 0x40)) {
+		sfp_pins_last |= 0x01;
+		print_string("\r\n<MODULE REMOVED>\r\n");
+	}
+
+	reg_read_m(RTL837X_REG_GPIOC);
+	if ((sfp_pins_last & 0x2) && (!(sfr_data[3] & 0x20))) {
+		sfp_pins_last &= ~0x02;
+		print_string("\r\n<RX OK>\r\n");
+	}
+	if ((!(sfp_pins_last & 0x2)) && (sfr_data[3] & 0x20)) {
+		sfp_pins_last |= 0x02;
+		print_string("\r\n<RX LOS>\r\n");
 	}
 }
 
 
 // Sleep the given number of ticks
-void sleep(unsigned short t)
+void sleep(uint16_t t)
 {
 	sleep_until = ticks + t;
 	while (sleep_until <= ticks)
@@ -575,9 +637,9 @@ void setup_external_irqs(void)
 void reset_rtl8224(void)
 {
 	/* Toggle reset pin on RTL8224 on RTL8373 */
-	reg_bit_clear(0x40, 4);
-	reg_bit_set(0x50, 4);
-	reg_bit_set(0x40, 4);
+	reg_bit_clear(RTL837X_REG_GPIOA, 4);
+	reg_bit_set(0x50, 4);	// Probably also a GPIOs
+	reg_bit_set(RTL837X_REG_GPIOA, 4);
 }
 
 
@@ -606,7 +668,7 @@ void setup_clock(void)
  * Write a register reg of phy phy_id, in page page
  * Data to be written must be in SFR a6/a7
  */
-void phy_write(unsigned short phy_mask, unsigned char dev_id, unsigned short reg, unsigned short v)
+void phy_write(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
 {
 	SFR_DATA_8 = v >> 8;
 	SFR_DATA_0 = v;
@@ -625,7 +687,7 @@ void phy_write(unsigned short phy_mask, unsigned char dev_id, unsigned short reg
  * Input must be: phy_id < 64,  device_id < 32,  reg < 0x10000)
  * The result is in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
  */
-void phy_read(unsigned char phy_id, unsigned char device, unsigned short reg)
+void phy_read(uint8_t phy_id, uint8_t device, uint16_t reg)
 {
 	SFR_SMI_REG_H = reg >> 8;	// c3
 	SFR_SMI_REG_L = reg;		// c2
@@ -651,7 +713,7 @@ void sds_init(void)
 
 	print_string(", phy-reg read: ");
 	phy_read(0, 0x1e, 0xd);
-	unsigned short pval = SFR_DATA_8;
+	uint16_t pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
 	print_short(pval);
@@ -712,9 +774,9 @@ void sds_init(void)
 }
 
 
-void phy_config(unsigned char phy)
+void phy_config(uint8_t phy)
 {
-	unsigned short pval;
+	uint16_t pval;
 	print_string("\r\nphy_config: ");
 	write_char('0' + phy);
 
@@ -1038,7 +1100,7 @@ void rtl8372_init(void)
 	print_string("\r\nReg 0x632c: ");
 	print_reg(0x632c);
 
-	print_string("\r\ntl8372_init done\r\n");
+	print_string("\r\nrtl8372_init done\r\n");
 }
 
 
@@ -1107,7 +1169,7 @@ __code struct command commands[N_COMMANDS] = {
 };
 
 
-unsigned char cmd_compare(unsigned char start, unsigned char * __code cmd)
+uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 {
 	signed char i;
 	signed char j = 0;
@@ -1124,6 +1186,36 @@ unsigned char cmd_compare(unsigned char start, unsigned char * __code cmd)
 	if (i >= cmd_words_b[start + 1] || sbuf[i] == ' ')
 		return 1;
 	return 0;
+}
+
+
+void setup_i2c(void)
+{
+	SFR_DATA_24 = 0x00;
+	SFR_DATA_16 = 0x00;
+	SFR_DATA_8 = 0x00;
+	SFR_DATA_0 = 0x00;
+	reg_write(0x0414);
+
+	SFR_DATA_24 = 0x00;
+	SFR_DATA_16 = 0x10;
+	SFR_DATA_8 = 0x02;
+	SFR_DATA_0 = 0x80;
+	reg_write(0x0418);
+
+	SFR_DATA_24 = 0x00;
+	SFR_DATA_16 = 0x00;
+	SFR_DATA_8 = 0x00;
+	SFR_DATA_0 = 0x00;
+	reg_write(0x041c);
+
+	// HW Control register, enable I2C?
+	reg_read_m(0x7f90);
+	sfr_mask_data(3, 0x20, 0x00); // Clear bit 29
+	sfr_mask_data(0, 0x60, 0x40); // Set bits 5-6 to 0b10
+	reg_write_m(0x7f90);
+	print_string("\r\nReg 0x7f90: ");
+	print_reg(0x7f909);
 }
 
 
@@ -1153,6 +1245,9 @@ void bootloader(void)
 	setup_external_irqs();
 	EA = 1; // Enable all IRQs
 
+	// Set default for SFP pins so we can start up a module already inserted
+	sfp_pins_last = 0x3; // signal LOS and no module inserted
+
 // 	port_leds_on();
 	print_string("\r\nStarting up...\r\n");
 	print_string("  Flash controller\r\n");
@@ -1174,6 +1269,8 @@ void bootloader(void)
 	flash_dump(0x100, 252);
 	rtl8372_init();
 
+	setup_i2c();
+
 	print_string(greeting);
 	print_string("\r\nCPU version: ");
 	print_reg(0x4);
@@ -1193,7 +1290,7 @@ void bootloader(void)
 				// Print line and parse command into words
 				print_string("\r\n  CMD: ");
 				is_white = 1;
-				unsigned char word = 0;
+				uint8_t word = 0;
 				cmd_words_b[0] = -1;
 				while (line_ptr != l) {
 					if (is_white && sbuf[line_ptr] != ' ') {
@@ -1247,7 +1344,7 @@ void bootloader(void)
 					}
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'w') {
 						print_string("\r\nFLASH write\r\n");
-						for (unsigned char i = 0; i < 20; i++)
+						for (uint8_t i = 0; i < 20; i++)
 							flash_buf[i] = greeting[i];
 						flash_write_bytes(0x20000, flash_buf, 20);
 					}

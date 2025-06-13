@@ -33,4 +33,14 @@
    5: 2.5Gbit
   */
 
+#define RTL837X_REG_GPIOA 0x40
+// BIT 4 resets RTL8224 on 9000-9XH
+
+#define RTL837X_REG_GPIOB 0x44
+// Bit 1e cleared: SFP Module inserted on 9000-6XH (MOD_DEF0 pin)
+
+#define RTL837X_REG_GPIOC 0x48
+// BIT 5 set: SIGNAL LOS of SFP module on 9000-6XH (RX_LOS pin)
+
+
 #endif
