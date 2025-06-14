@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 uint8_t flash_read_status(void);
-void flash_init(unsigned char enable_dio);
+void flash_init(uint8_t enable_dio);
 void flash_read_uid(void);
 void flash_write_enable(void);
 void flash_dump(uint32_t addr, uint8_t len);

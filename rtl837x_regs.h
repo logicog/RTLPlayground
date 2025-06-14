@@ -20,10 +20,11 @@
 /*
  * 5 Bits each give the state of the 2 SerDes of the RTL8372
  * Values are:
- * 0x1A: 10GBit USXGMII?
- * 0x5: 2.5GBit: HISGMII ???
- * 0x4: 1GBit: SGMII
  */
+#define SDS_SGMII		0x02
+#define SDS_1000BX_FIBER	0x04
+#define SDS_HISGMII		0x12
+#define SDS_10GR		0x1a
 
 #define RTL837X_REG_LINKS 0x63f0
 /* Each nibble encodes the link state of a port.

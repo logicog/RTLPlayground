@@ -7,7 +7,7 @@
 #include "rtl837x_stdio.h"
 #include "rtl837x_sfr.h"
 
-__xdata unsigned char dio_enabled;
+__xdata uint8_t dio_enabled;
 
 
 /*
@@ -36,7 +36,7 @@ void flash_configure_mmio(void)
  * This configures uses fast single IO at 20.8 MHz when the CPU clock is at 20.8MHz
  * and 62.5MHz when the CPU clock is configured at 125MHz
  */
-void flash_init(unsigned char enable_dio)
+void flash_init(uint8_t enable_dio)
 {
 	if (enable_dio) {
 		// Configure fast DIO via divider/DIO/SIOconfig = 4 and read-cmd being 0xbb (for mmio)
@@ -271,7 +271,7 @@ void flash_block_erase(uint32_t addr)
 
 void flash_write_bytes(uint32_t addr, __xdata uint8_t *ptr, uint8_t len)
 {
-	unsigned char exit_loop = 0;
+	uint8_t exit_loop = 0;
 
 	while(1) {
 		flash_write_enable();
