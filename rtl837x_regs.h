@@ -24,6 +24,7 @@
 #define SDS_SGMII		0x02
 #define SDS_1000BX_FIBER	0x04
 #define SDS_HISGMII		0x12
+#define SDS_HSG			0x16
 #define SDS_10GR		0x1a
 
 #define RTL837X_REG_LINKS 0x63f0

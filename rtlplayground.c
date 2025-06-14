@@ -441,7 +441,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	if (mode == SDS_10GR) // 10G Fiber
 		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
 	else
-		sds_write_v(sds, 0x21, 0x10, 0x6400); // Q002110:6480
+		sds_write_v(sds, 0x21, 0x10, 0x6480); // Q002110:6480
 	sds_write_v(sds, 0x21, 0x13, 0x0400); // Q002113:0400
 	sds_write_v(sds, 0x21, 0x18, 0x6d02); // Q002118:6d02
 	sds_write_v(sds, 0x21, 0x1b, 0x424e); // Q00211b:424e
@@ -462,6 +462,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 		page = 0x24;
 		break;
 	case SDS_HISGMII:
+	case SDS_HSG:
 		SFR_DATA_8 = 0x02;
 		page = 0x28;
 		break;
@@ -533,6 +534,14 @@ uint8_t sfp_read_reg(uint8_t reg)
 	return sfr_data[3];
 }
 
+// Sleep the given number of ticks without doing housekeeping
+void delay(uint16_t t)
+{
+	sleep_until = ticks + t;
+	while (sleep_until >= ticks)
+		PCON |= 1;
+}
+
 
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
@@ -588,11 +597,10 @@ void idle(void)
 		print_string("\r\n<MODULE INSERTED> ");
 		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
 		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
+		delay(100); // Delay, because some modules need some time to wake up
 		uint8_t rate = sfp_read_reg(12);
-		print_string("\r\nRate: ");
-		print_byte(rate);
-		print_string("\r\nEncoding: ");
-		print_byte(sfp_read_reg(11));
+		print_string("\r\nRate: "); print_byte(rate);
+		print_string("  Encoding: "); print_byte(sfp_read_reg(11));
 		print_string("\r\n");
 		for (uint8_t i = 20; i < 60; i++) {
 			uint8_t c = sfp_read_reg(i);
@@ -602,6 +610,8 @@ void idle(void)
 		print_string("\r\n");
 		if (rate == 0xd)
 			sds_config(1, SDS_1000BX_FIBER);
+		if (rate == 0x1f)  // Ethernet 2.5 GBit
+			sds_config(1, SDS_HSG);
 		if (rate > 0x65 && rate < 0x70)
 			sds_config(1, SDS_10GR);
 
@@ -627,7 +637,7 @@ void idle(void)
 void sleep(uint16_t t)
 {
 	sleep_until = ticks + t;
-	while (sleep_until <= ticks)
+	while (sleep_until >= ticks)
 		idle();
 }
 
@@ -1347,6 +1357,17 @@ void bootloader(void)
 					if (cmd_compare(0, "reset")) {
 						print_string("\r\nRESET\n\n");
 						reset_chip();
+					}
+					if (cmd_compare(0, "sfp")) {
+						uint8_t rate = sfp_read_reg(12);
+						print_string("\r\nRate: "); print_byte(rate);
+						print_string("  Encoding: "); print_byte(sfp_read_reg(11));
+						print_string("\r\n");
+						for (uint8_t i = 20; i < 60; i++) {
+							uint8_t c = sfp_read_reg(i);
+							if (c)
+								write_char(c);
+						}
 					}
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'd') {
 						print_string("\r\nDUMPING FLASH\r\n");
