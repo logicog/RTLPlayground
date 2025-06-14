@@ -419,20 +419,29 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 
 void sds_config(uint8_t sds, uint8_t mode)
 {
+	print_string("\r\nsds_config: sds: ");
+	print_byte(sds);
+	print_string(", mode: 0x");
+	print_byte(mode);
 	print_string("\r\nBEFORE RTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
 	reg_read_m(RTL837X_REG_SDS_MODES);
+	sfr_data[0] = 0;
+	sfr_data[1] = 0;
 	if (!sds) {
 		sfr_mask_data(0, 0x1f, mode);
 	} else {
 		sfr_mask_data(0, 0xe0, mode << 5);
-		sfr_mask_data(1, 0x03, mode >> 3);
+		sfr_mask_data(1, 0xf3, mode >> 3);
 	}
 	reg_write_m(RTL837X_REG_SDS_MODES);
 	print_string("\r\nRTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
 
-	sds_write_v(sds, 0x21, 0x10, 0x6400); // Q002110:6480
+	if (mode == SDS_10GR) // 10G Fiber
+		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
+	else
+		sds_write_v(sds, 0x21, 0x10, 0x6400); // Q002110:6480
 	sds_write_v(sds, 0x21, 0x13, 0x0400); // Q002113:0400
 	sds_write_v(sds, 0x21, 0x18, 0x6d02); // Q002118:6d02
 	sds_write_v(sds, 0x21, 0x1b, 0x424e); // Q00211b:424e
@@ -447,14 +456,18 @@ void sds_config(uint8_t sds, uint8_t mode)
 	print_string("\r\n");
 
 	switch (mode) {
-	case 0x02:
-	case 0x04:
+	case SDS_SGMII:
+	case SDS_1000BX_FIBER:
 		SFR_DATA_8 = 0x03;
 		page = 0x24;
 		break;
-	case 0x12:
+	case SDS_HISGMII:
 		SFR_DATA_8 = 0x02;
 		page = 0x28;
+		break;
+	case SDS_10GR:
+		SFR_DATA_8 = 0x02;
+		page = 0x2e;
 		break;
 	default:
 		print_string("Error in SDS Mode\r\n");
@@ -462,15 +475,27 @@ void sds_config(uint8_t sds, uint8_t mode)
 	}
 	sds_write(sds, 0x36, 0x10); // Q003610:0200
 
-	sds_write_v(sds, page, 0x04, 0x0080); // Q002804:0080
-	sds_write_v(sds, page, 0x07, 0x1201); // Q002807:1201
-	sds_write_v(sds, page, 0x09, 0x0601); // Q002809:0601
-	sds_write_v(sds, page, 0x0b, 0x232c); // Q00280b:232c
-	sds_write_v(sds, page, 0x0c, 0x9217); // Q00280c:9217
-	sds_write_v(sds, page, 0x0f, 0x5b50); // Q00280f:5b50
-	sds_write_v(sds, page, 0x15, 0xe7f1); // Q002815:e7f1
-	sds_write_v(sds, page, 0x16, 0x0443); // Q002816:0443
-	sds_write_v(sds, page, 0x1d, 0xabb0); // Q00281d:abb0
+	if (page == 0x2e) {  // 10G Fiber
+		sds_write_v(sds, page, 0x04, 0x0080); // Q012e04:0080
+		sds_write_v(sds, page, 0x06, 0x0408); // Q012e06:0408
+		sds_write_v(sds, page, 0x07, 0x020d); // Q012e07:020d
+		sds_write_v(sds, page, 0x09, 0x0601); // Q012e09:0601
+		sds_write_v(sds, page, 0x0b, 0x222c); // Q012e0b:222c
+		sds_write_v(sds, page, 0x0c, 0xa217); // Q012e0c:a217
+		sds_write_v(sds, page, 0x0d, 0xfe40); // Q012e0d:fe40
+		sds_write_v(sds, page, 0x15, 0xf5c1); // Q012e15:f5c1
+	} else {
+		sds_write_v(sds, page, 0x04, 0x0080); // Q002804:0080
+		sds_write_v(sds, page, 0x07, 0x1201); // Q002807:1201
+		sds_write_v(sds, page, 0x09, 0x0601); // Q002809:0601
+		sds_write_v(sds, page, 0x0b, 0x232c); // Q00280b:232c
+		sds_write_v(sds, page, 0x0c, 0x9217); // Q00280c:9217
+		sds_write_v(sds, page, 0x0f, 0x5b50); // Q00280f:5b50
+		sds_write_v(sds, page, 0x15, 0xe7f1); // Q002815:e7f1
+	}
+
+	sds_write_v(sds, page, 0x16, 0x0443); // Q002816:0443 / Q012e16:0443
+	sds_write_v(sds, page, 0x1d, 0xabb0); // Q00281d:abb0 / Q012e1d:abb0
 
 	sds_write_v(sds, 0x06, 0x12, 0x5078); // Q000612:5078
 	sds_write_v(sds, 0x07, 0x06, 0x9401); // Q000706:9401
@@ -551,9 +576,9 @@ void idle(void)
 		cpy_4(linkbits_last, sfr_data);
 		if (p5_last != p5) {
 			if (p5 == 0x5) // 2.5GBit Mode
-				sds_config(0, 0x12);
+				sds_config(0, SDS_HISGMII);
 			else if (p5 == 0x2) // 1GBit
-				sds_config(0, 0x2);
+				sds_config(0, SDS_SGMII);
 		}
 	}
 
@@ -566,6 +591,8 @@ void idle(void)
 		uint8_t rate = sfp_read_reg(12);
 		print_string("\r\nRate: ");
 		print_byte(rate);
+		print_string("\r\nEncoding: ");
+		print_byte(sfp_read_reg(11));
 		print_string("\r\n");
 		for (uint8_t i = 20; i < 60; i++) {
 			uint8_t c = sfp_read_reg(i);
@@ -574,7 +601,9 @@ void idle(void)
 		}
 		print_string("\r\n");
 		if (rate == 0xd)
-			sds_config(1, 0x4);
+			sds_config(1, SDS_1000BX_FIBER);
+		if (rate > 0x65 && rate < 0x70)
+			sds_config(1, SDS_10GR);
 
 	}
 	if ((!(sfp_pins_last & 0x1)) && (sfr_data[0] & 0x40)) {
