@@ -44,5 +44,10 @@
 #define RTL837X_REG_GPIOC 0x48
 // BIT 5 set: SIGNAL LOS of SFP module on 9000-6XH (RX_LOS pin)
 
+#define REG_SET(r, v) SFR_DATA_24 = (v >> 24) & 0xff; \
+	SFR_DATA_16 = (v >> 16) & 0xff; \
+	SFR_DATA_8 = (v >> 8 & 0xff); \
+	SFR_DATA_0 = v & 0xff; \
+	reg_write(r);
 
 #endif
