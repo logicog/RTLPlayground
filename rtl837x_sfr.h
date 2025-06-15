@@ -8,6 +8,13 @@ __sfr __at(0xa5) SFR_DATA_16;
 __sfr __at(0xa6) SFR_DATA_8;
 __sfr __at(0xa7) SFR_DATA_0;
 
+// Command bytes to write to SFR_EXEC_GO
+#define SFR_EXEC_READ_REG 1
+#define SFR_EXEC_WRITE_REG 3
+#define SFR_EXEC_READ_SDS 5
+#define SFR_EXEC_WRITE_SDS 7
+#define SFR_EXEC_READ_SMI 9
+#define SFR_EXEC_WRITE_SMI 11
 
 /* SFR control registers for phy access via SMI/MDIO */
 __sfr __at(0xc2) SFR_SMI_REG_H;
@@ -71,3 +78,13 @@ __sfr __at(0xac) SFR_FLASH_DATA0;
 __sfr __at(0xab) SFR_FLASH_ADDR16;
 __sfr __at(0xaa) SFR_FLASH_ADDR8;
 __sfr __at(0xa9) SFR_FLASH_ADDR0;
+
+/*
+ * NIC Interface
+ */
+
+__sfr __at(0xb7) SFR_NIC_CTRL;
+__sfr __at(0xb3) SFR_NIC_DATA_H;
+__sfr __at(0xb4) SFR_NIC_DATA_L;
+__sfr __at(0xb5) SFR_NIC_DATA_X;
+__sfr __at(0xb5) SFR_NIC_DATA_Y;
