@@ -1309,30 +1309,6 @@ void rtl8372_init(void)
 }
 
 
-
-void led_enable(void)
-{
-	reg_read(RTL837X_REG_LED_MODE);
-	SFR_DATA_24 = 0x00;
-	SFR_DATA_16 = 0x23;
-	SFR_DATA_8 = 0xe0;
-	SFR_DATA_0 = 0xf0;
-//	SFR_DATA_0 &= 0xe0;
-//	SFR_DATA_8 &= 0x1f;
-//	SFR_DATA_0 |= 0xe0;
-//	SFR_DATA_8 |= 0x06;
-	reg_write(RTL837X_REG_LED_MODE);
-}
-
-
-void port_leds_on(void)
-{
-	reg_read(0x6528);
-	SFR_DATA_0 = 0x11;
-	reg_write(0x6528);
-}
-
-
 /* Set up serial port 0 using Timer 2 with an external trigger
  * as baud generator.
  * The external clock generator uses a crystal at 25MHz.
@@ -1432,7 +1408,6 @@ void bootloader(void)
 	isRTL8373 = 1; // FIXME: See below
 	reg_read(0x4);
 
-// 	port_leds_on();
 	print_string("\r\nStarting up...\r\n");
 	print_string("  Flash controller\r\n");
 	flash_init(0);
