@@ -23,6 +23,7 @@
  */
 #define SDS_SGMII		0x02
 #define SDS_1000BX_FIBER	0x04
+#define SDS_QXGMII		0x0d
 #define SDS_HISGMII		0x12
 #define SDS_HSG			0x16
 #define SDS_10GR		0x1a
@@ -35,14 +36,17 @@
    5: 2.5Gbit
   */
 
-#define RTL837X_REG_GPIOA 0x40
+#define RTL837X_REG_GPIO_A 0x40
 // BIT 4 resets RTL8224 on 9000-9XH
 
-#define RTL837X_REG_GPIOB 0x44
+#define RTL837X_REG_GPIO_B 0x44
 // Bit 1e cleared: SFP Module inserted on 9000-6XH (MOD_DEF0 pin)
 
-#define RTL837X_REG_GPIOC 0x48
+#define RTL837X_REG_GPIO_C 0x48
 // BIT 5 set: SIGNAL LOS of SFP module on 9000-6XH (RX_LOS pin)
+
+#define RTL837X_REG_GPIO_CONF_A 0x50
+// Configures IO direction for bank a
 
 #define REG_SET(r, v) SFR_DATA_24 = (v >> 24) & 0xff; \
 	SFR_DATA_16 = (v >> 16) & 0xff; \

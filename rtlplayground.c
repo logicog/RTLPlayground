@@ -46,7 +46,7 @@ __xdata char sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
-__code uint8_t * __code greeting = "A minimal prompt to explore the RTL8372!\r\n";
+__code uint8_t * __code greeting = "\r\nA minimal prompt to explore the RTL8372!\r\n";
 __code uint8_t * __code hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[256];
@@ -433,6 +433,9 @@ void sds_config(uint8_t sds, uint8_t mode)
 	print_string("\r\nRTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
 
+	if (mode == SDS_QXGMII) // A special mode for the RTL8224, SerDes configured as for 10GR
+		mode = SDS_10GR;
+
 	if (mode == SDS_10GR) // 10G Fiber
 		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
 	else
@@ -440,7 +443,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	sds_write_v(sds, 0x21, 0x13, 0x0400); // Q002113:0400
 	sds_write_v(sds, 0x21, 0x18, 0x6d02); // Q002118:6d02
 	sds_write_v(sds, 0x21, 0x1b, 0x424e); // Q00211b:424e
-	sds_write_v(sds, 0x21, 0x1d, 0x0002); // 00211d:0002
+	sds_write_v(sds, 0x21, 0x1d, 0x0002); // Q00211d:0002
 	sds_write_v(sds, 0x36, 0x1c, 0x1390); // Q00361c:1390
 	sds_write_v(sds, 0x36, 0x14, 0x003f); // Q003614:003f
 
@@ -586,7 +589,7 @@ void idle(void)
 		}
 	}
 
-	reg_read_m(RTL837X_REG_GPIOB);
+	reg_read_m(RTL837X_REG_GPIO_B);
 	if ((sfp_pins_last & 0x1) && (!(sfr_data[0] & 0x40))) {
 		sfp_pins_last &= ~0x01;
 		print_string("\r\n<MODULE INSERTED> ");
@@ -616,7 +619,7 @@ void idle(void)
 		print_string("\r\n<MODULE REMOVED>\r\n");
 	}
 
-	reg_read_m(RTL837X_REG_GPIOC);
+	reg_read_m(RTL837X_REG_GPIO_C);
 	if ((sfp_pins_last & 0x2) && (!(sfr_data[3] & 0x20))) {
 		sfp_pins_last &= ~0x02;
 		print_string("\r\n<RX OK>\r\n");
@@ -668,12 +671,16 @@ void setup_external_irqs(void)
 }
 
 
-void reset_rtl8224(void)
+void rtl8224_enable(void)
 {
-	/* Toggle reset pin on RTL8224 on RTL8373 */
-	reg_bit_clear(RTL837X_REG_GPIOA, 4);
-	reg_bit_set(0x50, 4);	// Probably also a GPIOs
-	reg_bit_set(RTL837X_REG_GPIOA, 4);
+	// Set Pin 4 low
+	reg_bit_clear(RTL837X_REG_GPIO_A, 4);
+	// Configure Pin as output
+	reg_bit_set(RTL837X_REG_GPIO_CONF_A, 4);
+	delay(10);
+	// Set pin 4 high
+	reg_bit_set(RTL837X_REG_GPIO_A, 4);
+	delay(50);
 }
 
 
@@ -1230,6 +1237,10 @@ void rtl8372_init(void)
 	sfr_mask_data(0, 0, 0xe2);
 	reg_write_m(RTL837X_REG_SDS_MODES);
 
+	// Init SerDes for 8224
+	if (isRTL8373)
+		sds_config(0, SDS_QXGMII);
+
 	// r0b7c:000000d8 R0b7c-000000f8 r6040:00000030 R6040-00000031
 
 	// r0a90:000000f3 R0a90-000000fc
@@ -1237,7 +1248,7 @@ void rtl8372_init(void)
 	sfr_mask_data(0, 0x0f,0x0c);
 	reg_write_m(0xa90);
 	print_string("\r\nReg 0xa90: ");
-	print_reg(0x644c);
+	print_reg(0xa90);
 
 	// Disable PHYs for configuration
 	phy_write(0xf0,0x1f,0xa610,0x2858);
@@ -1247,7 +1258,7 @@ void rtl8372_init(void)
 	reg_bit_set(0x5fd4, 0x13);
 	reg_bit_set(0x5fd4, 0x14);
 	print_string("\r\nReg 0x5fd4: ");
-	print_reg(0x644c);
+	print_reg(0x5fd4);
 
 	// Configure ports 3-8:
 	/*
@@ -1405,8 +1416,12 @@ void bootloader(void)
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x3; // signal LOS and no module inserted
 
-	isRTL8373 = 1; // FIXME: See below
-	reg_read(0x4);
+	isRTL8373 = 0; // FIXME: See below
+	reg_read_m(0x4);
+	if (sfr_data[1] == 0x73) { // Register was 0x83730000
+		isRTL8373 = 1;
+		rtl8224_enable();
+	}
 
 	print_string("\r\nStarting up...\r\n");
 	print_string("  Flash controller\r\n");
@@ -1433,8 +1448,11 @@ void bootloader(void)
 	setup_i2c();
 
 	print_string(greeting);
-	print_string("\r\nCPU version: ");
-	print_reg(0x4);
+	print_string("\r\nCPU detected: ");
+	if (isRTL8373)
+		print_string("RTL8373");
+	else
+		print_string("RTL8372");
 	print_string("\r\nClock register: ");
 	print_reg(0x6040);
 
