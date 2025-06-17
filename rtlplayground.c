@@ -35,7 +35,7 @@ __xdata uint8_t isRTL8373;
 
 volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
-__xdata uint32_t sleep_until;
+volatile __xdata uint16_t sleep_ticks;
 
 #define N_WORDS 10
 __xdata signed char cmd_words_b[N_WORDS];
@@ -73,6 +73,8 @@ void isr_timer0(void) __interrupt(1)
 	TL0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) % 0xff;
 
 	ticks++;
+	if (sleep_ticks > 0)
+		sleep_ticks--;
 	sec_counter++;
 
 	TR0 = 1;		// Re-start timer 0
@@ -532,11 +534,11 @@ uint8_t sfp_read_reg(uint8_t reg)
 	return sfr_data[3];
 }
 
-// Sleep the given number of ticks without doing housekeeping
+// Delay for given number of ticks without doing housekeeping
 void delay(uint16_t t)
 {
-	sleep_until = ticks + t;
-	while (sleep_until >= ticks)
+	sleep_ticks = t;
+	while (sleep_ticks > 0)
 		PCON |= 1;
 }
 
@@ -634,8 +636,8 @@ void idle(void)
 // Sleep the given number of ticks
 void sleep(uint16_t t)
 {
-	sleep_until = ticks + t;
-	while (sleep_until >= ticks)
+	sleep_ticks = t;
+	while (sleep_ticks > 0)
 		idle();
 }
 
@@ -1305,7 +1307,10 @@ void rtl8372_init(void)
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
-	phy_write(0xf0,0x1f,0xa610,0x2058);;
+	if (isRTL8373)
+		phy_write(0xff,0x1f,0xa610,0x2058);
+	else
+		phy_write(0xf0,0x1f,0xa610,0x2058);
 
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
 	// r632c:00000540 R632c-001f8540
