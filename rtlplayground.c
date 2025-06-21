@@ -56,6 +56,53 @@ __code uint16_t bit_mask[16] = {
 	0x0100, 0x0200, 0x0400,0x0800,0x1000,0x2000,0x4000, 0x8000
 };
 
+__code uint16_t rtl8224_ca[40] = {
+	0x4480, 0xc842,
+	0x0400, 0xc9c2,
+	0x6d02, 0xcc42,
+	0x424e, 0xcdc2,
+	0x0002, 0xcec2,
+	0x1390, 0xce6c,
+	0x003f, 0xca6c,
+	0x0200, 0xc86c,
+	0x0080, 0xc25c,
+	0x0408, 0xc35c,
+	0x020d, 0xc3dc,
+	0x0601, 0xc4dc,
+	0x222c, 0xc5dc,
+	0xa217, 0xc65c,
+	0xfe40, 0xc6dc,
+	0xf5c1, 0xcadc,
+	0x0443, 0xcb5c,
+	0xabb0, 0xcedc,
+	0x5078, 0xc90c,
+	0, 0
+};
+
+__code uint16_t rtl8224_cb[60] = {
+	0xc45c, 0xc18c, 0x8040,
+	0x0030, 0xc040, 0x8040,
+	0x0010, 0xc040, 0x8040,
+	0x0050, 0xc040, 0x8040,
+	0x00d0, 0xc040, 0x8040,
+	0x0cd0, 0xc040, 0x8040,
+	0x04d0, 0xc040, 0x8040,
+	0x04d0, 0xc040, 0x8040,
+	0x0cd0, 0xc040, 0x8040,
+	0x00d0, 0xc040, 0x8040,
+	0x00d0, 0xc040, 0x8040,
+	0x0050, 0xc040, 0x8040,
+	0x0010, 0xc040, 0x8040,
+	0x0010, 0xc040, 0x8040,
+	0x0030, 0xc040, 0x8040,
+	0x0000, 0xc040, 0x803e,
+	0x000b, 0xc03e, 0x803e,
+	0x0000, 0xc03e, 0x8042,
+	0x4906, 0xc042, 0x82ec,
+	0xffff,0,0
+};
+
+
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t sfp_pins_last;
 
@@ -127,12 +174,11 @@ void print_byte(uint8_t a)
 {
 	write_char(hex[(a >> 4) & 0xf]);
 	write_char(hex[a & 0xf]);
-	write_char(' ');
 }
 
 
 /*
- * External IRQ 0 Service Routine
+ * External IRQ 0 Service Routine: Called on link change?
  * Note that all registers are being put on the STACK because of calling a subroutine
  */
 void isr_ext0(void) __interrupt(0)
@@ -414,7 +460,7 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 }
 
 
-void sds_config(uint8_t sds, uint8_t mode)
+void sds_config_mac(uint8_t sds, uint8_t mode)
 {
 	print_string("\r\nsds_config: sds: ");
 	print_byte(sds);
@@ -431,9 +477,73 @@ void sds_config(uint8_t sds, uint8_t mode)
 		sfr_mask_data(0, 0xe0, mode << 5);
 		sfr_mask_data(1, 0xf3, mode >> 3);
 	}
+	if (isRTL8373) // Set 3rd SERDES Mode to 0x2:
+		sfr_data[2] |= 0x08;
 	reg_write_m(RTL837X_REG_SDS_MODES);
 	print_string("\r\nRTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
+}
+
+// Delay for given number of ticks without doing housekeeping
+void delay(uint16_t t)
+{
+	sleep_ticks = t;
+	while (sleep_ticks > 0)
+		PCON |= 1;
+}
+
+
+void sds_config_8224(uint8_t sds)
+{
+	sds_config_mac(sds, 0x0d);
+
+	/* Q002110:4444 Q002113:0404 Q002118:6d6d Q00211b:4242 Q00211d:0000 Q00361c:1313 Q003614:0000 Q003610:0202 Q002e04:0000 Q002e06:0404 Q002e07:0202 Q002e09:0606 Q002e0b:2222 Q002e0c:a2a2 Q002e0d:fefe Q002e15:f5f5
+	 * Q002e16:0404 Q002e1d:abab Q000612:5050 Q000706:9494 Q000708:9494 Q00070a:9494 Q00070c:9494 Q001f0b:0000 Q000603:c4c4 q002000:0000 Q002000:0000 q002000:0030 Q002000:0000 q002000:0010 Q002000:0000 q002000:0050
+	 * Q002000:0000 q002000:00d0 Q002000:0c0c q002000:0cd0 Q002000:0404 q002000:04d0 Q002000:0404 q002000:04d0 Q002000:0c0c q002000:0cd0 Q002000:0000 q002000:00d0 Q002000:0000 q002000:00d0 Q002000:0000 q002000:0050
+	 * Q002000:0000 q002000:0010 Q002000:0000 q002000:0010 Q002000:0000 q002000:0030 Q002000:0000 q001f00:0000 Q001f00:0000 q001f00:000b Q001f00:0000
+	*/
+	// q000601:c800 Q000601:c8c8 q000601:c804 Q000601:c8c8 <<<<<<<<<<<<<<<<<<< CHECK THIS
+	sds_write_v(sds, 0x06, 0x01, 0xc8c8);
+	delay(100);
+	sds_write_v(sds, 0x06, 0x01, 0xc8c8);
+	delay(100);
+
+	// Configure the SERDES on the RTL8273 side:
+	sds_write_v(sds, 0x21, 0x10, 0x4444); // Q002110:4444
+	sds_write_v(sds, 0x21, 0x13, 0x0404); // Q002113:0404
+	sds_write_v(sds, 0x21, 0x18, 0x6d6d); // Q002118:6d6d
+	sds_write_v(sds, 0x21, 0x1b, 0x4242); // Q00211b:4242
+	sds_write_v(sds, 0x21, 0x1d, 0x0000); // Q00211d:0000
+	sds_write_v(sds, 0x36, 0x1c, 0x1313); // Q00361c:1313
+	sds_write_v(sds, 0x36, 0x14, 0x0000); // Q003614:0000
+	sds_write_v(sds, 0x36, 0x10, 0x0202); // Q003610:0202
+	sds_write_v(sds, 0x2e, 0x04, 0x0000); // Q002e04:0000
+	sds_write_v(sds, 0x2e, 0x06, 0x0404); // Q002e06:0404
+	sds_write_v(sds, 0x2e, 0x07, 0x0202); // Q002e07:0202
+	sds_write_v(sds, 0x2e, 0x09, 0x0606); // Q002e09:0606
+	sds_write_v(sds, 0x2e, 0x0b, 0x2222); // Q002e0b:2222
+	sds_write_v(sds, 0x2e, 0x0c, 0xa2a2); // Q002e0c:a2a2
+	sds_write_v(sds, 0x2e, 0x0d, 0xfefe); // Q002e0d:fefe
+	sds_write_v(sds, 0x2e, 0x15, 0xf5f5); // Q002e15:f5f5
+	sds_write_v(sds, 0x2e, 0x16, 0x0404); // Q002e16:0404
+	sds_write_v(sds, 0x2e, 0x1d, 0xabab); // Q002e1d:abab
+	sds_write_v(sds, 0x06, 0x12, 0x5050); // Q000612:5050
+	sds_write_v(sds, 0x07, 0x06, 0x9494); // Q000706:9494
+	sds_write_v(sds, 0x07, 0x08, 0x9494); // Q000708:9494
+	sds_write_v(sds, 0x07, 0x0a, 0x9494); // Q00070a:9494
+	sds_write_v(sds, 0x07, 0x0c, 0x9494); // Q00070c:9494
+	sds_write_v(sds, 0x1f, 0x0b, 0x0000); // Q001f0b:0000
+	sds_write_v(sds, 0x06, 0x03, 0xc4c4); // Q000603:c4c4
+	delay(20);
+	// q002000:0000 Q002000:0000 q002000:0030 Q002000:0000 q002000:0010 Q002000:0000 q002000:0050 Q002000:0000 q002000:00d0
+	sds_write_v(sds, 0x20, 0x00, 0x0c0c); // Q002000:0c0c
+	sds_write_v(sds, 0x1f, 0x00, 0x0000); // Q001f00:0000 // q001f00:000b Q001f00:0000
+}
+
+
+void sds_config(uint8_t sds, uint8_t mode)
+{
+	sds_config_mac(sds, mode);
 
 	if (mode == SDS_QXGMII) // A special mode for the RTL8224, SerDes configured as for 10GR
 		mode = SDS_10GR;
@@ -534,14 +644,6 @@ uint8_t sfp_read_reg(uint8_t reg)
 	return sfr_data[3];
 }
 
-// Delay for given number of ticks without doing housekeeping
-void delay(uint16_t t)
-{
-	sleep_ticks = t;
-	while (sleep_ticks > 0)
-		PCON |= 1;
-}
-
 
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
@@ -574,7 +676,7 @@ void idle(void)
 	}
 
 	reg_read_m(RTL837X_REG_LINKS);
-	if (cmp_4(sfr_data, linkbits_last)) {
+	if (!isRTL8373 && cmp_4(sfr_data, linkbits_last)) {
 		print_string("\r\n<new link: ");
 		print_long_x(sfr_data);
 		print_string(", was ");
@@ -713,6 +815,7 @@ void setup_clock(void)
  */
 void phy_write(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
 {
+	print_string(" P"); print_short(phy_mask); write_char('.'); print_byte(dev_id); print_short(reg); write_char(':'); print_short(v);
 	SFR_DATA_8 = v >> 8;
 	SFR_DATA_0 = v;
 	SFR_SMI_PHYMASK = phy_mask;
@@ -730,18 +833,67 @@ void phy_write(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
  * Input must be: phy_id < 64,  device_id < 32,  reg < 0x10000)
  * The result is in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
  */
-void phy_read(uint8_t phy_id, uint8_t device, uint16_t reg)
+void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 {
+	print_string(" p"); print_byte(phy_id); print_byte(dev_id); write_char('.'); print_short(reg); write_char(':');
 	SFR_SMI_REG_H = reg >> 8;	// c3
 	SFR_SMI_REG_L = reg;		// c2
 	SFR_SMI_PHY = phy_id;		// a5
-	SFR_SMI_DEV = device << 3 | 2;	// c4
+	SFR_SMI_DEV = dev_id << 3 | 2;	// c4
 
 	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
+	print_phy_data();
 }
 
+
+
+void rtl8224_phy_enable(void)
+{
+	// p001e.0a90:00f3 R02f8-000000f3 R02f4-000000fc P000001.1e000a90:00fc
+	print_string(", phy-reg a90read: ");
+	phy_read(0, 0x1e, 0xa90);
+	uint16_t pval = SFR_DATA_8;
+	pval <<= 8;
+	pval |= SFR_DATA_0;
+	print_short(pval);
+	print_string("\r\n");
+
+	// PHY Initialization:
+	SFR_DATA_24 = 0;
+	SFR_DATA_16 = 0;
+	SFR_DATA_8 = pval >> 8;
+	SFR_DATA_0 = pval;
+	reg_write(0x2f8);
+	print_string("\r\nA Reg 0x2f8: ");
+	print_reg(0x2f8);
+
+	delay(10);
+
+	pval &= 0xfff0;
+	pval |= 0x0c;
+	SFR_DATA_24 = 0;
+	SFR_DATA_16 = 0;
+	SFR_DATA_8 = pval >> 8;
+	SFR_DATA_0 = pval;
+	reg_write(0x2f4);
+	print_string("\r\nA Reg 0x2f4: ");
+	print_reg(0x2f4);
+
+	delay(10);
+
+	phy_write(0x1, 0x1e, 0xa90, pval);
+
+	print_string(", phy-reg a90 read again: ");
+	phy_read(0, 0x1e, 0xa90);
+	pval = SFR_DATA_8;
+	pval <<= 8;
+	pval |= SFR_DATA_0;
+	print_short(pval);
+	print_string("\r\n");
+
+}
 
 void nic_setup(void)
 {
@@ -761,7 +913,7 @@ void nic_setup(void)
 	print_string("\r\nReg 0x6040: ");
 	print_reg(RTL837X_REG_HW_CONF);
 
-	// Buffer settings?
+	// This sets the size of the RX buffer, the filling level is in 0x7874
 	// R7848-000004ff
 	REG_SET(0x7848, 0x4ff);
 	print_string("\r\nReg 0x7848: ");
@@ -816,7 +968,9 @@ void nic_setup(void)
 	print_reg(0x6368);
 }
 
-
+/*
+ * Configure the PHY-Side of the SDS-SDS link between SoC and PHY
+ */
 void sds_init(void)
 {
 /*
@@ -920,6 +1074,118 @@ void sds_init(void)
 }
 
 
+void phy_config_8224(void) {
+	// p001e.7b20:0bff R02f8-00000bff R02f4-00000bff P000001.1e007b20:0bff p001e.7b20:0bff R02f8-00000bff R02f4-00000bff P000001.1e007b20:0bff p001e.7b20:0bff R02f8-00000bff R02f4-00000bed P000001.1e007b20:0bed
+
+	uint16_t pval;
+	print_string("\r\nphy_config RTL8224");
+	sleep(20);
+	// p001e.7b20:0bff R02f8-00000bff R02f4-00000bed P000001.1e007b20:0bed
+	phy_read(0, 0x1e, 0x7b20);
+	pval = SFR_DATA_8;
+	pval <<= 8;
+	pval |= SFR_DATA_0;
+	phy_write(0x01, 0x1e, 0x7b20, pval);
+	print_string("\r\n0x7b20 => "); print_short(pval);
+
+	sleep(20);
+
+	SFR_DATA_24 = 0;
+	SFR_DATA_16 = 0;
+	SFR_DATA_8 = pval >> 8;
+	SFR_DATA_0 = pval;
+	reg_write(0x2f8);
+	print_string("\r\nA Reg 0x2f8: ");
+	print_reg(0x2f8);
+
+	sleep(20);
+	pval &= 0xfed;
+	SFR_DATA_24 = 0;
+	SFR_DATA_16 = 0;
+	SFR_DATA_8 = pval >> 8;
+	SFR_DATA_0 = pval;
+	reg_write(0x2f4);
+	print_string("\r\nA Reg 0x2f4: ");
+	print_reg(0x2f4);
+
+	sleep(20);
+	phy_write(0x01, 0x1e, 0x7b20, pval);
+
+	sleep(20);
+
+	print_string("\r\nS");
+	uint8_t i = 0;
+	while (rtl8224_ca[i]) {
+		phy_write(0x1, 0x1e, 0x400, rtl8224_ca[i]);
+		i++;
+		phy_write(0x1, 0x1e, 0x3f8, rtl8224_ca[i]);
+		i++;
+		do {
+			phy_read(0, 0x1e, 0x3f8);
+		} while (SFR_DATA_8 & 0x80);
+	}
+	print_string("\r\nSx");
+	i = 0;
+	while (rtl8224_cb[i] != 0xffff) {
+		phy_write(0x1, 0x1e, 0x400, rtl8224_cb[i]);
+		i++;
+		phy_write(0x1, 0x1e, 0x3f8, rtl8224_cb[i]);
+		i++;
+		do {
+			phy_read(0, 0x1e, 0x3f8);
+		} while (SFR_DATA_8 & 0x80);
+		phy_write(0x1, 0x1e, 0x3f8, rtl8224_cb[i]);
+		i++;
+		do {
+			phy_read(0, 0x1e, 0x3f8);
+		} while (SFR_DATA_8 & 0x80);
+		do {
+			phy_read(0, 0x1e, 0x3fc);
+		} while (SFR_DATA_8 & 0x80);
+	}
+
+	// P000001.1e000400:4000 P000001.1e0003f8:c2ec p001e.03f8:42ec
+	phy_write(0x1, 0x1e, 0x400, 0x4000);
+	phy_write(0x1, 0x1e, 0x3f8, 0xc2ec);
+	do {
+		phy_read(0, 0x1e, 0x3f8);
+	} while (SFR_DATA_8 & 0x80);
+	print_string("\r\nT");
+
+	// P000001.1e000400:001f P000001.1e0003f8:c13e p001e.03f8:413e P000001.1e0003f8:8abe p001e.03f8:0abe p001e.03fc:0057
+	phy_write(0x1, 0x1e, 0x400, 0x1f);
+	phy_write(0x1, 0x1e, 0x3f8, 0xc13e);
+	do {
+		phy_read(0, 0x1e, 0x3f8);
+	} while (SFR_DATA_8 & 0x80);
+	phy_write(0x1, 0x1e, 0x3f8, 0x8abe);
+	print_string("\r\nU");
+	do {
+		phy_read(0, 0x1e, 0x3f8);
+	} while (SFR_DATA_8 & 0x80);
+	print_string("\r\nV");
+	do {
+		phy_read(0, 0x1e, 0x3fc);
+	} while (SFR_DATA_8 & 0x80);
+	sleep (10);
+
+	print_string("\r\nW");
+	// P000001.1e0003f8:800a p001e.03f8:000a p001e.03fc:100d P000001.1e0003f8:800a p001e.03f8:000a p001e.03fc:100d
+	phy_write(0x1, 0x1e, 0x3f8, 0x800a);
+	do {
+		phy_read(0, 0x1e, 0x3f8);
+	} while (SFR_DATA_8 & 0x80);
+	print_string("\r\nX");
+	sleep (10);
+	phy_write(0x1, 0x1e, 0x3f8, 0x800a);
+	do {
+		phy_read(0, 0x1e, 0x3f8);
+	} while (SFR_DATA_8 & 0x80);
+	print_string("\r\nY");
+	sleep (10);
+}
+
+
 void phy_config(uint8_t phy)
 {
 	uint16_t pval;
@@ -1017,8 +1283,12 @@ void phy_config(uint8_t phy)
 
 void led_config_9xh(void)
 {
+	// r65d8:3ffbedff R65d8-3ffbedff
 	reg_bit_set(0x65d8, 0x1d);
+	print_string("\r\n65d8: ");
+	print_reg(0x65d8);
 
+	//  r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0
 	print_string("\r\nB Reg LED_MODE: ");
 	print_reg(RTL837X_REG_LED_MODE);
 	reg_read_m(0x6520);
@@ -1028,6 +1298,7 @@ void led_config_9xh(void)
 	print_string("\r\nA Reg LED_MODE: ");
 	print_reg(RTL837X_REG_LED_MODE);
 
+	//  r65f8:00000018 R65f8-0000001b
 	print_string("\r\nB Reg 0x65f8: ");
 	print_reg(0x65f8);
 	reg_read_m(0x65f8);
@@ -1036,9 +1307,17 @@ void led_config_9xh(void)
 	print_string("\r\nA Reg 0x65f8: ");
 	print_reg(0x65f8);
 
+	// R65fc-ffffffff
 	REG_SET(0x65fc, 0xffffffff);
 	print_string("\r\nReg 0x65fc: ");
 	print_reg(0x65fc);
+
+	// r6528:00000000 R6528-0000000f
+	reg_read_m(0x6528);
+	sfr_mask_data(0, 0x0f, 0x0f);
+	reg_write_m(0x6528);
+	print_string("\r\nReg 0x6528: ");
+	print_reg(0x6528);
 
 	// Set bits 0-3 of 0x6600 to 0xf
 	// r6600:00000000 R6600-0000000f
@@ -1054,13 +1333,18 @@ void led_config_9xh(void)
 	print_string("\r\nA Reg 0x65dc: ");
 	print_reg(0x65dc);
 
-
+	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
 	reg_bit_set(0x7f8c, 0x1b);
+	print_string("\r\nA Reg 0x7f8c: ");
+	print_reg(0x7f8c);
 
+	// R6548-0041017f
 	REG_SET(0x6548, 0x0041017f);
+	print_string("\r\nA Reg 0x6548: ");
+	print_reg(0x6548);
 
 	// Configure LED_SET_0 ledid 2
-	// 6544:01411000 R6544-01410044
+	//  r6544:01411000 R6544-01410044
 	reg_read_m(0x6544);
 	sfr_data[2] = 0x00;
 	sfr_data[3] = 0x44;
@@ -1068,11 +1352,6 @@ void led_config_9xh(void)
 	print_string("\r\nReg 0x6544: ");
 	print_reg(0x6544);
 
-	reg_read_m(0x6528);
-	sfr_mask_data(0, 0x0f, 0x0f);
-	reg_write_m(0x6528);
-	print_string("\r\nReg 0x6528: ");
-	print_reg(0x6528);
 }
 
 
@@ -1227,11 +1506,12 @@ void rtl8372_init(void)
 	print_string("\r\nReg 0x644c: ");
 	print_reg(0x644c);
 
-	// PHY configuration: External 8221B?
-	phy_config(8);
-	// PHY configuration: all internal PHYs?
-	phy_config(3);
-
+	if (isRTL8373) {
+		phy_config_8224();
+	} else {
+		phy_config(8);	// PHY configuration: External 8221B?
+		phy_config(3);	// PHY configuration: all internal PHYs?
+	}
 	// Set the MAC SerDes mode. Bits 0-4: SDS 0, Bits 5-9: SDS 1. Bits set to 1f
 	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
 	reg_read_m(RTL837X_REG_SDS_MODES);
@@ -1241,7 +1521,7 @@ void rtl8372_init(void)
 
 	// Init SerDes for 8224
 	if (isRTL8373)
-		sds_config(0, SDS_QXGMII);
+		sds_config_8224(0);
 
 	// r0b7c:000000d8 R0b7c-000000f8 r6040:00000030 R6040-00000031
 
@@ -1252,8 +1532,14 @@ void rtl8372_init(void)
 	print_string("\r\nReg 0xa90: ");
 	print_reg(0xa90);
 
+	if (isRTL8373)
+		rtl8224_phy_enable();
+
 	// Disable PHYs for configuration
-	phy_write(0xf0,0x1f,0xa610,0x2858);
+	if (isRTL8373)
+		phy_write(0xff,0x1f,0xa610,0x2858);
+	else
+		phy_write(0xf0,0x1f,0xa610,0x2858);
 
 	// Set bits 0x13 and 0x14 of 0x5fd4
 	// r5fd4:0002914a R5fd4-001a914a
@@ -1265,17 +1551,13 @@ void rtl8372_init(void)
 	// Configure ports 3-8:
 	/*
 	* r1538:00000e33 R1538-00000e37 r1538:00000e37 R1538-00000e37 r1538:00000e37 R1538-00000f37
-	* r1638:00000e33 R1638-00000e37 r1638:00000e37 R1638-00000e37 r1638:00000e37 R1638-00000f37
-	* r1738:00000e33 R1738-00000e37 r1738:00000e37 R1738-00000e37 r1738:00000e37 R1738-00000f37
-	* r1838:00000e33 R1838-00000e37 r1838:00000e37 R1838-00000e37 r1838:00000e37 R1838-00000f37
-	* r1938:00000e33 R1938-00000e37 r1938:00000e37 R1938-00000e37 r1938:00000e37 R1938-00000f37
-	* r1a38:00000e33 R1a38-00000e37 r1a38:00000e37 R1a38-00000e37 r1a38:00000e37 R1a38-00000f37
+	* [...]
 	*
 	* RTL8373:
 	* r1238:00000e33 R1238-00000e37 r1238:00000e37 R1238-00000e37 r1238:00000e37 R1238-00000f37 (identical)
 	*/
 	uint16_t reg = 0x1238; // Port base register for the bits we set
-	uint8_t numPorts = 8;
+	uint8_t numPorts = 9;
 	if (!isRTL8373) {
 		numPorts = 6;
 		reg += 0x300;
@@ -1298,6 +1580,12 @@ void rtl8372_init(void)
 	print_string("\r\nReg 0x0b7c: ");
 	print_reg(0x0b7c);
 
+	if (isRTL8373) {
+		// R7124-00001050 R7128-00001050 R712c-00001050 R7130-00001050 R7134-00001050 R7138-00001050 R713c-00001050 R7140-00001050 R7144-00001050 R7148-00001050
+		REG_SET(0x7124, 0x1050); REG_SET(0x7128, 0x1050); REG_SET(0x712c, 0x1050); REG_SET(0x7130, 0x1050); REG_SET(0x7134, 0x1050); REG_SET(0x7138, 0x1050); REG_SET(0x713c, 0x1050);
+		REG_SET(0x7140, 0x1050); REG_SET(0x7144, 0x1050); REG_SET(0x7148, 0x1050);
+	}
+
 	print_string("\r\nB Reg 0x6040: ");
 	print_reg(RTL837X_REG_HW_CONF);
 	reg_bit_set(RTL837X_REG_HW_CONF, 0);
@@ -1312,10 +1600,14 @@ void rtl8372_init(void)
 	else
 		phy_write(0xf0,0x1f,0xa610,0x2058);
 
+	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
-	// r632c:00000540 R632c-001f8540
+	// r632c:00000540 R632c-001f8540 // RTL8373: 001ff540
 	reg_read_m(0x632c);
-	sfr_mask_data(1, 0x70, 0x80);
+	if (isRTL8373)
+		sfr_mask_data(1, 0x70, 0xf0); // The ports of the RTL8824
+	else
+		sfr_mask_data(1, 0x70, 0x80);
 	sfr_mask_data(2, 0x10, 0x1f);
 	reg_write_m(0x632c);
 	print_string("\r\nReg 0x632c: ");
@@ -1425,7 +1717,7 @@ void bootloader(void)
 	reg_read_m(0x4);
 	if (sfr_data[1] == 0x73) { // Register was 0x83730000
 		isRTL8373 = 1;
-		rtl8224_enable();
+		rtl8224_enable();  // Power on the RTL8224
 	}
 
 	print_string("\r\nStarting up...\r\n");
@@ -1460,6 +1752,8 @@ void bootloader(void)
 		print_string("RTL8372");
 	print_string("\r\nClock register: ");
 	print_reg(0x6040);
+	print_string("\r\nRegister 0x7b20/RTL837X_REG_SDS_MODES: ");
+	print_reg(0x7b20);
 
 	print_string("\r\n> ");
 	char l = sbuf_ptr;
