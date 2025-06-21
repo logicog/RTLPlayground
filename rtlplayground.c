@@ -50,6 +50,8 @@ __code uint8_t * __code greeting = "\r\nA minimal prompt to explore the RTL8372!
 __code uint8_t * __code hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[256];
+__xdata uint8_t rx_headers[32];
+__xdata uint8_t rx_buf[1024];
 
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004,0x0008,0x0010,0x0020,0x0040, 0x0080,
@@ -329,6 +331,44 @@ void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 	sfr_data[3-n] = b;
 }
 
+
+/*
+ * Transfer Network Interface RX data from the ASIC to the 8051 XMEM
+ * data will be stored in the rx_header structure
+ * len is the length of data to be transferred
+ */
+void nic_rx_header(uint16_t ring_ptr)
+{
+	uint16_t buffer = (uint16_t) rx_headers,
+	SFR_NIC_DATA_H = buffer >> 8;
+	SFR_NIC_DATA_L = buffer;
+	SFR_NIC_RING_L = ring_ptr;
+	SFR_NIC_RING_H = ring_ptr >> 8;
+	SFR_NIC_CTRL = 1;
+	do { } while (SFR_NIC_CTRL != 0);
+}
+
+
+/*
+ * Transfer Network Interface RX data from the ASIC to the 8051 XMEM
+ * the description of the packet must be in the rx_headers data structure
+ * data will be returned in the xmem buffer points to
+ * ring_ptr is the current position of the RX Ring on the ASIC side
+ */
+void nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
+{
+	SFR_NIC_DATA_H = buffer >> 8;
+	SFR_NIC_DATA_L = buffer;
+	SFR_NIC_RING_L = ring_ptr;
+	SFR_NIC_RING_H = ring_ptr >> 8;
+	uint16_t len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
+	len += 7;
+	len >>= 3;
+	print_string(" len: ");
+	print_short(len);
+	SFR_NIC_CTRL = len;
+	do { } while (SFR_NIC_CTRL != 0);
+}
 
 /* Read flash using the MMIO capabilities of the DW8051 core
  * Bank is < 0x3f and is the MSB
@@ -645,6 +685,43 @@ uint8_t sfp_read_reg(uint8_t reg)
 }
 
 
+void handle_rx(void)
+{
+	reg_read_m(0x7874);
+	if (sfr_data[3] != 0) {
+		print_string("\r\nrx:");
+		print_long_x(sfr_data);
+		reg_read_m(0x787c);
+		print_string(", ");
+		print_long_x(sfr_data);
+		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
+		ring_ptr |= sfr_data[3];
+		ring_ptr <<= 3;
+		print_string(", ring_ptr: ");
+		print_short(ring_ptr);
+		nic_rx_header(ring_ptr);
+		__xdata uint8_t *ptr = rx_headers;
+		print_string(": ");
+		for (uint8_t i = 0; i < 8; i++) {
+			print_byte(*ptr++);
+			write_char(' ');
+		}
+
+		nic_rx_packet((uint16_t) rx_buf, ring_ptr + 8);
+		print_string("\r\n> ");
+		ptr = rx_buf;
+		for (uint8_t i = 0; i < 80; i++) {
+			print_byte(*ptr++);
+			write_char(' ');
+		}
+
+		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
+		sfr_data[3] = 0x1;
+		reg_write_m(0x784c);
+		reg_write_m(0x7850);
+	}
+}
+
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
 //
@@ -732,6 +809,9 @@ void idle(void)
 		sfp_pins_last |= 0x02;
 		print_string("\r\n<RX LOS>\r\n");
 	}
+
+	// Check new Packets RX
+	handle_rx();
 }
 
 

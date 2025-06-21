@@ -81,10 +81,10 @@ __sfr __at(0xa9) SFR_FLASH_ADDR0;
 
 /*
  * NIC Interface
+ * CAREFUL: This is now Little Endian
  */
-
 __sfr __at(0xb7) SFR_NIC_CTRL;
-__sfr __at(0xb3) SFR_NIC_DATA_H;
-__sfr __at(0xb4) SFR_NIC_DATA_L;
-__sfr __at(0xb5) SFR_NIC_DATA_X;
-__sfr __at(0xb5) SFR_NIC_DATA_Y;
+__sfr __at(0xb3) SFR_NIC_DATA_L;
+__sfr __at(0xb4) SFR_NIC_DATA_H;
+__sfr __at(0xb5) SFR_NIC_RING_L;
+__sfr __at(0xb6) SFR_NIC_RING_H;
