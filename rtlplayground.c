@@ -31,6 +31,10 @@
 #define CLOCK_DIV 0
 #endif
 
+__code uint8_t ownIP[] = { 192, 168, 2, 2 };
+__code uint8_t ownMAC[] = { 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x02 };
+__code uint8_t gatewayIP[] = { 192, 168, 2, 1};
+
 __xdata uint8_t isRTL8373;
 
 volatile __xdata uint32_t ticks;
@@ -50,8 +54,40 @@ __code uint8_t * __code greeting = "\r\nA minimal prompt to explore the RTL8372!
 __code uint8_t * __code hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[256];
+
+// For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
+// the RTL_FRAME_TAG_ID is used as part of an 8-byte tag
+#define RTL_TAG_SIZE		8
+#define RTL_FRAME_TAG_ID	0x8899
+
+// For RX and TX, an 8 byte header describing the frame to be moved to the Asic
+// and received from the Asic is used
+#define RTL_FRAME_HEADER_SIZE	8
+
+// This is the standard size of n Ethernet frame header
+#define ETHER_HEADER_SIZE	14
+
 __xdata uint8_t rx_headers[32];
-__xdata uint8_t rx_buf[1024];
+__xdata uint8_t rx_buf[2048];	// FIXME: Currently no maximum packet size checked
+__xdata uint8_t tx_buf[2048];
+__xdata uint8_t tx_seq;
+__xdata uint32_t ipv4_checksum;	// Note that this is little endian
+
+
+__xdata uint8_t was_offline;
+__code uint8_t arp_broadcast[] = {
+	0x00, 0x07, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00,				// HEADER, BYTES 4/5: LEN FIXME
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x01,	// BROADCAST-MAC, OWN MAC
+	0x08, 0x06, 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x01,
+	0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x01,					// MAC ADRESS
+	0xc0, 0xa8, 0x02, 0x02,							// IP ADDRESS
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,					// Target MAC
+	0xc0, 0xa8, 0x02, 0x01,							// Target IP
+	// Padding
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00
+};
+
 
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004,0x0008,0x0010,0x0020,0x0040, 0x0080,
@@ -339,7 +375,7 @@ void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
  */
 void nic_rx_header(uint16_t ring_ptr)
 {
-	uint16_t buffer = (uint16_t) rx_headers,
+	uint16_t buffer = (uint16_t) &rx_headers[0];
 	SFR_NIC_DATA_H = buffer >> 8;
 	SFR_NIC_DATA_L = buffer;
 	SFR_NIC_RING_L = ring_ptr;
@@ -369,6 +405,31 @@ void nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
 	SFR_NIC_CTRL = len;
 	do { } while (SFR_NIC_CTRL != 0);
 }
+
+
+void nic_tx_packet(uint16_t ring_ptr)
+{
+	uint16_t buffer = (uint16_t) tx_buf;
+	print_string(", xmem: ");
+	print_short((uint16_t)buffer);
+	SFR_NIC_DATA_H = buffer >> 8;
+	SFR_NIC_DATA_L = buffer;
+	print_string("R"); print_short(buffer);
+	ring_ptr <<= 3;
+	ring_ptr |= 0x8000;
+	SFR_NIC_RING_L = ring_ptr;
+	SFR_NIC_RING_H = ring_ptr >> 8;
+	print_string(":"); print_short(ring_ptr);
+	uint16_t len =(((uint16_t)tx_buf[5]) << 8) | tx_buf[4];
+	len += 0xf;
+	len >>= 3;
+	print_string("-");
+	print_short(len);
+	print_string("  ");
+	SFR_NIC_CTRL = len;
+	do { } while (SFR_NIC_CTRL != 0);
+}
+
 
 /* Read flash using the MMIO capabilities of the DW8051 core
  * Bank is < 0x3f and is the MSB
@@ -685,13 +746,60 @@ uint8_t sfp_read_reg(uint8_t reg)
 }
 
 
+void prepare_arp(uint8_t broadcast)
+{
+	for (uint8_t i = 0; i < arp_broadcast[4]; i++)
+		tx_buf[i] = arp_broadcast[i];
+	tx_buf[0] = tx_seq++;
+	for (uint8_t i = 0; i < 6; i++)
+		tx_buf[14 + i] = tx_buf[30 + i] = ownMAC[i];
+	for (uint8_t i = 0; i < 4; i++)
+		tx_buf[36 + i] = ownIP[i];
+	if (broadcast) {
+		for (uint8_t i = 0; i < 4; i++)
+			tx_buf[46 + i] = ownIP[i];	// An annoucement, using own IP. Will also need to ask for GW
+	} else {
+		for (uint8_t i = 0; i < 4; i++)
+			tx_buf[46 + i] = gatewayIP[i];
+	}
+}
+
+
+void prepare_icmp_reply(void)
+{
+	for (uint8_t i = 0; i < arp_broadcast[4]; i++)
+		tx_buf[i] = arp_broadcast[i];
+	tx_buf[0] = tx_seq++;
+	for (uint8_t i = 0; i < 6; i++)
+		tx_buf[8 + i] = rx_buf[6 + i];
+	for (uint8_t i = 0; i < 6; i++)
+		tx_buf[14 + i] = ownMAC[i];
+	tx_buf[20] = 0x08; tx_buf[21] = 0; tx_buf[22] = 0x45; tx_buf[0x23] = 0x00;
+	tx_buf[28] = 0x40; tx_buf[29] = 0x00;	// DONT FRAG, FRAG 0
+	tx_buf[26] = 0xef; tx_buf[27] = 0xdf;	// ID
+	tx_buf[30] = 0x40; tx_buf[31] = 0x01;	// TTL, ICMP
+	for (uint8_t i = 0; i < 4; i++)
+		tx_buf[34 + i] = ownIP[i];
+	// RTL Tag after dest-mac and source-mac: 8 Bytes
+	for (uint8_t i = 0; i < 4; i++)
+		tx_buf[26 + i] = rx_buf[26 + i];
+	for (uint8_t i = 0; i < 4; i++)		// DEST-IP
+		tx_buf[38 + i] = rx_buf[34 + i];
+	tx_buf[4] = tx_buf[25] = 84;		// TCP length
+	tx_buf[4] = 84 + ETHER_HEADER_SIZE;	// Total Ethernet frame len
+	tx_buf[5] = tx_buf[24] = 0;
+	for (uint8_t i = 0; i < 60; i++)	// Copy sequence number, id, timestamp and data over
+		tx_buf[RTL_FRAME_HEADER_SIZE + 38 + i] = rx_buf[RTL_TAG_SIZE + 38 + i];
+}
+
+
 void handle_rx(void)
 {
-	reg_read_m(0x7874);
-	if (sfr_data[3] != 0) {
+	reg_read_m(RTL837X_REG_RX_AVAIL);
+	if (sfr_data[2] != 0 || sfr_data[3] != 0) {
 		print_string("\r\nrx:");
 		print_long_x(sfr_data);
-		reg_read_m(0x787c);
+		reg_read_m(RTL837X_REG_RX_RINGPTR);
 		print_string(", ");
 		print_long_x(sfr_data);
 		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
@@ -700,6 +808,7 @@ void handle_rx(void)
 		print_string(", ring_ptr: ");
 		print_short(ring_ptr);
 		nic_rx_header(ring_ptr);
+		print_string(", on port "); print_byte(rx_headers[3] & 0xf);
 		__xdata uint8_t *ptr = rx_headers;
 		print_string(": ");
 		for (uint8_t i = 0; i < 8; i++) {
@@ -708,7 +817,7 @@ void handle_rx(void)
 		}
 
 		nic_rx_packet((uint16_t) rx_buf, ring_ptr + 8);
-		print_string("\r\n> ");
+		print_string("\r\n<< ");
 		ptr = rx_buf;
 		for (uint8_t i = 0; i < 80; i++) {
 			print_byte(*ptr++);
@@ -717,10 +826,57 @@ void handle_rx(void)
 
 		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 		sfr_data[3] = 0x1;
-		reg_write_m(0x784c);
+		reg_write_m(RTL837X_REG_RX_DONE);
+
+		// Test, wether we have to react to the packet in any way
+		if (was_offline) {	// Need to send an ARP broadcast for our GW?
+			prepare_arp(1);
+			was_offline = 0;
+		} else if (rx_buf[0] == 0xff && rx_buf[1] == 0xff && rx_buf[2] == 0xff			// Broadcast?
+				&& rx_buf[3] == 0xff && rx_buf[4] == 0xff && rx_buf[5] == 0xff) {
+			prepare_arp(0);
+			print_string("\r\nBROADCAST\r\n");
+		}  else if (rx_buf[0] == ownMAC[0] && rx_buf[1] == ownMAC[1] && rx_buf[2] == ownMAC[2]
+				&& rx_buf[3] == ownMAC[3] && rx_buf[4] == ownMAC[4] && rx_buf[5] == ownMAC[5]) {
+			if (rx_buf[31] == 0x01) {
+				print_string("ICMP PING REQ\r\n");
+				prepare_icmp_reply();
+			} else {
+				return; // We only answer to ICMP PING requests
+			}
+		} else {
+			return;
+		}
+
+		print_string("\r\nDO TX. 0x7880: ");
+		reg_read_m(0x7880);
+		print_long_x(sfr_data);
+
+		reg_read_m(0x7890);
+		print_string(", 0x7890: ");
+		print_long_x(sfr_data);
+		ptr = tx_buf;
+		print_string("\r\n>> ");
+		for (uint8_t i = 0; i < 120; i++) {
+			print_byte(*ptr++);
+			write_char(' ');
+		}
+		print_string("\r\n> ");
+		ring_ptr = ((uint16_t)sfr_data[2]) << 8;
+		ring_ptr |= sfr_data[3];
+		nic_tx_packet(ring_ptr);
+
+		print_string("New Ring Pointer: ");
+		reg_read_m(0x7884);
+		print_long_x(sfr_data);
+		print_string(" (should be previous ptr, now)");
+
+		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
+		sfr_data[3] = 0x1;
 		reg_write_m(0x7850);
 	}
 }
+
 
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
@@ -1046,7 +1202,11 @@ void nic_setup(void)
 	reg_write_m(0x6368);
 	print_string("\r\nA Reg 0x6368: ");
 	print_reg(0x6368);
+
+	// Sequence number of TX packets
+	tx_seq = 0;
 }
+
 
 /*
  * Configure the PHY-Side of the SDS-SDS link between SoC and PHY
@@ -1821,6 +1981,7 @@ void bootloader(void)
 	rtl8372_init();
 
 	nic_setup();
+	was_offline = 1;
 
 	setup_i2c();
 

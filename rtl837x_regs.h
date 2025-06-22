@@ -48,6 +48,14 @@
 #define RTL837X_REG_GPIO_CONF_A 0x50
 // Configures IO direction for bank a
 
+/*
+ * NIC Related registers
+ */
+#define RTL837X_REG_RX_AVAIL	0x7874
+#define RTL837X_REG_RX_RINGPTR	0x787c
+#define RTL837X_REG_RX_DONE	0x784c
+
+
 #define REG_SET(r, v) SFR_DATA_24 = (v >> 24) & 0xff; \
 	SFR_DATA_16 = (v >> 16) & 0xff; \
 	SFR_DATA_8 = (v >> 8 & 0xff); \
