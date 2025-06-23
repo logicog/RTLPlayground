@@ -4,18 +4,23 @@ It provides a minimal alternative firmware for the unmanaged switches. At this p
 the firmware can be installed on the hardware as given below, how much of the switch
 will actually work as a switch, will vary. On the 
 keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+),
-at present the system will provide switching capabilities between the 5 Ethernet ports.
+at present the system will provide the same featurs as a dumb switch plus a tiny
+TCP stack that will allow to reply to ARP and ping messages, thus enabling pinging the device.
 The ports served by the RTL8372 will be 100M/1G/2.5G auto-detect. Port 5 to RTL8221B PHY
 SerDes configuration works and supports 1GBit and 2.5GBit Ethernet (SGMII/HISGMII).
 SFP module insert/removal identification and reading of the SFP EEProm works. SFP
 module configuration works, too, tested for 1G modules.
+
+On the 9-port devices with RTL8273 + RTL8224, the 4 Ports served by the RTL8273 and
+SFP+ port will work normally and TCP connectivity will work as above. The RTL8224
+is currently not correctly initialized.
+
 All configuration must be done via serial
 connection (there is no web-interface), so soldering skills are required. Flashing
 must be done via a SOIC-8 PatchClamp or by soldering a socket for the flash chip.
-The SFP+ port does not work. There is no access to the CPU-port (NIC).
 
-If you don't want to solder, you can use this to learn about the devices by looking at
-the image using e.g. Ghidra.
+If you don't want to solder, you can use the project's code to learn about the
+devices by looking at the image using e.g. Ghidra.
 
 ## Compiling
 Install the following particular build requisites (Debian 12, should work on Ubuntu)
