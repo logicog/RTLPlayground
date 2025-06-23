@@ -48,7 +48,8 @@ LHLL:	Length of the Ethernet frame
 The Ethernet frame data starts immediately after the frame header in xdata
 memory. The frame is transferred to the ASIC side by setting SFRs B3 and B4
 to the xdata source address of the frame header, and the ring pointer to the
-free space indicated by register XXXXXXXX multiplied by 8 and the MSB set.
+free space indicated by register 0x7890 multiplied by 8 and the MSB set.
 The length is given by the length of the frame plus 15, divided by 8.
 
+Writing 0x1 to register 0x7850 will transmit the frame.
 
