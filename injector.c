@@ -1,6 +1,6 @@
 /*
  * injector <input.bin> <patch.hex> <output.bin>
- * e.g.:  ./injector kp-9000-6hx-x.bin RTLPlayground/rwintercept.hex kp-9000-6hx-x_patched.bin
+ * e.g.:  ./injector image.bin patch.hex image_patched.bin
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +11,8 @@
 #define BUFFER_SIZE 0x400000
 unsigned char buffer[BUFFER_SIZE];
 FILE *inptr, *outptr, *patchptr;
+
+int bank = 0;
 
 int main(int argc, char **argv)
 {
@@ -60,10 +62,21 @@ int main(int argc, char **argv)
 		sscanf(line, "%x: %x", &addr, &value);
 		if (addr < 0x4000)
 			addr += OFFSET;
+		if (addr >= 0xff00) { // A bank change
+			bank = value % 64;
+			bank = bank == 1 ? 0 : bank;
+			printf("Switching to bank: %d\n", bank);
+			continue;
+		}
 		if (addr < filesize) {
 			patches++;
-			buffer[addr] = value;
-//			printf("%s gives %x <- %x\n", line,addr, value);
+			if (bank) {
+				buffer[addr + (bank-1) * 0xc000] = value;
+				printf("%s gives %x <- %x\n", line, addr + (bank-1) * 0xc000, value);
+			} else {
+				buffer[addr] = value;
+			}
+//			printf("%s gives %x <- %x\n", line, addr, value);
 		} else {
 			printf("Cannot patch: %s\n", line);
 		}
