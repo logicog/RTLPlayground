@@ -4,7 +4,7 @@
  */
 
 #include <stdint.h>
-#include "rtl837x_stdio.h"
+#include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 
 __xdata uint8_t dio_enabled;
@@ -39,7 +39,6 @@ void flash_configure_mmio(void)
  */
 void flash_init(uint8_t enable_dio) __banked
 {
-	print_string("\r\n  flash_init called\r\n");
 	if (enable_dio) {
 		// Configure fast DIO via divider/DIO/SIOconfig = 4 and read-cmd being 0xbb (for mmio)
 		SFR_FLASH_CONFIG = 9;  // There may be a chip-select in here
@@ -65,7 +64,6 @@ void flash_init(uint8_t enable_dio) __banked
 
 	dio_enabled = enable_dio;
 	flash_configure_mmio();
-	print_string("\r\n  flash_init done");
 }
 
 uint8_t flash_read_status(void)

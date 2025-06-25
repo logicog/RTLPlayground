@@ -75,15 +75,13 @@
 	SFR_DATA_0 = (v) & 0xff; \
 	reg_write(r); \
 	write_char('R'); print_short(r); write_char(':'); \
-	print_byte(((v) >> 24) & 0xff); print_byte((v) >> 16 & 0xff); print_byte((v) >> 8 & 0xff); print_byte( (v) & 0xff);
+	print_byte(((v) >> 24) & 0xff); print_byte((v) >> 16 & 0xff); print_byte((v) >> 8 & 0xff); print_byte( (v) & 0xff); write_char(' ');
 
 
 #define	REG_WRITE(r, v24, v16, v8, v0) SFR_DATA_24 = (v24); \
 	SFR_DATA_16 = (v16); \
 	SFR_DATA_8 = (v8); \
 	SFR_DATA_0 = (v0); \
-	reg_write(r);
-/*	\
-	write_char('R'); print_short(r); write_char(':'); print_byte(v24); print_byte(v16); print_byte(v8); print_byte(v0);
-*/
+	reg_write(r); \
+	write_char('R'); print_short(r); write_char(':'); print_byte(v24); print_byte(v16); print_byte(v8); print_byte(v0); write_char(' ');
 #endif

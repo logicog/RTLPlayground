@@ -1,8 +1,7 @@
 #ifndef _RTL837X_FLASH_H_
 #define _RTL837X_FLASH_H_
 
-#include <stdint.h>
-void flash_init(uint8_t enable_dio)__banked ;
+void flash_init(uint8_t enable_dio) __banked;
 void flash_read_uid(void) __banked;
 void flash_write_enable(void)__banked ;
 void flash_dump(uint32_t addr, uint8_t len) __banked;
