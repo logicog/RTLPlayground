@@ -51,5 +51,7 @@ to the xdata source address of the frame header, and the ring pointer to the
 free space indicated by register 0x7890 multiplied by 8 and the MSB set.
 The length is given by the length of the frame plus 15, divided by 8.
 
-Writing 0x1 to register 0x7850 will transmit the frame.
+Writing 0x1 to register 0x7850 will transmit the frame. The Ethernet frame
+checksum and the TCP checksum are automatically calculated (offloaded) by the
+ASIC before transmitting on the wire.
 
