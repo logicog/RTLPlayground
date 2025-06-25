@@ -410,22 +410,15 @@ void nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
 void nic_tx_packet(uint16_t ring_ptr)
 {
 	uint16_t buffer = (uint16_t) tx_buf;
-	print_string(", xmem: ");
-	print_short((uint16_t)buffer);
 	SFR_NIC_DATA_H = buffer >> 8;
 	SFR_NIC_DATA_L = buffer;
-	print_string("R"); print_short(buffer);
 	ring_ptr <<= 3;
 	ring_ptr |= 0x8000;
 	SFR_NIC_RING_L = ring_ptr;
 	SFR_NIC_RING_H = ring_ptr >> 8;
-	print_string(":"); print_short(ring_ptr);
 	uint16_t len =(((uint16_t)tx_buf[5]) << 8) | tx_buf[4];
 	len += 0xf;
 	len >>= 3;
-	print_string("-");
-	print_short(len);
-	print_string("  ");
 	SFR_NIC_CTRL = len;
 	do { } while (SFR_NIC_CTRL != 0);
 }
@@ -440,11 +433,11 @@ void nic_tx_packet(uint16_t ring_ptr)
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr)
 {
 	uint8_t v;
-	uint8_t current_bank = SFR_BANK;
+	uint8_t current_bank = PSBANK;
 
-	SFR_BANK = bank;
+	PSBANK = bank;
 	v = *addr;
-	SFR_BANK = current_bank;
+	PSBANK = current_bank;
 	return v;
 }
 
@@ -729,9 +722,7 @@ uint8_t sfp_read_reg(uint8_t reg)
 	sfr_mask_data(1, 0xf0, 0x70);
 	reg_write_m(0x0418);
 
-	SFR_DATA_24 = SFR_DATA_16 = SFR_DATA_8 = 0;
-	SFR_DATA_0 = reg;
-	reg_write(0x0420);
+	REG_WRITE(0x0420, 0, 0, 0, reg);
 
 	// Execute I2C Read
 	reg_bit_set(0x418, 0);
@@ -981,25 +972,14 @@ void sleep(uint16_t t)
 
 void reset_chip(void)
 {
-	SFR_DATA_24 = 0x00;
-	SFR_DATA_16 = 0x00;
-	SFR_DATA_8 = 0x00;
-	SFR_DATA_0 = 0x01;
-	reg_write(RTL837X_REG_RESET);
+	REG_SET(RTL837X_REG_RESET, 1);
 }
 
 
 void setup_external_irqs(void)
 {
-	SFR_DATA_24 = 0x00;
-	SFR_DATA_16 = 0x00;
-	SFR_DATA_8 = 0x00;
-	SFR_DATA_0 = 0x42;
-	reg_write(0x5f84);
-
-	SFR_DATA_8 = 0x03;
-	SFR_DATA_0 = 0xff;
-	reg_write(0x5f34);
+	REG_SET(0x5f84, 0x42);
+	REG_SET(0x5f34, 0x3ff);
 
 	EX0 = 1;	// Enable external IRQ 0
 	IT0 = 1;	// External IRQ on falling edge
@@ -1097,11 +1077,7 @@ void rtl8224_phy_enable(void)
 	print_string("\r\n");
 
 	// PHY Initialization:
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f8);
+	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f8: ");
 	print_reg(0x2f8);
 
@@ -1109,11 +1085,7 @@ void rtl8224_phy_enable(void)
 
 	pval &= 0xfff0;
 	pval |= 0x0c;
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f4);
+	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f4: ");
 	print_reg(0x2f4);
 
@@ -1241,11 +1213,7 @@ void sds_init(void)
 	print_string("\r\n");
 
 	// PHY Initialization:
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f8);
+	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f8: ");
 	print_reg(0x2f8);
 
@@ -1253,11 +1221,7 @@ void sds_init(void)
 
 	pval &= 0xfff0;
 	pval |= 0x0a;
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f4);
+	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f4: ");
 	print_reg(0x2f4);
 
@@ -1272,22 +1236,14 @@ void sds_init(void)
 	print_string("\r\n");
 
 	// PHY Initialization:
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f8);
+	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f8: ");
 	print_reg(0x2f8);
 
 	sleep(10);
 
 	pval &= 0xfff0;
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f4);
+	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f4: ");
 	print_reg(0x2f4);
 
@@ -1330,21 +1286,13 @@ void phy_config_8224(void) {
 
 	sleep(20);
 
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f8);
+	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f8: ");
 	print_reg(0x2f8);
 
 	sleep(20);
 	pval &= 0xfed;
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = pval >> 8;
-	SFR_DATA_0 = pval;
-	reg_write(0x2f4);
+	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 	print_string("\r\nA Reg 0x2f4: ");
 	print_reg(0x2f4);
 
@@ -1963,8 +1911,6 @@ void bootloader(void)
 	print_string("\r\nStarting up...\r\n");
 	print_string("  Flash controller\r\n");
 	flash_init(0);
-	print_string("  > OK\r\n current status: ");
-	print_short(flash_read_status());
 
 	// The following will only show something else then 0xff if it was programmed for a managed switch
 	print_string("\r\n  Testing read Securty Register 1\r\n");
@@ -1974,8 +1920,6 @@ void bootloader(void)
 	print_string("\r\n  Testing read Securty Register 3\r\n");
 	flash_read_security(0x0003000, 40);
 
-	print_string("  > Flash status: ");
-	print_short(flash_read_status());
 	print_string("\r\n  Dumping flash at 0x100\r\n");
 	flash_dump(0x100, 252);
 	rtl8372_init();

@@ -9,6 +9,7 @@
 
 __xdata uint8_t dio_enabled;
 
+#pragma codeseg BANK1
 
 /*
  * Configure Memory Managed IO
@@ -36,8 +37,9 @@ void flash_configure_mmio(void)
  * This configures uses fast single IO at 20.8 MHz when the CPU clock is at 20.8MHz
  * and 62.5MHz when the CPU clock is configured at 125MHz
  */
-void flash_init(uint8_t enable_dio)
+void flash_init(uint8_t enable_dio) __banked
 {
+	print_string("\r\n  flash_init called\r\n");
 	if (enable_dio) {
 		// Configure fast DIO via divider/DIO/SIOconfig = 4 and read-cmd being 0xbb (for mmio)
 		SFR_FLASH_CONFIG = 9;  // There may be a chip-select in here
@@ -63,6 +65,7 @@ void flash_init(uint8_t enable_dio)
 
 	dio_enabled = enable_dio;
 	flash_configure_mmio();
+	print_string("\r\n  flash_init done");
 }
 
 uint8_t flash_read_status(void)
@@ -82,7 +85,7 @@ uint8_t flash_read_status(void)
 }
 
 
-void flash_read_uid(void)
+void flash_read_uid(void) __banked
 {
 	while (flash_read_status() & 0x1);
 
@@ -118,7 +121,7 @@ void flash_read_uid(void)
 }
 
 
-void flash_read_jedecid(void)
+void flash_read_jedecid(void) __banked
 {
 	while (flash_read_status() & 0x1);
 
@@ -145,7 +148,7 @@ void flash_read_jedecid(void)
 }
 
 
-void flash_write_enable(void)
+void flash_write_enable(void) __banked
 {
 	short status;
 
@@ -170,7 +173,7 @@ void flash_write_enable(void)
 }
 
 
-void flash_dump(uint32_t addr, uint8_t len)
+void flash_dump(uint32_t addr, uint8_t len) __banked
 {
 	short status;
 	do {
@@ -215,7 +218,7 @@ void flash_dump(uint32_t addr, uint8_t len)
 }
 
 
-void flash_read_security(uint32_t addr, uint8_t len)
+void flash_read_security(uint32_t addr, uint8_t len) __banked
 {
 	while (flash_read_status() & 0x1);
 
@@ -251,7 +254,7 @@ void flash_read_security(uint32_t addr, uint8_t len)
 }
 
 
-void flash_block_erase(uint32_t addr)
+void flash_block_erase(uint32_t addr) __banked
 {
 	flash_write_enable();
 	SFR_FLASH_TCONF = 8;
@@ -269,7 +272,7 @@ void flash_block_erase(uint32_t addr)
 }
 
 
-void flash_write_bytes(uint32_t addr, __xdata uint8_t *ptr, uint8_t len)
+void flash_write_bytes(uint32_t addr, __xdata uint8_t *ptr, uint8_t len) __banked
 {
 	uint8_t exit_loop = 0;
 

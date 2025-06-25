@@ -23,7 +23,7 @@ clean:
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
 rtlplayground.ihx:  crtstart.rel $(OBJS) 
-	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS} -o $@ $^
+	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS}  -Wl-bBANK1=0x14000 -Wl-r -o $@ $^
 
 %.img: %.ihx
 	objcopy --input-target=ihex -O binary $< $@
@@ -32,9 +32,11 @@ rtlplayground.ihx:  crtstart.rel $(OBJS)
 	if [ -e $@ ]; then rm $@; fi
 	echo "0000000: 00 40" | xxd -r - $@
 	cat $< >> $@
+	truncate --size=16K $@
+	dd if=$< skip=80 bs=1024 >>$@
 
 injector: injector.c
 	gcc $^ -o $@
 
 .PHONY: clean all
-.PRECIOUS: %.rel %.ihx
+.PRECIOUS: %.rel %.ihx .img
