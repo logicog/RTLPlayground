@@ -18,5 +18,5 @@ void delay(uint16_t t);
 void sleep(uint16_t t);
 void write_char(char c);
 void print_reg(uint16_t reg);
-
+uint8_t sfp_read_reg(uint8_t reg);
 #endif
