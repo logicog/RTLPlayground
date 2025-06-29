@@ -100,6 +100,10 @@ There are about 30 banks in use for managed switches, unmanaged ones use
 2-3, while the hardware would allow to use 0x3f banks, i.e. up to 4 MB of
 flash.
 
+The current image uses Common BANK0 and the first BANK1 via sdccs __banked
+function keyword and custom banking trampoline code for the RTL837x in
+assembler.
+
 
 ### Hardware supported by the code so far
 
@@ -108,17 +112,22 @@ flash.
 - Interrupt control for timer, serial, external irqs 0, 1
 - Serial console via SFRs
 - Flash operations via SFRs
+- Bank switching via SFRs
 - Access to Switch registers via SFRs
   - LED setup
   - Reset
-  - Some switch settings
+  - Some switch settings such as MAC configuration
+  - GPIO to detect SFP module insert/removal/LOS
+  - I2C to read SFP EEPROM
+  - NIC setup
 - Access to PHYs via MDIO (only conceptually, not tested):
-  - Clause 22? via SFR
-  - Clause 45 via SFR
+  - SerDes settings of SoC via SFR: Configure SFPs in 10Gbit/2.5Gbit/1Gbit, RTL8221
+  - Clause 45 via SFR: configure RTL8221
+- NIC TX and RX of packets via SFRs
+  - send and receive Ethernet frames via SFRs and Switch registers
 
-Access to CPU-Port NIC via a different set of SFRs and external IRQ1 is conceptually understood, but not
-included because without proper switch register configuration it cannot be
-tested.
+Ethernet frame RX IRQ via IRQ1 is conceptually understood, but not activated. RX is
+currently done via polling, which allows ping-times of <100ms.
 
 The RTL8372/3 have 256 bytes of internal RAM (INTMEM) accessible through MOV
 instructions, which are used for the stack and important globals. Some of
