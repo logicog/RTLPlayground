@@ -1,11 +1,15 @@
 #include <8051.h>
 #include <stdint.h>
 
+// #define REGDBG 1
+// #define RXTXDBG 1
+
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_phy.h"
+#include "rtl837x_port.h"
 
 #define SYS_TICK_HZ 100
 #define SERIAL_BAUD_RATE 115200
@@ -52,7 +56,7 @@ __xdata char sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
-__code uint8_t * __code greeting = "\r\nA minimal prompt to explore the RTL8372!\r\n";
+__code uint8_t * __code greeting = "\r\nA minimal prompt to explore the RTL8372:\r\n";
 __code uint8_t * __code hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[256];
@@ -74,6 +78,10 @@ __xdata uint8_t rx_buf[2048];	// FIXME: Currently no maximum packet size checked
 __xdata uint8_t tx_buf[2048];
 __xdata uint8_t tx_seq;
 __xdata uint32_t ipv4_checksum;	// Note that this is little endian
+
+__xdata uint8_t minPort;
+__xdata uint8_t maxPort;
+__xdata uint8_t nSFPPorts;
 
 
 __xdata uint8_t was_offline;
@@ -246,6 +254,9 @@ void reg_read(uint16_t reg_addr)
 
 void reg_read_m(uint16_t reg_addr)
 {
+#ifdef REGDBG
+	if (EA) { write_char('r'); print_byte(reg_addr >> 8); print_byte(reg_addr); write_char(':'); }
+#endif
 	SFR_REG_ADDRH = reg_addr >> 8;
 	SFR_REG_ADDRL = reg_addr;
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
@@ -255,6 +266,9 @@ void reg_read_m(uint16_t reg_addr)
 	sfr_data[1] = SFR_DATA_16;
 	sfr_data[2] = SFR_DATA_8;
 	sfr_data[3] = SFR_DATA_0;
+#ifdef REGDBG
+	if (EA) { print_byte(sfr_data[0]);  print_byte(sfr_data[1]);  print_byte(sfr_data[2]);  print_byte(sfr_data[3]); write_char(' '); }
+#endif
 }
 
 
@@ -271,6 +285,12 @@ void reg_write(uint16_t reg_addr)
 
 void reg_write_m(uint16_t reg_addr)
 {
+#ifdef REGDBG
+	if (EA) {
+		write_char('R'); print_byte(reg_addr >> 8); print_byte(reg_addr); write_char('-');
+		print_byte(sfr_data[0]);  print_byte(sfr_data[1]);  print_byte(sfr_data[2]);  print_byte(sfr_data[3]); write_char(' ');
+	}
+#endif
 	SFR_REG_ADDRH = reg_addr >> 8;
 	SFR_REG_ADDRL = reg_addr;
 	SFR_DATA_24 = sfr_data[0] ;
@@ -356,8 +376,10 @@ void nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
 	uint16_t len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
 	len += 7;
 	len >>= 3;
+#ifdef RXTXDBG
 	print_string(" len: ");
 	print_short(len);
+#endif
 	SFR_NIC_CTRL = len;
 	do { } while (SFR_NIC_CTRL != 0);
 }
@@ -414,11 +436,18 @@ void print_long_x(__xdata uint8_t v[])
  */
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg)
 {
+#ifdef REGDBG
+	print_string("q"); print_byte(sds_id); print_byte(page); print_byte(reg);
+#endif
 	SFR_93 = reg;			// 93
 	SFR_94 = page << 1 | sds_id;	// 94
 	SFR_EXEC_GO = SFR_EXEC_READ_SDS;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
+
+#ifdef REGDBG
+	write_char(':'); print_byte(SFR_DATA_8); print_byte(SFR_DATA_0); write_char(' ');
+#endif
 }
 
 
@@ -427,18 +456,12 @@ void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg)
  * Input must be: sds_id = 0/1, page < 128,  reg <= 0xff
  * The value written must be in SFR A6 and A7 (SFR_DATA_8, SFR_DATA_0)
  */
-void sds_write(uint8_t sds_id, uint8_t page, uint8_t reg)
-{
-	SFR_93 = reg;
-	SFR_94 = page << 1 | sds_id;
-	SFR_EXEC_GO = SFR_EXEC_WRITE_SDS;
-	do {
-	} while (SFR_EXEC_STATUS != 0);
-}
-
-
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v)
 {
+#ifdef REGDBG
+	print_string("Q"); print_byte(sds_id); print_byte(page); print_byte(reg);
+	write_char(':'); print_byte(v >> 8); print_byte(v); write_char(' ');
+#endif
 	SFR_DATA_8 = v >> 8;
 	SFR_DATA_0 = v;
 	SFR_93 = reg;
@@ -449,19 +472,18 @@ void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v)
 }
 
 
-
 void print_sfr_data(void)
 {
 	write_char('0');
 	write_char('x');
-	write_char(hex[SFR_DATA_24 >> 4]);
-	write_char(hex[SFR_DATA_24 & 0xf]);
-	write_char(hex[SFR_DATA_16 >> 4]);
-	write_char(hex[SFR_DATA_16 & 0xf]);
-	write_char(hex[SFR_DATA_8 >> 4]);
-	write_char(hex[SFR_DATA_8 & 0xf]);
-	write_char(hex[SFR_DATA_0 >> 4]);
-	write_char(hex[SFR_DATA_0 & 0xf]);
+	write_char(hex[sfr_data[0] >> 4]);
+	write_char(hex[sfr_data[0] & 0xf]);
+	write_char(hex[sfr_data[1] >> 4]);
+	write_char(hex[sfr_data[1] & 0xf]);
+	write_char(hex[sfr_data[2] >> 4]);
+	write_char(hex[sfr_data[2] & 0xf]);
+	write_char(hex[sfr_data[3] >> 4]);
+	write_char(hex[sfr_data[3] & 0xf]);
 }
 
 
@@ -478,7 +500,7 @@ void print_phy_data(void)
 
 void print_reg(uint16_t reg)
 {
-	reg_read(reg);
+	reg_read_m(reg);
 	print_sfr_data();
 }
 
@@ -512,12 +534,6 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 
 void sds_config_mac(uint8_t sds, uint8_t mode)
 {
-	print_string("\r\nsds_config: sds: ");
-	print_byte(sds);
-	print_string(", mode: 0x");
-	print_byte(mode);
-	print_string("\r\nBEFORE RTL837X_REG_SDS_MODES: ");
-	print_reg(RTL837X_REG_SDS_MODES);
 	reg_read_m(RTL837X_REG_SDS_MODES);
 	sfr_data[0] = 0;
 	sfr_data[1] = 0;
@@ -532,6 +548,7 @@ void sds_config_mac(uint8_t sds, uint8_t mode)
 	reg_write_m(RTL837X_REG_SDS_MODES);
 	print_string("\r\nRTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
+	print_string("\r\n");
 }
 
 // Delay for given number of ticks without doing housekeeping
@@ -545,6 +562,8 @@ void delay(uint16_t t)
 
 void sds_config_8224(uint8_t sds)
 {
+	REG_SET(RTL837X_REG_SDS_MODES, 0xbed);
+	delay(10);
 	sds_config_mac(sds, 0x0d);
 
 	/* Q002110:4444 Q002113:0404 Q002118:6d6d Q00211b:4242 Q00211d:0000 Q00361c:1313 Q003614:0000 Q003610:0202 Q002e04:0000 Q002e06:0404 Q002e07:0202 Q002e09:0606 Q002e0b:2222 Q002e0c:a2a2 Q002e0d:fefe Q002e15:f5f5
@@ -553,41 +572,47 @@ void sds_config_8224(uint8_t sds)
 	 * Q002000:0000 q002000:0010 Q002000:0000 q002000:0010 Q002000:0000 q002000:0030 Q002000:0000 q001f00:0000 Q001f00:0000 q001f00:000b Q001f00:0000
 	*/
 	// q000601:c800 Q000601:c8c8 q000601:c804 Q000601:c8c8 <<<<<<<<<<<<<<<<<<< CHECK THIS
-	sds_write_v(sds, 0x06, 0x01, 0xc8c8);
-	delay(100);
-	sds_write_v(sds, 0x06, 0x01, 0xc8c8);
-	delay(100);
 
-	// Configure the SERDES on the RTL8273 side:
-	sds_write_v(sds, 0x21, 0x10, 0x4444); // Q002110:4444
-	sds_write_v(sds, 0x21, 0x13, 0x0404); // Q002113:0404
-	sds_write_v(sds, 0x21, 0x18, 0x6d6d); // Q002118:6d6d
-	sds_write_v(sds, 0x21, 0x1b, 0x4242); // Q00211b:4242
-	sds_write_v(sds, 0x21, 0x1d, 0x0000); // Q00211d:0000
-	sds_write_v(sds, 0x36, 0x1c, 0x1313); // Q00361c:1313
-	sds_write_v(sds, 0x36, 0x14, 0x0000); // Q003614:0000
-	sds_write_v(sds, 0x36, 0x10, 0x0202); // Q003610:0202
-	sds_write_v(sds, 0x2e, 0x04, 0x0000); // Q002e04:0000
-	sds_write_v(sds, 0x2e, 0x06, 0x0404); // Q002e06:0404
-	sds_write_v(sds, 0x2e, 0x07, 0x0202); // Q002e07:0202
-	sds_write_v(sds, 0x2e, 0x09, 0x0606); // Q002e09:0606
-	sds_write_v(sds, 0x2e, 0x0b, 0x2222); // Q002e0b:2222
-	sds_write_v(sds, 0x2e, 0x0c, 0xa2a2); // Q002e0c:a2a2
-	sds_write_v(sds, 0x2e, 0x0d, 0xfefe); // Q002e0d:fefe
-	sds_write_v(sds, 0x2e, 0x15, 0xf5f5); // Q002e15:f5f5
-	sds_write_v(sds, 0x2e, 0x16, 0x0404); // Q002e16:0404
-	sds_write_v(sds, 0x2e, 0x1d, 0xabab); // Q002e1d:abab
-	sds_write_v(sds, 0x06, 0x12, 0x5050); // Q000612:5050
-	sds_write_v(sds, 0x07, 0x06, 0x9494); // Q000706:9494
-	sds_write_v(sds, 0x07, 0x08, 0x9494); // Q000708:9494
-	sds_write_v(sds, 0x07, 0x0a, 0x9494); // Q00070a:9494
-	sds_write_v(sds, 0x07, 0x0c, 0x9494); // Q00070c:9494
-	sds_write_v(sds, 0x1f, 0x0b, 0x0000); // Q001f0b:0000
-	sds_write_v(sds, 0x06, 0x03, 0xc4c4); // Q000603:c4c4
-	delay(20);
-	// q002000:0000 Q002000:0000 q002000:0030 Q002000:0000 q002000:0010 Q002000:0000 q002000:0050 Q002000:0000 q002000:00d0
+	// Configure the SERDES LINK mode on the RTL8273 side, see also sds_config for RTL8221 and SFP ports
+	// Q002110:4444 Q002113:0404 Q002118:6d6d Q00211b:4242 Q00211d:0000 Q00361c:1313 Q003614:0000 Q003610:0202 Q002e04:0000 Q002e06:0404 Q002e07:0202 Q002e09:0606 Q002e0b:2222 Q002e0c:a2a2 Q002e0d:fefe
+	// Q002e15:f5f5 Q002e16:0404 Q002e1d:abab Q000612:5050 Q000706:9494 Q000708:9494 Q00070a:9494 Q00070c:9494 Q001f0b:0000 Q000603:c4c4
+	sds_write_v(sds, 0x21, 0x10, 0x4444); delay(10); // Q002110:4444
+	sds_write_v(sds, 0x21, 0x13, 0x0404); delay(10); // Q002113:0404
+	sds_write_v(sds, 0x21, 0x18, 0x6d6d); delay(10); // Q002118:6d6d
+	sds_write_v(sds, 0x21, 0x1b, 0x4242); delay(10); // Q00211b:4242
+	sds_write_v(sds, 0x21, 0x1d, 0x0000); delay(10); // Q00211d:0000
+	sds_write_v(sds, 0x36, 0x1c, 0x1313); delay(10); // Q00361c:1313
+	sds_write_v(sds, 0x36, 0x14, 0x0000); delay(10); // Q003614:0000
+	sds_write_v(sds, 0x36, 0x10, 0x0202); delay(10); // Q003610:0202
+	sds_write_v(sds, 0x2e, 0x04, 0x0000); delay(10); // Q002e04:0000
+	sds_write_v(sds, 0x2e, 0x06, 0x0404); delay(10); // Q002e06:0404
+	sds_write_v(sds, 0x2e, 0x07, 0x0202); delay(10); // Q002e07:0202
+	sds_write_v(sds, 0x2e, 0x09, 0x0606); delay(10); // Q002e09:0606
+	sds_write_v(sds, 0x2e, 0x0b, 0x2222); delay(10); // Q002e0b:2222
+	sds_write_v(sds, 0x2e, 0x0c, 0xa2a2); delay(10); // Q002e0c:a2a2
+	sds_write_v(sds, 0x2e, 0x0d, 0xfefe); delay(10); // Q002e0d:fefe
+	sds_write_v(sds, 0x2e, 0x15, 0xf5f5); delay(10); // Q002e15:f5f5
+	sds_write_v(sds, 0x2e, 0x16, 0x0404); delay(10); // Q002e16:0404
+	sds_write_v(sds, 0x2e, 0x1d, 0xabab); delay(10); // Q002e1d:abab
+	sds_write_v(sds, 0x06, 0x12, 0x5050); delay(10); // Q000612:5050
+	sds_write_v(sds, 0x07, 0x06, 0x9494); delay(10); // Q000706:9494
+	sds_write_v(sds, 0x07, 0x08, 0x9494); delay(10); // Q000708:9494
+	sds_write_v(sds, 0x07, 0x0a, 0x9494); delay(10); // Q00070a:9494
+	sds_write_v(sds, 0x07, 0x0c, 0x9494); delay(10); // Q00070c:9494
+	sds_write_v(sds, 0x1f, 0x0b, 0x0000); delay(10); // Q001f0b:0000
+	sds_write_v(sds, 0x06, 0x03, 0xc4c4); delay(10); // Q000603:c4c4
+	delay(500);
+/*	// q002000:0000 Q002000:0000 q002000:0030 Q002000:0000 q002000:0010 Q002000:0000 q002000:0050 Q002000:0000 q002000:00d0
+	sds_read(sds, 0x20, 0x00); v = ((uint16_t)SFR_DATA_8) << 8 | SFR_DATA_0; sds_write_v(sds, 0x20, 0x00, v);
+	delay(10);
+	sds_read(sds, 0x20, 0x00); v = ((uint16_t)SFR_DATA_8) << 8 | SFR_DATA_0; sds_write_v(sds, 0x20, 0x00, v | 0x30);
+	delay(10);
+	sds_read(sds, 0x20, 0x00); v = ((uint16_t)SFR_DATA_8) << 8 | SFR_DATA_0; sds_write_v(sds, 0x20, 0x00, v | 0x30);
+
+	void sds_write(uint8_t sds_id, uint8_t page, uint8_t reg)
 	sds_write_v(sds, 0x20, 0x00, 0x0c0c); // Q002000:0c0c
 	sds_write_v(sds, 0x1f, 0x00, 0x0000); // Q001f00:0000 // q001f00:000b Q001f00:0000
+	*/
 }
 
 
@@ -610,7 +635,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	sds_write_v(sds, 0x36, 0x14, 0x003f); // Q003614:003f
 
 	uint8_t page = 0;
-	SFR_DATA_0 = 0x00;
+	uint16_t v = 0;
 	print_string("\r\nTrying to set SDS mode to 0x");
 	print_byte(mode);
 	print_string("\r\n");
@@ -618,23 +643,23 @@ void sds_config(uint8_t sds, uint8_t mode)
 	switch (mode) {
 	case SDS_SGMII:
 	case SDS_1000BX_FIBER:
-		SFR_DATA_8 = 0x03;
+		v = 0x0300;
 		page = 0x24;
 		break;
 	case SDS_HISGMII:
 	case SDS_HSG:
-		SFR_DATA_8 = 0x02;
+		v = 0x0200;
 		page = 0x28;
 		break;
 	case SDS_10GR:
-		SFR_DATA_8 = 0x02;
+		v = 0x0200;
 		page = 0x2e;
 		break;
 	default:
 		print_string("Error in SDS Mode\r\n");
 		return;
 	}
-	sds_write(sds, 0x36, 0x10); // Q003610:0200
+	sds_write_v(sds, 0x36, 0x10, v); // Q003610:0200
 
 	if (page == 0x2e) {  // 10G Fiber
 		sds_write_v(sds, page, 0x04, 0x0080); // Q012e04:0080
@@ -744,32 +769,42 @@ void handle_rx(void)
 {
 	reg_read_m(RTL837X_REG_RX_AVAIL);
 	if (sfr_data[2] != 0 || sfr_data[3] != 0) {
+#ifdef RXTXDBG
 		print_string("\r\nrx:");
 		print_long_x(sfr_data);
+#endif
 		reg_read_m(RTL837X_REG_RX_RINGPTR);
+#ifdef RXTXDBG
 		print_string(", ");
 		print_long_x(sfr_data);
+#endif
 		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 		ring_ptr |= sfr_data[3];
 		ring_ptr <<= 3;
+#ifdef RXTXDBG
 		print_string(", ring_ptr: ");
 		print_short(ring_ptr);
+#endif
 		nic_rx_header(ring_ptr);
-		print_string(", on port "); print_byte(rx_headers[3] & 0xf);
 		__xdata uint8_t *ptr = rx_headers;
+#ifdef RXTXDBG
+		print_string(", on port "); print_byte(rx_headers[3] & 0xf);
 		print_string(": ");
 		for (uint8_t i = 0; i < 8; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
+#endif
 
 		nic_rx_packet((uint16_t) rx_buf, ring_ptr + 8);
+#ifdef RXTXDBG
 		print_string("\r\n<< ");
 		ptr = rx_buf;
 		for (uint8_t i = 0; i < 80; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
+#endif
 
 		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 		sfr_data[3] = 0x1;
@@ -782,11 +817,15 @@ void handle_rx(void)
 		} else if (rx_buf[0] == 0xff && rx_buf[1] == 0xff && rx_buf[2] == 0xff			// Broadcast?
 				&& rx_buf[3] == 0xff && rx_buf[4] == 0xff && rx_buf[5] == 0xff) {
 			prepare_arp(0);
+#ifdef RXTXDBG
 			print_string("\r\nBROADCAST\r\n");
+#endif
 		}  else if (rx_buf[0] == ownMAC[0] && rx_buf[1] == ownMAC[1] && rx_buf[2] == ownMAC[2]
 				&& rx_buf[3] == ownMAC[3] && rx_buf[4] == ownMAC[4] && rx_buf[5] == ownMAC[5]) {
 			if (rx_buf[31] == 0x01) {
+#ifdef RXTXDBG
 				print_string("ICMP PING REQ\r\n");
+#endif
 				prepare_icmp_reply();
 			} else {
 				return; // We only answer to ICMP PING requests
@@ -795,93 +834,50 @@ void handle_rx(void)
 			return;
 		}
 
-		print_string("\r\nDO TX. 0x7880: ");
+#ifdef RXTXDBG
 		reg_read_m(0x7880);
+		print_string("\r\nDO TX. 0x7880: ");
 		print_long_x(sfr_data);
-
+#endif
 		reg_read_m(0x7890);
+		ptr = tx_buf;
+#ifdef RXTXDBG
 		print_string(", 0x7890: ");
 		print_long_x(sfr_data);
-		ptr = tx_buf;
 		print_string("\r\n>> ");
 		for (uint8_t i = 0; i < 120; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
 		print_string("\r\n> ");
+#endif
 		ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 		ring_ptr |= sfr_data[3];
 		nic_tx_packet(ring_ptr);
 
-		print_string("New Ring Pointer: ");
 		reg_read_m(0x7884);
+#ifdef RXTXDBG
+		print_string("New Ring Pointer: ");
 		print_long_x(sfr_data);
 		print_string(" (should be previous ptr, now)");
-
+#endif
 		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 		sfr_data[3] = 0x1;
 		reg_write_m(0x7850);
 	}
 }
 
-
-//
-// An idle function that sleeps for 1 tick and does all the house-keeping
-//
-void idle(void)
+void handle_sfp(void)
 {
-	PCON |= 1;
-	if (sec_counter >= 60) {
-		sec_counter -= 60;
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
-		uint8_t v = sfr_data[3];
-		v++;
-		sfr_data[3] = v;
-		if (!v) {
-			v = sfr_data[2];
-			v++;
-			sfr_data[2] = v;
-			if (!v) {
-				v = sfr_data[1];
-				v++;
-				sfr_data[1] = v;
-				if (!v) {
-					v = sfr_data[0];
-					v++;
-					sfr_data[0] = v;
-				}
-			}
-		}
-		reg_write_m(RTL837X_REG_SEC_COUNTER);
-	}
-
-	reg_read_m(RTL837X_REG_LINKS);
-	if (!isRTL8373 && cmp_4(sfr_data, linkbits_last)) {
-		print_string("\r\n<new link: ");
-		print_long_x(sfr_data);
-		print_string(", was ");
-		print_long_x(linkbits_last);
-		print_string(">\r\n");
-		uint8_t p5 = sfr_data[2] >> 4;
-		uint8_t p5_last = linkbits_last[2] >> 4;
-		cpy_4(linkbits_last, sfr_data);
-		if (p5_last != p5) {
-			if (p5 == 0x5) // 2.5GBit Mode
-				sds_config(0, SDS_HISGMII);
-			else if (p5 == 0x2) // 1GBit
-				sds_config(0, SDS_SGMII);
-		}
-	}
-
 	reg_read_m(RTL837X_REG_GPIO_B);
 	if ((sfp_pins_last & 0x1) && (!(sfr_data[0] & 0x40))) {
 		sfp_pins_last &= ~0x01;
-		print_string("\r\n<MODULE INSERTED> ");
+		print_string("\r\n<MODULE INSERTED>  ");
 		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
 		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
 		delay(100); // Delay, because some modules need time to wake up
 		uint8_t rate = sfp_read_reg(12);
-		print_string("\r\nRate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
+		print_string("Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
 		print_string("  Encoding: "); print_byte(sfp_read_reg(11));
 		print_string("\r\n");
 		for (uint8_t i = 20; i < 60; i++) {
@@ -906,12 +902,73 @@ void idle(void)
 	reg_read_m(RTL837X_REG_GPIO_C);
 	if ((sfp_pins_last & 0x2) && (!(sfr_data[3] & 0x20))) {
 		sfp_pins_last &= ~0x02;
-		print_string("\r\n<RX OK>\r\n");
+		print_string("\r\n<SFP-RX OK>\r\n");
 	}
 	if ((!(sfp_pins_last & 0x2)) && (sfr_data[3] & 0x20)) {
 		sfp_pins_last |= 0x02;
-		print_string("\r\n<RX LOS>\r\n");
+		print_string("\r\n<SFP-RX LOS>\r\n");
 	}
+}
+
+
+//
+// An idle function that sleeps for 1 tick and does all the house-keeping
+//
+void idle(void)
+{
+	PCON |= 1;
+	if (sec_counter >= 60) {
+		sec_counter -= 60;
+		reg_read_m(RTL837X_REG_SEC_COUNTER);
+		uint8_t v = sfr_data[3];
+#ifdef DEBUG
+		print_string("  sec_counter: "); print_byte(v);
+#endif
+		v++;
+		sfr_data[3] = v;
+		if (!v) {
+			v = sfr_data[2];
+			v++;
+			sfr_data[2] = v;
+			if (!v) {
+				v = sfr_data[1];
+				v++;
+				sfr_data[1] = v;
+				if (!v) {
+					v = sfr_data[0];
+					v++;
+					sfr_data[0] = v;
+				}
+			}
+		}
+		reg_write_m(RTL837X_REG_SEC_COUNTER);
+		reg_read_m(RTL837X_REG_SEC_COUNTER);
+#ifdef DEBUG
+		print_string(" >>: ");
+		print_long_x(sfr_data);
+#endif
+	}
+
+	reg_read_m(RTL837X_REG_LINKS);
+	if (!isRTL8373 && cmp_4(sfr_data, linkbits_last)) {
+		print_string("\r\n<new link: ");
+		print_long_x(sfr_data);
+		print_string(", was ");
+		print_long_x(linkbits_last);
+		print_string(">\r\n");
+		uint8_t p5 = sfr_data[2] >> 4;
+		uint8_t p5_last = linkbits_last[2] >> 4;
+		cpy_4(linkbits_last, sfr_data);
+		if (p5_last != p5) {
+			if (p5 == 0x5) // 2.5GBit Mode
+				sds_config(0, SDS_HISGMII);
+			else if (p5 == 0x2) // 1GBit
+				sds_config(0, SDS_SGMII);
+		}
+	}
+
+	// Check for changes with SFP modules
+	handle_sfp();
 
 	// Check new Packets RX
 	handle_rx();
@@ -983,17 +1040,20 @@ void setup_clock(void)
 
 /*
  * Write a register reg of phy phy_id, in page page
- * Data to be written must be in SFR a6/a7
+ * Data to be written is in v
  */
 void phy_write(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
 {
-	print_string(" P"); print_short(phy_mask); write_char('.'); print_byte(dev_id); print_short(reg); write_char(':'); print_short(v);
-	SFR_DATA_8 = v >> 8;
-	SFR_DATA_0 = v;
-	SFR_SMI_PHYMASK = phy_mask;
-	SFR_SMI_REG_H = reg >> 8;
-	SFR_SMI_REG_L = reg;
-	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // bit 2 can also be set for some option
+#ifdef REGDBG
+	print_string("P"); print_byte(phy_mask>>8); print_byte(phy_mask); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
+	print_byte(v>>8); print_byte(v); write_char(' ');
+#endif
+	SFR_DATA_8 = v >> 8;			// SFR_A6
+	SFR_DATA_0 = v;				// SFR_A7
+	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
+	SFR_SMI_REG_H = reg >> 8;		// SFR_C2
+	SFR_SMI_REG_L = reg;			// SFR_C3
+	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // SFR_C4: bit 2 can also be set for some option
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -1007,7 +1067,9 @@ void phy_write(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
  */
 void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 {
-	print_string(" p"); print_byte(phy_id); print_byte(dev_id); write_char('.'); print_short(reg); write_char(':');
+#ifdef REGDBG
+	print_string("p"); print_byte(phy_id); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
+#endif
 	SFR_SMI_REG_H = reg >> 8;	// c3
 	SFR_SMI_REG_L = reg;		// c2
 	SFR_SMI_PHY = phy_id;		// a5
@@ -1016,63 +1078,41 @@ void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
-	print_phy_data();
+#ifdef REGDBG
+	print_byte(SFR_DATA_8); print_byte(SFR_DATA_0); write_char(' ');
+#endif
 }
 
 
 void nic_setup(void)
 {
-	// r0024:00000f80 R0024-00000f84 r0024:00000f80
-	// Reset NIC
-	reg_bit_set(0x24, 2);
-	print_string("\r\nnic_setup");
-	do {
-		reg_read(0x24);
-	} while (SFR_DATA_0 & 0x4);
-	print_string("\r\nNIC reset");
-
 	// Enable NIC
 	// r6040:00000100 R6040-00001100
 	reg_bit_set(RTL837X_REG_HW_CONF, 0xc);
 
-	print_string("\r\nReg 0x6040: ");
-	print_reg(RTL837X_REG_HW_CONF);
-
 	// This sets the size of the RX buffer, the filling level is in 0x7874
 	// R7848-000004ff
 	REG_SET(0x7848, 0x4ff);
-	print_string("\r\nReg 0x7848: ");
-	print_reg(0x7848);
 
 	// R7844-000007fe
 	REG_SET(0x7844, 0x7fe);
-	print_string("\r\nReg 0x7844: ");
-	print_reg(0x7844);
 
 	// r785c:0401201e R785c-0401201e r785c:0401201e R785c-0400201e
 	// 0x785c: Set bits 24-31 to 0x4, clear bits 16/17:
-	print_string("\r\nB Reg 0x785c: ");
-	print_reg(0x785c);
 	reg_read_m(0x785c);
 	sfr_mask_data(3, 0xff, 0x04);
 	sfr_mask_data(2, 0x03, 0);
 	reg_write_m(0x785c);
-	print_string("\r\nA Reg 0x785c: ");
-	print_reg(0x785c);
 
 	// Set bit 0 of 0x7860:
 	// r7860:00000000 R7860-00000001
 	reg_bit_set(0x7860, 0);
-	print_string("\r\nA Reg 0x7860: ");
-	print_reg(0x7860);
 
 	// r785c:0400201e R785c-0400201f
 	reg_bit_set(0x785c, 0);
 
 	// r785c:0400201f R785c-0400201b
 	reg_bit_clear(0x785c, 2);
-	print_string("\r\nA Reg 0x785c: ");
-	print_reg(0x785c);
 
 	// R603c-00000200
 	REG_SET(0x603c, 0x200);
@@ -1082,15 +1122,11 @@ void nic_setup(void)
 	sfr_mask_data(0, 1, 1);
 	sfr_mask_data(1, 3, 0);
 	reg_write_m(0x6720);
-	print_string("\r\nA Reg 0x6720: ");
-	print_reg(0x6720);
 
 	// r6368:00000194 R6368-00000197
 	reg_read_m(0x6368);
 	sfr_mask_data(0, 0, 3);
 	reg_write_m(0x6368);
-	print_string("\r\nA Reg 0x6368: ");
-	print_reg(0x6368);
 
 	// Sequence number of TX packets
 	tx_seq = 0;
@@ -1120,69 +1156,46 @@ void sds_init(void)
 	R02f8-00000010 R02f4-00000010
 	P000001.1e00000d:b7fe
 */
-
-	print_string(", phy-reg read: ");
 	phy_read(0, 0x1e, 0xd);
 	uint16_t pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
-	print_short(pval);
-	print_string("\r\n");
 
 	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f8: ");
-	print_reg(0x2f8);
-
-	sleep(10);
+	delay(10);
 
 	pval &= 0xfff0;
 	pval |= 0x0a;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f4: ");
-	print_reg(0x2f4);
 
 	phy_write(0x1, 0x1e, 0xd, pval);
 
-	print_string("\r\n   2: phy-reg read: ");
 	phy_read(0, 0x1e, 0xd);
 	pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
-	print_short(pval);
-	print_string("\r\n");
 
-	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f8: ");
-	print_reg(0x2f8);
 
-	sleep(10);
+	delay(10);
 
 	pval &= 0xfff0;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f4: ");
-	print_reg(0x2f4);
 
+	delay(10);
 	phy_write(0x1, 0x1e, 0xd, pval);
+	delay(10);
 
 	if (isRTL8373) {
-		reg_read_m(RTL837X_REG_SDS_MODES);
+/*		reg_read_m(RTL837X_REG_SDS_MODES);
 		sfr_mask_data(1, 0xfc, 0x04);
 		sfr_mask_data(0, 0x1f, 0xd);
-		reg_write_m(RTL837X_REG_SDS_MODES);
-		print_string("\r\nA Reg SDS_MODES 0x7b20: ");
-		print_reg(0x7b20);
-		// q000601:c800 Q000601:c804
-		// q000601:c804 Q000601:c800
-		sds_read(0, 6, 1);
-		uint16_t v = SFR_DATA_8 << 8 | SFR_DATA_0 | 0x4;
-		print_string("\r\nv is now "); print_short(v);
-		sds_write_v(0, 6, 1, v);
-		delay(10);
-		sds_read(0, 6, 1);
-		v = SFR_DATA_8 << 8 | SFR_DATA_0 & 0xfb;
-		sds_write_v(0, 6, 1, v);
+		reg_write_m(RTL837X_REG_SDS_MODES);*/
+		// Disable all SERDES for configuration
+		REG_SET(RTL837X_REG_SDS_MODES, 0x000037ff);
+		sds_read(0, 0x06, 0x01); sds_write_v(0, 0x06, 0x01, 0xc8c8); delay(20);
+		sds_read(0, 0x06, 0x01); sds_write_v(0, 0x06, 0x01, 0xc8c8); delay(20);
 	}
 }
 
@@ -1194,63 +1207,41 @@ void led_config_9xh(void)
 {
 	// r65d8:3ffbedff R65d8-3ffbedff
 	reg_bit_set(0x65d8, 0x1d);
-	print_string("\r\n65d8: ");
-	print_reg(0x65d8);
 
 	//  r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0
-	print_string("\r\nB Reg LED_MODE: ");
-	print_reg(RTL837X_REG_LED_MODE);
 	reg_read_m(0x6520);
 	sfr_mask_data(1, 0x1f, 0x6);
 	sfr_mask_data(0, 0xe0, 0xa0);
 	reg_write_m(0x6520);
-	print_string("\r\nA Reg LED_MODE: ");
-	print_reg(RTL837X_REG_LED_MODE);
 
 	//  r65f8:00000018 R65f8-0000001b
-	print_string("\r\nB Reg 0x65f8: ");
-	print_reg(0x65f8);
 	reg_read_m(0x65f8);
 	sfr_mask_data(0, 0, 0x3);
 	reg_write_m(0x65f8);
-	print_string("\r\nA Reg 0x65f8: ");
-	print_reg(0x65f8);
 
 	// R65fc-ffffffff
 	REG_SET(0x65fc, 0xffffffff);
-	print_string("\r\nReg 0x65fc: ");
-	print_reg(0x65fc);
 
 	// r6528:00000000 R6528-0000000f
 	reg_read_m(0x6528);
 	sfr_mask_data(0, 0x0f, 0x0f);
 	reg_write_m(0x6528);
-	print_string("\r\nReg 0x6528: ");
-	print_reg(0x6528);
 
 	// Set bits 0-3 of 0x6600 to 0xf
 	// r6600:00000000 R6600-0000000f
 	reg_read_m(0x6600);
 	sfr_mask_data(0, 0, 0x0f);
 	reg_write_m(0x6600);
-	print_string("\r\nA Reg 0x6600: ");
-	print_reg(0x6600);
 
 	// Set bit 0x1d of 0x65dc, clear bit 1b: r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
 	reg_bit_set(0x65dc, 0x1d);
 	reg_bit_clear(0x65dc, 0x1b);
-	print_string("\r\nA Reg 0x65dc: ");
-	print_reg(0x65dc);
 
 	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
 	reg_bit_set(0x7f8c, 0x1b);
-	print_string("\r\nA Reg 0x7f8c: ");
-	print_reg(0x7f8c);
 
 	// R6548-0041017f
 	REG_SET(0x6548, 0x0041017f);
-	print_string("\r\nA Reg 0x6548: ");
-	print_reg(0x6548);
 
 	// Configure LED_SET_0 ledid 2
 	//  r6544:01411000 R6544-01410044
@@ -1258,9 +1249,6 @@ void led_config_9xh(void)
 	sfr_data[2] = 0x00;
 	sfr_data[3] = 0x44;
 	reg_write_m(0x6544);
-	print_string("\r\nReg 0x6544: ");
-	print_reg(0x6544);
-
 }
 
 
@@ -1274,42 +1262,30 @@ void led_config(void)
 	sfr_data[2] = 0xe6;
 	sfr_data[3] = 0xb0;
 	reg_write_m(RTL837X_REG_LED_MODE);
-	print_string("\r\nA Reg LED_MODE: ");
-	print_reg(RTL837X_REG_LED_MODE);
 
 	// Clear bits 0,1 of 0x65f8
 //	r65f8:00000018 R65f8-00000018
 	reg_read_m(0x65f8);
 	sfr_mask_data(0, 0x03, 0);
 	reg_write_m(0x65f8);
-	print_string("\r\nA Reg 0x65f8: ");
-	print_reg(0x65f8);
 
 	// Set 0x65fc to 0xfffff000
 	// R65fc-fffff000
 	REG_SET(0x65fc, 0xfffff000);
-	print_string("\r\nA Reg 0x65fc: ");
-	print_reg(0x65fc);
 
 	// Set bits 0-3 of 0x6600 to 0xf
 	// r6600:00000000 R6600-0000000f
 	reg_read_m(0x6600);
 	sfr_mask_data(0, 0, 0x0f);
 	reg_write_m(0x6600);
-	print_string("\r\nA Reg 0x6600: ");
-	print_reg(0x6600);
 
 	// Set bit 0x1d of 0x65dc, clear bit 1b: r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
 	reg_bit_set(0x65dc, 0x1d);
 	reg_bit_clear(0x65dc, 0x1b);
-	print_string("\r\nA Reg 0x65dc: ");
-	print_reg(0x65dc);
 
 	// Set bits 1b/1d of 0x7f8c: r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
 	reg_bit_set(0x7f8c, 0x1d);
 	reg_bit_set(0x7f8c, 0x1b);
-	print_string("\r\nA Reg 0x7f8c: ");
-	print_reg(0x7f8c);
 
 	// LED setup
 	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0 r65f8:00000018 R65f8-00000018 R65fc-fffff000 r6600:00000000 R6600-0000000f r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
@@ -1318,8 +1294,6 @@ void led_config(void)
 	// Configure LED_SET_0, ledid 0/1
 	// R6548-00410175
 	REG_SET(0x6548, 0x00410175);
-	print_string("\r\nA Reg 0x6548: ");
-	print_reg(0x6548);
 
 	// Configure LED_SET_0 ledid 2
 	// 6544:01411000 R6544-01410044
@@ -1327,16 +1301,22 @@ void led_config(void)
 	sfr_data[2] = 0x00;
 	sfr_data[3] = 0x44;
 	reg_write_m(0x6544);
-	print_string("\r\nReg 0x6544: ");
-	print_reg(0x6544);
 
 	// Further configure LED_SET_0
 	// r6528:00000000 R6528-00000011
 	reg_read_m(0x6528);
 	sfr_data[3] = 0x11;
 	reg_write_m(0x6528);
-	print_string("\r\nReg 0x6528: ");
-	print_reg(0x6528);
+
+	reg_read_m(0x6450);
+	sfr_mask_data(1, 0x7c, 0);
+	reg_write_m(0x6450);
+
+	// SDS bits f-13 set to 0: r644c:0a418820 R644c-0a400820
+	reg_read_m(0x644c);
+	sfr_mask_data(2, 0x0f, 0);
+	sfr_mask_data(1, 0x80, 0);
+	reg_write_m(0x644c);
 }
 
 
@@ -1344,9 +1324,6 @@ void rtl8372_init(void)
 {
 	// From run, set bits 0-1 to 1
 	print_string("\r\nrtl8372_init called\r\n");
-	print_string("\r\nB Reg 0x7f90: ");
-	// This register also concerns the clock frequency
-	print_reg(0x7f90);
 /*	reg_read_m(0x7f90);
 	sfr_mask_data(0, 0, 3);
 	reg_write_m(0x7f90);
@@ -1355,18 +1332,12 @@ void rtl8372_init(void)
 */
 
 	// r6330:00015555 R6330-00005555 r6330:00005555 R6330-00005555
-	print_string("\r\nB Reg 0x6330: ");
-	print_reg(0x6330);
 	reg_read_m(0x6330);
 //	sfr_mask_data(0, 0, 0xc0);	// Set Bits 6, 7
 	sfr_mask_data(2, 3, 0);	 	// Delete bits 16, 17
 	reg_write_m(0x6330);
-	print_string("\r\nA Reg 0x6330: ");
-	print_reg(0x6330);
 
 	// r6334:00000000 R6334-000001f8  RTL8373: r6334:00000000 R6334-000000ff
-	print_string("\r\nB Reg 0x6334: ");
-	print_reg(0x6334);
 	reg_read_m(0x6334);		// Also in sdsMode_set
 	if (isRTL8373) {
 		sfr_mask_data(0, 0, 0xff);
@@ -1375,23 +1346,15 @@ void rtl8372_init(void)
 		sfr_mask_data(0, 0, 0xf8);
 	}
 	reg_write_m(0x6334);
-	print_string("\r\nA Reg 0x6334: ");
-	print_reg(0x6334);
 
 	// Enable MDC
 	// r6454:00000000 R6454-00007000 RTL837X_REG_SMI_CTRL
-	print_string("\r\nB Reg RTL837X_REG_SMI_CTRL: ");
-	print_reg(RTL837X_REG_SMI_CTRL);
 	reg_read_m(RTL837X_REG_SMI_CTRL);
 	sfr_mask_data(1, 0, 0x70); 	// Set bits 0xc-0xe to enable MDC for SMI0-SMI2
 	reg_write_m(RTL837X_REG_SMI_CTRL);
-	sleep(10);
-
-	print_string("SMI_CTRL: ");
-	print_reg(RTL837X_REG_SMI_CTRL);
+	delay(10);
 
 	// get_chip_version
-
 	if (isRTL8373)
 		led_config_9xh();
 	else
@@ -1399,47 +1362,31 @@ void rtl8372_init(void)
 
 	sds_init();
 
-	// Part of the SDS configuration, see sdsMode_set, set bits 0xa-0xe to 0
-	// r6450:000020e6 R6450-000000e6
-	reg_read_m(0x6450);
-	sfr_mask_data(1, 0x7c, 0);
-	reg_write_m(0x6450);
-	print_string("\r\nReg 0x6450: ");
-	print_reg(0x6450);
-
-	// SDS bits f-13 set to 0: r644c:0a418820 R644c-0a400820
-	reg_read_m(0x644c);
-	sfr_mask_data(2, 0x0f, 0);
-	sfr_mask_data(1, 0x80, 0);
-	reg_write_m(0x644c);
-	print_string("\r\nReg 0x644c: ");
-	print_reg(0x644c);
-
 	if (isRTL8373) {
+		sds_config_8224(0);
 		phy_config_8224();
+		// q012100:4902 Q012100:4949 q013605:0000 Q013605:4040 Q011f02:0000 q011f15:0086
+		sds_write_v(1, 0x21, 0x00, 0x4949);
+		sds_write_v(1, 0x36, 0x05, 0x4040);
+		sds_write_v(1, 0x1f, 0x02, 0x0000);
+		sleep(10);
+		sds_read(1, 0x1f, 0x15);
+		sleep(10);
 	} else {
 		phy_config(8);	// PHY configuration: External 8221B?
 		phy_config(3);	// PHY configuration: all internal PHYs?
+		// Set the MAC SerDes Modes Bits 0-4: SDS 0 = 0x2 (0x2), Bits 5-9: SDS 1: 1f (off)
+		// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
+		reg_read_m(RTL837X_REG_SDS_MODES);
+		sfr_mask_data(1, 0, 0x03);
+		sfr_mask_data(0, 0, 0xe2);
+		reg_write_m(RTL837X_REG_SDS_MODES);
 	}
-	// Set the MAC SerDes mode. Bits 0-4: SDS 0, Bits 5-9: SDS 1. Bits set to 1f
-	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
-	reg_read_m(RTL837X_REG_SDS_MODES);
-	sfr_mask_data(1, 0, 0x03);
-	sfr_mask_data(0, 0, 0xe2);
-	reg_write_m(RTL837X_REG_SDS_MODES);
-
-	// Init SerDes for 8224
-	if (isRTL8373)
-		sds_config_8224(0);
-
-	// r0b7c:000000d8 R0b7c-000000f8 r6040:00000030 R6040-00000031
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(0xa90);
 	sfr_mask_data(0, 0x0f,0x0c);
 	reg_write_m(0xa90);
-	print_string("\r\nReg 0xa90: ");
-	print_reg(0xa90);
 
 	if (isRTL8373)
 		rtl8224_phy_enable();
@@ -1454,8 +1401,6 @@ void rtl8372_init(void)
 	// r5fd4:0002914a R5fd4-001a914a
 	reg_bit_set(0x5fd4, 0x13);
 	reg_bit_set(0x5fd4, 0x14);
-	print_string("\r\nReg 0x5fd4: ");
-	print_reg(0x5fd4);
 
 	// Configure ports 3-8:
 	/*
@@ -1466,28 +1411,25 @@ void rtl8372_init(void)
 	* r1238:00000e33 R1238-00000e37 r1238:00000e37 R1238-00000e37 r1238:00000e37 R1238-00000f37 (identical)
 	*/
 	uint16_t reg = 0x1238; // Port base register for the bits we set
-	uint8_t numPorts = 9;
+	minPort = 0;
+	maxPort = 8;
+	nSFPPorts = 1; // FIXME: It could also be 2
 	if (!isRTL8373) {
-		numPorts = 6;
-		reg += 0x300;
+		minPort = 3;
+		maxPort = 8;
 	}
 
-	for (char i = 0; i < numPorts; i++) {
-		print_string("\r\nRegs: ");
-		print_reg(reg);
-		reg_bit_set(reg, 0x2);
-		reg_bit_set(reg, 0x4);
-		reg_bit_set(reg, 0x8);
-		print_string("now: ");
-		print_reg(reg);
+	for (char i = 0; i < 9; i++) {
+		if (i >= minPort && i <= maxPort) {
+			reg_bit_set(reg, 0x2);
+			reg_bit_set(reg, 0x4);
+			reg_bit_set(reg, 0x8);
+		}
 		reg += 0x100;
 	}
-	print_string("\r\n");
 
 	// r0b7c:000000d8 R0b7c-000000f8 r6040:00000030 R6040-00000031
 	reg_bit_set(0xb7c, 5);
-	print_string("\r\nReg 0x0b7c: ");
-	print_reg(0x0b7c);
 
 	if (isRTL8373) {
 		// R7124-00001050 R7128-00001050 R712c-00001050 R7130-00001050 R7134-00001050 R7138-00001050 R713c-00001050 R7140-00001050 R7144-00001050 R7148-00001050
@@ -1495,11 +1437,7 @@ void rtl8372_init(void)
 		REG_SET(0x7140, 0x1050); REG_SET(0x7144, 0x1050); REG_SET(0x7148, 0x1050);
 	}
 
-	print_string("\r\nB Reg 0x6040: ");
-	print_reg(RTL837X_REG_HW_CONF);
 	reg_bit_set(RTL837X_REG_HW_CONF, 0);
-	print_string("\r\nA Reg 0x6040: ");
-	print_reg(RTL837X_REG_HW_CONF);
 
 	// TODO: patch the PHYs
 
@@ -1519,8 +1457,10 @@ void rtl8372_init(void)
 		sfr_mask_data(1, 0x70, 0x80);
 	sfr_mask_data(2, 0x10, 0x1f);
 	reg_write_m(0x632c);
-	print_string("\r\nReg 0x632c: ");
-	print_reg(0x632c);
+
+	delay(1000);
+
+	handle_sfp();
 
 	print_string("\r\nrtl8372_init done\r\n");
 }
@@ -1588,8 +1528,6 @@ void setup_i2c(void)
 	sfr_mask_data(3, 0x20, 0x00); // Clear bit 29
 	sfr_mask_data(0, 0x60, 0x40); // Set bits 5-6 to 0b10
 	reg_write_m(0x7f90);
-	print_string("\r\nReg 0x7f90: ");
-	print_reg(0x7f909);
 }
 
 
@@ -1599,7 +1537,7 @@ void bootloader(void)
 	sbuf_ptr = 0;
 
 	CKCON = 0;	// Initial Clock configuration
-	SFR_97 = 0;
+	SFR_97 = 0;	// HADDR?
 
 	// Set in managed mode:
 	SFR_b9 = 0x00;
@@ -1622,12 +1560,28 @@ void bootloader(void)
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x3; // signal LOS and no module inserted
 
+	print_string("\r\nDetecting CPU");
 	isRTL8373 = 0; // FIXME: See below
 	reg_read_m(0x4);
 	if (sfr_data[1] == 0x73) { // Register was 0x83730000
+		print_string("\r\nRTL8373 detected");
 		isRTL8373 = 1;
 		rtl8224_enable();  // Power on the RTL8224
 	}
+
+	// Reset seconds counter
+	print_string("\r\nTIMER-TEST: \r\n");
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x0);
+	delay(100);
+	print_reg(RTL837X_REG_SEC_COUNTER); write_char(' ');
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x1);
+	delay(100);
+	print_reg(RTL837X_REG_SEC_COUNTER);
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x2); write_char(' ');
+	delay(100);
+	print_reg(RTL837X_REG_SEC_COUNTER);
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
+	print_reg(RTL837X_REG_SEC_COUNTER);
 
 	print_string("\r\nStarting up...\r\n");
 	print_string("  Flash controller\r\n");
@@ -1640,11 +1594,17 @@ void bootloader(void)
 	flash_read_security(0x0002000, 40);
 	print_string("\r\n  Testing read Securty Register 3\r\n");
 	flash_read_security(0x0003000, 40);
+	print_string("\r\n");
 
-	print_string("\r\n  Dumping flash at 0x100\r\n");
-	flash_dump(0x100, 252);
+	// r0024:00000f80 R0024-00000f84 r0024:00000f80
+	// Reset NIC
+	reg_bit_set(0x24, 2);
+	do {
+		reg_read(0x24);
+	} while (SFR_DATA_0 & 0x4);
+	print_string("\r\nNIC reset");
 	rtl8372_init();
-
+	REG_SET(0x7f94, 0x0);	// BUG: Only for testing, otherwise: clear bits 0-3
 	nic_setup();
 	was_offline = 1;
 
@@ -1661,6 +1621,10 @@ void bootloader(void)
 	print_string("\r\nRegister 0x7b20/RTL837X_REG_SDS_MODES: ");
 	print_reg(0x7b20);
 
+	print_string("\r\nVerifying PHY settings:\n");
+//	p031f.a610:2058 p041f.a610:2058  p051f.a610:2058  r4f3c:00000000 p061f.a610:2058 p071f.a610:2058 
+	port_stats_print();
+
 	print_string("\r\n> ");
 	char l = sbuf_ptr;
 	char line_ptr = l;
@@ -1670,7 +1634,9 @@ void bootloader(void)
 			write_char(sbuf[l]);
 			// Check whether there is a full line:
 			if (sbuf[l] == '\n' || sbuf[l] == '\r') {
+#ifdef DEBUG
 				print_long(ticks);
+#endif
 				// Print line and parse command into words
 				print_string("\r\n  CMD: ");
 				is_white = 1;
@@ -1713,6 +1679,9 @@ void bootloader(void)
 							if (c)
 								write_char(c);
 						}
+					}
+					if (cmd_compare(0, "stat")) {
+						port_stats_print();
 					}
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'd') {
 						print_string("\r\nDUMPING FLASH\r\n");

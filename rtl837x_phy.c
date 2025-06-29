@@ -13,8 +13,31 @@
 
 extern __code uint16_t bit_mask[16];
 
+/*
+P000001.1e000400:4480 P000001.1e0003f8:c842 p001e.03f8:4842
+P000001.1e000400:0400 P000001.1e0003f8:c9c2 p001e.03f8:49c2
+P000001.1e000400:6d02 P000001.1e0003f8:cc42 p001e.03f8:4c42
+P000001.1e000400:424e P000001.1e0003f8:cdc2 p001e.03f8:4dc2
+P000001.1e000400:0002 P000001.1e0003f8:cec2 p001e.03f8:4ec2
+P000001.1e000400:1390 P000001.1e0003f8:ce6c p001e.03f8:4e6c
+P000001.1e000400:003f P000001.1e0003f8:ca6c p001e.03f8:4a6c
+P000001.1e000400:0200 P000001.1e0003f8:c86c p001e.03f8:486c
+P000001.1e000400:0080 P000001.1e0003f8:c25c p001e.03f8:425c
+P000001.1e000400:0408 P000001.1e0003f8:c35c p001e.03f8:435c
+P000001.1e000400:020d P000001.1e0003f8:c3dc p001e.03f8:43dc
+P000001.1e000400:0601 P000001.1e0003f8:c4dc p001e.03f8:44dc
+P000001.1e000400:222c P000001.1e0003f8:c5dc p001e.03f8:45dc
+P000001.1e000400:a217 P000001.1e0003f8:c65c p001e.03f8:465c
+P000001.1e000400:fe40 P000001.1e0003f8:c6dc p001e.03f8:46dc
+P000001.1e000400:f5c1 P000001.1e0003f8:cadc p001e.03f8:4adc
+P000001.1e000400:0443 P000001.1e0003f8:cb5c p001e.03f8:4b5c
+P000001.1e000400:abb0 P000001.1e0003f8:cedc p001e.03f8:4edc
+P000001.1e000400:5078 P000001.1e0003f8:c90c p001e.03f8:490c
+P000001.1e000400:c45c P000001.1e0003f8:c18c p001e.03f8:418c
 
-__code uint16_t rtl8224_ca[40] = {
+*/
+
+__code uint16_t rtl8224_ca[41] = {
 	0x4480, 0xc842,
 	0x0400, 0xc9c2,
 	0x6d02, 0xcc42,
@@ -34,6 +57,7 @@ __code uint16_t rtl8224_ca[40] = {
 	0x0443, 0xcb5c,
 	0xabb0, 0xcedc,
 	0x5078, 0xc90c,
+	0xc45c, 0xc18c,
 	0, 0
 };
 
@@ -63,39 +87,30 @@ __code uint16_t rtl8224_cb[60] = {
 void rtl8224_phy_enable(void) __banked
 {
 	// p001e.0a90:00f3 R02f8-000000f3 R02f4-000000fc P000001.1e000a90:00fc
-	print_string(", phy-reg a90read: ");
+	print_string("\r\nrtl8224_phy_enable called\r\n");
 	phy_read(0, 0x1e, 0xa90);
 	uint16_t pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
-	print_short(pval);
-	print_string("\r\n");
 
 	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f8: ");
-	print_reg(0x2f8);
 
 	delay(10);
 
 	pval &= 0xfff0;
 	pval |= 0x0c;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f4: ");
-	print_reg(0x2f4);
 
 	delay(10);
 
 	phy_write(0x1, 0x1e, 0xa90, pval);
 
-	print_string(", phy-reg a90 read again: ");
 	phy_read(0, 0x1e, 0xa90);
 	pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
-	print_short(pval);
-	print_string("\r\n");
-
+	print_string("\r\nrtl8224_phy_enable done\r\n");
 }
 
 
@@ -105,7 +120,7 @@ void phy_config(uint8_t phy) __banked
 	print_string("\r\nphy_config: ");
 	write_char('0' + phy);
 
-	sleep(20);
+	delay(20);
 	// PHY configuration: External 8221B?
 //	p081e.75f3:ffff P000100.1e0075f3:fffe
 	phy_read(phy, 0x1e, 0x75f3);
@@ -113,7 +128,7 @@ void phy_config(uint8_t phy) __banked
 	pval <<= 8;
 	pval |= SFR_DATA_0 & 0xfe;
 	phy_write(bit_mask[phy], 0x1e, 0x75f3, pval);
-	sleep(20);
+	delay(20);
 
 //	p081e.697a:ffff P000100.1e00697a:ffc1 / p031e.697a:0003 P000008.1e00697a:0001
 	// SERDES OPTION 1 Register (MMD 30.0x6) bits 0-5: 0x01: Set HiSGMII+SGMII
@@ -122,7 +137,7 @@ void phy_config(uint8_t phy) __banked
 	pval <<= 8;
 	pval |= SFR_DATA_0 & 0xc0 | 0x01;
 	phy_write(bit_mask[phy], 0x1e, 0x697a, pval);
-	sleep(20);
+	delay(20);
 
 //	p031f.a432:0811 P000008.1f00a432:0831
 	// PHYCR2 PHY Specific Control Register 2, MMD 31. 0xA432), set bit 5: enable EEE
@@ -139,7 +154,7 @@ void phy_config(uint8_t phy) __banked
 	pval <<= 8;
 	pval |= SFR_DATA_0 | 0x1;
 	phy_write(bit_mask[phy], 0x7, 0x3e, pval);
-	sleep(20);
+	delay(20);
 
 //	p031f.a442:043c P000008.1f00a442:0430
 	// Unknown, but clear bits 2/3
@@ -148,11 +163,11 @@ void phy_config(uint8_t phy) __banked
 	pval <<= 8;
 	pval |= SFR_DATA_0 & 0xf3;
 	phy_write(bit_mask[phy], 0x1f, 0xa442, pval);
-	sleep(20);
+	delay(20);
 
 	// P000100.1e0075b5:e084
 	phy_write(bit_mask[phy], 0x1e, 0x75b5, 0xe084);
-	sleep(20);
+	delay(20);
 
 //	p031e.75b2:0000 P000008.1e0075b2:0060
 	// set bits 5/6
@@ -161,7 +176,7 @@ void phy_config(uint8_t phy) __banked
 	pval <<= 8;
 	pval |= SFR_DATA_0 | 0x60;
 	phy_write(bit_mask[phy], 0x1e, 0x75b2, pval);
-	sleep(20);
+	delay(20);
 
 //	p081f.d040:ffff P000100.1f00d040:feff
 	// LCR6 (LED Control Register 6, MMD 31.D040), set bits 8/9 to 0b10
@@ -170,7 +185,7 @@ void phy_config(uint8_t phy) __banked
 	pval <<= 8;
 	pval |= SFR_DATA_0;
 	phy_write(bit_mask[phy], 0x1e, 0xd040, pval);
-	sleep(20);
+	delay(20);
 
 //	p081f.a400:ffff P000100.1f00a400:ffff, then: p081f.a400:ffff P000100.1f00a400:bfff
 //	p031f.a400:1040 P000008.1f00a400:5040, then: p031f.a400:5040 P000008.1f00a400:1040
@@ -182,14 +197,14 @@ void phy_config(uint8_t phy) __banked
 	pval <<= 8;
 	pval |= SFR_DATA_0;
 	phy_write(bit_mask[phy], 0x1f, 0xa400, pval);
-	sleep(20);
+	delay(20);
 
 	phy_read(phy, 0x1f, 0xa400);
 	pval = SFR_DATA_8 & 0xbf;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
 	phy_write(bit_mask[phy], 0x1f, 0xa400, pval);
-	sleep(20);
+	delay(20);
 
 	print_string("\r\n  phy config done\r\n");
 }
@@ -200,45 +215,41 @@ void phy_config_8224(void) __banked
 	// p001e.7b20:0bff R02f8-00000bff R02f4-00000bff P000001.1e007b20:0bff p001e.7b20:0bff R02f8-00000bff R02f4-00000bff P000001.1e007b20:0bff p001e.7b20:0bff R02f8-00000bff R02f4-00000bed P000001.1e007b20:0bed
 
 	uint16_t pval;
-	print_string("\r\nphy_config RTL8224");
-	sleep(20);
+	print_string("\r\nphy_config_8224 called\r\n");
 	// p001e.7b20:0bff R02f8-00000bff R02f4-00000bed P000001.1e007b20:0bed
 	phy_read(0, 0x1e, 0x7b20);
 	pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
 	phy_write(0x01, 0x1e, 0x7b20, pval);
-	print_string("\r\n0x7b20 => "); print_short(pval);
 
-	sleep(20);
+	delay(20);
 
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f8: ");
-	print_reg(0x2f8);
 
-	sleep(20);
+	delay(20);
 	pval &= 0xfed;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
-	print_string("\r\nA Reg 0x2f4: ");
-	print_reg(0x2f4);
 
-	sleep(20);
+	delay(20);
 	phy_write(0x01, 0x1e, 0x7b20, pval);
 
-	sleep(20);
+	delay(100);
 
-	print_string("\r\nS");
 	uint8_t i = 0;
 	while (rtl8224_ca[i]) {
 		phy_write(0x1, 0x1e, 0x400, rtl8224_ca[i]);
 		i++;
+		delay(10);
 		phy_write(0x1, 0x1e, 0x3f8, rtl8224_ca[i]);
 		i++;
 		do {
 			phy_read(0, 0x1e, 0x3f8);
 		} while (SFR_DATA_8 & 0x80);
 	}
-	print_string("\r\nSx");
+
+/*
+	print_string("\r\nS");
 	i = 0;
 	while (rtl8224_cb[i] != 0xffff) {
 		phy_write(0x1, 0x1e, 0x400, rtl8224_cb[i]);
@@ -264,7 +275,6 @@ void phy_config_8224(void) __banked
 	do {
 		phy_read(0, 0x1e, 0x3f8);
 	} while (SFR_DATA_8 & 0x80);
-	print_string("\r\nT");
 
 	// P000001.1e000400:001f P000001.1e0003f8:c13e p001e.03f8:413e P000001.1e0003f8:8abe p001e.03f8:0abe p001e.03fc:0057
 	phy_write(0x1, 0x1e, 0x400, 0x1f);
@@ -273,28 +283,26 @@ void phy_config_8224(void) __banked
 		phy_read(0, 0x1e, 0x3f8);
 	} while (SFR_DATA_8 & 0x80);
 	phy_write(0x1, 0x1e, 0x3f8, 0x8abe);
-	print_string("\r\nU");
 	do {
 		phy_read(0, 0x1e, 0x3f8);
 	} while (SFR_DATA_8 & 0x80);
-	print_string("\r\nV");
 	do {
 		phy_read(0, 0x1e, 0x3fc);
 	} while (SFR_DATA_8 & 0x80);
 	sleep (10);
 
-	print_string("\r\nW");
 	// P000001.1e0003f8:800a p001e.03f8:000a p001e.03fc:100d P000001.1e0003f8:800a p001e.03f8:000a p001e.03fc:100d
 	phy_write(0x1, 0x1e, 0x3f8, 0x800a);
 	do {
 		phy_read(0, 0x1e, 0x3f8);
 	} while (SFR_DATA_8 & 0x80);
-	print_string("\r\nX");
 	sleep (10);
 	phy_write(0x1, 0x1e, 0x3f8, 0x800a);
 	do {
 		phy_read(0, 0x1e, 0x3f8);
 	} while (SFR_DATA_8 & 0x80);
-	print_string("\r\nY");
 	sleep (10);
+	*/
+
+	print_string("\r\nphy_config_8224 done\r\n");
 }
