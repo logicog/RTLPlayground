@@ -1492,11 +1492,6 @@ void setup_serial(void)
 }
 
 
-__code struct command commands[N_COMMANDS] = {
-	{ "reset", 1 },
-};
-
-
 uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 {
 	signed char i;
@@ -1569,6 +1564,7 @@ void bootloader(void)
 		rtl8224_enable();  // Power on the RTL8224
 	}
 
+#ifdef DEBUG
 	// Reset seconds counter
 	print_string("\r\nTIMER-TEST: \r\n");
 	REG_SET(RTL837X_REG_SEC_COUNTER, 0x0);
@@ -1582,27 +1578,19 @@ void bootloader(void)
 	print_reg(RTL837X_REG_SEC_COUNTER);
 	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
 	print_reg(RTL837X_REG_SEC_COUNTER);
+#endif
 
 	print_string("\r\nStarting up...\r\n");
 	print_string("  Flash controller\r\n");
 	flash_init(0);
 
-	// The following will only show something else then 0xff if it was programmed for a managed switch
-	print_string("\r\n  Testing read Securty Register 1\r\n");
-	flash_read_security(0x0001000, 40);
-	print_string("\r\n  Testing read Securty Register 2\r\n");
-	flash_read_security(0x0002000, 40);
-	print_string("\r\n  Testing read Securty Register 3\r\n");
-	flash_read_security(0x0003000, 40);
-	print_string("\r\n");
-
-	// r0024:00000f80 R0024-00000f84 r0024:00000f80
 	// Reset NIC
 	reg_bit_set(0x24, 2);
 	do {
 		reg_read(0x24);
 	} while (SFR_DATA_0 & 0x4);
 	print_string("\r\nNIC reset");
+
 	rtl8372_init();
 	REG_SET(0x7f94, 0x0);	// BUG: Only for testing, otherwise: clear bits 0-3
 	nic_setup();
@@ -1659,12 +1647,13 @@ void bootloader(void)
 				// Identify command
 				signed char i = cmd_words_b[0];
 				if (i >= 0 && cmd_words_b[1] >= 0) {
-					// print_string("\r\n  THERE may be a command: ");
-					// print_short(i); print_string("\r\n");
-					// print_short(cmd_words_b[0]); print_string("\r\n");
-					// print_short(cmd_words_b[1]); print_string("\r\n");
-					// print_short(cmd_words_b[2]); print_string("\r\n");
-					// print_short(cmd_words_b[3]); print_string("\r\n");
+/*					print_string("\r\n  THERE may be a command: ");
+					print_short(i); print_string("\r\n");
+					print_short(cmd_words_b[0]); print_string("\r\n");
+					print_short(cmd_words_b[1]); print_string("\r\n");
+					print_short(cmd_words_b[2]); print_string("\r\n");
+					print_short(cmd_words_b[3]); print_string("\r\n");
+*/
 					if (cmd_compare(0, "reset")) {
 						print_string("\r\nRESET\n\n");
 						reset_chip();
@@ -1682,6 +1671,13 @@ void bootloader(void)
 					}
 					if (cmd_compare(0, "stat")) {
 						port_stats_print();
+					}
+					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'r') {
+						print_string("\r\nPRINT SECURITY REGISTERS\r\n");
+						// The following will only show something else then 0xff if it was programmed for a managed switch
+						flash_read_security(0x0001000, 40);
+						flash_read_security(0x0002000, 40);
+						flash_read_security(0x0003000, 40);
 					}
 					if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'd') {
 						print_string("\r\nDUMPING FLASH\r\n");
@@ -1711,6 +1707,27 @@ void bootloader(void)
 						for (uint8_t i = 0; i < 20; i++)
 							flash_buf[i] = greeting[i];
 						flash_write_bytes(0x20000, flash_buf, 20);
+					}
+					if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
+						print_string("\r\nPORT ");
+						uint8_t p = sbuf[cmd_words_b[1]] - '1';
+						print_byte(p);
+						if (cmd_words_b[2] > 0 && cmd_compare(2, "2g5")) {
+							print_string(" 2.5G\r\n");
+							phy_set_mode(p, PHY_SPEED_2G5, 0, 0);
+						}
+						if (cmd_words_b[2] > 0 && cmd_compare(2, "1g")) {
+							print_string(" 1G\r\n");
+							phy_set_mode(p, PHY_SPEED_1G, 0, 0);
+						}
+						if (cmd_words_b[2] > 0 && cmd_compare(2, "auto")) {
+							print_string(" AUTO\r\n");
+							phy_set_mode(p, PHY_SPEED_AUTO, 0, 0);
+						}
+						if (cmd_words_b[2] > 0 && cmd_compare(2, "off")) {
+							print_string(" OFF\r\n");
+							phy_set_mode(p, PHY_OFF, 0, 0);
+						}
 					}
 				}
 				print_string("\r\n> ");

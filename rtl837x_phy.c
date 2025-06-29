@@ -4,10 +4,13 @@
  * This code is in the Public Domain
  */
 
+// #define REGDBG
+
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_phy.h"
 
 #pragma codeseg BANK1
 
@@ -37,7 +40,7 @@ P000001.1e000400:c45c P000001.1e0003f8:c18c p001e.03f8:418c
 
 */
 
-__code uint16_t rtl8224_ca[41] = {
+__code uint16_t rtl8224_ca[42] = {
 	0x4480, 0xc842,
 	0x0400, 0xc9c2,
 	0x6d02, 0xcc42,
@@ -305,4 +308,52 @@ void phy_config_8224(void) __banked
 	*/
 
 	print_string("\r\nphy_config_8224 done\r\n");
+}
+
+
+/*
+ * Set Speed, duplex and flow control mode of a PHY
+ * See e.g. RTL8221B datasheet
+ */
+void phy_set_mode(uint8_t port, uint8_t speed, uint8_t flow_control, uint8_t duplex) __banked
+{
+	uint16_t v;
+	phy_read(port, 0x1f, 0xa610);
+	v = (((uint16_t)SFR_DATA_8) << 8) | SFR_DATA_0;
+	if (speed == PHY_OFF) {
+		phy_write(bit_mask[port], 0x1f, 0xa4610, v | 0x0800);
+		return;
+	}
+	// Port is on, make sure of it:
+	if (v & 0x0800)
+		phy_write(bit_mask[port], 0x1f, 0xa4610, v & 0xf7ff);
+
+	if (speed == PHY_SPEED_AUTO) {
+			// AN Advertisement Register (MMD 7.0x0010)
+			phy_write(bit_mask[port], 0x07, 0x10, 0x1001);	// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
+			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
+			phy_write(bit_mask[port], 0x07, 0x20, 0x6081);	// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timin enableed
+			phy_write(bit_mask[port], 0x07, 0x00, 0x3200);	// Restart AN
+	} else {
+		// AN Control Register (MMD 7.0x0000)
+		phy_write(bit_mask[port], 0x07, 0x00, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
+		// AN Advertisement Register (MMD 7.0x0010)
+		phy_write(bit_mask[port], 0x07, 0x10, 0x1001);	// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
+		if (speed == PHY_SPEED_1G) {
+			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
+			phy_write(bit_mask[port], 0x07, 0x20, 0x6001);	// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
+			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
+			phy_read(port, 0x1f, 0xa412);
+			v = (((uint16_t)SFR_DATA_8) << 8) | SFR_DATA_0;
+			phy_write(bit_mask[port], 0x1f, 0xa412, v | 0x0200);
+		} else if (speed == PHY_SPEED_2G5) {
+			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
+			phy_write(bit_mask[port], 0x07, 0x20, 0x6081);	// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timin enableed
+			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
+			phy_read(port, 0x1f, 0xa412);
+			v = (((uint16_t)SFR_DATA_8) << 8) | SFR_DATA_0;
+			phy_write(bit_mask[port], 0x1f, 0xa412, v & 0xfdff);
+		}
+		phy_write(bit_mask[port], 0x07, 0x00, 0x3200);	// Enable AN
+	}
 }

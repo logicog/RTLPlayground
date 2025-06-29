@@ -188,4 +188,89 @@ devices, set 8N1 @ 115200 baud and power up the switch.
 The device will perform some examples and provide a minimal console, the
 documentation of which can be found in the source code rtlplayground.c`.
 
+## The command line
+The command line is very rudimentary and mostly for testing purposes.
+The following is a boot-log with some examples:
+```
+Detecting CPU
+RTL8373 detected
+Starting up...
+  Flash controller
+
+NIC reset
+rtl8372_init called
+
+RTL837X_REG_SDS_MODES: 0x00000bed
+
+phy_config_8224 called
+
+phy_config_8224 done
+
+rtl8224_phy_enable called
+
+rtl8224_phy_enable done
+X
+rtl8372_init done
+
+A minimal prompt to explore the RTL8372:
+
+CPU detected: RTL8373
+Clock register: 0x00001101
+Register 0x7b20/RTL837X_REG_SDS_MODES: 0x00000bed
+Verifying PHY settings:
+
+ Port   State   Link    TxGood          TxBad           RxGood          RxBad
+1       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+2       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+3       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+4       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+5       On      2.5G    0x00000008      0x00000000      0x00000000      0x00000000
+6       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+7       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+8       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+9       NO SFP  Down    0x00000000      0x00000000      0x00000000      0x00000000
+
+> port 5 1g
+  CMD: port 5 1g
+PORT 04 1G
+
+> stat
+  CMD: stat
+ Port   State   Link    TxGood          TxBad           RxGood          RxBad
+1       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+2       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+3       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+4       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+5       On      1000M   0x00000035      0x00000000      0x00000017      0x00000000
+6       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+7       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+8       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+9       NO SFP  Down    0x00000000      0x00000000      0x00000000      0x00000000
+
+>
+<SFP-RX OK>
+
+<MODULE INSERTED>  Rate: 67  Encoding: 01
+Lightron Inc.   WSPXG-ES3LC-IHA 0000
+
+
+> stat
+  CMD: stat
+ Port   State   Link    TxGood          TxBad           RxGood          RxBad
+1       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+2       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+3       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+4       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+5       On      1000M   0x00000065      0x00000000      0x0000003b      0x00000000
+6       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+7       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+8       On      Down    0x00000000      0x00000000      0x00000000      0x00000000
+9       SFP OK  10G     0x00000000      0x00000000      0x0000001c      0x00000000
+
+> sfp
+  CMD: sfp
+Rate: 67  Encoding: 01
+Lightron Inc.   WSPXG-ES3LC-IHA 0000
+
+```
 Enjoy playing!
