@@ -1594,6 +1594,8 @@ void bootloader(void)
 	rtl8372_init();
 	REG_SET(0x7f94, 0x0);	// BUG: Only for testing, otherwise: clear bits 0-3
 	nic_setup();
+	vlan_setup();
+
 	was_offline = 1;
 
 	setup_i2c();
@@ -1728,6 +1730,9 @@ void bootloader(void)
 							print_string(" OFF\r\n");
 							phy_set_mode(p, PHY_OFF, 0, 0);
 						}
+					}
+					if (cmd_compare(0, "l2")) {
+						port_l2_learned();
 					}
 				}
 				print_string("\r\n> ");
