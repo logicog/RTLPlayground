@@ -5,5 +5,7 @@ uint8_t port_l2_forget(void) __banked;
 void port_l2_learned(void) __banked;
 void port_stats_print(void) __banked;
 void vlan_setup(void) __banked;
-
+void port_pvid_set(uint8_t port, uint16_t pvid) __banked;
+void vlan_create(uint16_t vlan, uint16_t members, uint16_t tagged) __banked;
+void vlan_delete(uint16_t vlan) __banked;
 #endif

@@ -47,7 +47,7 @@ volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 
-#define N_WORDS 10
+#define N_WORDS 16
 __xdata signed char cmd_words_b[N_WORDS];
 
 // Buffer for serial input, SBUF_SIZE must be power of 2 < 256
@@ -62,8 +62,11 @@ __code uint8_t * __code hex = "0123456789abcdef";
 __xdata uint8_t flash_buf[256];
 
 // For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
-// the RTL_FRAME_TAG_ID is used as part of an 8-byte tag
+// the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
+// the VLAN tag is inserted after the RTL tag
+// See here for the RTL tag: https://github.com/torvalds/linux/commit/1521d5adfc2b557e15f97283c8b7ad688c3ebc40
 #define RTL_TAG_SIZE		8
+#define VLAN_TAG_SIZE		4
 #define RTL_FRAME_TAG_ID	0x8899
 
 // For RX and TX, an 8 byte header describing the frame to be moved to the Asic
@@ -82,6 +85,7 @@ __xdata uint32_t ipv4_checksum;	// Note that this is little endian
 __xdata uint8_t minPort;
 __xdata uint8_t maxPort;
 __xdata uint8_t nSFPPorts;
+__xdata uint8_t cpuPort;
 
 
 __xdata uint8_t was_offline;
@@ -754,14 +758,14 @@ void prepare_icmp_reply(void)
 		tx_buf[34 + i] = ownIP[i];
 	// RTL Tag after dest-mac and source-mac: 8 Bytes
 	for (uint8_t i = 0; i < 4; i++)
-		tx_buf[26 + i] = rx_buf[26 + i];
+		tx_buf[26 + i] = rx_buf[18 + RTL_TAG_SIZE + VLAN_TAG_SIZE + i];
 	for (uint8_t i = 0; i < 4; i++)		// DEST-IP
-		tx_buf[38 + i] = rx_buf[34 + i];
+		tx_buf[38 + i] = rx_buf[26 + RTL_TAG_SIZE + VLAN_TAG_SIZE + i];
 	tx_buf[4] = tx_buf[25] = 84;		// TCP length
 	tx_buf[4] = 84 + ETHER_HEADER_SIZE;	// Total Ethernet frame len
 	tx_buf[5] = tx_buf[24] = 0;
 	for (uint8_t i = 0; i < 60; i++)	// Copy sequence number, id, timestamp and data over
-		tx_buf[RTL_FRAME_HEADER_SIZE + 38 + i] = rx_buf[RTL_TAG_SIZE + 38 + i];
+		tx_buf[RTL_FRAME_HEADER_SIZE + 38 + i] = rx_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE + 38 + i];
 }
 
 
@@ -822,7 +826,7 @@ void handle_rx(void)
 #endif
 		}  else if (rx_buf[0] == ownMAC[0] && rx_buf[1] == ownMAC[1] && rx_buf[2] == ownMAC[2]
 				&& rx_buf[3] == ownMAC[3] && rx_buf[4] == ownMAC[4] && rx_buf[5] == ownMAC[5]) {
-			if (rx_buf[31] == 0x01) {
+			if (rx_buf[23 + RTL_TAG_SIZE + VLAN_TAG_SIZE] == 0x01) {
 #ifdef RXTXDBG
 				print_string("ICMP PING REQ\r\n");
 #endif
@@ -1413,6 +1417,7 @@ void rtl8372_init(void)
 	uint16_t reg = 0x1238; // Port base register for the bits we set
 	minPort = 0;
 	maxPort = 8;
+	cpuPort = 9;
 	nSFPPorts = 1; // FIXME: It could also be 2
 	if (!isRTL8373) {
 		minPort = 3;
@@ -1526,6 +1531,21 @@ void setup_i2c(void)
 }
 
 
+uint8_t atoi_short(uint16_t *vlan, uint8_t idx)
+{
+	uint8_t err = 1;
+	*vlan = 0;
+
+	while (sbuf[idx] >= '0' && sbuf[idx] <= '9') {
+		err = 0;
+		*vlan = (*vlan * 10) + sbuf[idx] - '0';
+		idx++;
+	}
+	return err;
+}
+
+
+
 void bootloader(void)
 {
 	ticks = 0;
@@ -1628,7 +1648,6 @@ void bootloader(void)
 				print_long(ticks);
 #endif
 				// Print line and parse command into words
-				print_string("\r\n  CMD: ");
 				is_white = 1;
 				uint8_t word = 0;
 				cmd_words_b[0] = -1;
@@ -1641,6 +1660,11 @@ void bootloader(void)
 						is_white = 1;
 					write_char(sbuf[line_ptr++]);
 					line_ptr &= SBUF_SIZE - 1;
+					if (word >= N_WORDS - 1) {
+						print_string("\r\ntoo many arguments, truncated");
+						line_ptr = l;	// BUG: We should probably ignore the command
+						break;
+					}
 				}
 				cmd_words_b[word++] = line_ptr;
 				cmd_words_b[word++] = -1;
@@ -1733,6 +1757,43 @@ void bootloader(void)
 					}
 					if (cmd_compare(0, "l2")) {
 						port_l2_learned();
+					}
+					if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
+						__xdata uint16_t pvid;
+						uint8_t port;
+						port = sbuf[cmd_words_b[1]] - '0';
+						if (!atoi_short(&pvid, cmd_words_b[2]))
+							port_pvid_set(port, pvid);
+					}
+					if (cmd_compare(0, "vlan")) {
+						__xdata uint16_t vlan;
+						__xdata uint16_t members = 0;
+						__xdata uint16_t tagged = 0;
+						if (!atoi_short(&vlan, cmd_words_b[1])) {
+							print_short(vlan);
+							if (cmd_words_b[2] > 0 && sbuf[cmd_words_b[2]] == 'd') {
+								vlan_delete(vlan);
+							} else {
+								uint8_t w = 2;
+								while (cmd_words_b[w] > 0) {
+									uint8_t port;
+									if (sbuf[cmd_words_b[w]] >= '0' && sbuf[cmd_words_b[w]] <= '9') {
+										port = sbuf[cmd_words_b[w]] - '1';
+										if (sbuf[cmd_words_b[w] + 1] >= '0' && sbuf[cmd_words_b[w] + 1] <= '9') {
+											port = (port + 1) * 10 + sbuf[cmd_words_b[w] + 1] - '1';
+											if (sbuf[cmd_words_b[w] + 2] == 't')
+												tagged |= ((uint16_t)1) << port;
+										} else {
+											if (sbuf[cmd_words_b[w] + 1] == 't')
+												tagged |= ((uint16_t)1) << port;
+										}
+										members |= ((uint16_t)1) << port;
+									}
+									w++;
+								}
+								vlan_create(vlan, members, tagged);
+							}
+						}
 					}
 				}
 				print_string("\r\n> ");

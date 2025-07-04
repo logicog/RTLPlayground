@@ -31,7 +31,8 @@ length as given by the length in the frame header + 7, again divided by 8.
 The received frame will have an RTL proprietary Ethernet frame type of
 0x8899 (RRPC) where normally the frame type 0x0800 for IPv4 would be located.
 Further 6 bytes follow describing the frame, before the normal IPv4 data
-starts.
+starts. A documentation can be found here:
+[TAG8899_COMMIT](https://github.com/torvalds/linux/commit/1521d5adfc2b557e15f97283c8b7ad688c3ebc40)
 
 After copying over header and frame, the frame is marked read in the ring
 buffer on the ASIC side by writing 0x1 to RTL837X_REG_RX_DONE (0x784c).

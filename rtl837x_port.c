@@ -3,7 +3,8 @@
  * This code is in the Public Domain
  */
 
-// #define REGDBG
+#define REGDBG
+#define DEBUG
 
 #include <stdint.h>
 #include "rtl837x_common.h"
@@ -17,6 +18,7 @@ extern __xdata uint8_t minPort;
 extern __xdata uint8_t maxPort;
 extern __xdata uint8_t nSFPPorts;
 extern __xdata uint8_t sfr_data[4];
+extern __xdata uint8_t cpuPort;
 
 __xdata	uint32_t l2_head;
 
@@ -29,7 +31,12 @@ __xdata	uint32_t l2_head;
  * CC: BIT 0: 01: Execute. Bit 1: 1: WRITE, 0: READ
  * TT: 04: L2-table, 03: VLAN-table
  */
-#define TBL_L2_UNICAST 0x04
+// Table operation bit-smasks
+#define TBL_WRITE	0x02
+#define TBL_EXECUTE	0x01
+// Table types
+#define TBL_L2_UNICAST	0x04
+#define TBL_VLAN 	0x03
 
 #define RTL837x_TBL_DATA_0	0x5cb0
 #define RTL837x_L2_LIST_DATA_A	0x5ccc
@@ -39,6 +46,83 @@ __xdata	uint32_t l2_head;
 
 #define RTL837x_PVID_BASE_REG	0x4e1c
 
+
+void port_mirror(uint8_t port, uint16_t source_mask, uint8_t directions) __banked
+{
+	print_string("\r\nport_mirror called \r\n");
+}
+
+
+void port_pvid_set(uint8_t port, uint16_t pvid) __banked
+{
+	// r4e1c:00001001 R4e1c-000017d0 r6738:00000000 R6738-00000000 (no filtering)
+	print_string("\r\nport_pvid_set called \r\n");
+	uint16_t reg = RTL837x_PVID_BASE_REG + ((port >> 1) << 2);
+
+	reg_read_m(reg);
+	if (port & 0x1) {
+		REG_WRITE(reg, sfr_data[0], pvid >> 4, sfr_data[2] & 0x0f | (pvid << 4), sfr_data[3]);
+	} else {
+		REG_WRITE(reg, sfr_data[0], sfr_data[1], sfr_data[2] & 0xf0 | (pvid >> 8), pvid);
+	}
+}
+
+
+void vlan_delete(uint16_t vlan) __banked
+{
+	print_string("\r\nvlan_delete called \r\n");
+	// R5cac-07d30301 r5cac:07d30300
+}
+
+
+/*
+ * A member that is not tagged, is untagged
+ */
+void vlan_create(uint16_t vlan, uint16_t members, uint16_t tagged) __banked
+{
+	/* First line:
+		7-9: Untagged: 1-1, Not-Member: 1-0
+		0111111111
+		1111000000
+		9  port  0
+
+		1-3: Untagged: 1-1
+		0111111111
+		1000000111
+
+		1-3: Tagged: 0-1
+		0111111000
+		1000000111
+
+		7-9: Tagged: 0-1
+		0000111111
+		1111000000
+		In 1-0 -> 1-1   FIRST Bit: XOR, Second bit stays
+		In 1-1 -> 0-1
+		In 0-1 // Not allowed
+		In 0-0 -> 1-0
+	*/
+	// R5cb8-02 07e207 R5cac-07d20303
+	print_string("\r\nvlan_create called: "); print_short(vlan); write_char(' '); print_short(members); write_char(':'); print_short(tagged);
+
+	uint16_t a = members ^ tagged;
+	// Initialize VLAN table with VLAN 1
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0x02, (a >> 8) & 0x0f, (a << 2) | (tagged >> 8), tagged);
+	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & TBL_EXECUTE);
+	print_string("\r\nvlan_create done \r\n");
+}
+
+
+/*
+ * Configures a default VLAN 1 and enables 4k VLAN tables
+ * All ports are made members of the VLAN and VLAN filtering
+ * is enabled on all ports
+ * PVID is set to 1 for all ports
+ * Called upon reboot
+ */
 void vlan_setup(void) __banked
 {
 	print_string("\r\nvlan_setup called \r\n");
@@ -48,42 +132,65 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x01);
+	} while (sfr_data[3] & TBL_EXECUTE);
 
 	// Set PVID 1 for every port. TODO: Skip unused ports!
-	for (uint8_t i =  minPort; i <= maxPort + 1; i++) {  // Do this also for the CPU port
-		print_byte(i); write_char(':'); write_char(' ');
+	for (uint8_t i =  minPort; i <= maxPort + 1; i++) {  // Do this also for the CPU port (+1)
 		uint16_t reg = RTL837x_PVID_BASE_REG + ((i >> 1) << 2);
+#ifdef DEBUG
+		print_byte(i); write_char(':'); write_char(' ');
 		print_short(reg);  write_char(' '); write_char('B'); write_char('>');
 		print_sfr_data();
+#endif
 		reg_read_m(reg);
 		if (i & 0x1) {
 			REG_WRITE(reg, sfr_data[0], 0, sfr_data[2] & 0x0f | 0x10, sfr_data[3]);
 		} else {
 			REG_WRITE(reg, sfr_data[0], sfr_data[1], sfr_data[2] & 0xf0, 0x01);
 		}
+#ifdef DEBUG
+		reg_read_m(reg);
 		write_char(' '); write_char('A'); write_char('>'); print_sfr_data();
+#endif
 
+		// EGRESS filtering for port: removal of additional VLAN tag
 		reg_bit_clear(0x6738, i << 1);
-		reg_bit_clear(0x6738, i << 1 + 1);
-		reg_bit_set(0x4e18, i);
+		reg_bit_clear(0x6738, (i << 1) + 1);
+		if (i != cpuPort)
+			reg_bit_set(0x4e18, i);
+		else
+			reg_bit_clear(0x4e18, i);
+#ifdef DEBUG
 		print_string("\r\n");
+#endif
 	}
-
 	// Enable 4k VLAN
 	REG_SET(0x4e14, 4);
 	REG_SET(0x4e30, 0);
 	REG_SET(0x4e34, 0);
 
-	// Enable VLAN 1
-	REG_SET(RTL837x_TBL_DATA_IN_A, 0x0207ffff);
-	REG_SET(RTL837X_TBL_CTRL, 0x00010303);
+	// Enable VLAN 1: Ports 0-9, i.e. including the CPU port are untagged members
+	REG_SET(RTL837x_TBL_DATA_IN_A, 0x0207ffff);		// 02: Entry valid, 7ffff: membership
+	REG_SET(RTL837X_TBL_CTRL, 0x00010303);	// Write VLAN 1
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x01);
+	} while (sfr_data[3] & TBL_EXECUTE);
+
+	// Configure trunking
+	REG_SET(0x4f4c, 0x0000007e);
+
+#ifdef DEBUG
+	print_string("\r\nvlan_setup, REG 0x6738: "); print_reg(0x6738);
+	print_string("\r\nvlan_setup, REG 0x4e18: "); print_reg(0x4e18);
+	print_string("\r\nvlan_setup, REG 0x4e14: "); print_reg(0x4e14);
+	print_string("\r\nvlan_setup, REG 0x4e30: "); print_reg(0x4e30);
+	print_string("\r\nvlan_setup, REG 0x4e34: "); print_reg(0x4e34);
+	print_string("\r\nvlan_setup, REG 0x4f4c: "); print_reg(0x4f4c);
+#endif
 
 	print_string("\r\nvlan_setup done \r\n");
 }
+
 
 /*
  * Forget all dynamic L2 learned entries
@@ -119,7 +226,7 @@ void port_l2_learned(void) __banked
 	uint16_t first_entry = 0xffff; // Table does not have that many entries
 
 	while (1) {
-		uint8_t port = 0;
+		uint8_t port = 0, other = 0;
 		reg_read_m(RTL837x_TBL_DATA_0);
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
 
@@ -130,32 +237,34 @@ void port_l2_learned(void) __banked
 
 		// MAC
 		reg_read_m(RTL837x_L2_LIST_DATA_B);
-		print_byte(sfr_data[2]); write_char(':');
-		print_byte(sfr_data[3]); write_char(':');
-		port = (sfr_data[0] >> 6) & 0x3;
-		reg_read_m(RTL837x_L2_LIST_DATA_A);
-		print_byte(sfr_data[0]); write_char(':');
-		print_byte(sfr_data[1]); write_char(':');
-		print_byte(sfr_data[2]); write_char(':');
-		print_byte(sfr_data[3]); write_char('\t');
+		if ((sfr_data[0] & 0x20)) {	// Check entry is valid
+			print_byte(sfr_data[2]); write_char(':');
+			print_byte(sfr_data[3]); write_char(':');
+			port = (sfr_data[0] >> 6) & 0x3;
+			other = sfr_data[0];
+			reg_read_m(RTL837x_L2_LIST_DATA_A);
+			print_byte(sfr_data[0]); write_char(':');
+			print_byte(sfr_data[1]); write_char(':');
+			print_byte(sfr_data[2]); write_char(':');
+			print_byte(sfr_data[3]); write_char('\t');
 
-		// VLAN
-		reg_read_m(RTL837x_L2_LIST_DATA_B);
-		print_short( ((uint16_t) (sfr_data[0] & 0x0f)) | sfr_data[1]); // VLAN
+			// VLAN
+			reg_read_m(RTL837x_L2_LIST_DATA_B);
+			print_short( ((uint16_t) (sfr_data[0] & 0x0f)) | sfr_data[1]); // VLAN
 
-		// type
-		reg_read_m(RTL837x_L2_LIST_DATA_C);
-		if (sfr_data[2] & 0x1)
-			print_string("\tstatic\t");
-		else
-			print_string("\tlearned\t");
+			// type
+			reg_read_m(RTL837x_L2_LIST_DATA_C);
+			if (sfr_data[2] & 0x1)
+				print_string("\tstatic\t");
+			else
+				print_string("\tlearned\t");
 
-		port |= (sfr_data[3] & 0x3) << 2;
-		if (port < 9)
-			write_char('1' + port);
-		else
-			print_string("10");
-
+			port |= (sfr_data[3] & 0x3) << 2;
+			if (port < 9)
+				write_char('1' + port);
+			else
+				print_string("10");
+		}
 		reg_read_m(RTL837x_TBL_DATA_0);
 		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3] + 1;
 		if (first_entry == 0xffff) {
@@ -164,9 +273,12 @@ void port_l2_learned(void) __banked
 			if (first_entry == entry)
 				break;
 		}
+#ifdef DEBUG
+		write_char(' '); print_sfr_data();
+		write_char(' '); print_byte(other);
+#endif
 		print_string("\r\n");
 	}
-	print_string("\r\nport_l2_learned done \r\n");
 }
 
 
