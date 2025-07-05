@@ -3,7 +3,10 @@
 
 // Headers for calls in the common code area (HOME/BANK0)
 
+#define SBUF_SIZE 256
+
 void print_string(__code char *p);
+void print_long(uint32_t a);
 void print_short(uint16_t a);
 void print_byte(uint8_t a);
 void print_sfr_data(void);
@@ -21,5 +24,6 @@ void print_reg(uint16_t reg);
 uint8_t sfp_read_reg(uint8_t reg);
 void reg_bit_set(uint16_t reg_addr, char bit);
 void reg_bit_clear(uint16_t reg_addr, char bit);
+void reset_chip(void);
 
 #endif

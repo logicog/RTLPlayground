@@ -7,7 +7,7 @@ AFLAGS= -plosgff
 
 all: rtlplayground.bin injector
 
-SRCS= rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c
+SRCS= rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c
 OBJS= ${SRCS:.c=.rel}
 
 clean:

@@ -47,9 +47,19 @@ __xdata	uint32_t l2_head;
 #define RTL837x_PVID_BASE_REG	0x4e1c
 
 
-void port_mirror(uint8_t port, uint16_t source_mask, uint8_t directions) __banked
+void port_mirror_set(uint8_t port, uint16_t rx_pmask, uint16_t tx_pmask) __banked
 {
-	print_string("\r\nport_mirror called \r\n");
+	print_string("\r\nport_mirror_set called \r\n");
+
+	REG_WRITE(0x604c, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
+	REG_WRITE(0x6048, 0, 0, 0, (port << 1) | 0x1);
+}
+
+
+void port_mirror_del()
+{
+	print_string("\r\nport_mirror_del called \r\n");
+	REG_SET(0x6048, 0);
 }
 
 
