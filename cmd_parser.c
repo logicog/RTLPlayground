@@ -144,7 +144,7 @@ void parse_mirror(void) __banked
 }
 
 
-void cmd_parser(void)
+void cmd_parser(void) __banked
 {
 	while (l != sbuf_ptr) {
 		write_char(sbuf[l]);
