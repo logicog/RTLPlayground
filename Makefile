@@ -5,10 +5,15 @@ CC_FLAGS = -mmcs51
 ASM = sdas8051
 AFLAGS= -plosgff
 
-all: rtlplayground.bin injector
+SUBDIRS := uip
+
+all: $(SUBDIRS) rtlplayground.bin injector
 
 SRCS= rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c
 OBJS= ${SRCS:.c=.rel}
+
+$(SUBDIRS):
+	$(MAKE) -C $@
 
 clean:
 	if [ -e rtlplayground.bin ]; then rm rtlplayground.bin; fi
@@ -38,5 +43,5 @@ rtlplayground.ihx:  crtstart.rel $(OBJS)
 injector: injector.c
 	gcc $^ -o $@
 
-.PHONY: clean all
+.PHONY: clean all $(SUBDIRS)
 .PRECIOUS: %.rel %.ihx .img
