@@ -25,5 +25,6 @@ uint8_t sfp_read_reg(uint8_t reg);
 void reg_bit_set(uint16_t reg_addr, char bit);
 void reg_bit_clear(uint16_t reg_addr, char bit);
 void reset_chip(void);
+void memcpy(register __xdata uint8_t *dst, register __xdata uint8_t *src, register uint16_t len);
 
 #endif

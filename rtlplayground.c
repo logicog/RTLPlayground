@@ -11,6 +11,7 @@
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "cmd_parser.h"
+#include "uip/uipopt.h"
 
 #define SYS_TICK_HZ 100
 #define SERIAL_BAUD_RATE 115200
@@ -53,7 +54,7 @@ __xdata char sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
-__code uint8_t * __code greeting = "\r\nA minimal prompt to explore the RTL8372:\r\n";
+__code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
 __code uint8_t * __code hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[256];
@@ -70,14 +71,14 @@ __xdata uint8_t flash_buf[256];
 // and received from the Asic is used
 #define RTL_FRAME_HEADER_SIZE	8
 
-// This is the standard size of n Ethernet frame header
+// This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
 
 __xdata uint8_t rx_headers[32];
 __xdata uint8_t rx_buf[2048];	// FIXME: Currently no maximum packet size checked
 __xdata uint8_t tx_buf[2048];
+__xdata uint8_t uip_buf[UIP_BUFSIZE+2];
 __xdata uint8_t tx_seq;
-__xdata uint32_t ipv4_checksum;	// Note that this is little endian
 
 __xdata uint8_t minPort;
 __xdata uint8_t maxPort;
@@ -146,6 +147,12 @@ void write_char(char c)
 	do {
 	} while (TI == 0);
 	TI = 0;
+	if (c =='\n') {
+		SBUF = '\r';
+		do {
+		} while (TI == 0);
+		TI = 0;
+	}
 	SBUF = c;
 }
 
@@ -155,6 +162,14 @@ void print_string(__code char *p)
 	while (*p)
 		write_char(*p++);
 }
+
+
+void memcpy(register __xdata uint8_t *dst, register __xdata uint8_t *src, register uint16_t len)
+{
+	while (len--)
+		*dst++ = *src++;
+}
+
 
 void print_short(uint16_t a)
 {
@@ -547,9 +562,9 @@ void sds_config_mac(uint8_t sds, uint8_t mode)
 	if (isRTL8373) // Set 3rd SERDES Mode to 0x2:
 		sfr_data[2] |= 0x08;
 	reg_write_m(RTL837X_REG_SDS_MODES);
-	print_string("\r\nRTL837X_REG_SDS_MODES: ");
+	print_string("\nRTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
-	print_string("\r\n");
+	print_string("\n");
 }
 
 // Delay for given number of ticks without doing housekeeping
@@ -637,9 +652,9 @@ void sds_config(uint8_t sds, uint8_t mode)
 
 	uint8_t page = 0;
 	uint16_t v = 0;
-	print_string("\r\nTrying to set SDS mode to 0x");
+	print_string("\nTrying to set SDS mode to 0x");
 	print_byte(mode);
-	print_string("\r\n");
+	print_string("\n");
 
 	switch (mode) {
 	case SDS_SGMII:
@@ -657,7 +672,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 		page = 0x2e;
 		break;
 	default:
-		print_string("Error in SDS Mode\r\n");
+		print_string("Error in SDS Mode\n");
 		return;
 	}
 	sds_write_v(sds, 0x36, 0x10, v); // Q003610:0200
@@ -771,7 +786,7 @@ void handle_rx(void)
 	reg_read_m(RTL837X_REG_RX_AVAIL);
 	if (sfr_data[2] != 0 || sfr_data[3] != 0) {
 #ifdef RXTXDBG
-		print_string("\r\nrx:");
+		print_string("\nrx:");
 		print_long_x(sfr_data);
 #endif
 		reg_read_m(RTL837X_REG_RX_RINGPTR);
@@ -799,7 +814,7 @@ void handle_rx(void)
 
 		nic_rx_packet((uint16_t) rx_buf, ring_ptr + 8);
 #ifdef RXTXDBG
-		print_string("\r\n<< ");
+		print_string("\n<< ");
 		ptr = rx_buf;
 		for (uint8_t i = 0; i < 80; i++) {
 			print_byte(*ptr++);
@@ -819,13 +834,13 @@ void handle_rx(void)
 				&& rx_buf[3] == 0xff && rx_buf[4] == 0xff && rx_buf[5] == 0xff) {
 			prepare_arp(0);
 #ifdef RXTXDBG
-			print_string("\r\nBROADCAST\r\n");
+			print_string("\nBROADCAST\n");
 #endif
 		}  else if (rx_buf[0] == ownMAC[0] && rx_buf[1] == ownMAC[1] && rx_buf[2] == ownMAC[2]
 				&& rx_buf[3] == ownMAC[3] && rx_buf[4] == ownMAC[4] && rx_buf[5] == ownMAC[5]) {
 			if (rx_buf[23 + RTL_TAG_SIZE + VLAN_TAG_SIZE] == 0x01) {
 #ifdef RXTXDBG
-				print_string("ICMP PING REQ\r\n");
+				print_string("ICMP PING REQ\n");
 #endif
 				prepare_icmp_reply();
 			} else {
@@ -837,7 +852,7 @@ void handle_rx(void)
 
 #ifdef RXTXDBG
 		reg_read_m(0x7880);
-		print_string("\r\nDO TX. 0x7880: ");
+		print_string("\nDO TX. 0x7880: ");
 		print_long_x(sfr_data);
 #endif
 		reg_read_m(0x7890);
@@ -845,12 +860,12 @@ void handle_rx(void)
 #ifdef RXTXDBG
 		print_string(", 0x7890: ");
 		print_long_x(sfr_data);
-		print_string("\r\n>> ");
+		print_string("\n>> ");
 		for (uint8_t i = 0; i < 120; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
-		print_string("\r\n> ");
+		print_string("\n> ");
 #endif
 		ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 		ring_ptr |= sfr_data[3];
@@ -873,20 +888,20 @@ void handle_sfp(void)
 	reg_read_m(RTL837X_REG_GPIO_B);
 	if ((sfp_pins_last & 0x1) && (!(sfr_data[0] & 0x40))) {
 		sfp_pins_last &= ~0x01;
-		print_string("\r\n<MODULE INSERTED>  ");
+		print_string("\n<MODULE INSERTED>  ");
 		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
 		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
 		delay(100); // Delay, because some modules need time to wake up
 		uint8_t rate = sfp_read_reg(12);
 		print_string("Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
 		print_string("  Encoding: "); print_byte(sfp_read_reg(11));
-		print_string("\r\n");
+		print_string("\n");
 		for (uint8_t i = 20; i < 60; i++) {
 			uint8_t c = sfp_read_reg(i);
 			if (c)
 				write_char(c);
 		}
-		print_string("\r\n");
+		print_string("\n");
 		if (rate == 0xd)
 			sds_config(1, SDS_1000BX_FIBER);
 		if (rate == 0x1f)  // Ethernet 2.5 GBit
@@ -897,17 +912,17 @@ void handle_sfp(void)
 	}
 	if ((!(sfp_pins_last & 0x1)) && (sfr_data[0] & 0x40)) {
 		sfp_pins_last |= 0x01;
-		print_string("\r\n<MODULE REMOVED>\r\n");
+		print_string("\n<MODULE REMOVED>\n");
 	}
 
 	reg_read_m(RTL837X_REG_GPIO_C);
 	if ((sfp_pins_last & 0x2) && (!(sfr_data[3] & 0x20))) {
 		sfp_pins_last &= ~0x02;
-		print_string("\r\n<SFP-RX OK>\r\n");
+		print_string("\n<SFP-RX OK>\n");
 	}
 	if ((!(sfp_pins_last & 0x2)) && (sfr_data[3] & 0x20)) {
 		sfp_pins_last |= 0x02;
-		print_string("\r\n<SFP-RX LOS>\r\n");
+		print_string("\n<SFP-RX LOS>\n");
 	}
 }
 
@@ -952,11 +967,11 @@ void idle(void)
 
 	reg_read_m(RTL837X_REG_LINKS);
 	if (!isRTL8373 && cmp_4(sfr_data, linkbits_last)) {
-		print_string("\r\n<new link: ");
+		print_string("\n<new link: ");
 		print_long_x(sfr_data);
 		print_string(", was ");
 		print_long_x(linkbits_last);
-		print_string(">\r\n");
+		print_string(">\n");
 		uint8_t p5 = sfr_data[2] >> 4;
 		uint8_t p5_last = linkbits_last[2] >> 4;
 		cpy_4(linkbits_last, sfr_data);
@@ -1324,11 +1339,11 @@ void led_config(void)
 void rtl8372_init(void)
 {
 	// From run, set bits 0-1 to 1
-	print_string("\r\nrtl8372_init called\r\n");
+	print_string("\nrtl8372_init called\n");
 /*	reg_read_m(0x7f90);
 	sfr_mask_data(0, 0, 3);
 	reg_write_m(0x7f90);
-	print_string("\r\nA Reg 0x7f90: ");
+	print_string("\nA Reg 0x7f90: ");
 	print_reg(0x7f90);
 */
 
@@ -1464,7 +1479,7 @@ void rtl8372_init(void)
 
 	handle_sfp();
 
-	print_string("\r\nrtl8372_init done\r\n");
+	print_string("\nrtl8372_init done\n");
 }
 
 
@@ -1537,18 +1552,18 @@ void bootloader(void)
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x3; // signal LOS and no module inserted
 
-	print_string("\r\nDetecting CPU");
+	print_string("\nDetecting CPU");
 	isRTL8373 = 0; // FIXME: See below
 	reg_read_m(0x4);
 	if (sfr_data[1] == 0x73) { // Register was 0x83730000
-		print_string("\r\nRTL8373 detected");
+		print_string("\nRTL8373 detected");
 		isRTL8373 = 1;
 		rtl8224_enable();  // Power on the RTL8224
 	}
 
 #ifdef DEBUG
 	// Reset seconds counter
-	print_string("\r\nTIMER-TEST: \r\n");
+	print_string("\nTIMER-TEST: \n");
 	REG_SET(RTL837X_REG_SEC_COUNTER, 0x0);
 	delay(100);
 	print_reg(RTL837X_REG_SEC_COUNTER); write_char(' ');
@@ -1562,8 +1577,8 @@ void bootloader(void)
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
 
-	print_string("\r\nStarting up...\r\n");
-	print_string("  Flash controller\r\n");
+	print_string("\nStarting up...\n");
+	print_string("  Flash controller\n");
 	flash_init(0);
 
 	// Reset NIC
@@ -1571,7 +1586,7 @@ void bootloader(void)
 	do {
 		reg_read(0x24);
 	} while (SFR_DATA_0 & 0x4);
-	print_string("\r\nNIC reset");
+	print_string("\nNIC reset");
 
 	rtl8372_init();
 	REG_SET(0x7f94, 0x0);	// BUG: Only for testing, otherwise: clear bits 0-3
@@ -1583,21 +1598,21 @@ void bootloader(void)
 	setup_i2c();
 
 	print_string(greeting);
-	print_string("\r\nCPU detected: ");
+	print_string("\nCPU detected: ");
 	if (isRTL8373)
 		print_string("RTL8373");
 	else
 		print_string("RTL8372");
-	print_string("\r\nClock register: ");
+	print_string("\nClock register: ");
 	print_reg(0x6040);
-	print_string("\r\nRegister 0x7b20/RTL837X_REG_SDS_MODES: ");
+	print_string("\nRegister 0x7b20/RTL837X_REG_SDS_MODES: ");
 	print_reg(0x7b20);
 
-	print_string("\r\nVerifying PHY settings:\n");
+	print_string("\nVerifying PHY settings:\n");
 //	p031f.a610:2058 p041f.a610:2058  p051f.a610:2058  r4f3c:00000000 p061f.a610:2058 p071f.a610:2058 
 	port_stats_print();
 
-	print_string("\r\n> ");
+	print_string("\n> ");
 	cmd_parser_setup();
 	while (1) {
 		cmd_parser();
