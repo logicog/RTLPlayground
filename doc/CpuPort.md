@@ -44,6 +44,7 @@ and transferring both to the ASIC side via the SFRs.
 ```
 SS 07 00 00 LL LH 00 00 
 SS:	8-bit sequence number
+07:	Enables header and TCP checksum offloading to ASIC
 LHLL:	Length of the Ethernet frame
 ```
 The Ethernet frame data starts immediately after the frame header in xdata
