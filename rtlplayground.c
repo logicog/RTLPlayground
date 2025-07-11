@@ -442,7 +442,6 @@ void nic_tx_packet(uint16_t ring_ptr)
 	SFR_NIC_RING_L = ring_ptr;
 	SFR_NIC_RING_H = ring_ptr >> 8;
 	uint16_t len =(((uint16_t)uip_buf[VLAN_TAG_SIZE + 5]) << 8) | uip_buf[VLAN_TAG_SIZE + 4];
-	print_string("\n>> "); write_char('['); print_short(len); write_char(']'); write_char(' ');
 	len += 0xf;
 	len >>= 3;
 	SFR_NIC_CTRL = len;
@@ -772,7 +771,6 @@ uint8_t sfp_read_reg(uint8_t reg)
  */
 void tcpip_output(void)
 {
-	print_string("\n>> "); write_char('('); print_short(uip_len); write_char(')'); write_char(' ');
 	__xdata uint8_t *ptr = &uip_buf[0];
 	// Add RTL-TAG
 	uip_buf[VLAN_TAG_SIZE] = tx_seq++;
@@ -785,21 +783,18 @@ void tcpip_output(void)
 	reg_read_m(0x7890);
 	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 	ring_ptr |= sfr_data[3];
-	print_string("\nring_ptr: "); print_short(ring_ptr);
+	/*
 	for (uint8_t i = 0; i < 120; i++) {
 		print_byte(*ptr++);
 		write_char(' ');
 	}
-
+	*/
 	nic_tx_packet(ring_ptr);
 
 	reg_read_m(0x7884);
-	print_string("\nring_ptr now: "); print_short(ring_ptr);
-
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 	sfr_data[3] = 0x1;
 	reg_write_m(0x7850);
-	print_string("done\n");
 }
 
 
@@ -813,40 +808,39 @@ void handle_rx(void)
 		ring_ptr <<= 3;
 		nic_rx_header(ring_ptr);
 		__xdata uint8_t *ptr = rx_headers;
-
+/*
 		print_string("RX on port "); print_byte(rx_headers[3] & 0xf);
 		print_string(": ");
 		for (uint8_t i = 0; i < 8; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
-
+*/
 		nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8);
 
-		print_string("\n<< ");
+/*		print_string("\n<< ");
 		ptr = &uip_buf[0];
 		for (uint8_t i = 0; i < 80; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
-
+*/
 		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 		sfr_data[3] = 0x1;
 		reg_write_m(RTL837X_REG_RX_DONE);
 		uip_len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
-		write_char('>'); print_byte(uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
-		write_char('>'); print_byte(uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
+//		write_char('>'); print_byte(uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
+//		write_char('>'); print_byte(uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
+		// Check for ARP packet
 		if (uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x08 && uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x06) {
 			uip_arp_arpin();
 			if (uip_len) {
-			    print_string("UIP-ARP returned packet for TX, size "); print_short(uip_len); write_char('\n');
 			    tcpip_output();
 			}
 		} else if (uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x08 && uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x00) {
 			uip_arp_ipin();
 			uip_input();
 			if (uip_len) {
-				print_string("UIP returned packet for TX, size "); print_short(uip_len); write_char('\n');
 				// Add ethernet frame
 				uip_arp_out();
 				tcpip_output();
@@ -861,14 +855,11 @@ void handle_tx(void)
 	for(uint8_t i = 0; i < UIP_CONNS; i++) {
 		uip_periodic(i);
 		if(uip_len > 0) {
-			print_string("UIP periodic send packet for "); print_byte(i);
 			uip_arp_out();
 			tcpip_output();
-			print_string("Transmit done\n");
 		}
 	}
 }
-
 
 
 void handle_sfp(void)
@@ -1593,13 +1584,10 @@ void bootloader(void)
 
 	print_string("A\n");
 	REG_SET(0x7f94, 0x0);	// BUG: Only for testing, otherwise: clear bits 0-3
-	print_string("B\n");
 	nic_setup();
-	print_string("C\n");
 	vlan_setup();
-	print_string("D\n");
+	uip_init();
 	uip_arp_init();
-	print_string("E\n");
 
 	was_offline = 1;
 

@@ -185,7 +185,7 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  * This function should be called at boot up to initilize the uIP
  * TCP/IP stack.
  */
-void uip_init(void);
+void uip_init(void) __banked;
 
 /**
  * uIP initialization function.

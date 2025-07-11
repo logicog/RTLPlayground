@@ -94,7 +94,6 @@ uip_neighbor_add(uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr *addr)
   printf("Adding neighbor with link address %02x:%02x:%02x:%02x:%02x:%02x\n",
 	 addr->addr.addr[0], addr->addr.addr[1], addr->addr.addr[2], addr->addr.addr[3],
 	 addr->addr.addr[4], addr->addr.addr[5]);
-  */
   print_string("Adding neighbor with link address ");
   print_byte(addr->addr.addr[0]); write_char(':');
   print_byte(addr->addr.addr[1]); write_char(':');
@@ -103,6 +102,7 @@ uip_neighbor_add(uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr *addr)
   print_byte(addr->addr.addr[4]); write_char(':');
   print_byte(addr->addr.addr[5]); write_char(':');
   write_char('\n');
+  */
   
   /* Find the first unused entry or the oldest used entry. */
   oldest_time = 0;

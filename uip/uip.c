@@ -368,8 +368,9 @@ uip_udpchksum(void)
 #endif /* UIP_ARCH_CHKSUM */
 /*---------------------------------------------------------------------------*/
 void
-uip_init(void)
+uip_init(void) __banked
 {
+  uint8_t c;
   for(c = 0; c < UIP_LISTENPORTS; ++c) {
     uip_listenports[c] = 0;
   }
@@ -801,6 +802,7 @@ uip_process(u8_t flag) __banked
     }
     goto drop;
   }
+
 #if UIP_UDP
   if(flag == UIP_UDP_TIMER) {
     if(uip_udp_conn->lport != 0) {
@@ -816,7 +818,6 @@ uip_process(u8_t flag) __banked
   }
 #endif
 
-  print_string("R1\n");
   /* This is where the input processing starts. */
   UIP_STAT(++uip_stat.ip.recv);
 
@@ -832,7 +833,6 @@ uip_process(u8_t flag) __banked
   }
 #else /* UIP_CONF_IPV6 */
   /* Check validity of the IP header. */
-  print_string("R2: "); print_byte(BUF->vhl); write_char('\n');
   if(BUF->vhl != 0x45)  { /* IP version and header length. */
     UIP_STAT(++uip_stat.ip.drop);
     UIP_STAT(++uip_stat.ip.vhlerr);
@@ -840,7 +840,6 @@ uip_process(u8_t flag) __banked
     goto drop;
   }
 #endif /* UIP_CONF_IPV6 */
-  print_string("R2a\n");
   /* Check the size of the packet. If the size reported to us in
      uip_len is smaller the size reported in the IP header, we assume
      that the packet has been corrupted in transit. If the size of
@@ -849,7 +848,6 @@ uip_process(u8_t flag) __banked
      value.. */
 
   if((BUF->len[0] << 8) + BUF->len[1] <= uip_len) {
-    print_string("R2b\n");
     uip_len = (BUF->len[0] << 8) + BUF->len[1];
 #if UIP_CONF_IPV6
     uip_len += 40; /* The length reported in the IPv6 header is the
@@ -885,7 +883,6 @@ uip_process(u8_t flag) __banked
   }
 #endif /* UIP_CONF_IPV6 */
 
-  print_string("R2b\n");
   if(uip_ipaddr_cmpc(uip_hostaddr, all_zeroes_addr)) {
     /* If we are configured to use ping IP address configuration and
        hasn't been assigned an IP address yet, we accept all ICMP
@@ -980,7 +977,6 @@ uip_process(u8_t flag) __banked
     goto drop;
   }
 
-  print_string("IS ICMP\n");
   /* If we are configured to use ping IP address assignment, we use
      the destination IP address of this ping packet and assign it to
      ourself. */
@@ -1867,7 +1863,6 @@ uip_process(u8_t flag) __banked
   /* Return and let the caller do the actual transmission. */
   uip_flags = 0;
 
-  print_string("uip_process done");
   return;
  drop:
   uip_len = 0;
