@@ -50,7 +50,7 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 }
 
 
-uint8_t atoi_short(uint16_t *vlan, uint8_t idx)
+uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
 	uint8_t err = 1;
 	*vlan = 0;

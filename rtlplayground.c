@@ -12,6 +12,8 @@
 #include "rtl837x_port.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
+#include "uip/uip.h"
+#include "uip/uip_arp.h"
 
 #define SYS_TICK_HZ 100
 #define SERIAL_BAUD_RATE 115200
@@ -39,9 +41,13 @@
 #define CLOCK_DIV 0
 #endif
 
+__xdata uint8_t idle_ready;
+
 __code uint8_t ownIP[] = { 192, 168, 2, 2 };
+__code struct uip_eth_addr uip_ethaddr = {{ 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x02 }};
 __code uint8_t ownMAC[] = { 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x02 };
-__code uint8_t gatewayIP[] = { 192, 168, 2, 1};
+__code uint8_t gatewayIP[] = { 192, 168, 2, 22};
+__code uint8_t netmask[] = { 255, 255, 255, 0};
 
 __xdata uint8_t isRTL8373;
 
@@ -59,25 +65,10 @@ __code uint8_t * __code hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[256];
 
-// For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
-// the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
-// the VLAN tag is inserted after the RTL tag
-// See here for the RTL tag: https://github.com/torvalds/linux/commit/1521d5adfc2b557e15f97283c8b7ad688c3ebc40
-#define RTL_TAG_SIZE		8
-#define VLAN_TAG_SIZE		4
-#define RTL_FRAME_TAG_ID	0x8899
+// NIC buffers for packet RX/TX
+__xdata uint8_t rx_headers[16]; // Packet header(s) on RX
+__xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
-// For RX and TX, an 8 byte header describing the frame to be moved to the Asic
-// and received from the Asic is used
-#define RTL_FRAME_HEADER_SIZE	8
-
-// This is the standard size of an Ethernet frame header
-#define ETHER_HEADER_SIZE	14
-
-__xdata uint8_t rx_headers[32];
-__xdata uint8_t rx_buf[2048];	// FIXME: Currently no maximum packet size checked
-__xdata uint8_t tx_buf[2048];
-__xdata uint8_t uip_buf[UIP_BUFSIZE+2];
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t minPort;
@@ -164,10 +155,49 @@ void print_string(__code char *p)
 }
 
 
-void memcpy(register __xdata uint8_t *dst, register __xdata uint8_t *src, register uint16_t len)
+void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16_t len)
+{
+	__xdata uint8_t *d = dst;
+	__xdata const uint8_t *s = src;
+	while (len--)
+		*d++ = *s++;
+}
+
+void memcpyc(register __xdata uint8_t *dst, register __code uint8_t *src, register uint16_t len)
 {
 	while (len--)
 		*dst++ = *src++;
+}
+
+
+void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register uint8_t len)
+{
+	while (len--)
+		*dst++ = v;
+}
+
+void strtox(register __xdata uint8_t *dst, register __code const char *s)
+{
+	while (*s)
+		*dst++ = *s++;
+	*dst = 0;
+}
+
+uint16_t strlen(register __code const char *s)
+{
+	uint16_t l = 0;
+	while (s[l])
+		l++;
+	return l;
+}
+
+
+uint16_t strlen_x(register __xdata const char *s)
+{
+	uint16_t l = 0;
+	while (s[l])
+		l++;
+	return l;
 }
 
 
@@ -180,7 +210,7 @@ void print_short(uint16_t a)
 }
 
 
-void print_long(uint32_t a)
+void print_long(__xdata uint32_t a)
 {
 	print_string("0x");
 	for (signed char i = 28; i >= 0; i -= 4) {
@@ -383,7 +413,7 @@ void nic_rx_header(uint16_t ring_ptr)
  * data will be returned in the xmem buffer points to
  * ring_ptr is the current position of the RX Ring on the ASIC side
  */
-void nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
+void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 {
 	SFR_NIC_DATA_H = buffer >> 8;
 	SFR_NIC_DATA_L = buffer;
@@ -403,14 +433,16 @@ void nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
 
 void nic_tx_packet(uint16_t ring_ptr)
 {
-	uint16_t buffer = (uint16_t) tx_buf;
+//	uint16_t buffer = (uint16_t) tx_buf;
+	uint16_t buffer = (uint16_t) uip_buf + VLAN_TAG_SIZE;
 	SFR_NIC_DATA_H = buffer >> 8;
 	SFR_NIC_DATA_L = buffer;
 	ring_ptr <<= 3;
 	ring_ptr |= 0x8000;
 	SFR_NIC_RING_L = ring_ptr;
 	SFR_NIC_RING_H = ring_ptr >> 8;
-	uint16_t len =(((uint16_t)tx_buf[5]) << 8) | tx_buf[4];
+	uint16_t len =(((uint16_t)uip_buf[VLAN_TAG_SIZE + 5]) << 8) | uip_buf[VLAN_TAG_SIZE + 4];
+	print_string("\n>> "); write_char('['); print_short(len); write_char(']'); write_char(' ');
 	len += 0xf;
 	len >>= 3;
 	SFR_NIC_CTRL = len;
@@ -439,7 +471,7 @@ uint8_t read_flash(uint8_t bank, __code uint8_t *addr)
 void print_long_x(__xdata uint8_t v[])
 {
 	write_char('0'); write_char('x');
-	for (int i=0; i < 4; i++) {
+	for (uint8_t i=0; i < 4; i++) {
 		write_char(hex[v[i] >> 4]);
 		write_char(hex[v[i] & 0xf]);
 	}
@@ -530,7 +562,7 @@ void print_sds_reg(uint8_t sds_id, uint8_t page, uint8_t reg)
 
 char cmp_4(__xdata uint8_t a[], __xdata uint8_t b[])
 {
-	for (int i = 0; i < 4; i++) {
+	for (uint8_t i = 0; i < 4; i++) {
 		if (a[i] == b[i])
 			continue;
 		if (a[i] < b[i])
@@ -543,7 +575,7 @@ char cmp_4(__xdata uint8_t a[], __xdata uint8_t b[])
 
 void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 {
-	for (int i = 0; i < 4; i++)
+	for (uint8_t i = 0; i < 4; i++)
 		dest[i] = source[i];
 }
 
@@ -734,50 +766,40 @@ uint8_t sfp_read_reg(uint8_t reg)
 }
 
 
-void prepare_arp(uint8_t broadcast)
+/*
+ * Adds TX Header to uip_buf and calls nic_tx_packet to send the packet
+ * over the wire
+ */
+void tcpip_output(void)
 {
-	for (uint8_t i = 0; i < arp_broadcast[4]; i++)
-		tx_buf[i] = arp_broadcast[i];
-	tx_buf[0] = tx_seq++;
-	for (uint8_t i = 0; i < 6; i++)
-		tx_buf[14 + i] = tx_buf[30 + i] = ownMAC[i];
-	for (uint8_t i = 0; i < 4; i++)
-		tx_buf[36 + i] = ownIP[i];
-	if (broadcast) {
-		for (uint8_t i = 0; i < 4; i++)
-			tx_buf[46 + i] = ownIP[i];	// An annoucement, using own IP. Will also need to ask for GW
-	} else {
-		for (uint8_t i = 0; i < 4; i++)
-			tx_buf[46 + i] = gatewayIP[i];
+	print_string("\n>> "); write_char('('); print_short(uip_len); write_char(')'); write_char(' ');
+	__xdata uint8_t *ptr = &uip_buf[0];
+	// Add RTL-TAG
+	uip_buf[VLAN_TAG_SIZE] = tx_seq++;
+	uip_buf[VLAN_TAG_SIZE + 1] = 0x07;    // Enable all checksums
+	uip_buf[VLAN_TAG_SIZE + 5] = uip_len >> 8;
+	uip_buf[VLAN_TAG_SIZE + 4] = uip_len;
+	uip_buf[VLAN_TAG_SIZE + 2] = uip_buf[VLAN_TAG_SIZE + 3] = 0;
+	uip_buf[VLAN_TAG_SIZE + 6] = uip_buf[VLAN_TAG_SIZE + 7] = 0;
+
+	reg_read_m(0x7890);
+	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
+	ring_ptr |= sfr_data[3];
+	print_string("\nring_ptr: "); print_short(ring_ptr);
+	for (uint8_t i = 0; i < 120; i++) {
+		print_byte(*ptr++);
+		write_char(' ');
 	}
-}
 
+	nic_tx_packet(ring_ptr);
 
-void prepare_icmp_reply(void)
-{
-	for (uint8_t i = 0; i < arp_broadcast[4]; i++)
-		tx_buf[i] = arp_broadcast[i];
-	tx_buf[0] = tx_seq++;
-	for (uint8_t i = 0; i < 6; i++)
-		tx_buf[8 + i] = rx_buf[6 + i];
-	for (uint8_t i = 0; i < 6; i++)
-		tx_buf[14 + i] = ownMAC[i];
-	tx_buf[20] = 0x08; tx_buf[21] = 0; tx_buf[22] = 0x45; tx_buf[0x23] = 0x00;
-	tx_buf[28] = 0x40; tx_buf[29] = 0x00;	// DONT FRAG, FRAG 0
-	tx_buf[26] = 0xef; tx_buf[27] = 0xdf;	// ID
-	tx_buf[30] = 0x40; tx_buf[31] = 0x01;	// TTL, ICMP
-	for (uint8_t i = 0; i < 4; i++)
-		tx_buf[34 + i] = ownIP[i];
-	// RTL Tag after dest-mac and source-mac: 8 Bytes
-	for (uint8_t i = 0; i < 4; i++)
-		tx_buf[26 + i] = rx_buf[18 + RTL_TAG_SIZE + VLAN_TAG_SIZE + i];
-	for (uint8_t i = 0; i < 4; i++)		// DEST-IP
-		tx_buf[38 + i] = rx_buf[26 + RTL_TAG_SIZE + VLAN_TAG_SIZE + i];
-	tx_buf[4] = tx_buf[25] = 84;		// TCP length
-	tx_buf[4] = 84 + ETHER_HEADER_SIZE;	// Total Ethernet frame len
-	tx_buf[5] = tx_buf[24] = 0;
-	for (uint8_t i = 0; i < 60; i++)	// Copy sequence number, id, timestamp and data over
-		tx_buf[RTL_FRAME_HEADER_SIZE + 38 + i] = rx_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE + 38 + i];
+	reg_read_m(0x7884);
+	print_string("\nring_ptr now: "); print_short(ring_ptr);
+
+	sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
+	sfr_data[3] = 0x1;
+	reg_write_m(0x7850);
+	print_string("done\n");
 }
 
 
@@ -785,103 +807,69 @@ void handle_rx(void)
 {
 	reg_read_m(RTL837X_REG_RX_AVAIL);
 	if (sfr_data[2] != 0 || sfr_data[3] != 0) {
-#ifdef RXTXDBG
-		print_string("\nrx:");
-		print_long_x(sfr_data);
-#endif
 		reg_read_m(RTL837X_REG_RX_RINGPTR);
-#ifdef RXTXDBG
-		print_string(", ");
-		print_long_x(sfr_data);
-#endif
 		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 		ring_ptr |= sfr_data[3];
 		ring_ptr <<= 3;
-#ifdef RXTXDBG
-		print_string(", ring_ptr: ");
-		print_short(ring_ptr);
-#endif
 		nic_rx_header(ring_ptr);
 		__xdata uint8_t *ptr = rx_headers;
-#ifdef RXTXDBG
-		print_string(", on port "); print_byte(rx_headers[3] & 0xf);
+
+		print_string("RX on port "); print_byte(rx_headers[3] & 0xf);
 		print_string(": ");
 		for (uint8_t i = 0; i < 8; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
-#endif
 
-		nic_rx_packet((uint16_t) rx_buf, ring_ptr + 8);
-#ifdef RXTXDBG
+		nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8);
+
 		print_string("\n<< ");
-		ptr = rx_buf;
+		ptr = &uip_buf[0];
 		for (uint8_t i = 0; i < 80; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
-#endif
 
 		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 		sfr_data[3] = 0x1;
 		reg_write_m(RTL837X_REG_RX_DONE);
-
-		// Test, wether we have to react to the packet in any way
-		if (was_offline) {	// Need to send an ARP broadcast for our GW?
-			prepare_arp(1);
-			was_offline = 0;
-		} else if (rx_buf[0] == 0xff && rx_buf[1] == 0xff && rx_buf[2] == 0xff			// Broadcast?
-				&& rx_buf[3] == 0xff && rx_buf[4] == 0xff && rx_buf[5] == 0xff) {
-			prepare_arp(0);
-#ifdef RXTXDBG
-			print_string("\nBROADCAST\n");
-#endif
-		}  else if (rx_buf[0] == ownMAC[0] && rx_buf[1] == ownMAC[1] && rx_buf[2] == ownMAC[2]
-				&& rx_buf[3] == ownMAC[3] && rx_buf[4] == ownMAC[4] && rx_buf[5] == ownMAC[5]) {
-			if (rx_buf[23 + RTL_TAG_SIZE + VLAN_TAG_SIZE] == 0x01) {
-#ifdef RXTXDBG
-				print_string("ICMP PING REQ\n");
-#endif
-				prepare_icmp_reply();
-			} else {
-				return; // We only answer to ICMP PING requests
+		uip_len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
+		write_char('>'); print_byte(uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
+		write_char('>'); print_byte(uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
+		if (uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x08 && uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x06) {
+			uip_arp_arpin();
+			if (uip_len) {
+			    print_string("UIP-ARP returned packet for TX, size "); print_short(uip_len); write_char('\n');
+			    tcpip_output();
 			}
-		} else {
-			return;
+		} else if (uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x08 && uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x00) {
+			uip_arp_ipin();
+			uip_input();
+			if (uip_len) {
+				print_string("UIP returned packet for TX, size "); print_short(uip_len); write_char('\n');
+				// Add ethernet frame
+				uip_arp_out();
+				tcpip_output();
+			}
 		}
-
-#ifdef RXTXDBG
-		reg_read_m(0x7880);
-		print_string("\nDO TX. 0x7880: ");
-		print_long_x(sfr_data);
-#endif
-		reg_read_m(0x7890);
-		ptr = tx_buf;
-#ifdef RXTXDBG
-		print_string(", 0x7890: ");
-		print_long_x(sfr_data);
-		print_string("\n>> ");
-		for (uint8_t i = 0; i < 120; i++) {
-			print_byte(*ptr++);
-			write_char(' ');
-		}
-		print_string("\n> ");
-#endif
-		ring_ptr = ((uint16_t)sfr_data[2]) << 8;
-		ring_ptr |= sfr_data[3];
-		nic_tx_packet(ring_ptr);
-
-		reg_read_m(0x7884);
-#ifdef RXTXDBG
-		print_string("New Ring Pointer: ");
-		print_long_x(sfr_data);
-		print_string(" (should be previous ptr, now)");
-#endif
-		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
-		sfr_data[3] = 0x1;
-		reg_write_m(0x7850);
 	}
 }
+
+
+void handle_tx(void)
+{
+	for(uint8_t i = 0; i < UIP_CONNS; i++) {
+		uip_periodic(i);
+		if(uip_len > 0) {
+			print_string("UIP periodic send packet for "); print_byte(i);
+			uip_arp_out();
+			tcpip_output();
+			print_string("Transmit done\n");
+		}
+	}
+}
+
+
 
 void handle_sfp(void)
 {
@@ -988,16 +976,23 @@ void idle(void)
 
 	// Check new Packets RX
 	handle_rx();
+	// Check UIP for packets to transmit
+	handle_tx();
 }
 
 
-// Sleep the given number of ticks
+// Sleep the given number of ticks and perform idle tasks if initialized
 void sleep(uint16_t t)
 {
 	sleep_ticks = t;
-	while (sleep_ticks > 0)
-		idle();
+	while (sleep_ticks > 0) {
+		if (idle_ready)
+			idle();
+		else
+			PCON |= 1;
+	}
 }
+
 
 void reset_chip(void)
 {
@@ -1010,7 +1005,8 @@ void setup_external_irqs(void)
 	REG_SET(0x5f84, 0x42);
 	REG_SET(0x5f34, 0x3ff);
 
-	EX0 = 1;	// Enable external IRQ 0
+//	EX0 = 1;	// Enable external IRQ 0 (Link-change)
+	EX0 = 0;
 	IT0 = 1;	// External IRQ on falling edge
 
 	EX1 = 1;	// External IRQ 1 enable
@@ -1385,9 +1381,9 @@ void rtl8372_init(void)
 		sds_write_v(1, 0x21, 0x00, 0x4949);
 		sds_write_v(1, 0x36, 0x05, 0x4040);
 		sds_write_v(1, 0x1f, 0x02, 0x0000);
-		sleep(10);
+		delay(10);
 		sds_read(1, 0x1f, 0x15);
-		sleep(10);
+		delay(10);
 	} else {
 		phy_config(8);	// PHY configuration: External 8221B?
 		phy_config(3);	// PHY configuration: all internal PHYs?
@@ -1542,6 +1538,7 @@ void bootloader(void)
 	// Disable all interrupts (global interrupt enable bit)
 	EA = 0; // SFR A8.7 / IE.7
 
+	idle_ready = 0;
 	// HW setup, serial, timer, external IRQs
 	setup_clock();
 	setup_serial();
@@ -1586,12 +1583,23 @@ void bootloader(void)
 	do {
 		reg_read(0x24);
 	} while (SFR_DATA_0 & 0x4);
-	print_string("\nNIC reset");
+	print_string("NIC reset\n");
 
 	rtl8372_init();
+
+	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
+	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
+	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
+
+	print_string("A\n");
 	REG_SET(0x7f94, 0x0);	// BUG: Only for testing, otherwise: clear bits 0-3
+	print_string("B\n");
 	nic_setup();
+	print_string("C\n");
 	vlan_setup();
+	print_string("D\n");
+	uip_arp_init();
+	print_string("E\n");
 
 	was_offline = 1;
 
@@ -1614,6 +1622,7 @@ void bootloader(void)
 
 	print_string("\n> ");
 	cmd_parser_setup();
+	idle_ready = 1;
 	while (1) {
 		cmd_parser();
 		idle(); // Enter Idle mode until interrupt occurs

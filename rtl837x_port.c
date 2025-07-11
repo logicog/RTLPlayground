@@ -47,7 +47,7 @@ __xdata	uint32_t l2_head;
 #define RTL837x_PVID_BASE_REG	0x4e1c
 
 
-void port_mirror_set(uint8_t port, uint16_t rx_pmask, uint16_t tx_pmask) __banked
+void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
 	print_string("\r\nport_mirror_set called \r\n");
 
@@ -63,7 +63,7 @@ void port_mirror_del()
 }
 
 
-void port_pvid_set(uint8_t port, uint16_t pvid) __banked
+void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 {
 	// r4e1c:00001001 R4e1c-000017d0 r6738:00000000 R6738-00000000 (no filtering)
 	print_string("\r\nport_pvid_set called \r\n");
@@ -88,7 +88,7 @@ void vlan_delete(uint16_t vlan) __banked
 /*
  * A member that is not tagged, is untagged
  */
-void vlan_create(uint16_t vlan, uint16_t members, uint16_t tagged) __banked
+void vlan_create(register uint16_t vlan, register uint16_t members, register uint16_t tagged) __banked
 {
 	/* First line:
 		7-9: Untagged: 1-1, Not-Member: 1-0
@@ -232,8 +232,8 @@ void port_l2_learned(void) __banked
 		reg_read_m(RTL837X_TBL_CTRL);
 	} while (sfr_data[3] & 0x01);
 	print_string("\r\n\tMAC\t\tVLAN\ttype\tport\r\n");
-	uint16_t entry = 0x0000;
-	uint16_t first_entry = 0xffff; // Table does not have that many entries
+	__xdata uint16_t entry = 0x0000;
+	__xdata uint16_t first_entry = 0xffff; // Table does not have that many entries
 
 	while (1) {
 		uint8_t port = 0, other = 0;

@@ -1,24 +1,29 @@
 BOOTLOADER_ADDRESS=0x100
 
 CC = sdcc
-CC_FLAGS = -mmcs51
+CC_FLAGS = -mmcs51 -Ihello-world -Iuip
 ASM = sdas8051
 AFLAGS= -plosgff
 
-SUBDIRS := uip
+SUBDIRS := uip hello-world
+SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 all: $(SUBDIRS) rtlplayground.bin injector
 
-SRCS= rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c
-OBJS= ${SRCS:.c=.rel}
+SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c
+OBJS = ${SRCS:.c=.rel}
+OBJS += uip/psock.rel uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel hello-world/hello-world.rel
+
 
 $(SUBDIRS):
 	$(MAKE) -C $@
 
 clean:
+	make -C uip clean
 	if [ -e rtlplayground.bin ]; then rm rtlplayground.bin; fi
 	if [ -e rtlplayground.asm ]; then rm rtlplayground.asm; fi
 	rm *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym *.bin
+
 
 %.rel: %.c
 	$(CC) $(CC_FLAGS) -c $<

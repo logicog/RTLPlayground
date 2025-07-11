@@ -171,7 +171,7 @@ void flash_write_enable(void) __banked
 }
 
 
-void flash_dump(uint32_t addr, uint8_t len) __banked
+void flash_dump(register uint32_t addr, register uint8_t len) __banked
 {
 	short status;
 	do {
