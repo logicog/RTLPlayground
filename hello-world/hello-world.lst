@@ -1,0 +1,267 @@
+                                      1 ;--------------------------------------------------------
+                                      2 ; File Created by SDCC : free open source ANSI-C Compiler
+                                      3 ; Version 4.2.0 #13081 (Linux)
+                                      4 ;--------------------------------------------------------
+                                      5 	.module hello_world
+                                      6 	.optsdcc -mmcs51 --model-small
+                                      7 	
+                                      8 ;--------------------------------------------------------
+                                      9 ; Public variables in this module
+                                     10 ;--------------------------------------------------------
+                                     11 	.globl _uip_listen
+                                     12 	.globl _psock_readto
+                                     13 	.globl _psock_init
+                                     14 	.globl _strtox
+                                     15 	.globl _write_char
+                                     16 	.globl _hello_world_init
+                                     17 	.globl _hello_world_appcall
+                                     18 ;--------------------------------------------------------
+                                     19 ; special function registers
+                                     20 ;--------------------------------------------------------
+                                     21 	.area RSEG    (ABS,DATA)
+      000000                         22 	.org 0x0000
+                                     23 ;--------------------------------------------------------
+                                     24 ; special function bits
+                                     25 ;--------------------------------------------------------
+                                     26 	.area RSEG    (ABS,DATA)
+      000000                         27 	.org 0x0000
+                                     28 ;--------------------------------------------------------
+                                     29 ; overlayable register banks
+                                     30 ;--------------------------------------------------------
+                                     31 	.area REG_BANK_0	(REL,OVR,DATA)
+      000000                         32 	.ds 8
+                                     33 ;--------------------------------------------------------
+                                     34 ; internal ram data
+                                     35 ;--------------------------------------------------------
+                                     36 	.area DSEG    (DATA)
+                                     37 ;--------------------------------------------------------
+                                     38 ; overlayable items in internal ram
+                                     39 ;--------------------------------------------------------
+                                     40 ;--------------------------------------------------------
+                                     41 ; indirectly addressable internal ram data
+                                     42 ;--------------------------------------------------------
+                                     43 	.area ISEG    (DATA)
+                                     44 ;--------------------------------------------------------
+                                     45 ; absolute internal ram data
+                                     46 ;--------------------------------------------------------
+                                     47 	.area IABS    (ABS,DATA)
+                                     48 	.area IABS    (ABS,DATA)
+                                     49 ;--------------------------------------------------------
+                                     50 ; bit data
+                                     51 ;--------------------------------------------------------
+                                     52 	.area BSEG    (BIT)
+                                     53 ;--------------------------------------------------------
+                                     54 ; paged external ram data
+                                     55 ;--------------------------------------------------------
+                                     56 	.area PSEG    (PAG,XDATA)
+                                     57 ;--------------------------------------------------------
+                                     58 ; external ram data
+                                     59 ;--------------------------------------------------------
+                                     60 	.area XSEG    (XDATA)
+      000000                         61 _handle_connection_buf_65536_59:
+      000000                         62 	.ds 100
+                                     63 ;--------------------------------------------------------
+                                     64 ; absolute external ram data
+                                     65 ;--------------------------------------------------------
+                                     66 	.area XABS    (ABS,XDATA)
+                                     67 ;--------------------------------------------------------
+                                     68 ; external initialized ram data
+                                     69 ;--------------------------------------------------------
+                                     70 	.area XISEG   (XDATA)
+                                     71 	.area HOME    (CODE)
+                                     72 	.area GSINIT0 (CODE)
+                                     73 	.area GSINIT1 (CODE)
+                                     74 	.area GSINIT2 (CODE)
+                                     75 	.area GSINIT3 (CODE)
+                                     76 	.area GSINIT4 (CODE)
+                                     77 	.area GSINIT5 (CODE)
+                                     78 	.area GSINIT  (CODE)
+                                     79 	.area GSFINAL (CODE)
+                                     80 	.area CSEG    (CODE)
+                                     81 ;--------------------------------------------------------
+                                     82 ; global & static initialisations
+                                     83 ;--------------------------------------------------------
+                                     84 	.area HOME    (CODE)
+                                     85 	.area GSINIT  (CODE)
+                                     86 	.area GSFINAL (CODE)
+                                     87 	.area GSINIT  (CODE)
+                                     88 ;--------------------------------------------------------
+                                     89 ; Home
+                                     90 ;--------------------------------------------------------
+                                     91 	.area HOME    (CODE)
+                                     92 	.area HOME    (CODE)
+                                     93 ;--------------------------------------------------------
+                                     94 ; code
+                                     95 ;--------------------------------------------------------
+                                     96 	.area BANK1   (CODE)
+                                     97 ;------------------------------------------------------------
+                                     98 ;Allocation info for local variables in function 'hello_world_init'
+                                     99 ;------------------------------------------------------------
+                                    100 ;	hello-world.c:43: hello_world_init(void)
+                                    101 ;	-----------------------------------------
+                                    102 ;	 function hello_world_init
+                                    103 ;	-----------------------------------------
+      000000                        104 _hello_world_init:
+                           000007   105 	ar7 = 0x07
+                           000006   106 	ar6 = 0x06
+                           000005   107 	ar5 = 0x05
+                           000004   108 	ar4 = 0x04
+                           000003   109 	ar3 = 0x03
+                           000002   110 	ar2 = 0x02
+                           000001   111 	ar1 = 0x01
+                           000000   112 	ar0 = 0x00
+                                    113 ;	hello-world.c:46: uip_listen(HTONS(1000));
+      000000 90 E8 03         [24]  114 	mov	dptr,#0xe803
+                                    115 ;	hello-world.c:47: }
+      000003 02r00r00         [24]  116 	ljmp	_uip_listen
+                                    117 ;------------------------------------------------------------
+                                    118 ;Allocation info for local variables in function 'hello_world_appcall'
+                                    119 ;------------------------------------------------------------
+                                    120 ;s                         Allocated to registers r6 r7 
+                                    121 ;------------------------------------------------------------
+                                    122 ;	hello-world.c:57: hello_world_appcall(void)
+                                    123 ;	-----------------------------------------
+                                    124 ;	 function hello_world_appcall
+                                    125 ;	-----------------------------------------
+      000006                        126 _hello_world_appcall:
+                                    127 ;	hello-world.c:64: __xdata struct hello_world_state *s = &(uip_conn->appstate);
+      000006 74 1C            [12]  128 	mov	a,#0x1c
+      000008 25*00            [12]  129 	add	a,_uip_conn
+      00000A FE               [12]  130 	mov	r6,a
+      00000B E4               [12]  131 	clr	a
+      00000C 35*01            [12]  132 	addc	a,(_uip_conn + 1)
+      00000E FF               [12]  133 	mov	r7,a
+                                    134 ;	hello-world.c:70: if(uip_connected()) {
+      00000F 90r00r00         [24]  135 	mov	dptr,#_uip_flags
+      000012 E0               [24]  136 	movx	a,@dptr
+      000013 30 E6 1E         [24]  137 	jnb	acc.6,00102$
+                                    138 ;	hello-world.c:71: PSOCK_INIT(&s->p, s->inputbuffer, sizeof(s->inputbuffer));
+      000016 74 15            [12]  139 	mov	a,#0x15
+      000018 2E               [12]  140 	add	a,r6
+      000019 F5*00            [12]  141 	mov	_psock_init_PARM_2,a
+      00001B E4               [12]  142 	clr	a
+      00001C 3F               [12]  143 	addc	a,r7
+      00001D F5*01            [12]  144 	mov	(_psock_init_PARM_2 + 1),a
+      00001F 75*00 0A         [24]  145 	mov	_psock_init_PARM_3,#0x0a
+      000022 75*01 00         [24]  146 	mov	(_psock_init_PARM_3 + 1),#0x00
+      000025 8E 82            [24]  147 	mov	dpl,r6
+      000027 8F 83            [24]  148 	mov	dph,r7
+      000029 C0 07            [24]  149 	push	ar7
+      00002B C0 06            [24]  150 	push	ar6
+      00002D 12r00r00         [24]  151 	lcall	_psock_init
+      000030 D0 06            [24]  152 	pop	ar6
+      000032 D0 07            [24]  153 	pop	ar7
+      000034                        154 00102$:
+                                    155 ;	hello-world.c:79: write_char('A');
+      000034 75 82 41         [24]  156 	mov	dpl,#0x41
+      000037 C0 07            [24]  157 	push	ar7
+      000039 C0 06            [24]  158 	push	ar6
+      00003B 12r00r00         [24]  159 	lcall	_write_char
+      00003E D0 06            [24]  160 	pop	ar6
+      000040 D0 07            [24]  161 	pop	ar7
+                                    162 ;	hello-world.c:80: handle_connection(s);
+      000042 8E 82            [24]  163 	mov	dpl,r6
+      000044 8F 83            [24]  164 	mov	dph,r7
+                                    165 ;	hello-world.c:81: }
+      000046 02r00r49         [24]  166 	ljmp	_handle_connection
+                                    167 ;------------------------------------------------------------
+                                    168 ;Allocation info for local variables in function 'handle_connection'
+                                    169 ;------------------------------------------------------------
+                                    170 ;s                         Allocated to registers r6 r7 
+                                    171 ;PT_YIELD_FLAG             Allocated to registers 
+                                    172 ;buf                       Allocated with name '_handle_connection_buf_65536_59'
+                                    173 ;------------------------------------------------------------
+                                    174 ;	hello-world.c:90: handle_connection(__xdata struct hello_world_state *s)
+                                    175 ;	-----------------------------------------
+                                    176 ;	 function handle_connection
+                                    177 ;	-----------------------------------------
+      000049                        178 _handle_connection:
+                                    179 ;	hello-world.c:94: PSOCK_BEGIN(&s->p);
+      000049 AE 82            [24]  180 	mov	r6,dpl
+      00004B AF 83            [24]  181 	mov  r7,dph
+      00004D E0               [24]  182 	movx	a,@dptr
+      00004E FC               [12]  183 	mov	r4,a
+      00004F A3               [24]  184 	inc	dptr
+      000050 E0               [24]  185 	movx	a,@dptr
+      000051 FD               [12]  186 	mov	r5,a
+      000052 BC 00 05         [24]  187 	cjne	r4,#0x00,00123$
+      000055 BD 00 02         [24]  188 	cjne	r5,#0x00,00123$
+      000058 80 08            [24]  189 	sjmp	00101$
+      00005A                        190 00123$:
+      00005A BC 63 56         [24]  191 	cjne	r4,#0x63,00108$
+      00005D BD 00 53         [24]  192 	cjne	r5,#0x00,00108$
+      000060 80 1E            [24]  193 	sjmp	00102$
+      000062                        194 00101$:
+                                    195 ;	hello-world.c:96: strtox(buf, "Hello. What is your name?\n");
+      000062 75*00r00         [24]  196 	mov	_strtox_PARM_2,#___str_0
+      000065 75*01s00         [24]  197 	mov	(_strtox_PARM_2 + 1),#(___str_0 >> 8)
+      000068 90r00r00         [24]  198 	mov	dptr,#_handle_connection_buf_65536_59
+      00006B C0 07            [24]  199 	push	ar7
+      00006D C0 06            [24]  200 	push	ar6
+      00006F 12r00r00         [24]  201 	lcall	_strtox
+      000072 D0 06            [24]  202 	pop	ar6
+      000074 D0 07            [24]  203 	pop	ar7
+                                    204 ;	hello-world.c:99: PSOCK_READTO(&s->p, '\n');
+      000076 8E 82            [24]  205 	mov	dpl,r6
+      000078 8F 83            [24]  206 	mov	dph,r7
+      00007A 74 63            [12]  207 	mov	a,#0x63
+      00007C F0               [24]  208 	movx	@dptr,a
+      00007D E4               [12]  209 	clr	a
+      00007E A3               [24]  210 	inc	dptr
+      00007F F0               [24]  211 	movx	@dptr,a
+      000080                        212 00102$:
+      000080 75*00 0A         [24]  213 	mov	_psock_readto_PARM_2,#0x0a
+      000083 8E 82            [24]  214 	mov	dpl,r6
+      000085 8F 83            [24]  215 	mov	dph,r7
+      000087 C0 07            [24]  216 	push	ar7
+      000089 C0 06            [24]  217 	push	ar6
+      00008B 12r00r00         [24]  218 	lcall	_psock_readto
+      00008E E5 82            [12]  219 	mov	a,dpl
+      000090 D0 06            [24]  220 	pop	ar6
+      000092 D0 07            [24]  221 	pop	ar7
+      000094 70 03            [24]  222 	jnz	00106$
+      000096 F5 82            [12]  223 	mov	dpl,a
+      000098 22               [24]  224 	ret
+      000099                        225 00106$:
+                                    226 ;	hello-world.c:101: strtox(buf, "Name: ");
+      000099 75*00r1B         [24]  227 	mov	_strtox_PARM_2,#___str_1
+      00009C 75*01s00         [24]  228 	mov	(_strtox_PARM_2 + 1),#(___str_1 >> 8)
+      00009F 90r00r00         [24]  229 	mov	dptr,#_handle_connection_buf_65536_59
+      0000A2 C0 07            [24]  230 	push	ar7
+      0000A4 C0 06            [24]  231 	push	ar6
+      0000A6 12r00r00         [24]  232 	lcall	_strtox
+      0000A9 D0 06            [24]  233 	pop	ar6
+      0000AB D0 07            [24]  234 	pop	ar7
+                                    235 ;	hello-world.c:104: PSOCK_CLOSE(&s->p);
+      0000AD 90r00r00         [24]  236 	mov	dptr,#_uip_flags
+      0000B0 74 10            [12]  237 	mov	a,#0x10
+      0000B2 F0               [24]  238 	movx	@dptr,a
+                                    239 ;	hello-world.c:106: PSOCK_END(&s->p);
+      0000B3                        240 00108$:
+      0000B3 8E 82            [24]  241 	mov	dpl,r6
+      0000B5 8F 83            [24]  242 	mov	dph,r7
+      0000B7 E4               [12]  243 	clr	a
+      0000B8 F0               [24]  244 	movx	@dptr,a
+      0000B9 A3               [24]  245 	inc	dptr
+      0000BA F0               [24]  246 	movx	@dptr,a
+      0000BB 75 82 02         [24]  247 	mov	dpl,#0x02
+                                    248 ;	hello-world.c:107: }
+      0000BE 22               [24]  249 	ret
+                                    250 	.area BANK1   (CODE)
+                                    251 	.area CONST   (CODE)
+                                    252 	.area CONST   (CODE)
+      000000                        253 ___str_0:
+      000000 48 65 6C 6C 6F 2E 20   254 	.ascii "Hello. What is your name?"
+             57 68 61 74 20 69 73
+             20 79 6F 75 72 20 6E
+             61 6D 65 3F
+      000019 0A                     255 	.db 0x0a
+      00001A 00                     256 	.db 0x00
+                                    257 	.area BANK1   (CODE)
+                                    258 	.area CONST   (CODE)
+      00001B                        259 ___str_1:
+      00001B 4E 61 6D 65 3A 20      260 	.ascii "Name: "
+      000021 00                     261 	.db 0x00
+                                    262 	.area BANK1   (CODE)
+                                    263 	.area XINIT   (CODE)
+                                    264 	.area CABS    (ABS,CODE)
