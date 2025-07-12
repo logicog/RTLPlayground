@@ -73,14 +73,14 @@
 
 /*---------------------------------------------------------------------------*/
 
-/*  static void
+inline void
 buf_setup(register __xdata struct psock_buf *buf,
 	  register __xdata u8_t *bufptr, register u16_t bufsize)
 {
   buf->ptr = bufptr;
   buf->left = bufsize;
 }
-*/
+
 /*---------------------------------------------------------------------------*/
 inline u8_t
 buf_bufdata(register __xdata struct psock_buf *buf, register __xdata u8_t **dataptr, register __xdata u16_t *datalen)
@@ -278,7 +278,7 @@ PT_THREAD(psock_readto(register __xdata struct psock *psock, unsigned char c))
 {
   PT_BEGIN(&psock->psockpt);
 
-//  buf_setup(&psock->buf, psock->bufptr, psock->bufsize);
+  buf_setup(&psock->buf, psock->bufptr, psock->bufsize);
   psock->buf.ptr = psock->bufptr;
   psock->buf.left = psock->bufsize;
   
@@ -307,7 +307,7 @@ PT_THREAD(psock_readbuf(register __xdata struct psock *psock))
 {
   PT_BEGIN(&psock->psockpt);
 
-//  buf_setup(&psock->buf, psock->bufptr, psock->bufsize);
+  buf_setup(&psock->buf, psock->bufptr, psock->bufsize);
   psock->buf.ptr = psock->bufptr;
   psock->buf.left = psock->bufsize;
   
@@ -339,7 +339,7 @@ psock_init(register __xdata struct psock *psock, register __xdata char *buffer, 
   psock->readlen = 0;
   psock->bufptr = buffer;
   psock->bufsize = buffersize;
-//  buf_setup(&psock->buf, buffer, buffersize);
+  buf_setup(&psock->buf, buffer, buffersize);
   psock->buf.ptr = buffer;
   psock->buf.left = buffersize;
 

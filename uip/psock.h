@@ -119,9 +119,9 @@ struct psock {
 
   struct psock_buf buf;         /* The structure holding the state of the
                                    input buffer. */
-  unsigned int bufsize;         /* The size of the input buffer. */
+  u16_t bufsize;                /* The size of the input buffer. */
   
-  unsigned char state;          /* The state of the protosocket. */
+  u8_t state;                   /* The state of the protosocket. */
 };
 
 void psock_init(__xdata struct psock *psock, register __xdata char *buffer, register uint16_t buffersize);
