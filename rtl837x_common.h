@@ -59,5 +59,6 @@ uint16_t strlen(register __code const char *s);
 uint16_t strlen_x(register __xdata const char *s);
 void strtox(register __xdata uint8_t *dst, register __code const char *s);
 void tcpip_output(void);
+void print_string_x(__xdata char *p);
 
 #endif

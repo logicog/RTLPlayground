@@ -154,6 +154,12 @@ void print_string(__code char *p)
 		write_char(*p++);
 }
 
+void print_string_x(__xdata char *p)
+{
+	while (*p)
+		write_char(*p++);
+}
+
 
 void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16_t len)
 {
@@ -197,6 +203,9 @@ uint16_t strlen_x(register __xdata const char *s)
 	uint16_t l = 0;
 	while (s[l])
 		l++;
+	write_char(';');
+	print_short(l);
+	write_char(';');
 	return l;
 }
 
@@ -855,6 +864,7 @@ void handle_tx(void)
 	for(uint8_t i = 0; i < UIP_CONNS; i++) {
 		uip_periodic(i);
 		if(uip_len > 0) {
+			write_char('.'); print_short(i);
 			uip_arp_out();
 			tcpip_output();
 		}
@@ -1588,6 +1598,7 @@ void bootloader(void)
 	vlan_setup();
 	uip_init();
 	uip_arp_init();
+	httpd_init();
 
 	was_offline = 1;
 

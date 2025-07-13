@@ -1,24 +1,3 @@
-/**
- * \addtogroup apps
- * @{
- */
-
-/**
- * \defgroup helloworld Hello, world
- * @{
- *
- * A small example showing how to write applications with
- * \ref psock "protosockets".
- */
-
-/**
- * \file
- *         Header file for an example of how to write uIP applications
- *         with protosockets.
- * \author
- *         Adam Dunkels <adam@sics.se>
- */
-
 #ifndef __HELLO_WORLD_H__
 #define __HELLO_WORLD_H__
 
@@ -27,26 +6,20 @@
    u16_t datatypes. */
 #include "uipopt.h"
 
-#include "psock.h"
-
 /* Next, we define the uip_tcp_appstate_t datatype. This is the state
    of our application, and the memory required for this state is
    allocated together with each TCP connection. One application state
    for each TCP connection. */
-typedef struct hello_world_state {
-  struct psock p;
-  char inputbuffer[10];
-  char name[40];
+typedef struct httpd_state {
+   char transmitted;
 } uip_tcp_appstate_t;
 
 /* Finally we define the application function to be called by uIP. */
-void hello_world_appcall(void);
+void httpd_appcall(void);
 #ifndef UIP_APPCALL
-#define UIP_APPCALL hello_world_appcall
+#define UIP_APPCALL httpd_appcall
 #endif /* UIP_APPCALL */
 
-void hello_world_init(void);
+void httpd_init(void) __banked;
 
-#endif /* __HELLO_WORLD_H__ */
-/** @} */
-/** @} */
+#endif

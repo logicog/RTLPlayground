@@ -1,9 +1,9 @@
 CC = sdcc
-CC_FLAGS = -mmcs51 -I. -I../hello-world
+CC_FLAGS = -mmcs51 -I. -I../httpd
 ASM = sdas8051
 AFLAGS= -plosgff
 
-SRCS = psock.c  timer.c  uip_arp.c  uip.c  uip-fw.c  uiplib.c  uip-neighbor.c  uip-split.c
+SRCS = timer.c  uip_arp.c  uip.c  uip-fw.c  uiplib.c  uip-neighbor.c  uip-split.c
 OBJS = ${SRCS:.c=.rel}
 
 all: $(OBJS)
