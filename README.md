@@ -1,5 +1,6 @@
 # RTLPlayground
 A Playground for Firmware development for RTL8372/RTL8373 based 2.5GBit Switches.
+
 It provides a minimal alternative firmware for the unmanaged switches. At this point,
 the firmware can be installed on the hardware as given below, how much of the switch
 will actually work as a switch, will vary. On the 
@@ -12,14 +13,25 @@ SFP module insert/removal identification and reading of the SFP EEProm works. SF
 module configuration works, too, tested for 1G modules.
 
 On the 9-port devices with RTL8273 + RTL8224, the 4 Ports served by the RTL8273 and
-SFP+ port will work normally and TCP connectivity will work as above. The RTL8224
+the SFP+ port will work normally and TCP connectivity will work as above. The RTL8224
 is currently not correctly initialized.
 
-All configuration must be done via serial
-connection (there is no web-interface), so soldering skills are required. Flashing
-must be done via a SOIC-8 PatchClamp or by soldering a socket for the flash chip.
+On the 4-Port Ethernet + 2 Port SFP+ devices, one of the SFP+ ports will not work.
 
-If you don't want to solder, you can use the project's code to learn about the
+To do meaningful debugging you will need to use a serial console, so soldering skills
+are required. Flashing must be done via a SOIC-8 PatchClamp or by soldering a socket
+for the flash chip.
+
+UPDATE: The Code comes with a port of the [uIP](https://github.com/adamdunkels/uip)
+TCP/IP stack and includes a minimal web-server that can be used to work with the switch,
+so if you use a patch-clamp for updating the firmware (~3 USD/EUR), you can try this
+out without the need to solder anything. See the instructions below.
+Note that updating the firmware of a managed switch with the images created in this
+project will not work, because it is currently unknown how to generate the require
+checksum, see this
+[issue](https://github.com/up-n-atom/SWTG118AS/issues/4).
+
+If you don't want to open your device, you can use the project's code to learn about the
 devices by looking at the image using e.g. Ghidra.
 
 ## Compiling

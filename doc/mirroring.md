@@ -32,7 +32,7 @@ void port_mirror_del(void)
 For testing the following commands are provided on the serial console:
 ```
 mirror <mirroring port> <P1>[r|t] [P2][r|t] ...
-mirror to port <mirroring port>, source ports are P1 with the givent packet types, P2 and so on
+  mirror to port <mirroring port>, source ports are P1 with the givent packet types, P2 and so on
 
 mirror d
   Deletes mirroring configuration
