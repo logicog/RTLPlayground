@@ -27,9 +27,10 @@ TCP/IP stack and includes a minimal web-server that can be used to work with the
 so if you use a patch-clamp for updating the firmware (~3 USD/EUR), you can try this
 out without the need to solder anything. See the instructions below.
 Note that updating the firmware of a managed switch with the images created in this
-project will not work, because it is currently unknown how to generate the require
-checksum, see this
+project via the OEM web-interface will not work, because it is currently unknown how
+to generate the require checksum, see this
 [issue](https://github.com/up-n-atom/SWTG118AS/issues/4).
+However, if you use the patch-clamp to flash, this is not a problem.
 
 If you don't want to open your device, you can use the project's code to learn about the
 devices by looking at the image using e.g. Ghidra.
