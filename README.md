@@ -132,6 +132,8 @@ assembler.
   - GPIO to detect SFP module insert/removal/LOS
   - I2C to read SFP EEPROM
   - NIC setup
+  - VLAN setup/configuration
+  - Port mirroring
 - Access to PHYs via MDIO (only conceptually, not tested):
   - SerDes settings of SoC via SFR: Configure SFPs in 10Gbit/2.5Gbit/1Gbit, RTL8221
   - Clause 45 via SFR: configure RTL8221
