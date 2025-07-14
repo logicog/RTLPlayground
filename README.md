@@ -132,6 +132,7 @@ assembler.
   - GPIO to detect SFP module insert/removal/LOS
   - I2C to read SFP EEPROM
   - NIC setup
+  - L2 learning table access, L2 table flushing
   - VLAN setup/configuration
   - Port mirroring
 - Access to PHYs via MDIO (only conceptually, not tested):
