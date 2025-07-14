@@ -64,6 +64,35 @@
 #define RTL837X_STAT_V_HIGH	0x0f64
 #define RTL837X_STAT_V_LOW	0x0f68
 
+/*
+ * Table access registers of the RTL837x
+ * See e.g. RTL8366/RTL8369 datasheet for explanation
+ */
+#define RTL837X_TBL_CTRL	0x5cac
+/* Bytes in control register: EE EE TT CC: EE: Entry, TT: Table type, CC: Command
+ * CC: BIT 0: 01: Execute. Bit 1: 1: WRITE, 0: READ
+ * TT: 04: L2-table, 03: VLAN-table
+ */
+// Table operation bit-smasks
+#define TBL_WRITE	0x02
+#define TBL_EXECUTE	0x01
+// Table types
+#define TBL_L2_UNICAST	0x04
+#define TBL_VLAN 	0x03
+
+#define RTL837x_TBL_DATA_0	0x5cb0
+#define RTL837x_L2_DATA_OUT_A	0x5ccc
+#define RTL837x_L2_DATA_OUT_B	0x5cd0
+#define RTL837x_L2_DATA_OUT_C	0x5cd4
+#define RTL837x_TBL_DATA_IN_A	0x5cb8
+#define RTL837x_L2_TBL_CTRL	0x53d4
+#define RTL837x_PVID_BASE_REG	0x4e1c
+
+/*
+ * Mirroring
+ */
+#define RTL837x_MIRROR_CONF 0x604c
+#define RTL837x_MIRROR_CTRL 0x6048
 
 #ifdef REGDBG
 

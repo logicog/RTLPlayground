@@ -13,6 +13,7 @@
 
 #pragma codeseg BANK1
 
+
 extern __code uint16_t bit_mask[16];
 extern __xdata uint8_t minPort;
 extern __xdata uint8_t maxPort;
@@ -22,44 +23,20 @@ extern __xdata uint8_t cpuPort;
 
 __xdata	uint32_t l2_head;
 
-/*
- * Table access registers of the RTL837x
- * See e.g. RTL8366/RTL8369 datasheet for explanation
- */
-#define RTL837X_TBL_CTRL	0x5cac
-/* Bytes in control register: EE EE TT CC: EE: Entry, TT: Table type, CC: Command
- * CC: BIT 0: 01: Execute. Bit 1: 1: WRITE, 0: READ
- * TT: 04: L2-table, 03: VLAN-table
- */
-// Table operation bit-smasks
-#define TBL_WRITE	0x02
-#define TBL_EXECUTE	0x01
-// Table types
-#define TBL_L2_UNICAST	0x04
-#define TBL_VLAN 	0x03
-
-#define RTL837x_TBL_DATA_0	0x5cb0
-#define RTL837x_L2_LIST_DATA_A	0x5ccc
-#define RTL837x_L2_LIST_DATA_B	0x5cd0
-#define RTL837x_L2_LIST_DATA_C	0x5cd4
-#define RTL837x_TBL_DATA_IN_A	0x5cb8
-
-#define RTL837x_PVID_BASE_REG	0x4e1c
-
 
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
 	print_string("\r\nport_mirror_set called \r\n");
 
-	REG_WRITE(0x604c, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
-	REG_WRITE(0x6048, 0, 0, 0, (port << 1) | 0x1);
+	REG_WRITE(RTL837x_MIRROR_CONF, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
+	REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (port << 1) | 0x1);
 }
 
 
-void port_mirror_del()
+void port_mirror_del(void) __banked
 {
 	print_string("\r\nport_mirror_del called \r\n");
-	REG_SET(0x6048, 0);
+	REG_SET(RTL837x_MIRROR_CTRL, 0);
 }
 
 
@@ -215,10 +192,10 @@ uint8_t port_l2_forget(void) __banked
 	}
 	REG_WRITE(0x53dc, sfr_data[0], sfr_data[1], sfr_data[2], sfr_data[3]);
 
-	reg_read_m(0x53d4);
-	REG_WRITE(0x53d4, 0x00, 0x01, sfr_data[2], sfr_data[3]);
+	reg_read_m(RTL837x_L2_TBL_CTRL);
+	REG_WRITE(RTL837x_L2_TBL_CTRL, 0x00, 0x01, sfr_data[2], sfr_data[3]);
 	do {
-		reg_read_m(0x53d4);
+		reg_read_m(RTL837x_L2_TBL_CTRL);
 	} while (sfr_data[1] & 0x1);
 
 	return 0;
@@ -246,24 +223,24 @@ void port_l2_learned(void) __banked
 		} while (sfr_data[3] & 0x1);
 
 		// MAC
-		reg_read_m(RTL837x_L2_LIST_DATA_B);
+		reg_read_m(RTL837x_L2_DATA_OUT_B);
 		if ((sfr_data[0] & 0x20)) {	// Check entry is valid
 			print_byte(sfr_data[2]); write_char(':');
 			print_byte(sfr_data[3]); write_char(':');
 			port = (sfr_data[0] >> 6) & 0x3;
 			other = sfr_data[0];
-			reg_read_m(RTL837x_L2_LIST_DATA_A);
+			reg_read_m(RTL837x_L2_DATA_OUT_A);
 			print_byte(sfr_data[0]); write_char(':');
 			print_byte(sfr_data[1]); write_char(':');
 			print_byte(sfr_data[2]); write_char(':');
 			print_byte(sfr_data[3]); write_char('\t');
 
 			// VLAN
-			reg_read_m(RTL837x_L2_LIST_DATA_B);
+			reg_read_m(RTL837x_L2_DATA_OUT_B);
 			print_short( ((uint16_t) (sfr_data[0] & 0x0f)) | sfr_data[1]); // VLAN
 
 			// type
-			reg_read_m(RTL837x_L2_LIST_DATA_C);
+			reg_read_m(RTL837x_L2_DATA_OUT_C);
 			if (sfr_data[2] & 0x1)
 				print_string("\tstatic\t");
 			else
