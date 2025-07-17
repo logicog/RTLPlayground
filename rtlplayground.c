@@ -111,11 +111,6 @@ void isr_serial(void) __interrupt(4)
 		sbuf[sbuf_ptr] = SBUF;
 		sbuf_ptr = (sbuf_ptr + 1) & (SBUF_SIZE - 1);
 		RI = 0;
-
-	do {
-	} while (TI == 0);
-	TI = 0;
-	SBUF = 'X';
 	}
 }
 
@@ -1339,6 +1334,7 @@ void led_config(void)
 		reg_bit_set(0x7f8c, 0x1d); // R7f8c-28000000
 	} else {
 		reg_bit_set(0x7f8c, 0x1d);
+		reg_bit_set(0x7f8c, 0x1c);
 		reg_bit_set(0x7f8c, 0x1b);
 	}
 	// LED setup
@@ -1401,6 +1397,7 @@ void rtl8372_init(void)
 	sfr_mask_data(2, 3, 0);	 	// Delete bits 16, 17
 	reg_write_m(0x6330);
 
+	REG_SET(0x6330, 0x00005555);
 	if (nSFPPorts == 2)
 		REG_SET(0x6330, 0x00005515);
 
