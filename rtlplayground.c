@@ -1,6 +1,9 @@
 #include <8051.h>
 #include <stdint.h>
 
+// This has to be set to the number of SFP+ ports, i.e. 1 or 2
+#define NSFP 1
+
 // #define REGDBG 1
 // #define RXTXDBG 1
 
@@ -56,7 +59,7 @@ volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 
 // Buffer for serial input, SBUF_SIZE must be power of 2 < 256
-__xdata char sbuf_ptr;
+__xdata volatile char sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
@@ -76,36 +79,15 @@ __xdata uint8_t maxPort;
 __xdata uint8_t nSFPPorts;
 __xdata uint8_t cpuPort;
 
-
-__xdata uint8_t was_offline;
-__code uint8_t arp_broadcast[] = {
-	0x00, 0x07, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00,				// HEADER, BYTES 4/5: LEN FIXME
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x01,	// BROADCAST-MAC, OWN MAC
-	0x08, 0x06, 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x01,
-	0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x01,					// MAC ADRESS
-	0xc0, 0xa8, 0x02, 0x02,							// IP ADDRESS
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,					// Target MAC
-	0xc0, 0xa8, 0x02, 0x01,							// Target IP
-	// Padding
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00
-};
-
-
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004,0x0008,0x0010,0x0020,0x0040, 0x0080,
 	0x0100, 0x0200, 0x0400,0x0800,0x1000,0x2000,0x4000, 0x8000
 };
 
 
+__xdata uint8_t was_offline;
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t sfp_pins_last;
-
-#define N_COMMANDS 1
-struct command {
-	uint8_t *cmd;
-	uint8_t id;
-};
 
 
 void isr_timer0(void) __interrupt(1)
@@ -129,6 +111,11 @@ void isr_serial(void) __interrupt(4)
 		sbuf[sbuf_ptr] = SBUF;
 		sbuf_ptr = (sbuf_ptr + 1) & (SBUF_SIZE - 1);
 		RI = 0;
+
+	do {
+	} while (TI == 0);
+	TI = 0;
+	SBUF = 'X';
 	}
 }
 
@@ -593,14 +580,19 @@ void sds_config_mac(uint8_t sds, uint8_t mode)
 	reg_read_m(RTL837X_REG_SDS_MODES);
 	sfr_data[0] = 0;
 	sfr_data[1] = 0;
-	if (!sds) {
+	switch (sds) {
+	case 0:
 		sfr_mask_data(0, 0x1f, mode);
-	} else {
+		break;
+	case 1:
 		sfr_mask_data(0, 0xe0, mode << 5);
-		sfr_mask_data(1, 0xf3, mode >> 3);
+		sfr_mask_data(1, 0x03, mode >> 3);
+		break;
 	}
-	if (isRTL8373) // Set 3rd SERDES Mode to 0x2:
-		sfr_data[2] |= 0x08;
+	if (isRTL8373) // Set 3rd SERDES Mode to 0x2 for RTL8224
+		sfr_mask_data(1, 0xfc, 0x02 << 2);
+	else
+		sfr_data[2] &= 0x03;
 	reg_write_m(RTL837X_REG_SDS_MODES);
 	print_string("\nRTL837X_REG_SDS_MODES: ");
 	print_reg(RTL837X_REG_SDS_MODES);
@@ -622,16 +614,6 @@ void sds_config_8224(uint8_t sds)
 	delay(10);
 	sds_config_mac(sds, 0x0d);
 
-	/* Q002110:4444 Q002113:0404 Q002118:6d6d Q00211b:4242 Q00211d:0000 Q00361c:1313 Q003614:0000 Q003610:0202 Q002e04:0000 Q002e06:0404 Q002e07:0202 Q002e09:0606 Q002e0b:2222 Q002e0c:a2a2 Q002e0d:fefe Q002e15:f5f5
-	 * Q002e16:0404 Q002e1d:abab Q000612:5050 Q000706:9494 Q000708:9494 Q00070a:9494 Q00070c:9494 Q001f0b:0000 Q000603:c4c4 q002000:0000 Q002000:0000 q002000:0030 Q002000:0000 q002000:0010 Q002000:0000 q002000:0050
-	 * Q002000:0000 q002000:00d0 Q002000:0c0c q002000:0cd0 Q002000:0404 q002000:04d0 Q002000:0404 q002000:04d0 Q002000:0c0c q002000:0cd0 Q002000:0000 q002000:00d0 Q002000:0000 q002000:00d0 Q002000:0000 q002000:0050
-	 * Q002000:0000 q002000:0010 Q002000:0000 q002000:0010 Q002000:0000 q002000:0030 Q002000:0000 q001f00:0000 Q001f00:0000 q001f00:000b Q001f00:0000
-	*/
-	// q000601:c800 Q000601:c8c8 q000601:c804 Q000601:c8c8 <<<<<<<<<<<<<<<<<<< CHECK THIS
-
-	// Configure the SERDES LINK mode on the RTL8273 side, see also sds_config for RTL8221 and SFP ports
-	// Q002110:4444 Q002113:0404 Q002118:6d6d Q00211b:4242 Q00211d:0000 Q00361c:1313 Q003614:0000 Q003610:0202 Q002e04:0000 Q002e06:0404 Q002e07:0202 Q002e09:0606 Q002e0b:2222 Q002e0c:a2a2 Q002e0d:fefe
-	// Q002e15:f5f5 Q002e16:0404 Q002e1d:abab Q000612:5050 Q000706:9494 Q000708:9494 Q00070a:9494 Q00070c:9494 Q001f0b:0000 Q000603:c4c4
 	sds_write_v(sds, 0x21, 0x10, 0x4444); delay(10); // Q002110:4444
 	sds_write_v(sds, 0x21, 0x13, 0x0404); delay(10); // Q002113:0404
 	sds_write_v(sds, 0x21, 0x18, 0x6d6d); delay(10); // Q002118:6d6d
@@ -674,6 +656,7 @@ void sds_config_8224(uint8_t sds)
 
 void sds_config(uint8_t sds, uint8_t mode)
 {
+	print_string("sds_config sds: "); print_byte(sds); print_string(", mode: "); print_byte(mode); write_char('\n');
 	sds_config_mac(sds, mode);
 
 	if (mode == SDS_QXGMII) // A special mode for the RTL8224, SerDes configured as for 10GR
@@ -733,7 +716,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 		sds_write_v(sds, page, 0x0b, 0x232c); // Q00280b:232c
 		sds_write_v(sds, page, 0x0c, 0x9217); // Q00280c:9217
 		sds_write_v(sds, page, 0x0f, 0x5b50); // Q00280f:5b50
-		sds_write_v(sds, page, 0x15, 0xe7f1); // Q002815:e7f1
+		sds_write_v(sds, page, 0x15, 0xe7c1); // Q002815:e7f1 BUG !
 	}
 
 	sds_write_v(sds, page, 0x16, 0x0443); // Q002816:0443 / Q012e16:0443
@@ -747,17 +730,31 @@ void sds_config(uint8_t sds, uint8_t mode)
 	sds_write_v(sds, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
 	sds_write_v(sds, 0x06, 0x03, 0xc45c); // Q000603:c45c
 	sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
+
+	if (sds == 0 && mode == SDS_1000BX_FIBER) {
+		sds_write_v(sds, 0x02, 0x04, 0x0020); 	// Q000204:0020
+		sds_write_v(sds, 0x00, 0x02, 0x73d0); 	// Q000002:73d0
+		sds_write_v(sds, 0x00, 0x04, 0x074d); 	// Q000004:074d
+		sds_write_v(sds, 0x20, 0x04, 0x0000); 	// Q002000:0000
+		sds_write_v(sds, 0x1f, 0x00, 0x0000); 	// Q001f00:0000
+	}
 }
 
 
 /*
  * Read a register of the EEPROM via I2C
  */
-uint8_t sfp_read_reg(uint8_t reg)
+uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 {
-	reg_read_m(0x0418);
-	sfr_mask_data(1, 0xf0, 0x70);
-	reg_write_m(0x0418);
+	if (slot == 0) {
+		reg_read_m(0x0418);
+		sfr_mask_data(1, 0xff, 0x72);
+		reg_write_m(0x0418);
+	} else {
+		reg_read_m(0x0418);
+		sfr_mask_data(1, 0xff, 0x6e);
+		reg_write_m(0x0418);
+	}
 
 	REG_WRITE(0x0420, 0, 0, 0, reg);
 
@@ -864,11 +861,34 @@ void handle_tx(void)
 	for(uint8_t i = 0; i < UIP_CONNS; i++) {
 		uip_periodic(i);
 		if(uip_len > 0) {
-			write_char('.'); print_short(i);
+ 			write_char('.'); print_short(i);
 			uip_arp_out();
 			tcpip_output();
 		}
 	}
+}
+
+
+static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
+{
+	if (rate == 0xd)
+		return SDS_1000BX_FIBER;
+	if (rate == 0x1f)  // Ethernet 2.5 GBit
+		return SDS_HSG;
+	if (rate > 0x65 && rate < 0x70)
+		return SDS_10GR;
+	return 0xff;
+}
+
+
+void sfp_print_info(uint8_t sfp)
+{
+	for (uint8_t i = 20; i < 60; i++) {
+		uint8_t c = sfp_read_reg(sfp, i);
+		if (c)
+			write_char(c);
+	}
+	print_string("\n");
 }
 
 
@@ -881,23 +901,13 @@ void handle_sfp(void)
 		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
 		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
 		delay(100); // Delay, because some modules need time to wake up
-		uint8_t rate = sfp_read_reg(12);
+		uint8_t rate = sfp_read_reg(0, 12);
 		print_string("Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
-		print_string("  Encoding: "); print_byte(sfp_read_reg(11));
+		print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
 		print_string("\n");
-		for (uint8_t i = 20; i < 60; i++) {
-			uint8_t c = sfp_read_reg(i);
-			if (c)
-				write_char(c);
-		}
 		print_string("\n");
-		if (rate == 0xd)
-			sds_config(1, SDS_1000BX_FIBER);
-		if (rate == 0x1f)  // Ethernet 2.5 GBit
-			sds_config(1, SDS_HSG);
-		if (rate > 0x65 && rate < 0x70)
-			sds_config(1, SDS_10GR);
-
+		sfp_print_info(0);
+		sds_config(1, sfp_rate_to_sds_config(rate));
 	}
 	if ((!(sfp_pins_last & 0x1)) && (sfr_data[0] & 0x40)) {
 		sfp_pins_last |= 0x01;
@@ -912,6 +922,25 @@ void handle_sfp(void)
 	if ((!(sfp_pins_last & 0x2)) && (sfr_data[3] & 0x20)) {
 		sfp_pins_last |= 0x02;
 		print_string("\n<SFP-RX LOS>\n");
+	}
+
+	reg_read_m(RTL837X_REG_GPIO_C);
+	if ((sfp_pins_last & 0x10) && (!(sfr_data[1] & 0x04))) {
+		sfp_pins_last &= ~0x10;
+		print_string("\n<MODULE 2 INSERTED>  ");
+		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
+		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
+		delay(100); // Delay, because some modules need time to wake up
+		uint8_t rate = sfp_read_reg(1, 12);
+		print_string("Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
+		print_string("  Encoding: "); print_byte(sfp_read_reg(1, 11));
+		print_string("\n");
+		sfp_print_info(1);
+		sds_config(0, sfp_rate_to_sds_config(rate));
+	}
+	if ((!(sfp_pins_last & 0x10)) && (sfr_data[1] & 0x04)) {
+		sfp_pins_last |= 0x10;
+		print_string("\n<MODULE 2 REMOVED>\n");
 	}
 }
 
@@ -961,20 +990,30 @@ void idle(void)
 		print_string(", was ");
 		print_long_x(linkbits_last);
 		print_string(">\n");
-		uint8_t p5 = sfr_data[2] >> 4;
-		uint8_t p5_last = linkbits_last[2] >> 4;
-		cpy_4(linkbits_last, sfr_data);
-		if (p5_last != p5) {
-			if (p5 == 0x5) // 2.5GBit Mode
-				sds_config(0, SDS_HISGMII);
-			else if (p5 == 0x2) // 1GBit
-				sds_config(0, SDS_SGMII);
+		if (nSFPPorts != 2) {
+			uint8_t p5 = sfr_data[2] >> 4;
+			uint8_t p5_last = linkbits_last[2] >> 4;
+			cpy_4(linkbits_last, sfr_data);
+			if (p5_last != p5) {
+				if (p5 == 0x5) // 2.5GBit Mode
+					sds_config(0, SDS_HISGMII);
+				else if (p5 == 0x2) // 1GBit
+					sds_config(0, SDS_SGMII);
+			}
+		} else {
+			cpy_4(linkbits_last, sfr_data);
 		}
 	}
 
 	// Check for changes with SFP modules
+
 	handle_sfp();
 
+	/* Button pressed on KL-8xhm-x2:
+	reg_read(RTL837X_REG_GPIO_C);
+	if (!(sfr_data[2] & 0x40))
+		print_string("Button pressed\n");
+	*/
 	// Check new Packets RX
 	handle_rx();
 	// Check UIP for packets to transmit
@@ -1213,9 +1252,6 @@ void sds_init(void)
 }
 
 
-
-
-
 void led_config_9xh(void)
 {
 	// r65d8:3ffbedff R65d8-3ffbedff
@@ -1297,9 +1333,14 @@ void led_config(void)
 	reg_bit_clear(0x65dc, 0x1b);
 
 	// Set bits 1b/1d of 0x7f8c: r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
-	reg_bit_set(0x7f8c, 0x1d);
-	reg_bit_set(0x7f8c, 0x1b);
-
+	if (nSFPPorts == 2) {
+		reg_bit_set(0x7f8c, 0x1b); // R7f8c-28000000
+		reg_bit_clear(0x7f8c, 0x1c); // R7f8c-28000000
+		reg_bit_set(0x7f8c, 0x1d); // R7f8c-28000000
+	} else {
+		reg_bit_set(0x7f8c, 0x1d);
+		reg_bit_set(0x7f8c, 0x1b);
+	}
 	// LED setup
 	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0 r65f8:00000018 R65f8-00000018 R65fc-fffff000 r6600:00000000 R6600-0000000f r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
 	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000 R6548-00410175 r6544:01411000 R6544-01410044 r6528:00000000 R6528-00000011 r6450:000020e6 R6450-000000e6 r644c:0a418820 R644c-0a400820
@@ -1337,6 +1378,16 @@ void rtl8372_init(void)
 {
 	// From run, set bits 0-1 to 1
 	print_string("\nrtl8372_init called\n");
+	minPort = 0;
+	maxPort = 8;
+	cpuPort = 9;
+	nSFPPorts = 1;
+	if (!isRTL8373) {
+		minPort = 3;
+		maxPort = 8;
+		nSFPPorts = NSFP;
+	}
+
 /*	reg_read_m(0x7f90);
 	sfr_mask_data(0, 0, 3);
 	reg_write_m(0x7f90);
@@ -1350,10 +1401,15 @@ void rtl8372_init(void)
 	sfr_mask_data(2, 3, 0);	 	// Delete bits 16, 17
 	reg_write_m(0x6330);
 
+	if (nSFPPorts == 2)
+		REG_SET(0x6330, 0x00005515);
+
 	// r6334:00000000 R6334-000001f8  RTL8373: r6334:00000000 R6334-000000ff
 	reg_read_m(0x6334);		// Also in sdsMode_set
 	if (isRTL8373) {
 		sfr_mask_data(0, 0, 0xff);
+	} else if (nSFPPorts == 2)  {
+		sfr_mask_data(0, 0, 0xf0);
 	} else {
 		sfr_mask_data(1, 0, 0x01); 	// Set bits 3-8, On RTL8373+8224 set bits 0-7
 		sfr_mask_data(0, 0, 0xf8);
@@ -1424,14 +1480,6 @@ void rtl8372_init(void)
 	* r1238:00000e33 R1238-00000e37 r1238:00000e37 R1238-00000e37 r1238:00000e37 R1238-00000f37 (identical)
 	*/
 	uint16_t reg = 0x1238; // Port base register for the bits we set
-	minPort = 0;
-	maxPort = 8;
-	cpuPort = 9;
-	nSFPPorts = 1; // FIXME: It could also be 2
-	if (!isRTL8373) {
-		minPort = 3;
-		maxPort = 8;
-	}
 
 	for (char i = 0; i < 9; i++) {
 		if (i >= minPort && i <= maxPort) {
@@ -1548,15 +1596,19 @@ void bootloader(void)
 	EA = 1; // Enable all IRQs
 
 	// Set default for SFP pins so we can start up a module already inserted
-	sfp_pins_last = 0x3; // signal LOS and no module inserted
+	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
+	// We have not detected any link
+	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = 0;
 
-	print_string("\nDetecting CPU");
+	print_string("Detecting CPU: ");
 	isRTL8373 = 0; // FIXME: See below
 	reg_read_m(0x4);
 	if (sfr_data[1] == 0x73) { // Register was 0x83730000
-		print_string("\nRTL8373 detected");
+		print_string("RTL8373\n");
 		isRTL8373 = 1;
 		rtl8224_enable();  // Power on the RTL8224
+	} else {
+		print_string("RTL8372\n");
 	}
 
 #ifdef DEBUG
@@ -1591,8 +1643,7 @@ void bootloader(void)
 	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
 	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
-
-	print_string("A\n");
+;
 	REG_SET(0x7f94, 0x0);	// BUG: Only for testing, otherwise: clear bits 0-3
 	nic_setup();
 	vlan_setup();
@@ -1605,11 +1656,7 @@ void bootloader(void)
 	setup_i2c();
 
 	print_string(greeting);
-	print_string("\nCPU detected: ");
-	if (isRTL8373)
-		print_string("RTL8373");
-	else
-		print_string("RTL8372");
+
 	print_string("\nClock register: ");
 	print_reg(0x6040);
 	print_string("\nRegister 0x7b20/RTL837X_REG_SDS_MODES: ");

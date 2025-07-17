@@ -2,7 +2,7 @@
  * A Command parser for RTL Switch configuration
  */
 
-#define DEBUG
+// #define DEBUG
 
 #include <stdint.h>
 #include "rtl837x_common.h"
@@ -13,7 +13,7 @@
 #pragma codeseg BANK1
 
 extern volatile __xdata uint32_t ticks;
-extern __xdata char sbuf_ptr;
+extern volatile __xdata char sbuf_ptr;
 extern __xdata uint8_t sbuf[SBUF_SIZE];
 
 extern __code uint8_t * __code greeting;
@@ -184,12 +184,12 @@ void cmd_parser(void) __banked
 					reset_chip();
 				}
 				if (cmd_compare(0, "sfp")) {
-					uint8_t rate = sfp_read_reg(12);
+					uint8_t rate = sfp_read_reg(0, 12);
 					print_string("\r\nRate: "); print_byte(rate);
-					print_string("  Encoding: "); print_byte(sfp_read_reg(11));
+					print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
 					print_string("\r\n");
 					for (uint8_t i = 20; i < 60; i++) {
-						uint8_t c = sfp_read_reg(i);
+						uint8_t c = sfp_read_reg(0, i);
 						if (c)
 							write_char(c);
 					}

@@ -57,7 +57,7 @@ void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 
 void vlan_delete(uint16_t vlan) __banked
 {
-	print_string("\r\nvlan_delete called \r\n");
+	print_string("\r\nvlan_delete called \r\n"); print_short(vlan);
 	// R5cac-07d30301 r5cac:07d30300
 }
 
@@ -311,7 +311,7 @@ void port_stats_print(void) __banked
 			if (sfr_data[3] & 0x20) {
 				print_string("Down\t");
 			} else {
-				uint8_t rate = sfp_read_reg(12);
+				uint8_t rate = sfp_read_reg(0, 12);
 				if (rate == 0xd)
 					print_string("1000BX\t");
 				else if (rate == 0x1f)

@@ -48,7 +48,7 @@ void delay(uint16_t t);
 void sleep(uint16_t t);
 void write_char(char c);
 void print_reg(uint16_t reg);
-uint8_t sfp_read_reg(uint8_t reg);
+uint8_t sfp_read_reg(uint8_t slot, uint8_t reg);
 void reg_bit_set(uint16_t reg_addr, char bit);
 void reg_bit_clear(uint16_t reg_addr, char bit);
 void reset_chip(void);

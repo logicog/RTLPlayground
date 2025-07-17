@@ -50,6 +50,7 @@
 #define RTL837X_REG_GPIO_CONF_A 0x50
 // Configures IO direction for bank a
 
+#define RTL837X_REG_GPIO_EXT 0x63e8
 /*
  * NIC Related registers
  */
