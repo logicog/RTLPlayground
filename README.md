@@ -1,7 +1,19 @@
 # RTLPlayground
 A Playground for Firmware development for RTL8372/RTL8373 based 2.5GBit Switches.
 
-It provides a minimal alternative firmware for the unmanaged switches. At this point,
+For each hardware configuration of these devices, there is usually a managed and an
+umanaged version sold, with mostly identical hardware. The aim is to provide management
+features also for unmanaged devices with additional features such as Management VLAN,
+dhcp servers, multi-language support, IPv6 and TLS-encrypted web-pages.
+
+The playground currently provides a minimal alternative firmware for both the managed and unmanaged switches.
+When used with unmanaged switches, it will provide some management features such as
+setting up VLANs, mirroring ports and provide a Web-Server (currently no functions,
+really), but will need to be configured via a serial connection. Installation on
+managed devices only makes sense for developers, as plenty of features of the managed
+switches are not supported, yet.
+
+At this point,
 the firmware can be installed on the hardware as given below, how much of the switch
 will actually work as a switch, will vary. On the 
 keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+),
@@ -12,11 +24,11 @@ SerDes configuration works and supports 1GBit and 2.5GBit Ethernet (SGMII/HISGMI
 SFP module insert/removal identification and reading of the SFP EEProm works. SFP
 module configuration works, too, tested for 1G modules.
 
+The 4-Port Ethernet + 2 Port SFP+ are fully supported, too (e.g. KP-9000-6hx-x2).
+
 On the 9-port devices with RTL8273 + RTL8224, the 4 Ports served by the RTL8273 and
 the SFP+ port will work normally and TCP connectivity will work as above. The RTL8224
-is currently not correctly initialized.
-
-On the 4-Port Ethernet + 2 Port SFP+ devices, one of the SFP+ ports will not work.
+is currently not correctly initialized and will not work.
 
 To do meaningful debugging you will need to use a serial console, so soldering skills
 are required. Flashing must be done via a SOIC-8 PatchClamp or by soldering a socket
