@@ -4,11 +4,14 @@
 
 // #define DEBUG
 
+#define REGDBG 1
+
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_phy.h"
+#include "rtl837x_regs.h"
 
 #pragma codeseg BANK1
 
@@ -36,8 +39,8 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 	signed char j = 0;
 
 	for (i = cmd_words_b[start]; i < cmd_words_b[start + 1] && sbuf[i] != ' '; i++) {
-//		print_short(i); write_char(':'); print_short(j); write_char('#'); print_string("\r\n");
-//		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(sbuf[i]); print_string("\r\n");
+//		print_short(i); write_char(':'); print_short(j); write_char('#'); print_string("\n");
+//		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(sbuf[i]); print_string("\n");
 		if (!cmd[j])
 			return 1;
 		if (sbuf[i] != cmd[j++])
@@ -167,7 +170,7 @@ void cmd_parser(void) __banked
 				write_char(sbuf[line_ptr++]);
 				line_ptr &= SBUF_SIZE - 1;
 				if (word >= N_WORDS - 1) {
-					print_string("\r\ntoo many arguments, truncated");
+					print_string("\ntoo many arguments, truncated");
 					line_ptr = l;	// BUG: We should probably ignore the command
 					break;
 				}
@@ -180,14 +183,14 @@ void cmd_parser(void) __banked
 			signed char i = cmd_words_b[0];
 			if (i >= 0 && cmd_words_b[1] >= 0) {
 				if (cmd_compare(0, "reset")) {
-					print_string("\r\nRESET\n\n");
+					print_string("\nRESET\n\n");
 					reset_chip();
 				}
 				if (cmd_compare(0, "sfp")) {
 					uint8_t rate = sfp_read_reg(0, 12);
-					print_string("\r\nRate: "); print_byte(rate);
+					print_string("\nRate: "); print_byte(rate);
 					print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
-					print_string("\r\n");
+					print_string("\n");
 					for (uint8_t i = 20; i < 60; i++) {
 						uint8_t c = sfp_read_reg(0, i);
 						if (c)
@@ -198,59 +201,59 @@ void cmd_parser(void) __banked
 					port_stats_print();
 				}
 				if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'r') {
-					print_string("\r\nPRINT SECURITY REGISTERS\r\n");
+					print_string("\nPRINT SECURITY REGISTERS\n");
 					// The following will only show something else then 0xff if it was programmed for a managed switch
 					flash_read_security(0x0001000, 40);
 					flash_read_security(0x0002000, 40);
 					flash_read_security(0x0003000, 40);
 				}
 				if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'd') {
-					print_string("\r\nDUMPING FLASH\r\n");
+					print_string("\nDUMPING FLASH\n");
 					flash_dump(0, 255);
 				}
 				if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'j') {
-					print_string("\r\nJEDEC ID\r\n");
+					print_string("\nJEDEC ID\n");
 					flash_read_jedecid();
 				}
 				if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'u') {
-					print_string("\r\nUNIQUE ID\r\n");
+					print_string("\nUNIQUE ID\n");
 					flash_read_uid();
 				}
 				// Switch to flash 62.5 MHz mode
 				if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 's') {
-					print_string("\r\nFLASH FAST MODE\r\n");
+					print_string("\nFLASH FAST MODE\n");
 					flash_init(1);
-					print_string("\r\nNow dumping flash\r\n");
+					print_string("\nNow dumping flash\n");
 					flash_dump(0, 255);
 				}
 				if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'e') {
-					print_string("\r\nFLASH erase\r\n");
+					print_string("\nFLASH erase\n");
 					flash_block_erase(0x20000);
 				}
 				if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && sbuf[cmd_words_b[1]] == 'w') {
-					print_string("\r\nFLASH write\r\n");
+					print_string("\nFLASH write\n");
 					for (uint8_t i = 0; i < 20; i++)
 						flash_buf[i] = greeting[i];
 					flash_write_bytes(0x20000, flash_buf, 20);
 				}
 				if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
-					print_string("\r\nPORT ");
+					print_string("\nPORT ");
 					uint8_t p = sbuf[cmd_words_b[1]] - '1';
 					print_byte(p);
 					if (cmd_words_b[2] > 0 && cmd_compare(2, "2g5")) {
-						print_string(" 2.5G\r\n");
+						print_string(" 2.5G\n");
 						phy_set_mode(p, PHY_SPEED_2G5, 0, 0);
 					}
 					if (cmd_words_b[2] > 0 && cmd_compare(2, "1g")) {
-						print_string(" 1G\r\n");
+						print_string(" 1G\n");
 						phy_set_mode(p, PHY_SPEED_1G, 0, 0);
 					}
 					if (cmd_words_b[2] > 0 && cmd_compare(2, "auto")) {
-						print_string(" AUTO\r\n");
+						print_string(" AUTO\n");
 						phy_set_mode(p, PHY_SPEED_AUTO, 0, 0);
 					}
 					if (cmd_words_b[2] > 0 && cmd_compare(2, "off")) {
-						print_string(" OFF\r\n");
+						print_string(" OFF\n");
 						phy_set_mode(p, PHY_OFF, 0, 0);
 					}
 				}
@@ -270,8 +273,11 @@ void cmd_parser(void) __banked
 				if (cmd_compare(0, "mirror")) {
 					parse_mirror();
 				}
+				if (cmd_compare(0, "sds")) {
+					print_reg(RTL837X_REG_SDS_MODES);
+				}
 			}
-			print_string("\r\n> ");
+			print_string("\n> ");
 		}
 		l++;
 		l &= (SBUF_SIZE - 1);
