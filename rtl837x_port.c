@@ -94,7 +94,7 @@ void vlan_create(register uint16_t vlan, register uint16_t members, register uin
 
 	uint16_t a = members ^ tagged;
 	// Initialize VLAN table with VLAN 1
-	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0x02, (a >> 8) & 0x0f, (a << 2) | (tagged >> 8), tagged);
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0x02, (a >> 6) & 0x0f, (a << 2) | (tagged >> 8), tagged);
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
