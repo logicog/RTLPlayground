@@ -605,7 +605,7 @@ void delay(uint16_t t)
 }
 
 
-void sds_config_8224(uint8_t sds)
+void sds_config_8224()
 {
 	// On the RTL8372, 3 SerDes are being used
 	sds_config_mac(0, SDS_QXGMII); // For RTL8224
@@ -615,31 +615,33 @@ void sds_config_8224(uint8_t sds)
 	sds_config_mac(2, SDS_SGMII);  // For RTL8224
 	delay(50);
 
-	sds_write_v(sds, 0x21, 0x10, 0x4444); // Q002110:4444
-	sds_write_v(sds, 0x21, 0x13, 0x0404); // Q002113:0404
-	sds_write_v(sds, 0x21, 0x18, 0x6d6d); // Q002118:6d6d
-	sds_write_v(sds, 0x21, 0x1b, 0x4242); // Q00211b:4242
-	sds_write_v(sds, 0x21, 0x1d, 0x0000); // Q00211d:0000
-	sds_write_v(sds, 0x36, 0x1c, 0x1313); // Q00361c:1313
-	sds_write_v(sds, 0x36, 0x14, 0x0000); // Q003614:0000
-	sds_write_v(sds, 0x36, 0x10, 0x0202); // Q003610:0202
-	sds_write_v(sds, 0x2e, 0x04, 0x0000); // Q002e04:0000
-	sds_write_v(sds, 0x2e, 0x06, 0x0404); // Q002e06:0404
-	sds_write_v(sds, 0x2e, 0x07, 0x0202); // Q002e07:0202
-	sds_write_v(sds, 0x2e, 0x09, 0x0606); // Q002e09:0606
-	sds_write_v(sds, 0x2e, 0x0b, 0x2222); // Q002e0b:2222
-	sds_write_v(sds, 0x2e, 0x0c, 0xa2a2); // Q002e0c:a2a2
-	sds_write_v(sds, 0x2e, 0x0d, 0xfefe); // Q002e0d:fefe
-	sds_write_v(sds, 0x2e, 0x15, 0xf5f5); // Q002e15:f5f5
-	sds_write_v(sds, 0x2e, 0x16, 0x0404); // Q002e16:0404
-	sds_write_v(sds, 0x2e, 0x1d, 0xabab); // Q002e1d:abab
-	sds_write_v(sds, 0x06, 0x12, 0x5050); // Q000612:5050
-	sds_write_v(sds, 0x07, 0x06, 0x9494); // Q000706:9494
-	sds_write_v(sds, 0x07, 0x08, 0x9494); // Q000708:9494
-	sds_write_v(sds, 0x07, 0x0a, 0x9494); // Q00070a:9494
-	sds_write_v(sds, 0x07, 0x0c, 0x9494); // Q00070c:9494
-	sds_write_v(sds, 0x1f, 0x0b, 0x0000); // Q001f0b:0000
-	sds_write_v(sds, 0x06, 0x03, 0xc4c4); // Q000603:c4c4
+	// Q002110:4480 Q002113:0400 Q002118:6d02 Q00211b:424e Q00211d:0002 Q00361c:1390 Q003614:003f Q003610:0200 Q002e04:0080 Q002e06:0408 Q002e07:020d Q002e09:0601 Q002e0b:222c
+	// Q002e0c:a217 Q002e0d:fe40 Q002e15:f5c1 Q002e16:0443 Q002e1d:abb0 Q000612:5078 Q000706:9401 Q000708:9401 Q00070a:9401 Q00070c:9401 Q001f0b:0003 Q000603:c45c
+	sds_write_v(0, 0x21, 0x10, 0x4480); // Q002110:4480
+	sds_write_v(0, 0x21, 0x13, 0x0400); // Q002113:0400
+	sds_write_v(0, 0x21, 0x18, 0x6d02); // Q002118:6d02
+	sds_write_v(0, 0x21, 0x1b, 0x424e); // Q00211b:424e
+	sds_write_v(0, 0x21, 0x1d, 0x0002); // Q00211d:0002
+	sds_write_v(0, 0x36, 0x1c, 0x1390); // Q00361c:1390
+	sds_write_v(0, 0x36, 0x14, 0x003f); // Q003614:003f
+	sds_write_v(0, 0x36, 0x10, 0x0200); // Q003610:0200
+	sds_write_v(0, 0x2e, 0x04, 0x0080); // Q002e04:0080
+	sds_write_v(0, 0x2e, 0x06, 0x0408); // Q002e06:0408
+	sds_write_v(0, 0x2e, 0x07, 0x020d); // Q002e07:020d
+	sds_write_v(0, 0x2e, 0x09, 0x0601); // Q002e09:0601
+	sds_write_v(0, 0x2e, 0x0b, 0x222c); // Q002e0b:222c
+	sds_write_v(0, 0x2e, 0x0c, 0xa217); // Q002e0c:a217
+	sds_write_v(0, 0x2e, 0x0d, 0xfe40); // Q002e0d:fe40
+	sds_write_v(0, 0x2e, 0x15, 0xf5c1); // Q002e15:f5c1
+	sds_write_v(0, 0x2e, 0x16, 0x0443); // Q002e16:0443
+	sds_write_v(0, 0x2e, 0x1d, 0xabb0); // Q002e1d:abb0
+	sds_write_v(0, 0x06, 0x12, 0x5078); // Q000612:5078
+	sds_write_v(0, 0x07, 0x06, 0x9401); // Q000706:9401
+	sds_write_v(0, 0x07, 0x08, 0x9401); // Q000708:9401
+	sds_write_v(0, 0x07, 0x0a, 0x9401); // Q00070a:9401
+	sds_write_v(0, 0x07, 0x0c, 0x9401); // Q00070c:9401
+	sds_write_v(0, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
+	sds_write_v(0, 0x06, 0x03, 0xc45c); // Q000603:c45c
 	delay(800);
 /*	// q002000:0000 Q002000:0000 q002000:0030 Q002000:0000 q002000:0010 Q002000:0000 q002000:0050 Q002000:0000 q002000:00d0
 	sds_read(sds, 0x20, 0x00); v = ((uint16_t)SFR_DATA_8) << 8 | SFR_DATA_0; sds_write_v(sds, 0x20, 0x00, v);
@@ -1206,6 +1208,7 @@ void sds_init(void)
 
 	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
+	delay(20);
 
 	pval &= 0xfff0;
 	pval |= 0x0a;
@@ -1351,6 +1354,22 @@ void led_config(void)
 }
 
 
+void rtl8373_revision(void)
+{
+	// r000c:00300000 R000c-003a0000 r000c:203a6818 r000c:203a6818 R000c-20306818
+
+	reg_read_m(0x000c);
+	sfr_mask_data(2, 0x0a, 0x0a); 	// Enable reading version
+	reg_write_m(0x000c);
+	delay(50);
+
+	reg_read_m(0x000c);
+	print_string("CPU revision: "); print_byte(sfr_data[2]); print_byte(sfr_data[2]); write_char('\n');
+	sfr_mask_data(2, 0x0a, 0x00); 	// Enable reading version
+	reg_write_m(0x000c);
+}
+
+
 void rtl8373_init(void)
 {
 	print_string("\nrtl8373_init called\n");
@@ -1374,23 +1393,40 @@ void rtl8373_init(void)
 	reg_write_m(RTL837X_REG_SMI_CTRL);
 	delay(50);
 
+	rtl8373_revision();
 
-	sds_init();
-	sds_init();
 	led_config_9xh();
+	sds_init();
 	// Disable all SERDES for configuration
 	REG_SET(RTL837X_REG_SDS_MODES, 0x000037ff);
-	sds_read(0, 0x06, 0x01); sds_write_v(0, 0x06, 0x01, 0xc8c8);
-	sds_read(0, 0x06, 0x01); sds_write_v(0, 0x06, 0x01, 0xc8c8);
+
+	// q000601:c800 Q000601:c804 q000601:c804 Q000601:c800
+	sds_read(0, 0x06, 0x01);
+	uint16_t pval = SFR_DATA_8;
+	pval <<= 8;
+	pval |= SFR_DATA_0;
+	sds_write_v(0, 0x06, 0x01, pval | 0x04);
+	delay(50);
+	sds_read(0, 0x06, 0x01);
+	pval = SFR_DATA_8;
+	pval <<= 8;
+	pval |= SFR_DATA_0;
+	print_string("PVAL now: "); print_short(pval); write_char('\n');
+	sds_write_v(0, 0x06, 0x01, pval & 0xfffb);
+
 	phy_config_8224();
-	delay(500);
-	sds_config_8224(0);
+	sds_config_8224();
 	// SDS 1 setup
-	// q012100:4902 Q012100:4949 q013605:0000 Q013605:4040 Q011f02:0000 q011f15:0086
-	sds_write_v(1, 0x21, 0x00, 0x4949);
-	sds_write_v(1, 0x36, 0x05, 0x4040);
-	sds_write_v(1, 0x1f, 0x02, 0x0000);
+	// q012100:4902 Q012100:4906 q013605:0000 Q013605:4000 Q011f02:001f q011f15:0086
+	sds_write_v(1, 0x21, 0x00, 0x4906);
+	sds_write_v(1, 0x36, 0x05, 0x4000);
+	sds_write_v(1, 0x1f, 0x02, 0x001f);
 	sds_read(1, 0x1f, 0x15);
+	pval = SFR_DATA_8;
+	pval <<= 8;
+	pval |= SFR_DATA_0;
+	print_string("q011f15: "); print_short(pval); write_char('\n');
+
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(0xa90);
@@ -1496,8 +1532,6 @@ void rtl8372_init(void)
 	reg_read_m(0xa90);
 	sfr_mask_data(0, 0x0f,0x0c);
 	reg_write_m(0xa90);
-
-	rtl8224_phy_enable();
 
 	// Disable PHYs for configuration
 	phy_write(0xf0,0x1f,0xa610,0x2858);
@@ -1629,22 +1663,6 @@ void bootloader(void)
 		print_string("RTL8372\n");
 	}
 
-#ifdef DEBUG
-	// Reset seconds counter
-	print_string("\nTIMER-TEST: \n");
-	REG_SET(RTL837X_REG_SEC_COUNTER, 0x0);
-	delay(100);
-	print_reg(RTL837X_REG_SEC_COUNTER); write_char(' ');
-	REG_SET(RTL837X_REG_SEC_COUNTER, 0x1);
-	delay(100);
-	print_reg(RTL837X_REG_SEC_COUNTER);
-	REG_SET(RTL837X_REG_SEC_COUNTER, 0x2); write_char(' ');
-	delay(100);
-	print_reg(RTL837X_REG_SEC_COUNTER);
-	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
-	print_reg(RTL837X_REG_SEC_COUNTER);
-#endif
-
 	print_string("\nStarting up...\n");
 	print_string("  Flash controller\n");
 	flash_init(0);
@@ -1666,6 +1684,23 @@ void bootloader(void)
 	else
 		rtl8372_init();
 
+#ifdef DEBUG
+	// This register seems to work on the RTL8373 only if also the SDS
+	// Is correctly configured. Therefore, we can test it, here...
+	// Reset seconds counter
+	print_string("\nTIMER-TEST: \n");
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x0);
+	delay(100);
+	print_reg(RTL837X_REG_SEC_COUNTER); write_char(' ');
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x1);
+	delay(100);
+	print_reg(RTL837X_REG_SEC_COUNTER);
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x2); write_char(' ');
+	delay(100);
+	print_reg(RTL837X_REG_SEC_COUNTER);
+	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
+	print_reg(RTL837X_REG_SEC_COUNTER);
+#endif
 
 	nic_setup();
 	vlan_setup();
