@@ -13,24 +13,26 @@ really), but will need to be configured via a serial connection. Installation on
 managed devices only makes sense for developers, as plenty of features of the managed
 switches are not supported, yet.
 
-At this point,
-the firmware can be installed on the hardware as given below, how much of the switch
-will actually work as a switch, will vary. On the 
-keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+),
+At this point, the firmware can be installed on the hardware as given below,
+all of the ports and SFP-slots will be supported. The following has been tested:
+On the keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+),
 at present the system will provide the same featurs as a dumb switch plus a tiny
 TCP stack that will allow to reply to ARP and ping messages, thus enabling pinging the device.
+VLAN and mirroring can be configured (but not saved to flash).
 The ports served by the RTL8372 will be 100M/1G/2.5G auto-detect. Port 5 to RTL8221B PHY
 SerDes configuration works and supports 1GBit and 2.5GBit Ethernet (SGMII/HISGMII).
 SFP module insert/removal identification and reading of the SFP EEProm works. SFP
-module configuration works, too, tested for 1G modules.
+module configuration works, too, tested for 1G, 2.5G and 10G Ethernet and Fiber modules.
 
-The 4-Port Ethernet + 2 Port SFP+ are fully supported, too (e.g. KP-9000-6hx-x2).
+The 4-Port Ethernet + 2 Port SFP+ devices (e.g. KP-9000-6HX-x2) are fully supported, too
+(e.g. KP-9000-6hx-x2) with the same features as above. In particular all fiber/Ethernet
+modules work in both SFP+ ports.
 
-On the 9-port devices with RTL8273 + RTL8224, the 4 Ports served by the RTL8273 and
-the SFP+ port will work normally and TCP connectivity will work as above. The RTL8224
-is currently not correctly initialized and will not work.
+On the 9-port devices with RTL8273 + RTL8224 (for example kp-9000-9xh-x) all ports will
+work for switching and CPU-access, the  SFP+ port will work normally and TCP connectivity
+will work as above. Not all features of the RTL8224-ports (the first 4) have been tested.
 
-To do meaningful debugging you will need to use a serial console, so soldering skills
+To do meaningful development you will need to use a serial console, so soldering skills
 are required. Flashing must be done via a SOIC-8 PatchClamp or by soldering a socket
 for the flash chip.
 
@@ -79,13 +81,10 @@ deployment was tested on, including:
 - keepLINK kp-9000-6hx-x2 (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+)
 - keepLINK KP-9000-6XHML-X2, same as above, but Managed
 - keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+)
-- keepLINK kp-9000-9xh-x-eu (2 x RTL8373, one slaved to the other via MDIO: 8x 2.5GBit + 1x 10GBit SFP+)
+- keepLINK kp-9000-9xh-x-eu (1 x RTL8373 + RTL8224: 8x 2.5GBit + 1x 10GBit SFP+)
 - Lianguo LG-SWTGW218AS (RTL8373 + RTL8224 PHY: 8x 2.5GBit + 1x 10GBit SFP+)
 - No-Name ZX-SWTGW215AS, managed version of kp-9000-6hx-x, ordered on
   AliExpress as keepLINK 5+1 port managed
-
-you can use ghidra to look at the image layout to understand how the image
-is organized.
 
 ### Understanding the image using ghidra
 Start ghidra, load file starting from offset 0x0002 into
@@ -132,7 +131,7 @@ assembler.
 
 ### Hardware supported by the code so far
 
-- The following hardware is supported:
+-The following hardware is supported:
 - Clock generation, including different divider settings
 - Interrupt control for timer, serial, external irqs 0, 1
 - Serial console via SFRs
@@ -142,20 +141,25 @@ assembler.
   - LED setup
   - Reset
   - Some switch settings such as MAC configuration
-  - GPIO to detect SFP module insert/removal/LOS
-  - I2C to read SFP EEPROM
+  - GPIO to detect SFP module insert/removal/RX-LOS
+  - I2C to read SFP EEPROM on 1 and 2 SFP slot devices
   - NIC setup
   - L2 learning table access, L2 table flushing
   - VLAN setup/configuration
   - Port mirroring
-- Access to PHYs via MDIO (only conceptually, not tested):
-  - SerDes settings of SoC via SFR: Configure SFPs in 10Gbit/2.5Gbit/1Gbit, RTL8221
-  - Clause 45 via SFR: configure RTL8221
+- Access to PHYs via MDIO (clause 45 via SFR):
+  - Internal PHYs of RTL8372 and RTL8373
+  - RTL8221 (1x2.5GBit port on devices with 5 ports)
+  - RTL8224 (4x2.5GBit ports on devices with 8 ports)
+- SerDes settings of SoC via SFR:
+  - Configure SFPs with 10Gbit/2.5Gbit/1Gbit (Ethernet and Fiber SFP(+) tested)
+  - RTL8221, RTL8224
 - NIC TX and RX of packets via SFRs
   - send and receive Ethernet frames via SFRs and Switch registers
+  - RTL-tags and VLAN ingress-tag decoding for CPU-port
 
 Ethernet frame RX IRQ via IRQ1 is conceptually understood, but not activated. RX is
-currently done via polling, which allows ping-times of <100ms.
+currently done via polling, which allows ping-times of <10ms.
 
 The RTL8372/3 have 256 bytes of internal RAM (INTMEM) accessible through MOV
 instructions, which are used for the stack and important globals. Some of
@@ -179,9 +183,6 @@ The peripherial functions are accessed through 2 different mechanisms:
 - 0x10000 switch registers, which appear to be very similar to the registers
   of the RTL838x, for which source code and datasheets are available. This
   controls clock dividers, GPIO/LEDs and general  switch functionality. 
-There should be an I2C controller that reads the SFP EEPROMs, but it is not
-clear whether this is bit-banged GPIO like for the RTL83xx or dedicated HW
-as for the RTL93xx.
 
 The playground image shows access to the different types of memory using the
 SDCC compiler. Any support of Linux or e.g. Zephyr would require porting gcc.
@@ -237,7 +238,7 @@ phy_config_8224 done
 rtl8224_phy_enable called
 
 rtl8224_phy_enable done
-X
+
 rtl8372_init done
 
 A minimal prompt to explore the RTL8372:
