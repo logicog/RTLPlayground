@@ -29,6 +29,7 @@
 #define SDS_HISGMII		0x12
 #define SDS_HSG			0x16
 #define SDS_10GR		0x1a
+#define SDS_OFF			0x1f
 
 #define RTL837X_REG_LINKS 0x63f0
 /* Each nibble encodes the link state of a port.
