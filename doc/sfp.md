@@ -6,8 +6,8 @@ implemented due to the lack of suitable modules.
 
 When a module is inserted, it directly connects to GPIO, I2C and RX/TX data lines of
 the SoC. An example schematics can be found here:
-(SFP Module Schematics)[https://sfp.by/source/manual/SCP6F44-GL-BWE.pdf]. Another
-resources is (here)[https://www.sfptransceiver.com/product_pdf/SFP/SFP%20Design%20Guide.pdf].
+[SFP Module Schematics](https://sfp.by/source/manual/SCP6F44-GL-BWE.pdf). Another
+resources is [here](https://www.sfptransceiver.com/product_pdf/SFP/SFP%20Design%20Guide.pdf).
 The SoC
 detects the insertion because the MOD-DEF0 line is pulled low by the module. The
 corresponding bit in RTL837X_REG_GPIO_B or RTL837X_REG_GPIO_C will transition from
@@ -57,7 +57,7 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 ```
 
 The description of the data stored in the EEPROM can be found in the
-(SFF-8472 standard)[https://members.snia.org/document/dl/25916]
+[SFF-8472 standard](https://members.snia.org/document/dl/25916)
 The most relevant is byte 12 (0x0c), which gives the signalling rate of the module in
 100MBit, including the 25% overhead for error correction. Currently the code looks like
 this:
@@ -81,7 +81,7 @@ a 1000BX fiber module.
 
 In order to transmit data or receive data from the module, the SerDes of the SoC connected
 to the module needs to e properly configured. As can be seen from the
-(SFP Module Schematics)[https://sfp.by/source/manual/SCP6F44-GL-BWE.pdf], the Photo-transistor
+[SFP Module Schematics](https://sfp.by/source/manual/SCP6F44-GL-BWE.pdf), the Photo-transistor
 of the module is optimized by an amplifier and quantized to bits, which directly arrive
 at the SoC in a differential pair. This data still has the 25% overhead of the error correction
 codes that were on the fiber. The switch needs to configure the SerDes correctl (sds_config())
