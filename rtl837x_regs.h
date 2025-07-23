@@ -52,6 +52,14 @@
 // Configures IO direction for bank a
 
 #define RTL837X_REG_GPIO_EXT 0x63e8
+
+/*
+ * I2C controller
+ */
+#define RTL837X_REG_I2C_CTRL	0x0418
+#define RTL837X_REG_I2C_IN	0x0420
+#define RTL837X_REG_I2C_OUT	0x0424
+
 /*
  * NIC Related registers
  */

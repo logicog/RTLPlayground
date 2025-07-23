@@ -704,26 +704,26 @@ void sds_config(uint8_t sds, uint8_t mode)
 uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 {
 	if (slot == 0) {
-		reg_read_m(0x0418);
+		reg_read_m(RTL837X_REG_I2C_CTRL);
 		sfr_mask_data(1, 0xff, 0x72);
-		reg_write_m(0x0418);
+		reg_write_m(RTL837X_REG_I2C_CTRL);
 	} else {
-		reg_read_m(0x0418);
+		reg_read_m(RTL837X_REG_I2C_CTRL);
 		sfr_mask_data(1, 0xff, 0x6e);
-		reg_write_m(0x0418);
+		reg_write_m(RTL837X_REG_I2C_CTRL);
 	}
 
-	REG_WRITE(0x0420, 0, 0, 0, reg);
+	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
 
 	// Execute I2C Read
-	reg_bit_set(0x418, 0);
+	reg_bit_set(RTL837X_REG_I2C_CTRL, 0);
 
 	// Wait for execution to finish
 	do {
-		reg_read_m(0x418);
+		reg_read_m(RTL837X_REG_I2C_CTRL);
 	} while (sfr_data[3] & 0x1);
 
-	reg_read_m(0x0424);
+	reg_read_m(RTL837X_REG_I2C_OUT);
 	return sfr_data[3];
 }
 
