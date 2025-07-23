@@ -596,6 +596,7 @@ void sds_config_mac(uint8_t sds, uint8_t mode)
 	print_string("\n");
 }
 
+
 // Delay for given number of ticks without doing housekeeping
 void delay(uint16_t t)
 {
@@ -605,67 +606,18 @@ void delay(uint16_t t)
 }
 
 
-void sds_config_8224()
-{
-	// On the RTL8372, 3 SerDes are being used
-	sds_config_mac(0, SDS_QXGMII); // For RTL8224
-	delay(50);
-	sds_config_mac(1, SDS_OFF);    // Off for now until SFP+ port used
-	delay(50);
-	sds_config_mac(2, SDS_SGMII);  // For RTL8224
-	delay(50);
-
-	// Q002110:4480 Q002113:0400 Q002118:6d02 Q00211b:424e Q00211d:0002 Q00361c:1390 Q003614:003f Q003610:0200 Q002e04:0080 Q002e06:0408 Q002e07:020d Q002e09:0601 Q002e0b:222c
-	// Q002e0c:a217 Q002e0d:fe40 Q002e15:f5c1 Q002e16:0443 Q002e1d:abb0 Q000612:5078 Q000706:9401 Q000708:9401 Q00070a:9401 Q00070c:9401 Q001f0b:0003 Q000603:c45c
-	sds_write_v(0, 0x21, 0x10, 0x4480); // Q002110:4480
-	sds_write_v(0, 0x21, 0x13, 0x0400); // Q002113:0400
-	sds_write_v(0, 0x21, 0x18, 0x6d02); // Q002118:6d02
-	sds_write_v(0, 0x21, 0x1b, 0x424e); // Q00211b:424e
-	sds_write_v(0, 0x21, 0x1d, 0x0002); // Q00211d:0002
-	sds_write_v(0, 0x36, 0x1c, 0x1390); // Q00361c:1390
-	sds_write_v(0, 0x36, 0x14, 0x003f); // Q003614:003f
-	sds_write_v(0, 0x36, 0x10, 0x0200); // Q003610:0200
-	sds_write_v(0, 0x2e, 0x04, 0x0080); // Q002e04:0080
-	sds_write_v(0, 0x2e, 0x06, 0x0408); // Q002e06:0408
-	sds_write_v(0, 0x2e, 0x07, 0x020d); // Q002e07:020d
-	sds_write_v(0, 0x2e, 0x09, 0x0601); // Q002e09:0601
-	sds_write_v(0, 0x2e, 0x0b, 0x222c); // Q002e0b:222c
-	sds_write_v(0, 0x2e, 0x0c, 0xa217); // Q002e0c:a217
-	sds_write_v(0, 0x2e, 0x0d, 0xfe40); // Q002e0d:fe40
-	sds_write_v(0, 0x2e, 0x15, 0xf5c1); // Q002e15:f5c1
-	sds_write_v(0, 0x2e, 0x16, 0x0443); // Q002e16:0443
-	sds_write_v(0, 0x2e, 0x1d, 0xabb0); // Q002e1d:abb0
-	sds_write_v(0, 0x06, 0x12, 0x5078); // Q000612:5078
-	sds_write_v(0, 0x07, 0x06, 0x9401); // Q000706:9401
-	sds_write_v(0, 0x07, 0x08, 0x9401); // Q000708:9401
-	sds_write_v(0, 0x07, 0x0a, 0x9401); // Q00070a:9401
-	sds_write_v(0, 0x07, 0x0c, 0x9401); // Q00070c:9401
-	sds_write_v(0, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
-	sds_write_v(0, 0x06, 0x03, 0xc45c); // Q000603:c45c
-	delay(800);
-/*	// q002000:0000 Q002000:0000 q002000:0030 Q002000:0000 q002000:0010 Q002000:0000 q002000:0050 Q002000:0000 q002000:00d0
-	sds_read(sds, 0x20, 0x00); v = ((uint16_t)SFR_DATA_8) << 8 | SFR_DATA_0; sds_write_v(sds, 0x20, 0x00, v);
-	delay(10);
-	sds_read(sds, 0x20, 0x00); v = ((uint16_t)SFR_DATA_8) << 8 | SFR_DATA_0; sds_write_v(sds, 0x20, 0x00, v | 0x30);
-	delay(10);
-	sds_read(sds, 0x20, 0x00); v = ((uint16_t)SFR_DATA_8) << 8 | SFR_DATA_0; sds_write_v(sds, 0x20, 0x00, v | 0x30);
-
-	void sds_write(uint8_t sds_id, uint8_t page, uint8_t reg)
-	sds_write_v(sds, 0x20, 0x00, 0x0c0c); // Q002000:0c0c
-	sds_write_v(sds, 0x1f, 0x00, 0x0000); // Q001f00:0000 // q001f00:000b Q001f00:0000
-	*/
-}
-
-
+/*
+ * Configure the SerDes of the SoC for a particular mode
+ * to connect to an SFP module or a PHY
+ * Valid modes are SDS_10GR, SDS_QXGMII, SDS_HISGMII, SDS_HSG, SDS_SGMII and SDS_1000BX_FIBER
+ * The SerDes ID may be 0 or 1 for RTL8272 and 0-2 for RTL8373
+ */
 void sds_config(uint8_t sds, uint8_t mode)
 {
 	print_string("sds_config sds: "); print_byte(sds); print_string(", mode: "); print_byte(mode); write_char('\n');
 	sds_config_mac(sds, mode);
 
-	if (mode == SDS_QXGMII) // A special mode for the RTL8224, SerDes configured as for 10GR
-		mode = SDS_10GR;
-
-	if (mode == SDS_10GR) // 10G Fiber
+	if (mode == SDS_10GR || mode == SDS_QXGMII) // 10G Fiber, 10G connection to RTL8224
 		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
 	else
 		sds_write_v(sds, 0x21, 0x10, 0x6480); // Q002110:6480
@@ -694,6 +646,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 		page = 0x28;
 		break;
 	case SDS_10GR:
+	case SDS_QXGMII:
 		v = 0x0200;
 		page = 0x2e;
 		break;
@@ -732,7 +685,8 @@ void sds_config(uint8_t sds, uint8_t mode)
 	sds_write_v(sds, 0x07, 0x0c, 0x9401); // Q00070c:9401
 	sds_write_v(sds, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
 	sds_write_v(sds, 0x06, 0x03, 0xc45c); // Q000603:c45c
-	sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
+	if (!SDS_QXGMII)
+		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
 
 	if (sds == 0 && mode == SDS_1000BX_FIBER) {
 		sds_write_v(sds, 0x02, 0x04, 0x0020); 	// Q000204:0020
@@ -1411,11 +1365,13 @@ void rtl8373_init(void)
 	pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
-	print_string("PVAL now: "); print_short(pval); write_char('\n');
 	sds_write_v(0, 0x06, 0x01, pval & 0xfffb);
 
 	phy_config_8224();
-	sds_config_8224();
+	sds_config_mac(1, SDS_OFF);    // Off for now until SFP+ port used
+	sds_config_mac(2, SDS_SGMII);  // For RTL8224
+	sds_config(0, SDS_QXGMII);
+
 	// SDS 1 setup
 	// q012100:4902 Q012100:4906 q013605:0000 Q013605:4000 Q011f02:001f q011f15:0086
 	sds_write_v(1, 0x21, 0x00, 0x4906);
@@ -1425,8 +1381,6 @@ void rtl8373_init(void)
 	pval = SFR_DATA_8;
 	pval <<= 8;
 	pval |= SFR_DATA_0;
-	print_string("q011f15: "); print_short(pval); write_char('\n');
-
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(0xa90);
