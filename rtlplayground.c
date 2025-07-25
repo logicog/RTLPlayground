@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 // This has to be set to the number of SFP+ ports, i.e. 1 or 2
-#define NSFP 1
+#define NSFP 2
 
 // #define REGDBG 1
 // #define RXTXDBG 1
@@ -72,6 +72,7 @@ __xdata uint8_t flash_buf[256];
 __xdata uint8_t rx_headers[16]; // Packet header(s) on RX
 __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
+__xdata uint16_t rx_packet_vlan;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t minPort;
@@ -80,8 +81,8 @@ __xdata uint8_t nSFPPorts;
 __xdata uint8_t cpuPort;
 
 __code uint16_t bit_mask[16] = {
-	0x0001, 0x0002, 0x0004,0x0008,0x0010,0x0020,0x0040, 0x0080,
-	0x0100, 0x0200, 0x0400,0x0800,0x1000,0x2000,0x4000, 0x8000
+	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
+	0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000, 0x8000
 };
 
 
@@ -422,6 +423,9 @@ void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 }
 
 
+/*
+ * Transfers data in XMEM to the ASIC for transmission by the nic
+ */
 void nic_tx_packet(uint16_t ring_ptr)
 {
 //	uint16_t buffer = (uint16_t) tx_buf;
@@ -432,7 +436,7 @@ void nic_tx_packet(uint16_t ring_ptr)
 	ring_ptr |= 0x8000;
 	SFR_NIC_RING_L = ring_ptr;
 	SFR_NIC_RING_H = ring_ptr >> 8;
-	uint16_t len =(((uint16_t)uip_buf[VLAN_TAG_SIZE + 5]) << 8) | uip_buf[VLAN_TAG_SIZE + 4];
+	uint16_t len = (((uint16_t)uip_buf[VLAN_TAG_SIZE + 5]) << 8) | uip_buf[VLAN_TAG_SIZE + 4];
 	len += 0xf;
 	len >>= 3;
 	SFR_NIC_CTRL = len;
@@ -685,7 +689,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	sds_write_v(sds, 0x07, 0x0c, 0x9401); // Q00070c:9401
 	sds_write_v(sds, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
 	sds_write_v(sds, 0x06, 0x03, 0xc45c); // Q000603:c45c
-	if (!SDS_QXGMII)
+	if (mode != SDS_QXGMII)
 		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
 
 	if (sds == 0 && mode == SDS_1000BX_FIBER) {
@@ -752,9 +756,13 @@ void tcpip_output(void)
 		write_char(' ');
 	}
 	*/
+
+	// Move data over from xmem buffer to ASIC side using DMA
 	nic_tx_packet(ring_ptr);
 
 	reg_read_m(0x7884);
+
+	// Do actual TX of data on ASIC side
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 	sfr_data[3] = 0x1;
 	reg_write_m(0x7850);
@@ -771,23 +779,25 @@ void handle_rx(void)
 		ring_ptr <<= 3;
 		nic_rx_header(ring_ptr);
 		__xdata uint8_t *ptr = rx_headers;
-/*
+
+#ifdef RXTXDBG
 		print_string("RX on port "); print_byte(rx_headers[3] & 0xf);
 		print_string(": ");
 		for (uint8_t i = 0; i < 8; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
-*/
+#endif
 		nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8);
 
-/*		print_string("\n<< ");
+#ifdef RXTXDBG
+		print_string("\n<< ");
 		ptr = &uip_buf[0];
 		for (uint8_t i = 0; i < 80; i++) {
 			print_byte(*ptr++);
 			write_char(' ');
 		}
-*/
+#endif
 		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
 		sfr_data[3] = 0x1;
 		reg_write_m(RTL837X_REG_RX_DONE);
@@ -795,6 +805,12 @@ void handle_rx(void)
 //		write_char('>'); print_byte(uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
 //		write_char('>'); print_byte(uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
 		// Check for ARP packet
+		rx_packet_vlan = uip_buf[12 + RTL_TAG_SIZE + 2] & 0xf;
+		rx_packet_vlan <<= 8;
+		rx_packet_vlan |= uip_buf[12 + RTL_TAG_SIZE + 3];
+#ifdef RXTXDBG
+		print_string(" RX-VLAN: "); print_short(rx_packet_vlan); write_char('\n');
+#endif
 		if (uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x08 && uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x06) {
 			uip_arp_arpin();
 			if (uip_len) {
@@ -1400,9 +1416,8 @@ void rtl8373_init(void)
 	// Configure ports
 	uint16_t reg = 0x1238; // Port base register for the bits we set
 	for (char i = 0; i < 9; i++) {
-		reg_bit_set(reg, 0x2);
-		reg_bit_set(reg, 0x4);
-		reg_bit_set(reg, 0x8);
+		// Bit 7 (0x40) enables replacement of the RTL-VLAN tag with an 802.1Q VLAN tag
+		REG_SET(reg, 0xe77);
 		reg += 0x100;
 	}
 
@@ -1430,11 +1445,6 @@ void rtl8373_init(void)
 	reg_write_m(0x632c);
 
 	REG_SET(0x7f94, 0);
-
-	delay(1000);
-
-	handle_sfp();
-
 	print_string("\nrtl8373_init done\n");
 }
 
@@ -1502,9 +1512,8 @@ void rtl8372_init(void)
 	///
 	uint16_t reg = 0x1238 + 0x300; // Port base register for the bits we set
 	for (char i = minPort; i <= maxPort; i++) {
-		reg_bit_set(reg, 0x2);
-		reg_bit_set(reg, 0x4);
-		reg_bit_set(reg, 0x8);
+		// Bit 7 (0x40) enables replacement of the RTL-VLAN tag with an 802.1Q VLAN tag
+		REG_SET(reg, 0xe77);
 		reg += 0x100;
 	}
 
@@ -1525,11 +1534,6 @@ void rtl8372_init(void)
 	sfr_mask_data(1, 0x70, 0x80);
 	sfr_mask_data(2, 0x10, 0x1f);
 	reg_write_m(0x632c);
-
-	delay(1000);
-
-	handle_sfp();
-
 	print_string("\nrtl8372_init done\n");
 }
 
@@ -1637,6 +1641,7 @@ void bootloader(void)
 		rtl8373_init();
 	else
 		rtl8372_init();
+	delay(1000);
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
@@ -1658,6 +1663,7 @@ void bootloader(void)
 
 	nic_setup();
 	vlan_setup();
+	port_l2_setup();
 	uip_init();
 	uip_arp_init();
 	httpd_init();
