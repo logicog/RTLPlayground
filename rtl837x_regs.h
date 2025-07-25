@@ -99,6 +99,15 @@
 #define RTL837x_PVID_BASE_REG	0x4e1c
 
 /*
+ * Egress / ingress filtering
+ */
+// 2 bits per port: allow tagged (01) / untagged (10) and all (00)
+#define RTL837x_REG_INGRESS	0x4e10
+#define INGR_ALLOW_TAGGED 1
+#define INGR_ALLOW_UNTAGGED 2
+#define INGR_ALLOW_ALL 0
+
+/*
  * Mirroring
  */
 #define RTL837x_MIRROR_CONF 0x604c
