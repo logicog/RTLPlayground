@@ -15,6 +15,11 @@
 
 #pragma codeseg BANK1
 
+extern __xdata uint8_t minPort;
+extern __xdata uint8_t maxPort;
+extern __xdata uint8_t nSFPPorts;
+extern __xdata uint8_t isRTL8373;
+
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata char sbuf_ptr;
 extern __xdata uint8_t sbuf[SBUF_SIZE];
@@ -32,6 +37,10 @@ __xdata	char is_white;
 #define N_WORDS 16
 __xdata signed char cmd_words_b[N_WORDS];
 
+// Maps the physical port (starting from 0) to the logical port
+__code uint8_t phys_to_log_port[6] = {
+	4, 5, 6, 7, 3, 8
+};
 
 uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 {
@@ -67,13 +76,37 @@ uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 }
 
 
-void parse_vlan(void) __banked
+void parse_trunk(void)
+{
+	__xdata uint8_t group;
+	__xdata uint16_t members = 0;
+
+	group = sbuf[cmd_words_b[1]] - '0';
+
+	uint8_t w = 2;
+	while (cmd_words_b[w] > 0) {
+		uint8_t port;
+		if (sbuf[cmd_words_b[w]] >= '0' && sbuf[cmd_words_b[w]] <= '9') {
+			port = sbuf[cmd_words_b[w]] - '1';
+			if (port > maxPort)
+				goto err;
+			members |= ((uint16_t)1) << port;
+		}
+		w++;
+	}
+	trunk_set(group, members);
+	return;
+err:
+	print_string("Error: trunk <trunk-id> [port]...");
+}
+
+
+void parse_vlan(void)
 {
 	__xdata uint16_t vlan;
 	__xdata uint16_t members = 0;
 	__xdata uint16_t tagged = 0;
 	if (!atoi_short(&vlan, cmd_words_b[1])) {
-		print_short(vlan);
 		if (cmd_words_b[2] > 0 && sbuf[cmd_words_b[2]] == 'd') {
 			vlan_delete(vlan);
 			return;
@@ -88,19 +121,26 @@ void parse_vlan(void) __banked
 					if (sbuf[cmd_words_b[w] + 2] == 't')
 						tagged |= ((uint16_t)1) << port;
 				} else {
+					if (!isRTL8373)
+						port = phys_to_log_port[port];
 					if (sbuf[cmd_words_b[w] + 1] == 't')
 						tagged |= ((uint16_t)1) << port;
 				}
+				if (port > maxPort)
+					goto err;
 				members |= ((uint16_t)1) << port;
 			}
 			w++;
 		}
 		vlan_create(vlan, members, tagged);
 	}
+	return;
+err:
+	print_string("Error: vlan <vlan-id> [port][t/u]...");
 }
 
 
-void parse_mirror(void) __banked
+void parse_mirror(void)
 {
 	__xdata uint8_t mirroring_port;
 	__xdata uint16_t rx_pmask = 0;
@@ -122,6 +162,8 @@ void parse_mirror(void) __banked
 			port = sbuf[cmd_words_b[w]] - '1';
 			if (sbuf[cmd_words_b[w] + 1] >= '0' && sbuf[cmd_words_b[w] + 1] <= '9') {
 				port = (port + 1) * 10 + sbuf[cmd_words_b[w] + 1] - '1';
+				if (!isRTL8373)
+					port = phys_to_log_port[port];
 				if (sbuf[cmd_words_b[w] + 2] == 'r')
 					rx_pmask |= ((uint16_t)1) << port;
 				else if (sbuf[cmd_words_b[w] + 2] == 't')
@@ -153,6 +195,7 @@ void cmd_parser(void) __banked
 		write_char(sbuf[l]);
 		// Check whether there is a full line:
 		if (sbuf[l] == '\n' || sbuf[l] == '\r') {
+			write_char('\n');
 #ifdef DEBUG
 			print_long(ticks);
 #endif
@@ -263,7 +306,9 @@ void cmd_parser(void) __banked
 				if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 					__xdata uint16_t pvid;
 					uint8_t port;
-					port = sbuf[cmd_words_b[1]] - '0';
+					port = sbuf[cmd_words_b[1]] - '1';
+					if (!isRTL8373)
+						port = phys_to_log_port[port];
 					if (!atoi_short(&pvid, cmd_words_b[2]))
 						port_pvid_set(port, pvid);
 				}
@@ -272,6 +317,9 @@ void cmd_parser(void) __banked
 				}
 				if (cmd_compare(0, "mirror")) {
 					parse_mirror();
+				}
+				if (cmd_compare(0, "trunk")) {
+					parse_trunk();
 				}
 				if (cmd_compare(0, "sds")) {
 					print_reg(RTL837X_REG_SDS_MODES);
