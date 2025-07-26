@@ -56,9 +56,7 @@ void port_ingress_filter(register uint8_t port, uint8_t type) __banked
 
 
 /*
-pvid 6 2 2
-port_pvid_set called
-R4e28-00001002
+ * Define a Primary VLAN ID for a port 
 */
 void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 {
@@ -78,7 +76,8 @@ void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 void vlan_delete(uint16_t vlan) __banked
 {
 	print_string("\nvlan_delete called \n"); print_short(vlan);
-	// R5cac-07d30301 r5cac:07d30300
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0, 0, 0, 0);
+	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
 }
 
 
@@ -203,9 +202,9 @@ void vlan_setup(void) __banked
 void trunk_set(uint8_t group, uint16_t mask) __banked
 {
 	if (group == 1) {
-		REG_WRITE(0x4f38, 0, 0, mask >> 8, mask);
+		REG_WRITE(RTL837x_TRUNK_CTRL_A, 0, 0, mask >> 8, mask);
 	} else if (group == 2) {
-		REG_WRITE(0x4f3c, 0, 0, mask >> 8, mask);
+		REG_WRITE(RTL837x_TRUNK_CTRL_B, 0, 0, mask >> 8, mask);
 	} else {
 		print_string("\nTrunk group must be 1 or 2\n");
 	}

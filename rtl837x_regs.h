@@ -113,6 +113,12 @@
 #define RTL837x_MIRROR_CONF 0x604c
 #define RTL837x_MIRROR_CTRL 0x6048
 
+/*
+ * Trunking
+ */
+#define RTL837x_TRUNK_CTRL_A	0x4f38
+#define RTL837x_TRUNK_CTRL_B	0x4f3c
+
 #ifdef REGDBG
 
 #define REG_SET(r, v) SFR_DATA_24 = ((v) >> 24) & 0xff; \

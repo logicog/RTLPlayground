@@ -303,3 +303,13 @@ Lightron Inc.   WSPXG-ES3LC-IHA 0000
 
 ```
 Enjoy playing!
+
+## Other documents
+The following documents give further documentation on specific features of
+the RTL837x SoCs:
+- [CPU Port](doc/CpuPort.md)
+- [L2 learning](doc/l2.md) 
+- [Mirroring](doc/mirroring.md)
+- [SFP+ ports](doc/sfp.md) 
+- [Trunking aka. port aggregation](doc/trunking.md)  
+- [VLAN](doc/vlan.md)
