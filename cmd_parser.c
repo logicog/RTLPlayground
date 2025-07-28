@@ -21,7 +21,7 @@ extern __xdata uint8_t nSFPPorts;
 extern __xdata uint8_t isRTL8373;
 
 extern volatile __xdata uint32_t ticks;
-extern volatile __xdata char sbuf_ptr;
+extern volatile __xdata uint8_t sbuf_ptr;
 extern __xdata uint8_t sbuf[SBUF_SIZE];
 
 extern __code uint8_t * __code greeting;
@@ -29,9 +29,13 @@ extern __code uint8_t * __code hex;
 
 extern __xdata uint8_t flash_buf[256];
 
+// Buffer for writing to flash 0x1fd000, copy to 0x1fe000
+#define CMD_BUFFER_SIZE 1024
+__xdata uint8_t cmd_buffer[CMD_BUFFER_SIZE];
+__xdata uint16_t cmdptr;
 
-__xdata	char l;
-__xdata char line_ptr;
+__xdata	uint8_t l;
+__xdata uint8_t line_ptr;
 __xdata	char is_white;
 
 #define N_WORDS 16
@@ -47,7 +51,8 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 	signed char i;
 	signed char j = 0;
 
-	for (i = cmd_words_b[start]; i < cmd_words_b[start + 1] && sbuf[i] != ' '; i++) {
+	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && sbuf[i] != ' '; i++) {
+		i &= SBUF_SIZE - 1;
 //		print_short(i); write_char(':'); print_short(j); write_char('#'); print_string("\n");
 //		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(sbuf[i]); print_string("\n");
 		if (!cmd[j])
@@ -56,7 +61,7 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 			break;
 	}
 //	write_char('.'); print_short(i); write_char(':'); print_short(i);
-	if (i >= cmd_words_b[start + 1] || sbuf[i] == ' ')
+	if (i == cmd_words_b[start + 1] || sbuf[i] == ' ')
 		return 1;
 	return 0;
 }
@@ -145,17 +150,19 @@ void parse_mirror(void)
 	__xdata uint8_t mirroring_port;
 	__xdata uint16_t rx_pmask = 0;
 	__xdata uint16_t tx_pmask = 0;
-	uint8_t w = 2;
 
 	if (sbuf[cmd_words_b[1]] < '0' || sbuf[cmd_words_b[1]] > '9') {
 		print_string("Port missing: port <mirroring port> [port][t/r]...");
 		return;
 	}
-		
-	mirroring_port = sbuf[cmd_words_b[w]] - '1';
-	if (sbuf[cmd_words_b[1] + 1] >= '0' && sbuf[cmd_words_b[1] + 1] <= '9')
-		mirroring_port = (mirroring_port + 1) * 10 + sbuf[cmd_words_b[1] + 1] - '1';
 
+	mirroring_port = sbuf[cmd_words_b[1]] - '1';
+	if (sbuf[cmd_words_b[1] + 1] >= '0' && sbuf[cmd_words_b[1] + 1] <= '9')
+	mirroring_port = (mirroring_port + 1) * 10 + sbuf[cmd_words_b[1] + 1] - '1';
+	if (!isRTL8373)
+		mirroring_port = phys_to_log_port[mirroring_port];
+
+	uint8_t w = 2;
 	while (cmd_words_b[w] > 0) {
 		uint8_t port;
 		if (sbuf[cmd_words_b[w]] >= '0' && sbuf[cmd_words_b[w]] <= '9') {
@@ -173,6 +180,8 @@ void parse_mirror(void)
 					tx_pmask |= ((uint16_t)1) << port;
 				}
 			} else {
+				if (!isRTL8373)
+					port = phys_to_log_port[port];
 				if (sbuf[cmd_words_b[w] + 1] == 'r')
 					rx_pmask |= ((uint16_t)1) << port;
 				else if (sbuf[cmd_words_b[w] + 1] == 't')
@@ -301,7 +310,10 @@ void cmd_parser(void) __banked
 					}
 				}
 				if (cmd_compare(0, "l2")) {
-					port_l2_learned();
+					if (cmd_words_b[1] > 0 && cmd_compare(1, "forget"))
+						port_l2_forget();
+					else
+						port_l2_learned();
 				}
 				if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 					__xdata uint16_t pvid;
@@ -333,10 +345,21 @@ void cmd_parser(void) __banked
 }
 
 
+void execute_config() __banked
+{
+	flash_read _bulk(&cmd_buffer[0], 0x1fd000, CMD_BUFFER_SIZE);
+	// Checks for empty flash
+	if (cmd_buffer[0] == 0xff)
+		return;
+	print_string_x(&cmd_buffer[0]);
+}
+
+
 void cmd_parser_setup(void) __banked
 {
 	l = sbuf_ptr;
 	line_ptr = l;
 	is_white = 1;
+	cmdptr = 0;
 }
 

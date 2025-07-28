@@ -59,7 +59,7 @@ volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 
 // Buffer for serial input, SBUF_SIZE must be power of 2 < 256
-__xdata volatile char sbuf_ptr;
+__xdata volatile uint8_t sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
@@ -760,7 +760,7 @@ void tcpip_output(void)
 	// Move data over from xmem buffer to ASIC side using DMA
 	nic_tx_packet(ring_ptr);
 
-	reg_read_m(0x7884);
+	reg_read_m(0x7884);  // actual bytes sent, for now we assume everything worked
 
 	// Do actual TX of data on ASIC side
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
@@ -1683,6 +1683,7 @@ void bootloader(void)
 //	p031f.a610:2058 p041f.a610:2058  p051f.a610:2058  r4f3c:00000000 p061f.a610:2058 p071f.a610:2058 
 	port_stats_print();
 
+	execute_config();
 	print_string("\n> ");
 	cmd_parser_setup();
 	idle_ready = 1;

@@ -8,5 +8,6 @@ void flash_dump(register uint32_t addr, register uint8_t len) __banked;
 void flash_read_jedecid(void) __banked;
 void flash_read_security(uint32_t addr, uint8_t len)__banked ;
 void flash_block_erase(uint32_t addr) __banked;
-void flash_write_bytes(uint32_t addr, __xdata uint8_t *ptr, uint8_t len)__banked ;
+void flash_read_bulk(register __xdata uint8_t *dst, __xdata uint32_t src, register uint16_t len) __banked;
+void flash_write_bytes(__xdata uint32_t addr, register __xdata uint8_t *ptr, register uint16_t len)__banked;
 #endif

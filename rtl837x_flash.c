@@ -34,7 +34,7 @@ void flash_configure_mmio(void)
  * Initializes the flash controller for programmed control
  * The configuration options are not really understood, the SPI speed
  * seems to be directly linked to the CPU frequency
- * This configures uses fast single IO at 20.8 MHz when the CPU clock is at 20.8MHz
+ * This configures fast single IO at 20.8 MHz when the CPU clock is at 20.8MHz
  * and 62.5MHz when the CPU clock is configured at 125MHz
  */
 void flash_init(uint8_t enable_dio) __banked
@@ -215,6 +215,53 @@ void flash_dump(register uint32_t addr, register uint8_t len) __banked
 	}
 }
 
+/*
+ * Reads bulk data of length len from the flash memory starging at address src
+ * and writes the data into a buffer pointed to by dst in XMEM
+ */
+void flash_read_bulk(register __xdata uint8_t *dst, __xdata uint32_t src, register uint16_t len) __banked
+{
+	short status;
+	do {
+		status = flash_read_status();
+	} while (status & 0x1);
+
+	// Set fast read mode
+	if (dio_enabled) {
+		SFR_FLASH_MODEB = 0x18;
+		SFR_FLASH_CMD_R = 0xbb;
+		SFR_FLASH_DUMMYCICLES = 4;
+	} else {
+		SFR_FLASH_MODEB = 0x0;
+		SFR_FLASH_CMD_R = 0xb;	// Fast read
+		SFR_FLASH_DUMMYCICLES = 8;	// Add 8 dummy clocks after read?
+	}
+	// Read 4 bytes
+	SFR_FLASH_TCONF = 4;
+	while (len) {
+		SFR_FLASH_ADDR16 = src >> 16;
+		SFR_FLASH_ADDR8 = src >> 8;
+		SFR_FLASH_ADDR0 = src;
+		src += 4;
+
+		SFR_FLASH_EXEC_GO = 1;
+		while(SFR_FLASH_EXEC_BUSY);
+
+		*dst++ = SFR_FLASH_DATA0;
+		if (len == 1)
+			return;
+		*dst++ = SFR_FLASH_DATA8;
+		if (len == 2)
+			return;
+		*dst++ = SFR_FLASH_DATA16;
+		if (len == 3)
+			return;
+		*dst++ = SFR_FLASH_DATA24;
+
+		len -= 4;
+	}
+}
+
 
 void flash_read_security(uint32_t addr, uint8_t len) __banked
 {
@@ -270,9 +317,9 @@ void flash_block_erase(uint32_t addr) __banked
 }
 
 
-void flash_write_bytes(uint32_t addr, __xdata uint8_t *ptr, uint8_t len) __banked
+void flash_write_bytes(__xdata uint32_t addr, __xdata uint8_t *ptr, uint16_t len) __banked
 {
-	uint8_t exit_loop = 0;
+	static __xdata uint8_t exit_loop = 0;
 
 	while(1) {
 		flash_write_enable();
