@@ -42,7 +42,8 @@ __sfr __at(0xcb) RCAP2H;
 
 /* SFR Bank control register: 0x0-3f. A value of 0 is bank 1 */
 __sfr __at(0x96) PSBANK;
-__sfr __at(0x96) SFR_BANK_RET;
+// SFR used to store return bank for trampoline
+__sfr __at(0xbb) SFR_BANK_RET;
 
 __sfr __at(0x8e) CKCON;
 
