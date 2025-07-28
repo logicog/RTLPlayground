@@ -3,8 +3,8 @@
  * This code is in the Public Domain
  */
 
-#define REGDBG
-#define DEBUG
+// #define REGDBG
+// #define DEBUG
 
 #include <stdint.h>
 #include "rtl837x_common.h"
@@ -29,6 +29,8 @@ __xdata	uint32_t l2_head;
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
 	print_string("\nport_mirror_set called \n");
+	print_string("Mirroring port: "); print_byte(port); print_string(" with rx-mask: ");
+	print_short(rx_pmask); print_string(", tx mask: "); print_short(tx_pmask);
 
 	REG_WRITE(RTL837x_MIRROR_CONF, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
 	REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (port << 1) | 0x1);
@@ -106,7 +108,7 @@ void vlan_create(register uint16_t vlan, register uint16_t members, register uin
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
 	} while (sfr_data[3] & TBL_EXECUTE);
-	print_string("\nvlan_create done \n");
+	print_string("vlan_create done \n");
 }
 
 
@@ -195,7 +197,7 @@ void vlan_setup(void) __banked
 	print_string("\nvlan_setup, REG 0x4f4c: "); print_reg(0x4f4c);
 #endif
 
-	print_string("\nvlan_setup done \n");
+	print_string("vlan_setup done \n");
 }
 
 
@@ -216,11 +218,12 @@ void trunk_set(uint8_t group, uint16_t mask) __banked
  */
 uint8_t port_l2_forget(void) __banked
 {
+	print_string("\nport_l2_forget called\n");
 	// r53dc:00000000 R53dc-00000000 r53d4:000001ff r53d4:000001ff R53d4-000101ff r53d4:000001ff
 	reg_read_m(0x53dc);
 	if (sfr_data[0] || sfr_data[1] ||sfr_data[2] ||sfr_data[3]) {
 		print_string("List busy\n");
-		return -1;
+		return 0xff;
 	}
 	REG_WRITE(0x53dc, sfr_data[0], sfr_data[1], sfr_data[2], sfr_data[3]);
 
@@ -230,6 +233,7 @@ uint8_t port_l2_forget(void) __banked
 		reg_read_m(RTL837x_L2_TBL_CTRL);
 	} while (sfr_data[1] & 0x1);
 
+	print_string("port_l2_forget done\n");
 	return 0;
 }
 
