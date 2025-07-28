@@ -3,9 +3,9 @@
 
 #include "uip/uip-conf.h"
 
-// Headers for calls in the common code area (HOME/BANK0)
-
-#define SBUF_SIZE 256
+// The serial buffer. Defines the command line size
+// Must be 2^x and <= 128
+#define SBUF_SIZE 128
 
 // For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
 // the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
@@ -32,6 +32,8 @@ struct uip_eth_addr {
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
+
+// Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);
 void print_long(__xdata uint32_t a);
 void print_short(uint16_t a);
