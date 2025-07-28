@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 	}
 	size_t bytes_read = fread(buffer, 1, sizeof(buffer), inptr);
 
-	printf("Bytes read:: %ld\n", bytes_read);
+	printf("Bytes read: %ld\n", bytes_read);
 	
 	if (bytes_read != filesize) {
 		printf("Error reading input file.\n");
