@@ -347,7 +347,7 @@ void cmd_parser(void) __banked
 
 void execute_config() __banked
 {
-	flash_read _bulk(&cmd_buffer[0], 0x1fd000, CMD_BUFFER_SIZE);
+	flash_read_bulk(&cmd_buffer[0], 0x1fd000, CMD_BUFFER_SIZE);
 	// Checks for empty flash
 	if (cmd_buffer[0] == 0xff)
 		return;
