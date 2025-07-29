@@ -5,10 +5,10 @@ CC_FLAGS = -mmcs51 -Ihttpd -Iuip
 ASM = sdas8051
 AFLAGS= -plosgff
 
-SUBDIRS := uip httpd
+SUBDIRS := tools uip httpd
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
-all: $(SUBDIRS) rtlplayground.bin injector
+all: $(SUBDIRS) rtlplayground.bin
 
 SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c
 OBJS = ${SRCS:.c=.rel}
@@ -19,11 +19,11 @@ $(SUBDIRS):
 	$(MAKE) -C $@
 
 clean:
-	make -C uip clean
-	make -C httpd clean
+	-make -C uip clean
+	-make -C httpd clean
 	if [ -e rtlplayground.bin ]; then rm rtlplayground.bin; fi
 	if [ -e rtlplayground.asm ]; then rm rtlplayground.asm; fi
-	rm *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym *.bin
+	-rm *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym *.bin
 
 
 %.rel: %.c
@@ -45,9 +45,6 @@ rtlplayground.ihx:  crtstart.rel $(OBJS)
 	cat $< >> $@
 	truncate --size=16K $@
 	dd if=$< skip=80 bs=1024 >>$@
-
-injector: injector.c
-	gcc $^ -o $@
 
 .PHONY: clean all $(SUBDIRS)
 .PRECIOUS: %.rel %.ihx .img
