@@ -3,7 +3,9 @@
  * an index in the form of a header file
  */
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +19,8 @@
 unsigned char buffer[BUFFER_SIZE];
 FILE *inptr, *dataptr;
 int outptr;
+#define PATH_SIZE 1024
+char pathbuffer[PATH_SIZE];
 
 const char *argp_program_version = "fileadder 0.1";
 const char *argp_program_bug_address = "<git@logicog.de>";
@@ -27,6 +31,7 @@ static struct argp_option options[] = {
     { "output", 'o', "FILE", 0, "Output image file name instead of overwriting input image"},
     { "data", 'd', "FILE", 0, "File or directory to add to image"},
     { "address", 'a', 0, OPTION_ARG_OPTIONAL, "Address where data is placed, default is 0x1000000 if option is used, otherwise 0x1fd000"},
+    { "header", 'h', 0, OPTION_ARG_OPTIONAL, "Creates a header file."},
     { 0 }
 };
 
@@ -36,6 +41,7 @@ struct arguments {
 	char *output_file;
 	char *data_file;
 	bool overwrite;
+	bool add_zero;
 };
 
 
@@ -44,7 +50,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	struct arguments *arguments = state->input;
 	switch (key) {
 	case 'a':
-		arguments->address = arg? atoi(arg): 0x100000; // Default size is 2MB
+		arguments->address = arg? atoi(arg): 0x100000; // Default address
 		break;
 	case 's':
 		arguments->size = arg? atoi(arg): 0x200000; // Default size is 2MB
@@ -56,13 +62,40 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case 'd':
 		arguments->data_file = arg;
 		break;
+	case 'n':
+		arguments->add_zero = false;
+		break;
 	default:
 		return ARGP_ERR_UNKNOWN;
     }
     return 0;
 }
 
-static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
+
+static struct argp argp = {
+	options, parse_opt, args_doc, doc, 0, 0, 0
+};
+
+
+int addfile(const char *name, int addr)
+{
+	int dataptr = open(name, 0);
+	if (!dataptr) {
+		fprintf(stderr, "%s: ", name);
+		perror("Cannot open file for reading");
+		return 0;
+	}
+
+	int data_read = read(dataptr, &buffer[addr], sizeof(buffer) - addr);
+	if (data_read < 0) {
+		perror("Error reading file");
+		return 0;
+	}
+	close(dataptr);
+
+	return data_read;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -71,7 +104,9 @@ int main(int argc, char **argv)
 	struct arguments arguments;
 	int arg_index;
 	char tmpfilename[] = "image_XXXXXX";
+	struct stat s;
 
+	arguments.add_zero = true;
 	arguments.address = 0x1fd000;
 	arguments.size = 0;
 	arguments.overwrite = true;
@@ -108,16 +143,43 @@ int main(int argc, char **argv)
 	// Now that the beginning of the buffer is filled with out image, optionally resize the image
 	filesize = arguments.size? arguments.size : filesize;
 
-	dataptr = fopen(arguments.data_file, "r");
-	if (dataptr == NULL) {
-		printf("Cannot open %s\n", arguments.data_file);
-		return 5;
-	}
-	size_t data_read = fread(&buffer[arguments.address], 1, sizeof(buffer) - arguments.address, inptr);
-	fclose(dataptr);
+	if (stat(arguments.data_file, &s) == 0 && s.st_mode & S_IFDIR) {
+		printf("Adding entries in directory %s\n", arguments.data_file);
+		DIR *dirptr = opendir(arguments.data_file);
+		if (!dirptr) {
+			fprintf(stderr, "%s: ", arguments.data_file);
+			perror("Error opening directory");
+			return 5;
+		}
+		struct dirent *in_file;
+		int addr = arguments.address;
+		while ( (in_file = readdir(dirptr)) )  {
+			snprintf(pathbuffer, PATH_SIZE, "%s/%s", arguments.data_file, in_file->d_name);
+			if (stat(pathbuffer, &s) < 0) {
+				fprintf(stderr, "%s: ", pathbuffer);
+				perror("Stat failed");
+				continue;
+			}
+			if (! (s.st_mode & S_IFREG))
+				continue;
 
-	if (data_read)
-		printf("Data inserted at 0x%x, size: %ld\n", arguments.address, data_read);
+			size_t data_read = addfile(pathbuffer, addr);
+			if (data_read) {
+				if (arguments.add_zero)
+					buffer[arguments.address + data_read++ + 1] = '0';
+				printf("Data inserted from %s at 0x%x, size: %ld\n", pathbuffer, addr, data_read);
+			}
+			addr += data_read;
+		}
+	} else {
+		size_t data_read = addfile(arguments.data_file, arguments.address);
+
+		if (data_read) {
+			if (arguments.add_zero)
+				buffer[arguments.address + data_read++ + 1] = '0';
+			printf("Data inserted at 0x%x, size: %ld\n", arguments.address, data_read);
+		}
+	}
 
 	if (!arguments.overwrite)
 		outptr = creat(arguments.output_file, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
