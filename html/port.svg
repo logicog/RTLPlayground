@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns:svg="http://www.w3.org/2000/svg">
+<g id="layer1" transform="translate(-314.07 -485.06)">
+<g id="g1" transform="translate(256.16 417.12)">
+<rect id="r1" style="stroke:#0a0a0a;stroke-linecap:square;stroke-width:4;fill:#ffffff" rx="4.514" ry="4.514" height="90.625" width="117.88" y="69.93" x="59.896"/>
+<g id="g2"> <g id="g3">
+    <path id="rect3787"
+     d="m73.958 75.66h89.41c2.3083 0 4.1667 1.8583 4.1667 4.1667l0.00028 52.653h-21.742v9.414h-8.694l0.00004 12.586h-36.871l-0.00004-12.586h-8.694v-9.414h-21.742l-0.000336-52.653c-0.000011-2.3083 1.8583-4.1667 4.1667-4.1667z"
+     style="stroke:#0a0a0a;stroke-linecap:square;stroke-width:2.5;fill:#dcdcdc"/>
+    <g id="g4" transform="translate(-0.368)" style="stroke:#191919;stroke-linecap:square;fill:#666666">
+   <rect id="r2" height="22.786" width="3.9062" y="75.747" x="80.556"/>
+   <rect id="r3" height="22.786" width="3.9062" y="75.747" x="153.6" />
+   <rect id="r4" height="22.786" width="3.9062" y="75.747" x="132.73"/>
+   <rect id="r5" height="22.786" width="3.9062" y="75.747" x="122.3"/>
+   <rect id="r6" height="22.786" width="3.9062" y="75.747" x="111.86"/>
+   <rect id="r7" height="22.786" width="3.9062" y="75.747" x="101.43"/>
+   <rect id="r8" height="22.786" width="3.9062" y="75.747" x="90.99"/>
+   <rect id="r9" height="22.786" width="3.9062" y="75.747" x="143.17"/>
+    </g>
+  </g>
+  <rect id="r10" style="stroke:#0a0a0a;stroke-linecap:square;stroke-width:2;fill:#1dfe0a" height="13.89" width="17.1" y="137.03" x="69.542"/>
+  <rect id="r11" style="stroke:#0a0a0a;stroke-linecap:square;stroke-width:2;fill:#ffd10a" height="13.89" width="17.1" y="137.03" x="150.68"/>
+   </g>
+ </g>
+</g>
+</svg>
