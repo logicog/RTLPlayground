@@ -2,6 +2,7 @@
 #define _RTL837X_STDIO_H_
 
 #include "uip/uip-conf.h"
+#include <stdint.h>
 
 // The serial buffer. Defines the command line size
 // Must be 2^x and <= 128
@@ -59,7 +60,7 @@ void memcpyc(register __xdata uint8_t *dst, register __code uint8_t *src, regist
 void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register uint8_t len);
 uint16_t strlen(register __code const char *s);
 uint16_t strlen_x(register __xdata const char *s);
-void strtox(register __xdata uint8_t *dst, register __code const char *s);
+uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 void tcpip_output(void);
 void print_string_x(__xdata char *p);
 
