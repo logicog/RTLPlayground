@@ -8,6 +8,8 @@
 #include "rtl837x_sfr.h"
 
 __xdata uint8_t dio_enabled;
+__xdata uint8_t markbuf[16];
+extern __xdata uint16_t mpos;
 
 #pragma codeseg BANK1
 
@@ -65,6 +67,7 @@ void flash_init(uint8_t enable_dio) __banked
 	dio_enabled = enable_dio;
 	flash_configure_mmio();
 }
+
 
 uint8_t flash_read_status(void)
 {
@@ -260,6 +263,88 @@ void flash_read_bulk(register __xdata uint8_t *dst, __xdata uint32_t src, regist
 
 		len -= 4;
 	}
+}
+
+
+void flash_find_mark(__xdata uint32_t src, register uint16_t len, __code uint8_t *mark) __banked
+{
+	uint16_t status;
+	do {
+		status = flash_read_status();
+	} while (status & 0x1);
+
+	// Set fast read mode
+	if (dio_enabled) {
+		SFR_FLASH_MODEB = 0x18;
+		SFR_FLASH_CMD_R = 0xbb;
+		SFR_FLASH_DUMMYCICLES = 4;
+	} else {
+		SFR_FLASH_MODEB = 0x0;
+		SFR_FLASH_CMD_R = 0xb;	// Fast read
+		SFR_FLASH_DUMMYCICLES = 8;	// Add 8 dummy clocks after read?
+	}
+
+	uint8_t i = 0;
+	uint8_t l = 0;
+	uint8_t k;
+
+	// Calculate the length
+	while (mark[i++])
+		l++;
+
+	if (l >= 12) {
+		mpos = 0xffff;
+		return;
+	}
+
+	i = 0;
+	SFR_FLASH_TCONF = 4;
+	while (len) {
+		SFR_FLASH_ADDR16 = src >> 16;
+		SFR_FLASH_ADDR8 = src >> 8;
+		SFR_FLASH_ADDR0 = src;
+		src += 4;
+
+		SFR_FLASH_EXEC_GO = 1;
+		while(SFR_FLASH_EXEC_BUSY);
+		markbuf[i++] = SFR_FLASH_DATA0;
+		if (len != 1) {
+			markbuf[i++] = SFR_FLASH_DATA8;
+			if (len != 2) {
+				markbuf[i++] = SFR_FLASH_DATA16;
+				if (len != 3) {
+					markbuf[i++] = SFR_FLASH_DATA24;
+				} else {
+					markbuf[i++] = 0;
+				}
+			} else {
+				markbuf[i++] = 0;
+			}
+		} else {
+			markbuf[i++] = 0;
+		}
+
+		len -= 4;
+		uint8_t j = 0;
+		k = (i + 13 - l) & 0xf;
+		i &= 0xf;
+		while (mark[j] && (k != ((i) & 0xf))) {
+			if (mark[j] != markbuf[k]) {
+				k = k - j + 17;
+				j = 0;
+			} else {
+				k++;
+				j++;
+			}
+			k &= 0xf;
+		}
+		if (!mark[j]) {
+			mpos =  len + l + ((4 - ( k & 0x3)) & 0x3);
+			return;
+		}
+	}
+	mpos = 0xffff;
+	return;
 }
 
 
