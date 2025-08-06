@@ -230,12 +230,12 @@ void phy_set_mode(uint8_t port, uint8_t speed, uint8_t flow_control, uint8_t dup
 	phy_read(port, 0x1f, 0xa610);
 	v = (((uint16_t)SFR_DATA_8) << 8) | SFR_DATA_0;
 	if (speed == PHY_OFF) {
-		phy_write(bit_mask[port], 0x1f, 0xa4610, v | 0x0800);
+		phy_write(bit_mask[port], 0x1f, 0xa610, v | 0x0800);
 		return;
 	}
 	// Port is on, make sure of it:
 	if (v & 0x0800)
-		phy_write(bit_mask[port], 0x1f, 0xa4610, v & 0xf7ff);
+		phy_write(bit_mask[port], 0x1f, 0xa610, v & 0xf7ff);
 
 	if (speed == PHY_SPEED_AUTO) {
 			// AN Advertisement Register (MMD 7.0x0010)
