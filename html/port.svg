@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns:svg="http://www.w3.org/2000/svg">
+<svg  viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
 <g id="layer1" transform="translate(-314.07 -485.06)">
 <g id="g1" transform="translate(256.16 417.12)">
 <rect id="r1" style="stroke:#0a0a0a;stroke-linecap:square;stroke-width:4;fill:#ffffff" rx="4.514" ry="4.514" height="90.625" width="117.88" y="69.93" x="59.896"/>
