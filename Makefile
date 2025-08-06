@@ -18,7 +18,6 @@ html_data.c html_data.h: html tools
 	tools/fileadder -a -s -b BANK1 -d html -p html_data
 
 httpd: html_data.h
-	$(MAKE) -C $@
 
 $(SUBDIRS):
 	$(MAKE) -C $@
