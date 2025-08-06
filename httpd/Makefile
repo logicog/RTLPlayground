@@ -3,7 +3,7 @@ CC_FLAGS = -mmcs51 -I. -I../uip
 ASM = sdas8051
 AFLAGS= -plosgff
 
-SRCS = httpd.c
+SRCS = httpd.c page_impl.c
 OBJS = ${SRCS:.c=.rel}
 
 all: $(OBJS)

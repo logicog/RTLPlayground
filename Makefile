@@ -10,10 +10,15 @@ SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 all: $(SUBDIRS) rtlplayground.bin
 
-SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c
+SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c
 OBJS = ${SRCS:.c=.rel}
-OBJS += uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel httpd/httpd.rel
+OBJS += uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel httpd/httpd.rel httpd/page_impl.rel
 
+html_data.c html_data.h: html tools
+	tools/fileadder -a -s -b BANK1 -d html -p html_data
+
+httpd: html_data.h
+	$(MAKE) -C $@
 
 $(SUBDIRS):
 	$(MAKE) -C $@
@@ -21,6 +26,7 @@ $(SUBDIRS):
 clean:
 	-make -C uip clean
 	-make -C httpd clean
+	-rm html_data.c html_data.c
 	if [ -e rtlplayground.bin ]; then rm rtlplayground.bin; fi
 	if [ -e rtlplayground.asm ]; then rm rtlplayground.asm; fi
 	-rm *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym *.bin
@@ -45,6 +51,8 @@ rtlplayground.ihx:  crtstart.rel $(OBJS)
 	cat $< >> $@
 	truncate --size=16K $@
 	dd if=$< skip=80 bs=1024 >>$@
+	tools/fileadder -s -d config.txt $@
+	tools/fileadder -a -s -d html -p html_data $@
 
 .PHONY: clean all $(SUBDIRS)
 .PRECIOUS: %.rel %.ihx .img

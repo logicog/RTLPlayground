@@ -90,25 +90,25 @@ typedef uint16_t u16_t;
 typedef unsigned short uip_stats_t;
 
 /**
- * Maximum number of TCP connections.
+ * Maximum number of TCP connections. TODO: Increase this, but also make the socket state/buffer per-connection.
  *
  * \hideinitializer
  */
-#define UIP_CONF_MAX_CONNECTIONS 40
+#define UIP_CONF_MAX_CONNECTIONS 1
 
 /**
- * Maximum number of listening TCP ports.
+ * Maximum number of listening TCP ports. TODO: increase this!
  *
  * \hideinitializer
  */
-#define UIP_CONF_MAX_LISTENPORTS 40
+#define UIP_CONF_MAX_LISTENPORTS 1
 
 /**
  * uIP buffer size.
  *
  * \hideinitializer
  */
-#define UIP_CONF_BUFFER_SIZE     2000
+#define UIP_CONF_BUFFER_SIZE     2200
 
 /**
  * CPU byte order.

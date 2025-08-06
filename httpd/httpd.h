@@ -11,7 +11,7 @@
    allocated together with each TCP connection. One application state
    for each TCP connection. */
 typedef struct httpd_state {
-   char transmitted;
+   uint8_t tstate;
 } uip_tcp_appstate_t;
 
 /* Finally we define the application function to be called by uIP. */
