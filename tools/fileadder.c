@@ -19,9 +19,9 @@
 char buffer[BUFFER_SIZE];
 FILE *inptr, *dataptr, *ofile;
 int outptr;
-#define PATH_SIZE 1024
-#define INDEX_SIZE 1024
-#define DEF_SIZE 1024
+#define PATH_SIZE 20480
+#define INDEX_SIZE 20480
+#define DEF_SIZE 20480
 char pathbuffer[PATH_SIZE];
 char ibuf[INDEX_SIZE];
 char dbuf[DEF_SIZE];
@@ -143,6 +143,10 @@ char *getMime(const char *name)
 		return "image/svg+xml";
 	else if (hasSuffix(name, ".png"))
 		return "image/png";
+	else if (hasSuffix(name, ".js"))
+		return "text/javascript";
+	else if (hasSuffix(name, ".css"))
+		return "text/css";
 	return "text/plain";
 }
 
