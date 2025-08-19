@@ -52,7 +52,7 @@ devices by looking at the image using e.g. Ghidra.
 ## Compiling
 Install the following particular build requisites (Debian 12, should work on Ubuntu)
 ```
-sudo apt install sdcc xxd
+sudo apt install sdcc xxd python
 ```
 
 Now, building the firmware image should work:
