@@ -25,6 +25,11 @@ extern __xdata uint8_t isRTL8373;
 
 __xdata	uint32_t l2_head;
 
+// The mapping of logical to physical ports on the RTL8372
+// Port 6 is always an SFP+ port. Port 5 may be RTL8221 or SFP+
+__code uint8_t log_to_phys_port[9] = {
+	0, 0, 0, 5, 1, 2, 3, 4, 6
+};
 
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
