@@ -1,23 +1,18 @@
-body {
-  background-color: lightblue;
-}
-
-h1 {
-  color: navy;
-  margin-left: 20px;
+h1, h2 {
+  color: #226;
 }
 ul {
   list-style-type: none;
   margin: 0;
   padding: 0;
   width: 12%;
-  background-color: #f1f1f1;
-  height: 100%; /* Full height */
-  position: fixed; /* Make it stick, even on scroll */
-  overflow: auto; /* Enable scrolling if the sidenav has too much content */
+  height: 100%;
+  position: fixed;
+  overflow: auto;
 }
 
 li a {
+  background-color: #aaf;
   display: block;
   color: #000;
   padding: 8px 16px;
@@ -26,6 +21,51 @@ li a {
 
 /* Change the link color on hover */
 li a:hover {
-  background-color: #555;
+  background-color: #226;
   color: white;
+}
+
+table, th, td {
+  border: 1px solid navy;
+  padding: 8px;
+}
+table {
+  border-collapse: collapse;
+  width: 60%;
+}
+
+td {
+  text-align: right;
+}
+
+input[type=submit] { padding: 8px 16px;background-color:#aaf;color:#000; margin-bottom: 2em;}
+input[type=submit]:hover { background-color: #226; color: white;}
+button {padding: 8px; background-color:#99f; color:#000;}
+button:hover { background-color: #226; color: white;}
+
+[type=checkbox] { 
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin-top: 1em;
+}
+[type=checkbox] + img {
+  cursor: pointer;
+  opacity: 0.4;
+  padding: 8px;
+}
+[type=checkbox]:checked + img {
+/*  outline: 2px solid #f00;*/
+  opacity: 1.0;
+}
+object {
+ margin: 0.5em 0.5em;
+}
+.cbgroup {
+  display: inline-block;
+  text-align: center;
+}
+.cbgroup label {
+  display: block;
 }

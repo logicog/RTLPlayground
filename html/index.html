@@ -1,23 +1,17 @@
 <!DOCTYPE html>
 <html>
-
+  <script src="/ports.js"></script>
   <script src="/main.js"></script>
   <head>
     <link rel="stylesheet" href="style.css">
     <title>FreeSwitchOS Main Page</title>
   </head>
   <body>
-     <ul> <li><a href="index.html">Overview</a></li> <li><a href="vlan.html">VLAN</a></li>
-     <li><a href="mirror.html">Mirroring</a></li> <li><a href="trunk.html">Port Aggregation</a></li></ul>
-    <div style="margin-left:25%;padding:1px 16px;height:1000px;">
-    <div id="ports">
-    <object type="image/svg+xml" data="port.svg" id="port1" width="40" height="40"></object>
-    <object type="image/svg+xml" data="port.svg" id="port2" width="40" height="40"></object>
-    <object type="image/svg+xml" data="port.svg" id="port3" width="40" height="40"></object>
-    <object type="image/svg+xml" data="port.svg" id="port4" width="40" height="40"></object>
-    <object type="image/svg+xml" data="sfp.svg" id="port5" width="60" height="60"></object>
-    <object type="image/svg+xml" data="sfp.svg" id="port6" width="60" height="60"></object>
-    </div>
+     <ul> <li><a href="index.html">Overview</a></li> <li><a href="stat.html">Port Statistics</a></li>
+     <li><a href="vlan.html">VLAN</a></li> <li><a href="mirror.html">Mirroring</a></li>
+     <li><a href="trunk.html">Port Aggregation</a></li></ul>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
     <h1>Switch Configuration</h1>
     <table>
       <tr> <th>Setting</th> <th></th> </tr>
