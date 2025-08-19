@@ -3,6 +3,12 @@
 The RTL827x provide a CPU Port for a NIC on the 8051 side of the SoC.
 
 ## Receiving packets
+In order to receive packets on the ASIC side, bit 0 of RTL837X_REG_RX_CTRL
+(0x785c) must be set. Further bits in the register enable reception of various
+kinds of Ethernet frames. They should all be set in order for the firmware
+to decide what to do with them. To drop packets with incorrect Ethernet frame CRC
+already by the ASIC, clear bit 2 of this register.
+
 Packets are received by either polling the RTL837X_REG_RX_AVAIL register
 (0x7874), which will be > 0 if data is within a ring-buffer on the ASIC side
 of the SoC. Alternatively, an interrupt can be triggered (EX1).
@@ -39,7 +45,8 @@ buffer on the ASIC side by writing 0x1 to RTL837X_REG_RX_DONE (0x784c).
 
 ## Transmissing packets
 Packets are transmitted by preparing a frame-header plus frame in xdata memory
-and transferring both to the ASIC side via the SFRs.
+and transferring both to the ASIC side via the SFRs. The ASIC will transmit
+packets if bit 0 of RTL837X_REG_TX_CTRL	(0x7860) is set.
 
 ```
 SS 07 00 00 LL LH 00 00 
