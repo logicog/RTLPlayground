@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <script src="/ports.js"></script>
+  <script src="/main.js"></script>
+  <head>
+    <link rel="stylesheet" href="style.css">
+    <title>FreeSwitchOS VLAN Configuration</title>
+  </head>
+  <body>
+     <ul> <li><a href="index.html">Overview</a></li> <li><a href="stat.html">Port Statisitcs</a></li>
+     <li><a href="vlan.html">VLAN</a></li> <li><a href="mirror.html">Mirroring</a></li>
+     <li><a href="trunk.html">Port Aggregation</a></li></ul>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>VLAN Configuration</h1>
+    <form id="vform" action="/vlan.html">
+      <div>
+        <label for="vid">VLAN ID:</label>
+        <input type="number" min="1" max="2047" id="vid" name="vid">
+        <button type="button" style="margin: 0 0 0 24px" onclick="fetchVLAN();">Get Configuration</button>
+      </div>
+      <br/><br/>
+      <label for="vname">VLAN Name:</label>
+      <input type="text" id="vname" name="vname"><br><br>
+      <br/>
+      <h2>Tagged Ports</h2>
+      <div id="tPorts"><button type="button" style="transform: translateY(-100%);margin: 0 50px 0 0" onclick="utClicked(true);">Select all</button></div>
+      <h2>Untagged Ports</h2>
+      <div id="uPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="utClicked(false);">Select all</button> </div>
+      <script src="/vlan.js"></script>
+      <br/> <input style="width:60%;" type="submit" value="Update / Create">
+    </form>
+    </div>
+  </body>
+</html>
