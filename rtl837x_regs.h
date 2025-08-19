@@ -63,6 +63,8 @@
 /*
  * NIC Related registers
  */
+#define RTL837X_REG_RX_CTRL	0x785c
+#define RTL837X_REG_TX_CTRL	0x7860
 #define RTL837X_REG_RX_AVAIL	0x7874
 #define RTL837X_REG_RX_RINGPTR	0x787c
 #define RTL837X_REG_RX_DONE	0x784c

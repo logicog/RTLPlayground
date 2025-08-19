@@ -1124,22 +1124,21 @@ void nic_setup(void)
 	// R7844-000007fe
 	REG_SET(0x7844, 0x7fe);
 
-	// r785c:0401201e R785c-0401201e r785c:0401201e R785c-0400201e
-	// 0x785c: Set bits 24-31 to 0x4, clear bits 16/17:
-	reg_read_m(0x785c);
+	// Configure NIC RX to receive various types of packets
+	// RTL837X_REG_RX_CTRL: Set bits 24-31 to 0x4, clear bits 16/17
+	reg_read_m(RTL837X_REG_RX_CTRL);
 	sfr_mask_data(3, 0xff, 0x04);
 	sfr_mask_data(2, 0x03, 0);
-	reg_write_m(0x785c);
+	reg_write_m(RTL837X_REG_RX_CTRL);
 
-	// Set bit 0 of 0x7860:
-	// r7860:00000000 R7860-00000001
-	reg_bit_set(0x7860, 0);
+	// Enable NIC TX (set bit 0)
+	reg_bit_set(RTL837X_REG_TX_CTRL, 0);
 
-	// r785c:0400201e R785c-0400201f
-	reg_bit_set(0x785c, 0);
+	// Enable NIC RX (set bit 0)
+	reg_bit_set(RTL837X_REG_RX_CTRL, 0);
 
-	// r785c:0400201f R785c-0400201b
-	reg_bit_clear(0x785c, 2);
+	// Drop packets with invalid CRC
+	reg_bit_clear(RTL837X_REG_RX_CTRL, 2);
 
 	// R603c-00000200
 	REG_SET(0x603c, 0x200);
