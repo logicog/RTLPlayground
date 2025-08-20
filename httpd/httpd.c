@@ -1,5 +1,6 @@
 
 #include "httpd.h"
+#include "page_impl.h"
 #include "../rtl837x_common.h"
 #include "../rtl837x_flash.h"
 #include "uip.h"
@@ -11,6 +12,7 @@
 
 extern __code struct f_data f_data[];
 extern __code fcall_ptr f_calls[];
+extern __code char * __code mime_strings[];
 
 __xdata uint8_t outbuf[2048];
 __xdata uint8_t entry;
@@ -19,28 +21,30 @@ __xdata uint16_t o_idx;
 __xdata uint16_t mpos;
 __xdata uint16_t len_left;
 
+
 #define TSTATE_NONE	0
 #define TSTATE_TX	1
 #define TSTATE_ACKED 	2
 #define TSTATE_CLOSED 	3
 
+extern uint16_t send_status(void);
 
-inline uint8_t is_space(uint8_t c)
+inline uint8_t is_separator(uint8_t c)
 {
-	return c == ' ' || c == '\t';
+	return c == ' ' || c == '\t' || c == '?' || c == '=';
 }
 
 
 void httpd_init(void) __banked
 {
-	__xdata struct httpd_state *s = &(uip_conn->appstate);
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	// Start listening to port 80
 	uip_listen(HTONS(80));
 	s->tstate = TSTATE_CLOSED;
 }
 
 
-uint8_t find_entry(uint8_t *e)
+uint8_t find_entry(__xdata uint8_t * __xdata e)
 {
 	register uint8_t i, j;
 
@@ -57,9 +61,39 @@ uint8_t find_entry(uint8_t *e)
 }
 
 
+char strcmp(__xdata uint8_t * __xdata c, __code uint8_t * __xdata d)
+{
+	register uint8_t i = 0;
+
+	while (d[i] && (d[i] == c[i])) {
+		i++;
+	}
+
+	if (c[i] < d[i])
+		return -1;
+	else if (c[i] > d[i])
+		return 1;
+	return 0;
+}
+
+
+uint8_t parse_short(register uint16_t *n, __xdata uint8_t * __xdata p)
+{
+	uint8_t err = 1;
+	*n = 0;
+
+	while (*p >= '0' && *p <= '9') {
+		err = 0;
+		*n = (*n * 10) + *p - '0';
+		p++;
+	}
+	return err;
+}
+
+
 void httpd_appcall(void)
 {
-	__xdata struct httpd_state *s = &(uip_conn->appstate);
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
 	write_char('P');
 	if(uip_connected() && s->tstate == TSTATE_CLOSED) {
@@ -68,11 +102,16 @@ void httpd_appcall(void)
 	} else if (uip_closed()) {
 		print_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
+	} else if (uip_aborted()) {
+		print_string("Connection aborted\n");
+		uip_close();
+		s->tstate = TSTATE_CLOSED;
 	} else if (uip_poll()) {
 		uip_len = 0;
 		if (s->tstate == TSTATE_ACKED) {
 			print_string("Closing because everything has been transmitted\n");
 			uip_close();
+			s->tstate = TSTATE_CLOSED;
 		}
 //		write_char('p');
 	} else if (uip_acked() && s->tstate == TSTATE_TX) {
@@ -110,7 +149,7 @@ void httpd_appcall(void)
 			print_string("GET request ");
 		p += 4;
 		__xdata uint8_t *q = p;
-		while (!is_space(*p))
+		while (!is_separator(*p))
 			p++;
 		*p = '\0';
 		print_string_x(q);
@@ -120,17 +159,28 @@ void httpd_appcall(void)
 		entry = find_entry(q);
 		print_string("Entry is: "); print_byte(entry); write_char('\n');
 		if (entry == 0xff) {
-			print_string("Not found\n");
-			slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n");
-			print_string("slen: "); print_short(slen); write_char('\n');
-			slen += strtox(outbuf + slen, "<!DOCTYPE HTML PUBLIC>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n");
+			print_string("Not file entry\n");
+			if (!strcmp(q, "/status.json")) {
+				print_string("STATUS request\n");
+				send_status();
+			} else if (!strcmp(q, "/vlan.json")) {
+				print_string("VLAN request\n");
+				__xdata uint16_t vlan;
+				parse_short(&vlan, q + 15);
+				send_vlan(vlan);
+			} else {
+				slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n");
+				print_string("slen: "); print_short(slen); write_char('\n');
+				slen += strtox(outbuf + slen, "<!DOCTYPE HTML PUBLIC>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n");
+			}
 		} else {
 			print_string("Have entry\n");
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
-			slen += strtox(outbuf + slen, f_data[entry].mime);
+			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
+			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=2592000");
 			slen += strtox(outbuf + slen, "\r\n\r\n");
 			len_left = f_data[entry].len;
-			if (f_data[entry].mime[0] == 't' && f_data[entry].mime[5] == 'h') {
+			if (f_data[entry].mime == mime_HTML) {
 				print_string("MIME is html len is "); print_short(len_left); write_char('\n');
 				mpos = 0;
 				flash_find_mark(f_data[entry].start, len_left, "#{");
@@ -151,12 +201,13 @@ void httpd_appcall(void)
 					mpos += CMARK_S;
 					len_left -= mpos;
 					flash_find_mark(f_data[entry].start + mpos, len_left, "#{");
+					print_string("mpos now: "); print_short(mpos); write_char('\n');
 				}
 				print_string("At end mpos: "); print_short(mpos); write_char('\n');
 				flash_read_bulk(outbuf + slen, f_data[entry].start + f_data[entry].len - len_left, len_left);
 				slen += len_left;
 			} else {
-				print_string("MIME: "); print_string(f_data[entry].mime); write_char('\n');
+				print_string("MIME: "); print_string(mime_strings[f_data[entry].mime]); write_char('\n');
 				flash_read_bulk(outbuf + slen, f_data[entry].start, len_left);
 				slen += len_left;
 			}

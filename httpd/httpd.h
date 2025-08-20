@@ -1,5 +1,5 @@
-#ifndef __HELLO_WORLD_H__
-#define __HELLO_WORLD_H__
+#ifndef __HTTPD_H__
+#define __HTTPD_H__
 
 /* Since this file will be included by uip.h, we cannot include uip.h
    here. But we might need to include uipopt.h if we need the u8_t and
