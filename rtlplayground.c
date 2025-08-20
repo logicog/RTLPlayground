@@ -1,9 +1,6 @@
 #include <8051.h>
 #include <stdint.h>
 
-// This has to be set to the number of SFP+ ports, i.e. 1 or 2
-#define NSFP 2
-
 // #define REGDBG 1
 // #define RXTXDBG 1
 
