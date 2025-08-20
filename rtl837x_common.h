@@ -4,6 +4,9 @@
 #include "uip/uip-conf.h"
 #include <stdint.h>
 
+// This has to be set to the number of SFP+ ports, i.e. 1 or 2
+#define NSFP 2
+
 // The serial buffer. Defines the command line size
 // Must be 2^x and <= 128
 #define SBUF_SIZE 128
@@ -23,6 +26,11 @@
 // This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
 
+#if NSFP == 1
+#define IS_SFP(port) (i == maxPort)
+#else
+#define IS_SFP(port) (i == maxPort || i == 3)
+#endif
 
 /**
  * Representation of a 48-bit Ethernet address.
@@ -63,5 +71,6 @@ uint16_t strlen_x(register __xdata const char *s);
 uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 void tcpip_output(void);
 void print_string_x(__xdata char *p);
+
 
 #endif
