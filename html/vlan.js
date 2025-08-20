@@ -15,7 +15,7 @@ function vlanForm() {
     const inp = document.createElement("input");
     inp.type = "checkbox";
     inp.id = "tport" + i;
-    inp.setAttribute('onclick', `pClicked(true, ${i});`);
+    inp.setAttribute('onclick', `setC("u", ${i}, false);`);
     const o = document.createElement("img");
     if (pIsSFP[i - 1]) {
       o.src = "sfp.svg"; o.width ="60"; o.height ="60";
@@ -28,23 +28,19 @@ function vlanForm() {
     t.appendChild(d);
     var d2=d.cloneNode(true);
     d2.children[0].children[0].id = "uport" + i;
-    d2.children[0].children[0].setAttribute('onclick', `pClicked(false, ${i});`);
+    d2.children[0].children[0].setAttribute('onclick', `setC("t", ${i}, false);`);
     u.appendChild(d2);
   }
 }
 
-function pClicked(t, n){
-  if (t)
-    document.getElementById('uport' + n).checked=false;
-  else
-    document.getElementById('tport' + n).checked=false;
+function setC(t, p, c)
+{
+  document.getElementById(t+'port'+p).checked=c;
 }
 
 function utClicked(t){
-  console.log("CLICKED 1");
   for (let i = 1; i <= numPorts; i++) {
-    document.getElementById('tport' + i).checked=t;
-    document.getElementById('uport' + i).checked=!t;
+    setC('t', i, t); setC('u', i, !t);
   }
 }
 
@@ -59,16 +55,15 @@ function fetchVLAN() {
       const s = JSON.parse(xhttp.responseText);
       console.log("VLAN: ", JSON.stringify(s));
       m = parseInt(s.members, 16);
-      console.log("Members: ", m.toString(16));
       for (let i = 1; i <= numPorts; i++) {
-        document.getElementById('tport' + i).checked=(m>>(16+i-1))&1;
-        document.getElementById('uport' + i).checked=(m>>(i-1))&1;
+        setC('t', i, (m>>(10+i-1))&1);
+        setC('u', i, (m>>(i-1))&1);
       }
     }
   };
   var v=document.getElementById('vid').value
   if (!v) {
-    alert("Please enter a VLAN ID first");
+    alert("Set VLAN ID first");
     return;
   }
   xhttp.open("GET", `/vlan.json?vid=${v}`, true);
