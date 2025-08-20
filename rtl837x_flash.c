@@ -324,7 +324,7 @@ void flash_find_mark(__xdata uint32_t src, register uint16_t len, __code uint8_t
 			markbuf[i++] = 0;
 		}
 
-		len -= 4;
+		len -= len >= 4? 4 : len;
 		uint8_t j = 0;
 		k = (i + 13 - l) & 0xf;
 		i &= 0xf;
