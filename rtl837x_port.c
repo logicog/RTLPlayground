@@ -10,9 +10,9 @@
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_port.h"
 
 #pragma codeseg BANK1
-
 
 extern __code uint16_t bit_mask[16];
 extern __xdata uint8_t minPort;
@@ -30,6 +30,16 @@ __xdata	uint32_t l2_head;
 __code uint8_t log_to_phys_port[9] = {
 	0, 0, 0, 5, 1, 2, 3, 4, 6
 };
+
+#if NSFP == 2
+__code uint8_t is_sfp[9] = {
+	0, 0, 0, 1, 0, 0, 0, 0, 1
+};
+#else
+__code uint8_t is_sfp[9] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 1
+};
+#endif
 
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
@@ -85,6 +95,25 @@ void vlan_delete(uint16_t vlan) __banked
 	print_string("\nvlan_delete called \n"); print_short(vlan);
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0, 0, 0, 0);
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
+}
+
+
+/*
+ * Reads VLAN information from VLAN table
+ * Returns data in sfr_data
+ */
+int8_t vlan_get(register uint16_t vlan) __banked
+{
+	if (vlan >= 2048)
+		return -1;
+
+	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_EXECUTE);
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & TBL_EXECUTE);
+	reg_read_m(RTL837x_L2_DATA_OUT_A);
+
+	return 0;
 }
 
 
@@ -392,27 +421,16 @@ void port_stats_print(void) __banked
 					print_string("Up\t");
 			}
 		}
+		STAT_GET(0x2f, i);
+		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
 
-		REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, 0x05, 0xe0 | (i << 1) | 1);
-		do {
-			reg_read_m(RTL837X_STAT_GET);
-		} while (sfr_data[3] & 0x1);
-		// FIXME: Ignore HIGHER part of 64 bit value for now
+		STAT_GET(0x30, i);
+		print_reg(RTL837X_STAT_V_HIGH); write_char('\t');
+
+		STAT_GET(0x2e, i);
 		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
-		REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, 0x06, (i << 1) | 1);
-		do {
-			reg_read_m(RTL837X_STAT_GET);
-		} while (sfr_data[3] & 0x1);
-		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
-		REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, 0x05, 0xc0 | (i << 1) | 1);
-		do {
-			reg_read_m(RTL837X_STAT_GET);
-		} while (sfr_data[3] & 0x1);
-		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
-		REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, 0x06, (i << 1) | 1);
-		do {
-			reg_read_m(RTL837X_STAT_GET);
-		} while (sfr_data[3] & 0x1);
+
+		STAT_GET(0x30, i);
 		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
 		print_string("\n");
 	}
