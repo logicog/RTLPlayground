@@ -15,28 +15,29 @@ function update() {
       if (!numPorts) {
 	numPorts = s.length;
 	for (let i = 0; i < s.length; i++)
-	  pIsSFP[i] = s[i].isSFP;
+	  pIsSFP[s[i].portNum-1] = s[i].isSFP;
 	drawPorts();
       }
-      console.log("Request returned", JSON.stringify(s));
+      console.log("RES:", JSON.stringify(s));
       for (let i = 0; i < s.length; i++) {
 	p = s[i];
-	let pid = "port" + p.portNum;
-	txG[i] = BigInt(p.txG); txB[i] = BigInt(p.txB); rxG[i] = BigInt(p.rxG); rxB[i] = BigInt(p.rxB);
+	let n = p.portNum;
+	let pid = "port" + n;
+	n--;
+	txG[n] = BigInt(p.txG); txB[n] = BigInt(p.txB); rxG[n] = BigInt(p.rxG); rxB[n] = BigInt(p.rxB);
 	var psvg = document.getElementById(pid);
 	if (psvg == null || !psvg.contentDocument)
 	  continue;
 	var bgs = psvg.contentDocument.getElementsByClassName("bg");
 	var leds = psvg.contentDocument.getElementsByClassName("led");
 	if (p.enabled == 0) {
-	  pState[i] = -1;
+	  pState[n] = -1;
 	  bgs[0].style.fill = "red";
-	  leds[0].style.fill = "black";
-	  leds[1].style.fill = "black";
+	  leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	  psvg.style.opacity = 0.4;
 	} else {
 	  psvg.style.opacity = 1.0;
-	  pState[i] = p.link;
+	  pState[n] = p.link;
 	  if (p.link == 5) {
 	    leds[0].style.fill = "green"; leds[1].style.fill = "orange";
 	  } else if (p.link == 2) {
@@ -45,7 +46,6 @@ function update() {
 	    leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	    psvg.style.opacity = 0.4
 	  }
-	  console.log(JSON.stringify(leds));
 	}
       }
     }
