@@ -56,8 +56,8 @@ function fetchVLAN() {
       console.log("VLAN: ", JSON.stringify(s));
       m = parseInt(s.members, 16);
       for (let i = 1; i <= numPorts; i++) {
-        setC('t', i, (m>>(10+i-1))&1);
-        setC('u', i, (m>>(i-1))&1);
+	setC('t', i, (m>>(10+i-1))&1);
+	setC('u', i, (m>>(i-1))&1);
       }
     }
   };

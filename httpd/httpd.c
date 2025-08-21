@@ -2,6 +2,7 @@
 #include "httpd.h"
 #include "page_impl.h"
 #include "../rtl837x_common.h"
+#include "../cmd_parser.h"
 #include "../rtl837x_flash.h"
 #include "uip.h"
 #include "../html_data.h"
@@ -27,7 +28,6 @@ __xdata uint16_t len_left;
 #define TSTATE_ACKED 	2
 #define TSTATE_CLOSED 	3
 
-extern uint16_t send_status(void);
 
 inline uint8_t is_separator(uint8_t c)
 {
@@ -91,6 +91,38 @@ uint8_t parse_short(register uint16_t *n, __xdata uint8_t * __xdata p)
 }
 
 
+void send_not_found()
+{
+	slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n");
+	print_string("slen: "); print_short(slen); write_char('\n');
+	slen += strtox(outbuf + slen, "<!DOCTYPE HTML PUBLIC>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n");
+}
+
+void handle_post(void)
+{
+	__xdata uint8_t *p = uip_appdata;
+	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
+		write_char(*p);
+		if (!*p++)
+			break;
+	}
+	if (!*p) {
+		print_string("No body found!\n");
+		send_not_found();
+		return;
+	}
+	register uint8_t i = 0;
+	p += 4;
+	while (*p && *p != '\n' && *p != '\r')
+		cmd_buffer[i++] = *p++;
+	cmd_buffer[i] = '\0';
+
+	if (i && !cmd_tokenize())
+		cmd_parser();
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\n\r\n");
+}
+
+
 void httpd_appcall(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
@@ -113,7 +145,6 @@ void httpd_appcall(void)
 			uip_close();
 			s->tstate = TSTATE_CLOSED;
 		}
-//		write_char('p');
 	} else if (uip_acked() && s->tstate == TSTATE_TX) {
 		print_string("ACK\n");
 		if (slen > uip_mss()) {
@@ -145,6 +176,11 @@ void httpd_appcall(void)
 			write_char(*p++);
 		write_char('\n');
 		p = uip_appdata;
+		if (p[0] == 'P' && p[1] == 'O' && p[2] == 'S' && p[3] == 'T'  && p[4] == ' ') {
+			handle_post();
+			goto do_send;
+		}
+
 		if (p[0] == 'G' && p[1] == 'E' && p[2] == 'T' && p[3] == ' ')
 			print_string("GET request ");
 		p += 4;
@@ -161,17 +197,15 @@ void httpd_appcall(void)
 		if (entry == 0xff) {
 			print_string("Not file entry\n");
 			if (!strcmp(q, "/status.json")) {
-				print_string("STATUS request\n");
 				send_status();
 			} else if (!strcmp(q, "/vlan.json")) {
-				print_string("VLAN request\n");
 				__xdata uint16_t vlan;
 				parse_short(&vlan, q + 15);
 				send_vlan(vlan);
+			} else if (!strcmp(q, "/counters.json")) {
+				send_counters(q[19]-'0');
 			} else {
-				slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n");
-				print_string("slen: "); print_short(slen); write_char('\n');
-				slen += strtox(outbuf + slen, "<!DOCTYPE HTML PUBLIC>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n");
+				send_not_found();
 			}
 		} else {
 			print_string("Have entry\n");
@@ -212,6 +246,7 @@ void httpd_appcall(void)
 				slen += len_left;
 			}
 		}
+do_send:
 		print_string("slen: "); print_short(slen); write_char('\n');
 		o_idx = 0;
 		if (slen > uip_mss()) {
