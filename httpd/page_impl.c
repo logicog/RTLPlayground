@@ -6,6 +6,7 @@
 #include "../rtl837x_port.h"
 #include "uip.h"
 #include "../html_data.h"
+#include <stdint.h>
 
 #pragma codeseg BANK1
 
@@ -15,6 +16,7 @@ extern __code uint8_t * __code hex;
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
 extern __code uint8_t ownMAC[];
 extern __code uint8_t log_to_phys_port[9];
+extern __code uint8_t phys_to_log_port[6];
 
 extern __xdata uint8_t minPort;
 extern __xdata uint8_t maxPort;
@@ -113,7 +115,7 @@ uint16_t html_index(void)
 }
 
 
-uint16_t send_vlan(register uint16_t vlan)
+void send_vlan(register uint16_t vlan)
 {
 	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
 	print_string("sending VLAN\n");
@@ -122,11 +124,35 @@ uint16_t send_vlan(register uint16_t vlan)
 	vlan_get(vlan);
 	sfr_data_to_html();
 	slen += strtox(outbuf + slen, "\"}");
-	return 0;
 }
 
 
-uint16_t send_status(void)
+void send_counters(char port)
+{
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+	print_string("sending counters\n");
+
+	port--;
+	uint8_t i = isRTL8373 ? port : phys_to_log_port[port];
+	slen += strtox(outbuf + slen, "{\"portNum\":");
+	if (!isRTL8373)
+		itoa_html(log_to_phys_port[i]);
+	else
+		itoa_html(i + 1);
+	for (uint8_t j = 0; j < 0x3f; j++) {
+		STAT_GET(j, i);
+		slen += strtox(outbuf + slen, ",\"cnt_");
+		itoa_html(j);
+		slen += strtox(outbuf + slen, "\":\"0x");
+		reg_to_html(RTL837X_STAT_V_HIGH);
+		reg_to_html(RTL837X_STAT_V_LOW);
+		char_to_html('\"');
+	}
+	char_to_html('}');
+}
+
+
+void send_status(void)
 {
 	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
 	print_string("sending status\n");
@@ -195,5 +221,4 @@ uint16_t send_status(void)
 		else
 			char_to_html(']');
 	}
-	return 0;
 }
