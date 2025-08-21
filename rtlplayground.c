@@ -60,6 +60,8 @@ __xdata volatile uint8_t sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
+extern __xdata uint8_t cmd_buffer[SBUF_SIZE];
+
 __code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
 __code uint8_t * __code hex = "0123456789abcdef";
 
@@ -1683,10 +1685,34 @@ void bootloader(void)
 
 	execute_config();
 	print_string("\n> ");
-	cmd_parser_setup();
 	idle_ready = 1;
+
+	// Wait for commands on serial connection
+	// sbuf_ptr is moved forward by serial interrupt, l is the position until we have already
+	// printed out the entered characters
+	__xdata uint8_t l = sbuf_ptr; // We have printed out entered characters until l
+	__xdata uint8_t line_start = sbuf_ptr; // This is where the current line starts
 	while (1) {
-		cmd_parser();
+		while (l != sbuf_ptr) {
+			write_char(sbuf[l]);
+			// Check whether there is a full line:
+			if (sbuf[l] == '\n' || sbuf[l] == '\r') {
+				write_char('\n');
+				register uint8_t i = 0;
+				while (line_start != l) {
+					cmd_buffer[i++] = sbuf[line_start++];
+					line_start &= (SBUF_SIZE - 1);
+				}
+				line_start++;
+				line_start &= (SBUF_SIZE - 1);
+				cmd_buffer[i] = '\0';
+				if (i && !cmd_tokenize())
+					cmd_parser();
+				print_string("\n> ");
+			}
+			l++;
+			l &= (SBUF_SIZE - 1);
+		}
 		idle(); // Enter Idle mode until interrupt occurs
 	}
 }
