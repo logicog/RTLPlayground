@@ -1,6 +1,8 @@
 #ifndef _RTL837X_PORT_H_
 #define _RTL837X_PORT_H_
 
+#include <stdint.h>
+
 #define STAT_COUNTER_TX_PKTS 0x2e
 #define STAT_COUNTER_RX_PKTS 0x2f
 #define STAT_COUNTER_ERR_PKTS 0x30
