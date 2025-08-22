@@ -39,6 +39,14 @@
    5: 2.5Gbit
   */
 
+
+/*
+ * Pin configuration (pinmux)
+ */
+
+#define RTL837X_PIN_MUX_A	0x7f8c
+#define RTL837X_PIN_MUX_B	0x7f90
+
 #define RTL837X_REG_GPIO_A 0x40
 // BIT 4 resets RTL8224 on 9000-9XH
 

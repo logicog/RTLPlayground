@@ -1054,13 +1054,14 @@ void setup_clock(void)
 	 // Divider in bits 4 & 5
 	sfr_mask_data(0, 0, CLOCK_DIV << 4);
 #endif
-	// This is set in managed mode 125MHz
+	// Bit 8 is set in managed mode 125MHz to use fast SPI mode
 	sfr_mask_data(1, 0, 0x01);
 	reg_write_m(RTL837X_REG_HW_CONF);
 
-	reg_read_m(0x7f90);
+	// Enable serial interface, set bit 0
+	reg_read_m(RTL837X_PIN_MUX_B);
 	sfr_mask_data(0, 0x1, 0x1);
-	reg_write_m(0x7f90);
+	reg_write_m(RTL837X_PIN_MUX_B);
 }
 
 
@@ -1231,7 +1232,7 @@ void led_config_9xh(void)
 	reg_bit_clear(0x65dc, 0x1b);
 
 	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
-	reg_bit_set(0x7f8c, 0x1b);
+	reg_bit_set(RTL837X_PIN_MUX_A, 0x1b);
 
 	// R6548-0041017f
 	REG_SET(0x6548, 0x0041017f);
@@ -1283,13 +1284,13 @@ void led_config(void)
 
 	// Set bits 1b/1d of 0x7f8c: r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
 	if (nSFPPorts == 2) {
-		reg_bit_set(0x7f8c, 0x1b); // R7f8c-28000000
-		reg_bit_clear(0x7f8c, 0x1c); // R7f8c-28000000
-		reg_bit_set(0x7f8c, 0x1d); // R7f8c-28000000
+		reg_bit_set(RTL837X_PIN_MUX_A, 0x1b); // R7f8c-28000000
+		reg_bit_clear(RTL837X_PIN_MUX_A, 0x1c); // R7f8c-28000000
+		reg_bit_set(RTL837X_PIN_MUX_A, 0x1d); // R7f8c-28000000
 	} else {
-		reg_bit_set(0x7f8c, 0x1d);
-		reg_bit_set(0x7f8c, 0x1c);
-		reg_bit_set(0x7f8c, 0x1b);
+		reg_bit_set(RTL837X_PIN_MUX_A, 0x1d);
+		reg_bit_set(RTL837X_PIN_MUX_A, 0x1c);
+		reg_bit_set(RTL837X_PIN_MUX_A, 0x1b);
 	}
 	// LED setup
 	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0 r65f8:00000018 R65f8-00000018 R65fc-fffff000 r6600:00000000 R6600-0000000f r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
@@ -1571,10 +1572,10 @@ void setup_i2c(void)
 	REG_SET(0x041c, 0);
 
 	// HW Control register, enable I2C?
-	reg_read_m(0x7f90);
+	reg_read_m(RTL837X_PIN_MUX_B);
 	sfr_mask_data(3, 0x20, 0x00); // Clear bit 29
 	sfr_mask_data(0, 0x60, 0x40); // Set bits 5-6 to 0b10
-	reg_write_m(0x7f90);
+	reg_write_m(RTL837X_PIN_MUX_B);
 }
 
 
