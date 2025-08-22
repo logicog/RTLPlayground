@@ -435,3 +435,20 @@ void port_stats_print(void) __banked
 		print_string("\n");
 	}
 }
+
+
+void port_isolate(register uint8_t port, __xdata uint16_t pmask)
+{
+	if (port <= maxPort)
+		REG_SET(RTL837X_PORT_ISOLATION_BASE + (port << 2), pmask);
+}
+
+
+uint16_t port_isolation_get(register uint8_t port)
+{
+	if (port > maxPort)
+		return 0;
+
+	reg_read_m(RTL837X_PORT_ISOLATION_BASE + (port << 2));
+	return ((uint16_t)sfr_data[2]) << 8 | sfr_data[3];
+}
