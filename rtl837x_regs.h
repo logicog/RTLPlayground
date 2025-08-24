@@ -105,8 +105,11 @@
 #define RTL837x_L2_DATA_OUT_B	0x5cd0
 #define RTL837x_L2_DATA_OUT_C	0x5cd4
 #define RTL837x_TBL_DATA_IN_A	0x5cb8
-#define RTL837x_L2_TBL_CTRL	0x53d4
 #define RTL837x_PVID_BASE_REG	0x4e1c
+
+#define RTL837x_L2_TBL_FLUSH_CTRL	0x53d4
+#define L2_TBL_FLUSH_EXEC	0x10000
+#define RTL837x_L2_TBL_FLUSH_CNF	0x53dc
 
 /*
  * Egress / ingress filtering

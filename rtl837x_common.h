@@ -7,6 +7,11 @@
 // This has to be set to the number of SFP+ ports, i.e. 1 or 2
 #define NSFP 2
 
+// Define Port-masks for 9-port devices and 6-port devices
+#define PMASK_9		0x1ff
+#define PMASK_6		0x1f8
+#define PMASK_CPU	0x200
+
 // The serial buffer. Defines the command line size
 // Must be 2^x and <= 128
 #define SBUF_SIZE 128

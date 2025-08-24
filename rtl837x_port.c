@@ -253,19 +253,21 @@ void trunk_set(uint8_t group, uint16_t mask) __banked
 uint8_t port_l2_forget(void) __banked
 {
 	print_string("\nport_l2_forget called\n");
-	// r53dc:00000000 R53dc-00000000 r53d4:000001ff r53d4:000001ff R53d4-000101ff r53d4:000001ff
-	reg_read_m(0x53dc);
-	if (sfr_data[0] || sfr_data[1] ||sfr_data[2] ||sfr_data[3]) {
-		print_string("List busy\n");
-		return 0xff;
-	}
-	REG_WRITE(0x53dc, sfr_data[0], sfr_data[1], sfr_data[2], sfr_data[3]);
+	// Configure the entries to be flushed:
+	// port-based (bits 0-1 are 0 and dynamic entries, bit 2 specifies dynamic entries
+	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);
 
-	reg_read_m(RTL837x_L2_TBL_CTRL);
-	REG_WRITE(RTL837x_L2_TBL_CTRL, 0x00, 0x01, sfr_data[2], sfr_data[3]);
+	// Flush L2 table for all ports by setting the ports and the flush-exec bit (bit 16)
+	if (isRTL8373) {
+		REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | PMASK_9);
+	} else {
+		REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | PMASK_6);
+	}
+
+	// Wait for flush completed
 	do {
-		reg_read_m(RTL837x_L2_TBL_CTRL);
-	} while (sfr_data[1] & 0x1);
+		reg_read_m(RTL837x_L2_TBL_FLUSH_CTRL);
+	} while (sfr_data[1]);
 
 	print_string("port_l2_forget done\n");
 	return 0;
@@ -345,21 +347,19 @@ void port_l2_learned(void) __banked
 void port_l2_setup() __banked
 {
 	print_string("\nport_l2_setup called\n");
-	REG_SET(0x53dc, 0x00000000);
-	if(isRTL8373) {
-		REG_SET(0x53d4, 0x000101ff);
-	} else {
-		REG_SET(0x53d4, 0x000001f8);
-	}
+
+	port_l2_forget();
+
 	for (uint8_t i = minPort; i <= maxPort; i++) {
 		uint16_t reg = 0x5384 + (i << 2);
 		REG_SET(reg, 0x00001040);
 
-		reg = 0x50c0  + (i << 2);
+		// All ports may communicate with each other and CPU-Port
+		reg = RTL837X_PORT_ISOLATION_BASE + (i << 2);
 		if(isRTL8373) {
-			REG_SET(reg, 0x3ff);
+			REG_SET(reg, PMASK_9 | PMASK_CPU);
 		} else {
-			REG_SET(reg, 0x3f8);
+			REG_SET(reg, PMASK_6 | PMASK_CPU);
 		}
 	}
 	reg_bit_set(0x4f80, 0);
