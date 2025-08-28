@@ -85,9 +85,9 @@ uip_neighbor_periodic(void)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_neighbor_add(uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr *addr)
+uip_neighbor_add(__xdata uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr *addr)
 {
-  int i, oldest;
+  uint16_t i, oldest;
   u8_t oldest_time;
 
   /*
@@ -130,12 +130,13 @@ uip_neighbor_add(uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr *addr)
 }
 /*---------------------------------------------------------------------------*/
 __xdata static struct neighbor_entry *
-find_entry(uip_ipaddr_t ipaddr)
+find_entry(__xdata uip_ipaddr_t ipaddr)
 {
-  int i;
+  uint16_t i;
   
   for(i = 0; i < ENTRIES; ++i) {
-    if(uip_ipaddr_cmp(entries[i].ipaddr, ipaddr)) {
+//    if(uip_ipaddr_cmp(entries[i].ipaddr, ipaddr)) {
+    if (entries[i].ipaddr[0] == ipaddr[0] && entries[i].ipaddr[1] == ipaddr[1]) {
       return &entries[i];
     }
   }
@@ -143,7 +144,7 @@ find_entry(uip_ipaddr_t ipaddr)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_neighbor_update(uip_ipaddr_t ipaddr)
+uip_neighbor_update(__xdata uip_ipaddr_t ipaddr)
 {
   struct neighbor_entry *e;
 
@@ -154,7 +155,7 @@ uip_neighbor_update(uip_ipaddr_t ipaddr)
 }
 /*---------------------------------------------------------------------------*/
 __xdata struct uip_neighbor_addr *
-uip_neighbor_lookup(uip_ipaddr_t ipaddr)
+uip_neighbor_lookup(__xdata uip_ipaddr_t ipaddr)
 {
   __xdata struct neighbor_entry *e;
 

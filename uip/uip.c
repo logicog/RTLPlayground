@@ -397,9 +397,9 @@ uip_init(void) __banked
 /*---------------------------------------------------------------------------*/
 #if UIP_ACTIVE_OPEN
 __xdata struct uip_conn *
-uip_connect(register __xdata uip_ipaddr_t *ripaddr, register u16_t rport)
+uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport)
 {
-  register __xdata struct uip_conn *conn, *cconn;
+  __xdata struct uip_conn *conn, *cconn;
   
   /* Find an unused local port. */
  again:
@@ -411,7 +411,7 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, register u16_t rport)
 
   /* Check if this port is already in use, and if so try to find
      another one. */
-  for(c = 0; c < UIP_CONNS; ++c) {
+  for(uint8_t c = 0; c < UIP_CONNS; ++c) {
     conn = &uip_conns[c];
     if(conn->tcpstateflags != UIP_CLOSED &&
        conn->lport == htons(lastport)) {
@@ -420,7 +420,7 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, register u16_t rport)
   }
 
   conn = 0;
-  for(c = 0; c < UIP_CONNS; ++c) {
+  for(uint8_t c = 0; c < UIP_CONNS; ++c) {
     cconn = &uip_conns[c];
     if(cconn->tcpstateflags == UIP_CLOSED) {
       conn = cconn;

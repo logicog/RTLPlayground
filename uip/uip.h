@@ -495,7 +495,7 @@ void uip_unlisten(u16_t port);
  * or NULL if no connection could be allocated.
  *
  */
-__xdata struct uip_conn *uip_connect(register __xdata uip_ipaddr_t *ripaddr, register u16_t port);
+__xdata struct uip_conn *uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t port);
 
 
 
