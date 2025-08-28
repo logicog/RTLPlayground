@@ -22,8 +22,7 @@ function vlanForm() {
     } else {
       o.src = "port.svg"; o.width = "40"; o.height = "40";
     }
-    l.appendChild(inp);
-    l.appendChild(o);
+    l.appendChild(inp); l.appendChild(o);
     d.appendChild(l)
     t.appendChild(d);
     var d2=d.cloneNode(true);
@@ -33,8 +32,7 @@ function vlanForm() {
   }
 }
 
-function setC(t, p, c)
-{
+function setC(t, p, c){
   document.getElementById(t+'port'+p).checked=c;
 }
 
@@ -55,6 +53,7 @@ function fetchVLAN() {
       const s = JSON.parse(xhttp.responseText);
       console.log("VLAN: ", JSON.stringify(s));
       m = parseInt(s.members, 16);
+      document.getElementById('vname').value = s.name;
       for (let i = 1; i <= numPorts; i++) {
 	setC('t', i, (m>>(10+i-1))&1);
 	setC('u', i, (m>>(i-1))&1);

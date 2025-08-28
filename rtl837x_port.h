@@ -17,6 +17,7 @@ uint8_t port_l2_forget(void) __banked;
 void port_l2_learned(void) __banked;
 void port_stats_print(void) __banked;
 int8_t vlan_get(register uint16_t vlan) __banked;
+__xdata uint16_t vlan_name(register uint16_t vlan) __banked;
 void vlan_setup(void) __banked;
 void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked;
 void vlan_create(register uint16_t vlan, register uint16_t members, register uint16_t tagged) __banked;

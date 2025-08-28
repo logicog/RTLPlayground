@@ -10,7 +10,7 @@
 
 #pragma codeseg BANK1
 
-extern __xdata uint8_t outbuf[2048];
+extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 extern __code uint8_t * __code hex;
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
@@ -25,6 +25,7 @@ extern __xdata uint8_t sfr_data[4];
 extern __xdata uint8_t cpuPort;
 extern __xdata uint8_t isRTL8373;
 extern __xdata uint8_t sfp_pins_last;
+extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
 inline void byte_to_html(uint8_t a)
 {
@@ -67,13 +68,36 @@ uint16_t port_status(void)
 
 void sfr_data_to_html(void)
 {
-	char_to_html(hex[sfr_data[0] >> 4]);
-	char_to_html(hex[sfr_data[0] & 0xf]);
-	char_to_html(hex[sfr_data[1] >> 4]);
-	char_to_html(hex[sfr_data[1] & 0xf]);
-	char_to_html(hex[sfr_data[2] >> 4]);
-	char_to_html(hex[sfr_data[2] & 0xf]);
-	char_to_html(hex[sfr_data[3] >> 4]);
+	__bit print_zeros = 0;
+
+	if (print_zeros || sfr_data[0] & 0xf0) {
+		char_to_html(hex[sfr_data[0] >> 4]);
+		print_zeros = 1;
+	}
+	if (print_zeros || sfr_data[0] & 0xf) {
+		char_to_html(hex[sfr_data[0] & 0xf]);
+		print_zeros = 1;
+	}
+	if (print_zeros || sfr_data[1] & 0xf0) {
+		char_to_html(hex[sfr_data[1] >> 4]);
+		print_zeros = 1;
+	}
+	if (print_zeros || sfr_data[1] & 0xf) {
+		char_to_html(hex[sfr_data[1] & 0xf]);
+		print_zeros = 1;
+	}
+	if (print_zeros || sfr_data[2] & 0xf0) {
+		char_to_html(hex[sfr_data[2] >> 4]);
+		print_zeros = 1;
+	}
+	if (print_zeros || sfr_data[2] & 0xf) {
+		char_to_html(hex[sfr_data[2] & 0xf]);
+		print_zeros = 1;
+	}
+	if (print_zeros || sfr_data[3] & 0xf0) {
+		char_to_html(hex[sfr_data[3] >> 4]);
+		print_zeros = 1;
+	}
 	char_to_html(hex[sfr_data[3] & 0xf]);
 }
 
@@ -115,7 +139,7 @@ uint16_t html_index(void)
 }
 
 
-void send_vlan(register uint16_t vlan)
+void send_vlan(__xdata uint16_t vlan)
 {
 	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
 	print_string("sending VLAN\n");
@@ -123,22 +147,28 @@ void send_vlan(register uint16_t vlan)
 	slen += strtox(outbuf + slen, "{\"members\":\"0x");
 	vlan_get(vlan);
 	sfr_data_to_html();
+	slen += strtox(outbuf + slen, "\",\"name\":\"");
+	__xdata uint16_t n = vlan_name(vlan);
+	if (n== 0xffff) {
+		print_string("VLAN has no name\n");
+	} else {
+		while(vlan_names[n] && vlan_names[n] != ' ')
+			char_to_html(vlan_names[n++]);
+	}
 	slen += strtox(outbuf + slen, "\"}");
 }
 
 
 void send_counters(char port)
 {
+	print_string("send_counters called: "); print_byte(port); write_char('\n');
 	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
 	print_string("sending counters\n");
 
 	port--;
-	uint8_t i = isRTL8373 ? port : phys_to_log_port[port];
+	uint8_t i = isRTL8373 ? port - 1: phys_to_log_port[port];
 	slen += strtox(outbuf + slen, "{\"portNum\":");
-	if (!isRTL8373)
-		itoa_html(log_to_phys_port[i]);
-	else
-		itoa_html(i + 1);
+	itoa_html(i + 1);
 	for (uint8_t j = 0; j < 0x3f; j++) {
 		STAT_GET(j, i);
 		slen += strtox(outbuf + slen, ",\"cnt_");

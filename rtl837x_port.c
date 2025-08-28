@@ -14,12 +14,15 @@
 
 #pragma codeseg BANK1
 
+extern __code uint8_t * __code hex;
 extern __code uint16_t bit_mask[16];
 extern __xdata uint8_t minPort;
 extern __xdata uint8_t maxPort;
 extern __xdata uint8_t nSFPPorts;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata uint8_t cpuPort;
+extern __xdata uint16_t vlan_ptr;
+extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
 extern __xdata uint8_t isRTL8373;
 
@@ -104,7 +107,7 @@ void vlan_delete(uint16_t vlan) __banked
  */
 int8_t vlan_get(register uint16_t vlan) __banked
 {
-	if (vlan >= 2048)
+	if (vlan >= 0x3ff) // VLAN 4095 is special
 		return -1;
 
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_EXECUTE);
@@ -114,6 +117,22 @@ int8_t vlan_get(register uint16_t vlan) __banked
 	reg_read_m(RTL837x_L2_DATA_OUT_A);
 
 	return 0;
+}
+
+
+__xdata uint16_t vlan_name(register uint16_t vlan) __banked
+{
+	__xdata int16_t i = 0;
+	__xdata uint8_t begin = 1;
+	while (vlan_names[i]) {
+		if (begin && vlan_names[i] == hex[(vlan >> 8) & 0xf] && vlan_names[i + 1] == hex[(vlan >> 4) & 0xf] && vlan_names[i + 2] == hex[vlan & 0xf])
+			break;
+		begin = vlan_names[i++] == ' ' ? 1 : 0;
+	}
+	if (vlan_names[i])
+		return i + 3;
+
+	return 0xffff;
 }
 
 
@@ -156,6 +175,10 @@ void vlan_create(register uint16_t vlan, register uint16_t members, register uin
 void vlan_setup(void) __banked
 {
 	print_string("\nvlan_setup called \n");
+
+	// No VLAN names set up so far
+	vlan_ptr = 0;
+	vlan_names[0] = 0;
 
 	// Initialize VLAN table for VLAN 1, by disabling that entry
 	if (isRTL8373) {

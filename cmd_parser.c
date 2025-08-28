@@ -28,6 +28,9 @@ extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
 
 extern __xdata uint8_t flash_buf[256];
+__xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
+__xdata uint16_t vlan_ptr;
+
 
 // Buffer for writing to flash 0x1fd000, copy to 0x1fe000
 __xdata uint8_t cmd_buffer[SBUF_SIZE];
@@ -43,6 +46,13 @@ __xdata signed char cmd_words_b[N_WORDS];
 __code uint8_t phys_to_log_port[6] = {
 	4, 5, 6, 7, 3, 8
 };
+
+
+inline uint8_t isletter(uint8_t l)
+{
+	return (l >= 'a' && l <= 'z') || (l >= 'A' && l <= 'Z');
+}
+
 
 uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 {
@@ -110,11 +120,28 @@ void parse_vlan(void)
 	__xdata uint16_t members = 0;
 	__xdata uint16_t tagged = 0;
 	if (!atoi_short(&vlan, cmd_words_b[1])) {
-		if (cmd_words_b[2] > 0 && cmd_buffer[cmd_words_b[2]] == 'd') {
+		if (cmd_words_b[2] > 0 && cmd_buffer[cmd_words_b[2]] == 'd' && cmd_words_b[3] < 0) {
 			vlan_delete(vlan);
 			return;
 		}
 		uint8_t w = 2;
+		write_char('#');
+		print_byte(cmd_words_b[w] );
+		write_char('#'); write_char(cmd_buffer[cmd_words_b[w]]);
+		if (cmd_words_b[w] > 0 && isletter(cmd_buffer[cmd_words_b[w]])) {
+			register uint8_t i = 0;
+			vlan_names[vlan_ptr++] = hex[(vlan >> 8) & 0xf];
+			vlan_names[vlan_ptr++] = hex[(vlan >> 4) & 0xf] ;
+			vlan_names[vlan_ptr++] = hex[vlan & 0xf];
+			print_string("COPYING: >");
+			while(cmd_buffer[cmd_words_b[w] + i] != ' ') {
+				write_char(cmd_buffer[cmd_words_b[w] + i]);
+				vlan_names[vlan_ptr++] = cmd_buffer[cmd_words_b[w] + i++];
+			}
+			vlan_names[vlan_ptr++] = ' '; vlan_names[vlan_ptr] = '\0';
+			w++;
+			print_string("<\n");
+		}
 		while (cmd_words_b[w] > 0) {
 			uint8_t port;
 			if (cmd_buffer[cmd_words_b[w]] >= '0' && cmd_buffer[cmd_words_b[w]] <= '9') {
@@ -136,6 +163,10 @@ void parse_vlan(void)
 			w++;
 		}
 		vlan_create(vlan, members, tagged);
+	}
+	if (cmd_words_b[2] > 0 && isletter(cmd_buffer[cmd_words_b[2]])) {
+		print_string("vlan_ptr "); print_short(vlan_ptr); write_char(':');
+		write_char('>'); print_string_x(&vlan_names[0]); write_char('<'); write_char('\n');
 	}
 	return;
 err:

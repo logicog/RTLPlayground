@@ -16,6 +16,12 @@
 // Must be 2^x and <= 128
 #define SBUF_SIZE 128
 
+// Size of the TCP Output buffer
+#define TCP_OUTBUF_SIZE 2500
+
+// Size of the memory area dedicated to VLAN-names
+#define VLAN_NAMES_SIZE 1024
+
 // For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
 // the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
 // the VLAN tag is inserted after the RTL tag

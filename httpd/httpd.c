@@ -15,7 +15,7 @@ extern __code struct f_data f_data[];
 extern __code fcall_ptr f_calls[];
 extern __code char * __code mime_strings[];
 
-__xdata uint8_t outbuf[2048];
+__xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 __xdata uint8_t entry;
 __xdata uint16_t slen;
 __xdata uint16_t o_idx;
