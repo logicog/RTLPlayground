@@ -100,6 +100,7 @@
 #define TBL_L2_UNICAST	0x04
 #define TBL_VLAN 	0x03
 
+#define RTL837X_L2_CTRL		0x5350
 #define RTL837x_TBL_DATA_0	0x5cb0
 #define RTL837x_L2_DATA_OUT_A	0x5ccc
 #define RTL837x_L2_DATA_OUT_B	0x5cd0
@@ -108,7 +109,7 @@
 #define RTL837x_PVID_BASE_REG	0x4e1c
 
 #define RTL837x_L2_TBL_FLUSH_CTRL	0x53d4
-#define L2_TBL_FLUSH_EXEC	0x10000
+#define L2_TBL_FLUSH_EXEC		0x10000
 #define RTL837x_L2_TBL_FLUSH_CNF	0x53dc
 
 /*
@@ -123,19 +124,25 @@
 /*
  * Mirroring
  */
-#define RTL837x_MIRROR_CONF 0x604c
-#define RTL837x_MIRROR_CTRL 0x6048
+#define RTL837x_MIRROR_CONF		0x604c
+#define RTL837x_MIRROR_CTRL		0x6048
 
 /*
  * Trunking
  */
-#define RTL837x_TRUNK_CTRL_A	0x4f38
-#define RTL837x_TRUNK_CTRL_B	0x4f3c
+#define RTL837x_TRUNK_CTRL_A		0x4f38
+#define RTL837x_TRUNK_CTRL_B		0x4f3c
 
 /*
  * Port isolation
  */
-#define RTL837X_PORT_ISOLATION_BASE 0x50c0
+#define RTL837X_PORT_ISOLATION_BASE	0x50c0
+
+/*
+ * Multicast handling
+ */
+#define RTL837X_MC_LOOKUPMISS_ACTIONS	0x4f78
+#define RTL837X_IGMP_PORT_CFG		0x52a0
 
 
 #ifdef REGDBG
