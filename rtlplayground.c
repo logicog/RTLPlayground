@@ -90,6 +90,8 @@ __xdata uint8_t linkbits_last[4];
 __xdata uint8_t sfp_pins_last;
 
 
+#define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
+
 void isr_timer0(void) __interrupt(1)
 {
 	TR0 = 0;		// Stop timer 0
@@ -779,9 +781,8 @@ void handle_rx(void)
 		ring_ptr |= sfr_data[3];
 		ring_ptr <<= 3;
 		nic_rx_header(ring_ptr);
-		__xdata uint8_t *ptr = rx_headers;
-
 #ifdef RXTXDBG
+		__xdata uint8_t *ptr = rx_headers;
 		print_string("RX on port "); print_byte(rx_headers[3] & 0xf);
 		print_string(": ");
 		for (uint8_t i = 0; i < 8; i++) {
@@ -803,8 +804,8 @@ void handle_rx(void)
 		sfr_data[3] = 0x1;
 		reg_write_m(RTL837X_REG_RX_DONE);
 		uip_len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
-//		write_char('>'); print_byte(uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
-//		write_char('>'); print_byte(uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE]); write_char('<');
+//		write_char('>'); print_byte(uip_buf[ETHERTYPE_OFFSET]); write_char('<');
+//		write_char('>'); print_byte(uip_buf[ETHERTYPE_OFFSET + 1]); write_char('<');
 		// Check for ARP packet
 		rx_packet_vlan = uip_buf[12 + RTL_TAG_SIZE + 2] & 0xf;
 		rx_packet_vlan <<= 8;
@@ -812,12 +813,19 @@ void handle_rx(void)
 #ifdef RXTXDBG
 		print_string(" RX-VLAN: "); print_short(rx_packet_vlan); write_char('\n');
 #endif
-		if (uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x08 && uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x06) {
+		if (uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
+			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x00) {
+			print_string("STP: \n");
+			for (uint8_t i = 0; i < 80; i++) {
+				print_byte(uip_buf[i]);
+				write_char(' ');
+			}
+		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x06) { // ARP?
 			uip_arp_arpin();
 			if (uip_len) {
 			    tcpip_output();
 			}
-		} else if (uip_buf[12 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x08 && uip_buf[13 + VLAN_TAG_SIZE + RTL_TAG_SIZE] == 0x00) {
+		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) {
 			uip_arp_ipin();
 			uip_input();
 			if (uip_len) {
