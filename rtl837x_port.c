@@ -367,7 +367,7 @@ void port_l2_learned(void) __banked
 /*
  * Basic L2 configuration such as time to forget an entry
  */
-void port_l2_setup() __banked
+void port_l2_setup(void) __banked
 {
 	print_string("\nport_l2_setup called\n");
 
