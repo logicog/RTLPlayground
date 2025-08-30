@@ -475,3 +475,15 @@ uint16_t port_isolation_get(register uint8_t port)
 	reg_read_m(RTL837X_PORT_ISOLATION_BASE + (port << 2));
 	return ((uint16_t)sfr_data[2]) << 8 | sfr_data[3];
 }
+
+
+/*
+ * Enable RLDP, Realtek's version of LLDP
+ */
+void port_rldp_on(__xdata uint16_t p_ms)
+{
+	REG_WRITE(RTL8373_RLDP_TIMER, p_ms >> 8, p_ms, p_ms >> 8, p_ms);
+
+	REG_SET(RTL837X_RMA0_CONF, 0x00000000); // R4ecc
+	REG_SET(RTL837X_RMA_CONF, 0x00000000); // R4ecc
+}
