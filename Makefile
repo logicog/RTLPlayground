@@ -10,7 +10,7 @@ SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 all: $(SUBDIRS) rtlplayground.bin
 
-SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c
+SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c rtl837x_stp.c
 OBJS = ${SRCS:.c=.rel}
 OBJS += uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel httpd/httpd.rel httpd/page_impl.rel
 

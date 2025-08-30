@@ -145,6 +145,14 @@
 #define RTL837X_IGMP_PORT_CFG		0x52a0
 #define RTL837X_MC_FLOODMASK		0x5368
 
+/*
+ * Loop detection / STP
+ */
+
+#define RTL8373_RLDP_TIMER		0x1074
+#define RTL837X_RMA0_CONF		0x4ecc
+#define RTL837X_RMA_CONF		0x4f1c
+
 
 #ifdef REGDBG
 
