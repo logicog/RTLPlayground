@@ -10,6 +10,7 @@
 #include "rtl837x_flash.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
+#include "rtl837x_stp.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
 #include "uip/uip.h"
@@ -45,7 +46,6 @@ __xdata uint8_t idle_ready;
 
 __code uint8_t ownIP[] = { 192, 168, 2, 2 };
 __code struct uip_eth_addr uip_ethaddr = {{ 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x02 }};
-__code uint8_t ownMAC[] = { 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x02 };
 __code uint8_t gatewayIP[] = { 192, 168, 2, 22};
 __code uint8_t netmask[] = { 255, 255, 255, 0};
 
@@ -741,8 +741,7 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
  */
 void tcpip_output(void)
 {
-	__xdata uint8_t *ptr = &uip_buf[0];
-	// Add RTL-TAG
+	// Add TX-TAG
 	uip_buf[VLAN_TAG_SIZE] = tx_seq++;
 	uip_buf[VLAN_TAG_SIZE + 1] = 0x07;    // Enable all checksums
 	uip_buf[VLAN_TAG_SIZE + 5] = uip_len >> 8;
@@ -753,12 +752,13 @@ void tcpip_output(void)
 	reg_read_m(0x7890);
 	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 	ring_ptr |= sfr_data[3];
-	/*
+
+	print_string("TX: \n");
 	for (uint8_t i = 0; i < 120; i++) {
-		print_byte(*ptr++);
+		print_byte(uip_buf[i]);
 		write_char(' ');
 	}
-	*/
+	write_char('\n');
 
 	// Move data over from xmem buffer to ASIC side using DMA
 	nic_tx_packet(ring_ptr);
@@ -819,6 +819,11 @@ void handle_rx(void)
 			for (uint8_t i = 0; i < 80; i++) {
 				print_byte(uip_buf[i]);
 				write_char(' ');
+			}
+			write_char('\n');
+			for (uint8_t i = minPort; i <=maxPort; i++ ) {
+				stp_cnf_send(i);
+				tcpip_output();
 			}
 		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x06) { // ARP?
 			uip_arp_arpin();

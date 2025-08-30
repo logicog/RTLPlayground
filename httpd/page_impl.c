@@ -14,7 +14,7 @@ extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 extern __code uint8_t * __code hex;
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
-extern __code uint8_t ownMAC[];
+extern __code struct uip_eth_addr uip_ethaddr;
 extern __code uint8_t log_to_phys_port[9];
 extern __code uint8_t phys_to_log_port[6];
 
@@ -128,12 +128,12 @@ uint16_t html_index(void)
 	itoa_html(uip_netmask[1]); char_to_html('.');
 	itoa_html(uip_netmask[1] >> 8);
 	slen += strtox(outbuf + slen, "</td></tr><tr><td>MAC Address</td><td>");
-	byte_to_html(ownMAC[0]); char_to_html(':');
-	byte_to_html(ownMAC[1]); char_to_html(':');
-	byte_to_html(ownMAC[2]); char_to_html(':');
-	byte_to_html(ownMAC[3]); char_to_html(':');
-	byte_to_html(ownMAC[4]); char_to_html(':');
-	byte_to_html(ownMAC[5]);
+	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
+	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
+	byte_to_html(uip_ethaddr.addr[2]); char_to_html(':');
+	byte_to_html(uip_ethaddr.addr[3]); char_to_html(':');
+	byte_to_html(uip_ethaddr.addr[4]); char_to_html(':');
+	byte_to_html(uip_ethaddr.addr[5]);
 	slen += strtox(outbuf + slen, "</td></tr>");
 	return 0;
 }
