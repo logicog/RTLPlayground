@@ -21,6 +21,7 @@ __sfr __at(0xa7) SFR_DATA_0;
 #define SFR_EXEC_WRITE_SMI 11
 
 /* SFR control registers for phy access via SMI/MDIO */
+__sfr16 __at(0xc2c3) SFR_SMI_REG_U16;
 __sfr __at(0xc2) SFR_SMI_REG_H;
 __sfr __at(0xc3) SFR_SMI_REG_L;
 __sfr __at(0xc4) SFR_SMI_DEV;
