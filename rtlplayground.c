@@ -393,10 +393,9 @@ void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 void nic_rx_header(uint16_t ring_ptr)
 {
 	uint16_t buffer = (uint16_t) &rx_headers[0];
-	SFR_NIC_DATA_H = buffer >> 8;
-	SFR_NIC_DATA_L = buffer;
-	SFR_NIC_RING_L = ring_ptr;
-	SFR_NIC_RING_H = ring_ptr >> 8;
+	SFR_NIC_DATA_U16LE = buffer;
+	SFR_NIC_RING_U16LE = ring_ptr;
+
 	SFR_NIC_CTRL = 1;
 	do { } while (SFR_NIC_CTRL != 0);
 }
@@ -410,10 +409,9 @@ void nic_rx_header(uint16_t ring_ptr)
  */
 void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 {
-	SFR_NIC_DATA_H = buffer >> 8;
-	SFR_NIC_DATA_L = buffer;
-	SFR_NIC_RING_L = ring_ptr;
-	SFR_NIC_RING_H = ring_ptr >> 8;
+	SFR_NIC_DATA_U16LE = buffer;
+	SFR_NIC_RING_U16LE = ring_ptr;
+
 	uint16_t len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
 	len += 7;
 	len >>= 3;
@@ -433,12 +431,12 @@ void nic_tx_packet(uint16_t ring_ptr)
 {
 //	uint16_t buffer = (uint16_t) tx_buf;
 	uint16_t buffer = (uint16_t) uip_buf + VLAN_TAG_SIZE;
-	SFR_NIC_DATA_H = buffer >> 8;
-	SFR_NIC_DATA_L = buffer;
+	SFR_NIC_DATA_U16LE = buffer;
+	
 	ring_ptr <<= 3;
 	ring_ptr |= 0x8000;
-	SFR_NIC_RING_L = ring_ptr;
-	SFR_NIC_RING_H = ring_ptr >> 8;
+	SFR_NIC_RING_U16LE = ring_ptr;
+	
 	uint16_t len = (((uint16_t)uip_buf[VLAN_TAG_SIZE + 5]) << 8) | uip_buf[VLAN_TAG_SIZE + 4];
 	len += 0xf;
 	len >>= 3;
