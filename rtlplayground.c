@@ -1099,6 +1099,30 @@ void phy_write_mask(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
 	} while (SFR_EXEC_STATUS != 0);
 }
 
+/*
+ * Write a register reg of phy, using a mask to select them, in page page
+ * Data to be written is in v
+ */
+void phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t v)
+{
+	uint16_t phy_mask =  bit_mask[phy_id];
+#ifdef REGDBG
+	print_string("P"); print_byte(phy_mask>>8); print_byte(phy_mask); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
+	print_byte(v>>8); print_byte(v); write_char(' ');
+#endif
+
+	SFR_DATA_8 = v >> 8;			// SFR_A6
+	SFR_DATA_0 = v;				// SFR_A7
+	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
+	SFR_SMI_REG_H = reg >> 8;		// SFR_C2
+	SFR_SMI_REG_L = reg;			// SFR_C3
+
+	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // SFR_C4: bit 2 can also be set for some option
+	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
 
 /*
  * Read a phy register via MDIO clause 45
