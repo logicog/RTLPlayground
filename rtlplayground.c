@@ -1079,10 +1079,10 @@ void setup_clock(void)
 
 
 /*
- * Write a register reg of phy phy_id, in page page
+ * Write a register reg of multipule phys, using a mask to select them, in page page
  * Data to be written is in v
  */
-void phy_write(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
+void phy_write_mask(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
 {
 #ifdef REGDBG
 	print_string("P"); print_byte(phy_mask>>8); print_byte(phy_mask); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
@@ -1199,7 +1199,7 @@ void sds_init(void)
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 	delay(10);
 
-	phy_write(0x1, 0x1e, 0xd, pval);
+	phy_write_mask(0x1, 0x1e, 0xd, pval);
 
 	phy_read(0, 0x1e, 0xd);
 	pval = SFR_DATA_8;
@@ -1211,7 +1211,7 @@ void sds_init(void)
 	pval &= 0xfff0;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 
-	phy_write(0x1, 0x1e, 0xd, pval);
+	phy_write_mask(0x1, 0x1e, 0xd, pval);
 }
 
 
@@ -1420,7 +1420,7 @@ void rtl8373_init(void)
 	rtl8224_phy_enable();
 
 	// Disable PHYs for configuration
-	phy_write(0xff,0x1f,0xa610,0x2858);
+	phy_write_mask(0xff,0x1f,0xa610,0x2858);
 
 	// Set bits 0x13 and 0x14 of 0x5fd4
 	// r5fd4:0002914a R5fd4-001a914a
@@ -1448,7 +1448,7 @@ void rtl8373_init(void)
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
-	phy_write(0xff,0x1f,0xa610,0x2058);
+	phy_write_mask(0xff,0x1f,0xa610,0x2058);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
@@ -1512,7 +1512,7 @@ void rtl8372_init(void)
 	reg_write_m(0xa90);
 
 	// Disable PHYs for configuration
-	phy_write(0xf0,0x1f,0xa610,0x2858);
+	phy_write_mask(0xf0,0x1f,0xa610,0x2858);
 
 	// Set bits 0x13 and 0x14 of 0x5fd4
 	// r5fd4:0002914a R5fd4-001a914a
@@ -1539,7 +1539,7 @@ void rtl8372_init(void)
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
-	phy_write(0xf0,0x1f,0xa610,0x2058);
+	phy_write_mask(0xf0,0x1f,0xa610,0x2058);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
