@@ -284,8 +284,8 @@ void setup_timer0(void)
 
 void reg_read(uint16_t reg_addr)
 {
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
+
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -298,8 +298,8 @@ void reg_read_m(uint16_t reg_addr)
 #ifdef REGDBG
 	if (EA) { write_char('r'); print_byte(reg_addr >> 8); print_byte(reg_addr); write_char(':'); }
 #endif
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
+
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -316,8 +316,8 @@ void reg_read_m(uint16_t reg_addr)
 void reg_write(uint16_t reg_addr)
 {
 	/* Data to write must be in SFR A4, A5, A6, A7 */
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
+
 	SFR_EXEC_GO = SFR_EXEC_WRITE_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -332,8 +332,8 @@ void reg_write_m(uint16_t reg_addr)
 		print_byte(sfr_data[0]);  print_byte(sfr_data[1]);  print_byte(sfr_data[2]);  print_byte(sfr_data[3]); write_char(' ');
 	}
 #endif
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
+
 	SFR_DATA_24 = sfr_data[0] ;
 	SFR_DATA_16 = sfr_data[1];
 	SFR_DATA_8 = sfr_data[2];

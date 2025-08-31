@@ -1,8 +1,12 @@
 /* SFR control registers for switch register access */
 __sfr __at(0xa0) SFR_EXEC_GO;
 __sfr __at(0xa1) SFR_EXEC_STATUS;
+__sfr16 __at(0xa2a3) SFR_REG_ADDR_U16;
 __sfr __at(0xa2) SFR_REG_ADDRH;
 __sfr __at(0xa3) SFR_REG_ADDRL;
+__sfr16 __at(0xa4a5) SFR_DATA_U16;
+__sfr32 __at(0xa4a5a6a7) SFR_DATA_U32;
+__sfr32 __at(0xa7a6a5a4) SFR_DATA_U32LE;
 __sfr __at(0xa4) SFR_DATA_24;
 __sfr __at(0xa5) SFR_DATA_16;
 __sfr __at(0xa6) SFR_DATA_8;
