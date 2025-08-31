@@ -91,7 +91,7 @@ uint8_t parse_short(register uint16_t *n, __xdata uint8_t * __xdata p)
 }
 
 
-void send_not_found()
+void send_not_found(void)
 {
 	slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n");
 	print_string("slen: "); print_short(slen); write_char('\n');
