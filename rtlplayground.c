@@ -285,7 +285,6 @@ void setup_timer0(void)
 void reg_read(uint16_t reg_addr)
 {
 	SFR_REG_ADDR_U16 = reg_addr;
-
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -299,7 +298,6 @@ void reg_read_m(uint16_t reg_addr)
 	if (EA) { write_char('r'); print_byte(reg_addr >> 8); print_byte(reg_addr); write_char(':'); }
 #endif
 	SFR_REG_ADDR_U16 = reg_addr;
-
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -317,7 +315,6 @@ void reg_write(uint16_t reg_addr)
 {
 	/* Data to write must be in SFR A4, A5, A6, A7 */
 	SFR_REG_ADDR_U16 = reg_addr;
-
 	SFR_EXEC_GO = SFR_EXEC_WRITE_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -333,7 +330,6 @@ void reg_write_m(uint16_t reg_addr)
 	}
 #endif
 	SFR_REG_ADDR_U16 = reg_addr;
-
 	SFR_DATA_24 = sfr_data[0] ;
 	SFR_DATA_16 = sfr_data[1];
 	SFR_DATA_8 = sfr_data[2];
@@ -395,7 +391,6 @@ void nic_rx_header(uint16_t ring_ptr)
 	uint16_t buffer = (uint16_t) &rx_headers[0];
 	SFR_NIC_DATA_U16LE = buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
-
 	SFR_NIC_CTRL = 1;
 	do { } while (SFR_NIC_CTRL != 0);
 }
@@ -1085,11 +1080,9 @@ void phy_write_mask(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
 	print_string("P"); print_byte(phy_mask>>8); print_byte(phy_mask); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
 	print_byte(v>>8); print_byte(v); write_char(' ');
 #endif
-	SFR_DATA_U16 = v ;			    // SFR_A6, SFR_A7
-
+	SFR_DATA_U16 = v;			    // SFR_A6, SFR_A7
 	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
 	SFR_SMI_REG_U16 = reg;			// SFR_C2, SFR_C3
-
 	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // SFR_C4: bit 2 can also be set for some option
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
 	do {
@@ -1107,13 +1100,9 @@ void phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t v)
 	print_string("P"); print_byte(phy_mask>>8); print_byte(phy_mask); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
 	print_byte(v>>8); print_byte(v); write_char(' ');
 #endif
-
-	SFR_DATA_8 = v >> 8;			// SFR_A6
-	SFR_DATA_0 = v;				// SFR_A7
+	SFR_DATA_U16 = v;			    // SFR_A6, SFR_A7
 	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
-	SFR_SMI_REG_H = reg >> 8;		// SFR_C2
-	SFR_SMI_REG_L = reg;			// SFR_C3
-
+	SFR_SMI_REG_U16 = reg;			// SFR_C2, SFR_C3
 	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // SFR_C4: bit 2 can also be set for some option
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
 	do {
