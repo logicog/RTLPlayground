@@ -284,8 +284,7 @@ void setup_timer0(void)
 
 void reg_read(uint16_t reg_addr)
 {
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -298,8 +297,7 @@ void reg_read_m(uint16_t reg_addr)
 #ifdef REGDBG
 	if (EA) { write_char('r'); print_byte(reg_addr >> 8); print_byte(reg_addr); write_char(':'); }
 #endif
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -316,8 +314,7 @@ void reg_read_m(uint16_t reg_addr)
 void reg_write(uint16_t reg_addr)
 {
 	/* Data to write must be in SFR A4, A5, A6, A7 */
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
 	SFR_EXEC_GO = SFR_EXEC_WRITE_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
@@ -332,8 +329,7 @@ void reg_write_m(uint16_t reg_addr)
 		print_byte(sfr_data[0]);  print_byte(sfr_data[1]);  print_byte(sfr_data[2]);  print_byte(sfr_data[3]); write_char(' ');
 	}
 #endif
-	SFR_REG_ADDRH = reg_addr >> 8;
-	SFR_REG_ADDRL = reg_addr;
+	SFR_REG_ADDR_U16 = reg_addr;
 	SFR_DATA_24 = sfr_data[0] ;
 	SFR_DATA_16 = sfr_data[1];
 	SFR_DATA_8 = sfr_data[2];
@@ -393,10 +389,8 @@ void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 void nic_rx_header(uint16_t ring_ptr)
 {
 	uint16_t buffer = (uint16_t) &rx_headers[0];
-	SFR_NIC_DATA_H = buffer >> 8;
-	SFR_NIC_DATA_L = buffer;
-	SFR_NIC_RING_L = ring_ptr;
-	SFR_NIC_RING_H = ring_ptr >> 8;
+	SFR_NIC_DATA_U16LE = buffer;
+	SFR_NIC_RING_U16LE = ring_ptr;
 	SFR_NIC_CTRL = 1;
 	do { } while (SFR_NIC_CTRL != 0);
 }
@@ -410,10 +404,9 @@ void nic_rx_header(uint16_t ring_ptr)
  */
 void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 {
-	SFR_NIC_DATA_H = buffer >> 8;
-	SFR_NIC_DATA_L = buffer;
-	SFR_NIC_RING_L = ring_ptr;
-	SFR_NIC_RING_H = ring_ptr >> 8;
+	SFR_NIC_DATA_U16LE = buffer;
+	SFR_NIC_RING_U16LE = ring_ptr;
+
 	uint16_t len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
 	len += 7;
 	len >>= 3;
@@ -433,12 +426,12 @@ void nic_tx_packet(uint16_t ring_ptr)
 {
 //	uint16_t buffer = (uint16_t) tx_buf;
 	uint16_t buffer = (uint16_t) uip_buf + VLAN_TAG_SIZE;
-	SFR_NIC_DATA_H = buffer >> 8;
-	SFR_NIC_DATA_L = buffer;
+	SFR_NIC_DATA_U16LE = buffer;
+	
 	ring_ptr <<= 3;
 	ring_ptr |= 0x8000;
-	SFR_NIC_RING_L = ring_ptr;
-	SFR_NIC_RING_H = ring_ptr >> 8;
+	SFR_NIC_RING_U16LE = ring_ptr;
+	
 	uint16_t len = (((uint16_t)uip_buf[VLAN_TAG_SIZE + 5]) << 8) | uip_buf[VLAN_TAG_SIZE + 4];
 	len += 0xf;
 	len >>= 3;
@@ -507,8 +500,7 @@ void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v)
 	print_string("Q"); print_byte(sds_id); print_byte(page); print_byte(reg);
 	write_char(':'); print_byte(v >> 8); print_byte(v); write_char(' ');
 #endif
-	SFR_DATA_8 = v >> 8;
-	SFR_DATA_0 = v;
+	SFR_DATA_U16 = v;
 	SFR_93 = reg;
 	SFR_94 = page << 1 | sds_id;
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SDS;
@@ -1088,11 +1080,9 @@ void phy_write_mask(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v)
 	print_string("P"); print_byte(phy_mask>>8); print_byte(phy_mask); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
 	print_byte(v>>8); print_byte(v); write_char(' ');
 #endif
-	SFR_DATA_8 = v >> 8;			// SFR_A6
-	SFR_DATA_0 = v;				// SFR_A7
+	SFR_DATA_U16 = v;			    // SFR_A6, SFR_A7
 	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
-	SFR_SMI_REG_H = reg >> 8;		// SFR_C2
-	SFR_SMI_REG_L = reg;			// SFR_C3
+	SFR_SMI_REG_U16 = reg;			// SFR_C2, SFR_C3
 	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // SFR_C4: bit 2 can also be set for some option
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
 	do {
@@ -1110,13 +1100,9 @@ void phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t v)
 	print_string("P"); print_byte(phy_mask>>8); print_byte(phy_mask); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
 	print_byte(v>>8); print_byte(v); write_char(' ');
 #endif
-
-	SFR_DATA_8 = v >> 8;			// SFR_A6
-	SFR_DATA_0 = v;				// SFR_A7
+	SFR_DATA_U16 = v;			    // SFR_A6, SFR_A7
 	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
-	SFR_SMI_REG_H = reg >> 8;		// SFR_C2
-	SFR_SMI_REG_L = reg;			// SFR_C3
-
+	SFR_SMI_REG_U16 = reg;			// SFR_C2, SFR_C3
 	SFR_SMI_DEV = (phy_mask >> 8) | dev_id  << 3 | 2; // SFR_C4: bit 2 can also be set for some option
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
 	do {
@@ -1134,8 +1120,8 @@ void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 #ifdef REGDBG
 	print_string("p"); print_byte(phy_id); print_byte(dev_id); write_char('.'); print_byte(reg>>8); print_byte(reg); write_char(':');
 #endif
-	SFR_SMI_REG_H = reg >> 8;	// c3
-	SFR_SMI_REG_L = reg;		// c2
+	SFR_SMI_REG_U16 = reg;		// c2, c2
+
 	SFR_SMI_PHY = phy_id;		// a5
 	SFR_SMI_DEV = dev_id << 3 | 2;	// c4
 
@@ -1210,9 +1196,7 @@ void sds_init(void)
 	p001e.000d:0010 p001e.000d:0010	R02f8-00000010 R02f4-00000010 P000001.1e00000d:b7fe
 */
 	phy_read(0, 0x1e, 0xd);
-	uint16_t pval = SFR_DATA_8;
-	pval <<= 8;
-	pval |= SFR_DATA_0;
+	uint16_t pval = SFR_DATA_U16;
 
 	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
@@ -1226,9 +1210,7 @@ void sds_init(void)
 	phy_write_mask(0x1, 0x1e, 0xd, pval);
 
 	phy_read(0, 0x1e, 0xd);
-	pval = SFR_DATA_8;
-	pval <<= 8;
-	pval |= SFR_DATA_0;
+	pval = SFR_DATA_U16;
 
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 
@@ -1410,15 +1392,11 @@ void rtl8373_init(void)
 
 	// q000601:c800 Q000601:c804 q000601:c804 Q000601:c800
 	sds_read(0, 0x06, 0x01);
-	uint16_t pval = SFR_DATA_8;
-	pval <<= 8;
-	pval |= SFR_DATA_0;
+	uint16_t pval = SFR_DATA_U16;
 	sds_write_v(0, 0x06, 0x01, pval | 0x04);
 	delay(50);
 	sds_read(0, 0x06, 0x01);
-	pval = SFR_DATA_8;
-	pval <<= 8;
-	pval |= SFR_DATA_0;
+	pval = SFR_DATA_U16;
 	sds_write_v(0, 0x06, 0x01, pval & 0xfffb);
 
 	phy_config_8224();
@@ -1432,9 +1410,7 @@ void rtl8373_init(void)
 	sds_write_v(1, 0x36, 0x05, 0x4000);
 	sds_write_v(1, 0x1f, 0x02, 0x001f);
 	sds_read(1, 0x1f, 0x15);
-	pval = SFR_DATA_8;
-	pval <<= 8;
-	pval |= SFR_DATA_0;
+	pval = SFR_DATA_U16;
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(0xa90);

@@ -1,8 +1,12 @@
 /* SFR control registers for switch register access */
 __sfr __at(0xa0) SFR_EXEC_GO;
 __sfr __at(0xa1) SFR_EXEC_STATUS;
+__sfr16 __at(0xa2a3) SFR_REG_ADDR_U16;
 __sfr __at(0xa2) SFR_REG_ADDRH;
 __sfr __at(0xa3) SFR_REG_ADDRL;
+__sfr16 __at(0xa6a7) SFR_DATA_U16;
+__sfr32 __at(0xa4a5a6a7) SFR_DATA_U32;
+__sfr32 __at(0xa7a6a5a4) SFR_DATA_U32LE;
 __sfr __at(0xa4) SFR_DATA_24;
 __sfr __at(0xa5) SFR_DATA_16;
 __sfr __at(0xa6) SFR_DATA_8;
@@ -17,6 +21,7 @@ __sfr __at(0xa7) SFR_DATA_0;
 #define SFR_EXEC_WRITE_SMI 11
 
 /* SFR control registers for phy access via SMI/MDIO */
+__sfr16 __at(0xc2c3) SFR_SMI_REG_U16;
 __sfr __at(0xc2) SFR_SMI_REG_H;
 __sfr __at(0xc3) SFR_SMI_REG_L;
 __sfr __at(0xc4) SFR_SMI_DEV;
@@ -86,7 +91,9 @@ __sfr __at(0xa9) SFR_FLASH_ADDR0;
  * CAREFUL: This is now Little Endian
  */
 __sfr __at(0xb7) SFR_NIC_CTRL;
+__sfr16 __at(0xb4b3) SFR_NIC_DATA_U16LE;
 __sfr __at(0xb3) SFR_NIC_DATA_L;
 __sfr __at(0xb4) SFR_NIC_DATA_H;
+__sfr16 __at(0xb6b5) SFR_NIC_RING_U16LE;
 __sfr __at(0xb5) SFR_NIC_RING_L;
 __sfr __at(0xb6) SFR_NIC_RING_H;
