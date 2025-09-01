@@ -6,6 +6,9 @@
 
 #define REGDBG
 
+// Phy ID of the external RTL8224 PHY.
+#define RTL8224_PHY_ID 0x00
+
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
@@ -66,11 +69,13 @@ __code uint16_t rtl8224_cb[60] = {
 
 void rtl8224_phy_enable(void) __banked
 {
+	uint16_t pval;
+
 	// p001e.0a90:00f3 R02f8-000000f3 R02f4-000000fc P000001.1e000a90:00fc
 	print_string("\r\nrtl8224_phy_enable called\r\n");
-	phy_read(0, 0x1e, 0xa90);
-	uint16_t pval = SFR_DATA_U16;
-	
+	phy_read(RTL8224_PHY_ID, 0x1e, 0xa90);
+	pval = SFR_DATA_U16;
+
 	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 
@@ -78,12 +83,9 @@ void rtl8224_phy_enable(void) __banked
 	pval |= 0x0c;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 
-	phy_write_mask(0x1, 0x1e, 0xa90, pval);
-
-	phy_read(0, 0x1e, 0xa90);
-	pval = SFR_DATA_U16;
-
+	phy_write(RTL8224_PHY_ID, 0x1e, 0xa90, pval);
 	delay(50);
+
 	print_string("\r\nrtl8224_phy_enable done\r\n");
 }
 
@@ -167,26 +169,28 @@ void phy_config(uint8_t phy) __banked
 
 void phy_config_8224(void) __banked
 {
-	// p001e.7b20:0bff R02f8-00000bff R02f4-00000bed P000001.1e007b20:0bed
-
 	uint16_t pval;
 	print_string("\r\nphy_config_8224 called\r\n");
-	phy_read(0, 0x1e, 0x7b20);
+
+	// p001e.7b20:0bff R02f8-00000bff R02f4-00000bed P000001.1e007b20:0bed
+	phy_read(RTL8224_PHY_ID, 0x1e, 0x7b20);
 	pval = SFR_DATA_U16;
+
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 	pval &= 0x0fe0;
 	pval |= 0x000d;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
-	phy_write_mask(0x01, 0x1e, 0x7b20, pval);
+
+	phy_write(RTL8224_PHY_ID, 0x1e, 0x7b20, pval);
 
 	uint8_t i = 0;
 	while (rtl8224_ca[i]) {
-		phy_write_mask(0x1, 0x1e, 0x400, rtl8224_ca[i]);
+		phy_write(RTL8224_PHY_ID, 0x1e, 0x400, rtl8224_ca[i]);
 		i++;
-		phy_write_mask(0x1, 0x1e, 0x3f8, rtl8224_ca[i]);
+		phy_write(RTL8224_PHY_ID, 0x1e, 0x3f8, rtl8224_ca[i]);
 		i++;
 		do {
-			phy_read(0, 0x1e, 0x3f8);
+			phy_read(RTL8224_PHY_ID, 0x1e, 0x3f8);
 		} while (SFR_DATA_8 & 0x80);
 	}
 
