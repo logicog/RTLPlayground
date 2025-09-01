@@ -1404,14 +1404,10 @@ void rtl8373_init(void)
 	// q000601:c800 Q000601:c804 q000601:c804 Q000601:c800
 	sds_read(0, 0x06, 0x01);
 	uint16_t pval = SFR_DATA_U16;
-
-
 	sds_write_v(0, 0x06, 0x01, pval | 0x04);
 	delay(50);
 	sds_read(0, 0x06, 0x01);
 	pval = SFR_DATA_U16;
-
-
 	sds_write_v(0, 0x06, 0x01, pval & 0xfffb);
 
 	phy_config_8224();
@@ -1426,8 +1422,6 @@ void rtl8373_init(void)
 	sds_write_v(1, 0x1f, 0x02, 0x001f);
 	sds_read(1, 0x1f, 0x15);
 	pval = SFR_DATA_U16;
-
-
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(0xa90);

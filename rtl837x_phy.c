@@ -70,9 +70,6 @@ void rtl8224_phy_enable(void) __banked
 	print_string("\r\nrtl8224_phy_enable called\r\n");
 	phy_read(0, 0x1e, 0xa90);
 	uint16_t pval = SFR_DATA_U16;
-
-
-
 	
 	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
@@ -85,7 +82,6 @@ void rtl8224_phy_enable(void) __banked
 
 	phy_read(0, 0x1e, 0xa90);
 	pval = SFR_DATA_U16;
-
 
 	delay(50);
 	print_string("\r\nrtl8224_phy_enable done\r\n");
@@ -100,33 +96,33 @@ void phy_config(uint8_t phy) __banked
 
 	delay(20);
 	// PHY configuration: External 8221B?
-//	p081e.75f3:ffff P000100.1e0075f3:fffe
+	//	p081e.75f3:ffff P000100.1e0075f3:fffe
 	phy_read(phy, 0x1e, 0x75f3);
 	pval = SFR_DATA_U16 & 0xfffe;
 	phy_write(phy, 0x1e, 0x75f3, pval);
 	delay(20);
 
-//	p081e.697a:ffff P000100.1e00697a:ffc1 / p031e.697a:0003 P000008.1e00697a:0001
+	//	p081e.697a:ffff P000100.1e00697a:ffc1 / p031e.697a:0003 P000008.1e00697a:0001
 	// SERDES OPTION 1 Register (MMD 30.0x6) bits 0-5: 0x01: Set HiSGMII+SGMII
 	phy_read(phy, 0x1e, 0x697a);
 	pval = SFR_DATA_U16 & 0xffc0 | 0x0001;
 	phy_write(phy, 0x1e, 0x697a, pval);
 	delay(20);
 
-//	p031f.a432:0811 P000008.1f00a432:0831
+	//	p031f.a432:0811 P000008.1f00a432:0831
 	// PHYCR2 PHY Specific Control Register 2, MMD 31. 0xA432), set bit 5: enable EEE
 	phy_read(phy, 0x1f, 0xa432);
 	pval = SFR_DATA_U16 | 0x0020;
 	phy_write(phy, 0x1f, 0xa432, pval);
 
-//	p0307.003e:0000 P000008.0700003e:0001
+	//	p0307.003e:0000 P000008.0700003e:0001
 	// EEE avertisment 2 register MMMD 7.0x003e, set bit 0: 2.5G has EEE capability
 	phy_read(phy, 0x7, 0x3e);
 	pval = SFR_DATA_U16 | 0x0001;
 	phy_write(phy, 0x7, 0x3e, pval);
 	delay(20);
 
-//	p031f.a442:043c P000008.1f00a442:0430
+	//	p031f.a442:043c P000008.1f00a442:0430
 	// Unknown, but clear bits 2/3
 	phy_read(phy, 0x1f, 0xa442);
 	pval = SFR_DATA_U16 & 0xfff3;
@@ -137,27 +133,25 @@ void phy_config(uint8_t phy) __banked
 	phy_write(phy, 0x1e, 0x75b5, 0xe084);
 	delay(20);
 
-//	p031e.75b2:0000 P000008.1e0075b2:0060
+	//	p031e.75b2:0000 P000008.1e0075b2:0060
 	// set bits 5/6
 	phy_read(phy, 0x1e, 0x75b2);
 	pval = SFR_DATA_U16 | 0x0060;
 	phy_write(phy, 0x1e, 0x75b2, pval);
 	delay(20);
 
-//	p081f.d040:ffff P000100.1f00d040:feff
+	//	p081f.d040:ffff P000100.1f00d040:feff
 	// LCR6 (LED Control Register 6, MMD 31.D040), set bits 8/9 to 0b10
 	phy_read(phy, 0x1e, 0xd040);
 	pval = SFR_DATA_U16 & 0xfcff | 0x0200;
 	phy_write(phy, 0x1e, 0xd040, pval);
 	delay(20);
 
-//	p081f.a400:ffff P000100.1f00a400:ffff, then: p081f.a400:ffff P000100.1f00a400:bfff
-//	p031f.a400:1040 P000008.1f00a400:5040, then: p031f.a400:5040 P000008.1f00a400:1040
+	//	p081f.a400:ffff P000100.1f00a400:ffff, then: p081f.a400:ffff P000100.1f00a400:bfff
+	//	p031f.a400:1040 P000008.1f00a400:5040, then: p031f.a400:5040 P000008.1f00a400:1040
 	// FEDCR (Fast Ethernet Duplex Control Register, MMD 31.0xA400)
 	// Set bit 14, sleep, then clear again, according to the datasheet these bits are reserved
-
 	phy_read(phy, 0x1f, 0xa400);
-
 	pval = SFR_DATA_U16 | 0x4000;
 	phy_write(phy, 0x1f, 0xa400, pval);
 	delay(20);
@@ -179,9 +173,6 @@ void phy_config_8224(void) __banked
 	print_string("\r\nphy_config_8224 called\r\n");
 	phy_read(0, 0x1e, 0x7b20);
 	pval = SFR_DATA_U16;
-
-
-
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
 	pval &= 0x0fe0;
 	pval |= 0x000d;
