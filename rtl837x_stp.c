@@ -43,16 +43,20 @@ struct stp_pkt {
 	uint8_t ctrl;
 	uint16_t proto;
 	uint8_t version;
+	uint8_t bpdu_type;
+	uint8_t flags;
 	uint8_t root_prio;
 	uint8_t root_ext;
-	uint8_t root_mac[8];
+	uint8_t root_mac[6];
+	uint32_t root_path_cost;
 	uint8_t bridge_prio;
 	uint8_t bridge_ext;
-	uint8_t bridge_mac[8];
+	uint8_t bridge_mac[6];
 	uint8_t port_prio;
 	uint8_t port_id;
 	uint16_t age;
 	uint16_t age_max;
+	uint16_t hello;
 	uint16_t fwd_delay;
 };
 
@@ -75,7 +79,9 @@ void stp_cnf_send(uint8_t port) __banked
 	STP_O->ssap = 0x42;
 	STP_O->ctrl = 0x03;
 	STP_O->proto = 0x0000;
-	STP_O->version = 0;
+	STP_O->version = 0x02;		// RSTP
+	STP_O->bpdu_type = 0x00;	// Config
+	STP_O->flags = 0x81;
 
 	memcpyc(STP_O->src_addr, uip_ethaddr.addr, 6);
 	memcpyc(STP_O->root_mac, uip_ethaddr.addr, 6); // For now we are the root-bridge
@@ -83,16 +89,18 @@ void stp_cnf_send(uint8_t port) __banked
 
 	STP_O->root_prio = 0x80;
 	STP_O->root_ext = 0x00;
+	STP_O->root_path_cost = 0x00000000;
 
 	STP_O->bridge_prio = 0x80;
 	STP_O->bridge_ext = 0x00;
 
 	STP_O->port_prio = 0x80;
 	STP_O->port_id = port;
-	STP_O->age = 0x00;
-	STP_O->age_max = 0x20;
+	STP_O->age = 0x00;  // FIXME: This only works because we do not use HTONS and the values are in 1/256 seconds
+	STP_O->age_max = 20;
+	STP_O->hello = 2;
 	STP_O->fwd_delay = 0x0f;
 
-
-	uip_len = 0x27 + sizeof(struct rtl_tag);
+//	uip_len = 0x27 + sizeof(struct rtl_tag);
+	uip_len = sizeof(struct stp_pkt);
 }
