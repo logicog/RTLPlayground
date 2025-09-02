@@ -9,6 +9,7 @@
 *.ihex
 *.lst
 *.mem
+!rtlplayground.mem
 *.lk
 html_data.c
 html_data.h
