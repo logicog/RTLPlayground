@@ -1,0 +1,17 @@
+.gitignore
+*.map
+*.rel
+*.rst
+*.sym
+*.asm
+*.bin
+*.ihx
+*.ihex
+*.lst
+*.mem
+*.lk
+html_data.c
+html_data.h
+tools/httpd_sim
+tools/injector
+tools/fileadder
