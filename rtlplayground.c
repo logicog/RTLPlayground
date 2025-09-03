@@ -1133,6 +1133,41 @@ void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 #endif
 }
 
+/*
+ * Modify a register reg of phy phy_id, in page page
+ * Set: bit mask of bits to set.
+ * Mask: bit mask of bits to clear.
+
+ * Note: We assume that the registers `SFR_SMI_REG_U16`, `SFR_SMI_PHY` and `SFR_SMI_DEV` 
+ * keep there value, and dont have to be rewritten everytime.
+ */
+void phy_modify(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t mask, uint16_t set)
+{
+	uint8_t smi_phy = dev_id << 3 | 2;
+
+	// Read the data
+	SFR_SMI_REG_U16 = reg;		// c2, c2
+	SFR_SMI_PHY = phy_id;		// a5
+	SFR_SMI_DEV = smi_phy;		// c4
+	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+
+	// Modify the reed data.
+	// TODO: Check if we directly can modify SFR register directly.
+	uint16_t data = SFR_DATA_U16 & ~(mask);
+	data |= ~(set);
+
+	uint16_t phy_mask = bit_mask[phy_id];
+
+	// Write it back
+	SFR_SMI_REG_U16 = data;
+	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
+	SFR_SMI_DEV = smi_phy | (phy_mask >> 8);
+	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
 
 void nic_setup(void)
 {
