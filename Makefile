@@ -1,5 +1,9 @@
 BOOTLOADER_ADDRESS=0x100
 
+IMAGESIZE = 524288
+CONFIG_LOCATION = 458752
+HTML_LOCATION = 262144
+
 CC = sdcc
 CC_FLAGS = -mmcs51 -Ihttpd -Iuip
 ASM = sdas8051
@@ -15,7 +19,7 @@ OBJS = ${SRCS:.c=.rel}
 OBJS += uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel httpd/httpd.rel httpd/page_impl.rel
 
 html_data.c html_data.h: html tools
-	tools/fileadder -a 458752 -s 524288 -b BANK1 -d html -p html_data
+	tools/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 httpd: html_data.h
 
@@ -50,8 +54,9 @@ rtlplayground.ihx:  crtstart.rel $(OBJS)
 	cat $< >> $@
 	truncate --size=16K $@
 	dd if=$< skip=80 bs=1024 >>$@
-	tools/fileadder -a 458752 -s 524288 -d config.txt $@
-	tools/fileadder -a 262144 -s 524288 -d html -p html_data $@
+	tools/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
+
 
 .PHONY: clean all $(SUBDIRS)
 .PRECIOUS: %.rel %.ihx .img
