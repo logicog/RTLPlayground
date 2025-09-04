@@ -13,6 +13,7 @@
 #include "rtl837x_flash.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_sfr.h"
 #include "uip/uip.h"
 
 #pragma codeseg BANK1
@@ -422,6 +423,22 @@ void cmd_parser(void) __banked
 		}
 		if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
+		}
+
+		if (cmd_compare(0, "gpio")) {
+			for (uint8_t idx = 0; idx < 3; idx++) {
+				reg_read_m(RTL837X_REG_GPIO_A + (idx * 4));
+				print_string("GPIO ");
+				write_char(idx + 'A');
+				write_char(':');
+				write_char(' ');
+
+				print_byte(SFR_DATA_24);
+				print_byte(SFR_DATA_16);
+				print_byte(SFR_DATA_8);
+				print_byte(SFR_DATA_0);
+				write_char(' ');
+			}
 		}
 	}
 }
