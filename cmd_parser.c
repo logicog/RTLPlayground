@@ -5,7 +5,7 @@
 // #define DEBUG
 // #define REGDBG 1
 
-#define CONFIG_START 0x1fd000
+#define CONFIG_START 0x70000
 #define CONFIG_LEN 0x1000
 
 #include "rtl837x_common.h"
@@ -13,6 +13,7 @@
 #include "rtl837x_flash.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_regs.h"
+#include "uip/uip.h"
 
 #pragma codeseg BANK1
 
@@ -38,6 +39,8 @@ __xdata uint8_t cmd_buffer[SBUF_SIZE];
 __xdata	uint8_t l;
 __xdata uint8_t line_ptr;
 __xdata	char is_white;
+
+__xdata uint8_t ip[4];
 
 #define N_WORDS SBUF_SIZE
 __xdata signed char cmd_words_b[N_WORDS];
@@ -86,6 +89,25 @@ uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 		idx++;
 	}
 	return err;
+}
+
+
+uint8_t parse_ip(register uint8_t idx)
+{
+	__xdata uint8_t b;
+
+	for (b = 0; b < 4; b++) {
+		ip[b] = 0;
+		while (cmd_buffer[idx] >= '0' && cmd_buffer[idx] <= '9') {
+			ip[b] = (ip[b] * 10) + cmd_buffer[idx] - '0';
+			idx++;
+		}
+		if (b < 3 && cmd_buffer[idx++] != '.') {
+			print_string("Error in IP format, expecting '.'\n");
+			return -1;
+		}
+	}
+	return 0;
 }
 
 
@@ -346,6 +368,33 @@ void cmd_parser(void) __banked
 				print_string(" OFF\n");
 				phy_set_mode(p, PHY_OFF, 0, 0);
 			}
+		}
+		if (cmd_compare(0, "ip")) {
+			print_string("Got ip command: ");
+			if (!parse_ip(cmd_words_b[1]))
+				uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
+			else
+				print_string("Invalid IP address\n");
+			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
+			write_char('\n');
+		}
+		if (cmd_compare(0, "gw")) {
+			print_string("Got gw command: ");
+			if (!parse_ip(cmd_words_b[1]))
+				uip_ipaddr(&uip_draddr, ip[0], ip[1], ip[2], ip[3]);
+			else
+				print_string("Invalid IP address\n");
+			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
+			write_char('\n');
+		}
+		if (cmd_compare(0, "netmask")) {
+			print_string("Got netmask command: ");
+			if (!parse_ip(cmd_words_b[1]))
+				uip_ipaddr(&uip_netmask, ip[0], ip[1], ip[2], ip[3]);
+			else
+				print_string("Invalid IP address\n");
+			print_byte(ip[0]);print_byte(ip[1]);print_byte(ip[2]);print_byte(ip[3]);
+			write_char('\n');
 		}
 		if (cmd_compare(0, "l2")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "forget"))
