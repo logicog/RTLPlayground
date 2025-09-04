@@ -57,7 +57,6 @@ struct arguments {
 	char *bank;
 	bool overwrite;
 	bool add_zero;
-	char *args[1];
 };
 
 
