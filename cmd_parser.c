@@ -32,6 +32,7 @@ extern __code uint8_t * __code hex;
 extern __xdata uint8_t flash_buf[256];
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
+__xdata uint8_t gpio_last_value[12] = { 0 };
 
 
 // Buffer for writing to flash 0x1fd000, copy to 0x1fe000
@@ -427,7 +428,7 @@ void cmd_parser(void) __banked
 
 		if (cmd_compare(0, "gpio")) {
 			for (uint8_t idx = 0; idx < 3; idx++) {
-				reg_read_m(RTL837X_REG_GPIO_A + (idx * 4));
+				reg_read(RTL837X_REG_GPIO_A + (idx * 4));
 				print_string("GPIO ");
 				write_char(idx + 'A');
 				write_char(':');
@@ -438,11 +439,19 @@ void cmd_parser(void) __banked
 				print_byte(SFR_DATA_8);
 				print_byte(SFR_DATA_0);
 				write_char(' ');
+				print_byte( gpio_last_value[(idx *4)] ^ SFR_DATA_24);
+				gpio_last_value[(idx *4)] = SFR_DATA_24;
+				print_byte( gpio_last_value[(idx *4) + 1] ^ SFR_DATA_16);
+				gpio_last_value[(idx *4) + 1] = SFR_DATA_16;
+				print_byte( gpio_last_value[(idx *4) + 2] ^ SFR_DATA_8);
+				gpio_last_value[(idx *4) + 2] = SFR_DATA_8;				 
+				print_byte( gpio_last_value[(idx *4) + 3] ^ SFR_DATA_0);
+				gpio_last_value[(idx *4) + 3] = SFR_DATA_0;	
+				write_char('\n');
 			}
 		}
 	}
 }
-
 
 void execute_config(void) __banked
 {
