@@ -94,3 +94,21 @@ Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI
 | C187 | RC-Delay |
 
 Reset-line found at `T-D3-D` active-low.
+
+# Power supply
+
+Board has two supply rails.
+`0.95` and `3.3` volt.
+
+## `0.95` Core Voltage.
+
+Voltage is made by a `Richtek RT8120A` Buck converter.
+0.95V must be within 3%.
+
+## `3.3` Voltage
+
+Voltage is crated by a `TMI3244T` Buck converter.
+3.3V must be within 4.5%.
+Chip can deliver up to 4A and the sweetspot is at 1A.
+So higher power SFP-modules should work.
+
