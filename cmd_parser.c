@@ -428,7 +428,7 @@ void cmd_parser(void) __banked
 
 		if (cmd_compare(0, "gpio")) {
 			for (uint8_t idx = 0; idx < 3; idx++) {
-				reg_read(RTL837X_REG_GPIO_A + (idx * 4));
+				reg_read(RTL837X_REG_GPIO_32_63_OUTPUT + (idx * 4));
 				print_string("GPIO ");
 				write_char(idx + 'A');
 				write_char(':');
