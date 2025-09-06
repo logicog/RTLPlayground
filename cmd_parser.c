@@ -25,6 +25,7 @@ extern __xdata uint8_t isRTL8373;
 extern __xdata uint16_t mpos;
 
 extern volatile __xdata uint32_t ticks;
+extern volatile __xdata uint8_t sfr_data[4];
 
 extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
@@ -33,6 +34,10 @@ extern __xdata uint8_t flash_buf[256];
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 __xdata uint8_t gpio_last_value[8] = { 0 };
+
+// Temporatly for str to hex convertion value.
+// Support up to 32_bits.
+__xdata uint8_t hexvalue[4] = { 0 };
 
 
 // Buffer for writing to flash 0x1fd000, copy to 0x1fe000
@@ -79,6 +84,50 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 	return 0;
 }
 
+
+/* Converts ascii-hex array into value.
+	returns number of hexvalue[] entries has been written.
+	return value = 0 means error.
+*/
+uint8_t atoi_hex(uint8_t idx)
+{
+	uint8_t h_idx = 0;
+	uint8_t val = 0;
+	uint8_t c;
+
+	while(1) {
+		c = cmd_buffer[idx];
+
+		if (c == '\0' || c == ' ') {
+			break;
+		}
+
+		// swap hex nibbles
+		val = (val >> 4) | (val << 4);
+
+		if (c - '0' < 10) {
+			val |= c - '0';
+		} else {
+			c |= 0x20;
+			c -= 'a';
+			if (c > 5) {
+				h_idx = 0;
+				break;
+			}
+			val |= c + 10;
+		}
+
+		idx++;
+		hexvalue[h_idx >> 1] = val;
+
+		if (h_idx & 1 == 1) {
+			val = 0;
+		}
+		h_idx++;
+	}
+
+	return ((h_idx + 1) >> 1);
+}
 
 uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
@@ -251,6 +300,82 @@ void parse_mirror(void)
 }
 
 
+void parse_reg(void)
+{
+	__xdata uint16_t reg = 0;
+	uint8_t read = 0xFF;
+
+	if (cmd_words_b[2] < 0) {
+		write_char('v');
+		goto err;
+	}
+
+	if (cmd_buffer[cmd_words_b[1]] == 'w') {
+		write_char('w');
+		read = 0;
+	}
+
+	if (cmd_buffer[cmd_words_b[1]] == 'r') {
+		write_char('r');
+		read = 1;
+	}
+
+	if (read == 0xFF) {
+		print_string("usage: reg r <hexvalue> or reg w <hexvalue> <hexvalue>");
+		return;
+	}
+
+	uint8_t hex_size = atoi_hex(cmd_words_b[2]);
+
+	if (hex_size == 0 || hex_size > 2) {
+		write_char('s');
+		goto err;
+	}
+
+	if (hex_size == 1) {
+		reg = hexvalue[0];
+	} else {
+		reg = (((uint16_t)hexvalue[0]) << 8) | hexvalue[1];
+	}
+
+	print_string("REG: ");
+	print_short(reg);
+	print_string(": VAL: ");
+
+	if (read) {
+		reg_read_m(reg);
+
+	} else {
+		hex_size = atoi_hex(cmd_words_b[3]);
+
+		if (hex_size == 0 || hex_size > 4 || cmd_words_b[3] < 0) {
+			write_char('S');
+			goto err_write;
+		}
+
+		// zero sfp data
+		sfr_set_zero();
+
+		// copy data over
+		while(hex_size) {
+			hex_size -= 1;
+			sfr_data[hex_size] = hexvalue[hex_size];
+		}
+
+		reg_write_m(reg);
+	}
+	print_sfr_data();
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: reg r <hexvalue> like reg r 00BB");
+	return;
+err_write:
+	print_string("usage: reg w <hexvalue> <hexvalue> like reg e 00BB 00112233");
+}
+
+
 // Parse command into words
 uint8_t cmd_tokenize(void) __banked
 {
@@ -307,7 +432,6 @@ void print_gpio_status(void) {
 		gpio_last_value[(idx *4) + 2] = SFR_DATA_8;
 		print_byte( gpio_last_value[(idx *4) + 3] ^ SFR_DATA_0);
 		gpio_last_value[(idx *4) + 3] = SFR_DATA_0;
-		write_char('\n');
 		write_char('\n');
 	}
 }
@@ -453,9 +577,11 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
 		}
-
-		if (cmd_compare(0, "gpio stat")) {
+		if (cmd_compare(0, "gpio")) {
 			print_gpio_status();
+		}
+		if (cmd_compare(0, "reg")) {
+			parse_reg();
 		}
 	}
 }
@@ -478,3 +604,4 @@ void execute_config(void) __banked
 		}
 	} while (mpos != 0xffff);
 }
+

@@ -61,6 +61,7 @@ __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
 extern __xdata uint8_t cmd_buffer[SBUF_SIZE];
+extern __xdata uint8_t gpio_last_value[8];
 
 __code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
 __code uint8_t * __code hex = "0123456789abcdef";
@@ -380,6 +381,16 @@ void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 	sfr_data[3-n] = b;
 }
 
+/*
+ * This zeros all the sfr data fields
+ */
+void sfr_set_zero(void) {
+	uint8_t idx = 4;
+	while (idx) {
+		idx -= 1;
+		sfr_data[idx] = 0;
+	}
+}
 
 /*
  * Transfer Network Interface RX data from the ASIC to the 8051 XMEM
