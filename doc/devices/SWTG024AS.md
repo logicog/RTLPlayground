@@ -1,18 +1,19 @@
 ### SWTG024AS
 SWTG024AS has at least 4 variants that look the same.
 
-Variants are `managed` and a` unmanaged` version.
+Variants are `managed` and a `unmanaged` version.
 But both have pcb version `v1.0` and `v2.0`. 
-Also the RJ45 connects can be all plastic or metal shielding.
+Also the RJ45 connectors can be all plastic/non-shielded or with metal shielding.
 
-# Unmanaged Switch
 ## Brands
 |Brand|Type|Managed|PCB|PCB Label|Flash|Chip RTL|
 |---|---|---|---|---|---|---|
 | LIANGUO |SWTG024AS |No|  SWTG024AS-v2.0 | CM-23-11-2336 023-17453| 512kB| 8272 |
+| Haraco |ZX-SWTG124AS | Yes |  SWTG024AS-v2.0 | ??? | ??? | 8272 |
+| Xikestore |SKS3200M-4GPY2XF | Yes |  SWTG024AS-v1.0 | CM-23-08-2043 023-16721 | ??? | 8272 |
 
 # SWTG024AS-v2.0 managed vs unmanged
-Changed I found with my own board vs [Managed version](https://github.com/up-n-atom/SWTG118AS/tree/main/photos/SWGT024AS-v2.0) of the PCB.
+Changes I found with my own board vs [Managed version](https://github.com/up-n-atom/SWTG118AS/tree/main/photos/SWGT024AS-v2.0) of the PCB.
 
 ### Bottom
 *  R105: Installed, goes to R10-PullDown SFP2 -> TX DISABLE
@@ -24,6 +25,7 @@ Changed I found with my own board vs [Managed version](https://github.com/up-n-a
 * R95: Installed (SFP2 signal RX-LOS), mean that the manage version can use RX-LOS function.
 * R270: Installed (SFP1 signal RX-LOS)
 * R268: Installed (SFP2 signal TX_DISABLE, but R262 200R pull-down is to high to drive by the SOC, needs mod!)
+* U5: Flash is only 512kB instead of 2/4 MBit.
 
 ### Notes
 * `TX Disable`-SFP2 and Button `K1` share the same GPIO pin via `R105` and `R85`.
@@ -74,7 +76,7 @@ Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI
 |5| 33R -> U10-P2 | SPI-DO/D1 | 
 |6| U10-P1 | SPI-CS |
 
-
+### T8
 |`T8` pin|what|Signal|
 |---|---|---|
 | 1 | C14 | |
