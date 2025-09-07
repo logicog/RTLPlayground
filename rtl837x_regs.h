@@ -62,9 +62,6 @@
 // Direction Registers, 0 = input, 1 = output
 #define RTL837X_REG_GPIO_00_31_DIRECTION 0x4c
 #define RTL837X_REG_GPIO_32_63_DIRECTION 0x50
-// Configures IO direction for bank a
-
-#define RTL837X_REG_GPIO_EXT 0x63e8
 
 /*
  * I2C controller
