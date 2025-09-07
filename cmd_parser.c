@@ -300,35 +300,18 @@ void parse_mirror(void)
 }
 
 
-void parse_reg(void)
+void parse_regget(void)
 {
-	__xdata uint16_t reg = 0;
-	uint8_t read = 0xFF;
+	uint16_t reg = 0;
 
 	if (cmd_words_b[2] < 0) {
 		write_char('v');
 		goto err;
 	}
 
-	if (cmd_buffer[cmd_words_b[1]] == 'w') {
-		write_char('w');
-		read = 0;
-	}
-
-	if (cmd_buffer[cmd_words_b[1]] == 'r') {
-		write_char('r');
-		read = 1;
-	}
-
-	if (read == 0xFF) {
-		print_string("usage: reg r <hexvalue> or reg w <hexvalue> <hexvalue>");
-		return;
-	}
-
-	uint8_t hex_size = atoi_hex(cmd_words_b[2]);
+	uint8_t hex_size = atoi_hex(cmd_words_b[1]);
 
 	if (hex_size == 0 || hex_size > 2) {
-		write_char('s');
 		goto err;
 	}
 
@@ -338,41 +321,63 @@ void parse_reg(void)
 		reg = (((uint16_t)hexvalue[0]) << 8) | hexvalue[1];
 	}
 
-	print_string("REG: ");
+	print_string("REGGET: ");
 	print_short(reg);
 	print_string(": VAL: ");
 
-	if (read) {
-		reg_read_m(reg);
-
-	} else {
-		hex_size = atoi_hex(cmd_words_b[3]);
-
-		if (hex_size == 0 || hex_size > 4 || cmd_words_b[3] < 0) {
-			write_char('S');
-			goto err_write;
-		}
-
-		// zero sfp data
-		sfr_set_zero();
-
-		// copy data over
-		while(hex_size) {
-			hex_size -= 1;
-			sfr_data[hex_size] = hexvalue[hex_size];
-		}
-
-		reg_write_m(reg);
-	}
+	reg_read_m(reg);
 	print_sfr_data();
 	write_char('\n');
 	return;
 
 err:
-	print_string("usage: reg r <hexvalue> like reg r 00BB");
+	print_string("usage: regget <hexvalue>\n\tlike: regget 0BB0 or regget 0c");
 	return;
-err_write:
-	print_string("usage: reg w <hexvalue> <hexvalue> like reg e 00BB 00112233");
+}
+
+
+void parse_regset(void)
+{
+	uint16_t reg = 0;
+
+	uint8_t hex_size = atoi_hex(cmd_words_b[1]);
+
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+
+	if (hex_size == 1) {
+		reg = hexvalue[0];
+	} else {
+		reg = (((uint16_t)hexvalue[0]) << 8) | hexvalue[1];
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+
+	if (hex_size == 0 || hex_size > 4 || cmd_words_b[3] < 0) {
+		goto err;
+	}
+
+	print_string("REGSET: ");
+	print_short(reg);
+	print_string(": VAL: ");
+
+	// zero sfp data
+	sfr_set_zero();
+
+	// copy data over
+	while(hex_size) {
+		hex_size -= 1;
+		sfr_data[hex_size] = hexvalue[hex_size];
+	}
+
+	reg_write_m(reg);
+	print_sfr_data();
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: regset <hexvalue> <hexvalue>\n\tlike regset 0b abcd1234.");
 }
 
 
@@ -580,8 +585,11 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "gpio")) {
 			print_gpio_status();
 		}
-		if (cmd_compare(0, "reg")) {
-			parse_reg();
+		if (cmd_compare(0, "regget")) {
+			parse_regget();
+		}
+		if (cmd_compare(0, "regset")) {
+			parse_regset();
 		}
 	}
 }
