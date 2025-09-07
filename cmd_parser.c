@@ -365,10 +365,11 @@ void parse_regset(void)
 	// zero sfp data
 	sfr_set_zero();
 
+	uint8_t offset = 4 - hex_size;
 	// copy data over
 	while(hex_size) {
 		hex_size -= 1;
-		sfr_data[hex_size] = hexvalue[hex_size];
+		sfr_data[offset + hex_size] = hexvalue[hex_size];
 	}
 
 	reg_write_m(reg);
