@@ -121,7 +121,7 @@ Reset-line found at `T-D3-D` active-low.
 | 00080000 | GPIO19 | PORT3-LED-GREEN         |LEDx[^1] | | GPIO51 | SFP2-8, R95 | SFP-LOS |
 | 00100000 | GPIO20 | PORT3-LED-YELLOW        |LEDx[^1] | | GPIO52 |  |  |
 | 00200000 | GPIO21 | PORT4-LED-COMMON        |LEDx[^1] | | GPIO53 |  |  |
-| 00400000 | GPIO22 | PORT4-LED-GREEN         |LEDx[^1] | | GPIO54 | SFP2-3, T-R105L | SFP-TX-DIS[^2] or via T-R85 to RESET[3] |
+| 00400000 | GPIO22 | PORT4-LED-GREEN         |LEDx[^1] | | GPIO54 | SFP2-3, T-R105L | SFP-TX-DIS[^2] or via T-R85 to RESET[^3] |
 | 00800000 | GPIO23 | PORT4-LED-YELLOW        |LEDx[^1] | | GPIO55 | | |
 | 01000000 | GPIO24 | SFP1-LED?               |LEDx | | GPIO56 | | |
 | 02000000 | GPIO25 |                         |     | | GPIO57 | | |
@@ -131,12 +131,6 @@ Reset-line found at `T-D3-D` active-low.
 | 20000000 | GPIO29 |                         |     | | GPIO61 | | |
 | 40000000 | GPIO30 | SFP1-6, R269            |SFP-DETECT | | GPIO62 | | |
 | 80000000 | GPIO31 | T-R144-R                |U0TXD| | GPIO63 | | |
-
-Note:
-
-* [^1]: LEDs are found by just plugin a RJ45 connector and see with cmd `gpio` the status change. But the bit pattern for port 1,2 are diffrent from port 3,4.
-* [^2]: Only on the unmanaged verions are `R10` and `R268` placed. But the very low pull-down resistor `R10` & `R262` prevent to SOC to drive does pins. A mod is needed.
-* [3]: GPIO54 is used for the reset-button. `T-R85` is placed.
 
 # Power supply
 
@@ -155,3 +149,7 @@ Voltage is crated by a `TMI3244T` Buck converter.
 Chip can deliver up to 4A and the sweetspot is at 1A.
 So higher power SFP-modules should work.
 
+
+[^1]: LEDs are found by just plugin a RJ45 connector and see with cmd `gpio` the status change. But the bit pattern for port 1,2 are diffrent from port 3,4.
+[^2]: Only on the unmanaged verions are `R10` and `R268` placed. But the very low pull-down resistor `R10` & `R262` prevent to SOC to drive does pins. A mod is needed.
+[^3]: GPIO54 is used for the reset-button. `T-R85` is placed.
