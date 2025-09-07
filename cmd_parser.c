@@ -68,6 +68,13 @@ inline uint8_t isletter(uint8_t l)
 	return (l <= ('Z'-'A'));
 }
 
+inline uint8_t isnumber(uint8_t l)
+{
+	// return (l >= '0' && l <= '9');
+	l -= '0';
+	return (l <= ('9'-'0'));
+}
+
 
 uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 {
@@ -139,7 +146,7 @@ uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 	uint8_t err = 1;
 	*vlan = 0;
 
-	while (cmd_buffer[idx] >= '0' && cmd_buffer[idx] <= '9') {
+	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
 		*vlan = (*vlan * 10) + cmd_buffer[idx] - '0';
 		idx++;
@@ -154,7 +161,7 @@ uint8_t parse_ip(register uint8_t idx)
 
 	for (b = 0; b < 4; b++) {
 		ip[b] = 0;
-		while (cmd_buffer[idx] >= '0' && cmd_buffer[idx] <= '9') {
+		while (isnumber(cmd_buffer[idx])) {
 			ip[b] = (ip[b] * 10) + cmd_buffer[idx] - '0';
 			idx++;
 		}
@@ -177,7 +184,7 @@ void parse_trunk(void)
 	uint8_t w = 2;
 	while (cmd_words_b[w] > 0) {
 		uint8_t port;
-		if (cmd_buffer[cmd_words_b[w]] >= '0' && cmd_buffer[cmd_words_b[w]] <= '9') {
+		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
 			if (port > maxPort)
 				goto err;
@@ -222,9 +229,9 @@ void parse_vlan(void)
 		}
 		while (cmd_words_b[w] > 0) {
 			uint8_t port;
-			if (cmd_buffer[cmd_words_b[w]] >= '0' && cmd_buffer[cmd_words_b[w]] <= '9') {
+			if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 				port = cmd_buffer[cmd_words_b[w]] - '1';
-				if (cmd_buffer[cmd_words_b[w] + 1] >= '0' && cmd_buffer[cmd_words_b[w] + 1] <= '9') {
+				if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
 					port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
 					if (cmd_buffer[cmd_words_b[w] + 2] == 't')
 						tagged |= ((uint16_t)1) << port;
@@ -258,23 +265,23 @@ void parse_mirror(void)
 	__xdata uint16_t rx_pmask = 0;
 	__xdata uint16_t tx_pmask = 0;
 
-	if (cmd_buffer[cmd_words_b[1]] < '0' || cmd_buffer[cmd_words_b[1]] > '9') {
+	if (!isnumber(cmd_buffer[cmd_words_b[1]])) {
 		print_string("Port missing: port <mirroring port> [port][t/r]...");
 		return;
 	}
 
 	mirroring_port = cmd_buffer[cmd_words_b[1]] - '1';
-	if (cmd_buffer[cmd_words_b[1] + 1] >= '0' && cmd_buffer[cmd_words_b[1] + 1] <= '9')
-	mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
+	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))
+		mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
 	if (!isRTL8373)
 		mirroring_port = phys_to_log_port[mirroring_port];
 
 	uint8_t w = 2;
 	while (cmd_words_b[w] > 0) {
 		uint8_t port;
-		if (cmd_buffer[cmd_words_b[w]] >= '0' && cmd_buffer[cmd_words_b[w]] <= '9') {
+		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
-			if (cmd_buffer[cmd_words_b[w] + 1] >= '0' && cmd_buffer[cmd_words_b[w] + 1] <= '9') {
+			if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
 				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
 				if (!isRTL8373)
 					port = phys_to_log_port[port];
