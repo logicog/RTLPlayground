@@ -304,8 +304,7 @@ void parse_regget(void)
 {
 	uint16_t reg = 0;
 
-	if (cmd_words_b[2] < 0) {
-		write_char('v');
+	if (cmd_words_b[1] < 0) {
 		goto err;
 	}
 
@@ -315,10 +314,10 @@ void parse_regget(void)
 		goto err;
 	}
 
-	if (hex_size == 1) {
-		reg = hexvalue[0];
-	} else {
-		reg = (((uint16_t)hexvalue[0]) << 8) | hexvalue[1];
+	reg = hexvalue[0];
+	if (hex_size == 2) {
+		reg <<= 8;
+		reg |= hexvalue[1];
 	}
 
 	print_string("REGGET: ");
@@ -327,7 +326,6 @@ void parse_regget(void)
 
 	reg_read_m(reg);
 	print_sfr_data();
-	write_char('\n');
 	return;
 
 err:
@@ -340,41 +338,42 @@ void parse_regset(void)
 {
 	uint16_t reg = 0;
 
-	uint8_t hex_size = atoi_hex(cmd_words_b[1]);
+	if (cmd_words_b[2] < 0) {
+		goto err;
+	}
 
+	uint8_t hex_size = atoi_hex(cmd_words_b[1]);
 	if (hex_size == 0 || hex_size > 2) {
 		goto err;
 	}
 
-	if (hex_size == 1) {
-		reg = hexvalue[0];
-	} else {
-		reg = (((uint16_t)hexvalue[0]) << 8) | hexvalue[1];
+	reg = hexvalue[0];
+	if (hex_size == 2) {
+		reg <<= 8;
+		reg |= hexvalue[1];
 	}
 
 	hex_size = atoi_hex(cmd_words_b[2]);
-
-	if (hex_size == 0 || hex_size > 4 || cmd_words_b[3] < 0) {
+	if (hex_size == 0 || hex_size > 4) {
 		goto err;
 	}
 
-	print_string("REGSET: ");
-	print_short(reg);
-	print_string(": VAL: ");
-
-	// zero sfp data
+	// zero sfr memory data
 	sfr_set_zero();
 
+	// copy data over sfr memory
 	uint8_t offset = 4 - hex_size;
-	// copy data over
 	while(hex_size) {
 		hex_size -= 1;
 		sfr_data[offset + hex_size] = hexvalue[hex_size];
 	}
+	print_string("REGSET: ");
+	print_short(reg);
 
 	reg_write_m(reg);
+
+	print_string(": VAL: ");
 	print_sfr_data();
-	write_char('\n');
 	return;
 
 err:
