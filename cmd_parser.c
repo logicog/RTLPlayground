@@ -60,7 +60,12 @@ __code uint8_t phys_to_log_port[6] = {
 
 inline uint8_t isletter(uint8_t l)
 {
-	return (l >= 'a' && l <= 'z') || (l >= 'A' && l <= 'Z');
+	// return (l >= 'a' && l <= 'z') || (l >= 'A' && l <= 'Z');
+
+	// Make it upper case
+	l |= 0x20;
+	l -= 'A';
+	return (l <= ('Z'-'A'));
 }
 
 
