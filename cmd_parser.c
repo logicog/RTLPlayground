@@ -62,11 +62,12 @@ inline uint8_t isletter(uint8_t l)
 {
 	// return (l >= 'a' && l <= 'z') || (l >= 'A' && l <= 'Z');
 
-	// Make it upper case
+	// Make it lowercase
 	l |= 0x20;
-	l -= 'A';
-	return (l <= ('Z'-'A'));
+	l -= 'a';
+	return (l <= ('z'-'a'));
 }
+
 
 inline uint8_t isnumber(uint8_t l)
 {
