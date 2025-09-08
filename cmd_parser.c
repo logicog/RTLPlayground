@@ -14,6 +14,7 @@
 #include "rtl837x_phy.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
+#include "rtl837x_stp.h"
 #include "uip/uip.h"
 
 #pragma codeseg BANK1
@@ -23,6 +24,7 @@ extern __xdata uint8_t maxPort;
 extern __xdata uint8_t nSFPPorts;
 extern __xdata uint8_t isRTL8373;
 extern __xdata uint16_t mpos;
+extern __xdata uint8_t stpEnabled;
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -573,6 +575,17 @@ void cmd_parser(void) __banked
 				port_l2_forget();
 			else
 				port_l2_learned();
+		}
+		if (cmd_compare(0, "stp")) {
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				print_string("STP enabled\n");
+				stpEnabled = 1;
+				stp_setup();
+			} else {
+				print_string("STP disabled\n");
+				stp_off();
+				stpEnabled = 0;
+			}
 		}
 		if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 			__xdata uint16_t pvid;
