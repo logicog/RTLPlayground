@@ -13,6 +13,7 @@
 #include "rtl837x_flash.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_sfr.h"
 #include "uip/uip.h"
 
 #pragma codeseg BANK1
@@ -24,6 +25,7 @@ extern __xdata uint8_t isRTL8373;
 extern __xdata uint16_t mpos;
 
 extern volatile __xdata uint32_t ticks;
+extern volatile __xdata uint8_t sfr_data[4];
 
 extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
@@ -31,6 +33,11 @@ extern __code uint8_t * __code hex;
 extern __xdata uint8_t flash_buf[256];
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
+__xdata uint8_t gpio_last_value[8] = { 0 };
+
+// Temporatly for str to hex convertion value.
+// Support up to 32_bits.
+__xdata uint8_t hexvalue[4] = { 0 };
 
 
 // Buffer for writing to flash 0x1fd000, copy to 0x1fe000
@@ -53,7 +60,20 @@ __code uint8_t phys_to_log_port[6] = {
 
 inline uint8_t isletter(uint8_t l)
 {
-	return (l >= 'a' && l <= 'z') || (l >= 'A' && l <= 'Z');
+	// return (l >= 'a' && l <= 'z') || (l >= 'A' && l <= 'Z');
+
+	// Make it lowercase
+	l |= 0x20;
+	l -= 'a';
+	return (l <= ('z'-'a'));
+}
+
+
+inline uint8_t isnumber(uint8_t l)
+{
+	// return (l >= '0' && l <= '9');
+	l -= '0';
+	return (l <= ('9'-'0'));
 }
 
 
@@ -78,12 +98,56 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 }
 
 
+/* Converts ascii-hex array into value.
+	returns number of hexvalue[] entries has been written.
+	return value = 0 means error.
+*/
+uint8_t atoi_hex(uint8_t idx)
+{
+	uint8_t h_idx = 0;
+	uint8_t val = 0;
+	uint8_t c;
+
+	while(1) {
+		c = cmd_buffer[idx];
+
+		if (c == '\0' || c == ' ') {
+			break;
+		}
+
+		// swap hex nibbles
+		val = (val >> 4) | (val << 4);
+
+		if (c - '0' < 10) {
+			val |= c - '0';
+		} else {
+			c |= 0x20;
+			c -= 'a';
+			if (c > 5) {
+				h_idx = 0;
+				break;
+			}
+			val |= c + 10;
+		}
+
+		idx++;
+		hexvalue[h_idx >> 1] = val;
+
+		if (h_idx & 1 == 1) {
+			val = 0;
+		}
+		h_idx++;
+	}
+
+	return ((h_idx + 1) >> 1);
+}
+
 uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
 	uint8_t err = 1;
 	*vlan = 0;
 
-	while (cmd_buffer[idx] >= '0' && cmd_buffer[idx] <= '9') {
+	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
 		*vlan = (*vlan * 10) + cmd_buffer[idx] - '0';
 		idx++;
@@ -98,7 +162,7 @@ uint8_t parse_ip(register uint8_t idx)
 
 	for (b = 0; b < 4; b++) {
 		ip[b] = 0;
-		while (cmd_buffer[idx] >= '0' && cmd_buffer[idx] <= '9') {
+		while (isnumber(cmd_buffer[idx])) {
 			ip[b] = (ip[b] * 10) + cmd_buffer[idx] - '0';
 			idx++;
 		}
@@ -121,7 +185,7 @@ void parse_trunk(void)
 	uint8_t w = 2;
 	while (cmd_words_b[w] > 0) {
 		uint8_t port;
-		if (cmd_buffer[cmd_words_b[w]] >= '0' && cmd_buffer[cmd_words_b[w]] <= '9') {
+		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
 			if (port > maxPort)
 				goto err;
@@ -166,9 +230,9 @@ void parse_vlan(void)
 		}
 		while (cmd_words_b[w] > 0) {
 			uint8_t port;
-			if (cmd_buffer[cmd_words_b[w]] >= '0' && cmd_buffer[cmd_words_b[w]] <= '9') {
+			if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 				port = cmd_buffer[cmd_words_b[w]] - '1';
-				if (cmd_buffer[cmd_words_b[w] + 1] >= '0' && cmd_buffer[cmd_words_b[w] + 1] <= '9') {
+				if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
 					port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
 					if (cmd_buffer[cmd_words_b[w] + 2] == 't')
 						tagged |= ((uint16_t)1) << port;
@@ -202,23 +266,23 @@ void parse_mirror(void)
 	__xdata uint16_t rx_pmask = 0;
 	__xdata uint16_t tx_pmask = 0;
 
-	if (cmd_buffer[cmd_words_b[1]] < '0' || cmd_buffer[cmd_words_b[1]] > '9') {
+	if (!isnumber(cmd_buffer[cmd_words_b[1]])) {
 		print_string("Port missing: port <mirroring port> [port][t/r]...");
 		return;
 	}
 
 	mirroring_port = cmd_buffer[cmd_words_b[1]] - '1';
-	if (cmd_buffer[cmd_words_b[1] + 1] >= '0' && cmd_buffer[cmd_words_b[1] + 1] <= '9')
-	mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
+	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))
+		mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
 	if (!isRTL8373)
 		mirroring_port = phys_to_log_port[mirroring_port];
 
 	uint8_t w = 2;
 	while (cmd_words_b[w] > 0) {
 		uint8_t port;
-		if (cmd_buffer[cmd_words_b[w]] >= '0' && cmd_buffer[cmd_words_b[w]] <= '9') {
+		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
-			if (cmd_buffer[cmd_words_b[w] + 1] >= '0' && cmd_buffer[cmd_words_b[w] + 1] <= '9') {
+			if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
 				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
 				if (!isRTL8373)
 					port = phys_to_log_port[port];
@@ -246,6 +310,87 @@ void parse_mirror(void)
 		w++;
 	}
 	port_mirror_set(mirroring_port, rx_pmask, tx_pmask);
+}
+
+
+void parse_regget(void)
+{
+	uint16_t reg = 0;
+
+	if (cmd_words_b[1] < 0) {
+		goto err;
+	}
+
+	uint8_t hex_size = atoi_hex(cmd_words_b[1]);
+
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+
+	reg = hexvalue[0];
+	if (hex_size == 2) {
+		reg <<= 8;
+		reg |= hexvalue[1];
+	}
+
+	print_string("REGGET: ");
+	print_short(reg);
+	print_string(": VAL: ");
+
+	reg_read_m(reg);
+	print_sfr_data();
+	return;
+
+err:
+	print_string("usage: regget <hexvalue>\n\tlike: regget 0BB0 or regget 0c");
+	return;
+}
+
+
+void parse_regset(void)
+{
+	uint16_t reg = 0;
+
+	if (cmd_words_b[2] < 0) {
+		goto err;
+	}
+
+	uint8_t hex_size = atoi_hex(cmd_words_b[1]);
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+
+	reg = hexvalue[0];
+	if (hex_size == 2) {
+		reg <<= 8;
+		reg |= hexvalue[1];
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size == 0 || hex_size > 4) {
+		goto err;
+	}
+
+	// zero sfr memory data
+	sfr_set_zero();
+
+	// copy data over sfr memory
+	uint8_t offset = 4 - hex_size;
+	while(hex_size) {
+		hex_size -= 1;
+		sfr_data[offset + hex_size] = hexvalue[hex_size];
+	}
+	print_string("REGSET: ");
+	print_short(reg);
+
+	reg_write_m(reg);
+
+	print_string(": VAL: ");
+	print_sfr_data();
+	return;
+
+err:
+	print_string("usage: regset <hexvalue> <hexvalue>\n\tlike regset 0b abcd1234.");
 }
 
 
@@ -280,6 +425,33 @@ uint8_t cmd_tokenize(void) __banked
 	cmd_words_b[word++] = -1;
 
 	return 0;
+}
+
+// Print GPIO status
+void print_gpio_status(void) {
+	for (uint8_t idx = 0; idx < 2; idx++) {
+		reg_read(RTL837X_REG_GPIO_00_31_INPUT + (idx * 4));
+		print_string("GPIO ");
+		write_char(idx + '0');
+		write_char(':');
+		write_char(' ');
+
+		print_byte(SFR_DATA_24);
+		print_byte(SFR_DATA_16);
+		print_byte(SFR_DATA_8);
+		print_byte(SFR_DATA_0);
+
+		write_char(' ');
+		print_byte( gpio_last_value[(idx *4)] ^ SFR_DATA_24);
+		gpio_last_value[(idx *4)] = SFR_DATA_24;
+		print_byte( gpio_last_value[(idx *4) + 1] ^ SFR_DATA_16);
+		gpio_last_value[(idx *4) + 1] = SFR_DATA_16;
+		print_byte( gpio_last_value[(idx *4) + 2] ^ SFR_DATA_8);
+		gpio_last_value[(idx *4) + 2] = SFR_DATA_8;
+		print_byte( gpio_last_value[(idx *4) + 3] ^ SFR_DATA_0);
+		gpio_last_value[(idx *4) + 3] = SFR_DATA_0;
+		write_char('\n');
+	}
 }
 
 
@@ -423,9 +595,17 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
 		}
+		if (cmd_compare(0, "gpio")) {
+			print_gpio_status();
+		}
+		if (cmd_compare(0, "regget")) {
+			parse_regget();
+		}
+		if (cmd_compare(0, "regset")) {
+			parse_regset();
+		}
 	}
 }
-
 
 void execute_config(void) __banked
 {
@@ -445,3 +625,4 @@ void execute_config(void) __banked
 		}
 	} while (mpos != 0xffff);
 }
+

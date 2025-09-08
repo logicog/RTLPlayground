@@ -44,22 +44,24 @@
  * Pin configuration (pinmux)
  */
 
-#define RTL837X_PIN_MUX_A	0x7f8c
-#define RTL837X_PIN_MUX_B	0x7f90
+#define RTL837X_PIN_MUX_0	0x7f8c
+#define RTL837X_PIN_MUX_1	0x7f90
 
-#define RTL837X_REG_GPIO_A 0x40
+// Output Registers
+#define RTL837X_REG_GPIO_00_31_OUTPUT 0x3c
+#define RTL837X_REG_GPIO_32_63_OUTPUT 0x40
 // BIT 4 resets RTL8224 on 9000-9XH
 
-#define RTL837X_REG_GPIO_B 0x44
+// Input Registers
+#define RTL837X_REG_GPIO_00_31_INPUT 0x44
+#define RTL837X_REG_GPIO_32_63_INPUT 0x48
 // Bit 1e cleared: SFP Module inserted on 9000-6XH (MOD_DEF0 pin)
 
-#define RTL837X_REG_GPIO_C 0x48
 // BIT 5 set: SIGNAL LOS of SFP module on 9000-6XH (RX_LOS pin)
 
-#define RTL837X_REG_GPIO_CONF_A 0x50
-// Configures IO direction for bank a
-
-#define RTL837X_REG_GPIO_EXT 0x63e8
+// Direction Registers, 0 = input, 1 = output
+#define RTL837X_REG_GPIO_00_31_DIRECTION 0x4c
+#define RTL837X_REG_GPIO_32_63_DIRECTION 0x50
 
 /*
  * I2C controller

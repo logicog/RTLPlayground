@@ -423,13 +423,13 @@ void port_stats_print(void) __banked
 				break;
 			}
 		} else {  // An SFP Module TODO: This is for 1 module devices
-			reg_read_m(RTL837X_REG_GPIO_B);
+			reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
 			if (!(sfr_data[0] & 0x40)) {
 				print_string("SFP OK\t");
 			} else {
 				print_string("NO SFP\t");
 			}
-			reg_read_m(RTL837X_REG_GPIO_C);
+			reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
 			if (sfr_data[3] & 0x20) {
 				print_string("Down\t");
 			} else {
