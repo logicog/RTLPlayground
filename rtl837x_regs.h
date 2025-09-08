@@ -154,7 +154,7 @@
 #define RTL8373_RLDP_TIMER		0x1074
 #define RTL837X_RMA0_CONF		0x4ecc
 #define RTL837X_RMA_CONF		0x4f1c
-
+#define RTL837X_MSTP_STATES		0x5310
 
 #ifdef REGDBG
 
