@@ -54,6 +54,10 @@ __xdata uint8_t isRTL8373;
 volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
+__xdata uint8_t stp_clock;
+
+#define STP_TICK_DIVIDER 3
+
 
 // Buffer for serial input, SBUF_SIZE must be power of 2 < 256
 __xdata volatile uint8_t sbuf_ptr;
@@ -79,6 +83,7 @@ __xdata uint8_t minPort;
 __xdata uint8_t maxPort;
 __xdata uint8_t nSFPPorts;
 __xdata uint8_t cpuPort;
+__xdata uint8_t stpEnabled;
 
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
@@ -371,7 +376,7 @@ void reg_bit_clear(uint16_t reg_addr, char bit)
 }
 
 /*
- * This masks the sfr data fields, first &-ing with ~mask, the setting the bits in set
+ * This masks the sfr data fields, first &-ing with ~mask, then setting the bits in set
  */
 void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 {
@@ -816,16 +821,11 @@ void handle_rx(void)
 #ifdef RXTXDBG
 		print_string(" RX-VLAN: "); print_short(rx_packet_vlan); write_char('\n');
 #endif
-		if (uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
+		if (stpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x00) {
-			print_string("STP: \n");
-			for (uint8_t i = 0; i < 80; i++) {
-				print_byte(uip_buf[i]);
-				write_char(' ');
-			}
-			write_char('\n');
-			for (uint8_t i = minPort; i <=maxPort; i++ ) {
-				stp_cnf_send(i);
+			stp_in();
+			if (uip_len) {
+				print_string("STP TX\n");
 				tcpip_output();
 			}
 		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x06) { // ARP?
@@ -1008,6 +1008,15 @@ void idle(void)
 	handle_rx();
 	// Check UIP for packets to transmit
 	handle_tx();
+	// If STP protocol enabled, decrease STP timers to trigger actions
+	if (stpEnabled) {
+		if (!stp_clock) {
+			stp_clock = STP_TICK_DIVIDER;
+			stp_timers();
+		} else {
+			stp_clock--;
+		}
+	}
 }
 
 
@@ -1641,6 +1650,7 @@ void setup_i2c(void)
 void bootloader(void)
 {
 	ticks = 0;
+	stp_clock = STP_TICK_DIVIDER;
 	sbuf_ptr = 0;
 
 	CKCON = 0;	// Initial Clock configuration
@@ -1720,7 +1730,7 @@ void bootloader(void)
 	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
-
+	stpEnabled = 0;
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();
