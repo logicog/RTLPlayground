@@ -13,17 +13,17 @@ Also the RJ45 connectors can be all plastic/non-shielded or with metal shielding
 | Xikestore |SKS3200M-4GPY2XF | Yes |  SWTG024AS-v1.0 | CM-23-08-2043 023-16721 | ??? | 8272 |
 
 # SWTG024AS-v2.0 managed vs unmanged
-Changes I found with my own board vs [Managed version](https://github.com/up-n-atom/SWTG118AS/tree/main/photos/SWGT024AS-v2.0) of the PCB.
+Changes I found with my board vs [Managed version](https://github.com/up-n-atom/SWTG118AS/tree/main/photos/SWGT024AS-v2.0) of the PCB.
 
 ### Bottom
 * R105: Installed, goes to R10-PullDown SFP2 -> TX DISABLE
-* R85: Not Installed (Connected to K1)
-* R90: Not installed (PowerLed) 
-* LED3: Not installed (PowerLed)
+* R85: Not Installed (Connected to K1 Reset Button)
+* R90: Not installed (System Led)
+* LED3: Not installed (System Led)
 ### Top
-* K1: Not installed (Reset butten)
-* R95: Installed (SFP2 signal RX-LOS), mean that the manage version can use RX-LOS function.
-* R270: Installed (SFP1 signal RX-LOS)
+* K1: Not installed (Reset Button)
+* R95: Installed (SFP2 signal RX-LOS), means that the managed-version can´t use the RX-LOS function.
+* R270: Installed (SFP1 signal RX-LOS), same here as above.
 * R268: Installed (SFP2 signal TX_DISABLE, but R262 200R pull-down is to high to drive by the SOC, needs mod!)
 * U5: Flash is only 512kB instead of 2/4 MBit.
 
@@ -75,6 +75,14 @@ Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI
 |4| VCC  | 
 |5| 33R -> U10-P2 | SPI-DO/D1 | 
 |6| U10-P1 | SPI-CS |
+
+### T5, serial console
+|`T5` pin|GPIO|Signal|
+|---|---|---|
+| 1 | GPIO31 | U0TXD (Output) |
+| 2 | GND | |
+| 3 | GPIO32 | U0RXD (Input) |
+| 4 | 3V3 | |
 
 ### T8
 |`T8` pin|what|Signal|
