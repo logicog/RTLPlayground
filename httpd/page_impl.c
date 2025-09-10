@@ -67,14 +67,20 @@ void byte_to_html(uint8_t val)
 	} while(cnt);
 }
 
-
+/* Converts a uint8_t to raw string.
+   Suppress leading zeros.
+*/
 void itoa_html(uint8_t v)
 {
-	uint8_t t = (v / 100) % 10;
-	if (t)
+	uint8_t t = (v / 100);
+	// when print_zeros is not zero, we know that a non-zero number has printed.
+	// That have to print all the next numbers.
+	uint8_t print_zeros = t;
+	if (print_zeros)
 		char_to_html('0' + t);
 	t = (v / 10) % 10;
-	if (t)
+	print_zeros |= t;
+	if (print_zeros)
 		char_to_html('0' + t);
 	char_to_html('0' + (v % 10));
 }
