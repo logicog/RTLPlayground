@@ -158,9 +158,9 @@
 
 #ifdef REGDBG
 
-#define REG_SET(r, v) SFR_DATA_24 = ((v) >> 24) & 0xff; \
-	SFR_DATA_16 = ((v) >> 16) & 0xff; \
-	SFR_DATA_8 = ((v) >> 8 & 0xff); \
+#define REG_SET(r, v) SFR_DATA_24 = (((uint32_t)v) >> 24) & 0xff; \
+	SFR_DATA_16 = (((uint32_t)v) >> 16) & 0xff; \
+	SFR_DATA_8 = (((uint16_t)v) >> 8 & 0xff); \
 	SFR_DATA_0 = (v) & 0xff; \
 	reg_write(r); \
 	write_char('R'); print_byte(r >> 8); print_byte(r); write_char('-'); \
@@ -173,9 +173,9 @@
 	reg_write(r); \
 	write_char('R'); print_byte(r>>8); print_byte(r); write_char('-'); print_byte(v24); print_byte(v16); print_byte(v8); print_byte(v0); write_char(' ');
 #else
-#define REG_SET(r, v) SFR_DATA_24 = ((v) >> 24) & 0xff; \
-	SFR_DATA_16 = ((v) >> 16) & 0xff; \
-	SFR_DATA_8 = ((v) >> 8 & 0xff); \
+#define REG_SET(r, v) SFR_DATA_24 = (((uint32_t)v) >> 24) & 0xff; \
+	SFR_DATA_16 = (((uint32_t)v) >> 16) & 0xff; \
+	SFR_DATA_8 = (((uint16_t)v) >> 8 & 0xff); \
 	SFR_DATA_0 = (v) & 0xff; \
 	reg_write(r);
 
