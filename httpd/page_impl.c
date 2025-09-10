@@ -34,7 +34,7 @@ inline void byte_to_html(uint8_t a)
 }
 
 
-inline void char_to_html(char c)
+void char_to_html(char c)
 {
 	outbuf[slen++] = c;
 }
