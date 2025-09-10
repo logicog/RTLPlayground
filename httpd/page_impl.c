@@ -94,39 +94,30 @@ uint16_t port_status(void)
 }
 
 
+/* Converts sfr_data[] into raw hex string.
+   Suppress leading zeros.
+*/
 void sfr_data_to_html(void)
 {
-	__bit print_zeros = 0;
+ 	uint8_t print_zeros = 0;
+	uint8_t val = 0;
 
-	if (print_zeros || sfr_data[0] & 0xf0) {
-		char_to_html(hex[sfr_data[0] >> 4]);
-		print_zeros = 1;
+	for (uint8_t nibble = 0; nibble < 8; nibble++) {
+	  	if (!(nibble & 1))
+	        val = sfr_data[nibble>>1];
+		// force the swap instruction, itohex() ignores the upper nibble.
+		val = (val << 4) | (val >> 4);
+		// when print_zeros is not zero, we know that a non-zero number has printed.
+		// That have to print all the next numbers.
+		print_zeros |= val;
+		// only care about lower nibble, that is what is printed.
+		print_zeros &= 0x0f;
+		if (print_zeros)
+			charhex_to_html(val);
 	}
-	if (print_zeros || sfr_data[0] & 0xf) {
-		char_to_html(hex[sfr_data[0] & 0xf]);
-		print_zeros = 1;
+	if (print_zeros == 0) {
+	    char_to_html('0');
 	}
-	if (print_zeros || sfr_data[1] & 0xf0) {
-		char_to_html(hex[sfr_data[1] >> 4]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[1] & 0xf) {
-		char_to_html(hex[sfr_data[1] & 0xf]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[2] & 0xf0) {
-		char_to_html(hex[sfr_data[2] >> 4]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[2] & 0xf) {
-		char_to_html(hex[sfr_data[2] & 0xf]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[3] & 0xf0) {
-		char_to_html(hex[sfr_data[3] >> 4]);
-		print_zeros = 1;
-	}
-	char_to_html(hex[sfr_data[3] & 0xf]);
 }
 
 
