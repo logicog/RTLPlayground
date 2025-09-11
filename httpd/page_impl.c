@@ -27,26 +27,60 @@ extern __xdata uint8_t isRTL8373;
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
-inline void byte_to_html(uint8_t a)
+
+/*  Convert only the lower nibble to ascii HEX char.
+    For convenience the upper nibble is masked out.
+*/
+inline char itohex(uint8_t val) {
+	// Ignore upper nibble for convenience.
+	val &= 0x0f;
+	val -= 10;
+
+	// 10 or above
+	if ((int8_t)val >= 0)
+		val += ('a' - '0' - 10);
+
+	return val + ('0' + 10);
+}
+
+// Convert uint8_t to ascii HEX char push on html-buffer.
+void charhex_to_html(char c)
 {
-	outbuf[slen++] = hex[(a >> 4) & 0xf];
-	outbuf[slen++] = hex[a & 0xf];
+	outbuf[slen++] = itohex(c);
 }
 
 
-inline void char_to_html(char c)
+void char_to_html(char c)
 {
 	outbuf[slen++] = c;
 }
 
 
-inline void itoa_html(uint8_t v)
+//  Convert uint8_t to ascii HEX char.
+void byte_to_html(uint8_t val)
 {
-	uint8_t t = (v / 100) % 10;
-	if (t)
+	uint8_t cnt = 2;
+	do {
+		val = (val >> 4) | (val << 4);
+		charhex_to_html(val);
+		cnt -= 1;
+	} while(cnt);
+}
+
+/* Converts a uint8_t to raw string.
+   Suppress leading zeros.
+*/
+void itoa_html(uint8_t v)
+{
+	uint8_t t = (v / 100);
+	// when print_zeros is not zero, we know that a non-zero number has printed.
+	// That have to print all the next numbers.
+	uint8_t print_zeros = t;
+	if (print_zeros)
 		char_to_html('0' + t);
 	t = (v / 10) % 10;
-	if (t)
+	print_zeros |= t;
+	if (print_zeros)
 		char_to_html('0' + t);
 	char_to_html('0' + (v % 10));
 }
@@ -66,39 +100,30 @@ uint16_t port_status(void)
 }
 
 
+/* Converts sfr_data[] into raw hex string.
+   Suppress leading zeros.
+*/
 void sfr_data_to_html(void)
 {
-	__bit print_zeros = 0;
+ 	uint8_t print_zeros = 0;
+	uint8_t val = 0;
 
-	if (print_zeros || sfr_data[0] & 0xf0) {
-		char_to_html(hex[sfr_data[0] >> 4]);
-		print_zeros = 1;
+	for (uint8_t nibble = 0; nibble < 8; nibble++) {
+	  	if (!(nibble & 1))
+	        val = sfr_data[nibble>>1];
+		// force the swap instruction, itohex() ignores the upper nibble.
+		val = (val << 4) | (val >> 4);
+		// when print_zeros is not zero, we know that a non-zero number has printed.
+		// That have to print all the next numbers.
+		print_zeros |= val;
+		// only care about lower nibble, that is what is printed.
+		print_zeros &= 0x0f;
+		if (print_zeros)
+			charhex_to_html(val);
 	}
-	if (print_zeros || sfr_data[0] & 0xf) {
-		char_to_html(hex[sfr_data[0] & 0xf]);
-		print_zeros = 1;
+	if (print_zeros == 0) {
+	    char_to_html('0');
 	}
-	if (print_zeros || sfr_data[1] & 0xf0) {
-		char_to_html(hex[sfr_data[1] >> 4]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[1] & 0xf) {
-		char_to_html(hex[sfr_data[1] & 0xf]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[2] & 0xf0) {
-		char_to_html(hex[sfr_data[2] >> 4]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[2] & 0xf) {
-		char_to_html(hex[sfr_data[2] & 0xf]);
-		print_zeros = 1;
-	}
-	if (print_zeros || sfr_data[3] & 0xf0) {
-		char_to_html(hex[sfr_data[3] >> 4]);
-		print_zeros = 1;
-	}
-	char_to_html(hex[sfr_data[3] & 0xf]);
 }
 
 
@@ -116,7 +141,7 @@ uint16_t html_index(void)
 	itoa_html(uip_hostaddr[0]); char_to_html('.');
 	itoa_html(uip_hostaddr[0] >> 8); char_to_html('.');
 	itoa_html(uip_hostaddr[1]); char_to_html('.');
-	itoa_html(uip_hostaddr[1]);
+	itoa_html(uip_hostaddr[1] >> 8);
 	slen += strtox(outbuf + slen, "</td></tr><tr><td>Gateway</td><td>");
 	itoa_html(uip_draddr[0]); char_to_html('.');
 	itoa_html(uip_draddr[0] >> 8); char_to_html('.');
