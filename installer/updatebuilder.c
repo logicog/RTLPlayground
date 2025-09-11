@@ -27,6 +27,7 @@
 uint8_t buffer[BUFFER_SIZE];
 FILE *inptr;
 int outptr;
+char line[256];
 
 const char *argp_program_version = "updatebuilder 0.1";
 const char *argp_program_bug_address = "<git@logicog.de>";
@@ -47,6 +48,32 @@ struct arguments {
         char *installer_file;
         char *output_file;
 };
+
+
+int get_byte(int pos)
+{
+	int c1 = line[pos];
+	if (c1 >= '0' && c1 <= '9')
+		c1 -= '0';
+	else if (c1 >= 'a' && c1 <= 'f')
+		c1 = c1 - 'a' + 10;
+	else if (c1 >= 'A' && c1 <= 'F')
+		c1 = c1 - 'A' + 10;
+	else
+		return -1;
+
+	int c2 = line[pos + 1];
+	if (c2 >= '0' && c2 <= '9')
+		c2 -= '0';
+	else if (c2 >= 'a' && c2 <= 'f')
+		c2 = c2 - 'a' + 10;
+	else if (c2 >= 'A' && c2 <= 'F')
+		c2 = c2 - 'A' + 10;
+	else
+		return -1;
+
+	return c1 << 4 | c2;
+}
 
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
@@ -110,7 +137,7 @@ int main(int argc, char **argv)
 		printf("File too large.\n");
 		return 5;
 	}
-	size_t bytes_read = fread(buffer + SEG_1d000_OFFSET + HEADER_LENGTH, 1, sizeof(buffer), inptr);
+	size_t bytes_read = fread(buffer + SEG_1d000_OFFSET + 2 * HEADER_LENGTH, 1, sizeof(buffer), inptr);
 
 	printf("Bytes read: %ld\n", bytes_read);
 
@@ -119,31 +146,60 @@ int main(int argc, char **argv)
 		return 5;
 	}
 	fclose(inptr);
-	filesize += SEG_1d000_OFFSET + HEADER_LENGTH;
+	filesize += SEG_1d000_OFFSET + 2 * HEADER_LENGTH;
 
+	// Read the installer file, which is in Intel Hex format
 	if (arguments.installer_file) {
 		inptr = fopen(arguments.installer_file, "rb");
 		if (inptr == NULL) {
 			printf("Cannot open installer file %s\n", arguments.installer_file);
 			return 5;
 		}
-
-		fseek(inptr, 0L, SEEK_END);
-		size_t isize = ftell(inptr);
-		rewind(inptr);
-		printf("Installer file size: %ld\n", isize);
-		if (isize > SEG_01002_LENGTH) {
-			printf("File too large.\n");
-			return 5;
+		int line_num = 1;
+		int address_high = 0;
+		bool eof = false;
+		while(fgets(line, 255, inptr)) {
+			if (line[0] != ':') {
+				printf("Unknwon installer file format for %s\n", arguments.installer_file);
+				return 5;
+			}
+			int bytes = get_byte(1);
+			if (bytes < 0 || bytes > 200) {
+				printf("Error in %s, line %d, incorrect byte number\n", arguments.installer_file, line_num);
+				return 5;
+			}
+			int address = (get_byte(3) *256) + get_byte(5);
+			if (address < 0) {
+				printf("Error in %s, line %d, not an address\n", arguments.installer_file, line_num);
+				return 5;
+			}
+			int type = get_byte(7);
+			if (type < 0 || type > 5) {
+				printf("Error in %s, line %d incorrect type\n", arguments.installer_file, line_num);
+				return 5;
+			}
+			if (type == 0) {
+				for (int i = 0; i < bytes; i++) {
+					int data = get_byte(9 + 2 * i);
+					if (data < 0) {
+						printf("Error in %s, line %d, illegal data byte\n", arguments.installer_file, line_num);
+						return 5;
+					} else {
+						address = address > 0x1000 ? address - 0x1000 : address;
+						buffer[address + HEADER_LENGTH + i] = data;
+					}
+				}
+			} else if (type == 1) {
+				eof = true;
+				printf("EOF\n");
+			} else {
+				printf("UNKNOWN type, line %d\n", line_num);
+			}
+			line_num++;
 		}
-		size_t bytes_read = fread(buffer + HEADER_LENGTH, 1, sizeof(buffer), inptr);
+		if (!eof)
+			printf("Something was wrong: EOF not found\n");
 
-		printf("Bytes read: %ld\n", bytes_read);
-
-		if (bytes_read != isize) {
-			printf("Error reading input file.\n");
-			return 5;
-		}
 		fclose(inptr);
 	}
 
