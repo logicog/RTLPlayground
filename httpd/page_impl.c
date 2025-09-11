@@ -141,7 +141,7 @@ uint16_t html_index(void)
 	itoa_html(uip_hostaddr[0]); char_to_html('.');
 	itoa_html(uip_hostaddr[0] >> 8); char_to_html('.');
 	itoa_html(uip_hostaddr[1]); char_to_html('.');
-	itoa_html(uip_hostaddr[1]);
+	itoa_html(uip_hostaddr[1] >> 8);
 	slen += strtox(outbuf + slen, "</td></tr><tr><td>Gateway</td><td>");
 	itoa_html(uip_draddr[0]); char_to_html('.');
 	itoa_html(uip_draddr[0] >> 8); char_to_html('.');
