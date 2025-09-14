@@ -71,7 +71,7 @@ __sfr __at(0xbc) SFR_FLASH_CONFIG;
 
 __sfr __at(0x9b) SFR_FLASH_CONF_DIV;
 __sfr __at(0x9c) SFR_FLASH_CONF_RCMD;
-__sfr __at(0x9d) SFR_FLASH_DUMMYCICLES;
+__sfr __at(0x9d) SFR_FLASH_DUMMYCYCLES;
 __sfr __at(0x9a) SFR_FLASH_MODEB;
 
 __sfr __at(0x9e) SFR_FLASH_TCONF;
