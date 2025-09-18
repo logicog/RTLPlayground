@@ -135,10 +135,18 @@ Reset-line found at `T-D3-D` active-low.
 | 02000000 | GPIO25 |                         |     | | GPIO57 | | |
 | 04000000 | GPIO26 | SFP1-LED?               |LEDx | | GPIO58 | | |
 | 08000000 | GPIO27 | R44L                    |?    | | GPIO59 | | |
-| 10000000 | GPIO28 | R50                     |?    | | GPIO60 | | |
+| 10000000 | GPIO28 | LED-SYSTEM, T-R50-R     |     |?    | | GPIO60 | | |
 | 20000000 | GPIO29 |                         |     | | GPIO61 | | |
-| 40000000 | GPIO30 | SFP1-6, R269            |SFP-DETECT | | GPIO62 | | |
+| 40000000 | GPIO30 | SFP1-6, T-R269          |SFP-DETECT | | GPIO62 | | |
 | 80000000 | GPIO31 | T-R144-R                |U0TXD| | GPIO63 | | |
+
+# LEDs
+
+| NAME | COMPONENTS | GPIO |
+| ---- | ---------- | ---- |
+| SYSTEM | T-R50-R (PU-4k2), T-R49-L, T-C185-L, B-R90 | GPIO28 | 
+| SFP1 | T-R35-L (PU-3k9), T-R34-L, T-C179-L | ? | 
+| SFP2 | T-R38-T (PD-4k0) | ? | 
 
 # Power supply
 
