@@ -1,4 +1,5 @@
 CC = gcc
+CCFLAGS = -Wall -o
 
 all: injector fileadder httpd_sim
 
@@ -6,10 +7,10 @@ clean:
 	rm *.o
 
 injector: injector.c
-	gcc $^ -o $@
+	gcc $^ $(CCFLAGS) $@
 
 fileadder: fileadder.c
-	gcc $^ -o $@
+	gcc $^ $(CCFLAGS) $@
 
 httpd_sim: httpd_sim.c httpd_sim.h
-	gcc $< -o $@ -I/usr/include/json-c -ljson-c
+	gcc $< $(CCFLAGS) $@ -I/usr/include/json-c -ljson-c
