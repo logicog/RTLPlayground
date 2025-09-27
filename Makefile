@@ -24,7 +24,7 @@ OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 OBJS += uip/$(BUILDDIR)/timer.rel uip/$(BUILDDIR)/uip-fw.rel uip/$(BUILDDIR)/uip-neighbor.rel uip/$(BUILDDIR)/uip-split.rel uip/$(BUILDDIR)/uip.rel uip/$(BUILDDIR)/uip_arp.rel uip/$(BUILDDIR)/uiplib.rel httpd/$(BUILDDIR)/httpd.rel httpd/$(BUILDDIR)/page_impl.rel
 
 html_data.c html_data.h: html tools
-	tools/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
+	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 httpd: html_data.h
 
@@ -59,8 +59,8 @@ $(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 	cat $< >> $@
 	truncate --size=16K $@
 	dd if=$< skip=80 bs=1024 >>$@
-	tools/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
+	tools/$(BUILDDIR)fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
 
 
 .PHONY: clean all $(SUBDIRS)
