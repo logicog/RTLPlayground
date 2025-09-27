@@ -69,10 +69,10 @@ Even to program the flash via the SOC.
 Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI-chip.
 |`T3` pin|what|Signal|
 |---|---|---|
-| 1 | U4-P6, 33R U10-P6| I2C-SCL, SPI-CLK |
+|1| U4-P6, 33R U10-P6 | I2C-SCL, SPI-CLK |
 |2| GND | --- |
-|3| U4-P5, U10-P5  | I2C-SDA, SPI-DI/DO |
-|4| VCC  | 
+|3| U4-P5, U10-P5 | I2C-SDA, SPI-DI/DO |
+|4| VCC |
 |5| 33R -> U10-P2 | SPI-DO/D1 | 
 |6| U10-P1 | SPI-CS |
 
@@ -104,21 +104,20 @@ Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI
 Reset-line found at `T-D3-D` active-low.
 
 # GPIO
-
 | HEX VAL. | GPIO   | Component | What |  | GPIO | Component | What |
 | -------- | ------ |  ---- | ---- | ---- | ---- | ---- | ---- |
-| 00000001 | GPIO00 | T-C151T, T-R28T, T-R29T |?    | | GPIO32 | T-R143-R | U0RXD |
-| 00000002 | GPIO01 | T-C152T                 |?    | | GPIO33 |  |  |
-| 00000004 | GPIO02 | T-C153T                 |?    | | GPIO34 |  |  |
-| 00000008 | GPIO03 | T-R33T                  |?    | | GPIO35 |  |  |
-| 00000010 | GPIO04 | B-C155                  |?    | | GPIO36 | T-R88L, T-R84-B | Optional SFP-TX-DIS[^2], Reset |
+| 00000001 | GPIO00 | T-C151-T, T-R28-T, T-R29-T |?    | | GPIO32 | T-R143-R | U0RXD |
+| 00000002 | GPIO01 | T-C152-T                |?    | | GPIO33 |  |  |
+| 00000004 | GPIO02 | T-C153-T                |?    | | GPIO34 |  |  |
+| 00000008 | GPIO03 | T-R33-T                 |?    | | GPIO35 |  |  |
+| 00000010 | GPIO04 | B-C155                  |?    | | GPIO36 | T-R88-L, T-R84-B | Optional SFP-TX-DIS[^2], Reset |
 | 00000020 | GPIO05 | B-C156                  |?    | | GPIO37 | SFP1-8, T-R270 | SFP-LOS |
-| 00000040 | GPIO06 | T-C157T                 |?    | | GPIO38 | SFP1-3, T-R268 | SFP-TX-DIS[^2] |
-| 00000080 | GPIO07 | T-C158T, R165           |?    | | GPIO39 | SFP1-4, T-R266 | I2C-SDA4 |
+| 00000040 | GPIO06 | T-C157-T                |?    | | GPIO38 | SFP1-3, T-R268 | SFP-TX-DIS[^2] |
+| 00000080 | GPIO07 | T-C158-T, R165          |?    | | GPIO39 | SFP1-4, T-R266 | I2C-SDA4 |
 | 00000100 | GPIO08 |                         |     |  | GPIO40 | SFP2-5, T-R87; SFP1-5, T-R267; | I2C-SCL |
 | 00000200 | GPIO09 | SFP2-LED, T-R36-T       |LED-SFP2 | | GPIO41 | SFP2-4, T-R85 | I2C-SDA |
 | 00000400 | GPIO10 |                         |     | | GPIO42 |  U8-P6, T-R124 | SPI-MEMORY, CLK |
-| 00000800 | GPIO11 |                         |LEDx[^1] | | GPIO43 | U8-P5, T-R127 | SPI-MEMORY, DI,IO- |
+| 00000800 | GPIO11 |                         |LEDx[^1] | | GPIO43 | U8-P5, T-R127 | SPI-MEMORY, DI,IO0 |
 | 00001000 | GPIO12 |                         |LEDx[^1] | | GPIO44 | U8-P2, T-R128 | SPI-MEMORY, DO,IO1 |
 | 00002000 | GPIO13 | PORT1-LED-GREEN         |LEDx[^1] | | GPIO45 | U8-P1, T-R123 | SPI-MEMORY, CS  |
 | 00004000 | GPIO14 | PORT1-LED-YELLOW        |LEDx | | GPIO46 | T8-1, T-R188| ? |
@@ -129,7 +128,7 @@ Reset-line found at `T-D3-D` active-low.
 | 00080000 | GPIO19 | PORT3-LED-GREEN         |LEDx[^1] | | GPIO51 | SFP2-8, T-R95 | SFP-LOS |
 | 00100000 | GPIO20 | PORT3-LED-YELLOW        |LEDx | | GPIO52 |  |  |
 | 00200000 | GPIO21 |                         |LEDx[^1] | | GPIO53 |  |  |
-| 00400000 | GPIO22 | PORT4-LED-GREEN         |LEDx[^1] | | GPIO54 | SFP2-3, T-R105L | SFP-TX-DIS[^2] or via T-R85 to RESET[^3], T-R84-T |
+| 00400000 | GPIO22 | PORT4-LED-GREEN         |LEDx[^1] | | GPIO54 | SFP2-3, T-R105-L | SFP-TX-DIS[^2] or via T-R85 to RESET[^3], T-R84-T |
 | 00800000 | GPIO23 | PORT4-LED-YELLOW        |LEDx | | GPIO55 | T-R78-B | |
 | 01000000 | GPIO24 | SFP1-LED-J4, T-R35      |LED-SFP1 | | GPIO56 | | |
 | 02000000 | GPIO25 |                         |     | | GPIO57 | | |
