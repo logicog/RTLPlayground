@@ -12,10 +12,15 @@ AFLAGS= -plosgff
 SUBDIRS := tools uip httpd
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
-all: $(SUBDIRS) rtlplayground.bin
+BUILDDIR = output/
+
+all: create_build_dir $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
+
+create_build_dir:
+	mkdir -p $(BUILDDIR)
 
 SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c rtl837x_stp.c
-OBJS = ${SRCS:.c=.rel}
+OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 OBJS += uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel httpd/httpd.rel httpd/page_impl.rel
 
 html_data.c html_data.h: html tools
@@ -29,26 +34,26 @@ $(SUBDIRS):
 clean:
 	-make -C uip clean
 	-make -C httpd clean
-	-rm html_data.c html_data.c
-	if [ -e rtlplayground.bin ]; then rm rtlplayground.bin; fi
-	if [ -e rtlplayground.asm ]; then rm rtlplayground.asm; fi
-	-rm *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym *.bin
+	-rm html_data.c html_data.h
+	-rm -r $(BUILDDIR)
 
+$(BUILDDIR)crtstart.rel: crtstart.asm
+	$(ASM) $(AFLAGS) -o $@ $<
 
-%.rel: %.c
-	$(CC) $(CC_FLAGS) -c $<
+$(BUILDDIR)%.rel: %.c
+	$(CC) $(CC_FLAGS) -o $@ -c $<
 
-%.rel: %.asm
-	${ASM} ${AFLAGS} $^
+$(BUILDDIR)%.rel: $(BUILDDIR)%.asm
+	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-rtlplayground.ihx:  crtstart.rel $(OBJS) 
+$(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS) 
 	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS}  -Wl-bBANK1=0x14000 -Wl-r -o $@ $^
 
-%.img: %.ihx
+$(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-%.bin: %.img
+$(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 	if [ -e $@ ]; then rm $@; fi
 	echo "0000000: 00 40" | xxd -r - $@
 	cat $< >> $@
@@ -59,4 +64,3 @@ rtlplayground.ihx:  crtstart.rel $(OBJS)
 
 
 .PHONY: clean all $(SUBDIRS)
-.PRECIOUS: %.rel %.ihx .img

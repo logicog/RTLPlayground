@@ -1,16 +1,5 @@
 .gitignore
-*.map
-*.rel
-*.rst
-*.sym
-*.asm
-*.bin
-*.ihx
-*.ihex
-*.lst
-*.mem
-!rtlplayground.mem
-*.lk
+output/
 html_data.c
 html_data.h
 tools/httpd_sim
