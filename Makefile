@@ -21,7 +21,7 @@ create_build_dir:
 
 SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c rtl837x_stp.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
-OBJS += uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel httpd/httpd.rel httpd/page_impl.rel
+OBJS += uip/timer.rel uip/uip-fw.rel uip/uip-neighbor.rel uip/uip-split.rel uip/uip.rel uip/uip_arp.rel uip/uiplib.rel httpd/$(BUILDDIR)/httpd.rel httpd/$(BUILDDIR)/page_impl.rel
 
 html_data.c html_data.h: html tools
 	tools/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
