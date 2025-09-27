@@ -3,19 +3,24 @@ CC_FLAGS = -mmcs51 -I. -I../httpd
 ASM = sdas8051
 AFLAGS= -plosgff
 
+BUILDDIR = output/
+
 SRCS = timer.c  uip_arp.c  uip.c  uip-fw.c  uiplib.c  uip-neighbor.c  uip-split.c
-OBJS = ${SRCS:.c=.rel}
+OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 
-all: $(OBJS)
+all: create_build_dir $(OBJS)
 
-%.rel: %.c
-	$(CC) $(CC_FLAGS) -c $<
+create_build_dir:
+	mkdir -p $(BUILDDIR)
 
-%.rel: %.asm
+$(BUILDDIR)%.rel: %.c
+	$(CC) $(CC_FLAGS) -o $@ -c $<
+
+$(BUILDDIR)%.rel: $(BUILDDIR)%.asm
 	${ASM} ${AFLAGS} $^
 
 clean:
-	rm *.ihx *.lk *.lst *.map *.mem *.rel *.rst *.sym *.bin
+	rm -r $(BUILDDIR)
 
 .PHONY: all clean
 

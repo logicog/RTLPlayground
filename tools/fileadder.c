@@ -216,8 +216,6 @@ int replaceCalls(int pos)
 
 int main(int argc, char **argv)
 {
-	char * line = NULL;
-	size_t len = 0;
 	struct arguments arguments;
 	int arg_index;
 	char tmpfilename[] = "image_XXXXXX";

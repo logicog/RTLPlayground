@@ -6,29 +6,37 @@ CC_FLAGS = -mmcs51
 ASM = sdas8051
 AFLAGS= -plosgff
 
+BUILDDIR = output/
+
 SRCS = installer.c
-OBJS = ${SRCS:.c=.rel}
+OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 
-all: updatebuilder rtlplayground.bin
+all: create_build_dir $(BUILDDIR)updatebuilder $(BUILDDIR)rtlplayground.bin
 
-updatebuilder: updatebuilder.c
+create_build_dir:
+	mkdir -p $(BUILDDIR)
+
+$(BUILDDIR)updatebuilder: updatebuilder.c
 	gcc $^ -o $@
 
-installer.rel: installer.c
-	$(CC) $(CC_FLAGS) --code-loc ${CODE_LOCATION} -c $<
+$(BUILDDIR)installer.rel: installer.c
+	$(CC) $(CC_FLAGS) --code-loc ${CODE_LOCATION} -o $@ -c $<
 
-%.rel: %.asm
-	${ASM} ${AFLAGS} $^
+$(BUILDDIR)crtstart.rel: crtstart.asm
+	$(ASM) $(AFLAGS) -o $@ $<
 
-%.rel: %.c
-	$(CC) $(CC_FLAGS) -c $<
+$(BUILDDIR)%.rel: $(BUILDDIR)%.asm
+	${ASM} ${AFLAGS} -o $@ $^
 
-rtlinstaller.ihx:  crtstart.rel $(OBJS)
+$(BUILDDIR)%.rel: %.c
+	$(CC) $(CC_FLAGS) -o $@ -c $<
+
+$(BUILDDIR)rtlinstaller.ihx: $(BUILDDIR)crtstart.rel $(OBJS)
 	$(CC) $(CC_FLAGS) -Wl-bHOME=${INSTALLER_ADDRESS} -Wl-r -o $@ $^
 
-rtlplayground.bin: rtlinstaller.ihx ../rtlplayground.bin
-	cp ../rtlplayground.bin .
-	./updatebuilder -i $< rtlplayground.bin
+$(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlinstaller.ihx ../$(BUILDDIR)/rtlplayground.bin
+	cp ../$(BUILDDIR)/rtlplayground.bin $(BUILDDIR)
+	./$(BUILDDIR)/updatebuilder -i $< $(BUILDDIR)rtlplayground.bin
 
 clean:
-	rm *.ihx *.lst *.rel *.rst *.sym *.lst *.map *.mem *.lk $(OBJS) installer.asm
+	rm -r $(BUILDDIR)
