@@ -17,6 +17,7 @@
 extern __code struct f_data f_data[];
 extern __code fcall_ptr f_calls[];
 extern __code char * __code mime_strings[];
+extern __xdata uint32_t flash_addr;
 
 // Flash buffer to optimize flash writing speed, write_len is the current filling position
 extern __xdata uint8_t flash_buf[512];
@@ -34,7 +35,6 @@ __xdata uint8_t boundary[72];
 __xdata uint8_t *content_type = 0;
 
 // Global variables holding POST state
-__xdata uint32_t uptr; // Current flash write position
 __xdata uint16_t bindex; // Current index into the boundary
 
 __xdata uint16_t short_parsed;
@@ -214,10 +214,10 @@ uint8_t stream_upload(__xdata uint16_t bptr)
 		if (!boundary[bindex]) {
 			s->tstate = TSTATE_NONE;
 			print_string("len 2: "); print_short(write_len); write_char(' ');
-			flash_write_bytes(uptr, flash_buf, write_len);
-			uptr += write_len;
+			flash_write_bytes(flash_buf, write_len);
 			write_len = 0;
 			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
+			print_string("Upload to flash done, will reset!\n");
 			reset_chip();
 			if (bptr >= uip_len)
 				return 0;
@@ -235,8 +235,7 @@ uint8_t stream_upload(__xdata uint16_t bptr)
 			flash_buf[write_len++] = p[bptr++];
 			if (write_len >= 256) {
 				print_string("len: "); print_short(write_len); write_char(' ');
-				flash_write_bytes(uptr, flash_buf, write_len);
-				uptr += write_len;
+				flash_write_bytes(flash_buf, write_len);
 				write_len = 0;
 			}
 			bindex = 0;
@@ -298,7 +297,7 @@ void handle_post(void)
 		print_string("Have content octets\n");
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
-		uptr = FIRMWARE_UPLOAD_START;
+		flash_addr = FIRMWARE_UPLOAD_START;
 		bindex = 0;
 		write_len = 0;
 		stream_upload(p - uip_appdata);
@@ -419,13 +418,15 @@ void httpd_appcall(void)
 			if (f_data[entry].mime == mime_HTML) {
 				print_string("MIME is html len is "); print_short(len_left); write_char('\n');
 				mpos = 0;
-				flash_find_mark(f_data[entry].start, len_left, "#{");
+				flash_addr = f_data[entry].start;
+				flash_find_mark("#{", len_left);
 				print_string("mpos: "); print_short(mpos); write_char('\n');
 				while (mpos != 0xffff) {
 					print_string("Entry-len:"); print_short(len_left); write_char('\n');
 					mpos = len_left - mpos;
 					print_string("l/pos: "); print_short(mpos); write_char('\n');
-					flash_read_bulk(outbuf + slen, f_data[entry].start + f_data[entry].len - len_left, mpos + CMARK_S);  // call marker is e.g. #{001}
+					flash_addr = f_data[entry].start + f_data[entry].len - len_left;
+					flash_read_bulk(outbuf + slen, mpos + CMARK_S);  // call marker is e.g. #{001}
 					slen += mpos;
 					write_char('@'); write_char(outbuf[slen + 2]); write_char(outbuf[slen + 3]); write_char(outbuf[slen + 4]);
 					fcall_ptr ptr = f_calls[(outbuf[slen + 2] - '0') * 100 + (outbuf[slen + 3]-'0') * 10 + outbuf[slen + 4] - '0'];
@@ -436,15 +437,18 @@ void httpd_appcall(void)
 					print_string("call done\n");
 					mpos += CMARK_S;
 					len_left -= mpos;
-					flash_find_mark(f_data[entry].start + mpos, len_left, "#{");
+					flash_addr = f_data[entry].start + mpos;
+					flash_find_mark("#{", len_left);
 					print_string("mpos now: "); print_short(mpos); write_char('\n');
 				}
 				print_string("At end mpos: "); print_short(mpos); write_char('\n');
-				flash_read_bulk(outbuf + slen, f_data[entry].start + f_data[entry].len - len_left, len_left);
+				flash_addr = f_data[entry].start + f_data[entry].len - len_left;
+				flash_read_bulk(outbuf + slen, len_left);
 				slen += len_left;
 			} else {
 				print_string("MIME: "); print_string(mime_strings[f_data[entry].mime]); write_char('\n');
-				flash_read_bulk(outbuf + slen, f_data[entry].start, len_left);
+				flash_addr = f_data[entry].start;
+				flash_read_bulk(outbuf + slen, len_left);
 				slen += len_left;
 			}
 		}
