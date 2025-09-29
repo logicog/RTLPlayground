@@ -16,6 +16,9 @@
 #include "uip/uip.h"
 #include "uip/uip_arp.h"
 
+// Upload Firmware to 1M
+#define FIRMWARE_UPLOAD_START 0x100000
+
 #define SYS_TICK_HZ 100
 #define SERIAL_BAUD_RATE 115200
 
@@ -1693,6 +1696,35 @@ void bootloader(void)
 	print_string("\nStarting up...\n");
 	print_string("  Flash controller\n");
 	flash_init(0);
+
+	// Check update in progress and move blocks
+	flash_read_bulk(flash_buf, FIRMWARE_UPLOAD_START, 0x100);
+	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
+		print_string("Update in progress, moving firmware to start of FLASH!\n");
+
+		__xdata uint32_t dest = 0x0;
+		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
+		// A 512kByte = 4MBit Flash has 128*8=1024 512k blocks, we copy only 120
+		for (__xdata uint16_t i=0; i < 960; i++) {
+			print_string("Writing block: ");
+			print_short(dest);
+			flash_read_bulk(flash_buf, source, 0x200);
+			write_char('\n');
+			if (!(i & 0x7))
+				flash_sector_erase(dest);
+			flash_write_bytes(dest, flash_buf, 0x200);
+			dest += 0x200;
+			source += 0x200;
+		}
+		print_string("Deleting uploaded flash image\n");
+		dest = FIRMWARE_UPLOAD_START;
+		for (register uint8_t i=0; i < 120; i++) {
+			flash_sector_erase(dest);
+			dest += 0x1000;
+		}
+		print_string("Resetting now");
+		reset_chip();
+	}
 
 	// Reset NIC
 	reg_bit_set(0x24, 2);
