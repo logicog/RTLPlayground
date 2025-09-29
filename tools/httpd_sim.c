@@ -7,6 +7,7 @@
 #include <time.h>
 #include "httpd_sim.h"
 #include <json.h>
+#include <signal.h>
 
 #define PORTS 6
 time_t last_called;
@@ -14,6 +15,25 @@ time_t last_called;
 uint64_t txG[PORTS], txB[PORTS], rxG[PORTS], rxB[PORTS];
 char txG_buff[20], txB_buff[20], rxG_buff[20], rxB_buff[20];
 char num_buff[20];
+char upload_buffer[4194304]; // 4MB
+
+char *content_type = NULL;
+char boundary[72];
+
+char is_word(char *c, char *d)
+{
+	uint8_t i = 0;
+
+	while (d[i] && (d[i] == c[i]))
+		i++;
+
+	if (d[i])
+		return 0;
+	if (c[i] != ' ' && c[i] != '\t' && c[i] != ':' && c[i] != '?' && c[i] != '=' && c[i] != '\n' && c[i] != '\r' && c[i])
+		return 0;
+	return 1;
+}
+
 
 int hasSuffix(const char *str, const char *suffix)
 {
@@ -70,13 +90,13 @@ void send_vlan(int s, int vlan)
 
 void send_status(int s)
 {
-	struct json_object *jobj, *ports, *v;
+	struct json_object *ports, *v;
 	const char *jstring;
         char *header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
 	time_t now = time(NULL);
-	now == last_called ? last_called + 1 : now; // Make sure we don't divide by 0 for rates
+	now = last_called ? last_called + 1 : now; // Make sure we don't divide by 0 for rates
 
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
@@ -92,10 +112,10 @@ void send_status(int s)
 			txB[i-1] += rate * (now - last_called) / 10000000;
 			rxB[i-1] += rate * (now - last_called) / 10000000;
 		}
-		sprintf(txG_buff, "0x%016x", txG[i-1]);
-		sprintf(txB_buff, "0x%016x", txB[i-1]);
-		sprintf(rxG_buff, "0x%016x", rxG[i-1]);
-		sprintf(rxB_buff, "0x%016x", rxB[i-1]);
+		sprintf(txG_buff, "0x%016lx", txG[i-1]);
+		sprintf(txB_buff, "0x%016lx", txB[i-1]);
+		sprintf(rxG_buff, "0x%016lx", rxG[i-1]);
+		sprintf(rxB_buff, "0x%016lx", rxB[i-1]);
 		json_object_object_add(v, "txG", json_object_new_string(txG_buff));
 		json_object_object_add(v, "txB", json_object_new_string(txB_buff));
 		json_object_object_add(v, "rxG", json_object_new_string(rxG_buff));
@@ -145,7 +165,63 @@ struct Server serverConstructor(int port, void (*launch)(struct Server *server))
     return server;
 }
 
-void launch(struct Server *server) {
+void send_not_found(int socket) {
+	char *response = "HTTP/1.1 404 Not found\r\n"
+			"Content-Type: text/html\r\n\r\n"
+			"<!DOCTYPE html> <html><head><title>Not Found</title></head>"
+			"<body><h1>Not found!</h1></html>";
+	write(socket, response, strlen(response));
+}
+
+
+void send_bad_request(int socket) {
+	char *response = "HTTP/1.1 400 Bad Request\r\n"
+			"Content-Type: text/html\r\n\r\n"
+			"<!DOCTYPE html> <html><head><title>Bad Request</title></head>"
+			"<body><h1>Bad Request!</h1></html>";
+	write(socket, response, strlen(response));
+}
+
+
+char *scan_header(char *p)
+{
+	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
+		if (!*p++)
+			break;
+		if (*p == '\n' && is_word(p + 1, "Content-Type:"))
+			content_type = p + 15;
+	}
+	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
+		printf("Found multiplart\n");
+		content_type += 30;
+		uint8_t i = 0;
+		while (content_type[i] != '\r' && content_type[i] != '\n') {
+			boundary[i + 2] = content_type[i];
+			i++;
+		}
+		// The boundary between parts is "--" + the boundary given in the header
+		boundary[0] = '-';
+		boundary[1] = '-';
+		boundary[i + 2] = 0;
+	}
+
+	return p;
+}
+
+
+char *skip_boundary(char *p)
+{
+	while (*p) {
+		if (is_word(p, boundary))
+			return p + strlen(boundary);
+		p++;
+	}
+	return p;
+}
+
+
+void launch(struct Server *server)
+{
     char buffer[BUFFER_SIZE];
     FILE *inptr;
 
@@ -153,88 +229,167 @@ void launch(struct Server *server) {
     for (int i=0; i < PORTS; i++)
 	    txG[i] = txB[i] = rxG[i] = rxB[i] = 0;
 
-    while (1) {
-        printf("=== Waiting for connection on port %d === \n", server->port);
-        int addrlen = sizeof(server->address);
-        int new_socket = accept(server->socket, (struct sockaddr*)&server->address, (socklen_t*)&addrlen);
-        ssize_t bytesRead = read(new_socket, buffer, BUFFER_SIZE - 1);
-        if (bytesRead >= 0) {
-            buffer[bytesRead] = '\0';  // Null terminate the string
-            puts(buffer);
-            
-            if (buffer[0] == 'G' && buffer[1] == 'E' && buffer[2] == 'T' && buffer[3] == ' ') {
-                printf("GET request\n");
-		if (!strncmp(&buffer[4], "/status.json", 12)) {
-                    printf("Status request\n");
-                    send_status(new_socket);
-		    goto done;
-                }
-		if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
-		    int vlan = atoi(&buffer[19]);
-                    printf("VLAN request for %d\n", vlan);
-                    send_vlan(new_socket, vlan);
-		    goto done;
-                }
-                int i = 0;
-		while (!isspace(buffer[4 + i]))
-			i++;
-		buffer[4+i] = '\0';
+	while (1) {
+		printf("=== Waiting for connection on port %d === \n", server->port);
+		int addrlen = sizeof(server->address);
+		int new_socket = accept(server->socket, (struct sockaddr*)&server->address, (socklen_t*)&addrlen);
+		ssize_t bytesRead = read(new_socket, buffer, BUFFER_SIZE - 1);
+		printf("bytesRead: %ld\n", bytesRead);
+		int filesize = 0;
+		char *mime;
 
-		printf("Serving file: >%s<\n", &buffer[5]);
-		inptr = fopen(&buffer[5], "rb");
-		if (inptr == NULL) {
-			printf("Cannot open input file %s\n", &buffer[5]);
-			char *response = "HTTP/1.1 404 Not found\r\n"
-					 "Content-Type: text/html\r\n\r\n"
-					 "<!DOCTYPE html> <html><head><title>Not found</title></head>"
-					 "<body><h1>Not found!</h1></html>";
+		if (bytesRead > 0) {
+			buffer[bytesRead] = '\0';  // Null terminate the string
+			puts(buffer);
+
+			if (is_word(buffer, "GET")) {
+				printf("GET request\n");
+				if (!strncmp(&buffer[4], "/status.json", 12)) {
+					printf("Status request\n");
+					send_status(new_socket);
+					goto done;
+				}
+				if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
+					int vlan = atoi(&buffer[19]);
+					printf("VLAN request for %d\n", vlan);
+					send_vlan(new_socket, vlan);
+					goto done;
+				}
+				int i = 0;
+				while (!isspace(buffer[4 + i]))
+					i++;
+				buffer[4+i] = '\0';
+
+				printf("Serving file: >%s<\n", &buffer[5]);
+				inptr = fopen(&buffer[5], "rb");
+				if (inptr == NULL) {
+					printf("Cannot open input file %s\n", &buffer[5]);
+					send_not_found(new_socket);
+					goto done;
+				}
+
+				mime = getMime(&buffer[5]);
+				printf("MIME type: %s\n", mime);
+
+				fseek(inptr, 0L, SEEK_END);
+				filesize = ftell(inptr);
+				printf("Filesize: %d\n", filesize);
+				rewind(inptr);
+				printf("Input file size: %d\n", filesize);
+				if (filesize > BUFFER_SIZE) {
+					printf("File too large.\n");
+					goto done;
+				}
+				size_t bytes_read = fread(buffer, 1, sizeof(buffer), inptr);
+
+				printf("Bytes read: %ld\n", bytes_read);
+
+				if (bytes_read != filesize) {
+					printf("Error reading input file.\n");
+					goto done;
+				}
+				fclose(inptr);
+			} else if (is_word(buffer, "POST")) {
+				printf("POST request\n");
+				// Find end of request header
+				char *p = buffer;
+				boundary[0] ='\0';
+				p = scan_header(p);
+				printf("Boundary: >%s<\n", boundary);
+				if (!*p || !content_type) {
+					printf("Bad request, no content type!\n");
+					send_bad_request(new_socket);
+					goto done;
+				}
+
+				printf("Bytes read %ld\n", bytesRead);
+				if (is_word(&buffer[5], "/upload")) {
+					printf("POST upload request\n");
+					if (!boundary[0]) {
+						printf("Bad request, no boundary!\n");
+						send_bad_request(new_socket);
+						goto done;
+					}
+					// We skip the intial parts as part of the header
+					do {
+						p = skip_boundary(p);
+						if (!*p)
+							goto bad_request;
+						p = scan_header(p);
+						if (!*p || !content_type)
+							goto bad_request;
+					} while (!is_word(content_type, "application/octet-stream"));
+					printf("Have content: >%s<\n", content_type);
+
+					char *uptr = upload_buffer;
+					int bindex = 0;
+					int bptr = p - buffer;
+					do {
+						if (bptr >= bytesRead) {
+							bptr = 0;
+							bytesRead = read(new_socket, buffer, BUFFER_SIZE - 1);
+							printf("bytesRead: %ld\n", bytesRead);
+							if (!bytesRead)
+								break;
+						}
+						if (!boundary[bindex])
+							break;
+						if (buffer[bptr] == boundary[bindex]) {
+							bptr++;
+							bindex++;
+						} else {
+							for (int i = 0; i < bindex; i++)
+								*uptr++ = boundary[i];
+							*uptr++ = buffer[bptr++];
+							bindex = 0;
+						}
+					} while(1);
+					printf("Done reading\n");
+					printf("%s", upload_buffer);
+					if (!bindex || boundary[bindex])
+						goto bad_request;
+					char *response = "HTTP/1.1 200 OK\r\n"
+							"Content-Type: text/html\r\n\r\n"
+							"<!DOCTYPE html> <html><head><title>Upload OK</title></head>"
+							"<body><h1>File uploaded successully</h1></html>";
+					write(new_socket, response, strlen(response));
+					goto done;
+				}
+			}
+			char *response = "HTTP/1.1 200 OK\r\n"
+					"Content-Type: ";
 			write(new_socket, response, strlen(response));
-			goto done;
+
+			write(new_socket, mime, strlen(mime));
+			response = "; charset=UTF-8\r\n\r\n";
+			write(new_socket, response, strlen(response));
+			if (filesize)
+				write(new_socket, buffer, filesize);
+		} else if (bytesRead == 0) {
+			printf("EOF\n");
+			continue;
+		} else {
+			perror("Error reading buffer, nothing read...\n");
 		}
-
-		char *mime =getMime(&buffer[5]);
-		printf("MIME type: %s\n", mime);
-
-		fseek(inptr, 0L, SEEK_END);
-		int filesize = ftell(inptr);
-		printf("Filesize: %d\n", filesize);
-		rewind(inptr);
-		printf("Input file size: %ld\n", filesize);
-		if (filesize > BUFFER_SIZE) {
-			printf("File too large.\n");
-			goto done;
-		}
-		size_t bytes_read = fread(buffer, 1, sizeof(buffer), inptr);
-
-		printf("Bytes read: %ld\n", bytes_read);
-
-		if (bytes_read != filesize) {
-			printf("Error reading input file.\n");
-			goto done;
-		}
-		fclose(inptr);
-		char *response = "HTTP/1.1 200 OK\r\n"
-				"Content-Type: ";
-		write(new_socket, response, strlen(response));
 		
-		write(new_socket, mime, strlen(mime));
-		response = "; charset=UTF-8\r\n\r\n";
-		write(new_socket, response, strlen(response));
-
-		write(new_socket, buffer, filesize);
-            }
-        } else {
-            perror("Error reading buffer...\n");
-        }
-	
 done:
-        close(new_socket);
-    }
+		close(new_socket);
+		continue;
+bad_request:
+		printf("Bad request!\n");
+		send_bad_request(new_socket);
+		close(new_socket);
+	}
 }
 
 
-int main() {
-    struct Server server = serverConstructor(8080, launch);
-    server.launch(&server);
-    return 0;
+int main()
+{
+	// Make sure we can handle writes to a dead client without a signal handler
+	signal(SIGPIPE, SIG_IGN);
+
+	struct Server server = serverConstructor(8080, launch);
+	server.launch(&server);
+
+	return 0;
 }

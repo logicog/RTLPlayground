@@ -514,7 +514,7 @@ void cmd_parser(void) __banked
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
 			print_string("\nFLASH erase\n");
-			flash_block_erase(0x20000);
+			flash_sector_erase(0x20000);
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'w') {
 			print_string("\nFLASH write\n");
