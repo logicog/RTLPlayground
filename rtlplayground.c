@@ -70,7 +70,7 @@ extern __xdata uint8_t gpio_last_value[8];
 __code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
 __code uint8_t * __code hex = "0123456789abcdef";
 
-__xdata uint8_t flash_buf[256];
+__xdata uint8_t flash_buf[512];
 
 // NIC buffers for packet RX/TX
 __xdata uint8_t rx_headers[16]; // Packet header(s) on RX
@@ -195,9 +195,6 @@ uint16_t strlen_x(register __xdata const char *s)
 	uint16_t l = 0;
 	while (s[l])
 		l++;
-	write_char(';');
-	print_short(l);
-	write_char(';');
 	return l;
 }
 
@@ -761,12 +758,14 @@ void tcpip_output(void)
 	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 	ring_ptr |= sfr_data[3];
 
+#ifdef RXTXDBG
 	print_string("TX: \n");
 	for (uint8_t i = 0; i < 120; i++) {
 		print_byte(uip_buf[i]);
 		write_char(' ');
 	}
 	write_char('\n');
+#endif
 
 	// Move data over from xmem buffer to ASIC side using DMA
 	nic_tx_packet(ring_ptr);
