@@ -32,7 +32,9 @@ extern volatile __xdata uint8_t sfr_data[4];
 extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
 
-extern __xdata uint8_t flash_buf[256];
+extern __xdata uint8_t flash_buf[512];
+extern __xdata uint32_t flash_addr;
+
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 __xdata uint8_t gpio_last_value[8] = { 0 };
@@ -495,7 +497,8 @@ void cmd_parser(void) __banked
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
 			print_string("\nDUMPING FLASH\n");
-			flash_dump(0, 255);
+			flash_addr = 0;
+			flash_dump(255);
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
 			print_string("\nJEDEC ID\n");
@@ -510,7 +513,8 @@ void cmd_parser(void) __banked
 			print_string("\nFLASH FAST MODE\n");
 			flash_init(1);
 			print_string("\nNow dumping flash\n");
-			flash_dump(0, 255);
+			flash_addr = 0;
+			flash_dump(255);
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
 			print_string("\nFLASH erase\n");
@@ -520,7 +524,8 @@ void cmd_parser(void) __banked
 			print_string("\nFLASH write\n");
 			for (uint8_t i = 0; i < 20; i++)
 				flash_buf[i] = greeting[i];
-			flash_write_bytes(0x20000, flash_buf, 20);
+			flash_addr = 0x20000;
+			flash_write_bytes(flash_buf, 20);
 		}
 		if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
 			print_string("\nPORT ");
@@ -625,10 +630,12 @@ void execute_config(void) __banked
 	__xdata uint32_t pos = CONFIG_START;
 	__xdata uint16_t len_left = CONFIG_LEN;
 	do {
-		flash_find_mark(pos, len_left, "\n");
+		flash_addr = pos;
+		flash_find_mark("\n", len_left);
 		if (mpos != 0xffff) {
 			__xdata uint16_t len = len_left - mpos;
-			flash_read_bulk(&cmd_buffer[0], pos, len > SBUF_SIZE ? SBUF_SIZE : len);
+			flash_addr = pos;
+			flash_read_bulk(&cmd_buffer[0], len > SBUF_SIZE ? SBUF_SIZE : len);
 			cmd_buffer[len > SBUF_SIZE ? SBUF_SIZE : len] = '\0';
 			len++;
 			pos += len;

@@ -256,8 +256,7 @@ void flash_write_enable(void)
 
 	SFR_FLASH_TCONF = 0x18;
 	SFR_FLASH_CMD = 6;
-//	The following is explicitly set for SIO, is this necessary?:
-	SFR_FLASH_DUMMYCYCLES = 0;
+	SFR_FLASH_DUMMYCICLES = 0;
 	SFR_FLASH_MODEB = 0;
 
 	SFR_FLASH_EXEC_GO = 1;

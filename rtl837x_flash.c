@@ -10,6 +10,7 @@
 __xdata uint8_t dio_enabled;
 __xdata uint8_t markbuf[16];
 extern __xdata uint16_t mpos;
+__xdata uint32_t flash_addr;
 
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
@@ -36,7 +37,7 @@ void flash_configure_mmio(void)
 	}
 
 	SFR_FLASH_MODEB = 0x0;
-	SFR_FLASH_CMD_R = 0xb;	// Default is Single IO
+	SFR_FLASH_CMD_R = CMD_FREAD; // Default is Single IO
 	SFR_FLASH_DUMMYCYCLES = 8;
 }
 
@@ -184,7 +185,7 @@ void flash_write_enable(void)
 }
 
 
-void flash_dump(register uint32_t addr, register uint8_t len)
+void flash_dump(uint8_t len)
 {
 	short status;
 	do {
@@ -205,10 +206,10 @@ void flash_dump(register uint32_t addr, register uint8_t len)
 	// Read 4 bytes
 	SFR_FLASH_TCONF = 4;
 	while (len) {
-		SFR_FLASH_ADDR16 = addr >> 16;
-		SFR_FLASH_ADDR8 = addr >> 8;
-		SFR_FLASH_ADDR0 = addr;
-		addr += 4;
+		SFR_FLASH_ADDR16 = flash_addr >> 16;
+		SFR_FLASH_ADDR8 = flash_addr >> 8;
+		SFR_FLASH_ADDR0 = flash_addr;
+		flash_addr += 4;
 
 		SFR_FLASH_EXEC_GO = 1;
 		while(SFR_FLASH_EXEC_BUSY);
@@ -232,7 +233,7 @@ void flash_dump(register uint32_t addr, register uint8_t len)
  * Reads bulk data of length len from the flash memory starging at address src
  * and writes the data into a buffer pointed to by dst in XMEM
  */
-void flash_read_bulk(register __xdata uint8_t *dst, __xdata uint32_t src, register uint16_t len)
+void flash_read_bulk(__xdata uint8_t *dst, register uint16_t len)
 {
 	short status;
 	do {
@@ -252,10 +253,10 @@ void flash_read_bulk(register __xdata uint8_t *dst, __xdata uint32_t src, regist
 	// Read 4 bytes
 	SFR_FLASH_TCONF = 4;
 	while (len) {
-		SFR_FLASH_ADDR16 = src >> 16;
-		SFR_FLASH_ADDR8 = src >> 8;
-		SFR_FLASH_ADDR0 = src;
-		src += 4;
+		SFR_FLASH_ADDR16 = flash_addr >> 16;
+		SFR_FLASH_ADDR8 = flash_addr >> 8;
+		SFR_FLASH_ADDR0 = flash_addr;
+		flash_addr += 4;
 
 		SFR_FLASH_EXEC_GO = 1;
 		while(SFR_FLASH_EXEC_BUSY);
@@ -276,9 +277,9 @@ void flash_read_bulk(register __xdata uint8_t *dst, __xdata uint32_t src, regist
 }
 
 
-void flash_find_mark(__xdata uint32_t src, register uint16_t len, __code uint8_t *mark)
+void flash_find_mark(__code uint8_t *mark, __xdata uint16_t len)
 {
-	uint16_t status;
+	__xdata uint16_t status;
 	do {
 		status = flash_read_status();
 	} while (status & 0x1);
@@ -294,9 +295,9 @@ void flash_find_mark(__xdata uint32_t src, register uint16_t len, __code uint8_t
 		SFR_FLASH_DUMMYCYCLES = 8;	// Add 8 dummy clocks after read?
 	}
 
-	uint8_t i = 0;
-	uint8_t l = 0;
-	uint8_t k;
+	__xdata uint8_t i = 0;
+	__xdata uint8_t l = 0;
+	__xdata uint8_t k;
 
 	// Calculate the length
 	while (mark[i++])
@@ -310,10 +311,10 @@ void flash_find_mark(__xdata uint32_t src, register uint16_t len, __code uint8_t
 	i = 0;
 	SFR_FLASH_TCONF = 4;
 	while (len) {
-		SFR_FLASH_ADDR16 = src >> 16;
-		SFR_FLASH_ADDR8 = src >> 8;
-		SFR_FLASH_ADDR0 = src;
-		src += 4;
+		SFR_FLASH_ADDR16 = flash_addr >> 16;
+		SFR_FLASH_ADDR8 = flash_addr >> 8;
+		SFR_FLASH_ADDR0 = flash_addr;
+		flash_addr += 4;
 
 		SFR_FLASH_EXEC_GO = 1;
 		while(SFR_FLASH_EXEC_BUSY);
@@ -408,27 +409,27 @@ void flash_sector_erase(uint32_t addr)
 	while (flash_read_status() & 0x1);
 
 	flash_configure_mmio();
-
 }
 
 
-void flash_write_bytes(__xdata uint32_t addr, __xdata uint8_t *ptr, uint16_t len)
+void flash_write_bytes(__xdata uint8_t *ptr, __xdata uint16_t len)
 {
-	uint8_t exit_loop = 0;
+	__xdata uint8_t exit_loop = 0;
 
+	write_char('>'); print_long(flash_addr); write_char(':'); print_short(len); write_char('-'); print_byte(*ptr); write_char('\n');
 	while(1) {
 		flash_write_enable();
 		SFR_FLASH_CMD = CMD_PAGE_PROGRAM;
-		SFR_FLASH_TCONF = 0x40 | 8 | 4; // Bytes written is is 4, 8 enables write, 0x40 is unkown
+		SFR_FLASH_TCONF = 0x40 | 8 | 4; // Bytes written is 4, 8 enables write, 0x40 is unknown
 		// Last transfer?
 		if (len < 5) {
 			SFR_FLASH_TCONF = 8 | len;
 			exit_loop = 1;
 		}
 
-		SFR_FLASH_ADDR16 = addr >> 16;
-		SFR_FLASH_ADDR8 = addr >> 8;
-		SFR_FLASH_ADDR0 = addr;
+		SFR_FLASH_ADDR16 = flash_addr >> 16;
+		SFR_FLASH_ADDR8 = flash_addr >> 8;
+		SFR_FLASH_ADDR0 = flash_addr;
 		SFR_FLASH_DATA0 = *ptr++;
 		SFR_FLASH_DATA8 = *ptr++;
 		SFR_FLASH_DATA16 = *ptr++;
@@ -439,7 +440,7 @@ void flash_write_bytes(__xdata uint32_t addr, __xdata uint8_t *ptr, uint16_t len
 		if (exit_loop)
 			break;
 		len -= 4;
-		addr += 4;
+		flash_addr += 4;
 	}
 
 	while (flash_read_status() & 0x1);
