@@ -628,24 +628,44 @@ void cmd_parser(void) __banked
 	}
 }
 
+#define FLASH_READ_BURST_SIZE 0x100;
 void execute_config(void) __banked
 {
-	__xdata uint32_t pos = CONFIG_START;
-	__xdata uint16_t len_left = CONFIG_LEN;
-	do {
-		flash_addr = pos;
-		flash_find_mark("\n", len_left);
-		if (mpos != 0xffff) {
-			__xdata uint16_t len = len_left - mpos;
-			flash_addr = pos;
-			flash_read_bulk(&cmd_buffer[0], len > SBUF_SIZE ? SBUF_SIZE : len);
-			cmd_buffer[len > SBUF_SIZE ? SBUF_SIZE : len] = '\0';
-			len++;
-			pos += len;
-			len_left -= len;
-			if (len && !cmd_tokenize())
-				cmd_parser();
-		}
-	} while (mpos != 0xffff);
-}
+	memcpyc(flash_buf, "test", 5);
+	print_string_x(flash_buf);
 
+    __xdata uint32_t pos = CONFIG_START;
+    __xdata uint16_t len_left = CONFIG_LEN;
+ 	do {
+		flash_region.addr = pos;
+		flash_region.len = FLASH_READ_BURST_SIZE;
+        write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
+
+		flash_read_bulk(flash_buf);
+
+		uint8_t cfg_idx = 0;
+		uint8_t c = 0;
+		do {
+			for (uint8_t cmd_idx = 0; cmd_idx < (SBUF_SIZE - 1); cmd_idx++) {
+				c = flash_buf[cfg_idx++];
+				print_byte(c);
+
+				if (c == 0 || c == '\n') {
+					cmd_buffer[cmd_idx] = '\0';
+					write_char('\n'); write_char('#');  print_short(cfg_idx); write_char('-'); print_short(cmd_idx); write_char('-'); print_string_x(cmd_buffer); write_char('\n');
+					if (cmd_idx && !cmd_tokenize())
+						cmd_parser();
+					if (c == 0)
+						return;
+					break;
+				}
+
+				cmd_buffer[cmd_idx] = c;
+			}
+			write_char('N');
+		} while(cfg_idx);
+
+		len_left -= FLASH_READ_BURST_SIZE;
+		pos += FLASH_READ_BURST_SIZE;
+    } while(len_left);
+}

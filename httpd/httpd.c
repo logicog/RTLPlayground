@@ -15,7 +15,6 @@
 #pragma codeseg BANK1
 
 extern __code struct f_data f_data[];
-extern __code fcall_ptr f_calls[];
 extern __code char * __code mime_strings[];
 extern __xdata struct flash_region_t flash_region;
 
@@ -407,6 +406,8 @@ void httpd_appcall(void)
 			print_string("Not file entry\n");
 			if (!strcmp(q, "/status.json")) {
 				send_status();
+			} else if (!strcmp(q, "/information.json")) {
+				send_basic_info();
 			} else if (!strcmp(q, "/vlan.json")) {
 				parse_short(q + 15);
 				send_vlan(short_parsed);
@@ -419,47 +420,14 @@ void httpd_appcall(void)
 			print_string("Have entry\n");
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
-			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=2592000");
-			slen += strtox(outbuf + slen, "\r\n\r\n");
+			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=2592000\r\n\r\n");
 			len_left = f_data[entry].len;
-			if (f_data[entry].mime == mime_HTML) {
-				print_string("MIME is html len is "); print_short(len_left); write_char('\n');
-				mpos = 0;
-				flash_addr = f_data[entry].start;
-				flash_find_mark("#{", len_left);
-				print_string("mpos: "); print_short(mpos); write_char('\n');
-				while (mpos != 0xffff) {
-					print_string("Entry-len:"); print_short(len_left); write_char('\n');
-					mpos = len_left - mpos;
-					print_string("l/pos: "); print_short(mpos); write_char('\n');
-					flash_addr = f_data[entry].start + f_data[entry].len - len_left;
-					flash_read_bulk(outbuf + slen, mpos + CMARK_S);  // call marker is e.g. #{001}
-					slen += mpos;
-					write_char('@'); write_char(outbuf[slen + 2]); write_char(outbuf[slen + 3]); write_char(outbuf[slen + 4]);
-					fcall_ptr ptr = f_calls[(outbuf[slen + 2] - '0') * 100 + (outbuf[slen + 3]-'0') * 10 + outbuf[slen + 4] - '0'];
-					slen -= CMARK_S; // Overwrite marker with generated html
-					print_string("Call location is: "); print_short((uint16_t)ptr); write_char('\n');
-//					f_calls[outbuf[slen + 2] * 100 + outbuf[slen + 3] * 10 + outbuf[slen + 4]]();
-					ptr();
-					print_string("call done\n");
-					mpos += CMARK_S;
-					len_left -= mpos;
-					flash_region.addr = f_data[entry].start + mpos;
-					flash_addr = f_data[entry].start + f_data[entry].len - len_left;
-					flash_find_mark("#{");
-					print_string("mpos now: "); print_short(mpos); write_char('\n');
-				}
-				print_string("At end mpos: "); print_short(mpos); write_char('\n');
-				flash_addr = f_data[entry].start + f_data[entry].len - len_left;
-				flash_read_bulk(outbuf + slen, len_left);
-				slen += len_left;
-			} else {
-				print_string("MIME: "); print_string(mime_strings[f_data[entry].mime]); write_char('\n');
-				flash_region.addr = f_data[entry].start;
-				flash_region.len = len_left;
-				flash_read_bulk(outbuf + slen, len_left);
-				slen += len_left;
-			}
+
+			print_string("MIME: "); print_string(mime_strings[f_data[entry].mime]); write_char('\n');
+			flash_region.addr = f_data[entry].start;
+			flash_region.len = len_left;
+			flash_read_bulk(outbuf + slen);
+			slen += len_left;
 		}
 do_send:
 		print_string("slen: "); print_short(slen); write_char('\n');

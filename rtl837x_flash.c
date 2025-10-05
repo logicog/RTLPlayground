@@ -16,6 +16,7 @@ __xdata struct flash_region_t flash_region;
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
 #define CMD_PAGE_PROGRAM	0x02
+#define CMD_READ		0x03
 #define CMD_WRITE_ENABLE	0x06
 #define CMD_FREAD		0x0b
 #define CMD_SECTOR_ERASE	0x20
@@ -248,9 +249,11 @@ void flash_read_bulk(__xdata uint8_t *dst)
 		SFR_FLASH_DUMMYCYCLES = 4;
 	} else {
 		SFR_FLASH_MODEB = 0x0;
-		SFR_FLASH_CMD_R = CMD_FREAD;	// Fast read
-		SFR_FLASH_DUMMYCYCLES = 8;	// Add 8 dummy clocks after read?
+		SFR_FLASH_CMD_R = CMD_READ;
+		SFR_FLASH_DUMMYCYCLES = 0;
 	}
+
+
 	// Read 4 bytes
 	while (1) {
 		SFR_FLASH_ADDR16 = flash_region.addr >> 16;
@@ -277,88 +280,6 @@ void flash_read_bulk(__xdata uint8_t *dst)
 			break;
 		flash_region.len -= 4;
 	}
-}
-
-
-void flash_find_mark(__code uint8_t *mark, __xdata uint16_t len)
-{
-	__xdata uint16_t status;
-	do {
-		status = flash_read_status();
-	} while (status & 0x1);
-
-	// Set fast read mode
-	if (dio_enabled) {
-		SFR_FLASH_MODEB = 0x18;
-		SFR_FLASH_CMD_R = CMD_FREAD_DIO;
-		SFR_FLASH_DUMMYCYCLES = 4;
-	} else {
-		SFR_FLASH_MODEB = 0x0;
-		SFR_FLASH_CMD_R = CMD_FREAD;	// Fast read
-		SFR_FLASH_DUMMYCYCLES = 8;	// Add 8 dummy clocks after read?
-	}
-
-	__xdata uint8_t i = 0;
-	__xdata uint8_t l = 0;
-	__xdata uint8_t k;
-
-	// Calculate the length
-	while (mark[i++])
-		l++;
-
-	if (l >= 12) {
-		mpos = 0xffff;
-		return;
-	}
-
-	i = 0;
-	SFR_FLASH_TCONF = 4;
-	while (len) {
-		SFR_FLASH_ADDR16 = flash_addr >> 16;
-		SFR_FLASH_ADDR8 = flash_addr >> 8;
-		SFR_FLASH_ADDR0 = flash_addr;
-		flash_addr += 4;
-
-		SFR_FLASH_EXEC_GO = 1;
-		while(SFR_FLASH_EXEC_BUSY);
-		markbuf[i++] = SFR_FLASH_DATA0;
-		if (len != 1) {
-			markbuf[i++] = SFR_FLASH_DATA8;
-			if (len != 2) {
-				markbuf[i++] = SFR_FLASH_DATA16;
-				if (len != 3) {
-					markbuf[i++] = SFR_FLASH_DATA24;
-				} else {
-					markbuf[i++] = 0;
-				}
-			} else {
-				markbuf[i++] = 0;
-			}
-		} else {
-			markbuf[i++] = 0;
-		}
-
-		len -= len >= 4? 4 : len;
-		uint8_t j = 0;
-		k = (i + 13 - l) & 0xf;
-		i &= 0xf;
-		while (mark[j] && (k != ((i) & 0xf))) {
-			if (mark[j] != markbuf[k]) {
-				k = k - j + 17;
-				j = 0;
-			} else {
-				k++;
-				j++;
-			}
-			k &= 0xf;
-		}
-		if (!mark[j]) {
-			mpos =  len + l + ((4 - ( k & 0x3)) & 0x3);
-			return;
-		}
-	}
-	mpos = 0xffff;
-	return;
 }
 
 

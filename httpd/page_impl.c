@@ -27,6 +27,7 @@ extern __xdata uint8_t isRTL8373;
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
+__code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 
 /*  Convert only the lower nibble to ascii HEX char.
     For convenience the upper nibble is masked out.
@@ -133,40 +134,40 @@ void reg_to_html(register uint16_t reg)
 	sfr_data_to_html();
 }
 
-
-uint16_t html_index(void)
+void send_basic_info(void)
 {
-	print_string("html_index called\n");
-	slen += strtox(outbuf + slen, "<tr><td>IP Address</td><td>");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	print_string("send_basic_info called\n");
+	slen += strtox(outbuf + slen, "{\"ip_address\":\"");
 	itoa_html(uip_hostaddr[0]); char_to_html('.');
 	itoa_html(uip_hostaddr[0] >> 8); char_to_html('.');
 	itoa_html(uip_hostaddr[1]); char_to_html('.');
 	itoa_html(uip_hostaddr[1] >> 8);
-	slen += strtox(outbuf + slen, "</td></tr><tr><td>Gateway</td><td>");
+	slen += strtox(outbuf + slen, "\",\"ip_gateway\":\"");
 	itoa_html(uip_draddr[0]); char_to_html('.');
 	itoa_html(uip_draddr[0] >> 8); char_to_html('.');
 	itoa_html(uip_draddr[1]); char_to_html('.');
 	itoa_html(uip_draddr[1] >> 8);
-	slen += strtox(outbuf + slen, "</td></tr><tr><td>Netmask</td><td>");
+	slen += strtox(outbuf + slen, "\",\"ip_netmask\":\"");
 	itoa_html(uip_netmask[0]); char_to_html('.');
 	itoa_html(uip_netmask[0] >> 8); char_to_html('.');
 	itoa_html(uip_netmask[1]); char_to_html('.');
 	itoa_html(uip_netmask[1] >> 8);
-	slen += strtox(outbuf + slen, "</td></tr><tr><td>MAC Address</td><td>");
+	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[2]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[3]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[4]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[5]);
-	slen += strtox(outbuf + slen, "</td></tr>");
-	return 0;
+	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"v0.1-ge4c48586\",\"hw_ver\":\"SWGT024-V2.0\"}");
+	// slen += strtox(outbuf + slen, "\"}");
 }
 
 
 void send_vlan(__xdata uint16_t vlan)
 {
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	print_string("sending VLAN\n");
 	//{"members":"0x00060011"}
 	slen += strtox(outbuf + slen, "{\"members\":\"0x");
@@ -187,7 +188,7 @@ void send_vlan(__xdata uint16_t vlan)
 void send_counters(char port)
 {
 	print_string("send_counters called: "); print_byte(port); write_char('\n');
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	print_string("sending counters\n");
 
 	port--;
@@ -209,7 +210,7 @@ void send_counters(char port)
 
 void send_status(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	print_string("sending status\n");
 	char_to_html('[');
 

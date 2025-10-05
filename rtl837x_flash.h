@@ -10,5 +10,4 @@ void flash_read_security(uint32_t addr, uint8_t len);
 void flash_sector_erase(uint32_t addr);
 void flash_read_bulk(__xdata uint8_t *dst);
 void flash_write_bytes(__xdata uint8_t *ptr);
-void flash_find_mark( __code uint8_t *mark, __xdata uint16_t len);
 #endif

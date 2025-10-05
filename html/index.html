@@ -1,24 +1,35 @@
 <!DOCTYPE html>
 <html>
-  <script src="/ports.js"></script>
-  <script src="/main.js"></script>
-  <head>
-    <link rel="stylesheet" href="style.css">
-    <title>FreeSwitchOS Main Page</title>
-  </head>
-  <body>
-     <ul> <li><a href="index.html">Overview</a></li> <li><a href="stat.html">Port Statistics</a></li>
-     <li><a href="vlan.html">VLAN</a></li> <li><a href="mirror.html">Mirroring</a></li>
-     <li><a href="trunk.html">Port Aggregation</a></li>
-     <li><a href="mirror.html">Mirroring</a></li>
-     <li><a href="update.html">Firmware Update</a></li> </ul>
-    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+<script src="/ports.js"></script>
+<script src="/main.js"></script>
+<script src="/main_info.js"></script>
+
+<head>
+  <link rel="stylesheet" href="style.css">
+  <title>FreeSwitchOS Main Page</title>
+</head>
+
+<body>
+  <ul>
+    <li><a href="index.html">Overview</a></li>
+    <li><a href="stat.html">Port Statistics</a></li>
+    <li><a href="vlan.html">VLAN</a></li>
+    <li><a href="mirror.html">Mirroring</a></li>
+    <li><a href="trunk.html">Port Aggregation</a></li>
+    <li><a href="mirror.html">Mirroring</a></li>
+    <li><a href="update.html">Firmware Update</a></li>
+  </ul>
+  <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
     <h1>Switch Configuration</h1>
-    <table>
-      <tr> <th>Setting</th> <th></th> </tr>
-      #{html_index}
+    <table id="infoTable">
+      <tr>
+        <th colspan="2">Settings</th>
+      </tr>
+      <tbody>
+      </tbody>
     </table>
-    </div>
-  </body>
+  </div>
+</body>
+
 </html>
