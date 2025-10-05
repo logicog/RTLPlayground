@@ -165,7 +165,7 @@ void send_basic_info(void)
 }
 
 
-void send_vlan(__xdata uint16_t vlan)
+void send_vlan(uint16_t vlan)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	print_string("sending VLAN\n");

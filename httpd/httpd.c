@@ -61,9 +61,9 @@ void httpd_init(void) __banked
 }
 
 
-uint8_t find_entry(__xdata uint8_t * __xdata e)
+uint8_t find_entry(__xdata uint8_t *e)
 {
-	__xdata uint8_t i, j;
+	uint8_t i, j;
 
 	for (i = 0; f_data[i].len; i++) {
 		j = 0;
@@ -78,9 +78,9 @@ uint8_t find_entry(__xdata uint8_t * __xdata e)
 }
 
 
-char strcmp(__xdata uint8_t * __xdata c, __code uint8_t * __xdata d)
+char strcmp(__xdata uint8_t *c, __code uint8_t * __xdata d)
 {
-	register uint8_t i = 0;
+	uint8_t i = 0;
 
 	while (d[i] && (d[i] == c[i]))
 		i++;
@@ -93,9 +93,9 @@ char strcmp(__xdata uint8_t * __xdata c, __code uint8_t * __xdata d)
 }
 
 
-char is_word(__xdata uint8_t * __xdata c, __code uint8_t * __xdata d)
+char is_word(__xdata uint8_t *c, __code uint8_t * __xdata d)
 {
-	register uint8_t i = 0;
+	uint8_t i = 0;
 
 	while (d[i] && (d[i] == c[i]))
 		i++;
@@ -108,7 +108,7 @@ char is_word(__xdata uint8_t * __xdata c, __code uint8_t * __xdata d)
 }
 
 
-char is_word_x(__xdata uint8_t * __xdata c, __xdata uint8_t *d)
+char is_word_x(__xdata uint8_t *c, __xdata uint8_t *d)
 {
 	register uint8_t i = 0;
 
@@ -197,7 +197,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
  * Input: the current position in the TCP buffer (uip_appdata)
  * Returns 1: More data to read, 0: Upload complete, all parts reads
  */
-uint8_t stream_upload(__xdata uint16_t bptr)
+uint8_t stream_upload(uint16_t bptr)
 {
 	__xdata uint8_t *p = uip_appdata;
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
@@ -261,11 +261,11 @@ void handle_post(void)
 	// Find end of request path
 	while (*p && !is_separator(*p))
 		p++;
-	*p = '\0';
+	*p++ = '\0';
 
 	// Find end of request header
 	boundary[0] ='\0';
-	p = scan_header(p + 1);
+	p = scan_header(p);
 	print_string("Boundary: >"); print_string_x(boundary); print_string("<\n");
 	if (!*p || !content_type) {
 		print_string("Bad Request!\n");
