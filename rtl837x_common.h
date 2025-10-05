@@ -50,6 +50,11 @@ struct uip_eth_addr {
    uint8_t addr[6];
 };
 
+struct flash_region_t {
+    uint32_t addr;
+    uint16_t len;
+};
+
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
 

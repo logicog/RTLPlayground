@@ -70,7 +70,7 @@ __xdata uint8_t sfr_data[4];
 extern __xdata uint8_t cmd_buffer[SBUF_SIZE];
 extern __xdata uint8_t gpio_last_value[8];
 
-extern __xdata uint32_t flash_addr;
+extern __xdata struct flash_region_t flash_region;
 
 __code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
 __code uint8_t * __code hex = "0123456789abcdef";
@@ -1700,8 +1700,10 @@ void bootloader(void)
 	flash_init(0);
 
 	// Check update in progress and move blocks
-	flash_addr = FIRMWARE_UPLOAD_START;
-	flash_read_bulk(flash_buf, 0x100);
+	flash_region.addr = FIRMWARE_UPLOAD_START;
+	flash_region.len = 0x100;
+	flash_read_bulk(flash_buf);
+
 	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
 		print_string("Update in progress, moving firmware to start of FLASH!\n");
 
@@ -1711,13 +1713,15 @@ void bootloader(void)
 		for (__xdata uint16_t i=0; i < 960; i++) {
 			print_string("Writing block: ");
 			print_short(dest);
-			flash_addr = source;
-			flash_read_bulk(flash_buf, 0x200);
+			flash_region.addr = source;
+			flash_region.len = 0x200;
+			flash_read_bulk(flash_buf);
 			write_char('\n');
 			if (!(i & 0x7))
 				flash_sector_erase(dest);
-			flash_addr = dest;
-			flash_write_bytes(flash_buf, 0x200);
+			flash_region.addr = dest;
+			flash_region.len = 0x200;
+			flash_write_bytes(flash_buf);
 			dest += 0x200;
 			source += 0x200;
 		}

@@ -33,7 +33,7 @@ extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
 
 extern __xdata uint8_t flash_buf[512];
-extern __xdata uint32_t flash_addr;
+extern __xdata struct flash_region_t flash_region;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
@@ -497,7 +497,8 @@ void cmd_parser(void) __banked
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
 			print_string("\nDUMPING FLASH\n");
-			flash_addr = 0;
+			flash_region.addr = 0;
+			flash_region.len = 255;
 			flash_dump(255);
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
@@ -513,7 +514,8 @@ void cmd_parser(void) __banked
 			print_string("\nFLASH FAST MODE\n");
 			flash_init(1);
 			print_string("\nNow dumping flash\n");
-			flash_addr = 0;
+			flash_region.addr = 0;
+			flash_region.len = 255;
 			flash_dump(255);
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
@@ -524,8 +526,9 @@ void cmd_parser(void) __banked
 			print_string("\nFLASH write\n");
 			for (uint8_t i = 0; i < 20; i++)
 				flash_buf[i] = greeting[i];
-			flash_addr = 0x20000;
-			flash_write_bytes(flash_buf, 20);
+			flash_region.addr = 0x200000;
+			flash_region.len = 20;
+			flash_write_bytes(flash_buf);
 		}
 		if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
 			print_string("\nPORT ");
