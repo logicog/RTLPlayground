@@ -1717,8 +1717,10 @@ void bootloader(void)
 			flash_region.len = 0x200;
 			flash_read_bulk(flash_buf);
 			write_char('\n');
-			if (!(i & 0x7))
-				flash_sector_erase(dest);
+			if (!(i & 0x7)) {
+				flash_region.addr = dest;
+				flash_sector_erase();
+			}
 			flash_region.addr = dest;
 			flash_region.len = 0x200;
 			flash_write_bytes(flash_buf);
@@ -1728,7 +1730,8 @@ void bootloader(void)
 		print_string("Deleting uploaded flash image\n");
 		dest = FIRMWARE_UPLOAD_START;
 		for (register uint8_t i=0; i < 120; i++) {
-			flash_sector_erase(dest);
+			flash_region.addr = dest;			
+			flash_sector_erase();
 			dest += 0x1000;
 		}
 		print_string("Resetting now");

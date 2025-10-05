@@ -283,7 +283,7 @@ void flash_read_bulk(__xdata uint8_t *dst)
 }
 
 
-void flash_read_security(uint32_t addr, uint8_t len)
+void flash_read_security()
 {
 	while (flash_read_status() & 0x1);
 
@@ -294,40 +294,40 @@ void flash_read_security(uint32_t addr, uint8_t len)
 
 	// Transfer 4 bytes (command + 3byte address)
 	SFR_FLASH_TCONF = 4;
-	while (len) {
-		SFR_FLASH_ADDR16 = addr >> 16;
-		SFR_FLASH_ADDR8 = addr >> 8;
-		SFR_FLASH_ADDR0 = addr;
-		addr += 4;
+	do {
+		SFR_FLASH_ADDR16 = flash_region.addr >> 16;
+		SFR_FLASH_ADDR8 = flash_region.addr >> 8;
+		SFR_FLASH_ADDR0 = flash_region.addr;
+		flash_region.addr += 4;
 
 		SFR_FLASH_EXEC_GO = 1;
 		while(SFR_FLASH_EXEC_BUSY);
 
 		print_byte(SFR_FLASH_DATA0);
-		if (len == 1)
-			return;
+		if (flash_region.len == 1)
+			break;
 		print_byte(SFR_FLASH_DATA8);
-		if (len == 2)
-			return;
+		if (flash_region.len == 2)
+			break;
 		print_byte(SFR_FLASH_DATA16);
-		if (len == 3)
-			return;
+		if (flash_region.len == 3)
+			break;
 		print_byte(SFR_FLASH_DATA24);
 
-		len -= 4;
-	}
+		flash_region.len -= 4;
+	} while(flash_region.len);
 }
 
 
-void flash_sector_erase(uint32_t addr)
+void flash_sector_erase(void)
 {
 	flash_write_enable();
 	SFR_FLASH_TCONF = 8;
 	SFR_FLASH_CMD = CMD_SECTOR_ERASE;
 
-	SFR_FLASH_ADDR16 = addr >> 16;
-	SFR_FLASH_ADDR8 = addr >> 8;
-	SFR_FLASH_ADDR0 = addr;
+	SFR_FLASH_ADDR16 = flash_region.addr >> 16;
+	SFR_FLASH_ADDR8 = flash_region.addr >> 8;
+	SFR_FLASH_ADDR0 = flash_region.addr;
 
 	SFR_FLASH_EXEC_GO = 1;
 	while (flash_read_status() & 0x1);

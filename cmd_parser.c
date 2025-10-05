@@ -491,9 +491,15 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
 			print_string("\nPRINT SECURITY REGISTERS\n");
 			// The following will only show something else than 0xff if it was programmed for a managed switch
-			flash_read_security(0x0001000, 40);
-			flash_read_security(0x0002000, 40);
-			flash_read_security(0x0003000, 40);
+			flash_region.addr = 0x0001000;
+			flash_region.len = 40;
+			flash_read_security();
+			flash_region.addr = 0x0002000;
+			flash_region.len = 40;
+			flash_read_security();
+			flash_region.addr = 0x0003000;
+			flash_region.len = 40;
+			flash_read_security();
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
 			print_string("\nDUMPING FLASH\n");
@@ -520,7 +526,8 @@ void cmd_parser(void) __banked
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
 			print_string("\nFLASH erase\n");
-			flash_sector_erase(0x20000);
+			flash_region.addr = 0x20000;
+			flash_sector_erase();
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'w') {
 			print_string("\nFLASH write\n");
