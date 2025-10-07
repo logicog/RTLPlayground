@@ -10,6 +10,9 @@
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
 
+// SPI FLASH MEMORY PAGE SIZE.
+#define FLASHMEM_PAGE_SIZE 0x100
+
 #define CMARK_S 6
 
 #pragma codeseg BANK1
@@ -236,13 +239,18 @@ uint8_t stream_upload(uint16_t bptr)
 				bindex = 0;
 			}
 			flash_buf[write_len++] = p[bptr++];
-			if (write_len >= 256) {
+			if (write_len >= FLASHMEM_PAGE_SIZE) {
 				print_string("len: "); print_short(write_len); write_char(' ');
 				flash_region.addr = uptr;
-				flash_region.len = write_len;
+				flash_region.len = FLASHMEM_PAGE_SIZE;
 				flash_write_bytes(flash_buf);
-				uptr += write_len;
-				write_len = 0;
+				uptr += FLASHMEM_PAGE_SIZE;
+				write_len -= FLASHMEM_PAGE_SIZE;
+
+				// Copy the remaining byte for the next page to the beginning of the buffer.
+				if (write_len > 0) {
+					memcpy(flash_buf, flash_buf + FLASHMEM_PAGE_SIZE, write_len);
+				}
 			}
 			bindex = 0;
 		}
