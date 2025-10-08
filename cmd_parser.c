@@ -32,7 +32,9 @@ extern volatile __xdata uint8_t sfr_data[4];
 extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
 
-extern __xdata uint8_t flash_buf[256];
+extern __xdata uint8_t flash_buf[512];
+extern __xdata struct flash_region_t flash_region;
+
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 __xdata uint8_t gpio_last_value[8] = { 0 };
@@ -489,13 +491,21 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
 			print_string("\nPRINT SECURITY REGISTERS\n");
 			// The following will only show something else than 0xff if it was programmed for a managed switch
-			flash_read_security(0x0001000, 40);
-			flash_read_security(0x0002000, 40);
-			flash_read_security(0x0003000, 40);
+			flash_region.addr = 0x0001000;
+			flash_region.len = 40;
+			flash_read_security();
+			flash_region.addr = 0x0002000;
+			flash_region.len = 40;
+			flash_read_security();
+			flash_region.addr = 0x0003000;
+			flash_region.len = 40;
+			flash_read_security();
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
 			print_string("\nDUMPING FLASH\n");
-			flash_dump(0, 255);
+			flash_region.addr = 0;
+			flash_region.len = 255;
+			flash_dump(255);
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
 			print_string("\nJEDEC ID\n");
@@ -510,17 +520,22 @@ void cmd_parser(void) __banked
 			print_string("\nFLASH FAST MODE\n");
 			flash_init(1);
 			print_string("\nNow dumping flash\n");
-			flash_dump(0, 255);
+			flash_region.addr = 0;
+			flash_region.len = 255;
+			flash_dump(255);
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
 			print_string("\nFLASH erase\n");
-			flash_sector_erase(0x20000);
+			flash_region.addr = 0x20000;
+			flash_sector_erase();
 		}
 		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'w') {
 			print_string("\nFLASH write\n");
 			for (uint8_t i = 0; i < 20; i++)
 				flash_buf[i] = greeting[i];
-			flash_write_bytes(0x20000, flash_buf, 20);
+			flash_region.addr = 0x200000;
+			flash_region.len = 20;
+			flash_write_bytes(flash_buf);
 		}
 		if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
 			print_string("\nPORT ");
@@ -620,22 +635,44 @@ void cmd_parser(void) __banked
 	}
 }
 
+#define FLASH_READ_BURST_SIZE 0x100;
 void execute_config(void) __banked
 {
-	__xdata uint32_t pos = CONFIG_START;
-	__xdata uint16_t len_left = CONFIG_LEN;
-	do {
-		flash_find_mark(pos, len_left, "\n");
-		if (mpos != 0xffff) {
-			__xdata uint16_t len = len_left - mpos;
-			flash_read_bulk(&cmd_buffer[0], pos, len > SBUF_SIZE ? SBUF_SIZE : len);
-			cmd_buffer[len > SBUF_SIZE ? SBUF_SIZE : len] = '\0';
-			len++;
-			pos += len;
-			len_left -= len;
-			if (len && !cmd_tokenize())
-				cmd_parser();
-		}
-	} while (mpos != 0xffff);
-}
+	memcpyc(flash_buf, "test", 5);
+	print_string_x(flash_buf);
 
+    __xdata uint32_t pos = CONFIG_START;
+    __xdata uint16_t len_left = CONFIG_LEN;
+ 	do {
+		flash_region.addr = pos;
+		flash_region.len = FLASH_READ_BURST_SIZE;
+        write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
+
+		flash_read_bulk(flash_buf);
+
+		uint8_t cfg_idx = 0;
+		uint8_t c = 0;
+		do {
+			for (uint8_t cmd_idx = 0; cmd_idx < (SBUF_SIZE - 1); cmd_idx++) {
+				c = flash_buf[cfg_idx++];
+				print_byte(c);
+
+				if (c == 0 || c == '\n') {
+					cmd_buffer[cmd_idx] = '\0';
+					write_char('\n'); write_char('#');  print_short(cfg_idx); write_char('-'); print_short(cmd_idx); write_char('-'); print_string_x(cmd_buffer); write_char('\n');
+					if (cmd_idx && !cmd_tokenize())
+						cmd_parser();
+					if (c == 0)
+						return;
+					break;
+				}
+
+				cmd_buffer[cmd_idx] = c;
+			}
+			write_char('N');
+		} while(cfg_idx);
+
+		len_left -= FLASH_READ_BURST_SIZE;
+		pos += FLASH_READ_BURST_SIZE;
+    } while(len_left);
+}

@@ -67,6 +67,13 @@ char *getMime(const char *name)
 	return "text/plain";
 }
 
+void send_basic_info(int socket)
+{
+	char *response = "HTTP/1.1 200 OK\r\n"
+		    "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"v0.1-ge4c48586\",\"hw_ver\":\"SWGT024-V2.0\"}";
+	write(socket, response, strlen(response));
+}
 
 void send_vlan(int s, int vlan)
 {
@@ -247,6 +254,11 @@ void launch(struct Server *server)
 				if (!strncmp(&buffer[4], "/status.json", 12)) {
 					printf("Status request\n");
 					send_status(new_socket);
+					goto done;
+				}
+				if (!strncmp(&buffer[4], "/information.json", 12)) {
+					printf("Status request\n");
+					send_basic_info(new_socket);
 					goto done;
 				}
 				if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {

@@ -16,6 +16,9 @@
 #include "uip/uip.h"
 #include "uip/uip_arp.h"
 
+// Upload Firmware to 1M
+#define FIRMWARE_UPLOAD_START 0x100000
+
 #define SYS_TICK_HZ 100
 #define SERIAL_BAUD_RATE 115200
 
@@ -67,10 +70,12 @@ __xdata uint8_t sfr_data[4];
 extern __xdata uint8_t cmd_buffer[SBUF_SIZE];
 extern __xdata uint8_t gpio_last_value[8];
 
+extern __xdata struct flash_region_t flash_region;
+
 __code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
 __code uint8_t * __code hex = "0123456789abcdef";
 
-__xdata uint8_t flash_buf[256];
+__xdata uint8_t flash_buf[512];
 
 // NIC buffers for packet RX/TX
 __xdata uint8_t rx_headers[16]; // Packet header(s) on RX
@@ -195,9 +200,6 @@ uint16_t strlen_x(register __xdata const char *s)
 	uint16_t l = 0;
 	while (s[l])
 		l++;
-	write_char(';');
-	print_short(l);
-	write_char(';');
 	return l;
 }
 
@@ -761,12 +763,14 @@ void tcpip_output(void)
 	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 	ring_ptr |= sfr_data[3];
 
+#ifdef RXTXDBG
 	print_string("TX: \n");
 	for (uint8_t i = 0; i < 120; i++) {
 		print_byte(uip_buf[i]);
 		write_char(' ');
 	}
 	write_char('\n');
+#endif
 
 	// Move data over from xmem buffer to ASIC side using DMA
 	nic_tx_packet(ring_ptr);
@@ -1694,6 +1698,45 @@ void bootloader(void)
 	print_string("\nStarting up...\n");
 	print_string("  Flash controller\n");
 	flash_init(0);
+
+	// Check update in progress and move blocks
+	flash_region.addr = FIRMWARE_UPLOAD_START;
+	flash_region.len = 0x100;
+	flash_read_bulk(flash_buf);
+
+	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
+		print_string("Update in progress, moving firmware to start of FLASH!\n");
+
+		__xdata uint32_t dest = 0x0;
+		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
+		// A 512kByte = 4MBit Flash has 128*8=1024 512k blocks, we copy only 120
+		for (__xdata uint16_t i=0; i < 960; i++) {
+			print_string("Writing block: ");
+			print_short(dest);
+			flash_region.addr = source;
+			flash_region.len = 0x200;
+			flash_read_bulk(flash_buf);
+			write_char('\n');
+			if (!(i & 0x7)) {
+				flash_region.addr = dest;
+				flash_sector_erase();
+			}
+			flash_region.addr = dest;
+			flash_region.len = 0x200;
+			flash_write_bytes(flash_buf);
+			dest += 0x200;
+			source += 0x200;
+		}
+		print_string("Deleting uploaded flash image\n");
+		dest = FIRMWARE_UPLOAD_START;
+		for (register uint8_t i=0; i < 120; i++) {
+			flash_region.addr = dest;			
+			flash_sector_erase();
+			dest += 0x1000;
+		}
+		print_string("Resetting now");
+		reset_chip();
+	}
 
 	// Reset NIC
 	reg_bit_set(0x24, 2);
