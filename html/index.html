@@ -3,22 +3,13 @@
 <script src="/ports.js"></script>
 <script src="/main.js"></script>
 <script src="/main_info.js"></script>
-
 <head>
   <link rel="stylesheet" href="style.css">
   <title>FreeSwitchOS Main Page</title>
 </head>
 
 <body>
-  <ul>
-    <li><a href="index.html">Overview</a></li>
-    <li><a href="stat.html">Port Statistics</a></li>
-    <li><a href="vlan.html">VLAN</a></li>
-    <li><a href="mirror.html">Mirroring</a></li>
-    <li><a href="trunk.html">Port Aggregation</a></li>
-    <li><a href="mirror.html">Mirroring</a></li>
-    <li><a href="update.html">Firmware Update</a></li>
-  </ul>
+  <nav id="sidebar"></nav>
   <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
     <h1>Switch Configuration</h1>
@@ -31,5 +22,5 @@
     </table>
   </div>
 </body>
-
+<script src="/navigation.js"></script>
 </html>
