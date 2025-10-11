@@ -419,7 +419,7 @@ void httpd_appcall(void)
 			} else if (!strcmp(q, "/vlan.json")) {
 				parse_short(q + 15);
 				send_vlan(short_parsed);
-			} else if (!strcmp(q, "/counters.json")) {
+			} else if (is_word(q, "/counters.json")) {
 				send_counters(q[19]-'0');
 			} else {
 				send_not_found();
