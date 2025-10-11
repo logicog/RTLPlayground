@@ -150,11 +150,19 @@
 /*
  * Loop detection / STP
  */
-
 #define RTL8373_RLDP_TIMER		0x1074
 #define RTL837X_RMA0_CONF		0x4ecc
 #define RTL837X_RMA_CONF		0x4f1c
 #define RTL837X_MSTP_STATES		0x5310
+
+/*
+ * EEE
+ */
+#define RTL8373_EEE_CTRL_BASE		0x606c
+#define EEE_100 	0x01
+#define EEE_1000	0x04
+#define EEE_2G5		0x10
+
 
 #ifdef REGDBG
 

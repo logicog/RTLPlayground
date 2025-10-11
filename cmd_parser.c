@@ -25,6 +25,7 @@ extern __xdata uint8_t nSFPPorts;
 extern __xdata uint8_t isRTL8373;
 extern __xdata uint16_t mpos;
 extern __xdata uint8_t stpEnabled;
+extern __code uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -631,6 +632,27 @@ void cmd_parser(void) __banked
 		}
 		if (cmd_compare(0, "regset")) {
 			parse_regset();
+		}
+		if (cmd_compare(0, "eee")) {
+			int8_t port = -1;
+			if (cmd_words_b[2] > 0) {
+				port = cmd_buffer[cmd_words_b[2]] - '1';
+				if (!isRTL8373)
+					port = phys_to_log_port[port];
+			}
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				print_string("EEE enabled\n");
+				if (port >= 0)
+					port_eee_enable(port);
+				else
+					port_eee_enable_all();
+			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")) {
+				print_string("EEE disabled\n");
+				if (port >= 0)
+					port_eee_disable(port);
+				else
+					port_eee_disable_all();
+			}
 		}
 	}
 }

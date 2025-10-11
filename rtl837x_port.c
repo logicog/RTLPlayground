@@ -11,6 +11,8 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
+#include "rtl837x_phy.h"
+#include "phy.h"
 
 #pragma codeseg BANK1
 
@@ -474,6 +476,52 @@ uint16_t port_isolation_get(register uint8_t port)
 
 	reg_read_m(RTL837X_PORT_ISOLATION_BASE + (port << 2));
 	return ((uint16_t)sfr_data[2]) << 8 | sfr_data[3];
+}
+
+
+void port_eee_enable(uint8_t port) __banked
+{
+	if (is_sfp[port])
+		return;
+	
+	print_string("EEE on for "); print_byte(port); write_char('\n');
+	REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100 | EEE_1000 | EEE_2G5);
+	// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
+	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, 6); // Bit 1: 100BASE-T, Bit 2: 1000BASE-T
+	// Enable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
+	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 1);
+	phy_reset(port);
+}
+
+
+void port_eee_disable(uint8_t port) __banked
+{
+	if (is_sfp[port])
+		return;
+
+	print_string("EEE off for "); print_byte(port); write_char('\n');
+	REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), 0);
+	// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
+	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, 0);
+	// Enable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
+	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 0);
+	phy_reset(port);
+}
+
+
+void port_eee_enable_all(void) __banked
+{
+	for (uint8_t i = minPort; i <= maxPort; i++) {
+		port_eee_enable(i);
+	}
+}
+
+
+void port_eee_disable_all(void) __banked
+{
+	for (uint8_t i = minPort; i <= maxPort; i++) {
+		port_eee_disable(i);
+	}
 }
 
 
