@@ -40,6 +40,9 @@ clean:
 $(BUILDDIR)crtstart.rel: crtstart.asm
 	$(ASM) $(AFLAGS) -o $@ $<
 
+$(BUILDDIR)crc16.rel: crc16.asm
+	$(ASM) $(AFLAGS) -o $@ $<
+
 $(BUILDDIR)%.rel: %.c
 	$(CC) $(CC_FLAGS) -o $@ -c $<
 
@@ -47,7 +50,7 @@ $(BUILDDIR)%.rel: $(BUILDDIR)%.asm
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS)
+$(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS) $(BUILDDIR)crc16.rel
 	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS}  -Wl-bBANK1=0x14000 -Wl-r -o $@ $^
 
 $(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx
