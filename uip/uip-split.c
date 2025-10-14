@@ -41,8 +41,8 @@
 #include "uip-fw.h"
 #include "uip_arch.h"
 
-
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 #define BUF ((__xdata struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 

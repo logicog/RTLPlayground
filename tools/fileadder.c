@@ -276,7 +276,7 @@ int main(int argc, char **argv)
 	if (arguments.prefix)
 		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "#include \"%s.h\"\n\n", arguments.prefix);
 	if (arguments.bank)
-		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "#pragma codeseg %s\n\n", arguments.bank);
+		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "#pragma codeseg %s\n#pragma constseg %s\n\n", arguments.bank, arguments.bank);
 	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, " __code char * __code mime_strings[] = {\n  \"text/html\",\n  \"image/svg+xml\",\n"
 		"  \"image/svg+xml\",\n  \"image/png\",\n  \"text/javascript\",\n  \"text/css\",\n  \"text/plain\"};\n\n");
 	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "__code struct f_data f_data[] = {\n");
