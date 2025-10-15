@@ -17,8 +17,6 @@ $(BUILDDIR)%.asm: %.c
 	$(CC) $(CC_FLAGS) -o $@ -c -S $<
 
 $(BUILDDIR)%.rel: $(BUILDDIR)%.asm
-	./treatasm.py $^ >$^.new
-	mv $^.new $^
 	${ASM} ${AFLAGS} -o $@ $^
 
 clean:

@@ -60,6 +60,7 @@
 #include "uip-fw.h"
 
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 #include "../rtl837x_common.h"
 

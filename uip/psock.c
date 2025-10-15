@@ -48,6 +48,7 @@
 #define STATE_DATA_SENT 6
 
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 /*
  * Return value of the buffering functions that indicates that a

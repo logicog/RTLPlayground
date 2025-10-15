@@ -47,7 +47,7 @@ $(BUILDDIR)%.rel: $(BUILDDIR)%.asm
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS) 
+$(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS)
 	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS}  -Wl-bBANK1=0x14000 -Wl-r -o $@ $^
 
 $(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx

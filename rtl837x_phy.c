@@ -17,6 +17,7 @@
 #include "phy.h"
 
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 extern __code uint16_t bit_mask[16];
 

@@ -18,6 +18,7 @@
 #include "uip/uip.h"
 
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 extern __xdata uint8_t minPort;
 extern __xdata uint8_t maxPort;

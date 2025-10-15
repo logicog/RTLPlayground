@@ -16,6 +16,7 @@
 #define CMARK_S 6
 
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
