@@ -49,6 +49,9 @@ __xdata uint16_t short_parsed;
 #define TSTATE_CLOSED 	3
 #define TSTATE_POST 	4
 
+extern __xdata uint16_t crc_value;
+void crc16(__xdata uint8_t *v) __naked;
+
 
 inline uint8_t is_separator(uint8_t c)
 {
@@ -224,6 +227,12 @@ uint8_t stream_upload(uint16_t bptr)
 			uptr += write_len;
 			write_len = 0;
 			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
+			print_string("CRC16: "); print_short(crc_value); write_char('\n');
+			if (crc_value == 0xb001) {
+				print_string("Checksum OK.");
+			} else {
+				print_string("Checksum incorrect!");
+			}
 			print_string("Upload to flash done, will reset!\n");
 			reset_chip();
 			if (bptr >= uip_len)
@@ -231,6 +240,7 @@ uint8_t stream_upload(uint16_t bptr)
 			return 1;
 		}
 		if (p[bptr] == boundary[bindex]) {
+			crc16(p + bptr);
 			bptr++;
 			bindex++;
 		} else {
@@ -239,6 +249,7 @@ uint8_t stream_upload(uint16_t bptr)
 				write_len += bindex;
 				bindex = 0;
 			}
+			crc16(p + bptr);
 			flash_buf[write_len++] = p[bptr++];
 			if (write_len >= FLASHMEM_PAGE_SIZE) {
 				print_string("len: "); print_short(write_len); write_char(' ');
@@ -313,6 +324,7 @@ void handle_post(void)
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
 		uptr = FIRMWARE_UPLOAD_START;
+		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
 		stream_upload(p - uip_appdata);
