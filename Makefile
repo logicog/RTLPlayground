@@ -64,6 +64,7 @@ $(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 	dd if=$< skip=80 bs=1024 >>$@
 	tools/$(BUILDDIR)fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
+	tools/$(BUILDDIR)crc_calculator -u $@
 
 
 .PHONY: clean all $(SUBDIRS)
