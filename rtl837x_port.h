@@ -29,6 +29,8 @@ void port_l2_setup(void) __banked;
 void trunk_set(uint8_t group, uint16_t mask) __banked;
 void port_eee_enable_all(void) __banked;
 void port_eee_disable_all(void) __banked;
+void port_eee_status_all(void) __banked;
 void port_eee_enable(uint8_t port) __banked;
 void port_eee_disable(uint8_t port) __banked;
+void port_eee_status(uint8_t port) __banked;
 #endif

@@ -469,9 +469,16 @@ void cmd_parser(void) __banked
 	print_string("Parsing command\n");
 	print_string_x(&cmd_buffer[0]);
 	write_char('<'); write_char('\n');
+	print_string("CMD-words: ");
+	print_byte(cmd_words_b[0]); write_char(' ');
+	print_byte(cmd_words_b[1]); write_char(' ');
+	print_byte(cmd_words_b[2]); write_char(' ');
+	print_byte(cmd_words_b[3]); write_char(' ');
+	print_byte(cmd_words_b[4]); write_char(' ');
+	print_byte(cmd_words_b[5]); write_char(' ');
+	print_byte(cmd_words_b[6]); write_char('\n');
 #endif
-	signed char i = cmd_words_b[0];
-	if (i >= 0 && cmd_words_b[1] >= 0) {
+	if (cmd_words_b[0] >= 0 && cmd_words_b[1] >= 0) {
 		if (cmd_compare(0, "reset")) {
 			print_string("\nRESET\n\n");
 			reset_chip();
@@ -636,23 +643,26 @@ void cmd_parser(void) __banked
 		}
 		if (cmd_compare(0, "eee")) {
 			int8_t port = -1;
-			if (cmd_words_b[2] > 0) {
+			if (cmd_words_b[3] > 0) {
 				port = cmd_buffer[cmd_words_b[2]] - '1';
 				if (!isRTL8373)
 					port = phys_to_log_port[port];
 			}
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
-				print_string("EEE enabled\n");
 				if (port >= 0)
 					port_eee_enable(port);
 				else
 					port_eee_enable_all();
 			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")) {
-				print_string("EEE disabled\n");
 				if (port >= 0)
 					port_eee_disable(port);
 				else
 					port_eee_disable_all();
+			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "status")) {
+				if (port >= 0)
+					port_eee_status(port);
+				else
+					port_eee_status_all();
 			}
 		}
 	}
