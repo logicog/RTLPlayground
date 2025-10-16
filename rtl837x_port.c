@@ -484,13 +484,12 @@ void port_eee_enable(uint8_t port) __banked
 {
 	if (is_sfp[port])
 		return;
-	
-	print_string("EEE on for "); print_byte(port); write_char('\n');
+
 	REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100 | EEE_1000 | EEE_2G5);
 	// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
-	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, 6); // Bit 1: 100BASE-T, Bit 2: 1000BASE-T
+	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_1G | PHY_EEE_BIT_100M);
 	// Enable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
-	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 1);
+	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, PHY_EEE_BIT_2G5);
 	phy_reset(port);
 }
 
@@ -502,11 +501,66 @@ void port_eee_disable(uint8_t port) __banked
 
 	print_string("EEE off for "); print_byte(port); write_char('\n');
 	REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), 0);
-	// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
+	// Disable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
 	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, 0);
-	// Enable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
+	// Disable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
 	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 0);
 	phy_reset(port);
+}
+
+
+void port_eee_status(uint8_t port) __banked
+{
+	print_string("Port: "); write_char('0' + log_to_phys_port[port]);
+	print_string(": ");
+	if (is_sfp[port]) {
+		print_string("SFP\n");
+		return;
+	}
+
+	uint16_t v;
+	print_string("Advertising: ");
+	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV2);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_2G5)
+		print_string(" 2.5G");
+	else
+		print_string("     ");
+	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_1G)
+		print_string("  1G ");
+	else
+		print_string("     ");
+	if (v & PHY_EEE_BIT_100M)
+		print_string(" 100M");
+	else
+		print_string("     ");
+
+	print_string("   Link Partner: ");
+	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_2G5)
+		print_string(" 2.5G");
+	else
+		print_string("     ");
+	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_1G)
+		print_string("  1G ");
+	else
+		print_string("     ");
+	if (v & PHY_EEE_BIT_100M)
+		print_string(" 100M");
+	else
+		print_string("     ");
+
+	reg_read_m(RTL8373_PHY_EEE_ABLTY);
+	if (sfr_data[3] & (1 << port))
+		print_string(" ACTIVE   ");
+	else
+		print_string(" INACTIVE ");
+	write_char('\n');
 }
 
 
@@ -525,6 +579,13 @@ void port_eee_disable_all(void) __banked
 	}
 }
 
+
+void port_eee_status_all(void) __banked
+{
+	for (uint8_t i = minPort; i <= maxPort; i++) {
+		port_eee_status(i);
+	}
+}
 
 /*
  * Enable RLDP, Realtek's version of LLDP
