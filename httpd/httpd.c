@@ -422,6 +422,8 @@ void httpd_appcall(void)
 				send_vlan(short_parsed);
 			} else if (is_word(q, "/counters.json")) {
 				send_counters(q[19]-'0');
+			} else if (is_word(q, "/eee.json")) {
+				send_eee();
 			} else {
 				send_not_found();
 			}

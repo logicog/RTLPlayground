@@ -7,8 +7,10 @@
 #include "uip.h"
 #include "../html_data.h"
 #include <stdint.h>
+#include "../phy.h"
 
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
@@ -205,6 +207,80 @@ void send_counters(char port)
 		char_to_html('\"');
 	}
 	char_to_html('}');
+}
+
+
+void send_eee()
+{
+	print_string("send_eee called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	print_string("sending EEE status\n");
+
+	char_to_html('[');
+	for (uint8_t i = minPort; i <= maxPort; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		if (!isRTL8373)
+			itoa_html(log_to_phys_port[i]);
+		else
+			itoa_html(i + 1);
+		if (IS_SFP(i)) {
+			slen += strtox(outbuf + slen, " ,\"isSFP\": 1");
+		} else {
+			slen += strtox(outbuf + slen, " ,\"isSFP\": 0 ");
+			uint16_t v;
+			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV2);
+			v = SFR_DATA_U16;
+			slen += strtox(outbuf + slen, ",\"eee_2g5\":\"");
+			if (v & PHY_EEE_BIT_2G5)
+				slen += strtox(outbuf + slen, "OK\", ");
+			else
+				slen += strtox(outbuf + slen, "-\", ");
+			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV);
+			v = SFR_DATA_U16;
+			slen += strtox(outbuf + slen, "\"eee_1g\":\"");
+			if (v & PHY_EEE_BIT_1G)
+				slen += strtox(outbuf + slen, "OK\", ");
+			else
+				slen += strtox(outbuf + slen, "-\", ");
+			slen += strtox(outbuf + slen, "\"eee_100m\":\"");
+			if (v & PHY_EEE_BIT_100M)
+				slen += strtox(outbuf + slen, "OK\", ");
+			else
+				slen += strtox(outbuf + slen, "-\", ");
+
+			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
+			v = SFR_DATA_U16;
+			slen += strtox(outbuf + slen, "\"eee_lp2g5\":\"");
+			if (v & PHY_EEE_BIT_2G5)
+				slen += strtox(outbuf + slen, "OK\", ");
+			else
+				slen += strtox(outbuf + slen, "-\", ");
+			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
+			v = SFR_DATA_U16;
+			v = SFR_DATA_U16;
+			slen += strtox(outbuf + slen, "\"eee_lp1g\":\"");
+			if (v & PHY_EEE_BIT_1G)
+				slen += strtox(outbuf + slen, "OK\", ");
+			else
+				slen += strtox(outbuf + slen, "-\", ");
+			slen += strtox(outbuf + slen, "\"eee_lp100m\":\"");
+			if (v & PHY_EEE_BIT_100M)
+				slen += strtox(outbuf + slen, "OK\", ");
+			else
+				slen += strtox(outbuf + slen, "-\", ");
+
+			reg_read_m(RTL8373_PHY_EEE_ABLTY);
+			if (sfr_data[3] & (1 << i))
+				slen += strtox(outbuf + slen, "\"active\": 1");
+			else
+				slen += strtox(outbuf + slen, "\"active\": 0");
+		}
+		char_to_html('}');
+		if (i < maxPort)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
 }
 
 
