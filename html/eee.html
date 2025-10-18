@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <script src="/ports.js"></script>
+  <script src="/main.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>FreeSwitchOS Port Statistics</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>EEE Status</h1>
+    <table id="eeetable">
+      <tr> <th> </th> <th colspan="3"> Advertising </th> <th colspan="3">Link-Partner advertises</th>  <th></th></tr>
+      <tr> <th>Port</th> <th>2.5G</th> <th>1G</th> <th>100M</th> <th>2.5G</th> <th>1G</th> <th>100M</th>  <th>Active?</th></tr>
+    </table>
+    <div>
+      <input style="width:20%;padding: 8px 16px;margin-top: 2em;margin-right: 3em;" id="eee_enable" onclick="eeeSub(0, 1);" type="button" value="Enable EEE">
+      <input style="width:20%;padding: 8px 16px;margin-top: 2em;" id="eee_enable" onclick="eeeSub(0, 0);" type="button" value="Disable EEE">
+    </div>
+    <script src="/eee.js"></script>
+    <script src="/eee_sub.js"></script>
+    </div>
+    <script src="/navigation.js"></script>
+  </body>
+</html>
