@@ -17,6 +17,5 @@ function drawPorts() {
     l.id="port" + (i+1);
     f.appendChild(l);
   }
-  
   console.log("DRAWING DONE ");
 }
