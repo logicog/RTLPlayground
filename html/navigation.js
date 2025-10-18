@@ -4,6 +4,6 @@ document.getElementById('sidebar').innerHTML =
  + "<li><a href='vlan.html'>VLAN</a></li>"
  + "<li><a href='mirror.html'>Mirroring</a></li>"
  + "<li><a href='trunk.html'>Port Aggregation</a></li>"
- + "<li><a href='mirror.html'>Mirroring</a></li>"
+ + "<li><a href='eee.html'>EEE</a></li>"
  + "<li><a href='update.html'>Firmware Update</a></li></ul>";
  
