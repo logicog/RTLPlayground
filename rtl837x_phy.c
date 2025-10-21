@@ -236,7 +236,7 @@ void phy_reset(uint8_t port) __banked
 
 	// Disable PHY
 	phy_write(port, PHY_MMD_CTRL, 0xa610, v | 0x0800);
-	delay(5);
+	delay(2);
 	// Re-enable PHY
 	phy_write(port, PHY_MMD_CTRL, 0xa610, v & 0xf7ff);
 }
