@@ -67,7 +67,6 @@ __xdata volatile uint8_t sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 __xdata uint8_t sfr_data[4];
 
-extern __xdata uint8_t cmd_buffer[SBUF_SIZE];
 extern __xdata uint8_t gpio_last_value[8];
 
 extern __xdata struct flash_region_t flash_region;
@@ -1021,6 +1020,13 @@ void idle(void)
 			stp_clock--;
 		}
 	}
+	// Check whether a command is waiting in the cmd_buffer and execute
+	if (cmd_available) {
+		cmd_available = 0;
+		if (!cmd_tokenize())
+			cmd_parser();
+		print_string("\n> ");
+	}
 }
 
 
@@ -1805,8 +1811,12 @@ void bootloader(void)
 	// printed out the entered characters
 	__xdata uint8_t l = sbuf_ptr; // We have printed out entered characters until l
 	__xdata uint8_t line_start = sbuf_ptr; // This is where the current line starts
+	cmd_available = 0;
 	while (1) {
 		while (l != sbuf_ptr) {
+			// If the command buffer is currently in use, we cannot copy to it
+			if (cmd_available)
+				break;
 			write_char(sbuf[l]);
 			// Check whether there is a full line:
 			if (sbuf[l] == '\n' || sbuf[l] == '\r') {
@@ -1819,9 +1829,12 @@ void bootloader(void)
 				line_start++;
 				line_start &= (SBUF_SIZE - 1);
 				cmd_buffer[i] = '\0';
-				if (i && !cmd_tokenize())
-					cmd_parser();
-				print_string("\n> ");
+				// If there is a command we print the prompt after execution
+				// otherwise immediately because there is nothing to execute
+				if (i)
+					cmd_available = 1;
+				else
+					print_string("\n> ");
 			}
 			l++;
 			l &= (SBUF_SIZE - 1);

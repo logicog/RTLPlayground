@@ -288,9 +288,8 @@ void handle_post(void)
 		while (*p && *p != '\n' && *p != '\r')
 			cmd_buffer[i++] = *p++;
 		cmd_buffer[i] = '\0';
-
-		if (i && !cmd_tokenize())
-		cmd_parser();
+		if (i)
+			cmd_available = 1;
 	} else if (is_word(request_path, "upload")) {
 		print_string("POST upload request\n");
 		if (!boundary[0]) {
