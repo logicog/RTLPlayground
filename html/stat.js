@@ -23,21 +23,4 @@ function fillStats() {
   }
 }
 
-function getCounts() {
-  for (let port = 1; port <= numPorts; port++) {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 && this.status == 200) {
-        const s = JSON.parse(xhttp.responseText);
-        console.log("Counters: ", JSON.stringify(s));
-      }
-    }
-    xhttp.open("GET", `/counters.json?port=${port}`, true);
-    xhttp.send();
-  }
-}
-
-window.addEventListener("load", function() {
-  const iCount = setInterval(getCounts, 1000);
-});
-const stat = setInterval(fillStats, 500);
+const stat = setInterval(fillStats, 1000);

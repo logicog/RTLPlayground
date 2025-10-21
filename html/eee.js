@@ -39,10 +39,11 @@ function getEEE() {
     }
   };
   xhttp.open("GET", "/eee.json", true);
-  xhttp.send();
+  xhttp.timeout = 1500; xhttp.send();
 }
 
 window.addEventListener("load", function() {
-  const iCount = setInterval(getEEE, 1000);
+  getEEE();
+  const iCount = setInterval(getEEE, 2000);
 });
-const stat = setInterval(createEEE, 500);
+const stat = setInterval(createEEE, 1000);
