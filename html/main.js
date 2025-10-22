@@ -51,10 +51,10 @@ function update() {
     }
   };
   xhttp.open("GET", "/status.json", true);
-  xhttp.send(); 
+  xhttp.timeout = 5000; xhttp.send();
 }
 
 window.addEventListener("load", function() {
   update();
-  const interval = setInterval(update, 1000);
+  const interval = setInterval(update, 2000);
 });

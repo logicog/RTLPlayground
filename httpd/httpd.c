@@ -288,9 +288,8 @@ void handle_post(void)
 		while (*p && *p != '\n' && *p != '\r')
 			cmd_buffer[i++] = *p++;
 		cmd_buffer[i] = '\0';
-
-		if (i && !cmd_tokenize())
-		cmd_parser();
+		if (i)
+			cmd_available = 1;
 	} else if (is_word(request_path, "upload")) {
 		print_string("POST upload request\n");
 		if (!boundary[0]) {
@@ -422,6 +421,8 @@ void httpd_appcall(void)
 				send_vlan(short_parsed);
 			} else if (is_word(q, "/counters.json")) {
 				send_counters(q[19]-'0');
+			} else if (is_word(q, "/eee.json")) {
+				send_eee();
 			} else {
 				send_not_found();
 			}

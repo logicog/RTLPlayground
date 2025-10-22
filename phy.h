@@ -12,15 +12,25 @@
  * Define PHY pages
  */
 #define PHY_MMD_AN	7
+#define PHY_SDS_CTRL	30
 #define PHY_MMD_CTRL	31
 
 
 /*
  * Define registers in Auto-Negotiation page
  */
-#define PHY_ANEG_CTRL	0x00
-#define PHY_EEE_ADV	0x3c
-#define PHY_EEE_ABILITY	0x3d
-#define PHY_EEE_ADV2	0x3e
+#define PHY_ANEG_CTRL		0x00
+#define PHY_EEE_ADV		0x3c
+#define PHY_EEE_LP_ABILITY	0x3d
+#define PHY_EEE_ADV2		0x3e
+#define PHY_EEE_LP_ABILITY2	0x3f
+// Register bits for EEE capabilities at a given speed
+#define PHY_EEE_BIT_2G5		0x01
+#define PHY_EEE_BIT_1G		0x04
+#define PHY_EEE_BIT_100M	0x02
 
+/*
+ * Define registers in Control page
+ */
+#define PHY_CTRL_5	0x7582
 #endif

@@ -69,3 +69,8 @@ object {
 .cbgroup label {
   display: block;
 }
+
+.disabled{ opacity: .4; background-color: #f88; color: #000}
+.isSFP{ opacity: .4; background-color: #660;}
+.isNOK{ color: #900;}
+.isOK{ color: #090;}

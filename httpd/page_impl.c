@@ -7,8 +7,10 @@
 #include "uip.h"
 #include "../html_data.h"
 #include <stdint.h>
+#include "../phy.h"
 
 #pragma codeseg BANK1
+#pragma constseg BANK1
 
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
@@ -205,6 +207,76 @@ void send_counters(char port)
 		char_to_html('\"');
 	}
 	char_to_html('}');
+}
+
+
+void send_eee()
+{
+	print_string("send_eee called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	print_string("sending EEE status\n");
+
+	reg_read_m(RTL8373_PHY_EEE_ABLTY);
+	uint8_t eee_ablty = sfr_data[3];
+	char_to_html('[');
+	for (uint8_t i = minPort; i <= maxPort; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		if (!isRTL8373)
+			itoa_html(log_to_phys_port[i]);
+		else
+			itoa_html(i + 1);
+		if (IS_SFP(i)) {
+			slen += strtox(outbuf + slen, " ,\"isSFP\": 1");
+		} else {
+			slen += strtox(outbuf + slen, " ,\"isSFP\": 0 ");
+			uint16_t v;
+			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV2);
+			v = SFR_DATA_U16;
+			slen += strtox(outbuf + slen, ",\"eee\":\"");
+			if (v & PHY_EEE_BIT_2G5)
+				char_to_html('1');
+			else
+				char_to_html('0');
+			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV);
+			v = SFR_DATA_U16;
+			if (v & PHY_EEE_BIT_1G)
+				char_to_html('1');
+			else
+				char_to_html('0');
+			if (v & PHY_EEE_BIT_100M)
+				char_to_html('1');
+			else
+				char_to_html('0');
+
+			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
+			v = SFR_DATA_U16;
+			slen += strtox(outbuf + slen, "\", \"eee_lp\":\"");
+			if (v & PHY_EEE_BIT_2G5)
+				char_to_html('1');
+			else
+				char_to_html('0');
+			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
+			v = SFR_DATA_U16;
+			if (v & PHY_EEE_BIT_1G)
+				char_to_html('1');
+			else
+				char_to_html('0');
+			if (v & PHY_EEE_BIT_100M)
+				char_to_html('1');
+			else
+				char_to_html('0');
+			slen += strtox(outbuf + slen, "\", \"active\": ");
+			if (eee_ablty & (1 << i))
+				char_to_html('1');
+			else
+				char_to_html('0');
+		}
+		char_to_html('}');
+		if (i < maxPort)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
 }
 
 

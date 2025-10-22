@@ -6,6 +6,7 @@
 #include "rtl837x_common.h"
 
 extern __xdata uint8_t cmd_buffer[SBUF_SIZE];
+extern __xdata uint8_t cmd_available;
 
 uint8_t cmd_tokenize(void) __banked;
 void cmd_parser(void) __banked;

@@ -139,6 +139,43 @@ void send_status(int s)
 }
 
 
+void send_eee(int s)
+{
+	struct json_object *ports, *v;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	time_t now = time(NULL);
+	now = last_called ? last_called + 1 : now; // Make sure we don't divide by 0 for rates
+
+	ports = json_object_new_array_ext(PORTS);
+	for (int i = 1; i <= PORTS; i++) {
+		v = json_object_new_object();
+		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "isSFP", json_object_new_int(i < 5 ? 0 : 1));
+		uint8_t eee = 0;
+		eee |= 0x02;
+		char eee_buf[20];
+		sprintf(eee_buf, "%08b", eee);
+		json_object_object_add(v, "eee", json_object_new_string(eee_buf));
+		uint8_t eee_lp = 0;
+		eee_lp |= 0x04;
+		sprintf(eee_buf, "%08b", eee_lp);
+		json_object_object_add(v, "eee_lp", json_object_new_string(eee_buf));
+		json_object_object_add(v, "active", json_object_new_int((i % 2) ? 1 : 0));
+		json_object_array_add(ports, v);
+	}
+	last_called = now;
+
+        write(s, header, strlen(header));
+	
+	jstring = json_object_to_json_string_ext(ports, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(v);
+}
+
+
 struct Server serverConstructor(int port, void (*launch)(struct Server *server)) {
     struct Server server;
 
@@ -256,6 +293,11 @@ void launch(struct Server *server)
 					send_status(new_socket);
 					goto done;
 				}
+				if (!strncmp(&buffer[4], "/eee.json", 9)) {
+					printf("EEE request\n");
+					send_eee(new_socket);
+					goto done;
+				}
 				if (!strncmp(&buffer[4], "/information.json", 12)) {
 					printf("Status request\n");
 					send_basic_info(new_socket);
@@ -272,8 +314,11 @@ void launch(struct Server *server)
 					i++;
 				buffer[4+i] = '\0';
 
-				printf("Serving file: >%s<\n", &buffer[5]);
-				inptr = fopen(&buffer[5], "rb");
+				printf("Serving file: >%s<, name length %d\n", &buffer[5], i);
+				if (i > 1)
+					inptr = fopen(&buffer[5], "rb");
+				else
+					inptr = fopen("/index.html", "rb");
 				if (inptr == NULL) {
 					printf("Cannot open input file %s\n", &buffer[5]);
 					send_not_found(new_socket);
