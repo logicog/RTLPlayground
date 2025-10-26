@@ -1044,6 +1044,7 @@ void sleep(uint16_t t)
 void reset_chip(void)
 {
 	REG_SET(RTL837X_REG_RESET, 1);
+	while(1);
 }
 
 
@@ -1703,6 +1704,24 @@ void bootloader(void)
 	print_string("  Flash controller\n");
 	flash_init(0);
 
+	// Reset NIC
+	reg_bit_set(0x24, 2);
+	do {
+		reg_read(0x24);
+	} while (SFR_DATA_0 & 0x4);
+	print_string("NIC reset\n");
+
+	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
+	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
+	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
+
+	REG_SET(0x7f94, 0x0);
+	if (isRTL8373)
+		rtl8373_init();
+	else
+		rtl8372_init();
+	delay(1000);
+
 	// Check update in progress and move blocks
 	flash_region.addr = FIRMWARE_UPLOAD_START;
 	flash_region.len = 0x100;
@@ -1722,10 +1741,13 @@ void bootloader(void)
 			flash_region.len = 0x200;
 			flash_read_bulk(flash_buf);
 			bptr = flash_buf;
-			for (j = 0; j < 0x200; j++)
+			for (j = 0; j < 0x200; j++) {
+				print_byte(*bptr); write_char(' ');
 				crc16(bptr++);
+				print_short(crc_value); write_char(':');
+			}
 			source += 0x200;
-			print_short(crc_value); write_char(' ');
+			write_char('\n'); print_short(crc_value); write_char(' ');
 		}
 		if (crc_value == 0xb001) {
 			print_string("Checksum OK\n");
@@ -1769,24 +1791,6 @@ void bootloader(void)
 			dest += 0x1000;
 		}
 	}
-
-	// Reset NIC
-	reg_bit_set(0x24, 2);
-	do {
-		reg_read(0x24);
-	} while (SFR_DATA_0 & 0x4);
-	print_string("NIC reset\n");
-
-	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
-	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
-	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
-
-	REG_SET(0x7f94, 0x0);
-	if (isRTL8373)
-		rtl8373_init();
-	else
-		rtl8372_init();
-	delay(1000);
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
