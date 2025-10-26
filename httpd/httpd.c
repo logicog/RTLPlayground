@@ -50,6 +50,7 @@ __xdata uint16_t short_parsed;
 #define TSTATE_POST 	4
 
 extern __xdata uint16_t crc_value;
+__xdata uint16_t crc_final;
 void crc16(__xdata uint8_t *v) __naked;
 
 
@@ -187,13 +188,15 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 		content_type += 30;
 		uint8_t i = 0;
 		while (content_type[i] != '\r' && content_type[i] != '\n') {
-			boundary[i + 2] = content_type[i];
+			boundary[i + 4] = content_type[i];
 			i++;
 		}
-		// The boundary between parts is "--" + the boundary given in the header
-		boundary[0] = '-';
-		boundary[1] = '-';
-		boundary[i + 2] = 0;
+		// The boundary between parts is "\r\n--" + the boundary given in the header
+		boundary[0] = '\r';
+		boundary[1] = '\n';
+		boundary[2] = '-';
+		boundary[3] = '-';
+		boundary[i + 4] = 0;
 	}
 	return p;
 }
@@ -227,8 +230,8 @@ uint8_t stream_upload(uint16_t bptr)
 			uptr += write_len;
 			write_len = 0;
 			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
-			print_string("CRC16: "); print_short(crc_value); write_char('\n');
-			if (crc_value == 0xb001) {
+			print_string("CRC16: "); print_short(crc_final); write_char('\n');
+			if (crc_final == 0xb001) {
 				print_string("Checksum OK.");
 			} else {
 				print_string("Checksum incorrect!");
@@ -240,6 +243,8 @@ uint8_t stream_upload(uint16_t bptr)
 			return 1;
 		}
 		if (p[bptr] == boundary[bindex]) {
+			if (!bindex)
+				crc_final = crc_value;
 			crc16(p + bptr);
 			bptr++;
 			bindex++;
@@ -253,6 +258,7 @@ uint8_t stream_upload(uint16_t bptr)
 			flash_buf[write_len++] = p[bptr++];
 			if (write_len >= FLASHMEM_PAGE_SIZE) {
 				print_string("len: "); print_short(write_len); write_char(' ');
+				print_string("CRC16: "); print_short(crc_value); write_char('\n');
 				flash_region.addr = uptr;
 				flash_region.len = FLASHMEM_PAGE_SIZE;
 				flash_write_bytes(flash_buf);
