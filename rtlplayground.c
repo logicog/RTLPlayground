@@ -16,6 +16,10 @@
 #include "uip/uip.h"
 #include "uip/uip_arp.h"
 
+extern __xdata uint16_t crc_value;
+__xdata uint8_t crc_testbytes[10];
+void crc16(__xdata uint8_t *v) __naked;
+
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
 
@@ -1046,6 +1050,7 @@ void sleep(uint16_t t)
 void reset_chip(void)
 {
 	REG_SET(RTL837X_REG_RESET, 1);
+	while(1);
 }
 
 
@@ -1705,45 +1710,6 @@ void bootloader(void)
 	print_string("  Flash controller\n");
 	flash_init(0);
 
-	// Check update in progress and move blocks
-	flash_region.addr = FIRMWARE_UPLOAD_START;
-	flash_region.len = 0x100;
-	flash_read_bulk(flash_buf);
-
-	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
-		print_string("Update in progress, moving firmware to start of FLASH!\n");
-
-		__xdata uint32_t dest = 0x0;
-		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
-		// A 512kByte = 4MBit Flash has 128*8=1024 512k blocks, we copy only 120
-		for (__xdata uint16_t i=0; i < 960; i++) {
-			print_string("Writing block: ");
-			print_short(dest);
-			flash_region.addr = source;
-			flash_region.len = 0x200;
-			flash_read_bulk(flash_buf);
-			write_char('\n');
-			if (!(i & 0x7)) {
-				flash_region.addr = dest;
-				flash_sector_erase();
-			}
-			flash_region.addr = dest;
-			flash_region.len = 0x200;
-			flash_write_bytes(flash_buf);
-			dest += 0x200;
-			source += 0x200;
-		}
-		print_string("Deleting uploaded flash image\n");
-		dest = FIRMWARE_UPLOAD_START;
-		for (register uint8_t i=0; i < 120; i++) {
-			flash_region.addr = dest;			
-			flash_sector_erase();
-			dest += 0x1000;
-		}
-		print_string("Resetting now");
-		reset_chip();
-	}
-
 	// Reset NIC
 	reg_bit_set(0x24, 2);
 	do {
@@ -1761,6 +1727,76 @@ void bootloader(void)
 	else
 		rtl8372_init();
 	delay(1000);
+
+	// Check update in progress and move blocks
+	flash_region.addr = FIRMWARE_UPLOAD_START;
+	flash_region.len = 0x100;
+	flash_read_bulk(flash_buf);
+
+	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
+		__xdata uint32_t dest = 0x0;
+		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
+		__xdata uint16_t i = 0;
+		__xdata uint16_t j = 0;
+		__xdata uint8_t * __xdata bptr;
+		print_string("Identified update image. Checking integrity...\n");
+
+		crc_value = 0x0000;
+		for (i = 0; i < 1024; i++) {
+			flash_region.addr = source;
+			flash_region.len = 0x200;
+			flash_read_bulk(flash_buf);
+			bptr = flash_buf;
+			for (j = 0; j < 0x200; j++) {
+				print_byte(*bptr); write_char(' ');
+				crc16(bptr++);
+				print_short(crc_value); write_char(':');
+			}
+			source += 0x200;
+			write_char('\n'); print_short(crc_value); write_char(' ');
+		}
+		if (crc_value == 0xb001) {
+			print_string("Checksum OK\n");
+			print_string("Update in progress, moving firmware to start of FLASH!\n");
+			source = FIRMWARE_UPLOAD_START;
+			// A 512kByte = 4MBit Flash has 128*8=1024 512k blocks, we copy only 120
+			for (i = 0; i < 960; i++) {
+				print_string("Writing block: ");
+				print_short(dest);
+				flash_region.addr = source;
+				flash_region.len = 0x200;
+				flash_read_bulk(flash_buf);
+				write_char('\n');
+				if (!(i & 0x7)) {
+					flash_region.addr = dest;
+					flash_sector_erase();
+				}
+				flash_region.addr = dest;
+				flash_region.len = 0x200;
+				flash_write_bytes(flash_buf);
+				dest += 0x200;
+				source += 0x200;
+			}
+			print_string("Deleting uploaded flash image\n");
+			dest = FIRMWARE_UPLOAD_START;
+			for (register uint8_t i=0; i < 128; i++) {
+				flash_region.addr = dest;			
+				flash_sector_erase();
+				dest += 0x1000;
+			}
+			print_string("Resetting now");
+			delay(200);
+			reset_chip();
+		}
+		print_string("Checksum incorrect, please upload the image again\n");
+		print_string("Erasing bad uploaded flash image\n");
+		dest = FIRMWARE_UPLOAD_START;
+		for (register uint8_t i=0; i < 128; i++) {
+			flash_region.addr = dest;
+			flash_sector_erase();
+			dest += 0x1000;
+		}
+	}
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
