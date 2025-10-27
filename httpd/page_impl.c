@@ -53,6 +53,13 @@ void charhex_to_html(char c)
 }
 
 
+// Convert (uint8_t) bool to ascii '0' or '1' char push on html-buffer.
+void bool_to_html(char c)
+{
+	outbuf[slen++] = c ? '1' : '0';
+}
+
+
 void char_to_html(char c)
 {
 	outbuf[slen++] = c;
@@ -212,12 +219,12 @@ void send_counters(char port)
 
 void send_eee()
 {
-	print_string("send_eee called\n");
+	print_string("send_eee called\nsending EEE status\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	print_string("sending EEE status\n");
 
 	reg_read_m(RTL8373_PHY_EEE_ABLTY);
 	uint8_t eee_ablty = sfr_data[3];
+
 	char_to_html('[');
 	for (uint8_t i = minPort; i <= maxPort; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
@@ -225,51 +232,33 @@ void send_eee()
 			itoa_html(log_to_phys_port[i]);
 		else
 			itoa_html(i + 1);
+
 		if (IS_SFP(i)) {
-			slen += strtox(outbuf + slen, " ,\"isSFP\": 1");
+			slen += strtox(outbuf + slen, ",\"isSFP\":1");
 		} else {
-			slen += strtox(outbuf + slen, " ,\"isSFP\": 0 ");
+			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"eee\":\"");
 			uint16_t v;
 			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV2);
 			v = SFR_DATA_U16;
-			slen += strtox(outbuf + slen, ",\"eee\":\"");
-			if (v & PHY_EEE_BIT_2G5)
-				char_to_html('1');
-			else
-				char_to_html('0');
+			bool_to_html(v & PHY_EEE_BIT_2G5);
+
 			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV);
 			v = SFR_DATA_U16;
-			if (v & PHY_EEE_BIT_1G)
-				char_to_html('1');
-			else
-				char_to_html('0');
-			if (v & PHY_EEE_BIT_100M)
-				char_to_html('1');
-			else
-				char_to_html('0');
+			bool_to_html(v & PHY_EEE_BIT_1G);
+			bool_to_html(v & PHY_EEE_BIT_100M);
 
 			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
 			v = SFR_DATA_U16;
-			slen += strtox(outbuf + slen, "\", \"eee_lp\":\"");
-			if (v & PHY_EEE_BIT_2G5)
-				char_to_html('1');
-			else
-				char_to_html('0');
+			slen += strtox(outbuf + slen, "\",\"eee_lp\":\"");
+			bool_to_html (v & PHY_EEE_BIT_2G5);
+
 			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
 			v = SFR_DATA_U16;
-			if (v & PHY_EEE_BIT_1G)
-				char_to_html('1');
-			else
-				char_to_html('0');
-			if (v & PHY_EEE_BIT_100M)
-				char_to_html('1');
-			else
-				char_to_html('0');
-			slen += strtox(outbuf + slen, "\", \"active\": ");
-			if (eee_ablty & (1 << i))
-				char_to_html('1');
-			else
-				char_to_html('0');
+			bool_to_html(v & PHY_EEE_BIT_1G);
+			bool_to_html(v & PHY_EEE_BIT_100M);
+
+			slen += strtox(outbuf + slen, "\",\"active\":");
+			bool_to_html(eee_ablty & (1 << i));
 		}
 		char_to_html('}');
 		if (i < maxPort)
@@ -293,15 +282,10 @@ void send_status(void)
 		else
 			itoa_html(i + 1);
 
-		slen += strtox(outbuf + slen, ",\"isSFP\":");
 		if (IS_SFP(i)) {
-			char_to_html('1');
-			slen += strtox(outbuf + slen, ",\"enabled\":");
-			if (!((sfp_pins_last >> (i == maxPort ? 0 : 4)) & 1)) {
-				char_to_html('1');
-			} else {
-				char_to_html('0');
-			}
+		  slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
+			bool_to_html(!((sfp_pins_last >> (i == maxPort ? 0 : 4)) & 1));
+
 			slen += strtox(outbuf + slen, ",\"link\":");
 			uint8_t rate = sfp_read_reg(i == maxPort ? 0 : 1, 12);
 			if (rate == 0xd)
@@ -313,13 +297,10 @@ void send_status(void)
 			else
 				char_to_html('1'); // 100M ???
 		} else {
-			char_to_html('0');
-			slen += strtox(outbuf + slen, ",\"enabled\":");
+		  slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, 0x1f, 0xa610);
-			if (SFR_DATA_8 == 0x20)
-				char_to_html('1');
-			else
-				char_to_html('0');
+			bool_to_html(SFR_DATA_8 == 0x20);
+
 			slen += strtox(outbuf + slen, ",\"link\":");
 			reg_read_m(RTL837X_REG_LINKS);
 			uint8_t b = sfr_data[3 - (i >> 1)];
