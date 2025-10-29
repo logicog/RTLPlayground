@@ -441,6 +441,8 @@ void httpd_appcall(void)
 				send_counters(q[19]-'0');
 			} else if (is_word(q, "/eee.json")) {
 				send_eee();
+			} else if (is_word(q, "/mirror.json")) {
+				send_mirror();
 			} else {
 				send_not_found();
 			}

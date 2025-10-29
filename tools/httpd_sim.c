@@ -146,9 +146,6 @@ void send_eee(int s)
         char *header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
-	time_t now = time(NULL);
-	now = last_called ? last_called + 1 : now; // Make sure we don't divide by 0 for rates
-
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
@@ -166,13 +163,41 @@ void send_eee(int s)
 		json_object_object_add(v, "active", json_object_new_int((i % 2) ? 1 : 0));
 		json_object_array_add(ports, v);
 	}
-	last_called = now;
 
         write(s, header, strlen(header));
 	
 	jstring = json_object_to_json_string_ext(ports, JSON_C_TO_STRING_PLAIN);
         write(s, jstring, strlen(jstring));
-	json_object_put(v);
+	json_object_put(ports);
+}
+
+
+void send_mirror(int s)
+{
+	uint16_t mirror_tx, mirror_rx = 0;
+	char mirror_tx_buf[20];
+	char mirror_rx_buf[20];
+	struct json_object *mirror;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	mirror = json_object_new_object();
+	json_object_object_add(mirror, "mPort", json_object_new_int(1));
+	json_object_object_add(mirror, "enabled", json_object_new_int(1));
+
+	mirror_tx = 0b000110;
+	mirror_rx = 0b000010;
+	sprintf(mirror_tx_buf, "%016b", mirror_tx);
+	sprintf(mirror_rx_buf, "%016b", mirror_rx);
+	json_object_object_add(mirror, "mirror_tx", json_object_new_string(mirror_tx_buf));
+	json_object_object_add(mirror, "mirror_rx", json_object_new_string(mirror_rx_buf));
+
+        write(s, header, strlen(header));
+
+	jstring = json_object_to_json_string_ext(mirror, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(mirror);
 }
 
 
@@ -301,6 +326,11 @@ void launch(struct Server *server)
 				if (!strncmp(&buffer[4], "/information.json", 12)) {
 					printf("Status request\n");
 					send_basic_info(new_socket);
+					goto done;
+				}
+				if (!strncmp(&buffer[4], "/mirror.json", 12)) {
+					printf("Mirror request\n");
+					send_mirror(new_socket);
 					goto done;
 				}
 				if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
