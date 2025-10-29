@@ -13,7 +13,7 @@ function vlanForm() {
     l.innerHTML = "" + i;
     l.classList.add("cbgroup");
     const inp = document.createElement("input");
-    inp.type = "checkbox";
+    inp.type = "checkbox"; inp.setAttribute("class","psel");
     inp.id = "tport" + i;
     inp.setAttribute('onclick', `setC("u", ${i}, false);`);
     const o = document.createElement("img");
