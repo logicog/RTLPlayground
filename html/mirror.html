@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <script src="/ports.js"></script>
+  <script src="/main.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>Mirror Configuration</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>Mirror Configuration</h1>
+    <label class="tswitch">Enabled: <input id="me" type="checkbox"><span class="slider"></span></label><br/>
+    <label for="mp">Mirroring Port:</label> <input type="number" id="mp" name="mp" min="1" max="9"/>
+    <h2>Mirrored Ports (TX)</h2>
+    <div id="mPortsTX"></div>
+    <br />
+    <h2>Mirrored Ports (RX)</h2>
+    <div id="mPortsRX"></div>
+    <br/> <input style="width:15%;" class="action" id="mirror_sub" onclick="mirrorSub();" type="button" value="Update / Create">
+    <input style="width:15%;" class="action" id="mirror_del" onclick="mirrorDel();" type="button" value="Disable Mirroring">
+    <script src="/mirror.js"></script>
+    <script src="/mirror_sub.js"></script>
+    </div>
+    <script src="/navigation.js"></script>
+  </body>
+</html>
