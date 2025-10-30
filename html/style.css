@@ -42,20 +42,19 @@ input[type=submit] { padding: 8px 16px;background-color:#aaf;color:#000; margin-
 input[type=submit]:hover { background-color: #226; color: white;}
 button {padding: 8px; background-color:#99f; color:#000;}
 button:hover { background-color: #226; color: white;}
-
-[type=checkbox] { 
+.psel {
   position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
   margin-top: 1em;
 }
-[type=checkbox] + img {
+.psel + img {
   cursor: pointer;
   opacity: 0.4;
   padding: 8px;
 }
-[type=checkbox]:checked + img {
+.psel:checked + img {
 /*  outline: 2px solid #f00;*/
   opacity: 1.0;
 }
@@ -74,3 +73,4 @@ object {
 .isSFP{ opacity: .4; background-color: #660;}
 .isNOK{ color: #900;}
 .isOK{ color: #090;}
+.action{padding: 8px 16px;margin-top: 2em;margin-right: 3em; background-color: #aaf;color: #000;}

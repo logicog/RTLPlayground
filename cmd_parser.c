@@ -273,8 +273,37 @@ void parse_mirror(void)
 	__xdata uint16_t rx_pmask = 0;
 	__xdata uint16_t tx_pmask = 0;
 
+	if (cmd_words_b[1] > 0 && cmd_compare(1, "status")) {
+		reg_read_m(RTL837x_MIRROR_CTRL);
+		uint8_t mPort = sfr_data[3];
+		if (mPort & 1) {
+			print_string("Enabled: ");
+		} else {
+			print_string("NOT Enabled: ");
+		}
+		print_string("Mirroring port: ");
+		if (!isRTL8373)
+			write_char('0' + log_to_phys_port[mPort >> 1]);
+		else
+			write_char('0' + (mPort >> 1) + 1);
+		reg_read_m(RTL837x_MIRROR_CONF);
+		uint16_t m = sfr_data[0];
+		m = (m << 8) | sfr_data[1];
+		print_string(", Port mask RX: ");
+		print_short(m);
+		m = sfr_data[2];
+		m = (m << 8) | sfr_data[3];
+		print_string(", Port mask TX: ");
+		print_short(m);
+		write_char('\n');
+		return;
+	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")) {
+		port_mirror_del();
+		return;
+	}
+
 	if (!isnumber(cmd_buffer[cmd_words_b[1]])) {
-		print_string("Port missing: port <mirroring port> [port][t/r]...");
+		print_string("Port missing: mirror <mirroring port> [port][t/r]...");
 		return;
 	}
 

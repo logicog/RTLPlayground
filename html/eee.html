@@ -3,7 +3,7 @@
   <script src="/ports.js"></script>
   <script src="/main.js"></script>
   <link rel="stylesheet" href="style.css">
-  <title>FreeSwitchOS Port Statistics</title>
+  <title>EEE Configuration</title>
   </head>
   <body>
     <nav id="sidebar"></nav>
@@ -15,8 +15,8 @@
       <tr> <th>Port</th> <th>2.5G</th> <th>1G</th> <th>100M</th> <th>2.5G</th> <th>1G</th> <th>100M</th>  <th>Active?</th></tr>
     </table>
     <div>
-      <input style="width:20%;padding: 8px 16px;margin-top: 2em;margin-right: 3em;" id="eee_enable" onclick="eeeSub(0, 1);" type="button" value="Enable EEE">
-      <input style="width:20%;padding: 8px 16px;margin-top: 2em;" id="eee_enable" onclick="eeeSub(0, 0);" type="button" value="Disable EEE">
+      <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 1);" type="button" value="Enable EEE">
+      <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 0);" type="button" value="Disable EEE">
     </div>
     <script src="/eee.js"></script>
     <script src="/eee_sub.js"></script>

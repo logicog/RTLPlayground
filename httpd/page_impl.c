@@ -217,7 +217,45 @@ void send_counters(char port)
 }
 
 
-void send_eee()
+void send_mirror(void)
+{
+	print_string("send_eee called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	print_string("sending EEE status\n");
+
+	reg_read_m(RTL837x_MIRROR_CTRL);
+	uint8_t mPort = sfr_data[3];
+	if (mPort & 1) {
+		slen += strtox(outbuf + slen, "{\"enabled\":1,\"mPort\":");
+	} else {
+		slen += strtox(outbuf + slen, "{\"enabled\":0,\"mPort\":");
+	}
+	if (!isRTL8373)
+		itoa_html(log_to_phys_port[mPort >> 1]);
+	else
+		itoa_html((mPort >> 1) + 1);
+
+	reg_read_m(RTL837x_MIRROR_CONF);
+	uint16_t m = sfr_data[0];
+	m = (m << 8) | sfr_data[1];
+	slen += strtox(outbuf + slen, ",\"mirror_rx\":\"");
+	for (uint8_t i = 0; i < 16; i++) {
+		bool_to_html(m & 0x8000);
+		m <<= 1;
+	}
+	m = sfr_data[2];
+	m = (m << 8) | sfr_data[3];
+	slen += strtox(outbuf + slen, "\",\"mirror_tx\":\"");
+	for (uint8_t i = 0; i < 16; i++) {
+		bool_to_html(m & 0x8000);
+		m <<= 1;
+	}
+	char_to_html('\"');
+	char_to_html('}');
+}
+
+
+void send_eee(void)
 {
 	print_string("send_eee called\nsending EEE status\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
