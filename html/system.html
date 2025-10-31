@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="style.css">
+    <title>System Settings</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>System Settings</h1>
+    <div> <label for="ip">IP address:</label>
+      <input id="ip" class="ip" type="text" minlength="7" maxlength="15" size="15"/>
+    </div>
+    <div> <label for="nm">Netmask:</label>
+      <input id="nm" class="ip" type="text" minlength="7" maxlength="15" size="15"/>
+    </div>
+    <div> <label for="gw">Gateway:</label>
+      <input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/>
+    </div>
+    <br/><br/>
+    When updating the above settings, remember to point your browser to the new IP afterwards:<br/>
+    <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Update Settings"><br/>
+    <br/><br/>
+    Save all current settings to Flash:<br/>
+    <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Save Settings to Flash">
+
+    </div>
+    <script src="/config.js"></script>
+    <script src="/system_sub.js"></script>
+    <script src="/system.js"></script>
+    <script src="/navigation.js"></script>
+  </body>
+</html>

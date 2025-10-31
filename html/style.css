@@ -74,3 +74,4 @@ object {
 .isNOK{ color: #900;}
 .isOK{ color: #090;}
 .action{padding: 8px 16px;margin-top: 2em;margin-right: 3em; background-color: #aaf;color: #000;}
+.ip{padding:8px 16px;margin-top: 1em;margin-bottom: 1em;margin-left: 1em}
