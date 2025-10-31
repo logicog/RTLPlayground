@@ -42,6 +42,9 @@ input[type=submit] { padding: 8px 16px;background-color:#aaf;color:#000; margin-
 input[type=submit]:hover { background-color: #226; color: white;}
 button {padding: 8px; background-color:#99f; color:#000;}
 button:hover { background-color: #226; color: white;}
+.action{padding: 8px 16px;margin-top: 2em;margin-right: 3em; background-color: #aaf;color: #000;}
+.action:hover { background-color: #226; color: white;}
+
 .psel {
   position: absolute;
   opacity: 0;
@@ -73,4 +76,7 @@ object {
 .isSFP{ opacity: .4; background-color: #660;}
 .isNOK{ color: #900;}
 .isOK{ color: #090;}
-.action{padding: 8px 16px;margin-top: 2em;margin-right: 3em; background-color: #aaf;color: #000;}
+.ip{padding:8px 16px;margin-bottom: 1em;margin-left: 1em}
+.row {display: flex;}
+.rcol {flex: 90%;}
+.lcol {flex: 10%;}
