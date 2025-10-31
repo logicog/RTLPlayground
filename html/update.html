@@ -11,7 +11,7 @@
     <h1>Firmware Update</h1>
     <form enctype="multipart/form-data" action="/upload" method="POST">
     <input type="hidden" name="MAX_FILE_SIZE" value="1000000" />
-      Choose a firmware update file to upload: <input name="uploadedfile" type="file" /><br />
+      Choose a firmware update file to upload: <input name="uploadedfile" type="file" accept=".bin" /><br />
     <input type="submit" value="Upload File" />
     </form>
     <script src="/navigation.js"></script>
