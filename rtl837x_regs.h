@@ -66,9 +66,13 @@
 /*
  * I2C controller
  */
-#define RTL837X_REG_I2C_CTRL	0x0418
-#define RTL837X_REG_I2C_IN	0x0420
-#define RTL837X_REG_I2C_OUT	0x0424
+#define RTL837X_REG_I2C_MST_IF_CTRL	0x0414
+#define RTL837X_REG_I2C_CTRL		0x0418
+#define I2C_DEV_ADDR			3
+#define I2C_MEM_ADDR_WIDTH		20
+#define RTL837X_REG_I2C_CTRL2		0x041c
+#define RTL837X_REG_I2C_IN		0x0420
+#define RTL837X_REG_I2C_OUT		0x0424
 
 /*
  * NIC Related registers
