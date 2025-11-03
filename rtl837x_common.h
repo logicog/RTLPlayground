@@ -5,7 +5,11 @@
 #include <stdint.h>
 
 // This has to be set to the number of SFP+ ports, i.e. 1 or 2
-#define NSFP 2
+#define NSFP		2
+// SCL and SDA pin numbers for SFP cage 0 and SFP cage 1
+#define SCL_PIN		3
+#define SDA_PIN_0	4
+#define SDA_PIN_1	3
 
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff

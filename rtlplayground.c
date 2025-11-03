@@ -725,11 +725,11 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 {
 	if (slot == 0) {
 		reg_read_m(RTL837X_REG_I2C_CTRL);
-		sfr_mask_data(1, 0xff, 0x72);
+		sfr_mask_data(1, 0xfc, SCL_PIN << 5 | SDA_PIN_0 << 2);
 		reg_write_m(RTL837X_REG_I2C_CTRL);
 	} else {
 		reg_read_m(RTL837X_REG_I2C_CTRL);
-		sfr_mask_data(1, 0xff, 0x6e);
+		sfr_mask_data(1, 0xfc, SCL_PIN << 5 | SDA_PIN_1 << 2);
 		reg_write_m(RTL837X_REG_I2C_CTRL);
 	}
 
@@ -1650,9 +1650,10 @@ void setup_serial(void)
 
 void setup_i2c(void)
 {
-	REG_SET(0x0414, 0);
-	REG_SET(0x0418, 0x00100280);
-	REG_SET(0x041c, 0);
+	REG_SET(RTL837X_REG_I2C_MST_IF_CTRL, 0);
+	// Configure SFP EEPROM address (0x50) as I2C device address
+	REG_SET(RTL837X_REG_I2C_CTRL, 0x1L << I2C_MEM_ADDR_WIDTH | 0x50 << I2C_DEV_ADDR);
+	REG_SET(RTL837X_REG_I2C_CTRL2, 0);
 
 	// HW Control register, enable I2C?
 	reg_read_m(RTL837X_PIN_MUX_1);
