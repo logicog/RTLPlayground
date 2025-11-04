@@ -382,54 +382,61 @@ void port_stats_print(void) __banked
 {
 	print_string("\n Port\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");
 	for (uint8_t i = minPort; i <= maxPort; i++) {
-		write_char('1' + i); write_char('\t');
-		phy_read(i, 0x1f, 0xa610); // p001f.a610:2058
-		if (i <= maxPort - nSFPPorts) {
+		if (!isRTL8373) {
+			write_char('0' + log_to_phys_port[i]); write_char('\t');
+		} else {
+			write_char('1' + i); write_char('\t');
+		}
+
+		if (!IS_SFP(i)) {
+			phy_read(i, 0x1f, 0xa610);
 			if (SFR_DATA_8 == 0x20)
 				print_string("On\t");
 			else
 				print_string("Off\t");
+		} else {  // An SFP Module
+			if (i != 3) {
+				reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
+				if (!(sfr_data[0] & 0x40)) {
+					print_string("SFP OK\t");
+				} else {
+					print_string("NO SFP\t");
+				}
+			} else {
+				reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
+				if (!(sfr_data[1] & 0x04)) {
+					print_string("SFP OK\t");
+				} else {
+					print_string("NO SFP\t");
+				}
+			}
+		}
+
+		if (i < 8)
 			reg_read_m(RTL837X_REG_LINKS);
-			uint8_t b = sfr_data[3 - (i >> 1)];
-			b = (i & 1) ? b >> 4 : b & 0xf;
-			switch (b) {
-			case 0:
-				print_string("Down\t");
-				break;
-			case 1:
-				print_string("100M\t");
-				break;
-			case 2:
-				print_string("1000M\t");
-				break;
-			case 5:
-				print_string("2.5G\t");
-				break;
-			default:
-				print_string("Up\t");
-				break;
-			}
-		} else {  // An SFP Module TODO: This is for 1 module devices
-			reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
-			if (!(sfr_data[0] & 0x40)) {
-				print_string("SFP OK\t");
-			} else {
-				print_string("NO SFP\t");
-			}
-			reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
-			if (sfr_data[3] & 0x20) {
-				print_string("Down\t");
-			} else {
-				uint8_t rate = sfp_read_reg(0, 12);
-				if (rate == 0xd)
-					print_string("1000BX\t");
-				else if (rate == 0x1f)
-					print_string("2500G\t");
-				else if (rate > 0x65 && rate < 0x70)
-					print_string("10G\t");
-				else
-					print_string("Up\t");
-			}
+		else
+			reg_read_m(RTL837X_REG_LINKS_89);
+		uint8_t b = sfr_data[3 - ((i & 7) >> 1)];
+		b = (i & 1) ? b >> 4 : b & 0xf;
+		switch (b) {
+		case 0:
+			print_string("Down\t");
+			break;
+		case 1:
+			print_string("100M\t");
+			break;
+		case 2:
+			print_string("1000M\t");
+			break;
+		case 4:
+			print_string("10G\t");
+			break;
+		case 5:
+			print_string("2.5G\t");
+			break;
+		default:
+			print_string("Up\t");
+			break;
 		}
 		STAT_GET(0x2f, i);
 		print_reg(RTL837X_STAT_V_LOW); write_char('\t');

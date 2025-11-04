@@ -31,7 +31,8 @@
 #define SDS_10GR		0x1a
 #define SDS_OFF			0x1f
 
-#define RTL837X_REG_LINKS 0x63f0
+#define RTL837X_REG_LINKS	0x63f0
+#define RTL837X_REG_LINKS_89	0x63f4
 /* Each nibble encodes the link state of a port.
    Port 0 appears to be the CPU port
    The RTL8372 serves ports 4-7, port 3 is the RTL8221
