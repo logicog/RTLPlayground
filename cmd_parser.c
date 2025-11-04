@@ -627,18 +627,19 @@ void cmd_parser(void) __banked
 			print_string("\nRESET\n\n");
 			reset_chip();
 		} else if (cmd_compare(0, "sfp")) {
-			uint8_t rate = sfp_read_reg(0, 12);
-			print_string("\nRate: "); print_byte(rate);
+			print_string("\nSlot 0 - Rate: "); print_byte(sfp_read_reg(0, 12));
 			print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
 			print_string("\n");
-			for (uint8_t i = 20; i < 60; i++) {
-				uint8_t c = sfp_read_reg(0, i);
-				if (c)
-					write_char(c);
-			}
+			sfp_print_info(0);
+#if NSFP == 2
+			print_string("\nSlot 1 - Rate: "); print_byte(sfp_read_reg(1, 12));
+			print_string("  Encoding: "); print_byte(sfp_read_reg(1, 11));
+			print_string("\n");
+			sfp_print_info(1);
+#endif
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
-		} else 	if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
 			print_string("\nPRINT SECURITY REGISTERS\n");
 			// The following will only show something else than 0xff if it was programmed for a managed switch
 			flash_region.addr = 0x0001000;

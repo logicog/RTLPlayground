@@ -106,5 +106,6 @@ void print_string_x(__xdata char *p);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(uint32_t * tmr);
+void sfp_print_info(uint8_t sfp);
 
 #endif

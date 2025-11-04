@@ -906,7 +906,10 @@ static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
 
 void sfp_print_info(uint8_t sfp)
 {
+	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
 	for (uint8_t i = 20; i < 60; i++) {
+		if (i >= 36 && i < 40) // Skip Non-ASCII codes
+			continue;
 		uint8_t c = sfp_read_reg(sfp, i);
 		if (c)
 			write_char(c);
