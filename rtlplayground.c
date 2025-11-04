@@ -101,6 +101,7 @@ __code uint16_t bit_mask[16] = {
 
 __xdata uint8_t was_offline;
 __xdata uint8_t linkbits_last[4];
+__xdata uint8_t linkbits_last_p89;
 __xdata uint8_t sfp_pins_last;
 
 
@@ -1009,17 +1010,25 @@ void idle(void)
 #endif
 	}
 
+	// Check for Link changes
+	reg_read_m(RTL837X_REG_LINKS_89);
+	__xdata uint8_t linkbits_p89 = sfr_data[3];
+
 	reg_read_m(RTL837X_REG_LINKS);
-	if (!isRTL8373 && cmp_4(sfr_data, linkbits_last)) {
+	if (cmp_4(sfr_data, linkbits_last) || (linkbits_p89 != linkbits_last_p89)) {
 		print_string("\n<new link: ");
-		print_long_x(sfr_data);
+		print_byte(linkbits_p89); print_byte(sfr_data[0]); print_byte(sfr_data[1]);
+		print_byte(sfr_data[2]); print_byte(sfr_data[3]);
 		print_string(", was ");
-		print_long_x(linkbits_last);
+		print_byte(linkbits_last_p89); print_byte(linkbits_last[0]); print_byte(linkbits_last[1]);
+		print_byte(linkbits_last[2]); print_byte(linkbits_last[3]); 
 		print_string(">\n");
-		if (nSFPPorts != 2) {
+		linkbits_last_p89 = linkbits_p89;
+		if (!isRTL8373 && nSFPPorts != 2) {
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
+			// Handle link change of the RTL8221 PHY, adjust SDS mode
 			if (p5_last != p5) {
 				if (p5 == 0x5) // 2.5GBit Mode
 					sds_config(0, SDS_HISGMII);
@@ -1032,7 +1041,6 @@ void idle(void)
 	}
 
 	// Check for changes with SFP modules
-
 	handle_sfp();
 
 	/* Button pressed on KL-8xhm-x2:
@@ -1723,7 +1731,7 @@ void bootloader(void)
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
 	// We have not detected any link
-	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = 0;
+	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = linkbits_last_p89 = 0;
 
 	print_string("Detecting CPU: ");
 	isRTL8373 = 0;
