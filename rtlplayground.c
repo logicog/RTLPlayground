@@ -924,7 +924,7 @@ void handle_sfp(void)
 		sfp_pins_last |= 0x02;
 		print_string("\n<SFP-RX LOS>\n");
 	}
-
+#if NSFP == 2
 	reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
 	if ((sfp_pins_last & 0x10) && (!(sfr_data[1] & 0x04))) {
 		sfp_pins_last &= ~0x10;
@@ -943,6 +943,17 @@ void handle_sfp(void)
 		sfp_pins_last |= 0x10;
 		print_string("\n<MODULE 2 REMOVED>\n");
 	}
+
+	reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
+	if ((sfp_pins_last & 0x20) && (!(sfr_data[2] & 0x08))) {
+		sfp_pins_last &= ~0x20;
+		print_string("\n<SFP2-RX OK>\n");
+	}
+	if ((!(sfp_pins_last & 0x20)) && (sfr_data[2] & 0x08)) {
+		sfp_pins_last |= 0x20;
+		print_string("\n<SFP2-RX LOS>\n");
+	}
+#endif
 }
 
 
