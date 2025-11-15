@@ -33,6 +33,8 @@ __xdata uint16_t slen;
 __xdata uint16_t o_idx;
 __xdata uint16_t mpos;
 __xdata uint16_t len_left;
+__xdata uint16_t cont_len;
+__xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
@@ -386,17 +388,28 @@ void httpd_appcall(void)
 		if (slen > uip_mss()) {
 			print_string("Sending A: "); print_short(slen); write_char('\n');
 			uip_send(outbuf + o_idx, uip_mss());
-			print_string("Sending A done\n");
 			s->tstate = TSTATE_TX;
 		} else if (slen > 0) {
 			print_string("Sending B: "); print_short(slen); write_char('\n');
 			uip_send(outbuf + o_idx, slen);
-			print_string("Sending B done\n");
+			s->tstate = TSTATE_TX;
+		} else if (cont_len) {
+			print_string("CONT cont_len: "); print_short(cont_len);
+			slen = cont_len > uip_mss() ? uip_mss() : cont_len;
+			if (slen > TCP_OUTBUF_SIZE)
+				slen = TCP_OUTBUF_SIZE;
+			flash_region.addr = cont_addr;
+			flash_region.len = slen;
+			flash_read_bulk(outbuf);
+			uip_send(outbuf, slen);
+			cont_len -= slen;
+			cont_addr += slen;
 			s->tstate = TSTATE_TX;
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		stream_upload(0);
 	} else if (uip_newdata() && s->tstate != TSTATE_TX) {
+		cont_len = 0;
 		write_char('<'); print_short(uip_len); write_char('\n');
 		__xdata uint8_t *p = uip_appdata;
 		// Mark end of request header with \0
@@ -452,7 +465,11 @@ void httpd_appcall(void)
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
 			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=2592000\r\n\r\n");
 			len_left = f_data[entry].len;
-
+			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
+				cont_len = len_left - (TCP_OUTBUF_SIZE - slen);
+				len_left = TCP_OUTBUF_SIZE - slen;
+				cont_addr = f_data[entry].start + len_left;
+			}
 			print_string("MIME: "); print_string(mime_strings[f_data[entry].mime]); write_char('\n');
 			flash_region.addr = f_data[entry].start;
 			flash_region.len = len_left;
