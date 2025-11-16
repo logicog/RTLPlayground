@@ -42,7 +42,8 @@ __xdata uint8_t *content_type = 0;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
-
+__xdata uint8_t verify_crc;
+__xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
 
 #define TSTATE_NONE	0
@@ -232,14 +233,21 @@ uint8_t stream_upload(uint16_t bptr)
 			uptr += write_len;
 			write_len = 0;
 			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
-			print_string("CRC16: "); print_short(crc_final); write_char('\n');
-			if (crc_final == 0xb001) {
-				print_string("Checksum OK.");
-			} else {
-				print_string("Checksum incorrect!");
+			if (verify_crc) {
+				print_string("CRC16: "); print_short(crc_final); write_char('\n');
+				if (crc_final == 0xb001) {
+					print_string("Checksum OK.");
+				} else {
+					print_string("Checksum incorrect!");
+				}
+				print_string("Upload to flash done, will reset!\n");
+				reset_chip();
 			}
-			print_string("Upload to flash done, will reset!\n");
-			reset_chip();
+			// Make sure there is a 0 at the end of the uploaded data
+			flash_buf[0] = 0;
+			flash_region.addr = uptr;
+			flash_region.len = 1;
+			flash_write_bytes(flash_buf);
 			if (bptr >= uip_len)
 				return 0;
 			return 1;
@@ -309,8 +317,8 @@ void handle_post(void)
 		cmd_buffer[i] = '\0';
 		if (i)
 			cmd_available = 1;
-	} else if (is_word(request_path, "upload")) {
-		print_string("POST upload request\n");
+	} else if (is_word(request_path, "upload") || is_word(request_path, "config")) {
+		print_string("POST upload/config request\n");
 		if (!boundary[0]) {
 			print_string("Bad request, no boundary!\n");
 			send_bad_request();
@@ -330,7 +338,18 @@ void handle_post(void)
 		print_string("Have content octets\n");
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
-		uptr = FIRMWARE_UPLOAD_START;
+		if (is_word(request_path, "upload")) {
+			uptr = FIRMWARE_UPLOAD_START;
+			verify_crc = 1;
+			max_upload = 1024576;
+		} else {
+			print_string("Configuration upload, erasing config mem!\n");
+			uptr = CONFIG_START;
+			verify_crc = 0;
+			max_upload = 2048;
+			flash_region.addr = CONFIG_START;
+			flash_sector_erase();
+		}
 		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
@@ -407,7 +426,13 @@ void httpd_appcall(void)
 			s->tstate = TSTATE_TX;
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
-		stream_upload(0);
+		// Check here maxupload by subtracting uip_len and close socekt if fails!
+		if (max_upload - uip_len > 0) {
+			stream_upload(0);
+		} else {
+			send_bad_request();
+			goto do_send;
+		}
 	} else if (uip_newdata() && s->tstate != TSTATE_TX) {
 		cont_len = 0;
 		write_char('<'); print_short(uip_len); write_char('\n');
@@ -456,6 +481,10 @@ void httpd_appcall(void)
 				send_eee();
 			} else if (is_word(q, "/mirror.json")) {
 				send_mirror();
+			} else if (is_word(q, "/config")) {
+				send_config();
+			} else if (is_word(q, "/cmd_log")) {
+				send_cmd_log();
 			} else {
 				send_not_found();
 			}

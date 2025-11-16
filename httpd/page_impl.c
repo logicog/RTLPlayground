@@ -4,6 +4,7 @@
 #include "../rtl837x_common.h"
 #include "../rtl837x_regs.h"
 #include "../rtl837x_port.h"
+#include "../rtl837x_flash.h"
 #include "uip.h"
 #include "../html_data.h"
 #include <stdint.h>
@@ -15,6 +16,8 @@
 
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
+extern __xdata uint16_t cont_len;
+extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
 extern __code struct uip_eth_addr uip_ethaddr;
@@ -30,7 +33,13 @@ extern __xdata uint8_t isRTL8373;
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
+extern __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
+extern __xdata uint16_t cmd_history_ptr;
+
+extern __xdata struct flash_region_t flash_region;
+
 __code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
+__code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 
 /*  Convert only the lower nibble to ascii HEX char.
     For convenience the upper nibble is masked out.
@@ -369,5 +378,48 @@ void send_status(void)
 			char_to_html(',');
 		else
 			char_to_html(']');
+	}
+}
+
+
+void send_config(void)
+{
+	print_string("send_config called\n");
+	__xdata uint32_t pos = CONFIG_START; // 70000 , 6c000 / 0xc000 = 9
+
+	extern __xdata uint16_t len_left = CONFIG_LEN;
+	slen = strtox(outbuf, HTTP_RESPONCE_TXT);
+	while (read_flash((CONFIG_START-CODE0_SIZE) / CODE_BANK_SIZE + 1,
+		(__code uint8_t *) (((CONFIG_START + len_left - CODE0_SIZE) % CODE_BANK_SIZE) + CODE0_SIZE + len_left)) == 0xff) {
+		print_short(len_left);
+		len_left--;
+	}
+	len_left++;
+
+	if (len_left > (TCP_OUTBUF_SIZE - slen)) {
+		cont_len = len_left - (TCP_OUTBUF_SIZE - slen);
+		len_left = TCP_OUTBUF_SIZE - slen;
+		cont_addr = len_left;
+	}
+	flash_region.addr = CONFIG_START;
+	flash_region.len = len_left;
+	flash_read_bulk(outbuf + slen);
+	slen += len_left;
+}
+
+void send_cmd_log(void)
+{
+	print_string("send_cmd_log called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_TXT);
+	__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
+	__xdata uint8_t found_begin = 0;
+	print_string("History ptr: ");
+	print_short(cmd_history_ptr); write_char('\n');
+	while (p != cmd_history_ptr) {
+		if (!cmd_history[p] || cmd_history[p] == '\n')
+			found_begin = 1;
+		if (found_begin && cmd_history[p])
+			outbuf[slen++] = cmd_history[p];
+		p = (p + 1) & CMD_HISTORY_MASK;
 	}
 }
