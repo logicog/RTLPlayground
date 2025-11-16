@@ -5,9 +5,6 @@
 // #define DEBUG
 // #define REGDBG 1
 
-#define CONFIG_START 0x70000
-#define CONFIG_LEN 0x1000
-
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
@@ -54,11 +51,15 @@ __xdata uint8_t cmd_available;
 __xdata	uint8_t l;
 __xdata uint8_t line_ptr;
 __xdata	char is_white;
+__xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
 
 #define N_WORDS SBUF_SIZE
 __xdata signed char cmd_words_b[N_WORDS];
+
+__xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
+__xdata uint16_t cmd_history_ptr;
 
 // Maps the physical port (starting from 0) to the logical port
 __code uint8_t phys_to_log_port[6] = {
@@ -706,21 +707,52 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "version")) {
 			print_sw_version();
 		}
+		if (cmd_compare(0, "history")) {
+			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
+			__xdata uint8_t found_begin = 0;
+			print_string("History ptr: ");
+			print_short(cmd_history_ptr); write_char('\n');
+			while (p != cmd_history_ptr) {
+				print_short(p); write_char(' ');
+				if (!cmd_history[p] || cmd_history[p] == '\n')
+					found_begin = 1;
+				if (found_begin && cmd_history[p])
+					write_char(cmd_history[p]);
+				p = (p + 1) & CMD_HISTORY_MASK;
+			}
+		}
+		if (save_cmd) {
+			uint8_t i;
+			for (i = 0; i < N_WORDS; i++) {
+				if (cmd_words_b[i] < 0)
+					break;
+			}
+			if (i < N_WORDS) {
+				i = cmd_words_b[--i];
+				cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
+				__xdata uint16_t p = cmd_history_ptr;
+				cmd_history[cmd_history_ptr++] = '\n';
+				do {
+					i--;
+					cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
+				} while (i);
+			}
+		}
 	}
 }
 
 #define FLASH_READ_BURST_SIZE 0x100;
 void execute_config(void) __banked
 {
-	memcpyc(flash_buf, "test", 5);
-	print_string_x(flash_buf);
+	__xdata uint32_t pos = CONFIG_START;
+	__xdata uint16_t len_left = CONFIG_LEN;
 
-    __xdata uint32_t pos = CONFIG_START;
-    __xdata uint16_t len_left = CONFIG_LEN;
- 	do {
+	save_cmd = 0;
+
+	do {
 		flash_region.addr = pos;
 		flash_region.len = FLASH_READ_BURST_SIZE;
-        write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
+		write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
 
 		flash_read_bulk(flash_buf);
 
@@ -737,7 +769,7 @@ void execute_config(void) __banked
 					if (cmd_idx && !cmd_tokenize())
 						cmd_parser();
 					if (c == 0)
-						return;
+						goto config_done;
 					break;
 				}
 
@@ -748,5 +780,12 @@ void execute_config(void) __banked
 
 		len_left -= FLASH_READ_BURST_SIZE;
 		pos += FLASH_READ_BURST_SIZE;
-    } while(len_left);
+	} while(len_left);
+
+config_done:
+	// Start saving commands to cmd_history
+	save_cmd = 1;
+	for (cmd_history_ptr = 0; cmd_history_ptr < CMD_HISTORY_SIZE; cmd_history_ptr++)
+		cmd_history[cmd_history_ptr] = 0;
+	cmd_history_ptr = 0;
 }
