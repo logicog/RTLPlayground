@@ -1,5 +1,5 @@
 var systemInterval = Number();
-const ips = ["ip", "nm", "gw"];
+const ips = ["ip", "netmask", "gw"];
 
 function checkIp(ip) {
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -27,19 +27,32 @@ async function ipSub() {
   }
 }
 
-async function flashSave() {
-  fetchConfig();
-  fetchCmdLog();
-  return;
+async function sendConfig(c) {
+    const form = new FormData();
+  form.append("MAX_FILE_SIZE", "4096");
+  form.append("configuration", new Blob([c], {type: "application/octet-stream"}));
   try {
-    const response = await fetch('/save', {
+    const response = await fetch('/config', {
       method: 'POST',
-      body: cmd
+      body: form
     });
     console.log('Completed!', response);
   } catch(err) {
     console.error(`Error: ${err}`);
   }
+}
+
+async function flashSave() {
+  fetchConfig().then((s) => {
+    parseConf(s);
+    fetchCmdLog().then((s) => {
+      parseConf(s);
+      var body = "";
+      for (const x of configuration) { body = body + x + "\n"; }
+      console.log("CONFIGURATION to save: ", body);
+      sendConfig(body);
+    });
+  });
 }
 
 function fetchIP() {
@@ -49,7 +62,7 @@ function fetchIP() {
       const s = JSON.parse(xhttp.responseText);
       console.log("IP: ", s);
       document.getElementById("ip").value=s.ip_address;
-      document.getElementById("nm").value=s.ip_netmask;
+      document.getElementById("netmask").value=s.ip_netmask;
       document.getElementById("gw").value=s.ip_gateway;
       clearInterval(systemInterval);
     }
