@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <time.h>
 #include "httpd_sim.h"
 #include <json.h>
@@ -20,6 +21,10 @@ char upload_buffer[4194304]; // 4MB
 
 char *content_type = NULL;
 char boundary[72];
+char cmd_history[1024][256];
+uint16_t cmd_ptr = 0;
+char *uploaded_config = NULL;
+int uploaded_config_len;
 
 char is_word(char *c, char *d)
 {
@@ -202,6 +207,32 @@ void send_mirror(int s)
 }
 
 
+void send_cmd_log(int s)
+{
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
+        write(s, header, strlen(header));
+
+	for (int i = 0; i < cmd_ptr; i++) {
+		write(s, cmd_history[i], strlen(cmd_history[i]));
+		write(s, "\n", 1);
+		printf("%d: %s\n", i, cmd_history[i]);
+	}
+}
+
+
+void send_config(int s)
+{
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
+	printf("Sending uploaded config\n");
+        write(s, header, strlen(header));
+	printf("Uploaded config len: %d\n", uploaded_config_len);
+	printf(">%s<", uploaded_config);
+	write(s, uploaded_config, uploaded_config_len);
+}
+
+
 struct Server serverConstructor(int port, void (*launch)(struct Server *server)) {
     struct Server server;
 
@@ -289,6 +320,11 @@ char *skip_boundary(char *p)
 	return p;
 }
 
+void print_cmd_history(void)
+{
+	for (int i = 0; i < cmd_ptr; i++)
+		printf("%d: %s\n", i, cmd_history[i]);
+}
 
 void launch(struct Server *server)
 {
@@ -324,7 +360,7 @@ void launch(struct Server *server)
 					send_eee(new_socket);
 					goto done;
 				}
-				if (!strncmp(&buffer[4], "/information.json", 12)) {
+				if (!strncmp(&buffer[4], "/information.json", 17)) {
 					printf("Status request\n");
 					send_basic_info(new_socket);
 					goto done;
@@ -340,6 +376,17 @@ void launch(struct Server *server)
 					send_vlan(new_socket, vlan);
 					goto done;
 				}
+				if (!strncmp(&buffer[4], "/cmd_log", 8)) {
+					printf("Request cmd_log\n");
+					send_cmd_log(new_socket);
+					goto done;
+				}
+				if (!strncmp(&buffer[4], "/config ", 8) && uploaded_config) {
+					printf("Request current config.\n");
+					send_config(new_socket);
+					goto done;
+				}
+
 				int i = 0;
 				while (!isspace(buffer[4 + i]))
 					i++;
@@ -391,8 +438,24 @@ void launch(struct Server *server)
 				}
 
 				printf("Bytes read %ld\n", bytesRead);
-				if (is_word(&buffer[5], "/upload")) {
-					printf("POST upload request\n");
+				if (is_word(&buffer[5], "/cmd")) {
+					printf("POST cmd\n");
+					printf("CMD: %s\n", p + 4);
+					strcpy(cmd_history[cmd_ptr], p + 4);
+					// cmd_history[cmd_ptr][strlen(cmd_history[cmd_ptr]) -2] = '\0';
+					cmd_ptr++;
+					print_cmd_history();
+					char *response = "HTTP/1.1 200 OK\r\n"
+							"Content-Type: text/html\r\n\r\n"
+							"<!DOCTYPE html> <html><head><title>Upload OK</title></head>"
+							"<body><h1>Command executed successully</h1></html>";
+					write(new_socket, response, strlen(response));
+					goto done;
+				} else if (is_word(&buffer[5], "/upload") || is_word(&buffer[5], "/config")) {
+					printf("POST upload/config request\n");
+					bool config_upload = false;
+					if (is_word(&buffer[5], "/config"))
+						config_upload = true;
 					if (!boundary[0]) {
 						printf("Bad request, no boundary!\n");
 						send_bad_request(new_socket);
@@ -409,6 +472,7 @@ void launch(struct Server *server)
 					} while (!is_word(content_type, "application/octet-stream"));
 					printf("Have content: >%s<\n", content_type);
 
+					p += 4; // Skip \r\n\r\n after content type
 					char *uptr = upload_buffer;
 					int bindex = 0;
 					int bptr = p - buffer;
@@ -441,6 +505,13 @@ void launch(struct Server *server)
 							"<!DOCTYPE html> <html><head><title>Upload OK</title></head>"
 							"<body><h1>File uploaded successully</h1></html>";
 					write(new_socket, response, strlen(response));
+					if (config_upload) {
+						uploaded_config_len = (uptr - upload_buffer);
+						if (uploaded_config)
+							free (uploaded_config);
+						uploaded_config = malloc(uploaded_config_len + 1);
+						memcpy(uploaded_config, upload_buffer, uploaded_config_len);
+					}
 					goto done;
 				}
 			}
