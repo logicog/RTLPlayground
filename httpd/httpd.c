@@ -2,10 +2,15 @@
 #include "httpd.h"
 #include "page_impl.h"
 #include "../rtl837x_common.h"
+#include "../rtl837x_regs.h"
 #include "../cmd_parser.h"
 #include "../rtl837x_flash.h"
 #include "uip.h"
 #include "../html_data.h"
+
+#define SESSION_ID "1234567890ab"
+#define PASSWORD "1234"
+#define SESSION_TIMEOUT 200
 
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
@@ -18,6 +23,7 @@
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
+extern volatile __xdata uint8_t sfr_data[4];
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
 extern __xdata struct flash_region_t flash_region;
@@ -39,12 +45,20 @@ __xdata uint32_t cont_addr;
 // HTTP header properties
 __xdata uint8_t boundary[72];
 __xdata uint8_t *content_type = 0;
+__xdata uint8_t *session = 0;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
 __xdata uint8_t verify_crc;
 __xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
+
+__xdata char password[21];
+__xdata char session_id[13];
+__xdata uint8_t authenticated;
+__xdata uint32_t now;
+__xdata uint8_t *timeptr;
+__xdata uint32_t last_session_use;
 
 #define TSTATE_NONE	0
 #define TSTATE_TX	1
@@ -164,6 +178,19 @@ void send_bad_request(void)
 }
 
 
+void send_to_login(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 302 Found\r\n" \
+			      "Location: login.html\r\n\r\n");
+}
+
+
+void send_unauthorized(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\n\r\n");
+}
+
+
 __xdata uint8_t *skip_boundary(__xdata uint8_t *p)
 {
 	while (*p) {
@@ -178,6 +205,8 @@ __xdata uint8_t *skip_boundary(__xdata uint8_t *p)
 __xdata uint8_t *scan_header(__xdata uint8_t *p)
 {
 	content_type = 0;
+	session = 0;
+	authenticated = 0;
 
 	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
 		write_char(*p);
@@ -185,6 +214,8 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 			break;
 		if (is_word(p, "\nContent-Type:"))
 			content_type = p + 15;
+		else if (is_word(p, "\nCookie:"))
+			session = p + 17;
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
 		print_string("\nFound multiplart\n");
@@ -200,6 +231,23 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 		boundary[2] = '-';
 		boundary[3] = '-';
 		boundary[i + 4] = 0;
+	}
+
+	reg_read_m(RTL837X_REG_SEC_COUNTER);
+	timeptr = (uint8_t*)&now; // Now is Little endian
+	timeptr[0] = sfr_data[3]; timeptr[1] = sfr_data[2]; timeptr[2] = sfr_data[1]; timeptr[3] = sfr_data[0];
+
+	if (session) {
+		print_string("Session: "); print_string_x(session); print_string(", time now "); print_long(now);
+		print_string(" last session use: "); print_long(last_session_use); write_char('\n');
+		if (now - last_session_use > SESSION_TIMEOUT) {
+			print_string("Session expired\n");
+		} else {
+			if (is_word(session, SESSION_ID))  // TODO: is_word_x
+				authenticated = 1;
+			else
+				print_string("Invalid session cookie!\n");
+		}
 	}
 	return p;
 }
@@ -312,13 +360,36 @@ void handle_post(void)
 	if (is_word(request_path, "cmd")) {
 		register uint8_t i = 0;
 		p += 4;
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
 		while (*p && *p != '\n' && *p != '\r')
 			cmd_buffer[i++] = *p++;
 		cmd_buffer[i] = '\0';
 		if (i)
 			cmd_available = 1;
+	} else if (is_word(request_path, "login")) {
+		print_string("POST login\n");
+		p += 8; // Read also over "pwd="
+		if (is_word(p, PASSWORD)) {
+			print_string("Password accepted!\n");
+			reg_read_m(RTL837X_REG_SEC_COUNTER);
+			timeptr = (uint8_t*)&last_session_use; // last_session_use is Little endian
+			timeptr[0] = sfr_data[3]; timeptr[1] = sfr_data[2]; timeptr[2] = sfr_data[1]; timeptr[3] = sfr_data[0];
+
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: index.html\r\n" \
+					      "Set-Cookie: session=" SESSION_ID "; SameSite=Strict\r\n\r\n");
+		} else {
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: login.html\r\n\r\n");
+		}
+		return;
 	} else if (is_word(request_path, "upload") || is_word(request_path, "config")) {
 		print_string("POST upload/config request\n");
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
 		if (!boundary[0]) {
 			print_string("Bad request, no boundary!\n");
 			send_bad_request();
@@ -456,6 +527,7 @@ void httpd_appcall(void)
 		if (is_word(p, "GET"))
 			print_string("GET request ");
 		p += 4;
+		scan_header(p);
 		__xdata uint8_t *q = p;
 		while (!is_separator(*p))
 			p++;
@@ -467,6 +539,11 @@ void httpd_appcall(void)
 		entry = find_entry(q);
 		print_string("Entry is: "); print_byte(entry); write_char('\n');
 		if (entry == 0xff) {
+			if (!authenticated) {
+				print_string("Not authorized!\n");
+				send_unauthorized();
+				goto do_send;
+			}
 			print_string("Not file entry\n");
 			if (!strcmp(q, "/status.json")) {
 				send_status();
@@ -489,7 +566,17 @@ void httpd_appcall(void)
 				send_not_found();
 			}
 		} else {
-			print_string("Have entry\n");
+			print_string("Have entry, authenticated: "); print_byte(authenticated); write_char('\n');
+			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html
+						|| f_data[entry].start == FDATA_START_style_css)) {
+				send_to_login();
+				goto do_send;
+			}
+			// A web-page is actively accessed, we can reset session time-out
+			reg_read_m(RTL837X_REG_SEC_COUNTER);
+			timeptr = (uint8_t*)&last_session_use; // last_session_use is Little endian
+			timeptr[0] = sfr_data[3]; timeptr[1] = sfr_data[2]; timeptr[2] = sfr_data[1]; timeptr[3] = sfr_data[0];
+
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
 			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=2592000\r\n\r\n");
