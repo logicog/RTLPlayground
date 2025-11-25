@@ -11,8 +11,13 @@
 #include <signal.h>
 #include "../version.h"
 
+#define SESSION_ID "1234567890ab"
+#define PASSWORD "1234"
+#define SESSION_TIMEOUT 20
+
 #define PORTS 6
 time_t last_called;
+time_t last_session_use;
 
 uint64_t txG[PORTS], txB[PORTS], rxG[PORTS], rxB[PORTS];
 char txG_buff[20], txB_buff[20], rxG_buff[20], rxB_buff[20];
@@ -25,6 +30,8 @@ char cmd_history[1024][256];
 uint16_t cmd_ptr = 0;
 char *uploaded_config = NULL;
 int uploaded_config_len;
+const char *session = NULL;
+bool authenticated = false;
 
 char is_word(char *c, char *d)
 {
@@ -108,6 +115,7 @@ void send_status(int s)
         char *header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
+	printf("Sending status.\n");
 	time_t now = time(NULL);
 	now = last_called ? last_called + 1 : now; // Make sure we don't divide by 0 for rates
 
@@ -284,13 +292,30 @@ void send_bad_request(int socket) {
 }
 
 
+void send_to_login(int socket) {
+	char *response = "HTTP/1.1 302 Found\r\n"
+			 "Location: login.html\r\n\r\n";
+	write(socket, response, strlen(response));
+}
+
+
+void send_unauthorized(int socket) {
+	char *response = "HTTP/1.1 301 Unauthorized\r\n\r\n";
+	write(socket, response, strlen(response));
+}
+
+
 char *scan_header(char *p)
 {
+	session = 0;
+	authenticated = false;
 	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
 		if (!*p++)
 			break;
-		if (*p == '\n' && is_word(p + 1, "Content-Type:"))
+		if (is_word(p, "\nContent-Type:"))
 			content_type = p + 15;
+		else if (is_word(p, "\nCookie:"))
+			session = p + 17;
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
 		printf("Found multiplart\n");
@@ -306,6 +331,19 @@ char *scan_header(char *p)
 		boundary[i + 2] = 0;
 	}
 
+	time_t now = time(NULL);
+	if (session) {
+		printf("Session: >%s<. time now: %ld last %ld\n", session, now, last_session_use);
+		if (now - last_session_use > SESSION_TIMEOUT) {
+			printf("Session expired\n");
+		} else {
+			if (!strncmp(session, SESSION_ID, 12))
+				authenticated = true;
+			else
+				printf("Invalid session cookie!\n");
+		}
+	}
+	printf("Time now: %ld last %ld\n", now, last_session_use);
 	return p;
 }
 
@@ -349,43 +387,65 @@ void launch(struct Server *server)
 			puts(buffer);
 
 			if (is_word(buffer, "GET")) {
-				printf("GET request\n");
+				scan_header(buffer);
 				if (!strncmp(&buffer[4], "/status.json", 12)) {
 					printf("Status request\n");
-					send_status(new_socket);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_status(new_socket);
 					goto done;
-				}
-				if (!strncmp(&buffer[4], "/eee.json", 9)) {
+				} else if (!strncmp(&buffer[4], "/eee.json", 9)) {
 					printf("EEE request\n");
-					send_eee(new_socket);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_eee(new_socket);
 					goto done;
-				}
-				if (!strncmp(&buffer[4], "/information.json", 17)) {
+				} else if (!strncmp(&buffer[4], "/information.json", 17)) {
 					printf("Status request\n");
-					send_basic_info(new_socket);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_basic_info(new_socket);
 					goto done;
-				}
-				if (!strncmp(&buffer[4], "/mirror.json", 12)) {
+				} else if (!strncmp(&buffer[4], "/mirror.json", 12)) {
 					printf("Mirror request\n");
-					send_mirror(new_socket);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_mirror(new_socket);
 					goto done;
-				}
-				if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
+				} else if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
 					int vlan = atoi(&buffer[19]);
 					printf("VLAN request for %d\n", vlan);
-					send_vlan(new_socket, vlan);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_vlan(new_socket, vlan);
 					goto done;
-				}
-				if (!strncmp(&buffer[4], "/cmd_log", 8)) {
+				} else if (!strncmp(&buffer[4], "/cmd_log", 8)) {
 					printf("Request cmd_log\n");
-					send_cmd_log(new_socket);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_cmd_log(new_socket);
 					goto done;
-				}
-				if (!strncmp(&buffer[4], "/config ", 8) && uploaded_config) {
+				} else if (!strncmp(&buffer[4], "/config ", 8) && uploaded_config) {
 					printf("Request current config.\n");
-					send_config(new_socket);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_config(new_socket);
 					goto done;
 				}
+				if (!authenticated && !(!strncmp(&buffer[4], "/login.html", 11) || !strncmp(&buffer[4], "/style.css", 10))) {
+					send_to_login(new_socket);
+					goto done;
+				}
+
+				// A web-page is actively accessed, we can reset session time-out
+				last_session_use = time(NULL);
 
 				int i = 0;
 				while (!isspace(buffer[4 + i]))
@@ -436,19 +496,38 @@ void launch(struct Server *server)
 					send_bad_request(new_socket);
 					goto done;
 				}
-
+				if (!authenticated && !is_word(&buffer[5], "/login")) {
+					send_to_login(new_socket);
+					goto done;
+				}
 				printf("Bytes read %ld\n", bytesRead);
 				if (is_word(&buffer[5], "/cmd")) {
 					printf("POST cmd\n");
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
-					// cmd_history[cmd_ptr][strlen(cmd_history[cmd_ptr]) -2] = '\0';
 					cmd_ptr++;
 					print_cmd_history();
 					char *response = "HTTP/1.1 200 OK\r\n"
 							"Content-Type: text/html\r\n\r\n"
 							"<!DOCTYPE html> <html><head><title>Upload OK</title></head>"
 							"<body><h1>Command executed successully</h1></html>";
+					write(new_socket, response, strlen(response));
+					goto done;
+				} else if (is_word(&buffer[5], "/login")) {
+					printf("POST login\n");
+					p += 4;
+					p += 4; // Read also over "pwd="
+					char *response;
+					if (is_word(p, PASSWORD)) {
+						printf("Password accepted!\n");
+						response = "HTTP/1.1 302 Found\r\n"
+							   "Location: index.html\r\n"
+							   "Set-Cookie: session=" SESSION_ID "; SameSite=Strict\r\n";
+					} else {
+						response = "HTTP/1.1 302 Found\r\n"
+							   "Location: login.html\r\n"
+							   "Content-Type: text/html\r\n\r\n";
+					}
 					write(new_socket, response, strlen(response));
 					goto done;
 				} else if (is_word(&buffer[5], "/upload") || is_word(&buffer[5], "/config")) {
