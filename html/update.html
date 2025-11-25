@@ -6,13 +6,13 @@
   </head>
   <body>
     <nav id="sidebar"></nav>
-    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
-    <div id="ports"></div>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;width:40%;">
     <h1>Firmware Update</h1>
     <form enctype="multipart/form-data" action="/upload" method="POST">
     <input type="hidden" name="MAX_FILE_SIZE" value="1000000" />
-      Choose a firmware update file to upload: <input name="uploadedfile" type="file" accept=".bin" /><br />
-    <input type="submit" value="Upload File" />
+      Choose a firmware update file to upload: <br/> <br/>
+      <input name="uploadedfile" type="file" accept=".bin" /><br />
+    <input style="margin-top:3em" type="submit" value="Upload File" />
     </form>
     <script src="/navigation.js"></script>
   </body>

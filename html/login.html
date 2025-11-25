@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <title>RTL Switch Login</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    function removeNote() {
+      document.getElementById("incorrect").innerHTML = "";
+    }
+    window.addEventListener("load", function() {
+      if (document.referrer.endsWith("login.html"))
+      document.getElementById("incorrect").innerHTML = "Wrong password!";
+    });
+    </script>
+</head>
+
+<body class="login_page">
+  <div class = "center">
+  <h1> RTL Switch Login</h1>
+  <form method="post" action="login">
+  <div class="txt_field">
+    <input name="pwd" type="password" onclick="removeNote()" required />
+    <span></span>
+    <label>Password</label>
+  </div>
+  <input type="submit" value="Login"/>
+  <h3 id="incorrect" style="margin-top: 5em;"></h3>
+  </form>
+</body>
+</html>
+
