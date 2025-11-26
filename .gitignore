@@ -2,6 +2,7 @@
 output/
 html_data.c
 html_data.h
+version.h
 tools/httpd_sim
 tools/injector
 tools/fileadder

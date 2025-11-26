@@ -1707,6 +1707,9 @@ void bootloader(void)
 		print_string("RTL8372\n");
 	}
 
+	// Print SW version
+	print_sw_version();
+
 	print_string("\nStarting up...\n");
 	print_string("  Flash controller\n");
 	flash_init(0);

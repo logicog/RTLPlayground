@@ -8,6 +8,7 @@
 #include "httpd_sim.h"
 #include <json.h>
 #include <signal.h>
+#include "../version.h"
 
 #define PORTS 6
 time_t last_called;
@@ -71,7 +72,7 @@ void send_basic_info(int socket)
 {
 	char *response = "HTTP/1.1 200 OK\r\n"
 		    "Content-Type: application/json; charset=UTF-8\r\n\r\n"
-			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"v0.1-ge4c48586\",\"hw_ver\":\"SWGT024-V2.0\"}";
+			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"" VERSION_SW "\",\"hw_ver\":\"SWGT024-V2.0\"}";
 	write(socket, response, strlen(response));
 }
 

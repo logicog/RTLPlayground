@@ -8,6 +8,7 @@
 #include "../html_data.h"
 #include <stdint.h>
 #include "../phy.h"
+#include "../version.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -169,8 +170,9 @@ void send_basic_info(void)
 	byte_to_html(uip_ethaddr.addr[3]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[4]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[5]);
-	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"v0.1-ge4c48586\",\"hw_ver\":\"SWGT024-V2.0\"}");
-	// slen += strtox(outbuf + slen, "\"}");
+	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
+	slen += strtox(outbuf + slen, VERSION_SW);
+	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"SWGT024-V2.0\"}");
 }
 
 

@@ -11,4 +11,5 @@ extern __xdata uint8_t cmd_available;
 uint8_t cmd_tokenize(void) __banked;
 void cmd_parser(void) __banked;
 void execute_config(void) __banked;
+void print_sw_version(void) __banked;
 #endif
