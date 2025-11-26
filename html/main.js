@@ -10,6 +10,8 @@ var numPorts = 0;
 function update() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 401)
+	    document.location = "/login.html"
     if (this.readyState == 4 && this.status == 200) {
       const s = JSON.parse(xhttp.responseText);
       if (!numPorts) {
