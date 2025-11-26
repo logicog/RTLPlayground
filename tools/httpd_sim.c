@@ -113,7 +113,8 @@ void send_status(int s)
 	struct json_object *ports, *v;
 	const char *jstring;
         char *header = "HTTP/1.1 200 OK\r\n"
-                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+		       "Cache-Control: no-cache\r\n"
+		       "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
 	printf("Sending status.\n");
 	time_t now = time(NULL);
@@ -300,7 +301,7 @@ void send_to_login(int socket) {
 
 
 void send_unauthorized(int socket) {
-	char *response = "HTTP/1.1 301 Unauthorized\r\n\r\n";
+	char *response = "HTTP/1.1 401 Unauthorized\r\n\r\n";
 	write(socket, response, strlen(response));
 }
 
@@ -497,7 +498,7 @@ void launch(struct Server *server)
 					goto done;
 				}
 				if (!authenticated && !is_word(&buffer[5], "/login")) {
-					send_to_login(new_socket);
+					send_unauthorized(new_socket);
 					goto done;
 				}
 				printf("Bytes read %ld\n", bytesRead);
@@ -525,8 +526,7 @@ void launch(struct Server *server)
 							   "Set-Cookie: session=" SESSION_ID "; SameSite=Strict\r\n";
 					} else {
 						response = "HTTP/1.1 302 Found\r\n"
-							   "Location: login.html\r\n"
-							   "Content-Type: text/html\r\n\r\n";
+							   "Location: login.html\r\n\r\n";
 					}
 					write(new_socket, response, strlen(response));
 					goto done;
@@ -595,7 +595,8 @@ void launch(struct Server *server)
 				}
 			}
 			char *response = "HTTP/1.1 200 OK\r\n"
-					"Content-Type: ";
+					 "Cache-Control: max-age=60, must-revalidate\r\n"
+					 "Content-Type: ";
 			write(new_socket, response, strlen(response));
 
 			write(new_socket, mime, strlen(mime));
