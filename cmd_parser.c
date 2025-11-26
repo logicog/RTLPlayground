@@ -35,6 +35,8 @@ extern __code uint8_t * __code hex;
 extern __xdata uint8_t flash_buf[512];
 extern __xdata struct flash_region_t flash_region;
 
+extern __xdata char passwd[21];
+
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 __xdata uint8_t gpio_last_value[8] = { 0 };
@@ -432,6 +434,36 @@ err:
 }
 
 
+void parse_rnd(void)
+{
+	// In order to get a new random numner, this bit has to be set each time!
+	reg_bit_set(RTL837X_RLDP_RLPP, RLDP_RND_EN);
+	reg_read_m(RTL837X_RAND_NUM1);
+	print_byte(sfr_data[2]);
+	print_byte(sfr_data[3]);
+	reg_read_m(RTL837X_RAND_NUM0);
+	print_byte(sfr_data[0]);
+	print_byte(sfr_data[1]);
+	print_byte(sfr_data[2]);
+	print_byte(sfr_data[3]);
+	write_char('\n');
+}
+
+
+void parse_passwd(void)
+{
+	if (cmd_words_b[2] > 0) {
+		signed char i;
+		signed char j = 0;
+		for (i = cmd_words_b[1]; (i != cmd_words_b[2] && i - cmd_words_b[1] < 20); i++)
+			passwd[j++] = cmd_buffer[i];
+		passwd[j] = '\0';
+		return;
+	}
+	print_string("Missing password\n");
+}
+
+
 // Parse command into words
 uint8_t cmd_tokenize(void) __banked
 {
@@ -680,6 +712,12 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "regset")) {
 			parse_regset();
 		}
+		if (cmd_compare(0, "rnd")) {
+			parse_rnd();
+		}
+		if (cmd_compare(0, "passwd")) {
+			parse_passwd();
+		}
 		if (cmd_compare(0, "eee")) {
 			int8_t port = -1;
 			if (cmd_words_b[3] > 0) {
@@ -741,12 +779,15 @@ void cmd_parser(void) __banked
 	}
 }
 
-#define FLASH_READ_BURST_SIZE 0x100;
+#define FLASH_READ_BURST_SIZE 0x100
+#define PASSWORD "1234"
 void execute_config(void) __banked
 {
 	__xdata uint32_t pos = CONFIG_START;
 	__xdata uint16_t len_left = CONFIG_LEN;
 
+	// Set default password, it can be overwritten in the configuration file
+	strtox(passwd, PASSWORD);
 	save_cmd = 0;
 
 	do {
