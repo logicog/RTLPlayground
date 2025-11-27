@@ -1,5 +1,6 @@
 BOOTLOADER_ADDRESS=0x100
 
+VERSION=0.1.0
 IMAGESIZE = 524288
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
@@ -13,8 +14,9 @@ SUBDIRS := tools uip httpd
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 BUILDDIR = output/
+VERSION_HEADER := version.h
 
-all: create_build_dir $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
+all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
@@ -26,6 +28,12 @@ OBJS += uip/$(BUILDDIR)/timer.rel uip/$(BUILDDIR)/uip-fw.rel uip/$(BUILDDIR)/uip
 html_data.c html_data.h: html tools
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
+$(VERSION_HEADER):
+	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
+	@echo "#define VERSION_H" >> $(VERSION_HEADER)
+	@echo "#define VERSION_SW \"v$(VERSION)-g$(shell git rev-parse --short HEAD)\"" >> $(VERSION_HEADER)
+	@echo "#endif" >> $(VERSION_HEADER)
+
 httpd: html_data.h
 
 $(SUBDIRS):
@@ -34,7 +42,7 @@ $(SUBDIRS):
 clean:
 	-make -C uip clean
 	-make -C httpd clean
-	-rm html_data.c html_data.h
+	-rm html_data.c html_data.h $(VERSION_HEADER)
 	-rm -r $(BUILDDIR)
 
 $(BUILDDIR)crtstart.rel: crtstart.asm

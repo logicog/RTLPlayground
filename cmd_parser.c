@@ -16,6 +16,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
 #include "uip/uip.h"
+#include "version.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -490,6 +491,13 @@ void print_gpio_status(void) {
 	}
 }
 
+// Show software version
+void print_sw_version(void) __banked {
+	print_string("Software version: ");
+	print_string(VERSION_SW);
+	write_char('\n');
+}
+
 
 // Identify command
 void cmd_parser(void) __banked
@@ -694,6 +702,9 @@ void cmd_parser(void) __banked
 				else
 					port_eee_status_all();
 			}
+		}
+		if (cmd_compare(0, "version")) {
+			print_sw_version();
 		}
 	}
 }
