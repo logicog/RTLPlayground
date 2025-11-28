@@ -101,6 +101,7 @@ __code uint16_t bit_mask[16] = {
 
 __xdata uint8_t was_offline;
 __xdata uint8_t linkbits_last[4];
+__xdata uint8_t linkbits_last_p89;
 __xdata uint8_t sfp_pins_last;
 
 
@@ -880,7 +881,10 @@ static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
 
 void sfp_print_info(uint8_t sfp)
 {
+	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
 	for (uint8_t i = 20; i < 60; i++) {
+		if (i >= 36 && i < 40) // Skip Non-ASCII codes
+			continue;
 		uint8_t c = sfp_read_reg(sfp, i);
 		if (c)
 			write_char(c);
@@ -920,7 +924,7 @@ void handle_sfp(void)
 		sfp_pins_last |= 0x02;
 		print_string("\n<SFP-RX LOS>\n");
 	}
-
+#if NSFP == 2
 	reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
 	if ((sfp_pins_last & 0x10) && (!(sfr_data[1] & 0x04))) {
 		sfp_pins_last &= ~0x10;
@@ -939,6 +943,17 @@ void handle_sfp(void)
 		sfp_pins_last |= 0x10;
 		print_string("\n<MODULE 2 REMOVED>\n");
 	}
+
+	reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
+	if ((sfp_pins_last & 0x20) && (!(sfr_data[2] & 0x08))) {
+		sfp_pins_last &= ~0x20;
+		print_string("\n<SFP2-RX OK>\n");
+	}
+	if ((!(sfp_pins_last & 0x20)) && (sfr_data[2] & 0x08)) {
+		sfp_pins_last |= 0x20;
+		print_string("\n<SFP2-RX LOS>\n");
+	}
+#endif
 }
 
 
@@ -980,17 +995,25 @@ void idle(void)
 #endif
 	}
 
+	// Check for Link changes
+	reg_read_m(RTL837X_REG_LINKS_89);
+	__xdata uint8_t linkbits_p89 = sfr_data[3];
+
 	reg_read_m(RTL837X_REG_LINKS);
-	if (!isRTL8373 && cmp_4(sfr_data, linkbits_last)) {
+	if (cmp_4(sfr_data, linkbits_last) || (linkbits_p89 != linkbits_last_p89)) {
 		print_string("\n<new link: ");
-		print_long_x(sfr_data);
+		print_byte(linkbits_p89); print_byte(sfr_data[0]); print_byte(sfr_data[1]);
+		print_byte(sfr_data[2]); print_byte(sfr_data[3]);
 		print_string(", was ");
-		print_long_x(linkbits_last);
+		print_byte(linkbits_last_p89); print_byte(linkbits_last[0]); print_byte(linkbits_last[1]);
+		print_byte(linkbits_last[2]); print_byte(linkbits_last[3]); 
 		print_string(">\n");
-		if (nSFPPorts != 2) {
+		linkbits_last_p89 = linkbits_p89;
+		if (!isRTL8373 && nSFPPorts != 2) {
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
+			// Handle link change of the RTL8221 PHY, adjust SDS mode
 			if (p5_last != p5) {
 				if (p5 == 0x5) // 2.5GBit Mode
 					sds_config(0, SDS_HISGMII);
@@ -1003,7 +1026,6 @@ void idle(void)
 	}
 
 	// Check for changes with SFP modules
-
 	handle_sfp();
 
 	/* Button pressed on KL-8xhm-x2:
@@ -1694,7 +1716,7 @@ void bootloader(void)
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
 	// We have not detected any link
-	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = 0;
+	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = linkbits_last_p89 = 0;
 
 	print_string("Detecting CPU: ");
 	isRTL8373 = 0;

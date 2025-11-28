@@ -522,15 +522,16 @@ void cmd_parser(void) __banked
 			reset_chip();
 		}
 		if (cmd_compare(0, "sfp")) {
-			uint8_t rate = sfp_read_reg(0, 12);
-			print_string("\nRate: "); print_byte(rate);
+			print_string("\nSlot 0 - Rate: "); print_byte(sfp_read_reg(0, 12));
 			print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
 			print_string("\n");
-			for (uint8_t i = 20; i < 60; i++) {
-				uint8_t c = sfp_read_reg(0, i);
-				if (c)
-					write_char(c);
-			}
+			sfp_print_info(0);
+#if NSFP == 2
+			print_string("\nSlot 1 - Rate: "); print_byte(sfp_read_reg(1, 12));
+			print_string("  Encoding: "); print_byte(sfp_read_reg(1, 11));
+			print_string("\n");
+			sfp_print_info(1);
+#endif
 		}
 		if (cmd_compare(0, "stat")) {
 			port_stats_print();
