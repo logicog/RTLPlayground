@@ -9,7 +9,6 @@
 #include "../html_data.h"
 
 #define SESSION_ID "1234567890ab"
-#define PASSWORD "1234"
 #define SESSION_TIMEOUT 200
 
 // Upload Firmware to 1M
@@ -53,7 +52,7 @@ __xdata uint8_t verify_crc;
 __xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
 
-__xdata char password[21];
+__xdata char passwd[21];
 __xdata char session_id[13];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
@@ -372,7 +371,7 @@ void handle_post(void)
 	} else if (is_word(request_path, "login")) {
 		print_string("POST login\n");
 		p += 8; // Read also over "pwd="
-		if (is_word(p, PASSWORD)) {
+		if (is_word_x(p, passwd)) {
 			print_string("Password accepted!\n");
 			reg_read_m(RTL837X_REG_SEC_COUNTER);
 			timeptr = (uint8_t*)&last_session_use; // last_session_use is Little endian
