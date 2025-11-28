@@ -8,7 +8,7 @@
 #include "uip.h"
 #include "../html_data.h"
 
-#define SESSION_ID "1234567890ab"
+#define SESSION_ID_LENGTH 12
 #define SESSION_TIMEOUT 200
 
 // Upload Firmware to 1M
@@ -23,6 +23,7 @@
 #pragma constseg BANK1
 
 extern volatile __xdata uint8_t sfr_data[4];
+extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
 extern __xdata struct flash_region_t flash_region;
@@ -53,7 +54,7 @@ __xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
 
 __xdata char passwd[21];
-__xdata char session_id[13];
+__xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
 __xdata uint8_t *timeptr;
@@ -217,7 +218,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 			session = p + 17;
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
-		print_string("\nFound multiplart\n");
+		print_string("\nFound multipart\n");
 		content_type += 30;
 		uint8_t i = 0;
 		while (content_type[i] != '\r' && content_type[i] != '\n') {
@@ -232,23 +233,33 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 		boundary[i + 4] = 0;
 	}
 
-	reg_read_m(RTL837X_REG_SEC_COUNTER);
-	timeptr = (uint8_t*)&now; // Now is Little endian
-	timeptr[0] = sfr_data[3]; timeptr[1] = sfr_data[2]; timeptr[2] = sfr_data[1]; timeptr[3] = sfr_data[0];
+	read_reg_timer(&now);
 
 	if (session) {
-		print_string("Session: "); print_string_x(session); print_string(", time now "); print_long(now);
-		print_string(" last session use: "); print_long(last_session_use); write_char('\n');
 		if (now - last_session_use > SESSION_TIMEOUT) {
 			print_string("Session expired\n");
 		} else {
-			if (is_word(session, SESSION_ID))  // TODO: is_word_x
+			if (is_word_x(session, session_id))
 				authenticated = 1;
 			else
 				print_string("Invalid session cookie!\n");
 		}
 	}
 	return p;
+}
+
+
+void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
+{
+	__xdata uint8_t i = 0;
+	while (bytes) {
+		if (!i)
+			get_random_32();
+		b[--bytes] = itohex(sfr_data[i]);
+		if (!bytes) { break; }
+		b[--bytes] = itohex(sfr_data[i] >> 4 | sfr_data[i] << 4);
+		i = (i + 1) & 0x3;
+	}
 }
 
 
@@ -373,12 +384,14 @@ void handle_post(void)
 		p += 8; // Read also over "pwd="
 		if (is_word_x(p, passwd)) {
 			print_string("Password accepted!\n");
-			reg_read_m(RTL837X_REG_SEC_COUNTER);
-			timeptr = (uint8_t*)&last_session_use; // last_session_use is Little endian
-			timeptr[0] = sfr_data[3]; timeptr[1] = sfr_data[2]; timeptr[2] = sfr_data[1]; timeptr[3] = sfr_data[0];
-
+			read_reg_timer(&last_session_use);
+			gen_random_bytes(session_id, SESSION_ID_LENGTH);
+			session_id[SESSION_ID_LENGTH] = '\0';
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: index.html\r\n" \
-					      "Set-Cookie: session=" SESSION_ID "; SameSite=Strict\r\n\r\n");
+					      "Set-Cookie: session=");
+			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
+				outbuf[slen++] = session_id[i];
+			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 		} else {
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: login.html\r\n\r\n");
 		}
