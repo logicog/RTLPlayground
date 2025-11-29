@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include "../phy.h"
 #include "../version.h"
+#include "page_impl.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -40,21 +41,6 @@ extern __xdata struct flash_region_t flash_region;
 
 __code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 __code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
-
-/*  Convert only the lower nibble to ascii HEX char.
-    For convenience the upper nibble is masked out.
-*/
-inline char itohex(uint8_t val) {
-	// Ignore upper nibble for convenience.
-	val &= 0x0f;
-	val -= 10;
-
-	// 10 or above
-	if ((int8_t)val >= 0)
-		val += ('a' - '0' - 10);
-
-	return val + ('0' + 10);
-}
 
 // Convert uint8_t to ascii HEX char push on html-buffer.
 void charhex_to_html(char c)
