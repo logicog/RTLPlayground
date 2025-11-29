@@ -104,5 +104,6 @@ uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 void tcpip_output(void);
 void print_string_x(__xdata char *p);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
+void get_random_32(void);
 
 #endif

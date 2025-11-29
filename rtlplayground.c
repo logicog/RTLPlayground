@@ -402,6 +402,18 @@ void sfr_set_zero(void) {
 	}
 }
 
+
+/*
+ * Create 32 random number in sfr_data
+ */
+void get_random_32(void)
+{
+	// In order to get a new random numner, this bit has to be set each time!
+	reg_bit_set(RTL837X_RLDP_RLPP, RLDP_RND_EN);
+	reg_read_m(RTL837X_RAND_NUM0);
+}
+
+
 /*
  * Transfer Network Interface RX data from the ASIC to the 8051 XMEM
  * data will be stored in the rx_header structure
