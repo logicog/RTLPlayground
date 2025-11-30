@@ -1,3 +1,6 @@
+const logToPhysPort = [0, 0, 0, 5, 1, 2, 3, 4, 6];
+const physToLogPort = [	4, 5, 6, 7, 3, 8];
+
 function drawPorts() {
   var f = document.getElementById('ports');
   console.log("DRAWING PORTS: ", numPorts);
