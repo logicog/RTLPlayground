@@ -95,15 +95,16 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 
 	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && cmd_buffer[i] != ' '; i++) {
 		i &= SBUF_SIZE - 1;
-//		print_short(i); write_char(':'); print_short(j); write_char('#'); print_string("\n");
+//		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
 //		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
-		if (!cmd[j])
+		if (!cmd[j] && !isletter(cmd_buffer[i]))
 			return 1;
 		if (cmd_buffer[i] != cmd[j++])
 			break;
 	}
-//	write_char('.'); print_short(i); write_char(':'); print_short(i);
-	if (i == cmd_words_b[start + 1] || cmd_buffer[i] == ' ')
+//	write_char('.'); print_byte(i); write_char(':'); print_byte(j); write_char(','); print_byte (cmd[j-1]);
+//	write_char(','); print_byte(cmd[j]);
+	if (i == cmd_words_b[start + 1] || (cmd_buffer[i] == ' ' && !cmd[j]))
 		return 1;
 	return 0;
 }
@@ -186,7 +187,7 @@ uint8_t parse_ip(register uint8_t idx)
 }
 
 
-void parse_trunk(void)
+void parse_lag(void)
 {
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
@@ -194,20 +195,61 @@ void parse_trunk(void)
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
-	while (cmd_words_b[w] > 0) {
+	while (cmd_words_b[w + 1] > 0) {
+//		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
 		uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
-			if (port > maxPort)
-				goto err;
-			members |= ((uint16_t)1) << port;
+			if (isnumber(cmd_buffer[cmd_words_b[w] + 1]))
+				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
+			if (!isRTL8373)
+				port = phys_to_log_port[port];
+		} else {
+			goto err;
+		}
+		if (port > maxPort)
+			goto err;
+		members |= ((uint16_t)1) << port;
+		w++;
+	}
+	port_lag_members_set(group, members);
+	return;
+err:
+	print_string("Error: lag <lag> [port]...");
+}
+
+
+void parse_lag_hash(void)
+{
+	__xdata uint8_t group;
+	__xdata uint8_t hash = 0;
+
+	group = cmd_buffer[cmd_words_b[1]] - '0';
+
+	uint8_t w = 2;
+	while (cmd_words_b[w + 1] > 0) {
+		if (cmd_compare(w, "spa"))
+			hash |= LAG_HASH_SOURCE_PORT_NUMBER;
+		else if (cmd_compare(w, "smac"))
+			hash |= LAG_HASH_L2_SMAC;
+		else if (cmd_compare(w, "dmac"))
+			hash |= LAG_HASH_L2_DMAC;
+		else if (cmd_compare(w, "sip"))
+			hash |= LAG_HASH_L3_SIP;
+		else if (cmd_compare(w, "dip"))
+			hash |= LAG_HASH_L3_DIP;
+		else if (cmd_compare(w, "sport"))
+			hash |= LAG_HASH_L4_SPORT;
+		else if (cmd_compare(w, "dport"))
+			hash |= LAG_HASH_L4_DPORT;
+		else {
+			print_string("Error: invalid hash type:");
+			print_string_x(&cmd_buffer[cmd_words_b[w]]);
+			write_char('\n');
 		}
 		w++;
 	}
-	trunk_set(group, members);
-	return;
-err:
-	print_string("Error: trunk <trunk-id> [port]...");
+	port_lag_hash_set(group, hash);
 }
 
 
@@ -697,8 +739,11 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "mirror")) {
 			parse_mirror();
 		}
-		if (cmd_compare(0, "trunk")) {
-			parse_trunk();
+		if (cmd_compare(0, "lag")) {
+			parse_lag();
+		}
+		if (cmd_compare(0, "laghash")) {
+			parse_lag_hash();
 		}
 		if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
@@ -748,10 +793,10 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "history")) {
 			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			__xdata uint8_t found_begin = 0;
-			print_string("History ptr: ");
-			print_short(cmd_history_ptr); write_char('\n');
+//			print_string("History ptr: ");
+//			print_short(cmd_history_ptr); write_char('\n');
 			while (p != cmd_history_ptr) {
-				print_short(p); write_char(' ');
+//				print_short(p); write_char(' ');
 				if (!cmd_history[p] || cmd_history[p] == '\n')
 					found_begin = 1;
 				if (found_begin && cmd_history[p])
@@ -793,8 +838,6 @@ void execute_config(void) __banked
 	do {
 		flash_region.addr = pos;
 		flash_region.len = FLASH_READ_BURST_SIZE;
-		write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
-
 		flash_read_bulk(flash_buf);
 
 		uint8_t cfg_idx = 0;
@@ -802,11 +845,8 @@ void execute_config(void) __banked
 		do {
 			for (uint8_t cmd_idx = 0; cmd_idx < (SBUF_SIZE - 1); cmd_idx++) {
 				c = flash_buf[cfg_idx++];
-				print_byte(c);
-
 				if (c == 0 || c == '\n') {
 					cmd_buffer[cmd_idx] = '\0';
-					write_char('\n'); write_char('#');  print_short(cfg_idx); write_char('-'); print_short(cmd_idx); write_char('-'); print_string_x(cmd_buffer); write_char('\n');
 					if (cmd_idx && !cmd_tokenize())
 						cmd_parser();
 					if (c == 0)
@@ -816,7 +856,6 @@ void execute_config(void) __banked
 
 				cmd_buffer[cmd_idx] = c;
 			}
-			write_char('N');
 		} while(cfg_idx);
 
 		len_left -= FLASH_READ_BURST_SIZE;
