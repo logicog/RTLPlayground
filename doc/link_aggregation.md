@@ -224,4 +224,4 @@ iperf Done.
 [1]+  Done                    sudo ip netns exec netns_eth1 iperf3 -c 192.168.9.1
 ```
 As you can see, the total throughput was 4.71 GBit/sec which is close to the
-maximum possible with a single 5GBit link. 
+maximum possible with a single 5GBit link.
