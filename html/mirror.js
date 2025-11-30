@@ -49,8 +49,10 @@ function fetchMirror() {
       let m_tx = parseInt(s.mirror_tx, 2);
       let m_rx = parseInt(s.mirror_rx, 2);
       for (let i = 1; i <= numPorts; i++) {
-        setM("mPortsTX"+i, m_tx&1); setM("mPortsRX"+i, m_rx&1);
-        m_tx = m_tx >> 1; m_rx = m_tx >> 1;
+        let p = i - 1;
+        if (numPorts < 9)
+          p = physToLogPort[p];members & (1<<p)
+        setM("mPortsTX"+i, m_tx&(1<<p)); setM("mPortsRX"+i, m_rx&(1<<p));
       }
     }
   };
