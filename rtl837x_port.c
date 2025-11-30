@@ -212,10 +212,10 @@ void vlan_setup(void) __banked
 		write_char(' '); write_char('A'); write_char('>'); print_sfr_data();
 #endif
 
-		// EGRESS filtering for port: removal of additional VLAN tag
-		reg_bit_clear(0x6738, i << 1);
-		reg_bit_clear(0x6738, (i << 1) + 1);
-		reg_bit_set(0x4e18, i);
+		// EGRESS filtering for port: removal of additional VLAN tag (mode 0x3 for each port)
+		reg_bit_clear(RTL837X_VLAN_PORT_EGR_TAG, i << 1);
+		reg_bit_clear(RTL837X_VLAN_PORT_EGR_TAG, (i << 1) + 1);
+		reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, i);
 
 #ifdef DEBUG
 		print_string("\n");
@@ -226,9 +226,9 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837x_REG_INGRESS, 0); // No filtering for all ports
 
 	// Enable 4k VLAN
-	REG_SET(0x4e14, 4);
-	REG_SET(0x4e30, 0);
-	REG_SET(0x4e34, 0);
+	REG_SET(RTL837X_VLAN_CTRL, VLAN_CVLAN_FILTER);
+	REG_SET(RTL837X_VLAN_L2_LRN_DIS_0, 0);
+	REG_SET(RTL837X_VLAN_L2_LRN_DIS_1, 0);
 
 	// Enable VLAN 1: Ports 0-9, i.e. including the CPU port are untagged members
 	if (isRTL8373) {
@@ -241,12 +241,6 @@ void vlan_setup(void) __banked
 		reg_read_m(RTL837X_TBL_CTRL);
 	} while (sfr_data[3] & TBL_EXECUTE);
 
-	// Configure trunking
-	if (isRTL8373) {
-		REG_SET(0x4f4c, 0x0000007e); // Removes RTL VLAN-Tags
-		REG_SET(0x4f48, 0x0000007e); // Adds 802.1Q VLAN-Tags to tagged ports
-	}
-
 #ifdef DEBUG
 	print_string("\nvlan_setup, REG 0x6738: "); print_reg(0x6738);
 	print_string("\nvlan_setup, REG 0x4e18: "); print_reg(0x4e18);
@@ -258,18 +252,6 @@ void vlan_setup(void) __banked
 #endif
 
 	print_string("vlan_setup done \n");
-}
-
-
-void trunk_set(uint8_t group, uint16_t mask) __banked
-{
-	if (group == 1) {
-		REG_WRITE(RTL837x_TRUNK_CTRL_A, 0, 0, mask >> 8, mask);
-	} else if (group == 2) {
-		REG_WRITE(RTL837x_TRUNK_CTRL_B, 0, 0, mask >> 8, mask);
-	} else {
-		print_string("\nTrunk group must be 1 or 2\n");
-	}
 }
 
 
@@ -377,7 +359,8 @@ void port_l2_setup(void) __banked
 	port_l2_forget();
 
 	for (uint8_t i = minPort; i <= maxPort; i++) {
-		uint16_t reg = 0x5384 + (i << 2);
+		// Limit the number of automatically learned MAC-Entries per port to 0x1040
+		uint16_t reg = RTL837X_L2_LRN_PORT_CONSTRAINT + (i << 2);
 		REG_SET(reg, 0x00001040);
 
 		// All ports may communicate with each other and CPU-Port
@@ -388,7 +371,8 @@ void port_l2_setup(void) __banked
 			REG_SET(reg, PMASK_6 | PMASK_CPU);
 		}
 	}
-	reg_bit_set(0x4f80, 0);
+	// When maximim entries learned, then simply flood the packet
+	reg_bit_set(RTL837X_L2_LRN_PORT_CONSTRT_ACT, 0);
 
 	print_string("\nport_l2_setup done\n");
 }
@@ -596,4 +580,36 @@ void port_rldp_on(__xdata uint16_t p_ms)
 
 	REG_SET(RTL837X_RMA0_CONF, 0x00000000); // R4ecc
 	REG_SET(RTL837X_RMA_CONF, 0x00000000); // R4ecc
+}
+
+
+/*
+ * Configure LAGs
+ * Sets the members via port bitmask of a given Link Aggregation Group
+ * The groups have numbers 0-3
+ * The bitmask represents up to 10 ports
+ * If currently no LAG has algorithm used, a default is applied
+ */
+void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banked
+{
+	print_string("port_lag_members_set, lag: "); print_byte(lag); print_string(", members: "); print_short(members);
+	if (lag > 3)
+		print_string("Link aggregation group must be 0-3!");
+	reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2));
+	if (!(sfr_data[0] | sfr_data [1] | sfr_data [2] | sfr_data [3]))
+		REG_SET(RTL837X_TRK_HASH_CTRL_BASE, LAG_HASH_DEFAULT);
+	REG_WRITE(RTL837X_TRK_MBR_CTRL_BASE + (lag << 2), 0, 0, members >> 8, members & 0xff);
+}
+
+
+/*
+ * Configures the hash algorithm used for a LAG
+ * lag is the Group to configure and hash is a bitmask
+ */
+void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash_bits) __banked
+{
+	print_string("port_lag_hash_set, lag: "); print_byte(lag); print_string(", hash: "); print_byte(hash_bits);
+	if (lag > 3)
+		print_string("Link aggregation group must be 0-3!");
+	REG_WRITE(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2), 0, 0, 0, hash_bits);
 }
