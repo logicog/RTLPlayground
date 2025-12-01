@@ -602,6 +602,20 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 }
 
 
+void read_reg_timer(uint32_t * tmr)
+{
+	uint8_t * val = (uint8_t *)tmr;
+	SFR_REG_ADDR_U16 = RTL837X_REG_SEC_COUNTER;
+	SFR_EXEC_GO = SFR_EXEC_READ_REG;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+	*val++ = SFR_DATA_0;
+	*val++ = SFR_DATA_8;
+	*val++ = SFR_DATA_16;
+	*val = SFR_DATA_24;
+}
+
+
 void sds_config_mac(uint8_t sds, uint8_t mode)
 {
 	reg_read_m(RTL837X_REG_SDS_MODES);
