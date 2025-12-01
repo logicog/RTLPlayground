@@ -5,9 +5,6 @@
 // #define DEBUG
 // #define REGDBG 1
 
-#define CONFIG_START 0x70000
-#define CONFIG_LEN 0x1000
-
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
@@ -38,6 +35,8 @@ extern __code uint8_t * __code hex;
 extern __xdata uint8_t flash_buf[512];
 extern __xdata struct flash_region_t flash_region;
 
+extern __xdata char passwd[21];
+
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 __xdata uint8_t gpio_last_value[8] = { 0 };
@@ -54,11 +53,15 @@ __xdata uint8_t cmd_available;
 __xdata	uint8_t l;
 __xdata uint8_t line_ptr;
 __xdata	char is_white;
+__xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
 
 #define N_WORDS SBUF_SIZE
 __xdata signed char cmd_words_b[N_WORDS];
+
+__xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
+__xdata uint16_t cmd_history_ptr;
 
 // Maps the physical port (starting from 0) to the logical port
 __code uint8_t phys_to_log_port[6] = {
@@ -431,6 +434,36 @@ err:
 }
 
 
+void parse_rnd(void)
+{
+	// In order to get a new random numner, this bit has to be set each time!
+	reg_bit_set(RTL837X_RLDP_RLPP, RLDP_RND_EN);
+	reg_read_m(RTL837X_RAND_NUM1);
+	print_byte(sfr_data[2]);
+	print_byte(sfr_data[3]);
+	reg_read_m(RTL837X_RAND_NUM0);
+	print_byte(sfr_data[0]);
+	print_byte(sfr_data[1]);
+	print_byte(sfr_data[2]);
+	print_byte(sfr_data[3]);
+	write_char('\n');
+}
+
+
+void parse_passwd(void)
+{
+	if (cmd_words_b[2] > 0) {
+		signed char i;
+		signed char j = 0;
+		for (i = cmd_words_b[1]; (i != cmd_words_b[2] && i - cmd_words_b[1] < 20); i++)
+			passwd[j++] = cmd_buffer[i];
+		passwd[j] = '\0';
+		return;
+	}
+	print_string("Missing password\n");
+}
+
+
 // Parse command into words
 uint8_t cmd_tokenize(void) __banked
 {
@@ -679,6 +712,12 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "regset")) {
 			parse_regset();
 		}
+		if (cmd_compare(0, "rnd")) {
+			parse_rnd();
+		}
+		if (cmd_compare(0, "passwd")) {
+			parse_passwd();
+		}
 		if (cmd_compare(0, "eee")) {
 			int8_t port = -1;
 			if (cmd_words_b[3] > 0) {
@@ -706,21 +745,55 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "version")) {
 			print_sw_version();
 		}
+		if (cmd_compare(0, "history")) {
+			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
+			__xdata uint8_t found_begin = 0;
+			print_string("History ptr: ");
+			print_short(cmd_history_ptr); write_char('\n');
+			while (p != cmd_history_ptr) {
+				print_short(p); write_char(' ');
+				if (!cmd_history[p] || cmd_history[p] == '\n')
+					found_begin = 1;
+				if (found_begin && cmd_history[p])
+					write_char(cmd_history[p]);
+				p = (p + 1) & CMD_HISTORY_MASK;
+			}
+		}
+		if (save_cmd) {
+			uint8_t i;
+			for (i = 0; i < N_WORDS; i++) {
+				if (cmd_words_b[i] < 0)
+					break;
+			}
+			if (i < N_WORDS) {
+				i = cmd_words_b[--i];
+				cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
+				__xdata uint16_t p = cmd_history_ptr;
+				cmd_history[cmd_history_ptr++] = '\n';
+				do {
+					i--;
+					cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
+				} while (i);
+			}
+		}
 	}
 }
 
-#define FLASH_READ_BURST_SIZE 0x100;
+#define FLASH_READ_BURST_SIZE 0x100
+#define PASSWORD "1234"
 void execute_config(void) __banked
 {
-	memcpyc(flash_buf, "test", 5);
-	print_string_x(flash_buf);
+	__xdata uint32_t pos = CONFIG_START;
+	__xdata uint16_t len_left = CONFIG_LEN;
 
-    __xdata uint32_t pos = CONFIG_START;
-    __xdata uint16_t len_left = CONFIG_LEN;
- 	do {
+	// Set default password, it can be overwritten in the configuration file
+	strtox(passwd, PASSWORD);
+	save_cmd = 0;
+
+	do {
 		flash_region.addr = pos;
 		flash_region.len = FLASH_READ_BURST_SIZE;
-        write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
+		write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
 
 		flash_read_bulk(flash_buf);
 
@@ -737,7 +810,7 @@ void execute_config(void) __banked
 					if (cmd_idx && !cmd_tokenize())
 						cmd_parser();
 					if (c == 0)
-						return;
+						goto config_done;
 					break;
 				}
 
@@ -748,5 +821,12 @@ void execute_config(void) __banked
 
 		len_left -= FLASH_READ_BURST_SIZE;
 		pos += FLASH_READ_BURST_SIZE;
-    } while(len_left);
+	} while(len_left);
+
+config_done:
+	// Start saving commands to cmd_history
+	save_cmd = 1;
+	for (cmd_history_ptr = 0; cmd_history_ptr < CMD_HISTORY_SIZE; cmd_history_ptr++)
+		cmd_history[cmd_history_ptr] = 0;
+	cmd_history_ptr = 0;
 }

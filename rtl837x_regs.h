@@ -170,6 +170,13 @@
 #define EEE_1000	0x04
 #define EEE_2G5		0x10
 
+/*
+ * RANDOM
+ */
+#define RTL837X_RLDP_RLPP		0x106C
+#define RLDP_RND_EN			3
+#define RTL837X_RAND_NUM0		0x107C
+#define RTL837X_RAND_NUM1		0x1080
 
 #ifdef REGDBG
 

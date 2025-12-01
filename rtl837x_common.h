@@ -47,6 +47,15 @@
 #define IS_SFP(port) (i == maxPort || i == 3)
 #endif
 
+#define CONFIG_START 0x70000
+#define CONFIG_LEN 0x1000
+#define CODE0_SIZE 0x4000
+#define CODE_BANK_SIZE 0xc000
+
+// Constants for the circular command buffer, the size must be 2^n
+#define CMD_HISTORY_SIZE 0x400
+#define CMD_HISTORY_MASK (CMD_HISTORY_SIZE - 1)
+
 /**
  * Representation of a 48-bit Ethernet address.
  */
@@ -94,6 +103,8 @@ uint16_t strlen_x(register __xdata const char *s);
 uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 void tcpip_output(void);
 void print_string_x(__xdata char *p);
-
+uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
+void get_random_32(void);
+void read_reg_timer(uint32_t * tmr);
 
 #endif

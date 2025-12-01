@@ -2,10 +2,14 @@
 #include "httpd.h"
 #include "page_impl.h"
 #include "../rtl837x_common.h"
+#include "../rtl837x_regs.h"
 #include "../cmd_parser.h"
 #include "../rtl837x_flash.h"
 #include "uip.h"
 #include "../html_data.h"
+
+#define SESSION_ID_LENGTH 12
+#define SESSION_TIMEOUT 200
 
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
@@ -18,6 +22,8 @@
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
+extern volatile __xdata uint8_t sfr_data[4];
+extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
 extern __xdata struct flash_region_t flash_region;
@@ -33,15 +39,26 @@ __xdata uint16_t slen;
 __xdata uint16_t o_idx;
 __xdata uint16_t mpos;
 __xdata uint16_t len_left;
+__xdata uint16_t cont_len;
+__xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
 __xdata uint8_t *content_type = 0;
+__xdata uint8_t *session = 0;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
-
+__xdata uint8_t verify_crc;
+__xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
+
+__xdata char passwd[21];
+__xdata char session_id[SESSION_ID_LENGTH + 1];
+__xdata uint8_t authenticated;
+__xdata uint32_t now;
+__xdata uint8_t *timeptr;
+__xdata uint32_t last_session_use;
 
 #define TSTATE_NONE	0
 #define TSTATE_TX	1
@@ -161,6 +178,19 @@ void send_bad_request(void)
 }
 
 
+void send_to_login(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 302 Found\r\n" \
+			      "Location: login.html\r\n\r\n");
+}
+
+
+void send_unauthorized(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\n\r\n");
+}
+
+
 __xdata uint8_t *skip_boundary(__xdata uint8_t *p)
 {
 	while (*p) {
@@ -175,6 +205,8 @@ __xdata uint8_t *skip_boundary(__xdata uint8_t *p)
 __xdata uint8_t *scan_header(__xdata uint8_t *p)
 {
 	content_type = 0;
+	session = 0;
+	authenticated = 0;
 
 	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
 		write_char(*p);
@@ -182,9 +214,11 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 			break;
 		if (is_word(p, "\nContent-Type:"))
 			content_type = p + 15;
+		else if (is_word(p, "\nCookie:"))
+			session = p + 17;
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
-		print_string("\nFound multiplart\n");
+		print_string("\nFound multipart\n");
 		content_type += 30;
 		uint8_t i = 0;
 		while (content_type[i] != '\r' && content_type[i] != '\n') {
@@ -198,7 +232,34 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 		boundary[3] = '-';
 		boundary[i + 4] = 0;
 	}
+
+	read_reg_timer(&now);
+
+	if (session) {
+		if (now - last_session_use > SESSION_TIMEOUT) {
+			print_string("Session expired\n");
+		} else {
+			if (is_word_x(session, session_id))
+				authenticated = 1;
+			else
+				print_string("Invalid session cookie!\n");
+		}
+	}
 	return p;
+}
+
+
+void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
+{
+	__xdata uint8_t i = 0;
+	while (bytes) {
+		if (!i)
+			get_random_32();
+		b[--bytes] = itohex(sfr_data[i]);
+		if (!bytes) { break; }
+		b[--bytes] = itohex(sfr_data[i] >> 4 | sfr_data[i] << 4);
+		i = (i + 1) & 0x3;
+	}
 }
 
 
@@ -230,14 +291,21 @@ uint8_t stream_upload(uint16_t bptr)
 			uptr += write_len;
 			write_len = 0;
 			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
-			print_string("CRC16: "); print_short(crc_final); write_char('\n');
-			if (crc_final == 0xb001) {
-				print_string("Checksum OK.");
-			} else {
-				print_string("Checksum incorrect!");
+			if (verify_crc) {
+				print_string("CRC16: "); print_short(crc_final); write_char('\n');
+				if (crc_final == 0xb001) {
+					print_string("Checksum OK.");
+				} else {
+					print_string("Checksum incorrect!");
+				}
+				print_string("Upload to flash done, will reset!\n");
+				reset_chip();
 			}
-			print_string("Upload to flash done, will reset!\n");
-			reset_chip();
+			// Make sure there is a 0 at the end of the uploaded data
+			flash_buf[0] = 0;
+			flash_region.addr = uptr;
+			flash_region.len = 1;
+			flash_write_bytes(flash_buf);
 			if (bptr >= uip_len)
 				return 0;
 			return 1;
@@ -302,13 +370,38 @@ void handle_post(void)
 	if (is_word(request_path, "cmd")) {
 		register uint8_t i = 0;
 		p += 4;
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
 		while (*p && *p != '\n' && *p != '\r')
 			cmd_buffer[i++] = *p++;
 		cmd_buffer[i] = '\0';
 		if (i)
 			cmd_available = 1;
-	} else if (is_word(request_path, "upload")) {
-		print_string("POST upload request\n");
+	} else if (is_word(request_path, "login")) {
+		print_string("POST login\n");
+		p += 8; // Read also over "pwd="
+		if (is_word_x(p, passwd)) {
+			print_string("Password accepted!\n");
+			read_reg_timer(&last_session_use);
+			gen_random_bytes(session_id, SESSION_ID_LENGTH);
+			session_id[SESSION_ID_LENGTH] = '\0';
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: index.html\r\n" \
+					      "Set-Cookie: session=");
+			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
+				outbuf[slen++] = session_id[i];
+			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
+		} else {
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: login.html\r\n\r\n");
+		}
+		return;
+	} else if (is_word(request_path, "upload") || is_word(request_path, "config")) {
+		print_string("POST upload/config request\n");
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
 		if (!boundary[0]) {
 			print_string("Bad request, no boundary!\n");
 			send_bad_request();
@@ -328,7 +421,18 @@ void handle_post(void)
 		print_string("Have content octets\n");
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
-		uptr = FIRMWARE_UPLOAD_START;
+		if (is_word(request_path, "upload")) {
+			uptr = FIRMWARE_UPLOAD_START;
+			verify_crc = 1;
+			max_upload = 1024576;
+		} else {
+			print_string("Configuration upload, erasing config mem!\n");
+			uptr = CONFIG_START;
+			verify_crc = 0;
+			max_upload = 2048;
+			flash_region.addr = CONFIG_START;
+			flash_sector_erase();
+		}
 		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
@@ -386,17 +490,34 @@ void httpd_appcall(void)
 		if (slen > uip_mss()) {
 			print_string("Sending A: "); print_short(slen); write_char('\n');
 			uip_send(outbuf + o_idx, uip_mss());
-			print_string("Sending A done\n");
 			s->tstate = TSTATE_TX;
 		} else if (slen > 0) {
 			print_string("Sending B: "); print_short(slen); write_char('\n');
 			uip_send(outbuf + o_idx, slen);
-			print_string("Sending B done\n");
+			s->tstate = TSTATE_TX;
+		} else if (cont_len) {
+			print_string("CONT cont_len: "); print_short(cont_len);
+			slen = cont_len > uip_mss() ? uip_mss() : cont_len;
+			if (slen > TCP_OUTBUF_SIZE)
+				slen = TCP_OUTBUF_SIZE;
+			flash_region.addr = cont_addr;
+			flash_region.len = slen;
+			flash_read_bulk(outbuf);
+			uip_send(outbuf, slen);
+			cont_len -= slen;
+			cont_addr += slen;
 			s->tstate = TSTATE_TX;
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
-		stream_upload(0);
+		// Check here maxupload by subtracting uip_len and close socekt if fails!
+		if (max_upload - uip_len > 0) {
+			stream_upload(0);
+		} else {
+			send_bad_request();
+			goto do_send;
+		}
 	} else if (uip_newdata() && s->tstate != TSTATE_TX) {
+		cont_len = 0;
 		write_char('<'); print_short(uip_len); write_char('\n');
 		__xdata uint8_t *p = uip_appdata;
 		// Mark end of request header with \0
@@ -418,6 +539,7 @@ void httpd_appcall(void)
 		if (is_word(p, "GET"))
 			print_string("GET request ");
 		p += 4;
+		scan_header(p);
 		__xdata uint8_t *q = p;
 		while (!is_separator(*p))
 			p++;
@@ -429,6 +551,11 @@ void httpd_appcall(void)
 		entry = find_entry(q);
 		print_string("Entry is: "); print_byte(entry); write_char('\n');
 		if (entry == 0xff) {
+			if (!authenticated) {
+				print_string("Not authorized!\n");
+				send_unauthorized();
+				goto do_send;
+			}
 			print_string("Not file entry\n");
 			if (!strcmp(q, "/status.json")) {
 				send_status();
@@ -443,16 +570,34 @@ void httpd_appcall(void)
 				send_eee();
 			} else if (is_word(q, "/mirror.json")) {
 				send_mirror();
+			} else if (is_word(q, "/config")) {
+				send_config();
+			} else if (is_word(q, "/cmd_log")) {
+				send_cmd_log();
 			} else {
 				send_not_found();
 			}
 		} else {
-			print_string("Have entry\n");
+			print_string("Have entry, authenticated: "); print_byte(authenticated); write_char('\n');
+			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html
+						|| f_data[entry].start == FDATA_START_style_css)) {
+				send_to_login();
+				goto do_send;
+			}
+			// A web-page is actively accessed, we can reset session time-out
+			reg_read_m(RTL837X_REG_SEC_COUNTER);
+			timeptr = (uint8_t*)&last_session_use; // last_session_use is Little endian
+			timeptr[0] = sfr_data[3]; timeptr[1] = sfr_data[2]; timeptr[2] = sfr_data[1]; timeptr[3] = sfr_data[0];
+
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
-			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=2592000\r\n\r\n");
+			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=60, must-revalidate\r\n\r\n");
 			len_left = f_data[entry].len;
-
+			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
+				cont_len = len_left - (TCP_OUTBUF_SIZE - slen);
+				len_left = TCP_OUTBUF_SIZE - slen;
+				cont_addr = f_data[entry].start + len_left;
+			}
 			print_string("MIME: "); print_string(mime_strings[f_data[entry].mime]); write_char('\n');
 			flash_region.addr = f_data[entry].start;
 			flash_region.len = len_left;
