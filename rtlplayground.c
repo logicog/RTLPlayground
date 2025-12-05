@@ -11,6 +11,7 @@
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_igmp.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
 #include "uip/uip.h"
@@ -1812,6 +1813,7 @@ void bootloader(void)
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();
+	igmp_setup();
 	uip_init();
 	uip_arp_init();
 	httpd_init();

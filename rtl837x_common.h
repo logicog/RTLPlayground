@@ -17,6 +17,11 @@
 #define PMASK_6		0x1f8
 #define PMASK_CPU	0x200
 
+// Defines a port mask for dropping all packets on Lookup-miss
+#define LOOKUP_MISS_DROP_6  0x00015540
+#define LOOKUP_MISS_DROP_9  0x00015555
+#define LOOKUP_MISS_FLOOD   0x00000000
+
 // The serial buffer. Defines the command line size
 // Must be 2^x and <= 128
 #define SBUF_SIZE 128
