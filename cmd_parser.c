@@ -192,6 +192,37 @@ void parse_lag(void)
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
 
+	if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+		print_string("LAG status:\n");
+		for (uint8_t i = 0; i < 4; i++) {
+			write_char(' '); write_char('1' + i);
+			reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (i << 2));
+			members = ((uint16_t)sfr_data[2]) << 8 | sfr_data[3]; 
+			if (!members) {
+				print_string(" disabled\n");
+				continue;
+			}
+			print_string(" member ports: ");
+			for (uint8_t j = 0; j < 10; j++) {
+				if (members & 1) {
+					if (!isRTL8373)
+						write_char('0' + log_to_phys_port[j]);
+					else
+						write_char('1' + j);
+					write_char(' ');
+				}
+				members >>= 1;
+			}
+			print_string(" (hash: 0x"); 
+			reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (i << 2));
+			print_byte(sfr_data[3]);
+			print_string(")\n");
+		}
+		return;
+	}
+
+	if (cmd_words_b[2] <= 0 || !isnumber(cmd_buffer[cmd_words_b[1]]))
+		goto err;
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
@@ -595,8 +626,7 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "reset")) {
 			print_string("\nRESET\n\n");
 			reset_chip();
-		}
-		if (cmd_compare(0, "sfp")) {
+		} else if (cmd_compare(0, "sfp")) {
 			uint8_t rate = sfp_read_reg(0, 12);
 			print_string("\nRate: "); print_byte(rate);
 			print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
@@ -606,11 +636,9 @@ void cmd_parser(void) __banked
 				if (c)
 					write_char(c);
 			}
-		}
-		if (cmd_compare(0, "stat")) {
+		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
+		} else 	if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
 			print_string("\nPRINT SECURITY REGISTERS\n");
 			// The following will only show something else than 0xff if it was programmed for a managed switch
 			flash_region.addr = 0x0001000;
@@ -622,44 +650,36 @@ void cmd_parser(void) __banked
 			flash_region.addr = 0x0003000;
 			flash_region.len = 40;
 			flash_read_security();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
 			print_string("\nDUMPING FLASH\n");
 			flash_region.addr = 0;
 			flash_region.len = 255;
 			flash_dump(255);
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
 			print_string("\nJEDEC ID\n");
 			flash_read_jedecid();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'u') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'u') {
 			print_string("\nUNIQUE ID\n");
 			flash_read_uid();
-		}
-		// Switch to flash 62.5 MHz mode
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 's') {
-			print_string("\nFLASH FAST MODE\n");
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 's') {
+			print_string("\nFLASH FAST MODE\n"); // Switch to flash 62.5 MHz mode
 			flash_init(1);
 			print_string("\nNow dumping flash\n");
 			flash_region.addr = 0;
 			flash_region.len = 255;
 			flash_dump(255);
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
 			print_string("\nFLASH erase\n");
 			flash_region.addr = 0x20000;
 			flash_sector_erase();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'w') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'w') {
 			print_string("\nFLASH write\n");
 			for (uint8_t i = 0; i < 20; i++)
 				flash_buf[i] = greeting[i];
 			flash_region.addr = 0x200000;
 			flash_region.len = 20;
 			flash_write_bytes(flash_buf);
-		}
-		if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
+		} else if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
 			print_string("\nPORT ");
 			uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
 			print_byte(p);
@@ -679,8 +699,7 @@ void cmd_parser(void) __banked
 				print_string(" OFF\n");
 				phy_set_mode(p, PHY_OFF, 0, 0);
 			}
-		}
-		if (cmd_compare(0, "ip")) {
+		} else if (cmd_compare(0, "ip")) {
 			print_string("Got ip command: ");
 			if (!parse_ip(cmd_words_b[1]))
 				uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
@@ -688,8 +707,7 @@ void cmd_parser(void) __banked
 				print_string("Invalid IP address\n");
 			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
 			write_char('\n');
-		}
-		if (cmd_compare(0, "gw")) {
+		} else if (cmd_compare(0, "gw")) {
 			print_string("Got gw command: ");
 			if (!parse_ip(cmd_words_b[1]))
 				uip_ipaddr(&uip_draddr, ip[0], ip[1], ip[2], ip[3]);
@@ -697,8 +715,7 @@ void cmd_parser(void) __banked
 				print_string("Invalid IP address\n");
 			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
 			write_char('\n');
-		}
-		if (cmd_compare(0, "netmask")) {
+		} else if (cmd_compare(0, "netmask")) {
 			print_string("Got netmask command: ");
 			if (!parse_ip(cmd_words_b[1]))
 				uip_ipaddr(&uip_netmask, ip[0], ip[1], ip[2], ip[3]);
@@ -706,14 +723,12 @@ void cmd_parser(void) __banked
 				print_string("Invalid IP address\n");
 			print_byte(ip[0]);print_byte(ip[1]);print_byte(ip[2]);print_byte(ip[3]);
 			write_char('\n');
-		}
-		if (cmd_compare(0, "l2")) {
+		} else if (cmd_compare(0, "l2")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "forget"))
 				port_l2_forget();
 			else
 				port_l2_learned();
-		}
-		if (cmd_compare(0, "stp")) {
+		} else if (cmd_compare(0, "stp")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
 				print_string("STP enabled\n");
 				stpEnabled = 1;
@@ -723,8 +738,7 @@ void cmd_parser(void) __banked
 				stp_off();
 				stpEnabled = 0;
 			}
-		}
-		if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
+		} else if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 			__xdata uint16_t pvid;
 			uint8_t port;
 			port = cmd_buffer[cmd_words_b[1]] - '1';
@@ -732,38 +746,27 @@ void cmd_parser(void) __banked
 				port = phys_to_log_port[port];
 			if (!atoi_short(&pvid, cmd_words_b[2]))
 				port_pvid_set(port, pvid);
-		}
-		if (cmd_compare(0, "vlan")) {
+		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
-		}
-		if (cmd_compare(0, "mirror")) {
+		} else if (cmd_compare(0, "mirror")) {
 			parse_mirror();
-		}
-		if (cmd_compare(0, "lag")) {
+		} else if (cmd_compare(0, "lag")) {
 			parse_lag();
-		}
-		if (cmd_compare(0, "laghash")) {
+		} else if (cmd_compare(0, "laghash")) {
 			parse_lag_hash();
-		}
-		if (cmd_compare(0, "sds")) {
+		} else if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
-		}
-		if (cmd_compare(0, "gpio")) {
+		} else if (cmd_compare(0, "gpio")) {
 			print_gpio_status();
-		}
-		if (cmd_compare(0, "regget")) {
+		} else if (cmd_compare(0, "regget")) {
 			parse_regget();
-		}
-		if (cmd_compare(0, "regset")) {
+		} else if (cmd_compare(0, "regset")) {
 			parse_regset();
-		}
-		if (cmd_compare(0, "rnd")) {
+		} else if (cmd_compare(0, "rnd")) {
 			parse_rnd();
-		}
-		if (cmd_compare(0, "passwd")) {
+		} else if (cmd_compare(0, "passwd")) {
 			parse_passwd();
-		}
-		if (cmd_compare(0, "eee")) {
+		} else if (cmd_compare(0, "eee")) {
 			int8_t port = -1;
 			if (cmd_words_b[3] > 0) {
 				port = cmd_buffer[cmd_words_b[2]] - '1';
@@ -786,11 +789,9 @@ void cmd_parser(void) __banked
 				else
 					port_eee_status_all();
 			}
-		}
-		if (cmd_compare(0, "version")) {
+		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
-		}
-		if (cmd_compare(0, "history")) {
+		} else if (cmd_compare(0, "history")) {
 			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			__xdata uint8_t found_begin = 0;
 //			print_string("History ptr: ");
