@@ -74,11 +74,10 @@ extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 struct rtl_tag {
 	uint16_t tag;
 	uint8_t version;
-	uint16_t dummy;
-	uint8_t flag;
-	uint16_t pmask;
+	uint8_t reason;
+	uint16_t flags;
+	uint16_t pmask;  // A bit mask for a TX pkt, 4-bit port-number for RX
 };
-
 
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);

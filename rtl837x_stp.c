@@ -151,8 +151,8 @@ void stp_cnf_send(uint8_t port)
 
 	STP_O->rtl_tag.tag = HTONS(0x8899);
 	STP_O->rtl_tag.version = 0x04;
-	STP_O->rtl_tag.dummy = 0x0000;
-	STP_O->rtl_tag.flag = 0x20; // WHY ???
+	STP_O->rtl_tag.reason = 0x00;
+	STP_O->rtl_tag.flags = 0x0020; // Disable L2 learning
 	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
 
 	STP_O->msg_len = HTONS(0x27);
