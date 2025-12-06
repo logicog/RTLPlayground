@@ -570,6 +570,8 @@ void httpd_appcall(void)
 				send_eee();
 			} else if (is_word(q, "/mirror.json")) {
 				send_mirror();
+			} else if (is_word(q, "/lag.json")) {
+				send_lag();
 			} else if (is_word(q, "/config")) {
 				send_config();
 			} else if (is_word(q, "/cmd_log")) {

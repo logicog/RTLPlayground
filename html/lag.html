@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <script src="/ports.js"></script>
+  <script src="/main.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>Link Aggregation Configuration</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>Link Aggregation Groups Configuration</h1>
+    <h2>LAG 1 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" value="Update / Create"></h2>
+    <div id="mLAG0"></div>
+    <br />
+    <h2>LAG 2 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub1" onclick="lagSub(1);" type="button" value="Update / Create"></h2>
+    <div id="mLAG1"></div>
+    <br />
+    <h2>LAG 3 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub2" onclick="lagSub(2);" type="button" value="Update / Create"></h2>
+    <div id="mLAG2"></div>
+    <br />
+    <h2>LAG 4 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub3" onclick="lagSub(3);" type="button" value="Update / Create"></h2>
+    <div id="mLAG3"></div>
+    <script src="/lag.js"></script>
+    </div>
+    <script src="/navigation.js"></script>
+  </body>
+</html>

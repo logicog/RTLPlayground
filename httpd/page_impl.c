@@ -216,9 +216,8 @@ void send_counters(char port)
 
 void send_mirror(void)
 {
-	print_string("send_eee called\n");
+	print_string("send_mirror called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	print_string("sending EEE status\n");
 
 	reg_read_m(RTL837x_MIRROR_CTRL);
 	uint8_t mPort = sfr_data[3];
@@ -237,18 +236,44 @@ void send_mirror(void)
 	m = (m << 8) | sfr_data[1];
 	slen += strtox(outbuf + slen, ",\"mirror_rx\":\"");
 	for (uint8_t i = 0; i < 16; i++) {
-		bool_to_html(m & 0x8000);
+		bool_to_html(!!(m & 0x8000));
 		m <<= 1;
 	}
 	m = sfr_data[2];
 	m = (m << 8) | sfr_data[3];
 	slen += strtox(outbuf + slen, "\",\"mirror_tx\":\"");
 	for (uint8_t i = 0; i < 16; i++) {
-		bool_to_html(m & 0x8000);
+		bool_to_html(!!(m & 0x8000));
 		m <<= 1;
 	}
 	char_to_html('\"');
 	char_to_html('}');
+}
+
+
+void send_lag(void)
+{
+	print_string("send_lag called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	char_to_html('[');
+	for (uint8_t l=0; l < 4; l++) {
+		slen += strtox(outbuf + slen, "{\"lagNum\":");
+		itoa_html(l);
+		slen += strtox(outbuf + slen, ",\"members\":\"");
+		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (l << 2));
+		uint16_t ports = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		for (uint8_t i = 0; i < 16; i++) {
+			bool_to_html(!!(ports & 0x8000));
+			ports <<= 1;
+		}
+		slen += strtox(outbuf + slen, "\",\"hash\":\"");
+		reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (l << 2));
+		sfr_data_to_html();
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -=1; // remove comma
+	char_to_html(']');
 }
 
 

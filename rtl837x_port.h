@@ -26,7 +26,8 @@ void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata u
 void port_mirror_del(void) __banked;
 void port_ingress_filter(register uint8_t port, uint8_t type) __banked;
 void port_l2_setup(void) __banked;
-void trunk_set(uint8_t group, uint16_t mask) __banked;
+void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banked;
+void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash) __banked;
 void port_eee_enable_all(void) __banked;
 void port_eee_disable_all(void) __banked;
 void port_eee_status_all(void) __banked;
