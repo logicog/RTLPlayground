@@ -70,6 +70,15 @@ struct flash_region_t {
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
+// 8899 04 0000 20 0004
+struct rtl_tag {
+	uint16_t tag;
+	uint8_t version;
+	uint16_t dummy;
+	uint8_t flag;
+	uint16_t pmask;
+};
+
 
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);

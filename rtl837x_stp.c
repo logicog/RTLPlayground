@@ -35,16 +35,6 @@ __xdata uint16_t port_timers[10];
 __xdata uint16_t port_hello[10];
 
 
-// 8899 04 0000 20 0004
-struct rtl_tag {
-	uint16_t tag;
-	uint8_t version;
-	uint16_t dummy;
-	uint8_t flag;
-	uint16_t pmask;
-};
-
-
 struct stp_pkt {
 	uint8_t stp_addr[6];
 	uint8_t src_addr[6];
