@@ -52,6 +52,9 @@ For testing the following commands are provided on the serial console:
   Create or set a LAG. Trunk-ID is 1 or 2. Ports are physical ports
   If only the LAG-ID is given but no members, the LAG is deleted
 
+> lag show
+  Shows information on all 4 lags
+
 > laghash 0 [hash1] [hash2]...
   Uses the given packet properties when hashing the packet to select the link
   Names for the hashes are spa, smac, dmac, sip, dip, sport, dport

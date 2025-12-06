@@ -192,6 +192,35 @@ void parse_lag(void)
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
 
+	if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+		print_string("LAG status:\n");
+		for (uint8_t i = 0; i < 4; i++) {
+			write_char(' '); write_char('1' + i);
+			reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (i << 2));
+			members = ((uint16_t)sfr_data[2]) << 8 | sfr_data[3]; 
+			if (!members) {
+				print_string(" disabled\n");
+				continue;
+			}
+			print_string(" member ports: ");
+			for (uint8_t j = 0; j < 10; j++) {
+				if (members & 1) {
+					if (!isRTL8373)
+						write_char('0' + log_to_phys_port[j]);
+					else
+						write_char('1' + j);
+					write_char(' ');
+				}
+				members >>= 1;
+			}
+			print_string(" (hash: 0x"); 
+			reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (i << 2));
+			print_byte(sfr_data[3]);
+			print_string(")\n");
+		}
+		return;
+	}
+
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
