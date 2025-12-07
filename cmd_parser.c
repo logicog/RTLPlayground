@@ -95,15 +95,16 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 
 	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && cmd_buffer[i] != ' '; i++) {
 		i &= SBUF_SIZE - 1;
-//		print_short(i); write_char(':'); print_short(j); write_char('#'); print_string("\n");
+//		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
 //		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
-		if (!cmd[j])
+		if (!cmd[j] && !isletter(cmd_buffer[i]))
 			return 1;
 		if (cmd_buffer[i] != cmd[j++])
 			break;
 	}
-//	write_char('.'); print_short(i); write_char(':'); print_short(i);
-	if (i == cmd_words_b[start + 1] || cmd_buffer[i] == ' ')
+//	write_char('.'); print_byte(i); write_char(':'); print_byte(j); write_char(','); print_byte (cmd[j-1]);
+//	write_char(','); print_byte(cmd[j]);
+	if (i == cmd_words_b[start + 1] || (cmd_buffer[i] == ' ' && !cmd[j]))
 		return 1;
 	return 0;
 }
@@ -186,28 +187,100 @@ uint8_t parse_ip(register uint8_t idx)
 }
 
 
-void parse_trunk(void)
+void parse_lag(void)
 {
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
 
+	if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+		print_string("LAG status:\n");
+		for (uint8_t i = 0; i < 4; i++) {
+			write_char(' '); write_char('1' + i);
+			reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (i << 2));
+			members = ((uint16_t)sfr_data[2]) << 8 | sfr_data[3]; 
+			if (!members) {
+				print_string(" disabled\n");
+				continue;
+			}
+			print_string(" member ports: ");
+			for (uint8_t j = 0; j < 10; j++) {
+				if (members & 1) {
+					if (!isRTL8373)
+						write_char('0' + log_to_phys_port[j]);
+					else
+						write_char('1' + j);
+					write_char(' ');
+				}
+				members >>= 1;
+			}
+			print_string(" (hash: 0x"); 
+			reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (i << 2));
+			print_byte(sfr_data[3]);
+			print_string(")\n");
+		}
+		return;
+	}
+
+	if (cmd_words_b[2] <= 0 || !isnumber(cmd_buffer[cmd_words_b[1]]))
+		goto err;
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
-	while (cmd_words_b[w] > 0) {
+	while (cmd_words_b[w + 1] > 0) {
+//		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
 		uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
-			if (port > maxPort)
-				goto err;
-			members |= ((uint16_t)1) << port;
+			if (isnumber(cmd_buffer[cmd_words_b[w] + 1]))
+				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
+			if (!isRTL8373)
+				port = phys_to_log_port[port];
+		} else {
+			goto err;
+		}
+		if (port > maxPort)
+			goto err;
+		members |= ((uint16_t)1) << port;
+		w++;
+	}
+	port_lag_members_set(group, members);
+	return;
+err:
+	print_string("Error: lag <lag> [port]...");
+}
+
+
+void parse_lag_hash(void)
+{
+	__xdata uint8_t group;
+	__xdata uint8_t hash = 0;
+
+	group = cmd_buffer[cmd_words_b[1]] - '0';
+
+	uint8_t w = 2;
+	while (cmd_words_b[w + 1] > 0) {
+		if (cmd_compare(w, "spa"))
+			hash |= LAG_HASH_SOURCE_PORT_NUMBER;
+		else if (cmd_compare(w, "smac"))
+			hash |= LAG_HASH_L2_SMAC;
+		else if (cmd_compare(w, "dmac"))
+			hash |= LAG_HASH_L2_DMAC;
+		else if (cmd_compare(w, "sip"))
+			hash |= LAG_HASH_L3_SIP;
+		else if (cmd_compare(w, "dip"))
+			hash |= LAG_HASH_L3_DIP;
+		else if (cmd_compare(w, "sport"))
+			hash |= LAG_HASH_L4_SPORT;
+		else if (cmd_compare(w, "dport"))
+			hash |= LAG_HASH_L4_DPORT;
+		else {
+			print_string("Error: invalid hash type:");
+			print_string_x(&cmd_buffer[cmd_words_b[w]]);
+			write_char('\n');
 		}
 		w++;
 	}
-	trunk_set(group, members);
-	return;
-err:
-	print_string("Error: trunk <trunk-id> [port]...");
+	port_lag_hash_set(group, hash);
 }
 
 
@@ -553,8 +626,7 @@ void cmd_parser(void) __banked
 		if (cmd_compare(0, "reset")) {
 			print_string("\nRESET\n\n");
 			reset_chip();
-		}
-		if (cmd_compare(0, "sfp")) {
+		} else if (cmd_compare(0, "sfp")) {
 			uint8_t rate = sfp_read_reg(0, 12);
 			print_string("\nRate: "); print_byte(rate);
 			print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
@@ -564,11 +636,9 @@ void cmd_parser(void) __banked
 				if (c)
 					write_char(c);
 			}
-		}
-		if (cmd_compare(0, "stat")) {
+		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
+		} else 	if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
 			print_string("\nPRINT SECURITY REGISTERS\n");
 			// The following will only show something else than 0xff if it was programmed for a managed switch
 			flash_region.addr = 0x0001000;
@@ -580,44 +650,36 @@ void cmd_parser(void) __banked
 			flash_region.addr = 0x0003000;
 			flash_region.len = 40;
 			flash_read_security();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'd') {
 			print_string("\nDUMPING FLASH\n");
 			flash_region.addr = 0;
 			flash_region.len = 255;
 			flash_dump(255);
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
 			print_string("\nJEDEC ID\n");
 			flash_read_jedecid();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'u') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'u') {
 			print_string("\nUNIQUE ID\n");
 			flash_read_uid();
-		}
-		// Switch to flash 62.5 MHz mode
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 's') {
-			print_string("\nFLASH FAST MODE\n");
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 's') {
+			print_string("\nFLASH FAST MODE\n"); // Switch to flash 62.5 MHz mode
 			flash_init(1);
 			print_string("\nNow dumping flash\n");
 			flash_region.addr = 0;
 			flash_region.len = 255;
 			flash_dump(255);
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'e') {
 			print_string("\nFLASH erase\n");
 			flash_region.addr = 0x20000;
 			flash_sector_erase();
-		}
-		if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'w') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'w') {
 			print_string("\nFLASH write\n");
 			for (uint8_t i = 0; i < 20; i++)
 				flash_buf[i] = greeting[i];
 			flash_region.addr = 0x200000;
 			flash_region.len = 20;
 			flash_write_bytes(flash_buf);
-		}
-		if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
+		} else if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
 			print_string("\nPORT ");
 			uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
 			print_byte(p);
@@ -637,8 +699,7 @@ void cmd_parser(void) __banked
 				print_string(" OFF\n");
 				phy_set_mode(p, PHY_OFF, 0, 0);
 			}
-		}
-		if (cmd_compare(0, "ip")) {
+		} else if (cmd_compare(0, "ip")) {
 			print_string("Got ip command: ");
 			if (!parse_ip(cmd_words_b[1]))
 				uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
@@ -646,8 +707,7 @@ void cmd_parser(void) __banked
 				print_string("Invalid IP address\n");
 			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
 			write_char('\n');
-		}
-		if (cmd_compare(0, "gw")) {
+		} else if (cmd_compare(0, "gw")) {
 			print_string("Got gw command: ");
 			if (!parse_ip(cmd_words_b[1]))
 				uip_ipaddr(&uip_draddr, ip[0], ip[1], ip[2], ip[3]);
@@ -655,8 +715,7 @@ void cmd_parser(void) __banked
 				print_string("Invalid IP address\n");
 			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
 			write_char('\n');
-		}
-		if (cmd_compare(0, "netmask")) {
+		} else if (cmd_compare(0, "netmask")) {
 			print_string("Got netmask command: ");
 			if (!parse_ip(cmd_words_b[1]))
 				uip_ipaddr(&uip_netmask, ip[0], ip[1], ip[2], ip[3]);
@@ -664,14 +723,12 @@ void cmd_parser(void) __banked
 				print_string("Invalid IP address\n");
 			print_byte(ip[0]);print_byte(ip[1]);print_byte(ip[2]);print_byte(ip[3]);
 			write_char('\n');
-		}
-		if (cmd_compare(0, "l2")) {
+		} else if (cmd_compare(0, "l2")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "forget"))
 				port_l2_forget();
 			else
 				port_l2_learned();
-		}
-		if (cmd_compare(0, "stp")) {
+		} else if (cmd_compare(0, "stp")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
 				print_string("STP enabled\n");
 				stpEnabled = 1;
@@ -681,8 +738,7 @@ void cmd_parser(void) __banked
 				stp_off();
 				stpEnabled = 0;
 			}
-		}
-		if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
+		} else if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 			__xdata uint16_t pvid;
 			uint8_t port;
 			port = cmd_buffer[cmd_words_b[1]] - '1';
@@ -690,35 +746,27 @@ void cmd_parser(void) __banked
 				port = phys_to_log_port[port];
 			if (!atoi_short(&pvid, cmd_words_b[2]))
 				port_pvid_set(port, pvid);
-		}
-		if (cmd_compare(0, "vlan")) {
+		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
-		}
-		if (cmd_compare(0, "mirror")) {
+		} else if (cmd_compare(0, "mirror")) {
 			parse_mirror();
-		}
-		if (cmd_compare(0, "trunk")) {
-			parse_trunk();
-		}
-		if (cmd_compare(0, "sds")) {
+		} else if (cmd_compare(0, "lag")) {
+			parse_lag();
+		} else if (cmd_compare(0, "laghash")) {
+			parse_lag_hash();
+		} else if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
-		}
-		if (cmd_compare(0, "gpio")) {
+		} else if (cmd_compare(0, "gpio")) {
 			print_gpio_status();
-		}
-		if (cmd_compare(0, "regget")) {
+		} else if (cmd_compare(0, "regget")) {
 			parse_regget();
-		}
-		if (cmd_compare(0, "regset")) {
+		} else if (cmd_compare(0, "regset")) {
 			parse_regset();
-		}
-		if (cmd_compare(0, "rnd")) {
+		} else if (cmd_compare(0, "rnd")) {
 			parse_rnd();
-		}
-		if (cmd_compare(0, "passwd")) {
+		} else if (cmd_compare(0, "passwd")) {
 			parse_passwd();
-		}
-		if (cmd_compare(0, "eee")) {
+		} else if (cmd_compare(0, "eee")) {
 			int8_t port = -1;
 			if (cmd_words_b[3] > 0) {
 				port = cmd_buffer[cmd_words_b[2]] - '1';
@@ -741,17 +789,15 @@ void cmd_parser(void) __banked
 				else
 					port_eee_status_all();
 			}
-		}
-		if (cmd_compare(0, "version")) {
+		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
-		}
-		if (cmd_compare(0, "history")) {
+		} else if (cmd_compare(0, "history")) {
 			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			__xdata uint8_t found_begin = 0;
-			print_string("History ptr: ");
-			print_short(cmd_history_ptr); write_char('\n');
+//			print_string("History ptr: ");
+//			print_short(cmd_history_ptr); write_char('\n');
 			while (p != cmd_history_ptr) {
-				print_short(p); write_char(' ');
+//				print_short(p); write_char(' ');
 				if (!cmd_history[p] || cmd_history[p] == '\n')
 					found_begin = 1;
 				if (found_begin && cmd_history[p])
@@ -793,8 +839,6 @@ void execute_config(void) __banked
 	do {
 		flash_region.addr = pos;
 		flash_region.len = FLASH_READ_BURST_SIZE;
-		write_char('-'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('\n');
-
 		flash_read_bulk(flash_buf);
 
 		uint8_t cfg_idx = 0;
@@ -802,11 +846,8 @@ void execute_config(void) __banked
 		do {
 			for (uint8_t cmd_idx = 0; cmd_idx < (SBUF_SIZE - 1); cmd_idx++) {
 				c = flash_buf[cfg_idx++];
-				print_byte(c);
-
 				if (c == 0 || c == '\n') {
 					cmd_buffer[cmd_idx] = '\0';
-					write_char('\n'); write_char('#');  print_short(cfg_idx); write_char('-'); print_short(cmd_idx); write_char('-'); print_string_x(cmd_buffer); write_char('\n');
 					if (cmd_idx && !cmd_tokenize())
 						cmd_parser();
 					if (c == 0)
@@ -816,7 +857,6 @@ void execute_config(void) __banked
 
 				cmd_buffer[cmd_idx] = c;
 			}
-			write_char('N');
 		} while(cfg_idx);
 
 		len_left -= FLASH_READ_BURST_SIZE;

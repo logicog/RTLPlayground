@@ -13,7 +13,7 @@
 
 #define SESSION_ID "1234567890ab"
 #define PASSWORD "1234"
-#define SESSION_TIMEOUT 20
+#define SESSION_TIMEOUT 2000
 
 #define PORTS 6
 time_t last_called;
@@ -213,6 +213,31 @@ void send_mirror(int s)
 	jstring = json_object_to_json_string_ext(mirror, JSON_C_TO_STRING_PLAIN);
         write(s, jstring, strlen(jstring));
 	json_object_put(mirror);
+}
+
+
+void send_lag(int s)
+{
+	char lag_buf[20];
+	struct json_object *lags = json_object_new_array_ext(4);
+	struct json_object *v;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	for (int i = 0; i < 4; i++) {
+		v = json_object_new_object();
+		json_object_object_add(v, "lagNum", json_object_new_int(i));
+		sprintf(lag_buf, "%016b", 0x30 << (i * 2) & 0x1f8);
+		json_object_object_add(v, "members", json_object_new_string(lag_buf));
+		json_object_object_add(v, "hash", json_object_new_string("0x7e"));
+		json_object_array_add(lags, v);
+	}
+        write(s, header, strlen(header));
+	
+	jstring = json_object_to_json_string_ext(lags, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(lags);
 }
 
 
@@ -416,6 +441,13 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_mirror(new_socket);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/lag.json", 9)) {
+					printf("LAG request\n");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_lag(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
 					int vlan = atoi(&buffer[19]);

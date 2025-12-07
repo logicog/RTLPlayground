@@ -9,6 +9,7 @@ void send_eee(void);
 void send_mirror(void);
 void send_config(void);
 void send_cmd_log(void);
+void send_lag(void);
 
 /*  Convert only the lower nibble to ascii HEX char.
     For convenience the upper nibble is masked out.
