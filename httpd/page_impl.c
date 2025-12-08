@@ -139,6 +139,20 @@ void reg_to_html(register uint16_t reg)
 	sfr_data_to_html();
 }
 
+
+void send_sfp_info(uint8_t sfp)
+{
+	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
+	for (uint8_t i = 20; i < 60; i++) {
+		if (i >= 36 && i < 40) // Skip Non-ASCII codes
+			continue;
+		uint8_t c = sfp_read_reg(sfp, i);
+		if (c && c != 0xa0) // a0 is the byte read from a non-existant I2C EEPROM
+			char_to_html(c);
+	}
+}
+
+
 void send_basic_info(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -167,7 +181,16 @@ void send_basic_info(void)
 	byte_to_html(uip_ethaddr.addr[5]);
 	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
 	slen += strtox(outbuf + slen, VERSION_SW);
-	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"SWGT024-V2.0\"}");
+	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"SWGT024-V2.0\"");
+	slen += strtox(outbuf + slen, ",\"sfp_slot_0\":\"");
+	send_sfp_info(0);
+	char_to_html('"');
+#if NSFP == 2
+	slen += strtox(outbuf + slen, ",\"sfp_slot_1\":\"");
+	send_sfp_info(1);
+	char_to_html('"');
+#endif
+	char_to_html('}');
 }
 
 
