@@ -343,30 +343,30 @@ void send_status(void)
 			itoa_html(i + 1);
 
 		if (IS_SFP(i)) {
-		  slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
-			bool_to_html(!((sfp_pins_last >> (i == maxPort ? 0 : 4)) & 1));
-
-			slen += strtox(outbuf + slen, ",\"link\":");
-			uint8_t rate = sfp_read_reg(i == maxPort ? 0 : 1, 12);
-			if (rate == 0xd)
-				char_to_html('2'); // 1000BX
-			else if (rate == 0x1f)
-				char_to_html('5'); // 2G5
-			else if (rate > 0x65 && rate < 0x70)
-				char_to_html('4'); // 10G "4" is not a valid value for port LINK speed
-			else
-				char_to_html('1'); // 100M ???
+			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
+			if (i != 3) {
+				reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
+				bool_to_html(!(sfr_data[0] & 0x40));
+			} else {
+				reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
+				bool_to_html(!(sfr_data[1] & 0x04));
+			}
 		} else {
-		  slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
+			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, 0x1f, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
-
-			slen += strtox(outbuf + slen, ",\"link\":");
-			reg_read_m(RTL837X_REG_LINKS);
-			uint8_t b = sfr_data[3 - (i >> 1)];
-			b = (i & 1) ? b >> 4 : b & 0xf;
-			char_to_html('0' + b);
 		}
+
+		slen += strtox(outbuf + slen, ",\"link\":");
+
+		if (i < 8)
+			reg_read_m(RTL837X_REG_LINKS);
+		else
+			reg_read_m(RTL837X_REG_LINKS_89);
+		uint8_t b = sfr_data[3 - ((i & 7) >> 1)];
+		b = (i & 1) ? b >> 4 : b & 0xf;
+		char_to_html('0' + b);
+
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		slen += strtox(outbuf + slen, ",\"txG\":\"0x");
 		reg_to_html(RTL837X_STAT_V_HIGH);
