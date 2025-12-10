@@ -15,13 +15,12 @@
 #include "uip/uip.h"
 #include "version.h"
 
+#include "machine.h"
+
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
-extern __xdata uint8_t minPort;
-extern __xdata uint8_t maxPort;
-extern __xdata uint8_t nSFPPorts;
-extern __xdata uint8_t isRTL8373;
+extern __code struct machine machine;
 extern __xdata uint16_t mpos;
 extern __xdata uint8_t stpEnabled;
 extern __code uint8_t log_to_phys_port[9];
@@ -62,11 +61,6 @@ __xdata signed char cmd_words_b[N_WORDS];
 
 __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
 __xdata uint16_t cmd_history_ptr;
-
-// Maps the physical port (starting from 0) to the logical port
-__code uint8_t phys_to_log_port[6] = {
-	4, 5, 6, 7, 3, 8
-};
 
 
 inline uint8_t isletter(uint8_t l)
@@ -205,10 +199,7 @@ void parse_lag(void)
 			print_string(" member ports: ");
 			for (uint8_t j = 0; j < 10; j++) {
 				if (members & 1) {
-					if (!isRTL8373)
-						write_char('0' + log_to_phys_port[j]);
-					else
-						write_char('1' + j);
+					write_char('0' + machine.log_to_phys_port[j]);
 					write_char(' ');
 				}
 				members >>= 1;
@@ -233,12 +224,11 @@ void parse_lag(void)
 			port = cmd_buffer[cmd_words_b[w]] - '1';
 			if (isnumber(cmd_buffer[cmd_words_b[w] + 1]))
 				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-			if (!isRTL8373)
-				port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 		} else {
 			goto err;
 		}
-		if (port > maxPort)
+		if (port > machine.max_port)
 			goto err;
 		members |= ((uint16_t)1) << port;
 		w++;
@@ -321,12 +311,11 @@ void parse_vlan(void)
 					if (cmd_buffer[cmd_words_b[w] + 2] == 't')
 						tagged |= ((uint16_t)1) << port;
 				} else {
-					if (!isRTL8373)
-						port = phys_to_log_port[port];
+						port = machine.phys_to_log_port[port];
 					if (cmd_buffer[cmd_words_b[w] + 1] == 't')
 						tagged |= ((uint16_t)1) << port;
 				}
-				if (port > maxPort)
+				if (port > machine.max_port)
 					goto err;
 				members |= ((uint16_t)1) << port;
 			}
@@ -359,10 +348,7 @@ void parse_mirror(void)
 			print_string("NOT Enabled: ");
 		}
 		print_string("Mirroring port: ");
-		if (!isRTL8373)
-			write_char('0' + log_to_phys_port[mPort >> 1]);
-		else
-			write_char('0' + (mPort >> 1) + 1);
+		write_char('0' + machine.log_to_phys_port[mPort >> 1]);
 		reg_read_m(RTL837x_MIRROR_CONF);
 		uint16_t m = sfr_data[0];
 		m = (m << 8) | sfr_data[1];
@@ -387,8 +373,7 @@ void parse_mirror(void)
 	mirroring_port = cmd_buffer[cmd_words_b[1]] - '1';
 	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))
 		mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
-	if (!isRTL8373)
-		mirroring_port = phys_to_log_port[mirroring_port];
+		mirroring_port = machine.phys_to_log_port[mirroring_port];
 
 	uint8_t w = 2;
 	while (cmd_words_b[w] > 0) {
@@ -397,8 +382,7 @@ void parse_mirror(void)
 			port = cmd_buffer[cmd_words_b[w]] - '1';
 			if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
 				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-				if (!isRTL8373)
-					port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 				if (cmd_buffer[cmd_words_b[w] + 2] == 'r')
 					rx_pmask |= ((uint16_t)1) << port;
 				else if (cmd_buffer[cmd_words_b[w] + 2] == 't')
@@ -408,8 +392,7 @@ void parse_mirror(void)
 					tx_pmask |= ((uint16_t)1) << port;
 				}
 			} else {
-				if (!isRTL8373)
-					port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 				if (cmd_buffer[cmd_words_b[w] + 1] == 'r')
 					rx_pmask |= ((uint16_t)1) << port;
 				else if (cmd_buffer[cmd_words_b[w] + 1] == 't')
@@ -743,8 +726,7 @@ void cmd_parser(void) __banked
 			__xdata uint16_t pvid;
 			uint8_t port;
 			port = cmd_buffer[cmd_words_b[1]] - '1';
-			if (!isRTL8373)
-				port = phys_to_log_port[port];
+			port = machine.phys_to_log_port[port];
 			if (!atoi_short(&pvid, cmd_words_b[2]))
 				port_pvid_set(port, pvid);
 		} else if (cmd_compare(0, "vlan")) {
@@ -771,8 +753,7 @@ void cmd_parser(void) __banked
 			int8_t port = -1;
 			if (cmd_words_b[3] > 0) {
 				port = cmd_buffer[cmd_words_b[2]] - '1';
-				if (!isRTL8373)
-					port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 			}
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
 				if (port >= 0)

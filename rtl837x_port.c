@@ -13,39 +13,19 @@
 #include "rtl837x_port.h"
 #include "rtl837x_phy.h"
 #include "phy.h"
+#include "machine.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
 extern __code uint8_t * __code hex;
 extern __code uint16_t bit_mask[16];
-extern __xdata uint8_t minPort;
-extern __xdata uint8_t maxPort;
-extern __xdata uint8_t nSFPPorts;
+extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
-extern __xdata uint8_t cpuPort;
 extern __xdata uint16_t vlan_ptr;
 extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
-extern __xdata uint8_t isRTL8373;
-
 __xdata	uint32_t l2_head;
-
-// The mapping of logical to physical ports on the RTL8372
-// Port 6 is always an SFP+ port. Port 5 may be RTL8221 or SFP+
-__code uint8_t log_to_phys_port[9] = {
-	0, 0, 0, 5, 1, 2, 3, 4, 6
-};
-
-#if NSFP == 2
-__code uint8_t is_sfp[9] = {
-	0, 0, 0, 1, 0, 0, 0, 0, 1
-};
-#else
-__code uint8_t is_sfp[9] = {
-	0, 0, 0, 0, 0, 0, 0, 0, 1
-};
-#endif
 
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
@@ -153,7 +133,7 @@ void vlan_create(register uint16_t vlan, register uint16_t members, register uin
 
 	uint16_t a = (~members) ^ tagged ^ members;
 	// On RTL8372, port-bits 0-2 must be 0, although they are not members
-	if (!isRTL8373) {
+	if (!machine.isRTL8373) {
 		a &= 0x1f8;
 		tagged &= 0x3f8;
 	}
@@ -184,7 +164,7 @@ void vlan_setup(void) __banked
 	vlan_names[0] = 0;
 
 	// Initialize VLAN table for VLAN 1, by disabling that entry
-	if (isRTL8373) {
+	if (machine.isRTL8373) {
 		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0007ffff);
 	} else {
 		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0007e3f8);
@@ -195,7 +175,7 @@ void vlan_setup(void) __banked
 	} while (sfr_data[3] & TBL_EXECUTE);
 
 	// Set PVID 1 for every port. TODO: Skip unused ports!
-	for (uint8_t i = minPort; i <= maxPort + 1; i++) {  // Do this also for the CPU port (+1)
+	for (uint8_t i = machine.min_port; i <= machine.max_port + 1; i++) {  // Do this also for the CPU port (+1)
 		uint16_t reg = RTL837x_PVID_BASE_REG + ((i >> 1) << 2);
 #ifdef DEBUG
 		print_byte(i); write_char(':'); write_char(' '); print_short(reg); write_char('=');
@@ -231,7 +211,7 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837X_VLAN_L2_LRN_DIS_1, 0);
 
 	// Enable VLAN 1: Ports 0-9, i.e. including the CPU port are untagged members
-	if (isRTL8373) {
+	if (machine.isRTL8373) {
 		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0207ffff);	// 02: Entry valid, 7ffff: membership
 	} else {
 		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0207e3f8);
@@ -266,11 +246,7 @@ uint8_t port_l2_forget(void) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);
 
 	// Flush L2 table for all ports by setting the ports and the flush-exec bit (bit 16)
-	if (isRTL8373) {
-		REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | PMASK_9);
-	} else {
-		REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | PMASK_6);
-	}
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, machine.isRTL8373 ? L2_TBL_FLUSH_EXEC | PMASK_9 : L2_TBL_FLUSH_EXEC | PMASK_6);
 
 	// Wait for flush completed
 	do {
@@ -358,14 +334,14 @@ void port_l2_setup(void) __banked
 
 	port_l2_forget();
 
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		// Limit the number of automatically learned MAC-Entries per port to 0x1040
 		uint16_t reg = RTL837X_L2_LRN_PORT_CONSTRAINT + (i << 2);
 		REG_SET(reg, 0x00001040);
 
 		// All ports may communicate with each other and CPU-Port
 		reg = RTL837X_PORT_ISOLATION_BASE + (i << 2);
-		if(isRTL8373) {
+		if(machine.isRTL8373) {
 			REG_SET(reg, PMASK_9 | PMASK_CPU);
 		} else {
 			REG_SET(reg, PMASK_6 | PMASK_CPU);
@@ -381,14 +357,10 @@ void port_l2_setup(void) __banked
 void port_stats_print(void) __banked
 {
 	print_string("\n Port\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");
-	for (uint8_t i = minPort; i <= maxPort; i++) {
-		if (!isRTL8373) {
-			write_char('0' + log_to_phys_port[i]); write_char('\t');
-		} else {
-			write_char('1' + i); write_char('\t');
-		}
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		write_char('0' + machine.log_to_phys_port[i]); write_char('\t');
 
-		if (!IS_SFP(i)) {
+		if (!machine.is_sfp[i]) {
 			phy_read(i, 0x1f, 0xa610);
 			if (SFR_DATA_8 == 0x20)
 				print_string("On\t");
@@ -456,14 +428,14 @@ void port_stats_print(void) __banked
 
 void port_isolate(register uint8_t port, __xdata uint16_t pmask)
 {
-	if (port <= maxPort)
+	if (port <= machine.max_port)
 		REG_SET(RTL837X_PORT_ISOLATION_BASE + (port << 2), pmask);
 }
 
 
 uint16_t port_isolation_get(register uint8_t port)
 {
-	if (port > maxPort)
+	if (port > machine.max_port)
 		return 0;
 
 	reg_read_m(RTL837X_PORT_ISOLATION_BASE + (port << 2));
@@ -473,7 +445,7 @@ uint16_t port_isolation_get(register uint8_t port)
 
 void port_eee_enable(uint8_t port) __banked
 {
-	if (is_sfp[port])
+	if (machine.is_sfp[port])
 		return;
 
 	REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100 | EEE_1000 | EEE_2G5);
@@ -487,7 +459,7 @@ void port_eee_enable(uint8_t port) __banked
 
 void port_eee_disable(uint8_t port) __banked
 {
-	if (is_sfp[port])
+	if (machine.is_sfp[port])
 		return;
 
 	print_string("EEE off for "); print_byte(port); write_char('\n');
@@ -502,9 +474,9 @@ void port_eee_disable(uint8_t port) __banked
 
 void port_eee_status(uint8_t port) __banked
 {
-	print_string("Port: "); write_char('0' + log_to_phys_port[port]);
+	print_string("Port: "); write_char('0' + machine.log_to_phys_port[port]);
 	print_string(": ");
-	if (is_sfp[port]) {
+	if (machine.is_sfp[port]) {
 		print_string("SFP\n");
 		return;
 	}
@@ -557,7 +529,7 @@ void port_eee_status(uint8_t port) __banked
 
 void port_eee_enable_all(void) __banked
 {
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		port_eee_enable(i);
 	}
 }
@@ -565,7 +537,7 @@ void port_eee_enable_all(void) __banked
 
 void port_eee_disable_all(void) __banked
 {
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		port_eee_disable(i);
 	}
 }
@@ -573,7 +545,7 @@ void port_eee_disable_all(void) __banked
 
 void port_eee_status_all(void) __banked
 {
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		port_eee_status(i);
 	}
 }

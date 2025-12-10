@@ -4,12 +4,12 @@
 #include "uip/uip-conf.h"
 #include <stdint.h>
 
-// This has to be set to the number of SFP+ ports, i.e. 1 or 2
-#define NSFP		2
 // SCL and SDA pin numbers for SFP cage 0 and SFP cage 1
 #define SCL_PIN		3
 #define SDA_PIN_0	4
 #define SDA_PIN_1	3
+
+#define CPU_PORT        9
 
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff
@@ -40,12 +40,6 @@
 
 // This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
-
-#if NSFP == 1
-#define IS_SFP(port) (i == maxPort)
-#else
-#define IS_SFP(port) (i == maxPort || i == 3)
-#endif
 
 #define CONFIG_START 0x70000
 #define CONFIG_LEN 0x1000
