@@ -164,11 +164,8 @@ void vlan_setup(void) __banked
 	vlan_names[0] = 0;
 
 	// Initialize VLAN table for VLAN 1, by disabling that entry
-	if (machine.isRTL8373) {
-		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0007ffff);
-	} else {
-		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0007e3f8);
-	}
+	REG_SET(RTL837x_TBL_DATA_IN_A, machine.isRTL8373? 0x0007ffff : 0x0007e3f8);
+
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
@@ -211,11 +208,8 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837X_VLAN_L2_LRN_DIS_1, 0);
 
 	// Enable VLAN 1: Ports 0-9, i.e. including the CPU port are untagged members
-	if (machine.isRTL8373) {
-		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0207ffff);	// 02: Entry valid, 7ffff: membership
-	} else {
-		REG_SET(RTL837x_TBL_DATA_IN_A, 0x0207e3f8);
-	}
+	REG_SET(RTL837x_TBL_DATA_IN_A, machine.isRTL8373? 0x0207ffff : 0x0207e3f8);	// 02: Entry valid, 7...: membership
+
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);	// Write VLAN 1
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
@@ -246,7 +240,7 @@ uint8_t port_l2_forget(void) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);
 
 	// Flush L2 table for all ports by setting the ports and the flush-exec bit (bit 16)
-	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, machine.isRTL8373 ? L2_TBL_FLUSH_EXEC | PMASK_9 : L2_TBL_FLUSH_EXEC | PMASK_6);
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (machine.isRTL8373 ? PMASK_9 : PMASK_6));
 
 	// Wait for flush completed
 	do {
@@ -341,11 +335,7 @@ void port_l2_setup(void) __banked
 
 		// All ports may communicate with each other and CPU-Port
 		reg = RTL837X_PORT_ISOLATION_BASE + (i << 2);
-		if(machine.isRTL8373) {
-			REG_SET(reg, PMASK_9 | PMASK_CPU);
-		} else {
-			REG_SET(reg, PMASK_6 | PMASK_CPU);
-		}
+		REG_SET(reg, PMASK_CPU | (machine.isRTL8373? PMASK_9 : PMASK_6));
 	}
 	// When maximim entries learned, then simply flood the packet
 	reg_bit_set(RTL837X_L2_LRN_PORT_CONSTRT_ACT, 0);
