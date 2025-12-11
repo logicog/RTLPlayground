@@ -402,8 +402,17 @@ void port_stats_print(void) __banked
 			case 2:
 				print_string("1000M\t");
 				break;
+			case 3:
+				print_string("500M\t");
+				break;
+			case 4:
+				print_string("10G\t");
+				break;
 			case 5:
 				print_string("2.5G\t");
+				break;
+			case 6:
+				print_string("5G\t");
 				break;
 			default:
 				print_string("Up\t");
