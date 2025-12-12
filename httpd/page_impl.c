@@ -353,13 +353,7 @@ void send_status(void)
 
 		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
-			if (i != 3) {
-				reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
-				bool_to_html(!(sfr_data[0] & 0x40));
-			} else {
-				reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
-				bool_to_html(!(sfr_data[1] & 0x04));
-			}
+			bool_to_html(!(sfp_pins_last & (0x1 << ((machine.is_sfp[i] - 1) << 2))));
 		} else {
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, 0x1f, 0xa610);
