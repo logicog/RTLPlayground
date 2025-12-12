@@ -1321,46 +1321,35 @@ void led_config_9xh(void)
 	reg_bit_set(0x65d8, 0x1d);
 
 	//  r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0
-	reg_read_m(0x6520);
+	reg_read_m(RTL837X_REG_LED_MODE);
 	sfr_mask_data(1, 0x1f, 0x6);
 	sfr_mask_data(0, 0xe0, 0xa0);
-	reg_write_m(0x6520);
+	reg_write_m(RTL837X_REG_LED_MODE);
 
-	//  r65f8:00000018 R65f8-0000001b
-	reg_read_m(0x65f8);
+	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
+	reg_read_m(RTL837X_REG_LED_RLDP_1);
 	sfr_mask_data(0, 0, 0x3);
-	reg_write_m(0x65f8);
+	reg_write_m(RTL837X_REG_LED_RLDP_1);
+	// Configure LED group for RLDP per port
+	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffffffff);	// Ports 0-7
+	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
 
-	// R65fc-ffffffff
-	REG_SET(0x65fc, 0xffffffff);
+	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
+	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
 
-	// Set bits 0-3 of 0x6600 to 0xf
-	// r6600:00000000 R6600-0000000f
-	reg_read_m(0x6600);
-	sfr_mask_data(0, 0, 0x0f);
-	reg_write_m(0x6600);
+	// GPIO 27 is LED
+	reg_bit_set(RTL837X_PIN_MUX_0, 27);
 
-	// Set bit 0x1d of 0x65dc, clear bit 1b: r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
-	reg_bit_set(0x65dc, 0x1d);
-	reg_bit_clear(0x65dc, 0x1b);
-
-	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
-	reg_bit_set(RTL837X_PIN_MUX_0, 0x1b);
-
-	// R6548-0041017f
-	REG_SET(0x6548, 0x0041017f);
+	// Configure LED_SET_0, ledid 0/1
+	REG_SET(RTL837X_REG_LED1_0_SET0, 0x0041017f);
 
 	// Configure LED_SET_0 ledid 2
-	//  r6544:01411000 R6544-01410044
-	reg_read_m(0x6544);
-	sfr_data[2] = 0x00;
-	sfr_data[3] = 0x44;
-	reg_write_m(0x6544);
+	REG_SET(RTL837X_REG_LED3_2_SET0, 0x01410044);
 
 	// r6528:00000000 R6528-0000000f
-	reg_read_m(0x6528);
+	reg_read_m(RTL837X_REG_LED3_0_SET1);
 	sfr_mask_data(0, 0x0f, 0x0f);
-	reg_write_m(0x6528);
+	reg_write_m(RTL837X_REG_LED3_0_SET1);
 }
 
 
@@ -1375,105 +1364,62 @@ void led_config(void)
 	sfr_data[3] = 0xb0;
 	reg_write_m(RTL837X_REG_LED_MODE);
 
-	// Clear bits 0,1 of 0x65f8
-//	r65f8:00000018 R65f8-00000018
-	reg_read_m(0x65f8);
+	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
+	reg_read_m(RTL837X_REG_LED_RLDP_1);
 	sfr_mask_data(0, 0x03, 0);
-	reg_write_m(0x65f8);
+	reg_write_m(RTL837X_REG_LED_RLDP_1);
+	// Configure LED group for RLDP per port
+	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffffffff);	// Ports 0-7
+	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
 
-	// Set 0x65fc to 0xfffff000
-	// R65fc-fffff000
-	REG_SET(0x65fc, 0xfffff000);
+	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
+	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
 
-	// Set bits 0-3 of 0x6600 to 0xf
-	// r6600:00000000 R6600-0000000f
-	reg_read_m(0x6600);
-	sfr_mask_data(0, 0, 0x0f);
-	reg_write_m(0x6600);
-
-	// Set bit 0x1d of 0x65dc, clear bit 1b: r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
-	reg_bit_set(0x65dc, 0x1d);
-	reg_bit_clear(0x65dc, 0x1b);
-
-	// Set bits 1b/1d of 0x7f8c: r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000
+	// Configure GPIO for LEDs 27-29
 	if (machine.n_sfp == 2) {
-		reg_bit_set(RTL837X_PIN_MUX_0, 0x1b); // R7f8c-28000000
-		reg_bit_clear(RTL837X_PIN_MUX_0, 0x1c); // R7f8c-28000000
-		reg_bit_set(RTL837X_PIN_MUX_0, 0x1d); // R7f8c-28000000
+		reg_bit_set(RTL837X_PIN_MUX_0, 27);
+		reg_bit_clear(RTL837X_PIN_MUX_0, 28);
+		reg_bit_set(RTL837X_PIN_MUX_0, 29);
 	} else {
-		reg_bit_set(RTL837X_PIN_MUX_0, 0x1d);
-		reg_bit_set(RTL837X_PIN_MUX_0, 0x1c);
-		reg_bit_set(RTL837X_PIN_MUX_0, 0x1b);
+		reg_bit_set(RTL837X_PIN_MUX_0, 27);
+		reg_bit_set(RTL837X_PIN_MUX_0, 28);
+		reg_bit_set(RTL837X_PIN_MUX_0, 29);
 	}
 	// LED setup
 	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0 r65f8:00000018 R65f8-00000018 R65fc-fffff000 r6600:00000000 R6600-0000000f r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
-	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000 R6548-00410175 r6544:01411000 R6544-01410044 r6528:00000000 R6528-00000011 r6450:000020e6 R6450-000000e6 r644c:0a418820 R644c-0a400820
+	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000 R6548-00410175 r6544:01411000 R6544-01410044 r6528:00000000 R6528-00000011
 
 	// Configure LED_SET_0, ledid 0/1
-	// R6548-00410175
-	REG_SET(0x6548, 0x00410175);
+	REG_SET(RTL837X_REG_LED1_0_SET0, 0x00410175);
 
-	// Configure LED_SET_0 ledid 2
-	// 6544:01411000 R6544-01410044
-	reg_read_m(0x6544);
-	sfr_data[2] = 0x00;
-	sfr_data[3] = 0x44;
-	reg_write_m(0x6544);
+	// Configure led-sets 2 and 3
+	REG_SET(RTL837X_REG_LED3_2_SET0, 0x01410044);
 
 	// Further configure LED_SET_0
 	// r6528:00000000 R6528-00000011
-	reg_read_m(0x6528);
+	reg_read_m(RTL837X_REG_LED3_0_SET1);
 	sfr_data[3] = 0x11;
-	reg_write_m(0x6528);
-
-	reg_read_m(0x6450);
-	sfr_mask_data(1, 0x7c, 0);
-	reg_write_m(0x6450);
-
-	// SDS bits f-13 set to 0: r644c:0a418820 R644c-0a400820
-	reg_read_m(0x644c);
-	sfr_mask_data(2, 0x0f, 0);
-	sfr_mask_data(1, 0x80, 0);
-	reg_write_m(0x644c);
+	reg_write_m(RTL837X_REG_LED3_0_SET1);
 }
 
 
 void rtl8373_revision(void)
 {
-	// r000c:00300000 R000c-003a0000 r000c:203a6818 r000c:203a6818 R000c-20306818
-
-	reg_read_m(0x000c);
+	reg_read_m(RTL837X_REG_CHIP_INFO);
 	sfr_mask_data(2, 0x0a, 0x0a); 	// Enable reading version
-	reg_write_m(0x000c);
+	reg_write_m(RTL837X_REG_CHIP_INFO);
 	delay(50);
 
-	reg_read_m(0x000c);
+	reg_read_m(RTL837X_REG_CHIP_INFO);
 	print_string("CPU revision: "); print_byte(sfr_data[2]); print_byte(sfr_data[2]); write_char('\n');
 	sfr_mask_data(2, 0x0a, 0x00); 	// Enable reading version
-	reg_write_m(0x000c);
+	reg_write_m(RTL837X_REG_CHIP_INFO);
 }
 
 
 void rtl8373_init(void)
 {
 	print_string("\nrtl8373_init called\n");
-
-	// r6330:00015555 R6330-00005555 r6330:00005555 R6330-00005555
-	REG_SET(0x6330, 0x00005555);
-
-	// r6334:00000000 R6334-000001f8  RTL8373: r6334:00000000 R6334-000000ff
-	reg_read_m(0x6334);		// Also in sdsMode_set
-	sfr_mask_data(0, 0, 0xff);
-	reg_write_m(0x6334);
-
-	// Enable MDC
-	// r6454:00000000 R6454-00007000 RTL837X_REG_SMI_CTRL
-	reg_read_m(RTL837X_REG_SMI_CTRL);
-	sfr_mask_data(1, 0, 0x70); 	// Set bits 0xc-0xe to enable MDC for SMI0-SMI2
-	reg_write_m(RTL837X_REG_SMI_CTRL);
-	delay(50);
-
-	rtl8373_revision();
 
 	led_config_9xh();
 	sds_init();
@@ -1528,10 +1474,12 @@ void rtl8373_init(void)
 	// r0b7c:000000d8 R0b7c-000000f8 r6040:00000030 R6040-00000031
 	reg_bit_set(0xb7c, 5);
 
-
-	// R7124-00001050 R7128-00001050 R712c-00001050 R7130-00001050 R7134-00001050 R7138-00001050 R713c-00001050 R7140-00001050 R7144-00001050 R7148-00001050
-	REG_SET(0x7124, 0x1050); REG_SET(0x7128, 0x1050); REG_SET(0x712c, 0x1050); REG_SET(0x7130, 0x1050); REG_SET(0x7134, 0x1050); REG_SET(0x7138, 0x1050); REG_SET(0x713c, 0x1050);
-	REG_SET(0x7140, 0x1050); REG_SET(0x7144, 0x1050); REG_SET(0x7148, 0x1050);
+	// R7124-00001050 R7128-00001050 R712c-00001050 R7130-00001050 R7134-00001050 R7138-00001050
+	// R713c-00001050 R7140-00001050 R7144-00001050 R7148-00001050
+	REG_SET(0x7124, 0x1050); REG_SET(0x7128, 0x1050); REG_SET(0x712c, 0x1050);
+	REG_SET(0x7130, 0x1050); REG_SET(0x7134, 0x1050); REG_SET(0x7138, 0x1050);
+	REG_SET(0x713c, 0x1050); REG_SET(0x7140, 0x1050); REG_SET(0x7144, 0x1050);
+	REG_SET(0x7148, 0x1050);
 
 	reg_bit_set(RTL837X_REG_HW_CONF, 0);
 
@@ -1548,7 +1496,6 @@ void rtl8373_init(void)
 	sfr_mask_data(2, 0x10, 0x1f);
 	reg_write_m(0x632c);
 
-	REG_SET(0x7f94, 0);
 	print_string("\nrtl8373_init done\n");
 }
 
@@ -1557,31 +1504,20 @@ void rtl8372_init(void)
 {
 	print_string("\nrtl8372_init called\n");
 
-	// r6330:00015555 R6330-00005555 r6330:00005555 R6330-00005555
-	REG_SET(0x6330, 0x00005555);
-	if (machine.n_sfp == 2) {
-		print_string("Configuring 2nd SFP+ port\n");
-		REG_SET(0x6330, 0x00005515);
-	}
-
-	// r6334:00000000 R6334-000001f8  RTL8373: r6334:00000000 R6334-000000ff
-	reg_read_m(0x6334);		// Also in sdsMode_set
-	if (machine.n_sfp == 2)  {
-		sfr_mask_data(0, 0, 0xf0);
-	} else {
-		sfr_mask_data(1, 0, 0x01); 	// Set bits 3-8, On RTL8373+8224 set bits 0-7
-		sfr_mask_data(0, 0, 0xf8);
-	}
-	reg_write_m(0x6334);
-
-	// Enable MDC
-	// r6454:00000000 R6454-00007000 RTL837X_REG_SMI_CTRL
-	reg_read_m(RTL837X_REG_SMI_CTRL);
-	sfr_mask_data(1, 0, 0x70); 	// Set bits 0xc-0xe to enable MDC for SMI0-SMI2
-	reg_write_m(RTL837X_REG_SMI_CTRL);
-	delay(50);
-
 	led_config();
+
+	// Change I2C addresses for SMI of the non-existent PHYs
+	// r6450:000020e6 R6450-000000e6 
+	reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+	sfr_mask_data(1, 0x7c, 0);
+	reg_write_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+
+	// r644c:0a418820 R644c-0a400820
+	reg_read_m(RTL837X_REG_SMI_PORT0_5_ADDR);
+	sfr_mask_data(2, 0x0f, 0);
+	sfr_mask_data(1, 0x80, 0);
+	reg_write_m(RTL837X_REG_SMI_PORT0_5_ADDR);
+
 	sds_init();
 	phy_config(8);	// PHY configuration: External 8221B?
 	phy_config(3);	// PHY configuration: all internal PHYs?
@@ -1635,6 +1571,29 @@ void rtl8372_init(void)
 	sfr_mask_data(2, 0x10, 0x1f);
 	reg_write_m(0x632c);
 	print_string("\nrtl8372_init done\n");
+}
+
+
+void init_smi(void)
+{
+	print_string("\ninit_switch called\n");
+
+	/* Set the SMI(i.e.I2C) type for PHY polling, 0b01 is 2.5/10G PHY. Disable (0b00) for the SFP-ports
+	 * which are at port 8 and additionally at port 3 for a dual SFP device
+	 */
+	REG_SET(RTL837X_REG_SMI_MAC_TYPE, machine.n_sfp == 2 ? 0x00005515 : 0x00005555);
+
+	// Configure polling of all PHYs by the MAC to detect link-state changes
+	if (machine.isRTL8373) {
+		REG_SET(RTL837X_REG_SMI_PORT_POLLING, 0xff);
+	} else {
+		REG_SET(RTL837X_REG_SMI_PORT_POLLING, machine.n_sfp == 2 ? 0xf0 : 0x1f8);
+	}
+	// Enable MDC
+	reg_read_m(RTL837X_REG_SMI_CTRL);
+	sfr_mask_data(1, 0, 0x70); 	// Set bits 12-14 to enable MDC for SMI0-SMI2
+	reg_write_m(RTL837X_REG_SMI_CTRL);
+	delay(50);
 }
 
 
@@ -1733,17 +1692,19 @@ void bootloader(void)
 	flash_init(0);
 
 	// Reset NIC
-	reg_bit_set(0x24, 2);
+	reg_bit_set(RTL837X_REG_RESET, RESET_NIC_BIT);
 	do {
-		reg_read(0x24);
-	} while (SFR_DATA_0 & 0x4);
+		reg_read(RTL837X_REG_RESET);
+	} while (SFR_DATA_0 & (1 << RESET_NIC_BIT));
 	print_string("NIC reset\n");
 
 	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
 	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
 
-	REG_SET(0x7f94, 0x0);
+	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
+	init_smi();
+	rtl8373_revision();
 	if (machine.isRTL8373)
 		rtl8373_init();
 	else

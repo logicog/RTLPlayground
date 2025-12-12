@@ -1,18 +1,30 @@
 #ifndef _RTL837X_REGS_H_
 #define _RTL837X_REGS_H_
 
-#define RTL837X_REG_HW_CONF 0x6040
+#define RTL837X_REG_CHIP_INFO		0x000c
+#define RTL837X_REG_RESET		0x0024
+#define RESET_SOC_BIT			0
+#define RESET_NIC_BIT			2
+
+#define RTL837X_REG_HW_CONF		0x6040
 // Bits 4 & 5: CLOCK DIVIDER from 125MHz for Timer
 
-#define RTL837X_REG_LED_MODE 0x6520
+#define RTL837X_REG_LED_MODE		0x6520
 // Defines the LED Mode for steering the Port LEDS and the System LED
 // BIT 17 set: LED solid on
 // Bytes 0/1 hold the LED mode, e.g. serial, RTL8231?
 // Blink rate is defined by setAsicRegBits(0x6520,0xe00000,rate);
+#define RTL837X_REG_LED_GLB_IO_EN	0x65DC
+#define RTL837X_REG_LED3_0_SET1		0x6528
+#define RTL837X_REG_LED3_2_SET0		0x6544
+#define RTL837X_REG_LED1_0_SET0		0x6548
 
-#define RTL837X_REG_SMI_CTRL 0x6454
-#define RTL837X_REG_RESET 0x0024
-// Writing 0x01 into this register causes a reset of the entire SoC
+// SMI control
+#define RTL837X_REG_SMI_PORT0_5_ADDR	0x644C
+#define RTL837X_REG_SMI_PORT6_9_ADDR	0x6450
+#define RTL837X_REG_SMI_CTRL		0x6454
+#define RTL837X_REG_SMI_MAC_TYPE	0x6330
+#define RTL837X_REG_SMI_PORT_POLLING	0x6334
 
 #define RTL837X_REG_SEC_COUNTER 0x06f4
 #define RTL837X_REG_SEC_COUNTER2 0x06f8
@@ -47,6 +59,7 @@
 
 #define RTL837X_PIN_MUX_0	0x7f8c
 #define RTL837X_PIN_MUX_1	0x7f90
+#define RTL837X_PIN_MUX_2	0x7f94
 
 // Output Registers
 #define RTL837X_REG_GPIO_00_31_OUTPUT 0x3c
@@ -178,6 +191,9 @@
 #define RTL837X_RMA0_CONF		0x4ecc
 #define RTL837X_RMA_CONF		0x4f1c
 #define RTL837X_MSTP_STATES		0x5310
+#define RTL837X_REG_LED_RLDP_1		0x65F8
+#define RTL837X_REG_LED_RLDP_2		0x65FC
+#define RTL837X_REG_LED_RLDP_3		0x65FC
 
 /*
  * EEE
