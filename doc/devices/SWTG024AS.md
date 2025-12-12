@@ -34,6 +34,12 @@ Changes I found with my board vs [Managed version](https://github.com/up-n-atom/
   We need to make a `Best`-BOM variant so we can use all the featues.
 
 # Connectors
+
+## J4
+
+* Location: Left SFP connector `J4`.
+* Connected to: 10GMAC number 8, second SDS.
+
 |`J4` SFP1 PINs | Signal | Component | GPIO | Notes |
 |---|---|---|---|---|
 |2|	TX_FAULT	        | B-R262	       | --- | | 
@@ -44,6 +50,11 @@ Changes I found with my board vs [Managed version](https://github.com/up-n-atom/
 |7|	RATE SEL          |	B-R257	       | ---    | |
 |8|	LOS	              | B-R258, T-R270 | GPIO37 | | 
 |9|	TO?               | B-R256	       | ---    | |
+
+## J2
+
+* Location: Right SFP connector `J2`.
+* Connected to: 10GMAC number 3, first SDS.
 
 |`J2` SFP2 PINs | Signal | Component | GPIO | Notes |
 |---|---|---|---|---|

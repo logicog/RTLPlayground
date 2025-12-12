@@ -60,14 +60,16 @@ __code const struct machine machine = {
 	.log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
 	.phys_to_log_port = {4, 6, 5, 7, 3, 8, 0, 0, 0},
 	.is_sfp= {0, 0, 0, 2, 0, 0, 0, 0, 1},
+	// Left SFP port (J4)
 	.sfp_port[0].pin_detect = 30,
 	.sfp_port[0].pin_los = 37,
-	.sfp_port[0].sds = 0,
-	.sfp_port[0].i2c = 0,
+	.sfp_port[0].sds = 1,
+	.sfp_port[0].i2c = 0, /* GPIO 39 */
+	// Right SFP port (J2)
 	.sfp_port[1].pin_detect = 50,
 	.sfp_port[1].pin_los = 51,
-	.sfp_port[1].sds = 1,
-	.sfp_port[1].i2c = 1,
+	.sfp_port[1].sds = 0,
+	.sfp_port[1].i2c = 1, /* GPIO 40 */
 	.reset_pin = 36,
 };
 #elif defined DEFAULT_8C_1SFP
