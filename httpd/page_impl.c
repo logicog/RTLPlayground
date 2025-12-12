@@ -176,8 +176,9 @@ void send_basic_info(void)
 	byte_to_html(uip_ethaddr.addr[5]);
 	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
 	slen += strtox(outbuf + slen, VERSION_SW);
-	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"SWGT024-V2.0\"");
-	slen += strtox(outbuf + slen, ",\"sfp_slot_0\":\"");
+	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
+	slen += strtox(outbuf + slen, machine.machine_name);
+	slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
 	send_sfp_info(0);
 	char_to_html('"');
 	if (machine.n_sfp == 2) {
