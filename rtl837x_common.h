@@ -3,6 +3,7 @@
 
 #include "uip/uip-conf.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 // SCL and SDA pin numbers for SFP cage 0 and SFP cage 1
 #define SCL_PIN		3
@@ -101,5 +102,6 @@ uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(uint32_t * tmr);
 void sfp_print_info(uint8_t sfp);
+bool gpio_pin_test(uint8_t pin);
 
 #endif

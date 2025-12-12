@@ -17,7 +17,7 @@
 #include "uip/uip_arp.h"
 #include "machine.h"
 
-extern __code struct machine machine;
+extern __code const struct machine machine;
 
 extern __xdata uint16_t crc_value;
 __xdata uint8_t crc_testbytes[10];
@@ -674,9 +674,6 @@ void sds_config(uint8_t sds, uint8_t mode)
 
 	uint8_t page = 0;
 	uint16_t v = 0;
-	print_string("\nTrying to set SDS mode to 0x");
-	print_byte(mode);
-	print_string("\n");
 
 	switch (mode) {
 	case SDS_SGMII:
@@ -747,7 +744,7 @@ void sds_config(uint8_t sds, uint8_t mode)
  */
 uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 {
-	if (slot == 0) {
+	if (machine.sfp_port[slot].i2c == 0) {
 		reg_read_m(RTL837X_REG_I2C_CTRL);
 		sfr_mask_data(1, 0xfc, SCL_PIN << 5 | SDA_PIN_0 << 2);
 		reg_write_m(RTL837X_REG_I2C_CTRL);
@@ -916,65 +913,47 @@ void sfp_print_info(uint8_t sfp)
 }
 
 
+bool gpio_pin_test(uint8_t pin)
+{
+	reg_read_m(RTL837X_REG_GPIO_00_31_INPUT + (pin > 31 ? 4 : 0));
+	return sfr_data[(pin >> 3) & 3] & (1 << (7 - (pin & 7)));
+}
+
+
 void handle_sfp(void)
 {
-	reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
-	if ((sfp_pins_last & 0x1) && (!(sfr_data[0] & 0x40))) {
-		sfp_pins_last &= ~0x01;
-		print_string("\n<MODULE INSERTED>  ");
-		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
-		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
-		delay(100); // Delay, because some modules need time to wake up
-		uint8_t rate = sfp_read_reg(0, 12);
-		print_string("Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
-		print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
-		print_string("\n");
-		print_string("\n");
-		sfp_print_info(0);
-		sds_config(1, sfp_rate_to_sds_config(rate));
-	}
-	if ((!(sfp_pins_last & 0x1)) && (sfr_data[0] & 0x40)) {
-		sfp_pins_last |= 0x01;
-		print_string("\n<MODULE REMOVED>\n");
-	}
-
-	reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
-	if ((sfp_pins_last & 0x2) && (!(sfr_data[3] & 0x20))) {
-		sfp_pins_last &= ~0x02;
-		print_string("\n<SFP-RX OK>\n");
-	}
-	if ((!(sfp_pins_last & 0x2)) && (sfr_data[3] & 0x20)) {
-		sfp_pins_last |= 0x02;
-		print_string("\n<SFP-RX LOS>\n");
-	}
-	if (machine.n_sfp == 2) {
-		reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
-		if ((sfp_pins_last & 0x10) && (!(sfr_data[1] & 0x04))) {
-			sfp_pins_last &= ~0x10;
-			print_string("\n<MODULE 2 INSERTED>  ");
-			// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
-			// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
-			delay(100); // Delay, because some modules need time to wake up
-			uint8_t rate = sfp_read_reg(1, 12);
-			print_string("Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
-			print_string("  Encoding: "); print_byte(sfp_read_reg(1, 11));
-			print_string("\n");
-			sfp_print_info(1);
-			sds_config(0, sfp_rate_to_sds_config(rate));
-		}
-		if ((!(sfp_pins_last & 0x10)) && (sfr_data[1] & 0x04)) {
-			sfp_pins_last |= 0x10;
-			print_string("\n<MODULE 2 REMOVED>\n");
+	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		if (!gpio_pin_test(machine.sfp_port[sfp].pin_detect)) {
+			if (sfp_pins_last & (0x1 << (sfp << 2))) {
+				sfp_pins_last &= ~(0x01 << (sfp << 2));
+				print_string("\n<MODULE INSERTED>  Slot: "); write_char('1' + sfp);
+				// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
+				// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
+				delay(100); // Delay, because some modules need time to wake up
+				uint8_t rate = sfp_read_reg(sfp, 12);
+				print_string("  Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
+				print_string("  Encoding: "); print_byte(sfp_read_reg(sfp, 11));
+				print_string("  Module: "); sfp_print_info(sfp);
+				print_string("\n");
+				sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
+			}
+		} else {
+			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
+				sfp_pins_last |= 0x01 << (sfp << 2);
+				print_string("\n<MODULE REMOVED>  Slot: "); write_char('1' + sfp); write_char('\n');
+			}
 		}
 
-		reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
-		if ((sfp_pins_last & 0x20) && (!(sfr_data[2] & 0x08))) {
-			sfp_pins_last &= ~0x20;
-			print_string("\n<SFP2-RX OK>\n");
-		}
-		if ((!(sfp_pins_last & 0x20)) && (sfr_data[2] & 0x08)) {
-			sfp_pins_last |= 0x20;
-			print_string("\n<SFP2-RX LOS>\n");
+		if (!gpio_pin_test(machine.sfp_port[sfp].pin_los)) {
+			if (sfp_pins_last & (0x2 << (sfp << 2))) { // 0x2 0x08
+				sfp_pins_last &= ~(0x02 << (sfp << 2));
+				print_string("\n<SFP-RX OK>  Slot: "); write_char('1' + sfp); write_char('\n');
+			}
+		} else {
+			if (!(sfp_pins_last & 0x2 << (sfp << 2))) {
+				sfp_pins_last |= 0x02 << (sfp << 2);
+				print_string("\n<SFP-RX LOS>  Slot: "); write_char('1' + sfp); write_char('\n');
+			}
 		}
 	}
 }
