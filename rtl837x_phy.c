@@ -119,7 +119,7 @@ void phy_config(uint8_t phy) __banked
 
 	//	p031f.a442:043c P000008.1f00a442:0430
 	// Unknown, but clear bits 2/3
-	phy_modify(phy, 0x1f, 0xa442, 0x0006, 0x0000);
+	phy_modify(phy, 0x1f, 0xa442, 0x000c, 0x0000);
 	delay(20);
 
 	// P000100.1e0075b5:e084
@@ -202,8 +202,8 @@ void phy_set_mode(uint8_t port, uint8_t speed, uint8_t flow_control, uint8_t dup
 			// AN Advertisement Register (MMD 7.0x0010)
 			phy_write(port, PHY_MMD_AN, 0x10, 0x1001);	// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
 			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
-			phy_write(port, PHY_MMD_AN, 0x20, 0x6081);	// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timin enableed
-			phy_write(port, PHY_MMD_AN, 0x00, 0x3200);	// Restart AN
+			phy_write(port, 0x07, 0x20, 0x6081);	// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timing enabled
+			phy_write(port, 0x07, 0x00, 0x3200);	// Restart AN
 	} else {
 		// AN Control Register (MMD 7.0x0000)
 		phy_write(port, PHY_MMD_AN, 0x00, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
@@ -213,12 +213,12 @@ void phy_set_mode(uint8_t port, uint8_t speed, uint8_t flow_control, uint8_t dup
 			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6001);	// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-			phy_modify(port, 0x1f, 0xa412, 0x0000, 0x02000);
+			phy_modify(port, 0x1f, 0xa412, 0x0000, 0x0200);
 		} else if (speed == PHY_SPEED_2G5) {
 			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6081);	// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timin enableed
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-			phy_modify(port, 0x1f, 0xa412, 0x02000, 0x0000);
+			phy_modify(port, 0x1f, 0xa412, 0x0200, 0x0000);
 		}
 		phy_write(port, PHY_MMD_AN, 0x00, 0x3200);	// Enable AN
 	}
