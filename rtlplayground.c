@@ -1506,18 +1506,6 @@ void rtl8372_init(void)
 
 	led_config();
 
-	// Change I2C addresses for SMI of the non-existent PHYs
-	// r6450:000020e6 R6450-000000e6 
-	reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
-	sfr_mask_data(1, 0x7c, 0);
-	reg_write_m(RTL837X_REG_SMI_PORT6_9_ADDR);
-
-	// r644c:0a418820 R644c-0a400820
-	reg_read_m(RTL837X_REG_SMI_PORT0_5_ADDR);
-	sfr_mask_data(2, 0x0f, 0);
-	sfr_mask_data(1, 0x80, 0);
-	reg_write_m(RTL837X_REG_SMI_PORT0_5_ADDR);
-
 	sds_init();
 	phy_config(8);	// PHY configuration: External 8221B?
 	phy_config(3);	// PHY configuration: all internal PHYs?
@@ -1574,6 +1562,13 @@ void rtl8372_init(void)
 }
 
 
+/*
+ * The SoC manages Link-State for steering the LEDs and can set PHY-settings
+ * automatically through Realtek's SMI (Simple Managagement) Interface, a
+ * proprietary version of MDIO which for example allows for more PHYs on the same
+ * bus.
+ * Configure polling via SMI and the interface setup during boot.
+ */
 void init_smi(void)
 {
 	print_string("\ninit_switch called\n");
@@ -1594,6 +1589,20 @@ void init_smi(void)
 	sfr_mask_data(1, 0, 0x70); 	// Set bits 12-14 to enable MDC for SMI0-SMI2
 	reg_write_m(RTL837X_REG_SMI_CTRL);
 	delay(50);
+
+	if (!machine.isRTL8373) {
+		// Change I2C addresses for SMI of the non-existent PHYs
+		// r6450:000020e6 R6450-000000e6
+		reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+		sfr_mask_data(1, 0x7c, 0);
+		reg_write_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+
+		// r644c:0a418820 R644c-0a400820
+		reg_read_m(RTL837X_REG_SMI_PORT0_5_ADDR);
+		sfr_mask_data(2, 0x0f, 0);
+		sfr_mask_data(1, 0x80, 0);
+		reg_write_m(RTL837X_REG_SMI_PORT0_5_ADDR);
+	}
 }
 
 
