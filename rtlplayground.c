@@ -1365,6 +1365,58 @@ void led_config_9xh(void)
 	reg_write_m(0x6528);
 }
 
+void led_config_horaco(void)
+{
+
+	// RTL8373_LED_GLB_MUX_1_ADDR
+	REG_SET(0x65e0, 0x08144040)
+
+	// RTL8373_LED_GLB_MUX_2_ADDR
+	REG_SET(0x65e4, 0x1037f309);
+
+	// RTL8373_LED_GLB_MUX_3_ADDR
+	REG_SET(0x65e8, 0x12454391);
+
+	// RTL8373_LED_GLB_MUX_4_ADDR
+	REG_SET(0x65ec, 0x19616555);
+
+	// RTL8373_LED_GLB_MUX_5_ADDR
+	REG_SET(0x65f0, 0x1c79d65a);
+
+	// RTL8373_LED_GLB_MUX_6_ADDR
+	REG_SET(0x65f4, 0x0002181d);
+
+	// RTL8373_LED_GLB_ACTIVE_ADDR
+	REG_SET(0x65d8, 0x3ffb6dff);
+
+	// RTL8373_LED_GLB_CTRL_ADDR 
+	REG_SET(0x6520, 0x0021e430);
+
+	// RTL8373_LED_RLDP_CTRL_1_ADDR
+	REG_SET(0x65f8, 0x0000001b);
+
+	// RTL8373_LED_RLDP_CTRL_2_ADDR
+	REG_SET(0x65fc, 0x33333000);
+
+	// RTL8373_LED_RLDP_CTRL_3_ADDR
+	REG_SET(0x6600, 0x00000003);
+	
+	// RTL8373_LED_GLB_IO_EN_ADDR
+	REG_SET(0x65dc, 0x7f249740);
+
+	// RTL8373_IO_MUX_SEL_0_ADDR
+	REG_SET(0x7f8c, 0x30db68bf);
+
+	// RTL8373_LED_PORT_SET_SEL_CTRL_ADDR
+	REG_SET(0x654c, 0x00010040);
+
+	// RTL8373_LED1_0_SET0_CTRL0_ADDR
+	REG_SET(0x6548, 0x01740141);
+
+	// RTL8373_LED3_0_SET1_0_CTRL1_ADDR
+	REG_SET(0x6528, 0x00f00000);
+
+}
 
 void led_config(void)
 {
@@ -1591,7 +1643,8 @@ void rtl8372_init(void)
 	reg_write_m(RTL837X_REG_SMI_CTRL);
 	delay(50);
 
-	led_config();
+	//led_config();
+	led_config_horaco();
 	sds_init();
 	phy_config(8);	// PHY configuration: External 8221B?
 	phy_config(3);	// PHY configuration: all internal PHYs?
