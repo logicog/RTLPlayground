@@ -2,7 +2,7 @@ var txG = new BigInt64Array(10);
 var txB = new BigInt64Array(10);
 var rxG = new BigInt64Array(10);
 var rxB = new BigInt64Array(10);
-const linkS = ["Disabled", "No Link", "100M", "1000M", "NO", "NO", "2.5G"];
+const linkS = ["Disabled", "No Link", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
 var pState = new Int8Array(10);
 var pIsSFP = new Int8Array(10);
 var numPorts = 0;
@@ -40,9 +40,9 @@ function update() {
 	} else {
 	  psvg.style.opacity = 1.0;
 	  pState[n] = p.link;
-	  if (p.link == 5) {
+	  if (p.link == 4 || p.link == 5 || p.link == 6) {
 	    leds[0].style.fill = "green"; leds[1].style.fill = "orange";
-	  } else if (p.link == 2) {
+	  } else if (p.link == 1 || p.link == 2 || p.link == 3) {
 	    leds[0].style.fill = "green"; leds[1].style.fill = "green";
 	  } else {
 	    leds[0].style.fill = "black"; leds[1].style.fill = "black";

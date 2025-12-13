@@ -283,7 +283,7 @@ void flash_read_bulk(__xdata uint8_t *dst)
 }
 
 
-void flash_read_security()
+void flash_read_security(void)
 {
 	while (flash_read_status() & 0x1);
 

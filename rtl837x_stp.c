@@ -12,12 +12,9 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_stp.h"
 #include "uip.h"
+#include "machine.h"
 
-extern __xdata uint8_t minPort;
-extern __xdata uint8_t maxPort;
-extern __xdata uint8_t nSFPPorts;
-extern __xdata uint8_t cpuPort;
-extern __xdata uint8_t isRTL8373;
+extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 
 extern __code struct uip_eth_addr uip_ethaddr;
@@ -203,7 +200,7 @@ void stp_cnf_send(uint8_t port)
 
 void stp_timers(void) __banked
 {
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		port_hello[i]--;
 		if (!port_hello[i]) {
 			port_hello[i] = TIME_HELLO;
@@ -219,7 +216,7 @@ void stp_setup(void) __banked
 {
 	print_string("Enabling STP: ");
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		// Set STP port state to blocking
 		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
 		uint8_t bit_mask = 0b01 << ( (i << 1) & 0x7);
@@ -241,7 +238,7 @@ void stp_setup(void) __banked
 void stp_off(void) __banked
 {
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		// Set STP port state to forwarding
 		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
 		uint8_t bit_mask = 0b11 << ( (i << 1) & 0x7);
