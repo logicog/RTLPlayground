@@ -1215,12 +1215,13 @@ void phy_modify(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t mask, uin
 	// Modify the reed data.
 	// TODO: Check if we directly can modify SFR register directly.
 	uint16_t data = SFR_DATA_U16 & ~(mask);
-	data |= ~(set);
+	data |= set;
 
 	uint16_t phy_mask = bit_mask[phy_id];
 
 	// Write it back
-	SFR_SMI_REG_U16 = data;
+	SFR_SMI_REG_U16 = reg;
+	SFR_DATA_U16 = data;
 	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
 	SFR_SMI_DEV = smi_phy | (phy_mask >> 8);
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
