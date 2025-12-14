@@ -282,6 +282,41 @@ void phy_show(uint8_t port) __banked
 {
 	uint16_t v;
 
+	// The actual PHY speed is in a Realtek propriatary register
+	print_string("\nLink speed: ");
+	phy_read(port, PHY_MMD_CTRL, 0xA434);
+	v = SFR_DATA_U16;
+	v = ((v & 0x0600) >> 7) | ((v & 0x0030) >> 4);
+	switch(v) {
+	case 0:
+		print_string("10M");
+		break;
+	case 1:
+		print_string("100M");
+		break;
+	case 2:
+		print_string("1000M");
+		break;
+	case 3:
+		print_string("500M");
+		break;
+	case 4:
+		print_string("10G");
+		break;
+	case 5:
+		print_string("2500M");
+		break;
+	case 6:
+		print_string("5G");
+		break;
+	default:
+		print_string("10M");
+	}
+	if (v & 0x8)
+		print_string(" full duplex");
+	else
+		print_string(" half duplex");
+
 	phy_read(port,  PHY_MMD_AN, 0x00);
 	v = SFR_DATA_U16;
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
