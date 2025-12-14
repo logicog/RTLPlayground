@@ -409,6 +409,49 @@ void parse_mirror(void)
 }
 
 
+void parse_port(void)
+{
+	print_string("\nPORT ");
+	uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
+	p = machine.phys_to_log_port[p];
+	print_byte(p);
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "10m")) {
+		print_string(" 10M\n");
+		phy_set_speed(p, PHY_SPEED_10M);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "100m")) {
+		print_string(" 100M\n");
+		phy_set_speed(p, PHY_SPEED_100M);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "2g5")) {
+		print_string(" 2.5G\n");
+		phy_set_speed(p, PHY_SPEED_2G5);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "1g")) {
+		print_string(" 1G\n");
+		phy_set_speed(p, PHY_SPEED_1G);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "auto")) {
+		print_string(" AUTO\n");
+		phy_set_speed(p, PHY_SPEED_AUTO);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "off")) {
+		print_string(" OFF\n");
+		phy_set_speed(p, PHY_OFF);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "duplex")) {
+		print_string(" DUPLEX\n");
+		if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
+			phy_set_duplex(p, 1);
+		else
+			phy_set_duplex(p, 0);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "show")) {
+		phy_show(p);
+	}
+}
+
+
 void parse_regget(void)
 {
 	uint16_t reg = 0;
@@ -664,25 +707,7 @@ void cmd_parser(void) __banked
 			flash_region.len = 20;
 			flash_write_bytes(flash_buf);
 		} else if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
-			print_string("\nPORT ");
-			uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
-			print_byte(p);
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "2g5")) {
-				print_string(" 2.5G\n");
-				phy_set_mode(p, PHY_SPEED_2G5, 0, 0);
-			}
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "1g")) {
-				print_string(" 1G\n");
-				phy_set_mode(p, PHY_SPEED_1G, 0, 0);
-			}
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "auto")) {
-				print_string(" AUTO\n");
-				phy_set_mode(p, PHY_SPEED_AUTO, 0, 0);
-			}
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "off")) {
-				print_string(" OFF\n");
-				phy_set_mode(p, PHY_OFF, 0, 0);
-			}
+			parse_port();
 		} else if (cmd_compare(0, "ip")) {
 			print_string("Got ip command: ");
 			if (!parse_ip(cmd_words_b[1]))
