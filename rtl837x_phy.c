@@ -290,7 +290,6 @@ void phy_show(uint8_t port) __banked
 		print_string("\nForced speed: "); print_short(v); write_char('\n');
 		uint8_t s1 = ((v & 0x40) ? 0x2 : 0x0) | ((v & 0x2000) ? 0x1 : 0x0);
 		uint8_t s2 = (v >> 2) & 0xf;
-		print_string("s1, s2: "); print_byte(s1); write_char(' '); print_byte(s2); write_char('\n');
 		switch(s1) {
 		case 0:
 			print_string("10M\n");

@@ -415,6 +415,10 @@ void parse_port(void)
 	uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
 	p = machine.phys_to_log_port[p];
 	print_byte(p);
+	if (machine.is_sfp[p]) {
+		print_string(" is SFP no PHY information available.\n");
+		return;
+	}
 	if (cmd_words_b[2] > 0 && cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
 		phy_set_speed(p, PHY_SPEED_10M);
