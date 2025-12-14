@@ -15,13 +15,12 @@
 #include "uip/uip.h"
 #include "version.h"
 
+#include "machine.h"
+
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
-extern __xdata uint8_t minPort;
-extern __xdata uint8_t maxPort;
-extern __xdata uint8_t nSFPPorts;
-extern __xdata uint8_t isRTL8373;
+extern __code struct machine machine;
 extern __xdata uint16_t mpos;
 extern __xdata uint8_t stpEnabled;
 extern __code uint8_t log_to_phys_port[9];
@@ -62,11 +61,6 @@ __xdata signed char cmd_words_b[N_WORDS];
 
 __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
 __xdata uint16_t cmd_history_ptr;
-
-// Maps the physical port (starting from 0) to the logical port
-__code uint8_t phys_to_log_port[6] = {
-	4, 5, 6, 7, 3, 8
-};
 
 
 inline uint8_t isletter(uint8_t l)
@@ -205,10 +199,7 @@ void parse_lag(void)
 			print_string(" member ports: ");
 			for (uint8_t j = 0; j < 10; j++) {
 				if (members & 1) {
-					if (!isRTL8373)
-						write_char('0' + log_to_phys_port[j]);
-					else
-						write_char('1' + j);
+					write_char('0' + machine.log_to_phys_port[j]);
 					write_char(' ');
 				}
 				members >>= 1;
@@ -233,12 +224,11 @@ void parse_lag(void)
 			port = cmd_buffer[cmd_words_b[w]] - '1';
 			if (isnumber(cmd_buffer[cmd_words_b[w] + 1]))
 				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-			if (!isRTL8373)
-				port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 		} else {
 			goto err;
 		}
-		if (port > maxPort)
+		if (port > machine.max_port)
 			goto err;
 		members |= ((uint16_t)1) << port;
 		w++;
@@ -321,12 +311,11 @@ void parse_vlan(void)
 					if (cmd_buffer[cmd_words_b[w] + 2] == 't')
 						tagged |= ((uint16_t)1) << port;
 				} else {
-					if (!isRTL8373)
-						port = phys_to_log_port[port];
+						port = machine.phys_to_log_port[port];
 					if (cmd_buffer[cmd_words_b[w] + 1] == 't')
 						tagged |= ((uint16_t)1) << port;
 				}
-				if (port > maxPort)
+				if (port > machine.max_port)
 					goto err;
 				members |= ((uint16_t)1) << port;
 			}
@@ -359,10 +348,7 @@ void parse_mirror(void)
 			print_string("NOT Enabled: ");
 		}
 		print_string("Mirroring port: ");
-		if (!isRTL8373)
-			write_char('0' + log_to_phys_port[mPort >> 1]);
-		else
-			write_char('0' + (mPort >> 1) + 1);
+		write_char('0' + machine.log_to_phys_port[mPort >> 1]);
 		reg_read_m(RTL837x_MIRROR_CONF);
 		uint16_t m = sfr_data[0];
 		m = (m << 8) | sfr_data[1];
@@ -387,8 +373,7 @@ void parse_mirror(void)
 	mirroring_port = cmd_buffer[cmd_words_b[1]] - '1';
 	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))
 		mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
-	if (!isRTL8373)
-		mirroring_port = phys_to_log_port[mirroring_port];
+		mirroring_port = machine.phys_to_log_port[mirroring_port];
 
 	uint8_t w = 2;
 	while (cmd_words_b[w] > 0) {
@@ -397,8 +382,7 @@ void parse_mirror(void)
 			port = cmd_buffer[cmd_words_b[w]] - '1';
 			if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
 				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-				if (!isRTL8373)
-					port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 				if (cmd_buffer[cmd_words_b[w] + 2] == 'r')
 					rx_pmask |= ((uint16_t)1) << port;
 				else if (cmd_buffer[cmd_words_b[w] + 2] == 't')
@@ -408,8 +392,7 @@ void parse_mirror(void)
 					tx_pmask |= ((uint16_t)1) << port;
 				}
 			} else {
-				if (!isRTL8373)
-					port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 				if (cmd_buffer[cmd_words_b[w] + 1] == 'r')
 					rx_pmask |= ((uint16_t)1) << port;
 				else if (cmd_buffer[cmd_words_b[w] + 1] == 't')
@@ -423,6 +406,53 @@ void parse_mirror(void)
 		w++;
 	}
 	port_mirror_set(mirroring_port, rx_pmask, tx_pmask);
+}
+
+
+void parse_port(void)
+{
+	print_string("\nPORT ");
+	uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
+	p = machine.phys_to_log_port[p];
+	print_byte(p);
+	if (machine.is_sfp[p]) {
+		print_string(" is SFP no PHY information available.\n");
+		return;
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "10m")) {
+		print_string(" 10M\n");
+		phy_set_speed(p, PHY_SPEED_10M);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "100m")) {
+		print_string(" 100M\n");
+		phy_set_speed(p, PHY_SPEED_100M);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "2g5")) {
+		print_string(" 2.5G\n");
+		phy_set_speed(p, PHY_SPEED_2G5);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "1g")) {
+		print_string(" 1G\n");
+		phy_set_speed(p, PHY_SPEED_1G);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "auto")) {
+		print_string(" AUTO\n");
+		phy_set_speed(p, PHY_SPEED_AUTO);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "off")) {
+		print_string(" OFF\n");
+		phy_set_speed(p, PHY_OFF);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "duplex")) {
+		print_string(" DUPLEX\n");
+		if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
+			phy_set_duplex(p, 1);
+		else
+			phy_set_duplex(p, 0);
+	}
+	if (cmd_words_b[2] > 0 && cmd_compare(2, "show")) {
+		phy_show(p);
+	}
 }
 
 
@@ -627,18 +657,19 @@ void cmd_parser(void) __banked
 			print_string("\nRESET\n\n");
 			reset_chip();
 		} else if (cmd_compare(0, "sfp")) {
-			uint8_t rate = sfp_read_reg(0, 12);
-			print_string("\nRate: "); print_byte(rate);
+			print_string("\nSlot 1 - Rate: "); print_byte(sfp_read_reg(0, 12));
 			print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
 			print_string("\n");
-			for (uint8_t i = 20; i < 60; i++) {
-				uint8_t c = sfp_read_reg(0, i);
-				if (c)
-					write_char(c);
+			sfp_print_info(0);
+			if (machine.n_sfp == 2) {
+				print_string("\nSlot 2 - Rate: "); print_byte(sfp_read_reg(1, 12));
+				print_string("  Encoding: "); print_byte(sfp_read_reg(1, 11));
+				print_string("\n");
+				sfp_print_info(1);
 			}
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
-		} else 	if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
+		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'r') {
 			print_string("\nPRINT SECURITY REGISTERS\n");
 			// The following will only show something else than 0xff if it was programmed for a managed switch
 			flash_region.addr = 0x0001000;
@@ -680,25 +711,7 @@ void cmd_parser(void) __banked
 			flash_region.len = 20;
 			flash_write_bytes(flash_buf);
 		} else if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
-			print_string("\nPORT ");
-			uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
-			print_byte(p);
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "2g5")) {
-				print_string(" 2.5G\n");
-				phy_set_mode(p, PHY_SPEED_2G5, 0, 0);
-			}
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "1g")) {
-				print_string(" 1G\n");
-				phy_set_mode(p, PHY_SPEED_1G, 0, 0);
-			}
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "auto")) {
-				print_string(" AUTO\n");
-				phy_set_mode(p, PHY_SPEED_AUTO, 0, 0);
-			}
-			if (cmd_words_b[2] > 0 && cmd_compare(2, "off")) {
-				print_string(" OFF\n");
-				phy_set_mode(p, PHY_OFF, 0, 0);
-			}
+			parse_port();
 		} else if (cmd_compare(0, "ip")) {
 			print_string("Got ip command: ");
 			if (!parse_ip(cmd_words_b[1]))
@@ -742,8 +755,7 @@ void cmd_parser(void) __banked
 			__xdata uint16_t pvid;
 			uint8_t port;
 			port = cmd_buffer[cmd_words_b[1]] - '1';
-			if (!isRTL8373)
-				port = phys_to_log_port[port];
+			port = machine.phys_to_log_port[port];
 			if (!atoi_short(&pvid, cmd_words_b[2]))
 				port_pvid_set(port, pvid);
 		} else if (cmd_compare(0, "vlan")) {
@@ -770,8 +782,7 @@ void cmd_parser(void) __banked
 			int8_t port = -1;
 			if (cmd_words_b[3] > 0) {
 				port = cmd_buffer[cmd_words_b[2]] - '1';
-				if (!isRTL8373)
-					port = phys_to_log_port[port];
+				port = machine.phys_to_log_port[port];
 			}
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
 				if (port >= 0)

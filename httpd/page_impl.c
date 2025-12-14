@@ -10,11 +10,13 @@
 #include <stdint.h>
 #include "../phy.h"
 #include "../version.h"
+#include "../machine.h"
 #include "page_impl.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
+extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 extern __xdata uint16_t cont_len;
@@ -22,15 +24,8 @@ extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
 extern __code struct uip_eth_addr uip_ethaddr;
-extern __code uint8_t log_to_phys_port[9];
-extern __code uint8_t phys_to_log_port[6];
 
-extern __xdata uint8_t minPort;
-extern __xdata uint8_t maxPort;
-extern __xdata uint8_t nSFPPorts;
 extern __xdata uint8_t sfr_data[4];
-extern __xdata uint8_t cpuPort;
-extern __xdata uint8_t isRTL8373;
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
@@ -139,6 +134,20 @@ void reg_to_html(register uint16_t reg)
 	sfr_data_to_html();
 }
 
+
+void send_sfp_info(uint8_t sfp)
+{
+	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
+	for (uint8_t i = 20; i < 60; i++) {
+		if (i >= 36 && i < 40) // Skip Non-ASCII codes
+			continue;
+		uint8_t c = sfp_read_reg(sfp, i);
+		if (c && c != 0xa0) // a0 is the byte read from a non-existant I2C EEPROM
+			char_to_html(c);
+	}
+}
+
+
 void send_basic_info(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -167,7 +176,17 @@ void send_basic_info(void)
 	byte_to_html(uip_ethaddr.addr[5]);
 	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
 	slen += strtox(outbuf + slen, VERSION_SW);
-	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"SWGT024-V2.0\"}");
+	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
+	slen += strtox(outbuf + slen, machine.machine_name);
+	slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
+	send_sfp_info(0);
+	char_to_html('"');
+	if (machine.n_sfp == 2) {
+		slen += strtox(outbuf + slen, ",\"sfp_slot_1\":\"");
+		send_sfp_info(1);
+		char_to_html('"');
+	}
+	char_to_html('}');
 }
 
 
@@ -198,7 +217,7 @@ void send_counters(char port)
 	print_string("sending counters\n");
 
 	port--;
-	uint8_t i = isRTL8373 ? port - 1: phys_to_log_port[port];
+	uint8_t i = machine.phys_to_log_port[port];
 	slen += strtox(outbuf + slen, "{\"portNum\":");
 	itoa_html(i + 1);
 	for (uint8_t j = 0; j < 0x3f; j++) {
@@ -226,10 +245,7 @@ void send_mirror(void)
 	} else {
 		slen += strtox(outbuf + slen, "{\"enabled\":0,\"mPort\":");
 	}
-	if (!isRTL8373)
-		itoa_html(log_to_phys_port[mPort >> 1]);
-	else
-		itoa_html((mPort >> 1) + 1);
+	itoa_html(machine.log_to_phys_port[mPort >> 1]);
 
 	reg_read_m(RTL837x_MIRROR_CONF);
 	uint16_t m = sfr_data[0];
@@ -286,14 +302,11 @@ void send_eee(void)
 	uint8_t eee_ablty = sfr_data[3];
 
 	char_to_html('[');
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
-		if (!isRTL8373)
-			itoa_html(log_to_phys_port[i]);
-		else
-			itoa_html(i + 1);
+		itoa_html(machine.log_to_phys_port[i]);
 
-		if (IS_SFP(i)) {
+		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1");
 		} else {
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"eee\":\"");
@@ -321,7 +334,7 @@ void send_eee(void)
 			bool_to_html(eee_ablty & (1 << i));
 		}
 		char_to_html('}');
-		if (i < maxPort)
+		if (i < machine.max_port)
 			char_to_html(',');
 		else
 			char_to_html(']');
@@ -335,38 +348,29 @@ void send_status(void)
 	print_string("sending status\n");
 	char_to_html('[');
 
-	for (uint8_t i = minPort; i <= maxPort; i++) {
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
-		if (!isRTL8373)
-			itoa_html(log_to_phys_port[i]);
-		else
-			itoa_html(i + 1);
+		itoa_html(machine.log_to_phys_port[i]);
 
-		if (IS_SFP(i)) {
-		  slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
-			bool_to_html(!((sfp_pins_last >> (i == maxPort ? 0 : 4)) & 1));
-
-			slen += strtox(outbuf + slen, ",\"link\":");
-			uint8_t rate = sfp_read_reg(i == maxPort ? 0 : 1, 12);
-			if (rate == 0xd)
-				char_to_html('2'); // 1000BX
-			else if (rate == 0x1f)
-				char_to_html('5'); // 2G5
-			else if (rate > 0x65 && rate < 0x70)
-				char_to_html('4'); // 10G "4" is not a valid value for port LINK speed
-			else
-				char_to_html('1'); // 100M ???
+		if (machine.is_sfp[i]) {
+			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
+			bool_to_html(!(sfp_pins_last & (0x1 << ((machine.is_sfp[i] - 1) << 2))));
 		} else {
-		  slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
+			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, 0x1f, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
-
-			slen += strtox(outbuf + slen, ",\"link\":");
-			reg_read_m(RTL837X_REG_LINKS);
-			uint8_t b = sfr_data[3 - (i >> 1)];
-			b = (i & 1) ? b >> 4 : b & 0xf;
-			char_to_html('0' + b);
 		}
+
+		slen += strtox(outbuf + slen, ",\"link\":");
+
+		if (i < 8)
+			reg_read_m(RTL837X_REG_LINKS);
+		else
+			reg_read_m(RTL837X_REG_LINKS_89);
+		uint8_t b = sfr_data[3 - ((i & 7) >> 1)];
+		b = (i & 1) ? b >> 4 : b & 0xf;
+		char_to_html('0' + b);
+
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		slen += strtox(outbuf + slen, ",\"txG\":\"0x");
 		reg_to_html(RTL837X_STAT_V_HIGH);
@@ -385,7 +389,7 @@ void send_status(void)
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
 		reg_to_html(RTL837X_STAT_V_HIGH);	// 32bit RX packet errors
 		slen += strtox(outbuf + slen, "\"}");
-		if (i < maxPort)
+		if (i < machine.max_port)
 			char_to_html(',');
 		else
 			char_to_html(']');
