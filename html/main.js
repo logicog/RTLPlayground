@@ -8,7 +8,6 @@ var pIsSFP = new Int8Array(10);
 var numPorts = 0;
 const logToPhysPort = [0, 0, 0, 5, 1, 2, 3, 4, 6];
 const physToLogPort = [	4, 5, 6, 7, 3, 8];
-// <div class="tooltip"><div id="ports"><span class="tooltiptext">The text for the Tooltip.</span></div></div>
 function drawPorts() {
   var f = document.getElementById('ports');
   console.log("DRAWING PORTS: ", numPorts);
@@ -82,16 +81,22 @@ function update() {
 	    leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	    psvg.style.opacity = 0.4
 	  }
-	  tt.innerHTML = "Link speed: " + linkS[p.link + 1] + "<br>";
+	  var iHTML = "<table border=\"0\" class=\"tt_table\">";
+	  iHTML += "<tr><td align=\"left\">Link speed</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
 	  if (p.isSFP) {
-	    tt.innerHTML += "T = " + (Number(p.sfp_temp) >> 8) + "." + ((Number(p.sfp_temp) & 0xff)/256.0 * 100).toFixed(0) + "&deg;C<br>";
-	    tt.innerHTML += "Vcc = " + (Number(p.sfp_vcc) / 10000.0).toFixed(2) + "V<br>";
-	    tt.innerHTML += "TX-Bias = " + (Number(p.sfp_txbias) / 500.0).toFixed(1) + "mA<br>";
-	    tt.innerHTML += "TX-Power = " + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "mW<br>";
-	    tt.innerHTML += "RX-Power = " + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "mW<br>";
-	    console.log(tt.innerHTML);
+	    iHTML += "<tr><td>Vendor</td><td>:</td><td>" + p.sfp_vendor + "</td></tr>";
+	    iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
+	    iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
+	    if (p.sfp_options & 0x40) {
+	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + (Number(p.sfp_temp) >> 8) + "." + ((Number(p.sfp_temp) & 0xff)/256.0 * 100).toFixed(0) + "&#8239;&#8451;</td></tr>";
+	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + (Number(p.sfp_vcc) / 10000.0).toFixed(2) + "&#8239;V</td></tr>";
+	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + (Number(p.sfp_txbias) / 500.0).toFixed(1) + "&#8239;mA</td></tr>";
+	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
+	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
+	    }
 	  }
 	  iHTML += "</table>";
+	  tt.innerHTML = iHTML;
 	}
       }
     }
