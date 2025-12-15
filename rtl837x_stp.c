@@ -35,16 +35,6 @@ __xdata uint16_t port_timers[10];
 __xdata uint16_t port_hello[10];
 
 
-// 8899 04 0000 20 0004
-struct rtl_tag {
-	uint16_t tag;
-	uint8_t version;
-	uint16_t dummy;
-	uint8_t flag;
-	uint16_t pmask;
-};
-
-
 struct stp_pkt {
 	uint8_t stp_addr[6];
 	uint8_t src_addr[6];
@@ -161,8 +151,8 @@ void stp_cnf_send(uint8_t port)
 
 	STP_O->rtl_tag.tag = HTONS(0x8899);
 	STP_O->rtl_tag.version = 0x04;
-	STP_O->rtl_tag.dummy = 0x0000;
-	STP_O->rtl_tag.flag = 0x20; // WHY ???
+	STP_O->rtl_tag.reason = 0x00;
+	STP_O->rtl_tag.flags = 0x0020; // Disable L2 learning
 	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
 
 	STP_O->msg_len = HTONS(0x27);

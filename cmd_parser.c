@@ -12,6 +12,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_igmp.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -741,6 +742,13 @@ void cmd_parser(void) __banked
 				port_l2_forget();
 			else
 				port_l2_learned();
+		} else if (cmd_compare(0, "igmp")) {
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on"))
+				igmp_enable();
+			else if (cmd_words_b[1] > 0 && cmd_compare(1, "show"))
+				igmp_show();
+			else
+				igmp_setup();  // Reverts to default with IP-MC being flooded
 		} else if (cmd_compare(0, "stp")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
 				print_string("STP enabled\n");

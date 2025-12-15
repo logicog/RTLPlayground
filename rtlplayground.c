@@ -11,6 +11,7 @@
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_igmp.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
 #include "uip/uip.h"
@@ -848,6 +849,8 @@ void handle_rx(void)
 		rx_packet_vlan |= uip_buf[12 + RTL_TAG_SIZE + 3];
 #ifdef RXTXDBG
 		print_string(" RX-VLAN: "); print_short(rx_packet_vlan); write_char('\n');
+		print_string(" RX dst: "); print_byte(uip_buf[0]); print_byte(uip_buf[1]); print_byte(uip_buf[2]);
+		print_byte(uip_buf[3]); print_byte(uip_buf[4]); print_byte(uip_buf[5]); write_char('\n');
 #endif
 		if (stpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x00) {
@@ -856,13 +859,19 @@ void handle_rx(void)
 				print_string("STP TX\n");
 				tcpip_output();
 			}
+		} else if (uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
+			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x16) {
+			igmp_packet_handler();
+			if (uip_len) {
+				tcpip_output();
+			}
 		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x06) { // ARP?
 			uip_arp_arpin();
 			if (uip_len) {
 			    tcpip_output();
 			}
-		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) {
-			uip_arp_ipin();
+		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // TCP?
+			uip_arp_ipin();	// Learn MAC addresses in TCP packets
 			uip_input();
 			if (uip_len) {
 				// Add ethernet frame
@@ -1812,6 +1821,7 @@ void bootloader(void)
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();
+	igmp_setup();
 	uip_init();
 	uip_arp_init();
 	httpd_init();

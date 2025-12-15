@@ -17,6 +17,11 @@
 #define PMASK_6		0x1f8
 #define PMASK_CPU	0x200
 
+// Defines a port mask for dropping all packets on Lookup-miss
+#define LOOKUP_MISS_DROP_6  0x00015540
+#define LOOKUP_MISS_DROP_9  0x00015555
+#define LOOKUP_MISS_FLOOD   0x00000000
+
 // The serial buffer. Defines the command line size
 // Must be 2^x and <= 128
 #define SBUF_SIZE 128
@@ -65,6 +70,14 @@ struct flash_region_t {
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
+// 8899 04 0000 20 0004
+struct rtl_tag {
+	uint16_t tag;
+	uint8_t version;
+	uint8_t reason;
+	uint16_t flags;
+	uint16_t pmask;  // A bit mask for a TX pkt, 4-bit port-number for RX
+};
 
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);
