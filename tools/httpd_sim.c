@@ -21,6 +21,7 @@ time_t last_session_use;
 
 uint64_t txG[PORTS], txB[PORTS], rxG[PORTS], rxB[PORTS];
 char txG_buff[20], txB_buff[20], rxG_buff[20], rxB_buff[20];
+char sfp_temp[8], sfp_vcc[8], sfp_txbias[8], sfp_txpower[8], sfp_rxpower[8], sfp_laser[8], sfp_options[6];
 char num_buff[20];
 char upload_buffer[4194304]; // 4MB
 
@@ -142,6 +143,33 @@ void send_status(int s)
 		json_object_object_add(v, "txB", json_object_new_string(txB_buff));
 		json_object_object_add(v, "rxG", json_object_new_string(rxG_buff));
 		json_object_object_add(v, "rxB", json_object_new_string(rxB_buff));
+		if (i >= 5) {
+			uint16_t temp = 0x28fb + rand() / (RAND_MAX / 100);
+			uint16_t vcc = 0x7eda + rand() / (RAND_MAX / 100);
+			uint16_t txbias = 0x0d24 +rand() / (RAND_MAX / 100);
+			uint16_t txpower = 0x14bd + rand() / (RAND_MAX / 100);
+			uint16_t rxpower = 0;
+			uint16_t laser = 0;
+			uint16_t options = 0x68;
+			
+			sprintf(sfp_options, "0x%02x", options);
+			sprintf(sfp_temp, "0x%04x", temp);
+			sprintf(sfp_vcc, "0x%04x", vcc);
+			sprintf(sfp_txbias, "0x%04x", txbias);
+			sprintf(sfp_txpower, "0x%04x", txpower);
+			sprintf(sfp_rxpower, "0x%04x", rxpower);
+			sprintf(sfp_laser, "0x%04x", laser);
+			json_object_object_add(v, "sfp_vendor", json_object_new_string("OEM"));
+			json_object_object_add(v, "sfp_model", json_object_new_string("10G-SFP+"));
+			json_object_object_add(v, "sfp_serial", json_object_new_string("12345678"));
+			json_object_object_add(v, "sfp_options", json_object_new_string(sfp_options));
+			json_object_object_add(v, "sfp_temp", json_object_new_string(sfp_temp));
+			json_object_object_add(v, "sfp_vcc", json_object_new_string(sfp_vcc));
+			json_object_object_add(v, "sfp_txbias", json_object_new_string(sfp_txbias));
+			json_object_object_add(v, "sfp_txpower", json_object_new_string(sfp_txpower));
+			json_object_object_add(v, "sfp_rxpower", json_object_new_string(sfp_rxpower));
+			json_object_object_add(v, "sfp_laser", json_object_new_string(sfp_laser));
+		}
 		json_object_array_add(ports, v);
 	}
 	last_called = now;
