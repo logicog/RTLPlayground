@@ -8,13 +8,21 @@ var pIsSFP = new Int8Array(10);
 var numPorts = 0;
 const logToPhysPort = [0, 0, 0, 5, 1, 2, 3, 4, 6];
 const physToLogPort = [	4, 5, 6, 7, 3, 8];
-
+// <div class="tooltip"><div id="ports"><span class="tooltiptext">The text for the Tooltip.</span></div></div>
 function drawPorts() {
   var f = document.getElementById('ports');
   console.log("DRAWING PORTS: ", numPorts);
   for (let i = 0; i < numPorts; i++) {
     console.log("DRAWING isSFP: ", pIsSFP[i]);
+    const d = document.createElement("div");
+    d.classList.add('tooltip');
+    const s = document.createElement("span");
+    s.classList.add("tooltiptext");
+    s.innerHTML = "Tooltip text";
+    s.id="tt_" + (i+1);
     const l = document.createElement("object");
+    d.appendChild(l);
+    d.appendChild(s);
     l.type = "image/svg+xml";
     if (!pIsSFP[i]) {
       l.data = "port.svg";
@@ -26,7 +34,7 @@ function drawPorts() {
       l.height = "60";
     }
     l.id="port" + (i+1);
-    f.appendChild(l);
+    f.appendChild(d);
   }
   console.log("DRAWING DONE ");
 }
@@ -49,9 +57,11 @@ function update() {
 	p = s[i];
 	let n = p.portNum;
 	let pid = "port" + n;
+	let ttid = "tt_" + n;
 	n--;
 	txG[n] = BigInt(p.txG); txB[n] = BigInt(p.txB); rxG[n] = BigInt(p.rxG); rxB[n] = BigInt(p.rxB);
 	var psvg = document.getElementById(pid);
+	var tt = document.getElementById(ttid);
 	if (psvg == null || !psvg.contentDocument)
 	  continue;
 	var bgs = psvg.contentDocument.getElementsByClassName("bg");
@@ -61,6 +71,7 @@ function update() {
 	  bgs[0].style.fill = "red";
 	  leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	  psvg.style.opacity = 0.4;
+	  tt.innerHTML = "Not enabled.";
 	} else {
 	  psvg.style.opacity = 1.0;
 	  pState[n] = p.link;
@@ -71,6 +82,15 @@ function update() {
 	  } else {
 	    leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	    psvg.style.opacity = 0.4
+	  }
+	  tt.innerHTML = "Link speed: " + linkS[p.link + 1] + "<br>";
+	  if (p.isSFP) {
+	    tt.innerHTML += "T = " + (Number(p.sfp_temp) >> 8) + "." + ((Number(p.sfp_temp) & 0xff)/256.0 * 100).toFixed(0) + "&deg;C<br>";
+	    tt.innerHTML += "Vcc = " + (Number(p.sfp_vcc) / 10000.0).toFixed(2) + "V<br>";
+	    tt.innerHTML += "TX-Bias = " + (Number(p.sfp_txbias) / 500.0).toFixed(1) + "mA<br>";
+	    tt.innerHTML += "TX-Power = " + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "mW<br>";
+	    tt.innerHTML += "RX-Power = " + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "mW<br>";
+	    console.log(tt.innerHTML);
 	  }
 	}
       }
