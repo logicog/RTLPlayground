@@ -36,7 +36,6 @@ function drawPorts() {
     l.id="port" + (i+1);
     f.appendChild(d);
   }
-  console.log("DRAWING DONE ");
 }
 
 function update() {
@@ -92,6 +91,7 @@ function update() {
 	    tt.innerHTML += "RX-Power = " + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "mW<br>";
 	    console.log(tt.innerHTML);
 	  }
+	  iHTML += "</table>";
 	}
       }
     }
