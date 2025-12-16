@@ -348,7 +348,6 @@ void phy_show(uint8_t port) __banked
 				break;
 			default:
 				print_string("Unknown\n");
-				break;
 			}
 			break;
 		default:
