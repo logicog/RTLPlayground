@@ -1,5 +1,6 @@
 document.getElementById('sidebar').innerHTML =
  "<ul><li><a href='index.html'>Overview</a></li>"
+ + "<li><a href='ports.html'>Port Configuration</a></li>"
  + "<li><a href='stat.html'>Port Statistics</a></li>"
  + "<li><a href='vlan.html'>VLAN</a></li>"
  + "<li><a href='mirror.html'>Mirroring</a></li>"
@@ -7,4 +8,3 @@ document.getElementById('sidebar').innerHTML =
  + "<li><a href='eee.html'>EEE</a></li>"
  + "<li><a href='system.html'>System Settings</a></li>"
  + "<li><a href='update.html'>Firmware Update</a></li></ul>";
- 
