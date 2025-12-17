@@ -5,9 +5,10 @@ var rxB = new BigInt64Array(10);
 const linkS = ["Disabled", "No Link", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
 var pState = new Int8Array(10);
 var pIsSFP = new Int8Array(10);
+var pAdvertised = new Int8Array(10);
 var numPorts = 0;
-const logToPhysPort = [0, 0, 0, 5, 1, 2, 3, 4, 6];
-const physToLogPort = [	4, 5, 6, 7, 3, 8];
+var logToPhysPort = new Int8Array(10);
+var physToLogPort = new Int8Array(10);
 function drawPorts() {
   var f = document.getElementById('ports');
   console.log("DRAWING PORTS: ", numPorts);
@@ -54,6 +55,8 @@ function update() {
       for (let i = 0; i < s.length; i++) {
 	p = s[i];
 	let n = p.portNum;
+	logToPhysPort[p.logPort] = n;
+	physToLogPort[n-1] = p.logPort;
 	let pid = "port" + n;
 	let ttid = "tt_" + n;
 	n--;
@@ -84,6 +87,7 @@ function update() {
 	  var iHTML = "<table border=\"0\" class=\"tt_table\">";
 	  iHTML += "<tr><td align=\"left\">Link speed</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
 	  if (p.isSFP) {
+            pAdvertised[n] = 0;
 	    iHTML += "<tr><td>Vendor</td><td>:</td><td>" + p.sfp_vendor + "</td></tr>";
 	    iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
 	    iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
@@ -94,6 +98,9 @@ function update() {
 	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
 	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
 	    }
+	  } else {
+	    pAdvertised[n] = parseInt(p.adv, 2);
+	    console.log("Advertised " + n + " entry " + p.adv + " is now " + pAdvertised[n]);
 	  }
 	  iHTML += "</table>";
 	  tt.innerHTML = iHTML;
