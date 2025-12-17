@@ -366,7 +366,7 @@ void phy_show(uint8_t port) __banked
 		print_string("\nAN enabled, advertising:");
 		phy_read(port, PHY_MMD_AN, 0x10);
 		v = SFR_DATA_U16;
-		if (v & 0x0040)
+		if (v & 0x0020)
 			print_string(" 10Base-Half");
 		if (v & 0x0040)
 			print_string(" 10Base-Full");
@@ -378,11 +378,10 @@ void phy_show(uint8_t port) __banked
 		v = SFR_DATA_U16;
 		if (v & 0x0200)
 			print_string(" 1000Base-Full");
-		phy_read(port, PHY_MMD_AN, 0x10);
+		phy_read(port, PHY_MMD_AN, 0x20);
 		v = SFR_DATA_U16;
 		if (v & 0x0080)
 			print_string(" 2500BaseN-Full");
-		
 	}
 	phy_read(port, PHY_MMD_AN, 0x13);
 	v = SFR_DATA_U16;
