@@ -390,6 +390,8 @@ void send_status(void)
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
 		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"logPort\":");
+		itoa_html(i);
 
 		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
@@ -429,9 +431,20 @@ void send_status(void)
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, 0x1f, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
+			slen += strtox(outbuf + slen, ",\"adv\":\"");
+			phy_read(i, PHY_MMD_AN, 0x20);
+			bool_to_html(SFR_DATA_8 & 0x80);	// 2500BaseN-Full
+			phy_read(i, PHY_MMD_CTRL, 0xa412);
+			bool_to_html(SFR_DATA_16 & 0x02);	// 1000Base-Full
+			phy_read(i, PHY_MMD_AN, 0x10);
+			bool_to_html(SFR_DATA_16 & 0x01);	// 100Base-Full
+			uint8_t w = SFR_DATA_8;
+			bool_to_html(w & 0x80);			// 100Base-Half
+			bool_to_html(w & 0x40);			// 10Base-Full
+			bool_to_html(w & 0x20);			// 10Base-Half
 		}
 
-		slen += strtox(outbuf + slen, ",\"link\":");
+		slen += strtox(outbuf + slen, "\",\"link\":");
 
 		if (i < 8)
 			reg_read_m(RTL837X_REG_LINKS);
