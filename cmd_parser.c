@@ -457,6 +457,21 @@ void parse_port(void)
 }
 
 
+void sfp_print_measurements(uint8_t sfp)
+{
+	print_string("Options: "); print_byte(sfp_read_reg(sfp, 92)); write_char('\n');
+	if (!(sfp_read_reg(sfp, 92) & 0x40))
+		return;
+	print_string("Temp: "); print_byte(sfp_read_reg(sfp, 224)); print_byte(sfp_read_reg(sfp, 225)); write_char('\n');
+	print_string("Vcc: "); print_byte(sfp_read_reg(sfp, 226)); print_byte(sfp_read_reg(sfp, 227)); write_char('\n');
+	print_string("TX Bias: "); print_byte(sfp_read_reg(sfp, 228)); print_byte(sfp_read_reg(sfp, 229)); write_char('\n');
+	print_string("TX Power: "); print_byte(sfp_read_reg(sfp, 230)); print_byte(sfp_read_reg(sfp, 231)); write_char('\n');
+	print_string("RX Power: "); print_byte(sfp_read_reg(sfp, 232)); print_byte(sfp_read_reg(sfp, 233)); write_char('\n');
+	print_string("Laser: "); print_byte(sfp_read_reg(sfp, 234)); print_byte(sfp_read_reg(sfp, 235)); write_char('\n');
+	print_string("State: "); print_byte(sfp_read_reg(sfp, 238)); write_char('\n');
+}
+
+
 void parse_regget(void)
 {
 	uint16_t reg = 0;
@@ -662,11 +677,13 @@ void cmd_parser(void) __banked
 			print_string("  Encoding: "); print_byte(sfp_read_reg(0, 11));
 			print_string("\n");
 			sfp_print_info(0);
+			sfp_print_measurements(0);
 			if (machine.n_sfp == 2) {
 				print_string("\nSlot 2 - Rate: "); print_byte(sfp_read_reg(1, 12));
 				print_string("  Encoding: "); print_byte(sfp_read_reg(1, 11));
 				print_string("\n");
 				sfp_print_info(1);
+				sfp_print_measurements(1);
 			}
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();

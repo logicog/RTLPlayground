@@ -34,6 +34,11 @@ extern __xdata uint16_t cmd_history_ptr;
 
 extern __xdata struct flash_region_t flash_region;
 
+extern __xdata char sfp_module_vendor[2][17];
+extern __xdata char sfp_module_model[2][17];
+extern __xdata char sfp_module_serial[2][17];
+extern __xdata uint8_t sfp_options[2];
+
 __code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 __code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 
@@ -144,6 +149,40 @@ void send_sfp_info(uint8_t sfp)
 		uint8_t c = sfp_read_reg(sfp, i);
 		if (c && c != 0xa0) // a0 is the byte read from a non-existant I2C EEPROM
 			char_to_html(c);
+	}
+}
+
+
+void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
+{
+	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
+		reg &= 0x7f;
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | len & 0xf,  0x51 >> 5, (0x51 << 3) & 0xff);
+	} else {
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | len & 0xf,  0x50 >> 5, (0x50 << 3) & 0xff);
+	}
+
+	reg_read_m(RTL837X_REG_I2C_CTRL);
+	sfr_mask_data(1, 0xfc, machine.sfp_port[slot].i2c == 0 ? SCL_PIN << 5 | SDA_PIN_0 << 2 : SCL_PIN << 5 | SDA_PIN_1 << 2 );
+	reg_write_m(RTL837X_REG_I2C_CTRL);
+
+	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
+
+	// Execute I2C Read
+	reg_bit_set(RTL837X_REG_I2C_CTRL, 0);
+
+	// Wait for execution to finish
+	do {
+		reg_read_m(RTL837X_REG_I2C_CTRL);
+	} while (sfr_data[3] & 0x1);
+
+	for (uint8_t i = 0; i < len & 0xf; i++) {
+		if (!(i & 0x3))
+			reg_read_m(RTL837X_REG_I2C_OUT + (i >> 2));
+		if (len & 0x80)
+			char_to_html(sfr_data[3 - (i & 0x3)]);
+		else
+			byte_to_html(sfr_data[3 - (i & 0x3)]);
 	}
 }
 
@@ -354,7 +393,38 @@ void send_status(void)
 
 		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
-			bool_to_html(!(sfp_pins_last & (0x1 << ((machine.is_sfp[i] - 1) << 2))));
+			if (!(sfp_pins_last & (0x1 << ((machine.is_sfp[i] - 1) << 2)))) {
+				bool_to_html(1);
+				slen += strtox(outbuf + slen,",\"sfp_options\":\"0x");
+				byte_to_html(sfp_options[machine.is_sfp[i]-1]);
+				if (sfp_options[machine.is_sfp[i]-1] & 0x40) {
+					sfp_send_data(machine.is_sfp[i] - 1, 92, 1);
+					slen += strtox(outbuf + slen,"\",\"sfp_temp\":\"0x");
+					sfp_send_data(machine.is_sfp[i] - 1, 224, 2);
+					slen += strtox(outbuf + slen,"\",\"sfp_vcc\":\"0x");
+					sfp_send_data(machine.is_sfp[i] - 1, 226, 2);
+					slen += strtox(outbuf + slen,"\",\"sfp_txbias\":\"0x");
+					sfp_send_data(machine.is_sfp[i] - 1, 228, 2);
+					slen += strtox(outbuf + slen,"\",\"sfp_txpower\":\"0x");
+					sfp_send_data(machine.is_sfp[i] - 1, 230, 2);
+					slen += strtox(outbuf + slen,"\",\"sfp_rxpower\":\"0x");
+					sfp_send_data(machine.is_sfp[i] - 1, 232, 2);
+					slen += strtox(outbuf + slen,"\",\"sfp_state\":\"0x");
+					sfp_send_data(machine.is_sfp[i] - 1, 238, 1);
+				}
+				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
+				for (register uint8_t s = 0; s < 16; s++)
+					outbuf[slen++] = sfp_module_vendor[machine.is_sfp[i]-1][s];
+				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
+				for (register uint8_t s = 0; s < 16; s++)
+					outbuf[slen++] = sfp_module_model[machine.is_sfp[i]-1][s];
+				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
+				for (register uint8_t s = 0; s < 16; s++)
+					outbuf[slen++] = sfp_module_serial[machine.is_sfp[i]-1][s];
+				char_to_html('"');
+			} else {
+				bool_to_html(0);
+			}
 		} else {
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, 0x1f, 0xa610);

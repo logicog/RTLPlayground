@@ -593,7 +593,7 @@ void httpd_appcall(void)
 
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
-			slen += strtox(outbuf + slen, "\r\nCache-Control: max-age=60, must-revalidate\r\n\r\n");
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\n\r\n");
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
 				cont_len = len_left - (TCP_OUTBUF_SIZE - slen);

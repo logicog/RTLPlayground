@@ -101,7 +101,10 @@ __xdata uint8_t was_offline;
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
 __xdata uint8_t sfp_pins_last;
-
+__xdata char sfp_module_vendor[2][17];
+__xdata char sfp_module_model[2][17];
+__xdata char sfp_module_serial[2][17];
+__xdata uint8_t sfp_options[2];
 
 #define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
 
@@ -745,15 +748,16 @@ void sds_config(uint8_t sds, uint8_t mode)
  */
 uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 {
-	if (machine.sfp_port[slot].i2c == 0) {
-		reg_read_m(RTL837X_REG_I2C_CTRL);
-		sfr_mask_data(1, 0xfc, SCL_PIN << 5 | SDA_PIN_0 << 2);
-		reg_write_m(RTL837X_REG_I2C_CTRL);
+	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
+		reg &= 0x7f;
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 1,  0x51 >> 5, (0x51 << 3) & 0xff);
 	} else {
-		reg_read_m(RTL837X_REG_I2C_CTRL);
-		sfr_mask_data(1, 0xfc, SCL_PIN << 5 | SDA_PIN_1 << 2);
-		reg_write_m(RTL837X_REG_I2C_CTRL);
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 1,  0x50 >> 5, (0x50 << 3) & 0xff);
 	}
+
+	reg_read_m(RTL837X_REG_I2C_CTRL);
+	sfr_mask_data(1, 0xfc, machine.sfp_port[slot].i2c == 0 ? SCL_PIN << 5 | SDA_PIN_0 << 2 : SCL_PIN << 5 | SDA_PIN_1 << 2 );
+	reg_write_m(RTL837X_REG_I2C_CTRL);
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
 
@@ -922,6 +926,20 @@ void sfp_print_info(uint8_t sfp)
 }
 
 
+void sfp_get_info(uint8_t sfp)
+{
+	for (uint8_t i = 20; i < 36; i++)
+		sfp_module_vendor[sfp][i-20] = sfp_read_reg(sfp, i);
+	sfp_module_vendor[sfp][16] = '\0';
+	for (uint8_t i = 40; i < 56; i++)
+		sfp_module_model[sfp][i-40] = sfp_read_reg(sfp, i);
+	sfp_module_model[sfp][16] = '\0';
+	for (uint8_t i = 68; i < 84; i++)
+		sfp_module_serial[sfp][i-68] = sfp_read_reg(sfp, i);
+	sfp_module_serial[sfp][16] = '\0';
+}
+
+
 bool gpio_pin_test(uint8_t pin)
 {
 	reg_read_m(RTL837X_REG_GPIO_00_31_INPUT + (pin > 31 ? 4 : 0));
@@ -944,6 +962,8 @@ void handle_sfp(void)
 				print_string("  Encoding: "); print_byte(sfp_read_reg(sfp, 11));
 				print_string("  Module: "); sfp_print_info(sfp);
 				print_string("\n");
+				sfp_options[sfp] = sfp_read_reg(sfp, 92);
+				sfp_get_info(sfp);
 				sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
 			}
 		} else {
@@ -1646,7 +1666,9 @@ void setup_i2c(void)
 {
 	REG_SET(RTL837X_REG_I2C_MST_IF_CTRL, 0);
 	// Configure SFP EEPROM address (0x50) as I2C device address
-	REG_SET(RTL837X_REG_I2C_CTRL, 0x1L << I2C_MEM_ADDR_WIDTH | 0x50 << I2C_DEV_ADDR);
+	// Configure SFP readings address (0x51) as I2C device address
+	REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16),  0x50 >> 5, (0x50 << 3) & 0xff);
+
 	REG_SET(RTL837X_REG_I2C_CTRL2, 0);
 
 	// HW Control register, enable I2C?
