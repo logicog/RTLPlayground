@@ -1,0 +1,21 @@
+name: Build firmware
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          apt update
+          apt install make gcc sdcc xxd python-is-python3 libjson-c-dev -y
+      - name: Make project
+        run: make
