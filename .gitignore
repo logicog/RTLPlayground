@@ -1,4 +1,5 @@
 .gitignore
+.idea/
 output/
 html_data.c
 html_data.h
