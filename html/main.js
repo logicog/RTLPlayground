@@ -100,7 +100,6 @@ function update() {
 	    }
 	  } else {
 	    pAdvertised[n] = parseInt(p.adv, 2);
-	    console.log("Advertised " + n + " entry " + p.adv + " is now " + pAdvertised[n]);
 	  }
 	  iHTML += "</table>";
 	  tt.innerHTML = iHTML;

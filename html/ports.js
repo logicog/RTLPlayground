@@ -1,20 +1,19 @@
 var mtus = new Int16Array(10);
+var clicked = new Int8Array(10);
 function createPortTable() {
   var tbl = document.getElementById('speedtable');
    if (tbl.rows.length <= 2 && numPorts) {
      clearInterval(pTableInterval);
      const sSelect = '<select name="speed_sel" id="speed_sel">'
-      + '<option value="auto"> Auto</option>'
-      + '<option value="2g5"> 2.5GBit</option>'
-      + '<option value="1g"> 1000MBit</option>'
-      + '<option value="100m"> 100MBit</option>'
-      + '<option value="10m"> 10MBit</option>'
+      + '<option value="auto">Auto</option>'
+      + '<option value="2g5">2500MBit/Full</option>'
+      + '<option value="1g">1000MBit/Full</option>'
+      + '<option value="100m full">100MBit/Full</option>'
+      + '<option value="100m half">100MBit/Half</option>'
+      + '<option value="10m full">10MBit/Full</option>'
+      + '<option value="10m half">10MBit/Half</option>'
       + '</select>';
-     const dSelect = '<select name="duplex_sel" id="duplex_sel">'
-      + '<option value="any"> Any</option>'
-      + '<option value="full"> Full</option>'
-      + '<option value="half"> Half</option>'
-      + '</select>';
+      const dSwitch = '<input type="checkbox" id="disable_port" onchange="portOnOff();">'
      for (let i = 1; i <= numPorts; i++) {
       if (pIsSFP[i-1])
         continue;
@@ -22,9 +21,9 @@ function createPortTable() {
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i}`));
       td = tr.insertCell(); td.innerHTML = linkS[pState[i] + 1];
-      td = tr.insertCell(); td.innerHTML = "Unknown";
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
-      td = tr.insertCell(); td.innerHTML = dSelect.replaceAll("duplex_sel", "duplex_sel_" + i);      
+      td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
+						  .replace("portOnOff()", "portOnOff(" + i + ")");
       var button = '<button type="button" style="margin: 0 0 0 24px" onclick="applySpeed(' + i + ');">Apply</button>';
       td = tr.insertCell();
       td.innerHTML = button;
@@ -69,55 +68,37 @@ function updatePortTable() {
     if (pIsSFP[i-1])
       continue;
     tbl.rows[i].cells[1].innerHTML = `${linkS[pState[i-1]+1]}`;
-    var td = tbl.rows[i].cells[2];
-    var adv = pAdvertised[i-1];
-      switch(pAdvertised[i-1]) {
-        case 0x20:
-          td.innerHTML = "2.5GBit Full Duplex"; break;
-        case 0x10:
-          td.innerHTML = "1000MBit Full Duplex"; break;
-        case 0x2f:
-          td.innerHTML = "AUTO"; break;
-        case 0xc:
-          td.innerHTML = "100MBit"; break;
-        case 8:
-          td.innerHTML = "100MBit Full Duplex"; break;
-        case 4:
-          td.innerHTML = "100MBit Half Duplex"; break;
-        case 3:
-          td.innerHTML = "10MBit"; break;
-        case 2:
-          td.innerHTML = "10MBit Full Duplex"; break;
-        case 1:
-          td.innerHTML = "10MBit Half Duplex"; break;
-        default:
-          td.innerHTML = "None"; break;
-      }
+    if (!clicked[i] && pState[i - 1] < 0) {
+      document.getElementById('speed_sel_' + i).disabled = true;
+      document.getElementById('disable_port_' + i).checked = true;
+    }
   }
 }
 
 async function applySpeed(port) {
   var speed = document.getElementById('speed_sel_' + port).value;
-  var duplex = document.getElementById('duplex_sel_' + port).value;
-  var cmd = "port " + port + " " + speed;
-  console.log("port " + port, ", speed: " + speed, ", duplex: ", duplex);
+  var disabled = document.getElementById('disable_port_' + port).checked;
+  var cmd = "port " + port + " ";
+  if (!disabled)
+    cmd = cmd + speed;
+  else
+    cmd = cmd + "off";
+  console.log("CMD: " + cmd);
   try {
     const response = await fetch('/cmd', {
       method: 'POST',
       body: cmd
     });
     console.log('Completed!', response);
-    if (duplex != "any") {
-      cmd = "port " + port + " duplex " + duplex;
-      const response = await fetch('/cmd', {
-        method: 'POST',
-        body: cmd
-      });
-      console.log('Completed!', response);
-    }
   } catch(err) {
     console.error(`Error: ${err}`);
   }
+}
+
+async function portOnOff(p) {
+  var disabled = document.getElementById('disable_port_' + p).checked;
+  document.getElementById('speed_sel_' + p).disabled = disabled;
+  clicked[p] = 1;
 }
 
 async function applyMTU(port) {
