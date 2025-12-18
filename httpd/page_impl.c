@@ -380,6 +380,28 @@ void send_eee(void)
 	}
 }
 
+void send_mtu(void)
+{
+	print_string("send_mtu called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	char_to_html('[');
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"mtu\":\"0x");
+		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
+		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
+		byte_to_html(mtu >> 8);
+		byte_to_html(mtu & 0xff);
+		char_to_html('"');
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+}
+
 
 void send_status(void)
 {
