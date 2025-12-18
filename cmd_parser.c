@@ -457,6 +457,37 @@ void parse_port(void)
 }
 
 
+void parse_mtu(void)
+{
+	__xdata uint16_t mtu;
+	uint8_t p;
+
+	print_string("\nMTU ");
+	if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+		for (p = machine.min_port; p <= machine.max_port; p++) {
+			reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8));
+			mtu = SFR_DATA_U16 & 0x3fff;
+			print_string("Port "); print_byte(machine.log_to_phys_port[p]);
+			print_string(" MTU: 0x"); print_short(mtu); write_char('\n');
+		}
+	}
+	p = cmd_buffer[cmd_words_b[1]] - '1';
+	p = machine.phys_to_log_port[p];
+	print_byte(p);
+	if (cmd_words_b[2] <= 0) {
+		print_string("mtu [port] [size]");
+		return;
+	}
+	atoi_short(&mtu, cmd_words_b[2]);
+	if (mtu > 0x3fff) {
+		print_string("Maximum MTU is 16383\n");
+		return;
+	}
+	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (mtu >> 10) & 0xf, (mtu >> 2) & 0xff,
+		  ((mtu & 0x3) << 6) | ((mtu >> 8) & 0x3f), mtu & 0xff);
+}
+
+
 void sfp_print_measurements(uint8_t sfp)
 {
 	print_string("Options: "); print_byte(sfp_read_reg(sfp, 92)); write_char('\n');
@@ -730,6 +761,8 @@ void cmd_parser(void) __banked
 			flash_write_bytes(flash_buf);
 		} else if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
 			parse_port();
+		} else if (cmd_compare(0, "mtu") && cmd_words_b[1] > 0) {
+			parse_mtu();
 		} else if (cmd_compare(0, "ip")) {
 			print_string("Got ip command: ");
 			if (!parse_ip(cmd_words_b[1]))
