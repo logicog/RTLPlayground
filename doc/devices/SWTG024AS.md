@@ -35,10 +35,23 @@ Changes I found with my board vs [Managed version](https://github.com/up-n-atom/
 
 # Connectors
 
+## Port overview
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                       ┌──────────┐        ┌──────────┐ │
+│     ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │ SFP (J4) │        │ SFP (J2) │ │
+│     │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │   │ PORT   5 │        │ PORT   6 │ │
+│     │  PORT 1 │ │  PORT 2 │ │  PORT 3 │ │  PORT 4 │   │ MAC    8 │        │ MAC    3 │ │
+│  O  │  MAC  4 │ │  MAC  5 │ │  MAC  6 │ │  MAC  7 │   │ SerDes 1 │        │ SerDes 0 │ │
+│ RST └─────────┘ └─────────┘ └─────────┘ └─────────┘   └──────────┘        └──────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+``` 
+
 ## J4
 
 * Location: Left SFP connector `J4`.
-* Connected to: 10GMAC number 8, second SDS.
+* Connected to: 10GMAC number 8, second SerDes.
 
 |`J4` SFP1 PINs | Signal | Component | GPIO | Notes |
 |---|---|---|---|---|
@@ -54,7 +67,7 @@ Changes I found with my board vs [Managed version](https://github.com/up-n-atom/
 ## J2
 
 * Location: Right SFP connector `J2`.
-* Connected to: 10GMAC number 3, first SDS.
+* Connected to: 10GMAC number 3, first SerDes.
 
 |`J2` SFP2 PINs | Signal | Component | GPIO | Notes |
 |---|---|---|---|---|
