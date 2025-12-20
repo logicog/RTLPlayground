@@ -18,6 +18,7 @@
 #include "uip/uip_arp.h"
 #include "machine.h"
 
+
 extern __code const struct machine machine;
 
 extern __xdata uint16_t crc_value;
@@ -27,7 +28,7 @@ void crc16(__xdata uint8_t *v) __naked;
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
 
-#define SYS_TICK_HZ 100
+#define SYS_TICK_HZ 200
 #define SERIAL_BAUD_RATE 115200
 
 /* All RTL839x switches have an external 25MHz Oscillator,
@@ -52,6 +53,13 @@ void crc16(__xdata uint8_t *v) __naked;
 #elif CLOCK_HZ == 125000000
 #define CLOCK_DIV 0
 #endif
+
+// Derive divider for the system ticks
+#define TIMER0_DIV (CLOCK_HZ / 12 / SYS_TICK_HZ)
+#if TIMER0_DIV > 0xFFFF
+#error "SYS_TICH_HZ to low, must be >= 158"
+#endif
+#define SYSTICK_TIMER0_VALUE (0x10000 - TIMER0_DIV)
 
 __xdata uint8_t idle_ready;
 
@@ -111,15 +119,15 @@ __xdata uint8_t sfp_options[2];
 void isr_timer0(void) __interrupt(1)
 {
 	TR0 = 0;		// Stop timer 0
-	TH0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) >> 8;
-	TL0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) % 0xff;
+	TH0 = SYSTICK_TIMER0_VALUE >> 8;
+	TL0 = SYSTICK_TIMER0_VALUE % 0xff;
+	TR0 = 1;		// Re-start timer 0
 
 	ticks++;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
 	sec_counter++;
 
-	TR0 = 1;		// Re-start timer 0
 }
 
 
@@ -284,13 +292,14 @@ void isr_ext3(void) __interrupt(9)
 void setup_timer0(void)
 {
 	TMOD = 0x11;  // Timer 1: Mode 1, Timer 0: Mode 1, i.e. 16 bit counters, no auto-reload
-	// The TH0 registers contain the high/low byte that is loaded into
-	// timer0 when T0 overflows to 0x10000
-	TH0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) >> 8;
-	TL0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) % 0xff;
+	/* The TH0 registers contain the high/low byte that we load into Timer0 when T0
+	 * overflows to 0x10000
+	 */
+	TH0 = SYSTICK_TIMER0_VALUE >> 8;
+	TL0 = SYSTICK_TIMER0_VALUE % 0xff;
 
-	TCON = 0x10;	// Start timer 0
 	CKCON &= 0xc7;
+	TCON = 0x10;	// Start timer 0
 	ET0 = 1;	// Enable timer interrupts
 }
 
@@ -987,19 +996,18 @@ void handle_sfp(void)
 	}
 }
 
-
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
 //
 void idle(void)
 {
 	PCON |= 1;
-	if (sec_counter >= 60) {
-		sec_counter -= 60;
+	if (sec_counter >= SYS_TICK_HZ) {
+		sec_counter -= SYS_TICK_HZ;
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
 		uint8_t v = sfr_data[3];
 #ifdef DEBUG
-		print_string("  sec_counter: "); print_byte(v);
+		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
 #endif
 		v++;
 		sfr_data[3] = v;
@@ -1021,8 +1029,8 @@ void idle(void)
 		reg_write_m(RTL837X_REG_SEC_COUNTER);
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
 #ifdef DEBUG
-		print_string(" >>: ");
-		print_long_x(sfr_data);
+		print_sfr_data();
+		write_char('\n');
 #endif
 	}
 
@@ -1266,10 +1274,10 @@ void nic_setup(void)
 
 	// This sets the size of the RX buffer, the filling level is in 0x7874
 	// R7848-000004ff
-	REG_SET(0x7848, 0x4ff);
+	REG_SET(RTL837X_REG_NIC_RXBUFF_RX, 0x4ff);
 
 	// R7844-000007fe
-	REG_SET(0x7844, 0x7fe);
+	REG_SET(RTL837X_REG_NIC_BUFFSIZE_TX, 0x7fe);
 
 	// Configure NIC RX to receive various types of packets
 	// RTL837X_REG_RX_CTRL: Set bits 24-31 to 0x4, clear bits 16/17
@@ -1288,18 +1296,20 @@ void nic_setup(void)
 	reg_bit_clear(RTL837X_REG_RX_CTRL, 2);
 
 	// R603c-00000200
-	REG_SET(0x603c, 0x200);
+	// CPU-port is CPU-Tag aware (bit 9)
+	REG_SET(RTL837X_REG_CPU_TAG_AWARE_PMASK, 0x200);
 
-	// r6720:00000500 R6720-00000501 R6720-00000501 r6720:00000501
-	reg_read_m(0x6720);
+	// Insert CPU-tag for internally received packets (bit 0), MODE is 0, i.e. ALL packets (bits 8-9)
+	reg_read_m(RTL837X_REG_CPU_TAG);
 	sfr_mask_data(0, 1, 1);
 	sfr_mask_data(1, 3, 0);
-	reg_write_m(0x6720);
+	reg_write_m(RTL837X_REG_CPU_TAG);
 
+	// Force MAC mode of the CPU port (port 9)
 	// r6368:00000194 R6368-00000197
-	reg_read_m(0x6368);
-	sfr_mask_data(0, 0, 3);
-	reg_write_m(0x6368);
+	reg_read_m(RTL837X_REG_MAC_FORCE_MODE + 9 * 4);
+	sfr_mask_data(0, 0, 3); // Set bits 0, 1: Force link
+	reg_write_m(RTL837X_REG_MAC_FORCE_MODE+ 9 * 4);
 
 	// Sequence number of TX packets
 	tx_seq = 0;
