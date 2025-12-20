@@ -13,6 +13,10 @@ Also the RJ45 connectors can be all plastic/non-shielded or with metal shielding
 | Xikestore |SKS3200M-4GPY2XF | Yes |  SWTG024AS-v1.0 | CM-23-08-2043 023-16721 | ??? | 8272 |
 | Sodola | SL-SWTG124AS-D | Yes | SWTG024AS-v2.0-17452 | ??? | 2048 KiB | 8272 |
 
+## PCB
+
+<img src="photos/SWTG024AS-v2.0-unmanaged/SWTG024AS-v2.0-top-uman.png" width="300" />
+
 # SWTG024AS-v2.0 managed vs unmanged
 Changes I found with my board vs [Managed version](https://github.com/up-n-atom/SWTG118AS/tree/main/photos/SWGT024AS-v2.0) of the PCB.
 
