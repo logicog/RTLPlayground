@@ -8,7 +8,7 @@ Also the RJ45 connectors can be all plastic/non-shielded or with metal shielding
 ## Brands
 |Brand|Type|Managed|PCB|PCB Label|Flash|Chip RTL|
 |---|---|---|---|---|---|---|
-| LIANGUO |SWTG024AS |No|  SWTG024AS-v2.0 | CM-23-11-2336 023-17453| 512 KiB | 8272 |
+| LIANGUO |SWTG024AS |No|  SWTG024AS-v2.0-17452 | CM-23-11-2336 023-17453| 512 KiB | 8272 |
 | Haraco |ZX-SWTG124AS | Yes |  SWTG024AS-v2.0 | ??? | ??? | 8272 |
 | Xikestore |SKS3200M-4GPY2XF | Yes |  SWTG024AS-v1.0 | CM-23-08-2043 023-16721 | ??? | 8272 |
 | Sodola | SL-SWTG124AS-D | Yes | SWTG024AS-v2.0-17452 | ??? | 2048 KiB | 8272 |
@@ -21,21 +21,21 @@ Also the RJ45 connectors can be all plastic/non-shielded or with metal shielding
 Changes I found with my board vs [Managed version](https://github.com/up-n-atom/SWTG118AS/tree/main/photos/SWGT024AS-v2.0) of the PCB.
 
 ### Bottom
-* R105: Installed, goes to R10-PullDown SFP2 -> TX DISABLE
+* R105: Installed, goes to R10-PullDown SFP2 (J2) -> TX-DISABLE
 * R85: Not Installed (Connected to K1 Reset Button)
 * R90: Not installed (System Led)
 * LED3: Not installed (System Led)
 ### Top
 * K1: Not installed (Reset Button)
-* R95: Installed (SFP2 signal RX-LOS), means that the managed-version can´t use the RX-LOS function.
-* R270: Installed (SFP1 signal RX-LOS), same here as above.
-* R268: Installed (SFP2 signal TX_DISABLE, but R262 200R pull-down is to high to drive by the SOC, needs mod!)
-* U5: Flash is only 512kB instead of 2/4 MBit.
+* R95: Installed (SFP2 (J2) signal RX-LOS), means that the managed-version can´t use the RX-LOS function.
+* R270: Installed (SFP1 (J4) signal RX-LOS), same here as above.
+* R268: Installed (SFP2 (J2) signal TX-DISABLE, but R262 200R pull-down is to high to drive by the SOC, needs mod!)
+* U5: Flash is only 512 KiB instead of 2/4 MiB.
 
 ### Notes
-* `TX Disable`-SFP2 and Button `K1` share the same GPIO pin via `R105` and `R85`.
-  But via `R88`, `TX Disable`-SFP2 can be mapped to `GPIO36`.
-* `TX Disable` pull-down resistos on both SFP are to low to drive by the SOC.
+* `TX-Disable`-SFP2 and Button `K1` share the same GPIO pin via `R105` and `R85`.
+  But via `R88`, `TX-Disable`-SFP2 can be mapped to `GPIO36`.
+* `TX-Disable` pull-down resistos on both SFP are to low to drive by the SOC.
   We need to make a `Best`-BOM variant so we can use all the featues.
 
 # Connectors
@@ -104,6 +104,7 @@ Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI
 |4| VCC |
 |5| 33R -> U10-P2 | SPI-DO/D1 | 
 |6| U10-P1 | SPI-CS |
+Note: 1 pin is square shaped.
 
 ### T5, serial console
 |`T5` pin|GPIO|Signal|
@@ -112,6 +113,7 @@ Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI
 | 2 | GND | |
 | 3 | GPIO32 | U0RXD (Input) |
 | 4 | 3V3 | |
+Note: 1 pin is square shaped.
 
 ### T8
 |`T8` pin|what|Signal|
@@ -122,6 +124,7 @@ Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI
 | 4 | 3V3    | |
 | 5 | GPIO47 | |
 | 6 | GPIO49 | |
+Note: 1 pin is square shaped.
 
 # Reset ciruit
 | Cmp | Function |
@@ -139,9 +142,9 @@ Reset-line found at `T-D3-D` active-low.
 | 00000002 | GPIO01 | T-C152-T                |?    | | GPIO33 |  |  |
 | 00000004 | GPIO02 | T-C153-T                |?    | | GPIO34 |  |  |
 | 00000008 | GPIO03 | T-R33-T                 |?    | | GPIO35 |  |  |
-| 00000010 | GPIO04 | B-C155                  |?    | | GPIO36 | T-R88-L, T-R84-B | Optional SFP-TX-DIS[^2], Reset |
+| 00000010 | GPIO04 | B-C155                  |?    | | GPIO36 | T-R88-L, T-R84-B | Optional SFP2 TX-DISABLE[^2], Reset |
 | 00000020 | GPIO05 | B-C156                  |?    | | GPIO37 | SFP1-8, T-R270 | SFP-LOS |
-| 00000040 | GPIO06 | T-C157-T                |?    | | GPIO38 | SFP1-3, T-R268 | SFP-TX-DIS[^2] |
+| 00000040 | GPIO06 | T-C157-T                |?    | | GPIO38 | SFP1-3, T-R268 | SFP1 TX-DISABLE[^2] |
 | 00000080 | GPIO07 | T-C158-T, R165          |?    | | GPIO39 | SFP1-4, T-R266 | I2C-SDA4 |
 | 00000100 | GPIO08 |                         |     |  | GPIO40 | SFP2-5, T-R87; SFP1-5, T-R267; | I2C-SCL |
 | 00000200 | GPIO09 | SFP2-LED, T-R36-T       |LED-SFP2 | | GPIO41 | SFP2-4, T-R85 | I2C-SDA |
@@ -157,7 +160,7 @@ Reset-line found at `T-D3-D` active-low.
 | 00080000 | GPIO19 | PORT3-LED-GREEN         |LEDx[^1] | | GPIO51 | SFP2-8, T-R95 | SFP-LOS |
 | 00100000 | GPIO20 | PORT3-LED-YELLOW        |LEDx | | GPIO52 |  |  |
 | 00200000 | GPIO21 |                         |LEDx[^1] | | GPIO53 |  |  |
-| 00400000 | GPIO22 | PORT4-LED-GREEN         |LEDx[^1] | | GPIO54 | SFP2-3, T-R105-L | SFP-TX-DIS[^2] or via T-R85 to RESET[^3], T-R84-T |
+| 00400000 | GPIO22 | PORT4-LED-GREEN         |LEDx[^1] | | GPIO54 | SFP2-3, T-R105-L | SFP2 TX-DISABLE[^2] or via T-R85 to RESET[^3], T-R84-T |
 | 00800000 | GPIO23 | PORT4-LED-YELLOW        |LEDx | | GPIO55 | T-R78-B | |
 | 01000000 | GPIO24 | SFP1-LED-J4, T-R35      |LED-SFP1 | | GPIO56 | | |
 | 02000000 | GPIO25 |                         |     | | GPIO57 | | |
@@ -199,5 +202,5 @@ So higher power SFP-modules should work.
 
 
 [^1]: LEDs are found by just plugin a RJ45 connector and see with cmd `gpio` the status change. But the bit pattern for port 1,2 are diffrent from port 3,4.
-[^2]: Only on the unmanaged verions are `R10` and `R268` placed. But the very low pull-down resistor `R10` & `R262` prevent to SOC to drive does pins. A mod is needed.
+[^2]: Only on the unmanaged verions are `R10` and `R268` placed. But the very low pull-down resistor `R10` and `R262` prevent to SOC to drive does pins. A mod is needed.
 [^3]: GPIO54 is used for the reset-button. `T-R85` is placed.
