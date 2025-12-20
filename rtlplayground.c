@@ -1649,8 +1649,8 @@ void setup_serial(void)
 
 	// The RCAP2 registers contain the high/low byte that is loaded into
 	// timer2 when T2 overflows to 0x10000
-	RCAP2H = (0x10000 - (CLOCK_HZ / SERIAL_BAUD_RATE / 32)) >> 8;
-	RCAP2L = (0x10000 - (CLOCK_HZ / SERIAL_BAUD_RATE / 32)) % 0xff;
+	RCAP2H = (0x10000 - ((CLOCK_HZ / SERIAL_BAUD_RATE + 16) / 32)) >> 8;
+	RCAP2L = (0x10000 - ((CLOCK_HZ / SERIAL_BAUD_RATE + 16) / 32)) % 0xff;
 
 	PCON |= 0x80; // Double the Baud Rate
 
