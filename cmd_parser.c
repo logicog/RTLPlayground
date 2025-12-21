@@ -17,6 +17,7 @@
 #include "version.h"
 
 #include "machine.h"
+#include "phy.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -420,36 +421,47 @@ void parse_port(void)
 		print_string(" is SFP no PHY information available.\n");
 		return;
 	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "10m")) {
+	if (cmd_words_b[2] <= 0) {
+		print_string("\nport <port> [show|on|off|10m|100m|1g|2g5] [half|full]");
+		return;
+	}
+	if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
-		phy_set_speed(p, PHY_SPEED_10M);
-	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "100m")) {
+		if (cmd_words_b[3] > 0 && cmd_compare(3, "half"))
+			phy_set_speed(p, PHY_SPEED_10M, PHY_DUPLEX_HALF);
+		else if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
+			phy_set_speed(p, PHY_SPEED_10M, PHY_DUPLEX_FULL);
+		else
+			phy_set_speed(p, PHY_SPEED_10M, PHY_DUPLEX_BOTH);
+	} else if (cmd_compare(2, "100m")) {
 		print_string(" 100M\n");
-		phy_set_speed(p, PHY_SPEED_100M);
-	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "2g5")) {
+		if (cmd_words_b[3] > 0 && cmd_compare(3, "half"))
+			phy_set_speed(p, PHY_SPEED_100M, PHY_DUPLEX_HALF);
+		else if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
+			phy_set_speed(p, PHY_SPEED_100M, PHY_DUPLEX_FULL);
+		else
+			phy_set_speed(p, PHY_SPEED_100M, PHY_DUPLEX_BOTH);
+	} else if (cmd_compare(2, "2g5")) {
 		print_string(" 2.5G\n");
-		phy_set_speed(p, PHY_SPEED_2G5);
-	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "1g")) {
+		phy_set_speed(p, PHY_SPEED_2G5, PHY_DUPLEX_BOTH);
+	} else if (cmd_compare(2, "1g")) {
 		print_string(" 1G\n");
-		phy_set_speed(p, PHY_SPEED_1G);
-	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "auto")) {
+		phy_set_speed(p, PHY_SPEED_1G, PHY_DUPLEX_BOTH);
+	} else if (cmd_compare(2, "auto")) {
 		print_string(" AUTO\n");
-		phy_set_speed(p, PHY_SPEED_AUTO);
-	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "off")) {
+		phy_set_speed(p, PHY_SPEED_AUTO, PHY_DUPLEX_BOTH);
+	} else if (cmd_compare(2, "off")) {
 		print_string(" OFF\n");
-		phy_set_speed(p, PHY_OFF);
-	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "duplex")) {
+		phy_set_speed(p, PHY_OFF, PHY_DUPLEX_BOTH);
+	} else if (cmd_compare(2, "on")) {
+		print_string(" ON\n");
+		phy_set_speed(p, PHY_SPEED_AUTO, PHY_DUPLEX_BOTH);
+	} else if (cmd_compare(2, "duplex")) {
 		print_string(" DUPLEX\n");
 		if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
-			phy_set_duplex(p, 1);
+			phy_set_duplex(p, PHY_DUPLEX_FULL);
 		else
-			phy_set_duplex(p, 0);
+			phy_set_duplex(p, PHY_DUPLEX_HALF);
 	}
 	if (cmd_words_b[2] > 0 && cmd_compare(2, "show")) {
 		phy_show(p);
@@ -462,13 +474,12 @@ void parse_mtu(void)
 	__xdata uint16_t mtu;
 	uint8_t p;
 
-	print_string("\nMTU ");
 	if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
 		for (p = machine.min_port; p <= machine.max_port; p++) {
 			reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8));
 			mtu = SFR_DATA_U16 & 0x3fff;
 			print_string("Port "); print_byte(machine.log_to_phys_port[p]);
-			print_string(" MTU: 0x"); print_short(mtu); write_char('\n');
+			write_char(' '); print_short(mtu); write_char('\n');
 		}
 	}
 	p = cmd_buffer[cmd_words_b[1]] - '1';
