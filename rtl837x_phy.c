@@ -184,8 +184,9 @@ void phy_config_8224(void) __banked
 /*
  * Set Speed of a PHY
  * See e.g. RTL8221B datasheet
+ * duplex: 0: half, 1: full, 2: both
  */
-void phy_set_speed(uint8_t port, uint8_t speed) __banked
+void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 {
 	uint16_t v;
 	phy_read(port, PHY_MMD_CTRL, 0xa610);
@@ -213,11 +214,21 @@ void phy_set_speed(uint8_t port, uint8_t speed) __banked
 		phy_write(port, PHY_MMD_AN, 0x00, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
 		if (speed == PHY_SPEED_10M) {
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6001);
-			phy_write(port, PHY_MMD_AN, 0x10, 0x1461);
+			if (!duplex)
+				phy_write(port, PHY_MMD_AN, 0x10, 0x1421);
+			else if (duplex == 1)
+				phy_write(port, PHY_MMD_AN, 0x10, 0x1441);
+			else
+				phy_write(port, PHY_MMD_AN, 0x10, 0x1461);
 			phy_modify(port, PHY_MMD_CTRL, 0xa412, 0x0200, 0x0000);
 		} else if (speed == PHY_SPEED_100M) {
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6001);
-			phy_write(port, PHY_MMD_AN, 0x10, 0x1581);
+			if (!duplex)
+				phy_write(port, PHY_MMD_AN, 0x10, 0x1481);
+			if (duplex == 1)
+				phy_write(port, PHY_MMD_AN, 0x10, 0x1501);
+			else
+				phy_write(port, PHY_MMD_AN, 0x10, 0x1581);
 			phy_modify(port, PHY_MMD_CTRL, 0xa412, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
@@ -286,8 +297,7 @@ void phy_show(uint8_t port) __banked
 	print_string("\nLink speed: ");
 	phy_read(port, PHY_MMD_CTRL, 0xA434);
 	v = SFR_DATA_U16;
-	v = ((v & 0x0600) >> 7) | ((v & 0x0030) >> 4);
-	switch(v) {
+	switch(((v & 0x0600) >> 7) | ((v & 0x0030) >> 4)) {
 	case 0:
 		print_string("10M");
 		break;
