@@ -91,20 +91,27 @@ Note: component numbering `<L>-<REFDES>-<SIDE>`
 * SIDE: Side of the component. when the rj45 are facing towards you are you can read the silkscreen normal.
   L = Left, R=right, B=bottom, T=top or P with a pin number.
 
-### T3
-This connector seems to go to U4 and U10.
-I thing is used to connect a external CPU to controlle the SOC.
-Even to program the flash via the SOC.
+### T3, Slave Interface
+This connector goes to U4 `I2C EEPROM` and U10 `SPI FLASH`.
 Signals are based on that `U4` is likely a I2C-EEPROM, `U10` is likely other SPI-chip.
 |`T3` pin|what|Signal|
 |---|---|---|
-|1| U4-P6, 33R U10-P6 | I2C-SCL, SPI-CLK |
+|1| U4-P6, 33R U10-P6 | I2C-SCL, SPI-CLK, Slave SCK/SCL/MDC/EE_SCL |
 |2| GND | --- |
-|3| U4-P5, U10-P5 | I2C-SDA, SPI-DI/DO |
+|3| U4-P5, U10-P5 | I2C-SDA, SPI-DI/DO, Slave SDI/SDA/MDIO/EE_SDA |
 |4| VCC |
 |5| 33R -> U10-P2 | SPI-DO/D1 | 
 |6| U10-P1 | SPI-CS |
 Note: 1 pin is square shaped.
+
+The Slave Interface allows an extenal host to controll the SOC even if the internal MCU is used.
+Depending on the `IF_SEL` bootstrap resistors, this can me `I2C`, `SPI` or `SMI`.
+On this device it is `I2C` on address `0b1011100` or `0x5c` (7-bit notation).
+
+* I2c Read:  must be a write_read opperation `<Dev-ADDR><RegAddr15:8><RegAddr7:0>` `<DevAddr><Data7:0><Data15:8><Data23:16><Data31:24>`.
+* I2c Write: `<Dev-ADDR><RegAddr15:8><RegAddr7:0><DevAddr><Data7:0><Data15:8><Data23:16><Data31:24>`.
+
+Example register `0x0004` return chip id `0x00, 0x00, 0x72, 0x83` = `0x83720000`.
 
 ### T5, serial console
 |`T5` pin|GPIO|Signal|
