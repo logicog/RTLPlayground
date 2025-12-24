@@ -871,6 +871,11 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
+		} else if (cmd_compare(0, "time")) {
+			print_string("  Tick counter: "); print_long(ticks); print_string("   Sec Counter: ");
+			reg_read_m(RTL837X_REG_SEC_COUNTER);
+			print_sfr_data();
+			write_char('\n');
 		} else if (cmd_compare(0, "history")) {
 			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			__xdata uint8_t found_begin = 0;
