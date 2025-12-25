@@ -1,7 +1,9 @@
 function fillStats() {
   var tbl = document.getElementById('statstable');
+  if (!numPorts)
+    return;
   if (tbl.rows.length > 1) {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < numPorts; i++) {
       console.log("Table Update row: " + i + " state " + pState[i] + " is " + linkS[pState[i] +1]);
       tbl.rows[i+1].cells[1].innerHTML = `${linkS[pState[i]+1]}`;
       tbl.rows[i+1].cells[2].innerHTML = `${txG[i]} pkts`;
@@ -10,7 +12,7 @@ function fillStats() {
       tbl.rows[i+1].cells[5].innerHTML = `${rxB[i]} pkts`;
     }
   } else {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < numPorts; i++) {
       console.log("Table row: " + i);
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i+1}`));

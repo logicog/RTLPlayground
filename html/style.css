@@ -160,3 +160,5 @@ margin: 30px 0;
 .tt_table td {
   text-align: left;
 }
+select { text-align-last: right; font-family: monospace}
+option { direction: rtl; font-family: sans-serif}

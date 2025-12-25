@@ -1,8 +1,9 @@
 function createEEE() {
   var tbl = document.getElementById('eeetable');
-   if (tbl.rows.length <= 2) {
+   if (tbl.rows.length <= 2  && numPorts) {
+     clearInterval(createEEEInterval);
      console.log("CREATING TABLE ", tbl.rows.length);
-     for (let i = 2; i < 8; i++) {
+     for (let i = 2; i < 2 + numPorts; i++) {
       console.log("Table row: " + i + "pState: " + pState[i-2]);
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i-1}`));
@@ -20,8 +21,8 @@ function getEEE() {
       const s = JSON.parse(xhttp.responseText);
       console.log("EEE: ", JSON.stringify(s));
       var tbl = document.getElementById('eeetable');
-      if (tbl.rows.length > 2) {
-        for (let i = 2; i < 8; i++) {
+      if (tbl.rows.length > 2 && numPorts) {
+        for (let i = 2; i < 2 + numPorts; i++) {
           p = s[i-2];
           let n = p.portNum;
           console.log("Table Update row: " + i + " portNum is " + n + ", pState is " + pState[i-2]);
@@ -46,4 +47,4 @@ window.addEventListener("load", function() {
   getEEE();
   const iCount = setInterval(getEEE, 2000);
 });
-const stat = setInterval(createEEE, 1000);
+const createEEEInterval = setInterval(createEEE, 1000);

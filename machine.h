@@ -39,4 +39,3 @@ typedef struct machine {
 };
 
 #endif
-

@@ -380,6 +380,28 @@ void send_eee(void)
 	}
 }
 
+void send_mtu(void)
+{
+	print_string("send_mtu called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	char_to_html('[');
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"mtu\":\"0x");
+		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
+		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
+		byte_to_html(mtu >> 8);
+		byte_to_html(mtu & 0xff);
+		char_to_html('"');
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+}
+
 
 void send_status(void)
 {
@@ -390,6 +412,8 @@ void send_status(void)
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
 		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"logPort\":");
+		itoa_html(i);
 
 		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
@@ -429,6 +453,20 @@ void send_status(void)
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, 0x1f, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
+			slen += strtox(outbuf + slen, ",\"adv\":\"");
+			phy_read(i, PHY_MMD_AN, 0x20);
+			uint16_t w = SFR_DATA_U16;
+			bool_to_html(!!(w & 0x80));		// 2500BaseN-Full
+			phy_read(i, PHY_MMD_CTRL, 0xa412);
+			w = SFR_DATA_U16;
+			bool_to_html(!!(w & 0x0200));		// 1000Base-Full
+			phy_read(i, PHY_MMD_AN, 0x10);
+			w = SFR_DATA_U16;
+			bool_to_html(!!(w & 0x0100));		// 100Base-Full
+			bool_to_html(!!(w & 0x80));		// 100Base-Half
+			bool_to_html(!!(w & 0x40));		// 10Base-Full
+			bool_to_html(!!(w & 0x20));		// 10Base-Half
+			char_to_html('"');
 		}
 
 		slen += strtox(outbuf + slen, ",\"link\":");

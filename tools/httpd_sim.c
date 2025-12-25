@@ -15,7 +15,15 @@
 #define PASSWORD "1234"
 #define SESSION_TIMEOUT 2000
 
-#define PORTS 6
+#define PORTS 9
+#define NSFP 1
+
+#if PORTS == 9
+const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
+#else
+const uint8_t physToLogPort[] = { 4, 5, 6, 7, 3, 8};
+#endif
+
 time_t last_called;
 time_t last_session_use;
 
@@ -125,7 +133,8 @@ void send_status(int s)
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
 		json_object_object_add(v, "portNum", json_object_new_int(i));
-		json_object_object_add(v, "isSFP", json_object_new_int(i < 5 ? 0 : 1));
+		json_object_object_add(v, "logPort", json_object_new_int(physToLogPort[i-1]));
+		json_object_object_add(v, "isSFP", json_object_new_int(i <= PORTS - NSFP ? 0 : 1));
 		json_object_object_add(v, "enabled", json_object_new_int((i % 4) ? 1 : 0));
 		json_object_object_add(v, "link", json_object_new_int(i % 2 ? ((i == 1)? 5 : 2) : 0));
 		if (i % 2) {
@@ -143,7 +152,7 @@ void send_status(int s)
 		json_object_object_add(v, "txB", json_object_new_string(txB_buff));
 		json_object_object_add(v, "rxG", json_object_new_string(rxG_buff));
 		json_object_object_add(v, "rxB", json_object_new_string(rxB_buff));
-		if (i >= 5) {
+		if (i >= PORTS - NSFP) {
 			uint16_t temp = 0x28fb + rand() / (RAND_MAX / 100);
 			uint16_t vcc = 0x7eda + rand() / (RAND_MAX / 100);
 			uint16_t txbias = 0x0d24 +rand() / (RAND_MAX / 100);
@@ -169,6 +178,14 @@ void send_status(int s)
 			json_object_object_add(v, "sfp_txpower", json_object_new_string(sfp_txpower));
 			json_object_object_add(v, "sfp_rxpower", json_object_new_string(sfp_rxpower));
 			json_object_object_add(v, "sfp_laser", json_object_new_string(sfp_laser));
+		} else {
+			if (i == 1)
+				json_object_object_add(v, "adv", json_object_new_string("100000"));
+			else if (i==2)
+				json_object_object_add(v, "adv", json_object_new_string("000011"));
+			else
+				json_object_object_add(v, "adv", json_object_new_string("000100"));
+			
 		}
 		json_object_array_add(ports, v);
 	}
@@ -266,6 +283,30 @@ void send_lag(int s)
 	jstring = json_object_to_json_string_ext(lags, JSON_C_TO_STRING_PLAIN);
         write(s, jstring, strlen(jstring));
 	json_object_put(lags);
+}
+
+
+void send_mtu(int s)
+{
+	struct json_object *mtus, *v;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	mtus = json_object_new_array_ext(PORTS);
+	char mtu[8];
+	for (int i = 1; i <= PORTS; i++) {
+		v = json_object_new_object();
+		json_object_object_add(v, "portNum", json_object_new_int(i));
+		sprintf(mtu, "0x%04x", i % 2 ? 16383 : 1522);
+		json_object_object_add(v, "mtu", json_object_new_string(mtu));
+		json_object_array_add(mtus, v);
+	}
+        write(s, header, strlen(header));
+
+	jstring = json_object_to_json_string_ext(mtus, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(mtus);
 }
 
 
@@ -476,6 +517,13 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_lag(new_socket);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/mtu.json", 9)) {
+					printf("MTU request\n");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_mtu(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
 					int vlan = atoi(&buffer[19]);

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <script src="/main.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>FreeSwitchOS Port Configuration</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>Port Configuration</h1>
+    <form id="vform" action="/vlan.html">
+    <table id="speedtable">
+      <tr> <th>Port</th> <th>Current Link Speed</th><th>Set Speed</th><th>Disabled</th><th>Apply</th></tr>
+    </table>
+    <h2 style="margin-top:3em">Configure Maximum Frame Size (MTU) forwarded at Port</h2>
+    <table id="mtutable" style="margin-top:1em">
+    </table>
+    <script src="/ports.js"></script>
+    </form>
+    </div>
+    <script src="/navigation.js"></script>
+  </body>
+</html>

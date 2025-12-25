@@ -16,7 +16,6 @@
 #define PHY_SDS_CTRL	30
 #define PHY_MMD_CTRL	31
 
-
 /*
  * Define registers in Auto-Negotiation page
  */
@@ -34,4 +33,11 @@
  * Define registers in Control page
  */
 #define PHY_CTRL_5	0x7582
+
+/*
+ * Duplex settings
+ */
+#define PHY_DUPLEX_HALF		0
+#define PHY_DUPLEX_FULL		1
+#define PHY_DUPLEX_BOTH		2
 #endif
