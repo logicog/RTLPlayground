@@ -3,7 +3,6 @@
 
 #include "uipopt.h"
 #include <stdint.h>
-
 #define DHCPD_MAX_CLIENTS	10
 #define DHCPD_START_IP		100
 
