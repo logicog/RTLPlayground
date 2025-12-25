@@ -932,6 +932,20 @@ void cmd_parser(void) __banked
 				stp_off();
 				stpEnabled = 0;
 			}
+		} else if (cmd_compare(0, "dhcp")) {
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				dhcp_start();
+			} else {
+				print_string("DHCP disabled\n");
+				dhcp_stop();
+			}
+		} else if (cmd_compare(0, "dhcpd")) {
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				dhcpd_start();
+			} else {
+				print_string("DHCP Server disabled\n");
+				dhcpd_stop();
+			}
 		} else if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 			__xdata uint16_t pvid;
 			uint8_t port;
