@@ -12,6 +12,7 @@
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "dhcp.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
 #include "uip/uip.h"
@@ -72,6 +73,7 @@ volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_clock;
+extern __xdata uint8_t dhcp_state;
 
 #define STP_TICK_DIVIDER 3
 
@@ -1032,6 +1034,9 @@ void idle(void)
 		print_sfr_data();
 		write_char('\n');
 #endif
+		// Tasks that need doing every second
+		if (dhcp_state)
+			dhcp_periodic();
 	}
 
 	// Check for Link changes

@@ -13,6 +13,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "dhcp.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -819,6 +820,13 @@ void cmd_parser(void) __banked
 				print_string("STP disabled\n");
 				stp_off();
 				stpEnabled = 0;
+			}
+		} else if (cmd_compare(0, "dhcp")) {
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				dhcp_start();
+			} else {
+				print_string("DHCP disabled\n");
+				dhcp_stop();
 			}
 		} else if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 			__xdata uint16_t pvid;
