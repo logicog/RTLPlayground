@@ -119,8 +119,7 @@ __xdata uint8_t sfp_options[2];
 void isr_timer0(void) __interrupt(1)
 {
 	TR0 = 0;		// Stop timer 0
-	TH0 = SYSTICK_TIMER0_VALUE >> 8;
-	TL0 = SYSTICK_TIMER0_VALUE % 0xff;
+	T0_U16 = SYSTICK_TIMER0_VALUE;
 	TR0 = 1;		// Re-start timer 0
 
 	ticks++;
@@ -295,8 +294,7 @@ void setup_timer0(void)
 	/* The TH0 registers contain the high/low byte that we load into Timer0 when T0
 	 * overflows to 0x10000
 	 */
-	TH0 = SYSTICK_TIMER0_VALUE >> 8;
-	TL0 = SYSTICK_TIMER0_VALUE % 0xff;
+	T0_U16 = SYSTICK_TIMER0_VALUE;
 
 	CKCON &= 0xc7;
 	TCON = 0x10;	// Start timer 0

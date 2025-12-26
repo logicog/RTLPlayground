@@ -97,3 +97,7 @@ __sfr __at(0xb4) SFR_NIC_DATA_H;
 __sfr16 __at(0xb6b5) SFR_NIC_RING_U16LE;
 __sfr __at(0xb5) SFR_NIC_RING_L;
 __sfr __at(0xb6) SFR_NIC_RING_H;
+
+/* Standard 8051 sfr */
+// Timer 0 value
+__sfr16 __at(0x8c8a) T0_U16;
