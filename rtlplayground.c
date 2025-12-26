@@ -120,7 +120,7 @@ void isr_timer0(void) __interrupt(1)
 {
 	TR0 = 0;		// Stop timer 0
 	TH0 = SYSTICK_TIMER0_VALUE >> 8;
-	TL0 = SYSTICK_TIMER0_VALUE % 0xff;
+	TL0 = SYSTICK_TIMER0_VALUE & 0xff;
 	TR0 = 1;		// Re-start timer 0
 
 	ticks++;
@@ -296,7 +296,7 @@ void setup_timer0(void)
 	 * overflows to 0x10000
 	 */
 	TH0 = SYSTICK_TIMER0_VALUE >> 8;
-	TL0 = SYSTICK_TIMER0_VALUE % 0xff;
+	TL0 = SYSTICK_TIMER0_VALUE & 0xff;
 
 	CKCON &= 0xc7;
 	TCON = 0x10;	// Start timer 0
