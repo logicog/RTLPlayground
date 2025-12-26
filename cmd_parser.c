@@ -28,7 +28,7 @@ extern __xdata uint8_t stpEnabled;
 extern __code uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
-extern volatile __xdata uint8_t sfr_data[4];
+extern volatile __data uint8_t sfr_data[4];
 
 extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;

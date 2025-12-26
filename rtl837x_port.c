@@ -21,7 +21,7 @@
 extern __code uint8_t * __code hex;
 extern __code uint16_t bit_mask[16];
 extern __code struct machine machine;
-extern __xdata uint8_t sfr_data[4];
+extern __data uint8_t sfr_data[4];
 extern __xdata uint16_t vlan_ptr;
 extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 
