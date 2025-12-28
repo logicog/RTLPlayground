@@ -6,7 +6,7 @@ CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
 
 CC = sdcc
-CC_FLAGS = -mmcs51 -Ihttpd -Iuip
+CC_FLAGS = -mmcs51 -I. -Ihttpd -Iuip
 ASM = sdas8051
 AFLAGS= -plosgff
 
