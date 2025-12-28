@@ -1,5 +1,5 @@
 CC = sdcc
-CC_FLAGS = -mmcs51 -I. -I../httpd
+CC_FLAGS = -mmcs51 -I. -I../httpd -I..
 ASM = sdas8051
 AFLAGS= -plosgff
 
