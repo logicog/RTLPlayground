@@ -1224,8 +1224,8 @@ struct uip_udp_conn {
 /**
  * The current UDP connection.
  */
-extern struct uip_udp_conn *uip_udp_conn;
-extern struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
+extern __xdata struct uip_udp_conn *uip_udp_conn;
+extern __xdata struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
 #endif /* UIP_UDP */
 
 /**
