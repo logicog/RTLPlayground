@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define SYS_TICK_HZ 200
+
 // SCL and SDA pin numbers for SFP cage 0 and SFP cage 1
 #define SCL_PIN		3
 #define SDA_PIN_0	4
