@@ -1,5 +1,5 @@
 CC = sdcc
-CC_FLAGS = -mmcs51 -I. -I../uip
+CC_FLAGS = -mmcs51 -I. -I.. -I../uip
 ASM = sdas8051
 AFLAGS= -plosgff
 
