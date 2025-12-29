@@ -1,56 +1,60 @@
 # RTLPlayground
-A Playground for Firmware development for RTL8372/RTL8373 based 2.5GBit Switches.
+A Playground for Firmware development for advanced user of RTL8372/RTL8373 based 2.5GBit Switches.
 
 For each hardware configuration of these devices, there is usually a managed and an
 umanaged version sold, with mostly identical hardware. The aim is to provide management
 features also for unmanaged devices with additional features such as Management VLAN,
-dhcp servers, multi-language support, IPv6 and TLS-encrypted web-pages.
+dhcp servers, multi-language support, IPv6 and TLS-encrypted web-pages. At present, however
+only the following features are provided:
+- A modern web-interface with mouse-over to display further information
+- A serial console interface to configure all features
+- IGMP to configure Multicast streaming
+- Port configuration showing detailed informtion about own and Link-partner advertised
+  Speed settins and configuration of these settings on the local side
+- Per-port configuration of frame sizes (MTUs) for Jumbo-Frame support or limiting MTUs
+  for particular devices
+- EEE (Energy Efficient Ethernet) can be configured per-port. Detailed information is
+  provided for support offered by the link partner and the EEE status of a port.
+- VLAN configuration
+- SFP information is displayed on the inserted modules, the current sensor values such as
+  temperatures, RX and TX power are displayed in the CLI and as mouse-over on the web
+- Mirror configuration
+- Link Aggregation Groups can be set up
+- Detailed information on port packet statistics
+- Configuration saved to flash via the web-interface
+- Firmware updates via the web
+- Installation as a firmware upgrade from the original web-interface
 
-The playground currently provides a minimal alternative firmware for both the managed and unmanaged switches.
-When used with unmanaged switches, it will provide some management features such as
-setting up VLANs, mirroring ports and provide a Web-Server (currently no functions,
-really), but will need to be configured via a serial connection. Installation on
-managed devices only makes sense for developers, as plenty of features of the managed
-switches are not supported, yet.
+<img width="1420" height="623" alt="GUI" src="doc/images/gui.png" />
 
-At this point, the firmware can be installed on the hardware as given below,
-all of the ports and SFP-slots will be supported. The following has been tested:
-On the keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+),
-at present the system will provide the same featurs as a dumb switch plus a tiny
-TCP stack that will allow to reply to ARP and ping messages, thus enabling pinging the device.
-VLAN and mirroring can be configured (but not saved to flash).
-The ports served by the RTL8372 will be 100M/1G/2.5G auto-detect. Port 5 to RTL8221B PHY
-SerDes configuration works and supports 1GBit and 2.5GBit Ethernet (SGMII/HISGMII).
-SFP module insert/removal identification and reading of the SFP EEProm works. SFP
-module configuration works, too, tested for 1G, 2.5G and 10G Ethernet and Fiber modules.
+While the firmware provides already considerable improvements over the original managed firmware,
+the firmware still lacks support for STP and the proprietary loop prevention
+protocols as well as DHCP. If you need these features, do not install the playground on your managed
+devices. In any case, installation is strongly discouraged unless you can at least make
+a backup of the original flash content via a SOIC clamp such as also used for BIOS
+backups and can re-install that firmware in case something is wrong. For this no soldering
+skills are necessary.
 
-The 4-Port Ethernet + 2 Port SFP+ devices (e.g. KP-9000-6HX-x2) are fully supported, too
-(e.g. KP-9000-6hx-x2) with the same features as above. In particular all fiber/Ethernet
-modules work in both SFP+ ports.
-
-On the 9-port devices with RTL8273 + RTL8224 (for example kp-9000-9xh-x) all ports will
-work for switching and CPU-access, the  SFP+ port will work normally and TCP connectivity
-will work as above. Not all features of the RTL8224-ports (the first 4) have been tested.
+The firmware supports all hardware featues of devices with
+- 4 2.5GBit ports + 2 SFP+ ports
+- 5 2.5GBIT + 1 SFP+ port
+- 8 2.5GBit + 1 SFP+ port
+Devices sold usually have a fairly common design, however there may be differences in the LED
+configuration (switches have LEDs with different colours and use types of LEDs). The list
+of tested devices can be found in [Supported devices](doc/supported_devices.md).
 
 To do meaningful development you will need to use a serial console, so soldering skills
 are required. Flashing must be done via a SOIC-8 PatchClamp or by soldering a socket
 for the flash chip.
 
-UPDATE: The Code comes with a port of the [uIP](https://github.com/adamdunkels/uip)
-TCP/IP stack and includes a minimal web-server that can be used to work with the switch,
-so if you use a patch-clamp for updating the firmware (~3 USD/EUR), you can try this
-out without the need to solder anything. See the instructions below.
-Note that updating the firmware of a managed switch with the images created in this
-project via the OEM web-interface will not work, because it is currently unknown how
-to generate the require checksum, see this
-[issue](https://github.com/up-n-atom/SWTG118AS/issues/4).
-However, if you use the patch-clamp to flash, this is not a problem.
-
 If you don't want to open your device, you can use the project's code to learn about the
-devices by looking at the image using e.g. Ghidra.
+devices by looking at the image using e.g. Ghidra. If you want to contribute to the
+design of the web-interface or get a feeling for the interface first, a standalone
+device simulator is provided, which runs entirely under Linux as a local webserver.
 
 ## Compiling
-Install the following particular build requisites (Debian 12, should work on Ubuntu)
+Install the following particular build requisites (Debian 12/13), note that Ubuntu 24.04
+still has an older version of sdcc, but you will need sdcc version 4.5 for the code to compile:
 ```
 sudo apt install sdcc xxd python-is-python3 libjson-c-dev
 ```
@@ -70,126 +74,35 @@ cat rtlplayground.img >> rtlplayground.bin
 Note, that the image generated ends in .bin, not .img, in order to make
 IMSProg happy.
 
+Managed switches can be updated from the existing original firmware using an upgrade image.
+In the `installer`folder of the source code you will need to run `make` which will build
+an image out of `rtlplayground.bin` built in the previous step:
+```
+RTLPlayground/installer$ make
+mkdir -p output/
+gcc updatebuilder.c -o output/updatebuilder
+sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
+sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
+sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
+cp ../output//rtlplayground.bin output/
+./output//updatebuilder -i output/rtlinstaller.ihx output/rtlplayground.bin
+Input file size: 524288
+Bytes read: 524288
+EOF
+Payload sum 1 is: 0x29d10
+Payload sum 2 is: 0x29d10
+Payload sum with header is: 0x2b0fc
+Payload sum is: 0xad8a75
+Header checksum is: 0x4c3
+```
+The resulting image can be found in `RTLPlayground/installer/output/rtlplayground.bin`
+> [!CAUTION]
+> DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE
+> ORIGINAL FIRMWARE!
+
 ## Installation
-You can play with the image using ghidra or flash real Switch Hardware
-
-### Supported Hardware
-If you do not have an RTL837x-based switch device such as the ones
-mentionned here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide]
-(https://github.com/up-n-atom/SWTG118AS) or one of the other that
-deployment was tested on, including:
-- keepLINK kp-9000-6hx-x2 (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+)
-- keepLINK KP-9000-6XHML-X2, same as above, but Managed
-- keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+)
-- keepLINK kp-9000-9xh-x-eu (1 x RTL8373 + RTL8224: 8x 2.5GBit + 1x 10GBit SFP+)
-- Lianguo LG-SWTGW218AS (RTL8373 + RTL8224 PHY: 8x 2.5GBit + 1x 10GBit SFP+)
-- No-Name ZX-SWTGW215AS, managed version of kp-9000-6hx-x, ordered on
-  AliExpress as keepLINK 5+1 port managed
-
-### Understanding the image using ghidra
-Start ghidra, load file starting from offset 0x0002 into
-memory starting at 0x0000. The lengthe is 0x10000. Select generic 8051, big
-endian.
-
-After loading, the boot vector is at 0x0000, which will jump to 0x0100 for
-the boot routine.
-
-The firmware uses only bank 1 of the RTL837x since it is quite short.
-Otherwise the firmware would be organized as follows
-```
---------------------------- 0x0000 ---------------------------------
-Boot-Vector
-ISRs
-Common Code
-Trampoline for inter-bank calls
-Inter-bank calls, calling trampoline, one for each callable function
-
------ Bank 1 0x4000 ------   ---- Bank 2 0x4000 -----  -------- .....
-Overlay 1                    Overlay 2                 Overlay n
-
---------- 0xffff ---------   -------- 0xffff --------  -------- 0xffff
-```
-The RTL837x firmware images are organized as follows:
-The first 2 bytes of the image give the size of the prefetched data at the
-start of the CPU power up. The default is 0x4000 (bytes: 0x00 0x40), which
-means that the entire shared area of the code memory in all banks,
-0x4000 bytes is read immediately into the code RAM.
-
-Common code starts at
-0x0002 in the image and has length 0x3ffd, the first bank starts at 0x4000
-in the image, is mapped to 0x4000 and has length 0xc000. The second bank
-starts at 0x10000, is mapped to 0x4000 and has length 0xc000. The third
-bank would start at 0x1c000 and would again be mapped to 0x4000.
-There are about 30 banks in use for managed switches, unmanaged ones use
-2-3, while the hardware would allow to use 0x3f banks, i.e. up to 4 MB of
-flash.
-
-The current image uses Common BANK0 and the first BANK1 via sdccs __banked
-function keyword and custom banking trampoline code for the RTL837x in
-assembler.
-
-
-### Hardware supported by the code so far
-
--The following hardware is supported:
-- Clock generation, including different divider settings
-- Interrupt control for timer, serial, external irqs 0, 1
-- Serial console via SFRs
-- Flash operations via SFRs
-- Bank switching via SFRs
-- Access to Switch registers via SFRs
-  - LED setup
-  - Reset
-  - Some switch settings such as MAC configuration
-  - GPIO to detect SFP module insert/removal/RX-LOS
-  - I2C to read SFP EEPROM on 1 and 2 SFP slot devices
-  - NIC setup
-  - L2 learning table access, L2 table flushing
-  - VLAN setup/configuration
-  - Port mirroring
-- Access to PHYs via MDIO (clause 45 via SFR):
-  - Internal PHYs of RTL8372 and RTL8373
-  - RTL8221 (1x2.5GBit port on devices with 5 ports)
-  - RTL8224 (4x2.5GBit ports on devices with 8 ports)
-- SerDes settings of SoC via SFR:
-  - Configure SFPs with 10Gbit/2.5Gbit/1Gbit (Ethernet and Fiber SFP(+) tested)
-  - RTL8221, RTL8224
-- NIC TX and RX of packets via SFRs
-  - send and receive Ethernet frames via SFRs and Switch registers
-  - RTL-tags and VLAN ingress-tag decoding for CPU-port
-
-Ethernet frame RX IRQ via IRQ1 is conceptually understood, but not activated. RX is
-currently done via polling, which allows ping-times of <10ms.
-
-The RTL8372/3 have 256 bytes of internal RAM (INTMEM) accessible through MOV
-instructions, which are used for the stack and important globals. Some of
-these are bit-adressable, e.g. for storing global flags.
-
-Additionally, 64kB of extended RAM (XMEM) is built in, which is accessed
-through the MOVX instruction. It is used for global variables, for most
-of the function argument passing that is not done using the 8 registers
-R0-R7 or registers A/B, and for local variables (which requires extremely
-careful planning). The flash memory is transparently accessible for code
-being executed and can be used to store configuration. Access is done through
-the MOVC instruction, possibly setting the bank register before and
-resetting it to access the entire 4MB space. Code is prefetched from flash
-and cached in a small RAM automatically by the HW.
-
-The peripherial functions are accessed through 2 different mechanisms:
-- Special Function Registers (SFRs, 0x80-0xff) for banking, timers, UART, access to
-  switch registers, MDIO, SPI (flash) and NIC transfers. Some SFRs are not
-  used for HW purposes and can be used as RAM. Some SFRs are bit-adressable,
-  allowing for very tight event wait loops (a single 2-byte instruction).
-- 0x10000 switch registers, which appear to be very similar to the registers
-  of the RTL838x, for which source code and datasheets are available. This
-  controls clock dividers, GPIO/LEDs and general  switch functionality. 
-
-The playground image shows access to the different types of memory using the
-SDCC compiler. Any support of Linux or e.g. Zephyr would require porting gcc.
-There are FreeRTOS ports to 8051 processors using sdcc, however.
-
-
-### Installation on an actual switch
+You can play with the image using ghidra or flash real Switch Hardware. For
+ghidra see this information about [Ghidra images](ghidra.md).
 
 > [!CAUTION]
 > NOTE THAT WHILE THIS PROCEDURE HAS BEEN SUCCESSFULLY TESTED ON ALL DEVICES ABOVE,
@@ -197,8 +110,15 @@ There are FreeRTOS ports to 8051 processors using sdcc, however.
 > ANY OTHER EQUIPMENT INVOLVED OR HARM YOURSELF BY OPENING THE ELECTRONIC
 > DEVICE. OPENING THE SWITCH WILL VOID ITS WARRANTY.
 
-There is no support for uploading the firmware via ethernet. Instead you
-need to open the switch and flash the image directly onto the flash chip,
+You can upload the upgrade image of managed switches via the web interface of the
+original firmware just as if you were installing a firmware upgrade. However,
+this is strongly discouraged, as you may brick your device, unless you can make
+firmware backups via a SOIC clamp or soldered flash socket, first!
+
+For unmanaged devices, the only way to install RTLPlayground is by flashing the
+Flash memory directly.
+
+You will need to open your switch to flash the image directly onto the flash chip,
 which is done easiest using a SOIC-8 clip (alternatively you de-solder the
 flash chip and install a SOIC adapter):
 - Disconnect power from switch
@@ -216,6 +136,10 @@ devices, set 8N1 @ 115200 baud and power up the switch.
 
 The device will perform some examples and provide a minimal console, the
 documentation of which can be found in the source code rtlplayground.c`.
+
+## The web-interface
+The web-interface can be reached under the [default 192.168.10.247](http://192.168.10.247).
+The default password is `1234`.
 
 ## The command line
 The command line is very rudimentary and mostly for testing purposes.
@@ -307,6 +231,7 @@ Enjoy playing!
 ## Other documents
 The following documents give further documentation on specific features of
 the RTL837x SoCs:
+- [RTL8372/3 Feature support](doc/hardware.md)
 - [CPU Port](doc/CpuPort.md)
 - [L2 learning](doc/l2.md) 
 - [CPU Port](doc/CpuPort.md)
