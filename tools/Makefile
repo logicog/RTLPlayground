@@ -2,7 +2,8 @@ CC = gcc
 CCFLAGS = -Wall -o
 BUILDDIR = output/
 
-all: create_build_dir $(BUILDDIR)injector $(BUILDDIR)fileadder $(BUILDDIR)httpd_sim $(BUILDDIR)crc_calculator
+all: create_build_dir $(BUILDDIR)injector $(BUILDDIR)fileadder $(BUILDDIR)httpd_sim\
+	$(BUILDDIR)crc_calculator $(BUILDDIR)imagebuilder
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
@@ -21,3 +22,6 @@ $(BUILDDIR)crc_calculator: crc_calculator.c
 
 $(BUILDDIR)httpd_sim: httpd_sim.c httpd_sim.h
 	gcc $< $(CCFLAGS) $@ -I/usr/include/json-c -ljson-c
+
+$(BUILDDIR)imagebuilder: imagebuilder.c
+	gcc $^ $(CCFLAGS) $@
