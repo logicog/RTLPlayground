@@ -362,6 +362,7 @@ void parse_dhcp_response(void)
 
 void parse_dhcp_request(void)
 {
+	print_string("parse_dhcp_request called\n");
 	if (DHCP_P->cookie[0] != 0x63 || DHCP_P->cookie[1] != 0x82 || DHCP_P->cookie[2] != 0x53 || DHCP_P->cookie[3] != 0x63)
 		return;
 
@@ -380,7 +381,7 @@ void parse_dhcp_request(void)
 		print_byte(dhcp_state.current_ip[2]); print_byte(dhcp_state.current_ip[3]);
 		write_char('\n');
 		dhcp_send_request();
-	} else if (DHCP_OPT[dhcp_state.opt_ptr++] == DHCP_MESSAGE_ACK) {
+	} else if (DHCP_OPT[dhcp_state.opt_ptr++] == DHCP_MESSAGE_REQUEST) {
 		parse_opts();
 		print_string("DHCP ACK, our IP is ");
 		print_byte(dhcp_state.current_ip[0]); print_byte(dhcp_state.current_ip[1]);
@@ -437,18 +438,21 @@ void dhcpd_start(void) __banked
 	}
 	dhcp_state.state = DHCP_SERVER;
 
-	dhcp_state.server[0] = uip_hostaddr[0] >> 8; dhcp_state.server[1] = uip_hostaddr[0] & 0xff; 
+	dhcp_state.server[0] = uip_hostaddr[0] >> 8; dhcp_state.server[1] = uip_hostaddr[0] & 0xff;
 	dhcp_state.server[2] = uip_hostaddr[1] >> 8; dhcp_state.server[3] = uip_hostaddr[1] & 0xff;
 
-	dhcp_state.router[0] = uip_draddr[0] >> 8; dhcp_state.router[1] = uip_draddr[0] & 0xff; 
+	dhcp_state.router[0] = uip_draddr[0] >> 8; dhcp_state.router[1] = uip_draddr[0] & 0xff;
 	dhcp_state.router[2] = uip_draddr[1] >> 8; dhcp_state.router[3] = uip_draddr[1] & 0xff;
 
-	dhcp_state.subnet[0] = uip_netmask[0] >> 8; dhcp_state.subnet[1] = uip_netmask[0] & 0xff; 
+	dhcp_state.subnet[0] = uip_netmask[0] >> 8; dhcp_state.subnet[1] = uip_netmask[0] & 0xff;
 	dhcp_state.subnet[2] = uip_netmask[1] >> 8; dhcp_state.subnet[3] = uip_netmask[1] & 0xff;
 
-	dhcp_state.broadcast[0] = dhcp_state.router[0]; dhcp_state.broadcast[1] = dhcp_state.router[1]; 
+	dhcp_state.broadcast[0] = dhcp_state.router[0]; dhcp_state.broadcast[1] = dhcp_state.router[1];
 	dhcp_state.broadcast[2] = dhcp_state.router[2]; dhcp_state.broadcast[3] = 0xff;
 
+	for (uint8_t i = 0; i < DHCPD_MAX_CLIENTS; i++) {
+		cstates[i].mac[0] = 0x01; // We set the MC bit of all addresses to mark the entry unused
+	}
 	// TODO: DNS, correct broadcast address
 
 	print_string("dhcpd_start done\n");

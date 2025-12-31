@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define DHCPD_MAX_CLIENTS	10
+#define DHCPD_START_IP		100
 
 #define DHCP_SERVER_PORT	67
 #define DHCP_CLIENT_PORT	68
