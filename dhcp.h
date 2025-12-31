@@ -3,21 +3,22 @@
 
 #include "uipopt.h"
 #include <stdint.h>
+#define DHCPD_MAX_CLIENTS	10
+#define DHCPD_START_IP		100
 
-#define DHCPC_SERVER_PORT	67
-#define DHCPC_CLIENT_PORT	68
+#define DHCP_SERVER_PORT	67
+#define DHCP_CLIENT_PORT	68
 
 #define DHCP_OFF		0
 #define DHCP_START		1
 #define DHCP_DISCOVER_SENT	2
 #define DHCP_REQUEST_SENT	3
 #define DHCP_LEASING		4
+#define DHCP_SERVER		5
 
 void dhcp_start(void) __banked;
 void dhcp_stop(void) __banked;
-// void dhcp_periodic(void) __banked;
 void dhcp_callback(void) __banked;
-
 
 struct dhcp_state {
 	uint8_t state;
@@ -37,6 +38,18 @@ struct dhcp_state {
 
 	struct uip_udp_conn *conn;
 };
+
+struct dhcpd_cstate {
+	uint8_t cstate;
+	uint16_t timer;
+	uint32_t transaction_id;
+	uint8_t mac[6];
+	uint8_t ip[4];
+};
+
+
+void dhcpd_start(void) __banked;
+void dhcpd_stop(void) __banked;
 
 typedef struct dhcp_state uip_udp_appstate_t;
 

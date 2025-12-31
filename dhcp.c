@@ -80,7 +80,7 @@ struct dhcp_pkt {
 #define DHCP_OPT ((__xdata uint8_t *)(uip_appdata) + sizeof (struct dhcp_pkt))
 
 __xdata uint32_t long_value;
-
+__xdata struct dhcpd_cstate cstates[DHCPD_MAX_CLIENTS];
 
 void dhcp_print_ip(uint8_t *a)
 {
@@ -91,7 +91,7 @@ void dhcp_print_ip(uint8_t *a)
 }
 
 
-void dhcp_prepare_request(void)
+void dhcp_prepare_msg(void)
 {
 	DHCP_P->type = 1;
 	DHCP_P->hw = DHCP_HW_TYPE_ETH;
@@ -148,7 +148,7 @@ void dhcp_addopt_server_id(void)
 void dhcp_send_discover(void)
 {
 	print_string("dhcp_send_discover called\n");
-	dhcp_prepare_request();
+	dhcp_prepare_msg();
 
 	dhcp_state.opt_ptr = 0;
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_MESSAGE_TYPE;
@@ -183,7 +183,7 @@ void dhcp_send_discover(void)
 void dhcp_send_request(void)
 {
 	print_string("dhcp_send_request called\n");
-	dhcp_prepare_request();
+	dhcp_prepare_msg();
 
 	dhcp_state.opt_ptr = 0;
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_MESSAGE_TYPE;
@@ -213,6 +213,41 @@ void dhcp_send_request(void)
 	dhcp_state.state = DHCP_REQUEST_SENT;
 	dhcp_state.ticks = SYS_TICK_HZ;
 	dhcp_state.dhcp_timer = 30; // Timeout for request
+}
+
+
+void dhcp_send_offer(void)
+{
+	print_string("dhcp_send_offer called\n");
+	dhcp_prepare_msg();
+
+	dhcp_state.opt_ptr = 0;
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_MESSAGE_TYPE;
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_MESSAGE_TYPE_LEN;
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_MESSAGE_OFFER;
+
+	dhcp_addopt_client_id();
+	dhcp_addopt_request_ip();
+
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_PARAMS;
+	DHCP_OPT[dhcp_state.opt_ptr++] = 3;
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_PARAM_SUBNET;
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_PARAM_ROUTER;
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_PARAM_DNS;
+
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_END;
+	// Padding to 300 bytes
+	DHCP_OPT[dhcp_state.opt_ptr++] = 0;
+	DHCP_OPT[dhcp_state.opt_ptr++] = 0;
+	DHCP_OPT[dhcp_state.opt_ptr++] = 0;
+	DHCP_OPT[dhcp_state.opt_ptr++] = 0;
+	DHCP_OPT[dhcp_state.opt_ptr++] = 0;
+	DHCP_OPT[dhcp_state.opt_ptr++] = 0;
+
+	uip_udp_send(sizeof(struct dhcp_pkt) + dhcp_state.opt_ptr);
+	dhcp_state.state = DHCP_DISCOVER_SENT;
+	dhcp_state.ticks = SYS_TICK_HZ;
+	dhcp_state.dhcp_timer = 30; // Timeout for discover
 }
 
 
@@ -286,7 +321,7 @@ void parse_opts(void)
 }
 
 
-void parse_dhcp(void)
+void parse_dhcp_response(void)
 {
 	if (!DHCP_P->tid == HTONS(dhcp_state.transaction_id))
 		return;
@@ -327,13 +362,61 @@ void parse_dhcp(void)
 }
 
 
+void parse_dhcp_request(void)
+{
+	print_string("parse_dhcp_request called\n");
+	if (DHCP_P->cookie[0] != 0x63 || DHCP_P->cookie[1] != 0x82 || DHCP_P->cookie[2] != 0x53 || DHCP_P->cookie[3] != 0x63)
+		return;
+
+	dhcp_state.opt_ptr = 0;
+	if (DHCP_OPT[dhcp_state.opt_ptr++] != DHCP_MESSAGE_TYPE || DHCP_OPT[dhcp_state.opt_ptr++] != DHCP_MESSAGE_TYPE_LEN)
+		return;
+	if (DHCP_OPT[dhcp_state.opt_ptr] == DHCP_MESSAGE_DISCOVER) {
+		dhcp_state.opt_ptr++;
+		dhcp_state.current_ip[0] = DHCP_P->your_ip[0];
+		dhcp_state.current_ip[1] = DHCP_P->your_ip[1];
+		dhcp_state.current_ip[2] = DHCP_P->your_ip[2];
+		dhcp_state.current_ip[3] = DHCP_P->your_ip[3];
+		parse_opts();
+		print_string("DHCP offer received for IP ");
+		print_byte(dhcp_state.current_ip[0]); print_byte(dhcp_state.current_ip[1]);
+		print_byte(dhcp_state.current_ip[2]); print_byte(dhcp_state.current_ip[3]);
+		write_char('\n');
+		dhcp_send_request();
+	} else if (DHCP_OPT[dhcp_state.opt_ptr++] == DHCP_MESSAGE_REQUEST) {
+		parse_opts();
+		print_string("DHCP ACK, our IP is ");
+		print_byte(dhcp_state.current_ip[0]); print_byte(dhcp_state.current_ip[1]);
+		print_byte(dhcp_state.current_ip[2]); print_byte(dhcp_state.current_ip[3]);
+		write_char('\n');
+		print_string("DHCP netmask ");
+		print_byte(dhcp_state.subnet[0]); print_byte(dhcp_state.subnet[1]);
+		print_byte(dhcp_state.subnet[2]); print_byte(dhcp_state.subnet[3]);
+		write_char('\n');
+		print_string("DHCP gateway ");
+		print_byte(dhcp_state.router[0]); print_byte(dhcp_state.router[1]);
+		print_byte(dhcp_state.router[2]); print_byte(dhcp_state.router[3]);
+		write_char('\n');
+		print_string("DHCP lease-time ");
+		print_long(dhcp_state.lease);
+		write_char('\n');
+		uip_ipaddr(&uip_hostaddr, dhcp_state.current_ip[0], dhcp_state.current_ip[1], dhcp_state.current_ip[2], dhcp_state.current_ip[3]);
+		uip_ipaddr(&uip_draddr, dhcp_state.router[0], dhcp_state.router[1], dhcp_state.router[2], dhcp_state.router[3]);
+		uip_ipaddr(&uip_netmask, dhcp_state.subnet[0], dhcp_state.subnet[1], dhcp_state.subnet[2], dhcp_state.subnet[3]);
+		dhcp_state.state = DHCP_LEASING;
+		dhcp_state.ticks = SYS_TICK_HZ;
+		dhcp_state.dhcp_timer = dhcp_state.renewal > 0xffff ? 0xffff : dhcp_state.renewal;
+	}
+}
+
+
 void dhcp_start(void) __banked
 {
 	uip_ipaddr(server, 255,255,255,255);
-	dhcp_state.conn = uip_udp_new(&server, HTONS(DHCPC_SERVER_PORT));
+	dhcp_state.conn = uip_udp_new(&server, HTONS(DHCP_SERVER_PORT));
 	dhcp_state.current_ip[0] = dhcp_state.current_ip[1] = dhcp_state.current_ip[2] = dhcp_state.current_ip[3] = 0;
 	if(dhcp_state.conn) {
-		uip_udp_bind(dhcp_state.conn, HTONS(DHCPC_CLIENT_PORT));
+		uip_udp_bind(dhcp_state.conn, HTONS(DHCP_CLIENT_PORT));
 	} else {
 		print_string("dhcp_start failed to set up socket\n");
 		return;
@@ -345,9 +428,49 @@ void dhcp_start(void) __banked
 }
 
 
+void dhcpd_start(void) __banked
+{
+	memset(&cstates[0], 0, sizeof (struct dhcpd_cstate) * DHCPD_MAX_CLIENTS);
+	dhcp_state.conn = uip_udp_new(0, 0);
+	if(dhcp_state.conn) {
+		uip_udp_bind(dhcp_state.conn, HTONS(DHCP_SERVER_PORT));
+	} else {
+		print_string("dhcpd_start failed to set up socket\n");
+		return;
+	}
+	dhcp_state.state = DHCP_SERVER;
+
+	dhcp_state.server[0] = uip_hostaddr[0] >> 8; dhcp_state.server[1] = uip_hostaddr[0] & 0xff;
+	dhcp_state.server[2] = uip_hostaddr[1] >> 8; dhcp_state.server[3] = uip_hostaddr[1] & 0xff;
+
+	dhcp_state.router[0] = uip_draddr[0] >> 8; dhcp_state.router[1] = uip_draddr[0] & 0xff;
+	dhcp_state.router[2] = uip_draddr[1] >> 8; dhcp_state.router[3] = uip_draddr[1] & 0xff;
+
+	dhcp_state.subnet[0] = uip_netmask[0] >> 8; dhcp_state.subnet[1] = uip_netmask[0] & 0xff;
+	dhcp_state.subnet[2] = uip_netmask[1] >> 8; dhcp_state.subnet[3] = uip_netmask[1] & 0xff;
+
+	dhcp_state.broadcast[0] = dhcp_state.router[0]; dhcp_state.broadcast[1] = dhcp_state.router[1];
+	dhcp_state.broadcast[2] = dhcp_state.router[2]; dhcp_state.broadcast[3] = 0xff;
+
+	for (uint8_t i = 0; i < DHCPD_MAX_CLIENTS; i++) {
+		cstates[i].mac[0] = 0x01; // We set the MC bit of all addresses to mark the entry unused
+	}
+	// TODO: DNS, correct broadcast address
+
+	print_string("dhcpd_start done\n");
+}
+
+
 void dhcp_stop(void) __banked
 {
 	print_string("dhcp_stop called\n");
+	uip_udp_remove(dhcp_state.conn);
+	dhcp_state.state = DHCP_OFF;
+}
+
+void dhcpd_stop(void) __banked
+{
+	print_string("dhcpd_stop called\n");
 	uip_udp_remove(dhcp_state.conn);
 	dhcp_state.state = DHCP_OFF;
 }
@@ -360,8 +483,10 @@ void dhcp_callback(void) __banked
 	if (uip_closed()) {
 		print_string("Closed\n");
 		return;
+	} else if (dhcp_state.state == DHCP_SERVER && uip_newdata()) {
+		parse_dhcp_request();
 	} else if (uip_newdata()) {
-		parse_dhcp();
+		parse_dhcp_response();
 	} else {
 		if (dhcp_state.state == DHCP_START) {
 			dhcp_send_discover();
