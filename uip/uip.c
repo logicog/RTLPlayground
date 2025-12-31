@@ -398,7 +398,7 @@ uip_init(void) __banked
 /*---------------------------------------------------------------------------*/
 #if UIP_ACTIVE_OPEN
 __xdata struct uip_conn *
-uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport)
+uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 {
   __xdata struct uip_conn *conn, *cconn;
   
@@ -464,7 +464,7 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport)
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
 struct uip_udp_conn *
-uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport)
+uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport) __banked
 {
   register struct uip_udp_conn *conn;
   
@@ -509,7 +509,7 @@ uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport)
 #endif /* UIP_UDP */
 /*---------------------------------------------------------------------------*/
 void
-uip_unlisten(u16_t port)
+uip_unlisten(u16_t port) __banked
 {
   for(c = 0; c < UIP_LISTENPORTS; ++c) {
     if(uip_listenports[c] == port) {
@@ -520,7 +520,7 @@ uip_unlisten(u16_t port)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_listen(u16_t port)
+uip_listen(u16_t port) __banked
 {
   for(c = 0; c < UIP_LISTENPORTS; ++c) {
     if(uip_listenports[c] == 0) {
@@ -1898,7 +1898,7 @@ htons(u16_t val)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_send(register __xdata const void *data, register uint16_t len)
+uip_send(register __xdata const void *data, register uint16_t len) __banked
 {
   if(len > 0) {
     uip_slen = len;
