@@ -59,17 +59,14 @@ $(BUILDDIR)%.rel: $(BUILDDIR)%.asm
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
 $(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS) $(BUILDDIR)crc16.rel
-	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS}  -Wl-bBANK1=0x14000 -Wl-r -o $@ $^
+	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS} -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
 
 $(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
 $(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 	if [ -e $@ ]; then rm $@; fi
-	echo "0000000: 00 40" | xxd -r - $@
-	cat $< >> $@
-	truncate --size=16K $@
-	dd if=$< skip=80 bs=1024 >>$@
+	tools/$(BUILDDIR)imagebuilder -i $^ $@
 	tools/$(BUILDDIR)fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
 	tools/$(BUILDDIR)crc_calculator -u $@
