@@ -133,6 +133,10 @@ typedef unsigned short uip_stats_t;
 
 /**
  * UDP checksums on or off
+ * The RTL8372/3 are able to calculate and verify all L2 and L3 checksums
+ * in hardware. The TX checksums are configured in the CPU-tag of outgoing
+ * packets, while the RTL837X_NIC_RX_CTRL register configures the verification
+ * of the checksum of inbound packets and subsequent possible drop.
  *
  * \hideinitializer
  */
