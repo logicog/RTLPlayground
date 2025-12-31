@@ -921,7 +921,7 @@ uip_process(u8_t flag) __banked
     
     /* Check if we have a DHCP packet, otherwise check if the packet is destined for our IP address. */
 #if !UIP_CONF_IPV6
-    if(!(BUF->proto == UIP_PROTO_UDP && UDPBUF->destport == HTONS(DHCP_CLIENT_PORT))) {
+    if(!(BUF->proto == UIP_PROTO_UDP && (UDPBUF->destport == HTONS(DHCP_CLIENT_PORT) || UDPBUF->destport == HTONS(DHCP_SERVER_PORT)) )) {
       if(!uip_ipaddr_cmpx(BUF->destipaddr, uip_hostaddr)) {
         UIP_STAT(++uip_stat.ip.drop);
         goto drop;
