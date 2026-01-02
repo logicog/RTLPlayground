@@ -16,6 +16,10 @@
 #define DHCP_LEASING		4
 #define DHCP_SERVER		5
 
+#define CSTATE_NONE		0
+#define CSTATE_OFFERED		1
+#define CSTATE_LEASED		2
+
 void dhcp_start(void) __banked;
 void dhcp_stop(void) __banked;
 void dhcp_callback(void) __banked;
