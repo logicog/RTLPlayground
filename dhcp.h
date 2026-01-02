@@ -3,7 +3,7 @@
 
 #include "uipopt.h"
 #include <stdint.h>
-#define DHCPD_MAX_CLIENTS	10
+#define DHCPD_MAX_CLIENTS	20
 #define DHCPD_START_IP		100
 
 #define DHCP_SERVER_PORT	67
@@ -15,6 +15,10 @@
 #define DHCP_REQUEST_SENT	3
 #define DHCP_LEASING		4
 #define DHCP_SERVER		5
+
+#define CSTATE_NONE		0
+#define CSTATE_OFFERED		1
+#define CSTATE_LEASED		2
 
 void dhcp_start(void) __banked;
 void dhcp_stop(void) __banked;
