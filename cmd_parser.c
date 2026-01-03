@@ -5,6 +5,7 @@
 // #define DEBUG
 // #define REGDBG 1
 
+#include <8051.h>
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
@@ -875,6 +876,11 @@ void cmd_parser(void) __banked
 			print_string("  Tick counter: "); print_long(ticks); print_string("   Sec Counter: ");
 			reg_read_m(RTL837X_REG_SEC_COUNTER);
 			print_sfr_data();
+			print_string("\nTimer2: "); print_byte(TH2); print_byte(TL2);
+			print_string("\nRCAP2: "); print_byte(RCAP2H); print_byte(RCAP2L);
+			print_string("\nIE: "); print_byte(IE);
+			print_string("\nT2CON: "); print_byte(T2CON);
+			print_string("\nCKCON: "); print_byte(CKCON);
 			write_char('\n');
 		} else if (cmd_compare(0, "history")) {
 			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
