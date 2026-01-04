@@ -28,7 +28,6 @@ void crc16(__xdata uint8_t *v) __naked;
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
 
-#define SYS_TICK_HZ 200
 #define SERIAL_BAUD_RATE 115200
 
 /* All RTL839x switches have an external 25MHz Oscillator,
@@ -54,12 +53,20 @@ void crc16(__xdata uint8_t *v) __naked;
 #define CLOCK_DIV 0
 #endif
 
-// Derive divider for the system ticks
-#define TIMER0_DIV (CLOCK_HZ / 12 / SYS_TICK_HZ)
-#if TIMER0_DIV > 0xFFFF
-#error "SYS_TICH_HZ to low, must be >= 158"
+/* Derive divider for the system ticks
+   TIMER2 can divide the F_CPU by 4 or 12.
+   So the F_TICKS are in the range of:
+   -  F_TIMER_DIV4_OVERFLOW = F_SYS /  DIV4 / 1..65536 = 125MHz /  4 / 1..65536 = 31.25 MHz .. 476.8 Hz
+   - T_TIMER_DIV12_OVERFLOW = F_SYS / DIV12 / 1..65536 = 125MHz / 12 / 1..65536 = 10.42 MHz .. 158.9 Hz
+   Selecting dividor 12 settings to get lowest timer tick posiable which is already high.
+*/
+#define SYS_TICK_HZ 200
+
+#define TIMER2_DIV (CLOCK_HZ / 12 / SYS_TICK_HZ)
+#if TIMER2_DIV > 0xFFFF
+#error "SYS_TICK_HZ to low, must be >= 159"
 #endif
-#define SYSTICK_TIMER0_VALUE (0x10000 - TIMER0_DIV)
+#define SYSTICK_TIMER2_VALUE (0x10000 - TIMER2_DIV)
 
 __xdata uint8_t idle_ready;
 
@@ -118,15 +125,19 @@ __xdata uint8_t sfp_options[2];
 
 void isr_timer0(void) __interrupt(1)
 {
-	TR0 = 0;		// Stop timer 0
-	T0_U16 = SYSTICK_TIMER0_VALUE;
-	TR0 = 1;		// Re-start timer 0
+}
 
+
+// Timer2: Handle SYS_TICK
+void isr_timer2(void) __interrupt(5)
+{
 	ticks++;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
 	sec_counter++;
 
+	// Clear TF2 & EXF2 by software
+	T2CON &= ~0xC0;
 }
 
 
@@ -287,18 +298,25 @@ void isr_ext3(void) __interrupt(9)
 	write_char('W');
 }
 
-
-void setup_timer0(void)
+// Timer2: handles system tick.
+void setup_timer2(void)
 {
-	TMOD = 0x11;  // Timer 1: Mode 1, Timer 0: Mode 1, i.e. 16 bit counters, no auto-reload
-	/* The TH0 registers contain the high/low byte that we load into Timer0 when T0
-	 * overflows to 0x10000
-	 */
-	T0_U16 = SYSTICK_TIMER0_VALUE;
+	T2CON = 0x00; // Timer2: Mode 16-bit timer with auto-reload, disable the timer.
 
-	CKCON &= 0xc7;
-	TCON = 0x10;	// Start timer 0
-	ET0 = 1;	// Enable timer interrupts
+	// Timer 2 clock select F_SYS / 12;
+	// T2M = 0 uses clk/12;
+	CKCON &= ~0x20;
+
+	// The RCAP2 registers contain the high/low byte that is loaded into
+	// timer2 when T2 overflows to 0x10000
+	RCAP2_U16 = SYSTICK_TIMER2_VALUE;
+
+	T2CON |= 0x04; // Timer2: Enable
+
+	// IP |= 0x20; // TEST: Make Timer 2 interrupt as high priority.
+	ET2 = 1; // Enable Timer2 interrupt.
+
+
 }
 
 
@@ -1704,16 +1722,14 @@ void bootloader(void)
 	IE = 0;
 	EIE = 0;  // SFR e8: EIE. Disable all external IRQs
 
-	// Disable all interrupts (global interrupt enable bit)
-	EA = 0; // SFR A8.7 / IE.7
-
 	idle_ready = 0;
 	// HW setup, serial, timer, external IRQs
 	setup_clock();
+	setup_timer2();
 	setup_serial();
-	setup_timer0();
 	setup_external_irqs();
-	EA = 1; // Enable all IRQs
+
+	EA = 1; // Enable global interrupt
 
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
