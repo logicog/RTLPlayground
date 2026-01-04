@@ -28,6 +28,7 @@ void crc16(__xdata uint8_t *v) __naked;
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
 
+// See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200
 
 /* All RTL839x switches have an external 25MHz Oscillator,
@@ -1662,25 +1663,48 @@ void init_smi(void)
 }
 
 
-/* Set up serial port 0 using Timer 2 with an external trigger
- * as baud generator.
- * The external clock generator uses a crystal at 25MHz.
+/* Set up serial port 0 using Timer 1 as baudrate generator.
+ * For x Bd these settings are needed, see table below.
+ * NOTE: Settings only valid for F_SYS = 125 MHz!
+ * |   Wanted |       | TMR | F_SYS |      |   Actual |        |
+ * | baudrate | SMOD0 | DIV |   DIV |  TH1 | baudrate |  Error |
+ * | -------- | ----- | --- | ----- | ---- | -------- | ------ |
+ * |     1200 |   0   |  12 |   255 | 0x01 |   1276.6 |  6.00% |
+ * |     2400 |   0   |  12 |   136 | 0x78 |   2393.5 | −0.27% |
+ * |     4800 |   0   |   4 |   203 | 0x35 |   4810.7 |  0.22% |
+ * |     9600 |   1   |   4 |   203 | 0x35 |   9621.3 |  0.22% |
+ * |    14400 |   1   |   4 |   136 | 0x78 |  14361.2 | −0.27% |
+ * |    19200 |   1   |   4 |   102 | 0x9a |  19148.3 | −0.27% |
+ * |    38400 |   1   |   4 |    51 | 0xcd |  38296.6 | −0.27% |
+ * |    57600 |   1   |   4 |    34 | 0xde |  57444.9 | −0.27% |
+ * |   115200 |   1   |   4 |    17 | 0xef | 114889.7 | −0.27% |
  */
-void setup_serial(void)
+#if CLOCK_HZ != 125000000
+#warning "SERIAL 0 baudrate setting may only valid for F_CPU = 125 MHz!"
+#endif
+void setup_serial_timer1(void)
 {
-	IE = 0;
+	// Timer 1: Mode 2: automatic reload
+	TMOD &= 0x0F;
+	TMOD |= 0xA0; // Timer1: GATE, Mode2: Timer, 8-bit with auto-reload
+	CKCON |= 0x10; // Timer1 clock divider: F_SYS / 4: T2M = 1, Timer 1 uses clk/4
 
-	T2CON = 0x34; // Enable RCLK/TCLK (serial transmit/receive clock for T2), TR2 (Timer 2 RUN), disable CP/RL2 (bit 0)
-	SCON = 0x50;  // Mode = 1: ASYNC 8N1 with T2 as baud-rate generator, REN_0 Receive enable
+	PCON |= 0x80; // SMOD0 = 1; Double the Baud Rate, don't divide Timer 1 Overflag signal.
 
-	// The RCAP2 registers contain the high/low byte that is loaded into
-	// timer2 when T2 overflows to 0x10000
-	RCAP2H = (0x10000 - ((CLOCK_HZ / SERIAL_BAUD_RATE + 16) / 32)) >> 8;
-	RCAP2L = (0x10000 - ((CLOCK_HZ / SERIAL_BAUD_RATE + 16) / 32)) % 0xff;
+	SCON  = 0x50;  // Mode = 1: ASYNC 8N1 with Timer 2 as baud-rate generator, REN_0 Receive enable
 
-	PCON |= 0x80; // Double the Baud Rate
+	/* The TH1 register contain the reload value, timer1 when T1 overflows to 0x100.
+	 * NOTE: compiler computs the wrong value. 0xF0 is calculated but 0xEF is the right value for 115200.
+	 * Also https://www.keil.com/products/c51/baudrate.asp confirms this.
+	 * Added 32 before div by 64 to make sure rounding is correct so that the results are right.
+	 *
+	 * TH1 = 0x100 - (2^SMOD0 * F_SYS) / ( TMR1_DIV / BAUDRATE * 32)
+	 */
+	TH1 = (0x100 - (((CLOCK_HZ / SERIAL_BAUD_RATE) + 32) / (4 * 16))) & 0xff;
 
-	SCON = 0x50;
+	TCON |= 0x40;	// Start timer 1
+
+	ET1 = 0; // Timer1 Interrupt is NOT wanted!
 	TI = 1;
 	RI = 0;
 
@@ -1726,7 +1750,7 @@ void bootloader(void)
 	// HW setup, serial, timer, external IRQs
 	setup_clock();
 	setup_timer2();
-	setup_serial();
+	setup_serial_timer1();
 	setup_external_irqs();
 
 	EA = 1; // Enable global interrupt
