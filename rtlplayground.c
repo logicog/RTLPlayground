@@ -121,6 +121,7 @@ __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
+__sbit tx_buf_empty = 1;
 
 #define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
 
@@ -145,9 +146,13 @@ void isr_timer2(void) __interrupt(5)
 void isr_serial(void) __interrupt(4)
 {
 	if (RI == 1) {
+		RI = 0;
 		sbuf[sbuf_ptr] = SBUF;
 		sbuf_ptr = (sbuf_ptr + 1) & (SBUF_SIZE - 1);
-		RI = 0;
+	}
+	if (TI == 1) {
+		TI = 0;
+		tx_buf_empty = 1;
 	}
 }
 
@@ -155,14 +160,14 @@ void isr_serial(void) __interrupt(4)
 void write_char(char c)
 {
 	do {
-	} while (TI == 0);
-	TI = 0;
+	} while (tx_buf_empty == 0);
 	if (c =='\n') {
+		tx_buf_empty = 0;
 		SBUF = '\r';
 		do {
-		} while (TI == 0);
-		TI = 0;
+		} while (tx_buf_empty == 0);
 	}
+	tx_buf_empty = 0;
 	SBUF = c;
 }
 
@@ -1705,8 +1710,8 @@ void setup_serial_timer1(void)
 	TCON |= 0x40;	// Start timer 1
 
 	ET1 = 0; // Timer1 Interrupt is NOT wanted!
-	TI = 1;
-	RI = 0;
+	TI = 0; // Clear TI-interrupt flag
+	RI = 0; // Clear RI-interrupt flag
 
 	ES = 1; // Enable serial IRQ
 }
