@@ -11,7 +11,6 @@
 #include "../rtl837x_sfr.h"
 #include "../rtl837x_regs.h"
 
-#define SYS_TICK_HZ 100
 #define SERIAL_BAUD_RATE 57600
 #define CLOCK_HZ 125000000
 
@@ -26,10 +25,6 @@
 #define CLOCK_DIV 0
 #endif
 
-volatile __xdata uint32_t ticks;
-volatile __xdata uint8_t sec_counter;
-volatile __xdata uint16_t sleep_ticks;
-
 // We buffer 1 sector as this is also the erase size
 __xdata uint8_t buffer[0x1000];
 __xdata uint8_t dio_enabled;
@@ -38,16 +33,6 @@ __code uint8_t * __code hex = "0123456789abcdef";
 
 void isr_timer0(void) __interrupt(1)
 {
-	TR0 = 0;		// Stop timer 0
-	TH0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) >> 8;
-	TL0 = (0x10000 - (CLOCK_HZ / SYS_TICK_HZ / 32)) % 0xff;
-
-	ticks++;
-	if (sleep_ticks > 0)
-		sleep_ticks--;
-	sec_counter++;
-
-	TR0 = 1;		// Re-start timer 0
 }
 
 
