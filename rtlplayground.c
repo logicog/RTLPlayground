@@ -121,7 +121,7 @@ __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
-__sbit tx_buf_empty = 1;
+__sbit tx_buf_empty;
 
 #define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
 
@@ -1712,6 +1712,8 @@ void setup_serial_timer1(void)
 	ET1 = 0; // Timer1 Interrupt is NOT wanted!
 	TI = 0; // Clear TI-interrupt flag
 	RI = 0; // Clear RI-interrupt flag
+
+	tx_buf_empty = 1; // Set tx `serial buffer is empty`-software flag.
 
 	ES = 1; // Enable serial IRQ
 }
