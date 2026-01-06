@@ -238,9 +238,8 @@ uip_arp_update(__xdata u16_t *ipaddr, __xdata struct uip_eth_addr *ethaddr)
  * variable uip_len.
  */
 /*-----------------------------------------------------------------------------------*/
-#if 0
 void
-uip_arp_ipin(void)
+uip_arp_ipin(void) __banked
 {
   uip_len -= sizeof(struct uip_eth_hdr);
 	
@@ -258,7 +257,7 @@ uip_arp_ipin(void)
   
   return;
 }
-#endif /* 0 */
+
 /*-----------------------------------------------------------------------------------*/
 /**
  * ARP processing for incoming ARP packets.
