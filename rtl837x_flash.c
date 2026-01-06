@@ -16,7 +16,9 @@ __xdata struct flash_region_t flash_region;
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
 #define CMD_PAGE_PROGRAM	0x02
-#define CMD_READ		0x03
+// Don't use command `READ 0x03`, because on many device this command can't run at maximum SPI-clock speed.
+// Use `Fast READ 0x0b` instead!
+//#define CMD_READ		0x03
 #define CMD_WRITE_ENABLE	0x06
 #define CMD_FREAD		0x0b
 #define CMD_SECTOR_ERASE	0x20
@@ -249,8 +251,8 @@ void flash_read_bulk(__xdata uint8_t *dst)
 		SFR_FLASH_DUMMYCYCLES = 4;
 	} else {
 		SFR_FLASH_MODEB = 0x0;
-		SFR_FLASH_CMD_R = CMD_READ;
-		SFR_FLASH_DUMMYCYCLES = 0;
+		SFR_FLASH_CMD_R = CMD_FREAD;	// Fast read
+		SFR_FLASH_DUMMYCYCLES = 8;	// Add 8 dummy clocks
 	}
 
 
