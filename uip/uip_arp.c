@@ -106,6 +106,7 @@ struct ethip_hdr {
   u16_t ipchksum;
   u16_t srcipaddr[2],
     destipaddr[2];
+  u16_t sport, dport;
 };
 
 #define ARP_REQUEST 1
@@ -370,6 +371,11 @@ uip_arp_out(void) __banked
      If not ARP table entry is found, we overwrite the original IP
      packet with an ARP request for the IP address. */
 
+  if (IPBUF->sport == 0x4300 && !IPBUF->destipaddr[0] && !IPBUF->destipaddr[1]) {
+    IPBUF->destipaddr[0] = 0xffff;
+    IPBUF->destipaddr[1] = 0xffff;
+    IPBUF->dport = 0x4400;
+  }
   /* First check if destination is a local broadcast. */
   if(uip_ipaddr_cmpc(IPBUF->destipaddr, broadcast_ipaddr)) {
     memcpyc(IPBUF->ethhdr.dest.addr, broadcast_ethaddr.addr, 6);
