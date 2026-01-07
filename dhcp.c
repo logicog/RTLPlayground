@@ -16,6 +16,9 @@ extern __code struct uip_eth_addr uip_ethaddr;
 __xdata struct dhcp_state dhcp_state;
 __xdata uip_ipaddr_t server;
 
+#define BOOTP_REQUEST		1
+#define BOOTP_REPY		2
+
 #define DHCP_HW_TYPE_ETH	1
 
 #define DHCP_SUBNET_MASK 	1
@@ -47,6 +50,8 @@ __xdata uip_ipaddr_t server;
 #define DHCP_REQUEST_IP_LEN	4
 #define DHCP_CLIENT_NAME	12
 #define DHCP_PARAMS		55
+#define DHCP_VENDOR_ID		60
+#define DHCP_CLIENT_ID		61
 #define DHCP_PARAM_SUBNET	1
 #define DHCP_PARAM_ROUTER	3
 #define DHCP_PARAM_DNS		6
@@ -58,6 +63,7 @@ __xdata uip_ipaddr_t server;
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
+
 
 struct dhcp_pkt {
 	uint8_t type;
@@ -78,11 +84,6 @@ struct dhcp_pkt {
 	uint8_t cookie[4];
 };
 
-/*
-#define DHCP_P ((__xdata struct dhcp_pkt *)&uip_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE])
-#define DHCP_OPT ((__xdata uint8_t *)&uip_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE + sizeof (struct dhcp_pkt)])
-*/
-
 #define DHCP_P ((__xdata struct dhcp_pkt *)uip_appdata)
 #define DHCP_OPT ((__xdata uint8_t *)(uip_appdata) + sizeof (struct dhcp_pkt))
 
@@ -92,12 +93,12 @@ __xdata uint8_t client_idx;
 
 void dhcp_prepare_msg(void)
 {
-	DHCP_P->type = 1;
+	DHCP_P->type = BOOTP_REQUEST;
 	DHCP_P->hw = DHCP_HW_TYPE_ETH;
 	DHCP_P->hw_len = 6;
 	DHCP_P->hops = 0;
 
-	DHCP_P->tid = HTONS(dhcp_state.transaction_id);
+	DHCP_P->tid = dhcp_state.transaction_id;  // In network byte order
 	DHCP_P->delay = HTONS(0);
 	DHCP_P->flags = 0;
 	// Clear fields client_ip to bootp_file
@@ -270,8 +271,12 @@ void dhcp_send_request(void)
 
 void dhcp_send_reply(uint8_t rtype)
 {
-	print_string("dhcp_send_offer called\n");
+	print_string("dhcp_send_reply called\n");
 	dhcp_prepare_msg();
+	DHCP_P->type = BOOTP_REPY;
+	DHCP_P->client_addr[0] = cstates[client_idx].mac[0]; DHCP_P->client_addr[1] = cstates[client_idx].mac[1];
+	DHCP_P->client_addr[2] = cstates[client_idx].mac[2]; DHCP_P->client_addr[3] = cstates[client_idx].mac[3];
+	DHCP_P->client_addr[4] = cstates[client_idx].mac[4]; DHCP_P->client_addr[5] = cstates[client_idx].mac[5];
 
 	if (rtype != DHCP_MESSAGE_NACK) {
 		DHCP_P->your_ip[0] = dhcp_state.server[0];
@@ -288,6 +293,7 @@ void dhcp_send_reply(uint8_t rtype)
 	if (rtype != DHCP_MESSAGE_NACK) {
 		dhcp_addopt_subnet();
 		dhcp_addopt_router();
+		dhcp_addopt_server_id();
 		dhcp_addopt_rebind();
 		dhcp_addopt_lease();
 		dhcp_addopt_renewal();
@@ -296,6 +302,11 @@ void dhcp_send_reply(uint8_t rtype)
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_END;
 
 	uip_udp_send(sizeof(struct dhcp_pkt) + dhcp_state.opt_ptr);
+	print_string("AFTER: ");
+	for (uint8_t i = 0; i < 255; i++) {
+		print_byte(uip_buf[i]); write_char(' ');
+	}
+	write_char('\n');
 }
 
 
@@ -321,6 +332,22 @@ void long_opt(void)
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
 	long_value <<= 8;
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
+}
+
+
+void print_txt_opt(void)
+{
+	dhcp_state.opt_ptr++;
+	for (uint8_t l = DHCP_OPT[dhcp_state.opt_ptr++]; l ; l--)
+		write_char(DHCP_OPT[dhcp_state.opt_ptr++]);
+}
+
+
+void print_eth_opt(void)
+{
+	dhcp_state.opt_ptr++;
+	for (uint8_t l = DHCP_OPT[dhcp_state.opt_ptr++]; l ; l--)
+		print_byte(DHCP_OPT[dhcp_state.opt_ptr++]);
 }
 
 
@@ -356,10 +383,18 @@ void parse_opts(void)
 			dhcp_state.renewal = long_value;
 			break;
 		case DHCP_CLIENT_NAME:
-			print_string("Client name given\n");
-			dhcp_state.opt_ptr++;
-			dhcp_state.opt_ptr += DHCP_OPT[dhcp_state.opt_ptr];
-			dhcp_state.opt_ptr++;
+			print_string("Client name: ");
+			print_txt_opt();
+			write_char('\n');
+		case DHCP_VENDOR_ID:
+			print_string("Vendor ID: ");
+			print_txt_opt();
+			write_char('\n');
+			break;
+		case DHCP_CLIENT_ID:
+			print_string("Client ID: ");
+			print_eth_opt();
+			write_char('\n');
 			break;
 		case DHCP_END:
 			break;
@@ -405,7 +440,7 @@ void find_slot(void)
 
 void parse_dhcp_response(void)
 {
-	if (!DHCP_P->tid == HTONS(dhcp_state.transaction_id))
+	if (!DHCP_P->tid == dhcp_state.transaction_id)
 		return;
 	if (DHCP_P->cookie[0] != 0x63 || DHCP_P->cookie[1] != 0x82 || DHCP_P->cookie[2] != 0x53 || DHCP_P->cookie[3] != 0x63)
 		return;
@@ -474,7 +509,7 @@ void parse_dhcp_request(void)
 		cstates[client_idx].mac[0] = DHCP_P->client_addr[0]; cstates[client_idx].mac[1] = DHCP_P->client_addr[1];
 		cstates[client_idx].mac[2] = DHCP_P->client_addr[2]; cstates[client_idx].mac[3] = DHCP_P->client_addr[3];
 		cstates[client_idx].mac[4] = DHCP_P->client_addr[4]; cstates[client_idx].mac[5] = DHCP_P->client_addr[5];
-
+		dhcp_state.transaction_id = DHCP_P->tid;
 		parse_opts();
 		dhcp_send_reply(DHCP_MESSAGE_OFFER);
 	} else if (DHCP_OPT[dhcp_state.opt_ptr++] == DHCP_MESSAGE_REQUEST) {
@@ -519,14 +554,14 @@ void dhcpd_start(void) __banked
 	}
 	dhcp_state.state = DHCP_SERVER;
 
-	dhcp_state.server[0] = uip_hostaddr[0] >> 8; dhcp_state.server[1] = uip_hostaddr[0] & 0xff;
-	dhcp_state.server[2] = uip_hostaddr[1] >> 8; dhcp_state.server[3] = uip_hostaddr[1] & 0xff;
+	dhcp_state.server[1] = uip_hostaddr[0] >> 8; dhcp_state.server[0] = uip_hostaddr[0] & 0xff;
+	dhcp_state.server[3] = uip_hostaddr[1] >> 8; dhcp_state.server[2] = uip_hostaddr[1] & 0xff;
 
-	dhcp_state.router[0] = uip_draddr[0] >> 8; dhcp_state.router[1] = uip_draddr[0] & 0xff;
-	dhcp_state.router[2] = uip_draddr[1] >> 8; dhcp_state.router[3] = uip_draddr[1] & 0xff;
+	dhcp_state.router[1] = uip_draddr[0] >> 8; dhcp_state.router[0] = uip_draddr[0] & 0xff;
+	dhcp_state.router[3] = uip_draddr[1] >> 8; dhcp_state.router[2] = uip_draddr[1] & 0xff;
 
-	dhcp_state.subnet[0] = uip_netmask[0] >> 8; dhcp_state.subnet[1] = uip_netmask[0] & 0xff;
-	dhcp_state.subnet[2] = uip_netmask[1] >> 8; dhcp_state.subnet[3] = uip_netmask[1] & 0xff;
+	dhcp_state.subnet[1] = uip_netmask[0] >> 8; dhcp_state.subnet[0] = uip_netmask[0] & 0xff;
+	dhcp_state.subnet[3] = uip_netmask[1] >> 8; dhcp_state.subnet[2] = uip_netmask[1] & 0xff;
 
 	dhcp_state.broadcast[0] = dhcp_state.router[0]; dhcp_state.broadcast[1] = dhcp_state.router[1];
 	dhcp_state.broadcast[2] = dhcp_state.router[2]; dhcp_state.broadcast[3] = 0xff;
@@ -589,7 +624,4 @@ void dhcp_callback(void) __banked
 			}
 		}
 	}
-
-	// By default we do not send anything out
-	uip_len = 0;
 }
