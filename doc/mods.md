@@ -17,7 +17,7 @@ Memory speed is dictated by the SPI-BUS clock frequency which is `62.5 MHz`.
 
 ### SPI Operation
 
-By default, SPI-BUS uses `CLK`, `CS`, `DI` and `DO`. To increase the data throughput without increasing the bus frequency, a single command can run in `DUAL SPI operation`. This means that for a specific command `DI` and `DO` are both used to transfer the data to/from the device. So it makes the data transfer twice as fast. Although the SOC datasheet doesn’t mention it, our software is making use of this mode.
+By default, SPI-BUS uses `CLK`, `CS`, `DI` and `DO`. To increase the data throughput without increasing the bus frequency, a single command can run in `DUAL SPI operation`. This means that for a specific command `DI` and `DO` are both used to transfer the data to/from the device. So it makes the data transfer up-to twice as fast. Although the SOC datasheet doesn’t mention it, our software is making use of this mode.
 
 ### Package
 
@@ -28,6 +28,7 @@ Most use package are `SO8`-type may also called `SOIC8`-type. Which can also hav
 1. Size: At least `16 MBit / 4 MiB` (theoretic max. `128 MBit / 32 MiB`, but is not *tested*!)
 2. Speed: `62.5 MHz` or better.
 3. Support for `DUAL SPI operation`.
+   Device need support for command `BBh`, `Dual I/O Fast Read` or `Fast Read Dual I/O`.
 
 ### Known Working
 
