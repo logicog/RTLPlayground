@@ -41,7 +41,6 @@ __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 __xdata uint8_t entry;
 __xdata uint16_t slen;
 __xdata uint16_t o_idx;
-__xdata uint16_t mpos;
 __xdata uint16_t len_left;
 __xdata uint16_t cont_len;
 __xdata uint32_t cont_addr;

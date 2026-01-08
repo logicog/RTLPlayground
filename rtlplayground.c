@@ -1740,7 +1740,7 @@ void bootloader(void)
 
 	print_string("\nStarting up...\n");
 	print_string("  Flash controller\n");
-	flash_init(0);
+	flash_init(1);
 
 	// Reset NIC
 	reg_bit_set(RTL837X_REG_RESET, RESET_NIC_BIT);

@@ -8,8 +8,6 @@
 #include "rtl837x_sfr.h"
 
 __xdata uint8_t dio_enabled;
-__xdata uint8_t markbuf[16];
-extern __xdata uint16_t mpos;
 __xdata struct flash_region_t flash_region;
 
 
@@ -159,6 +157,8 @@ void flash_read_jedecid(void)
 	SFR_FLASH_MODEB = 0x0;
 	SFR_FLASH_CMD_R = CMD_FREAD;
 	SFR_FLASH_DUMMYCYCLES = 8;
+
+	flash_configure_mmio();
 }
 
 
@@ -318,6 +318,8 @@ void flash_read_security(void)
 
 		flash_region.len -= 4;
 	} while(flash_region.len);
+
+	flash_configure_mmio();
 }
 
 
