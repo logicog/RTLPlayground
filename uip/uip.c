@@ -1,5 +1,8 @@
 #define DEBUG_PRINTF(...) /*printf(__VA_ARGS__)*/
 
+// #define DEBUG
+#include "debug.h"
+
 /**
  * \defgroup uip The uIP TCP/IP stack
  * @{
@@ -691,9 +694,9 @@ uip_process(u8_t flag) __banked
     if((uip_connr->tcpstateflags & UIP_TS_MASK) == UIP_ESTABLISHED &&
        !uip_outstanding(uip_connr)) {
 	uip_flags = UIP_POLL;
-        write_char('B');
+        dbg_char('B');
 	UIP_APPCALL();
-        write_char('b');
+        dbg_char('b');
 	goto appsend;
     }
     goto drop;
@@ -745,9 +748,9 @@ uip_process(u8_t flag) __banked
 	       UIP_TIMEDOUT to inform the application that the
 	       connection has timed out. */
 	    uip_flags = UIP_TIMEDOUT;
-            write_char('C');
+            dbg_char('C');
 	    UIP_APPCALL();
-            write_char('c');
+            dbg_char('c');
 
 	    /* We also send a reset packet to the remote host. */
 	    BUF->flags = TCP_RST | TCP_ACK;
@@ -786,7 +789,7 @@ uip_process(u8_t flag) __banked
                the code for sending out the packet (the apprexmit
                label). */
 	    uip_flags = UIP_REXMIT;
-            write_char('R');
+            dbg_char('R');
 	    UIP_APPCALL();
 	    goto apprexmit;
 	    
@@ -1386,9 +1389,9 @@ uip_process(u8_t flag) __banked
     uip_connr->tcpstateflags = UIP_CLOSED;
     UIP_LOG("tcp: got reset, aborting connection.");
     uip_flags = UIP_ABORT;
-    write_char('F');
+    dbg_char('F');
     UIP_APPCALL();
-    write_char('f');
+    dbg_char('f');
     goto drop;
   }
   /* Calculated the length of the data, if the application has sent
@@ -1532,16 +1535,16 @@ uip_process(u8_t flag) __banked
       uip_connr->len = 0;
       uip_len = 0;
       uip_slen = 0;
-      write_char('H');
+      dbg_char('H');
       UIP_APPCALL();
-      write_char('h');
+      dbg_char('h');
       goto appsend;
     }
     /* Inform the application that the connection failed */
     uip_flags = UIP_ABORT;
-    write_char('I');
+    dbg_char('I');
     UIP_APPCALL();
-    write_char('I');
+    dbg_char('I');
     /* The connection is closed after we send the RST */
     uip_conn->tcpstateflags = UIP_CLOSED;
     goto reset;
@@ -1568,9 +1571,9 @@ uip_process(u8_t flag) __banked
       if(uip_len > 0) {
 	uip_flags |= UIP_NEWDATA;
       }
-      write_char('J');
+      dbg_char('J');
       UIP_APPCALL();
-      write_char('j');
+      dbg_char('j');
       uip_connr->len = 1;
       uip_connr->tcpstateflags = UIP_LAST_ACK;
       uip_connr->nrtx = 0;
@@ -1728,9 +1731,9 @@ uip_process(u8_t flag) __banked
     if(uip_flags & UIP_ACKDATA) {
       uip_connr->tcpstateflags = UIP_CLOSED;
       uip_flags = UIP_CLOSE;
-      write_char('L');
+      dbg_char('L');
       UIP_APPCALL();
-      write_char('l');
+      dbg_char('l');
     }
     break;
     
@@ -1751,9 +1754,9 @@ uip_process(u8_t flag) __banked
       }
       uip_add_rcv_nxt(1);
       uip_flags = UIP_CLOSE;
-      write_char('M');
+      dbg_char('M');
       UIP_APPCALL();
-      write_char('m');
+      dbg_char('m');
       goto tcp_send_ack;
     } else if(uip_flags & UIP_ACKDATA) {
       uip_connr->tcpstateflags = UIP_FIN_WAIT_2;
@@ -1774,9 +1777,9 @@ uip_process(u8_t flag) __banked
       uip_connr->timer = 0;
       uip_add_rcv_nxt(1);
       uip_flags = UIP_CLOSE;
-      write_char('N');
+      dbg_char('N');
       UIP_APPCALL();
-      write_char('n');
+      dbg_char('n');
       goto tcp_send_ack;
     }
     if(uip_len > 0) {
