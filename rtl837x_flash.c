@@ -157,6 +157,8 @@ void flash_read_jedecid(void)
 	SFR_FLASH_MODEB = 0x0;
 	SFR_FLASH_CMD_R = CMD_FREAD;
 	SFR_FLASH_DUMMYCYCLES = 8;
+
+	flash_configure_mmio();
 }
 
 
@@ -316,6 +318,8 @@ void flash_read_security(void)
 
 		flash_region.len -= 4;
 	} while(flash_region.len);
+
+	flash_configure_mmio();
 }
 
 
