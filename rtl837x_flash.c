@@ -8,8 +8,6 @@
 #include "rtl837x_sfr.h"
 
 __xdata uint8_t dio_enabled;
-__xdata uint8_t markbuf[16];
-extern __xdata uint16_t mpos;
 __xdata struct flash_region_t flash_region;
 
 

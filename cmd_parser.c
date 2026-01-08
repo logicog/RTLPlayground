@@ -23,7 +23,6 @@
 #pragma constseg BANK1
 
 extern __code struct machine machine;
-extern __xdata uint16_t mpos;
 extern __xdata uint8_t stpEnabled;
 extern __code uint8_t log_to_phys_port[9];
 
