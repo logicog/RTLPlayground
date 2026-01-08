@@ -1,17 +1,20 @@
 // #define REGDBG 1
 
-#include "../rtl837x_sfr.h"
-#include "../rtl837x_common.h"
-#include "../rtl837x_regs.h"
-#include "../rtl837x_port.h"
-#include "../rtl837x_flash.h"
+#include "rtl837x_sfr.h"
+#include "rtl837x_common.h"
+#include "rtl837x_regs.h"
+#include "rtl837x_port.h"
+#include "rtl837x_flash.h"
 #include "uip.h"
-#include "../html_data.h"
+#include "html_data.h"
 #include <stdint.h>
-#include "../phy.h"
-#include "../version.h"
-#include "../machine.h"
+#include "phy.h"
+#include "version.h"
+#include "machine.h"
 #include "page_impl.h"
+
+// #define DEBUG
+#include "debug.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -94,14 +97,14 @@ void itoa_html(uint8_t v)
 
 uint16_t stat_content(void)
 {
-	print_string("stat_content called\n");
+	dbg_string("stat_content called\n");
 	return 0;
 }
 
 
 uint16_t port_status(void)
 {
-	print_string("port_status called\n");
+	dbg_string("port_status called\n");
 	return 0;
 }
 
@@ -190,7 +193,7 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 void send_basic_info(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	print_string("send_basic_info called\n");
+	dbg_string("send_basic_info called\n");
 	slen += strtox(outbuf + slen, "{\"ip_address\":\"");
 	itoa_html(uip_hostaddr[0]); char_to_html('.');
 	itoa_html(uip_hostaddr[0] >> 8); char_to_html('.');
@@ -232,7 +235,7 @@ void send_basic_info(void)
 void send_vlan(uint16_t vlan)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	print_string("sending VLAN\n");
+	dbg_string("sending VLAN\n");
 	//{"members":"0x00060011"}
 	slen += strtox(outbuf + slen, "{\"members\":\"0x");
 	vlan_get(vlan);
@@ -240,7 +243,7 @@ void send_vlan(uint16_t vlan)
 	slen += strtox(outbuf + slen, "\",\"name\":\"");
 	__xdata uint16_t n = vlan_name(vlan);
 	if (n== 0xffff) {
-		print_string("VLAN has no name\n");
+		dbg_string("VLAN has no name\n");
 	} else {
 		while(vlan_names[n] && vlan_names[n] != ' ')
 			char_to_html(vlan_names[n++]);
@@ -251,9 +254,9 @@ void send_vlan(uint16_t vlan)
 
 void send_counters(char port)
 {
-	print_string("send_counters called: "); print_byte(port); write_char('\n');
+	dbg_string("send_counters called: "); dbg_byte(port); dbg_char('\n');
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	print_string("sending counters\n");
+	dbg_string("sending counters\n");
 
 	port--;
 	uint8_t i = machine.phys_to_log_port[port];
@@ -274,7 +277,7 @@ void send_counters(char port)
 
 void send_mirror(void)
 {
-	print_string("send_mirror called\n");
+	dbg_string("send_mirror called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
 	reg_read_m(RTL837x_MIRROR_CTRL);
@@ -308,7 +311,7 @@ void send_mirror(void)
 
 void send_lag(void)
 {
-	print_string("send_lag called\n");
+	dbg_string("send_lag called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
 	char_to_html('[');
@@ -334,7 +337,7 @@ void send_lag(void)
 
 void send_eee(void)
 {
-	print_string("send_eee called\nsending EEE status\n");
+	dbg_string("send_eee called\nsending EEE status\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
 	reg_read_m(RTL8373_PHY_EEE_ABLTY);
@@ -382,7 +385,7 @@ void send_eee(void)
 
 void send_mtu(void)
 {
-	print_string("send_mtu called\n");
+	dbg_string("send_mtu called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	char_to_html('[');
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
@@ -406,7 +409,7 @@ void send_mtu(void)
 void send_status(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	print_string("sending status\n");
+	dbg_string("sending status\n");
 	char_to_html('[');
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
@@ -507,14 +510,14 @@ void send_status(void)
 
 void send_config(void)
 {
-	print_string("send_config called\n");
+	dbg_string("send_config called\n");
 	__xdata uint32_t pos = CONFIG_START; // 70000 , 6c000 / 0xc000 = 9
 
 	extern __xdata uint16_t len_left = CONFIG_LEN;
 	slen = strtox(outbuf, HTTP_RESPONCE_TXT);
 	while (read_flash((CONFIG_START-CODE0_SIZE) / CODE_BANK_SIZE + 1,
 		(__code uint8_t *) (((CONFIG_START + len_left - CODE0_SIZE) % CODE_BANK_SIZE) + CODE0_SIZE + len_left)) == 0xff) {
-		print_short(len_left);
+		dbg_short(len_left);
 		len_left--;
 	}
 	len_left++;
@@ -532,12 +535,12 @@ void send_config(void)
 
 void send_cmd_log(void)
 {
-	print_string("send_cmd_log called\n");
+	dbg_string("send_cmd_log called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_TXT);
 	__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 	__xdata uint8_t found_begin = 0;
-	print_string("History ptr: ");
-	print_short(cmd_history_ptr); write_char('\n');
+	dbg_string("History ptr: ");
+	dbg_short(cmd_history_ptr); dbg_char('\n');
 	while (p != cmd_history_ptr) {
 		if (!cmd_history[p] || cmd_history[p] == '\n')
 			found_begin = 1;

@@ -1,12 +1,16 @@
 
 #include "httpd.h"
 #include "page_impl.h"
-#include "../rtl837x_common.h"
-#include "../rtl837x_regs.h"
-#include "../cmd_parser.h"
-#include "../rtl837x_flash.h"
+#include "rtl837x_common.h"
+#include "rtl837x_regs.h"
+#include "cmd_parser.h"
+#include "rtl837x_flash.h"
 #include "uip.h"
-#include "../html_data.h"
+#include "html_data.h"
+
+// #define DEBUG
+#include "debug.h"
+
 
 #define SESSION_ID_LENGTH 12
 #define SESSION_TIMEOUT 200
@@ -209,7 +213,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 	authenticated = 0;
 
 	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
-		write_char(*p);
+		dbg_char(*p);
 		if (!*p++)
 			break;
 		if (is_word(p, "\nContent-Type:"))
@@ -218,7 +222,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 			session = p + 17;
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
-		print_string("\nFound multipart\n");
+		dbg_string("\nFound multipart\n");
 		content_type += 30;
 		uint8_t i = 0;
 		while (content_type[i] != '\r' && content_type[i] != '\n') {
@@ -237,12 +241,12 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 
 	if (session) {
 		if (now - last_session_use > SESSION_TIMEOUT) {
-			print_string("Session expired\n");
+			dbg_string("Session expired\n");
 		} else {
 			if (is_word_x(session, session_id))
 				authenticated = 1;
 			else
-				print_string("Invalid session cookie!\n");
+				dbg_string("Invalid session cookie!\n");
 		}
 	}
 	return p;
@@ -273,8 +277,8 @@ uint8_t stream_upload(uint16_t bptr)
 	__xdata uint8_t *p = uip_appdata;
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
-	print_string("Stream_upload called: ");
-	print_short(bptr); write_char('\n');
+	dbg_string("Stream_upload called: ");
+	dbg_short(bptr); dbg_char('\n');
 
 	do {
 		if (bptr >= uip_len) {
@@ -284,7 +288,7 @@ uint8_t stream_upload(uint16_t bptr)
 		// Have we reached the end of the part?
 		if (!boundary[bindex]) {
 			s->tstate = TSTATE_NONE;
-			print_string("len 2: "); print_short(write_len); write_char(' ');
+			dbg_string("len 2: "); dbg_short(write_len); dbg_char(' ');
 			flash_region.addr = uptr;
 			flash_region.len = write_len;
 			flash_write_bytes(flash_buf);
@@ -292,13 +296,13 @@ uint8_t stream_upload(uint16_t bptr)
 			write_len = 0;
 			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
 			if (verify_crc) {
-				print_string("CRC16: "); print_short(crc_final); write_char('\n');
+				dbg_string("CRC16: "); dbg_short(crc_final); dbg_char('\n');
 				if (crc_final == 0xb001) {
-					print_string("Checksum OK.");
+					dbg_string("Checksum OK.");
 				} else {
-					print_string("Checksum incorrect!");
+					dbg_string("Checksum incorrect!");
 				}
-				print_string("Upload to flash done, will reset!\n");
+				dbg_string("Upload to flash done, will reset!\n");
 				reset_chip();
 			}
 			// Make sure there is a 0 at the end of the uploaded data
@@ -325,8 +329,8 @@ uint8_t stream_upload(uint16_t bptr)
 			crc16(p + bptr);
 			flash_buf[write_len++] = p[bptr++];
 			if (write_len >= FLASHMEM_PAGE_SIZE) {
-				print_string("len: "); print_short(write_len); write_char(' ');
-				print_string("CRC16: "); print_short(crc_value); write_char('\n');
+				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
+				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
 				flash_region.addr = uptr;
 				flash_region.len = FLASHMEM_PAGE_SIZE;
 				flash_write_bytes(flash_buf);
@@ -350,7 +354,7 @@ void handle_post(void)
 	__xdata uint8_t *p = uip_appdata;
 	__xdata uint8_t *request_path = p + 6;
 
-	print_string("Is POST\n");
+	dbg_string("Is POST\n");
 	p += 5;  // Skip post
 	// Find end of request path
 	while (*p && !is_separator(*p))
@@ -360,9 +364,9 @@ void handle_post(void)
 	// Find end of request header
 	boundary[0] ='\0';
 	p = scan_header(p);
-	print_string("Boundary: >"); print_string_x(boundary); print_string("<\n");
+	dbg_string("Boundary: >"); dbg_string_x(boundary); dbg_string("<\n");
 	if (!*p || !content_type) {
-		print_string("Bad Request!\n");
+		dbg_string("Bad Request!\n");
 		send_not_found();
 		return;
 	}
@@ -380,10 +384,10 @@ void handle_post(void)
 		if (i)
 			cmd_available = 1;
 	} else if (is_word(request_path, "login")) {
-		print_string("POST login\n");
+		dbg_string("POST login\n");
 		p += 8; // Read also over "pwd="
 		if (is_word_x(p, passwd)) {
-			print_string("Password accepted!\n");
+			dbg_string("Password accepted!\n");
 			read_reg_timer(&last_session_use);
 			gen_random_bytes(session_id, SESSION_ID_LENGTH);
 			session_id[SESSION_ID_LENGTH] = '\0';
@@ -397,13 +401,13 @@ void handle_post(void)
 		}
 		return;
 	} else if (is_word(request_path, "upload") || is_word(request_path, "config")) {
-		print_string("POST upload/config request\n");
+		dbg_string("POST upload/config request\n");
 		if (!authenticated) {
 			send_unauthorized();
 			return;
 		}
 		if (!boundary[0]) {
-			print_string("Bad request, no boundary!\n");
+			dbg_string("Bad request, no boundary!\n");
 			send_bad_request();
 			return;
 		}
@@ -418,7 +422,7 @@ void handle_post(void)
 			if (!content_type) // We are waiting for the part with the octet stream
 				continue;
 		} while (!is_word(content_type, "application/octet-stream"));
-		print_string("Have content octets\n");
+		dbg_string("Have content octets\n");
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
 		if (is_word(request_path, "upload")) {
@@ -426,7 +430,7 @@ void handle_post(void)
 			verify_crc = 1;
 			max_upload = 1024576;
 		} else {
-			print_string("Configuration upload, erasing config mem!\n");
+			dbg_string("Configuration upload, erasing config mem!\n");
 			uptr = CONFIG_START;
 			verify_crc = 0;
 			max_upload = 2048;
@@ -438,7 +442,7 @@ void handle_post(void)
 		write_len = 0;
 		stream_upload(p - uip_appdata);
 
-		print_string("Done reading first fragment\n");
+		dbg_string("Done reading first fragment\n");
 		return;
 
 	} else {
@@ -457,26 +461,26 @@ void httpd_appcall(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
-	write_char('P');
+	dbg_char('P');
 	if(uip_connected() && s->tstate == TSTATE_CLOSED) {
-		print_string("Connected...\n");
+		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
 	} else if (uip_closed()) {
-		print_string("Connection closed\n");
+		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
 	} else if (uip_aborted()) {
-		print_string("Connection aborted\n");
+		dbg_string("Connection aborted\n");
 		uip_close();
 		s->tstate = TSTATE_CLOSED;
 	} else if (uip_poll()) {
 		uip_len = 0;
 		if (s->tstate == TSTATE_ACKED) {
-			print_string("Closing because everything has been transmitted\n");
+			dbg_string("Closing because everything has been transmitted\n");
 			uip_close();
 			s->tstate = TSTATE_CLOSED;
 		}
 	} else if (uip_acked() && s->tstate == TSTATE_TX) {
-		print_string("ACK\n");
+		dbg_string("ACK\n");
 		if (slen > uip_mss()) {
 			slen -= uip_mss();
 			o_idx += uip_mss();
@@ -488,15 +492,15 @@ void httpd_appcall(void)
 		s->tstate = TSTATE_ACKED;
 
 		if (slen > uip_mss()) {
-			print_string("Sending A: "); print_short(slen); write_char('\n');
+			dbg_string("Sending A: "); dbg_short(slen); dbg_char('\n');
 			uip_send(outbuf + o_idx, uip_mss());
 			s->tstate = TSTATE_TX;
 		} else if (slen > 0) {
-			print_string("Sending B: "); print_short(slen); write_char('\n');
+			dbg_string("Sending B: "); dbg_short(slen); dbg_char('\n');
 			uip_send(outbuf + o_idx, slen);
 			s->tstate = TSTATE_TX;
 		} else if (cont_len) {
-			print_string("CONT cont_len: "); print_short(cont_len);
+			dbg_string("CONT cont_len: "); dbg_short(cont_len);
 			slen = cont_len > uip_mss() ? uip_mss() : cont_len;
 			if (slen > TCP_OUTBUF_SIZE)
 				slen = TCP_OUTBUF_SIZE;
@@ -518,13 +522,15 @@ void httpd_appcall(void)
 		}
 	} else if (uip_newdata() && s->tstate != TSTATE_TX) {
 		cont_len = 0;
-		write_char('<'); print_short(uip_len); write_char('\n');
+		dbg_char('<'); dbg_short(uip_len); dbg_char('\n');
 		__xdata uint8_t *p = uip_appdata;
 		// Mark end of request header with \0
 		p[uip_len] = 0;
+#ifdef DEBUG
 		while (*p)
-			write_char(*p++);
-		write_char('\n');
+			dbg_char(*p++);
+		dbg_char('\n');
+#endif
 		p = uip_appdata;
 		if (is_word(p, "POST")) {
 			handle_post();
@@ -537,26 +543,26 @@ void httpd_appcall(void)
 		}
 
 		if (is_word(p, "GET"))
-			print_string("GET request ");
+			dbg_string("GET request ");
 		p += 4;
 		scan_header(p);
 		__xdata uint8_t *q = p;
 		while (!is_separator(*p))
 			p++;
 		*p = '\0';
-		print_string_x(q);
-		write_char('\n');
+		dbg_string_x(q);
+		dbg_char('\n');
 
 		s->tstate = TSTATE_NONE;
 		entry = find_entry(q);
-		print_string("Entry is: "); print_byte(entry); write_char('\n');
+		dbg_string("Entry is: "); dbg_byte(entry); dbg_char('\n');
 		if (entry == 0xff) {
 			if (!authenticated) {
-				print_string("Not authorized!\n");
+				dbg_string("Not authorized!\n");
 				send_unauthorized();
 				goto do_send;
 			}
-			print_string("Not file entry\n");
+			dbg_string("Not file entry\n");
 			if (!strcmp(q, "/status.json")) {
 				send_status();
 			} else if (!strcmp(q, "/information.json")) {
@@ -582,7 +588,7 @@ void httpd_appcall(void)
 				send_not_found();
 			}
 		} else {
-			print_string("Have entry, authenticated: "); print_byte(authenticated); write_char('\n');
+			dbg_string("Have entry, authenticated: "); dbg_byte(authenticated); dbg_char('\n');
 			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html
 						|| f_data[entry].start == FDATA_START_style_css)) {
 				send_to_login();
@@ -602,35 +608,35 @@ void httpd_appcall(void)
 				len_left = TCP_OUTBUF_SIZE - slen;
 				cont_addr = f_data[entry].start + len_left;
 			}
-			print_string("MIME: "); print_string(mime_strings[f_data[entry].mime]); write_char('\n');
+			dbg_string("MIME: "); dbg_string(mime_strings[f_data[entry].mime]); dbg_char('\n');
 			flash_region.addr = f_data[entry].start;
 			flash_region.len = len_left;
 			flash_read_bulk(outbuf + slen);
 			slen += len_left;
 		}
 do_send:
-		print_string("slen: "); print_short(slen); write_char('\n');
+		dbg_string("slen: "); dbg_short(slen); dbg_char('\n');
 		o_idx = 0;
 		if (slen > uip_mss()) {
-			print_string("Sending a: "); print_short(slen); write_char('\n');
+			dbg_string("Sending a: "); dbg_short(slen); dbg_char('\n');
 			uip_send(outbuf + o_idx, uip_mss());
-			print_string("Sending a done\n");
+			dbg_string("Sending a done\n");
 		} else {
-			print_string("Sending b: "); print_short(slen); write_char('\n');
+			dbg_string("Sending b: "); dbg_short(slen); dbg_char('\n');
 			uip_send(outbuf + o_idx, slen);
-			print_string("Sending b done\n");
+			dbg_string("Sending b done\n");
 		}
 		s->tstate = TSTATE_TX;
 	} else if (uip_rexmit()) { // Connection established, need to rexmit?
-		print_string("RETRANSMIT requested\n");
+		dbg_string("RETRANSMIT requested\n");
 		if (slen > uip_mss()) {
-			print_string("Sending C: "); print_short(slen); write_char('\n');
+			dbg_string("Sending C: "); dbg_short(slen); dbg_char('\n');
 			uip_send(outbuf + o_idx, uip_mss());
-			print_string("Sending C done\n");
+			dbg_string("Sending C done\n");
 		} else if (slen > 0) {
-			print_string("Sending D: "); print_short(slen); write_char('\n');
+			dbg_string("Sending D: "); dbg_short(slen); dbg_char('\n');
 			uip_send(outbuf + o_idx, slen);
-			print_string("Sending D done\n");
+			dbg_string("Sending D done\n");
 		}
 		s->tstate = TSTATE_TX;
 		uip_len = 0;

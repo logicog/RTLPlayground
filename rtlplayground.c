@@ -899,7 +899,9 @@ void handle_tx(void)
 	for(uint8_t i = 0; i < UIP_CONNS; i++) {
 		uip_periodic(i);
 		if(uip_len > 0) {
- 			write_char('.'); print_short(i);
+#ifdef RXTXDBG
+			write_char('.'); print_short(i);
+#endif
 			uip_arp_out();
 			tcpip_output();
 		}
