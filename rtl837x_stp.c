@@ -15,7 +15,7 @@
 #include "machine.h"
 
 extern __code struct machine machine;
-extern __xdata uint8_t sfr_data[4];
+extern __data uint8_t sfr_data[4];
 
 extern __code struct uip_eth_addr uip_ethaddr;
 
