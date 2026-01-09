@@ -28,7 +28,7 @@ void crc16(__xdata uint8_t *v) __naked;
 // Upload Firmware to 1M
 #define FIRMWARE_UPLOAD_START 0x100000
 
-#define SYS_TICK_HZ 200
+// See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200
 
 /* All RTL839x switches have an external 25MHz Oscillator,
@@ -54,12 +54,20 @@ void crc16(__xdata uint8_t *v) __naked;
 #define CLOCK_DIV 0
 #endif
 
-// Derive divider for the system ticks
-#define TIMER0_DIV (CLOCK_HZ / 12 / SYS_TICK_HZ)
-#if TIMER0_DIV > 0xFFFF
-#error "SYS_TICH_HZ to low, must be >= 158"
+/* Derive divider for the system ticks
+   TIMER2 can divide the F_CPU by 4 or 12.
+   So the F_TICKS are in the range of:
+   -  F_TIMER_DIV4_OVERFLOW = F_SYS /  DIV4 / 1..65536 = 125MHz /  4 / 1..65536 = 31.25 MHz .. 476.8 Hz
+   - T_TIMER_DIV12_OVERFLOW = F_SYS / DIV12 / 1..65536 = 125MHz / 12 / 1..65536 = 10.42 MHz .. 158.9 Hz
+   Selecting dividor 12 settings to get lowest timer tick posiable which is already high.
+*/
+#define SYS_TICK_HZ 200
+
+#define TIMER2_DIV (CLOCK_HZ / 12 / SYS_TICK_HZ)
+#if TIMER2_DIV > 0xFFFF
+#error "SYS_TICK_HZ to low, must be >= 159"
 #endif
-#define SYSTICK_TIMER0_VALUE (0x10000 - TIMER0_DIV)
+#define SYSTICK_TIMER2_VALUE (0x10000 - TIMER2_DIV)
 
 __xdata uint8_t idle_ready;
 
@@ -113,29 +121,38 @@ __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
+__sbit tx_buf_empty;
 
 #define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
 
 void isr_timer0(void) __interrupt(1)
 {
-	TR0 = 0;		// Stop timer 0
-	T0_U16 = SYSTICK_TIMER0_VALUE;
-	TR0 = 1;		// Re-start timer 0
+}
 
+
+// Timer2: Handle SYS_TICK
+void isr_timer2(void) __interrupt(5)
+{
 	ticks++;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
 	sec_counter++;
 
+	// Clear TF2 & EXF2 by software
+	T2CON &= ~0xC0;
 }
 
 
 void isr_serial(void) __interrupt(4)
 {
 	if (RI == 1) {
+		RI = 0;
 		sbuf[sbuf_ptr] = SBUF;
 		sbuf_ptr = (sbuf_ptr + 1) & (SBUF_SIZE - 1);
-		RI = 0;
+	}
+	if (TI == 1) {
+		TI = 0;
+		tx_buf_empty = 1;
 	}
 }
 
@@ -143,14 +160,14 @@ void isr_serial(void) __interrupt(4)
 void write_char(char c)
 {
 	do {
-	} while (TI == 0);
-	TI = 0;
+	} while (tx_buf_empty == 0);
 	if (c =='\n') {
+		tx_buf_empty = 0;
 		SBUF = '\r';
 		do {
-		} while (TI == 0);
-		TI = 0;
+		} while (tx_buf_empty == 0);
 	}
+	tx_buf_empty = 0;
 	SBUF = c;
 }
 
@@ -287,18 +304,25 @@ void isr_ext3(void) __interrupt(9)
 	write_char('W');
 }
 
-
-void setup_timer0(void)
+// Timer2: handles system tick.
+void setup_timer2(void)
 {
-	TMOD = 0x11;  // Timer 1: Mode 1, Timer 0: Mode 1, i.e. 16 bit counters, no auto-reload
-	/* The TH0 registers contain the high/low byte that we load into Timer0 when T0
-	 * overflows to 0x10000
-	 */
-	T0_U16 = SYSTICK_TIMER0_VALUE;
+	T2CON = 0x00; // Timer2: Mode 16-bit timer with auto-reload, disable the timer.
 
-	CKCON &= 0xc7;
-	TCON = 0x10;	// Start timer 0
-	ET0 = 1;	// Enable timer interrupts
+	// Timer 2 clock select F_SYS / 12;
+	// T2M = 0 uses clk/12;
+	CKCON &= ~0x20;
+
+	// The RCAP2 registers contain the high/low byte that is loaded into
+	// timer2 when T2 overflows to 0x10000
+	RCAP2_U16 = SYSTICK_TIMER2_VALUE;
+
+	T2CON |= 0x04; // Timer2: Enable
+
+	// IP |= 0x20; // TEST: Make Timer 2 interrupt as high priority.
+	ET2 = 1; // Enable Timer2 interrupt.
+
+
 }
 
 
@@ -1646,27 +1670,52 @@ void init_smi(void)
 }
 
 
-/* Set up serial port 0 using Timer 2 with an external trigger
- * as baud generator.
- * The external clock generator uses a crystal at 25MHz.
+/* Set up serial port 0 using Timer 1 as baudrate generator.
+ * For x Bd these settings are needed, see table below.
+ * NOTE: Settings only valid for F_SYS = 125 MHz!
+ * |   Wanted |       | TMR | F_SYS |      |   Actual |        |
+ * | baudrate | SMOD0 | DIV |   DIV |  TH1 | baudrate |  Error |
+ * | -------- | ----- | --- | ----- | ---- | -------- | ------ |
+ * |     1200 |   0   |  12 |   255 | 0x01 |   1276.6 |  6.00% |
+ * |     2400 |   0   |  12 |   136 | 0x78 |   2393.5 | −0.27% |
+ * |     4800 |   0   |   4 |   203 | 0x35 |   4810.7 |  0.22% |
+ * |     9600 |   1   |   4 |   203 | 0x35 |   9621.3 |  0.22% |
+ * |    14400 |   1   |   4 |   136 | 0x78 |  14361.2 | −0.27% |
+ * |    19200 |   1   |   4 |   102 | 0x9a |  19148.3 | −0.27% |
+ * |    38400 |   1   |   4 |    51 | 0xcd |  38296.6 | −0.27% |
+ * |    57600 |   1   |   4 |    34 | 0xde |  57444.9 | −0.27% |
+ * |   115200 |   1   |   4 |    17 | 0xef | 114889.7 | −0.27% |
  */
-void setup_serial(void)
+#if CLOCK_HZ != 125000000
+#warning "SERIAL 0 baudrate setting may only valid for F_CPU = 125 MHz!"
+#endif
+void setup_serial_timer1(void)
 {
-	IE = 0;
+	// Timer 1: Mode 2: automatic reload
+	TMOD &= 0x0F;
+	TMOD |= 0xA0; // Timer1: GATE, Mode2: Timer, 8-bit with auto-reload
+	CKCON |= 0x10; // Timer1 clock divider: F_SYS / 4: T2M = 1, Timer 1 uses clk/4
 
-	T2CON = 0x34; // Enable RCLK/TCLK (serial transmit/receive clock for T2), TR2 (Timer 2 RUN), disable CP/RL2 (bit 0)
-	SCON = 0x50;  // Mode = 1: ASYNC 8N1 with T2 as baud-rate generator, REN_0 Receive enable
+	PCON |= 0x80; // SMOD0 = 1; Double the Baud Rate, don't divide Timer 1 Overflag signal.
 
-	// The RCAP2 registers contain the high/low byte that is loaded into
-	// timer2 when T2 overflows to 0x10000
-	RCAP2H = (0x10000 - ((CLOCK_HZ / SERIAL_BAUD_RATE + 16) / 32)) >> 8;
-	RCAP2L = (0x10000 - ((CLOCK_HZ / SERIAL_BAUD_RATE + 16) / 32)) % 0xff;
+	SCON  = 0x50;  // Mode = 1: ASYNC 8N1 with Timer 2 as baud-rate generator, REN_0 Receive enable
 
-	PCON |= 0x80; // Double the Baud Rate
+	/* The TH1 register contain the reload value, timer1 when T1 overflows to 0x100.
+	 * NOTE: compiler computs the wrong value. 0xF0 is calculated but 0xEF is the right value for 115200.
+	 * Also https://www.keil.com/products/c51/baudrate.asp confirms this.
+	 * Added 32 before div by 64 to make sure rounding is correct so that the results are right.
+	 *
+	 * TH1 = 0x100 - (2^SMOD0 * F_SYS) / ( TMR1_DIV / BAUDRATE * 32)
+	 */
+	TH1 = (0x100 - (((CLOCK_HZ / SERIAL_BAUD_RATE) + 32) / (4 * 16))) & 0xff;
 
-	SCON = 0x50;
-	TI = 1;
-	RI = 0;
+	TCON |= 0x40;	// Start timer 1
+
+	ET1 = 0; // Timer1 Interrupt is NOT wanted!
+	TI = 0; // Clear TI-interrupt flag
+	RI = 0; // Clear RI-interrupt flag
+
+	tx_buf_empty = 1; // Set tx `serial buffer is empty`-software flag.
 
 	ES = 1; // Enable serial IRQ
 }
@@ -1706,16 +1755,14 @@ void bootloader(void)
 	IE = 0;
 	EIE = 0;  // SFR e8: EIE. Disable all external IRQs
 
-	// Disable all interrupts (global interrupt enable bit)
-	EA = 0; // SFR A8.7 / IE.7
-
 	idle_ready = 0;
 	// HW setup, serial, timer, external IRQs
 	setup_clock();
-	setup_serial();
-	setup_timer0();
+	setup_timer2();
+	setup_serial_timer1();
 	setup_external_irqs();
-	EA = 1; // Enable all IRQs
+
+	EA = 1; // Enable global interrupt
 
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)

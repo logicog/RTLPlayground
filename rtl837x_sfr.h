@@ -40,11 +40,6 @@ __sfr __at(0x91) EXIF;
 __sfr __at(0xf8) EIP;
 __sbit __at(0xf9) PX3;
 
-/* SFR control registers for serial communication */
-__sfr __at(0xc8) T2CON;
-__sfr __at(0xca) RCAP2L;
-__sfr __at(0xcb) RCAP2H;
-
 /* SFR Bank control register: 0x0-3f. A value of 0 is bank 1 */
 __sfr __at(0x96) PSBANK;
 // SFR used to store return bank for trampoline
@@ -101,3 +96,15 @@ __sfr __at(0xb6) SFR_NIC_RING_H;
 /* Standard 8051 sfr */
 // Timer 0 value
 __sfr16 __at(0x8c8a) T0_U16;
+
+// Timer 1 enable interrupt
+__sbit __at(0xad) ET2;
+
+// Timer 2
+__sfr __at(0xcc) TL2;
+__sfr __at(0xcd) TH2;
+__sfr16 __at(0xcdcc) T2_U16;
+__sfr __at(0xc8) T2CON;
+__sfr __at(0xca) RCAP2L;
+__sfr __at(0xcb) RCAP2H;
+__sfr16 __at(0xcbca) RCAP2_U16;
