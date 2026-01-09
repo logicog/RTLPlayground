@@ -13,6 +13,10 @@
 		reg_read_m(RTL837X_STAT_GET); \
 	} while (sfr_data[3] & 0x1);
 
+#define MIB_TX_GOOD	46
+#define MIB_RX_GOOD	47
+#define MIB_RXTX_BAD	48
+
 uint8_t port_l2_forget(void) __banked;
 void port_l2_learned(void) __banked;
 void port_stats_print(void) __banked;
