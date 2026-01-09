@@ -5,7 +5,7 @@ AFLAGS= -plosgff
 
 BUILDDIR = output/
 
-SRCS = timer.c  uip_arp.c  uip.c  uip-fw.c  uiplib.c  uip-neighbor.c  uip-split.c
+SRCS = timer.c uip_arp.c uip.c uip-fw.c uiplib.c uip-split.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 
 all: create_build_dir $(OBJS)
