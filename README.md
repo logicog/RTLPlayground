@@ -237,5 +237,6 @@ the RTL837x SoCs:
 - [CPU Port](doc/CpuPort.md)
 - [IGMP (IP-MC streaming)](doc/igmp.md)
 - [SFP+ ports](doc/sfp.md) 
-- [Trunking aka. port aggregation](doc/trunking.md)  
+- [Trunking aka. port aggregation](doc/trunking.md)
 - [VLAN](doc/vlan.md)
+- [Modifications and Flash replacement](doc/mods.md)
