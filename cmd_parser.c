@@ -13,6 +13,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "dhcp.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -36,6 +37,8 @@ extern __xdata uint8_t flash_buf[512];
 extern __xdata struct flash_region_t flash_region;
 
 extern __xdata char passwd[21];
+
+extern __xdata struct dhcp_state dhcp_state;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
@@ -775,12 +778,19 @@ void cmd_parser(void) __banked
 			parse_mtu();
 		} else if (cmd_compare(0, "ip")) {
 			print_string("Got ip command: ");
-			if (!parse_ip(cmd_words_b[1]))
-				uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
-			else
-				print_string("Invalid IP address\n");
-			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
-			write_char('\n');
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "dhcp")) {
+				dhcp_start();
+			} else {
+				if (dhcp_state.state)
+					dhcp_stop();
+				if (!parse_ip(cmd_words_b[1])) {
+					uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
+				} else {
+					print_string("Invalid IP address\n");
+				}
+				print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
+				write_char('\n');
+			}
 		} else if (cmd_compare(0, "gw")) {
 			print_string("Got gw command: ");
 			if (!parse_ip(cmd_words_b[1]))

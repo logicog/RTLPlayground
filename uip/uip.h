@@ -447,7 +447,7 @@ void uip_setipid(u16_t id);
  *
  * \param port A 16-bit port number in network byte order.
  */
-void uip_listen(u16_t port);
+void uip_listen(u16_t port) __banked;
 
 /**
  * Stop listening to the specified port.
@@ -461,7 +461,7 @@ void uip_listen(u16_t port);
  *
  * \param port A 16-bit port number in network byte order.
  */
-void uip_unlisten(u16_t port);
+void uip_unlisten(u16_t port) __banked;
 
 /**
  * Connect to a remote host using TCP.
@@ -495,7 +495,7 @@ void uip_unlisten(u16_t port);
  * or NULL if no connection could be allocated.
  *
  */
-__xdata struct uip_conn *uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t port);
+__xdata struct uip_conn *uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t port) __banked;
 
 
 
@@ -535,7 +535,7 @@ __xdata struct uip_conn *uip_connect(register __xdata uip_ipaddr_t *ripaddr, __x
  *
  * \hideinitializer
  */
-void uip_send(register __xdata const void *data, register uint16_t len);
+void uip_send(register __xdata const void *data, register uint16_t len) __banked;
 
 /**
  * The length of any incoming data that is currently avaliable (if avaliable)
@@ -763,7 +763,7 @@ void uip_send(register __xdata const void *data, register uint16_t len);
  * \return The uip_udp_conn structure for the new connection or NULL
  * if no connection could be allocated.
  */
-struct uip_udp_conn *uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport);
+struct uip_udp_conn *uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport) __banked;
 
 /**
  * Removed a UDP connection.
@@ -1224,8 +1224,8 @@ struct uip_udp_conn {
 /**
  * The current UDP connection.
  */
-extern struct uip_udp_conn *uip_udp_conn;
-extern struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
+extern __xdata struct uip_udp_conn *uip_udp_conn;
+extern __xdata struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
 #endif /* UIP_UDP */
 
 /**
@@ -1537,58 +1537,6 @@ extern __xdata uip_ipaddr_t uip_hostaddr, uip_netmask, uip_draddr;
 #else /* UIP_FIXEDADDR */
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_netmask, uip_draddr;
 #endif /* UIP_FIXEDADDR */
-
-/**
- * Calculate the Internet checksum over a buffer.
- *
- * The Internet checksum is the one's complement of the one's
- * complement sum of all 16-bit words in the buffer.
- *
- * See RFC1071.
- *
- * \param buf A pointer to the buffer over which the checksum is to be
- * computed.
- *
- * \param len The length of the buffer over which the checksum is to
- * be computed.
- *
- * \return The Internet checksum of the buffer.
- */
-u16_t uip_chksum(u16_t *buf, u16_t len);
-
-/**
- * Calculate the IP header checksum of the packet header in uip_buf.
- *
- * The IP header checksum is the Internet checksum of the 20 bytes of
- * the IP header.
- *
- * \return The IP header checksum of the IP header in the uip_buf
- * buffer.
- */
-u16_t uip_ipchksum(void);
-
-/**
- * Calculate the TCP checksum of the packet in uip_buf and uip_appdata.
- *
- * The TCP checksum is the Internet checksum of data contents of the
- * TCP segment, and a pseudo-header as defined in RFC793.
- *
- * \return The TCP checksum of the TCP segment in uip_buf and pointed
- * to by uip_appdata.
- */
-u16_t uip_tcpchksum(void);
-
-/**
- * Calculate the UDP checksum of the packet in uip_buf and uip_appdata.
- *
- * The UDP checksum is the Internet checksum of data contents of the
- * UDP segment, and a pseudo-header as defined in RFC768.
- *
- * \return The UDP checksum of the UDP segment in uip_buf and pointed
- * to by uip_appdata.
- */
-u16_t uip_udpchksum(void);
-
 
 #endif /* __UIP_H__ */
 
