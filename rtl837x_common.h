@@ -36,8 +36,21 @@
 // the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
 // the VLAN tag is inserted after the RTL tag
 // See here for the RTL tag: https://github.com/torvalds/linux/commit/1521d5adfc2b557e15f97283c8b7ad688c3ebc40
-#define RTL_TAG_SIZE		8
-#define VLAN_TAG_SIZE		4
+struct rtl_tag {
+	uint16_t tag;		// This is 0x8899 for the RTL837X
+	uint8_t version;	// Version is 4
+	uint8_t reason;
+	uint16_t flags;
+	uint16_t pmask;		// A bit mask for a TX pkt, 4-bit port-number for RX
+};
+
+struct vlan_tag {
+	uint16_t svlan;		// Service VLAN
+	uint16_t vlan;
+};
+
+#define RTL_TAG_SIZE		(sizeof (struct rtl_tag))
+#define VLAN_TAG_SIZE		(sizeof (struct vlan_tag))
 #define RTL_FRAME_TAG_ID	0x8899
 
 // For RX and TX, an 8 byte header describing the frame to be moved to the Asic
@@ -69,15 +82,6 @@ struct flash_region_t {
 };
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
-
-// 8899 04 0000 20 0004
-struct rtl_tag {
-	uint16_t tag;
-	uint8_t version;
-	uint8_t reason;
-	uint16_t flags;
-	uint16_t pmask;  // A bit mask for a TX pkt, 4-bit port-number for RX
-};
 
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);

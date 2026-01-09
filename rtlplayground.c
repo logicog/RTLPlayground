@@ -819,7 +819,7 @@ void tcpip_output(void)
 	uip_buf[VLAN_TAG_SIZE + 2] = uip_buf[VLAN_TAG_SIZE + 3] = 0;
 	uip_buf[VLAN_TAG_SIZE + 6] = uip_buf[VLAN_TAG_SIZE + 7] = 0;
 
-	reg_read_m(0x7890);
+	reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
 	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 	ring_ptr |= sfr_data[3];
 
@@ -835,20 +835,20 @@ void tcpip_output(void)
 	// Move data over from xmem buffer to ASIC side using DMA
 	nic_tx_packet(ring_ptr);
 
-	reg_read_m(0x7884);  // actual bytes sent, for now we assume everything worked
+	// New position of the ring-pointer on the NIC-side indicates number of bytes transmitted
+	reg_read_m(RTL837X_REG_NIC_TX_CURR_PKT);
 
 	// Do actual TX of data on ASIC side
-	sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
-	sfr_data[3] = 0x1;
-	reg_write_m(0x7850);
+	REG_SET(RTL837X_REG_NIC_TXCMD, 1);
 }
 
 
 void handle_rx(void)
 {
-	reg_read_m(RTL837X_REG_RX_AVAIL);
+	// Check the amount of data available on the NIC/ASIC side
+	reg_read_m(RTL837X_REG_NIC_RX_BUFF_DATA);
 	if (sfr_data[2] != 0 || sfr_data[3] != 0) {
-		reg_read_m(RTL837X_REG_RX_RINGPTR);
+		reg_read_m(RTL837X_REG_CPU_RX_CURR_PKT);
 		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 		ring_ptr |= sfr_data[3];
 		ring_ptr <<= 3;
@@ -872,16 +872,13 @@ void handle_rx(void)
 			write_char(' ');
 		}
 #endif
-		sfr_data[0] = sfr_data[1] = sfr_data[2] = 0;
-		sfr_data[3] = 0x1;
-		reg_write_m(RTL837X_REG_RX_DONE);
+		REG_SET(RTL837X_REG_NIC_RXCMD, 1);
 		uip_len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
-//		write_char('>'); print_byte(uip_buf[ETHERTYPE_OFFSET]); write_char('<');
-//		write_char('>'); print_byte(uip_buf[ETHERTYPE_OFFSET + 1]); write_char('<');
-		// Check for ARP packet
-		rx_packet_vlan = uip_buf[12 + RTL_TAG_SIZE + 2] & 0xf;
+
+		// Retrieve VLAN from VLAN-tag
+		rx_packet_vlan = uip_buf[2 * sizeof (struct uip_eth_addr) + RTL_TAG_SIZE + 2] & 0xf;
 		rx_packet_vlan <<= 8;
-		rx_packet_vlan |= uip_buf[12 + RTL_TAG_SIZE + 3];
+		rx_packet_vlan |= uip_buf[2 * sizeof (struct uip_eth_addr) + RTL_TAG_SIZE + 3];
 #ifdef RXTXDBG
 		print_string(" RX-VLAN: "); print_short(rx_packet_vlan); write_char('\n');
 		print_string(" RX dst: "); print_byte(uip_buf[0]); print_byte(uip_buf[1]); print_byte(uip_buf[2]);
