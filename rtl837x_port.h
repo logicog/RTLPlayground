@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-#define STAT_COUNTER_TX_PKTS 0x2e
-#define STAT_COUNTER_RX_PKTS 0x2f
-#define STAT_COUNTER_ERR_PKTS 0x30
+#define STAT_COUNTER_TX_PKTS	46
+#define STAT_COUNTER_RX_PKTS	47
+#define STAT_COUNTER_ERR_PKTS	48
 
 #define STAT_GET(cnt, port) \
 	REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, cnt >> 3, (cnt << 5) | (port << 1) | 1); \
