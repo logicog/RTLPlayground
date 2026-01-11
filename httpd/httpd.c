@@ -570,7 +570,7 @@ void httpd_appcall(void)
 				parse_short(q + 15);
 				send_vlan(short_parsed);
 			} else if (is_word(q, "/counters.json")) {
-				send_counters(q[19]-'0');
+				send_counters(q[20]-'0');
 			} else if (is_word(q, "/eee.json")) {
 				send_eee();
 			} else if (is_word(q, "/mirror.json")) {
