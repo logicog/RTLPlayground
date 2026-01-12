@@ -3,6 +3,7 @@ document.getElementById('sidebar').innerHTML =
  + "<li><a href='ports.html'>Port Configuration</a></li>"
  + "<li><a href='stat.html'>Port Statistics</a></li>"
  + "<li><a href='vlan.html'>VLAN</a></li>"
+ + "<li><a href='l2.html'>L2 Configuration</a></li>"
  + "<li><a href='mirror.html'>Mirroring</a></li>"
  + "<li><a href='lag.html'>Link Aggregation</a></li>"
  + "<li><a href='eee.html'>EEE</a></li>"
