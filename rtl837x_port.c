@@ -287,7 +287,7 @@ void port_l2_learned(void) __banked
 
 			// VLAN
 			reg_read_m(RTL837x_L2_DATA_OUT_B);
-			print_short( ((uint16_t) (sfr_data[0] & 0x0f)) | sfr_data[1]); // VLAN
+			print_short( (((uint16_t) (sfr_data[0] & 0x0f)) << 8) | sfr_data[1]); // VLAN
 
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
