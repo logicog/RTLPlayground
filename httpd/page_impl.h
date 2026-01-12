@@ -6,6 +6,7 @@ void send_status(void);
 void send_vlan(uint16_t vlan);
 void send_basic_info(void);
 void send_eee(void);
+void send_l2(uint16_t idx);
 void send_mirror(void);
 void send_mtu(void);
 void send_config(void);
