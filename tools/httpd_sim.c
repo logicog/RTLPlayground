@@ -26,6 +26,31 @@ const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
 const uint8_t physToLogPort[] = { 4, 5, 6, 7, 3, 8};
 #endif
 
+struct l2_entry {
+	char mac[18];
+	char vlan[4];
+	char type;
+	uint8_t port;
+	uint16_t idx;
+};
+
+#define L2_ENTRY_NUM 12
+#define L2_MAX_TRANSFER 5
+const struct l2_entry l2_entries[12] = {
+	{ "00:01:2f:00:00:01", "001", 'l', 7, 0x10 },
+	{ "00:06:78:00:00:02", "001", 'l', 7, 0x20 },
+	{ "00:01:2e:00:00:03", "001", 's', 7, 0x30 },
+	{ "60:7d:09:00:00:04", "001", 'l', 7, 0x40 },
+	{ "1c:2a:a3:00:00:05", "001", 'l', 7, 0x50 },
+	{ "1c:2a:a3:00:00:06", "001", 's', 7, 0x60 },
+	{ "02:e0:4c:00:00:07", "001", 'l', 7, 0x70 },
+	{ "00:e0:4c:00:00:08", "001", 'l', 4, 0x80 },
+	{ "1c:2a:a3:00:00:09", "001", 'l', 9, 0x90 },  // CPU-Port
+	{ "3c:8c:f8:00:00:0a", "001", 'l', 7, 0xa0 },
+	{ "00:01:2e:00:00:0b", "001", 'l', 7, 0xb0 },
+	{ "00:01:2f:00:01:01", "001", 'l', 7, 0xc0 }
+};
+
 time_t last_called;
 time_t last_session_use;
 
@@ -33,6 +58,7 @@ uint64_t txG[PORTS], txB[PORTS], rxG[PORTS], rxB[PORTS];
 char txG_buff[20], txB_buff[20], rxG_buff[20], rxB_buff[20], counter_buf[20], counter_name[20];
 char sfp_temp[8], sfp_vcc[8], sfp_txbias[8], sfp_txpower[8], sfp_rxpower[8], sfp_laser[8], sfp_options[6];
 char num_buff[20];
+char l2_idx_buff[20];
 char upload_buffer[4194304]; // 4MB
 
 char *content_type = NULL;
@@ -283,6 +309,51 @@ void send_mirror(int s)
 	jstring = json_object_to_json_string_ext(mirror, JSON_C_TO_STRING_PLAIN);
         write(s, jstring, strlen(jstring));
 	json_object_put(mirror);
+}
+
+
+void send_l2(int s, int idx)
+{
+	struct json_object *entries, *v;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	entries = json_object_new_array();
+
+	// We find the next entry to transfer based on the index
+	printf("Starting with idx %04x\n", idx);
+	int j = 0;
+	while (j < L2_ENTRY_NUM && l2_entries[j].idx < idx)
+		j++;
+
+	printf("First entry %d, idx: %04x\n", j, l2_entries[j].idx);
+	int transferred = 0;
+	while ((j < L2_ENTRY_NUM + 1) && (transferred < L2_MAX_TRANSFER)) {
+//		if (rand() / (RAND_MAX / 2) >= 1)
+//			continue;
+		int i = j % L2_ENTRY_NUM;
+		printf("Entry %d, idx: %04x, transferred %d\n", i, l2_entries[i].idx, transferred);
+		v = json_object_new_object();
+		json_object_object_add(v, "mac", json_object_new_string(l2_entries[i].mac));
+		json_object_object_add(v, "vlan", json_object_new_string(l2_entries[i].vlan));
+		if (l2_entries[i].type == 'l')
+			json_object_object_add(v, "type", json_object_new_string("l"));
+		else
+			json_object_object_add(v, "type", json_object_new_string("s"));
+		json_object_object_add(v, "port", json_object_new_int(l2_entries[i].port));
+		sprintf(l2_idx_buff, "%04x", l2_entries[i].idx);
+		json_object_object_add(v, "idx", json_object_new_string(l2_idx_buff));
+		json_object_array_add(entries, v);
+		j++;
+		transferred++;
+		printf("j %d, transferred %d\n", j, transferred);
+	}
+
+        write(s, header, strlen(header));
+	jstring = json_object_to_json_string_ext(entries, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(entries);
 }
 
 
@@ -542,6 +613,14 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_lag(new_socket);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/l2.json?idx=", 13)) {
+					int idx = atoi(&buffer[17]);
+					printf("L2 request\n");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_l2(new_socket, idx);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/mtu.json", 9)) {
 					printf("MTU request\n");
