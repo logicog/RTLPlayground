@@ -1693,7 +1693,7 @@ void setup_serial_timer1(void)
 {
 	// Timer 1: Mode 2: automatic reload
 	TMOD &= 0x0F;
-	TMOD |= 0xA0; // Timer1: GATE, Mode2: Timer, 8-bit with auto-reload
+	TMOD |= 0x20; // Timer1: Mode2: Timer, 8-bit with auto-reload
 	CKCON |= 0x10; // Timer1 clock divider: F_SYS / 4: T2M = 1, Timer 1 uses clk/4
 
 	PCON |= 0x80; // SMOD0 = 1; Double the Baud Rate, don't divide Timer 1 Overflag signal.
