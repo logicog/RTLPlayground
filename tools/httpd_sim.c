@@ -18,6 +18,8 @@
 #define PORTS 9
 #define NSFP 1
 
+#define N_COUNTERS 52
+
 #if PORTS == 9
 const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
 #else
@@ -28,7 +30,7 @@ time_t last_called;
 time_t last_session_use;
 
 uint64_t txG[PORTS], txB[PORTS], rxG[PORTS], rxB[PORTS];
-char txG_buff[20], txB_buff[20], rxG_buff[20], rxB_buff[20];
+char txG_buff[20], txB_buff[20], rxG_buff[20], rxB_buff[20], counter_buf[20], counter_name[20];
 char sfp_temp[8], sfp_vcc[8], sfp_txbias[8], sfp_txpower[8], sfp_rxpower[8], sfp_laser[8], sfp_options[6];
 char num_buff[20];
 char upload_buffer[4194304]; // 4MB
@@ -196,6 +198,29 @@ void send_status(int s)
 	jstring = json_object_to_json_string_ext(ports, JSON_C_TO_STRING_PLAIN);
         write(s, jstring, strlen(jstring));
 	json_object_put(v);
+}
+
+
+void send_counters(int s, int port)
+{
+	struct json_object *v, *counters;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+		       "Cache-Control: no-cache\r\n"
+		       "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	printf("Sending counters\n");
+	counters = json_object_new_array_ext(N_COUNTERS);
+
+	for (int i = 0; i < N_COUNTERS; i++) {
+		v = json_object_new_object();
+		sprintf(counter_buf, "0x%016lx", 0x1234UL + i);
+		json_object_array_add(counters, json_object_new_string(counter_buf));
+	}
+        write(s, header, strlen(header));
+	jstring = json_object_to_json_string_ext(counters, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(counters);
 }
 
 
@@ -546,6 +571,14 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_config(new_socket);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/counters.json?port=", 20)) {
+					int port = atoi(&buffer[24]);
+					printf("Counters request for %d\n", port);
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_counters(new_socket, port);
 					goto done;
 				}
 				if (!authenticated && !(!strncmp(&buffer[4], "/login.html", 11) || !strncmp(&buffer[4], "/style.css", 10))) {

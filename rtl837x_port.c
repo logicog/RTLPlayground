@@ -400,17 +400,17 @@ void port_stats_print(void) __banked
 			print_string("Up\t");
 			break;
 		}
-		STAT_GET(0x2f, i);
+		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
 
-		STAT_GET(0x30, i);
+		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
+		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
+
+		STAT_GET(STAT_COUNTER_RX_PKTS, i);
+		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
+
+		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
 		print_reg(RTL837X_STAT_V_HIGH); write_char('\t');
-
-		STAT_GET(0x2e, i);
-		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
-
-		STAT_GET(0x30, i);
-		print_reg(RTL837X_STAT_V_LOW); write_char('\t');
 		print_string("\n");
 	}
 }

@@ -143,6 +143,16 @@ void reg_to_html(register uint16_t reg)
 }
 
 
+void reg_to_html_long(register uint16_t reg)
+{
+	reg_read_m(reg);
+	byte_to_html(sfr_data[0]);
+	byte_to_html(sfr_data[1]);
+	byte_to_html(sfr_data[2]);
+	byte_to_html(sfr_data[3]);
+}
+
+
 void send_sfp_info(uint8_t sfp)
 {
 	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
@@ -257,21 +267,19 @@ void send_counters(char port)
 	dbg_string("send_counters called: "); dbg_byte(port); dbg_char('\n');
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	dbg_string("sending counters\n");
-
-	port--;
+	dbg_byte(port);
 	uint8_t i = machine.phys_to_log_port[port];
-	slen += strtox(outbuf + slen, "{\"portNum\":");
-	itoa_html(i + 1);
-	for (uint8_t j = 0; j < 0x3f; j++) {
-		STAT_GET(j, i);
-		slen += strtox(outbuf + slen, ",\"cnt_");
-		itoa_html(j);
-		slen += strtox(outbuf + slen, "\":\"0x");
+	slen += strtox(outbuf + slen, "[");
+	for (uint8_t counter = 0; counter < 0x37; counter++) {
+		STAT_GET(counter, i);
+		slen += strtox(outbuf + slen, "\"0x");
 		reg_to_html(RTL837X_STAT_V_HIGH);
-		reg_to_html(RTL837X_STAT_V_LOW);
+		reg_to_html_long(RTL837X_STAT_V_LOW);
 		char_to_html('\"');
+		if (counter != 0x36)
+			char_to_html(',');
 	}
-	char_to_html('}');
+	char_to_html(']');
 }
 
 
