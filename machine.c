@@ -58,7 +58,7 @@ __code const struct machine machine = {
 	.max_port = 8,
 	.n_sfp = 2,
 	.log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
-	.phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
+	.phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
 	.is_sfp= {0, 0, 0, 2, 0, 0, 0, 0, 1},
 	// Left SFP port (J4)
 	.sfp_port[0].pin_detect = 30,
