@@ -16,7 +16,7 @@
 // #define DEBUG
 #include "debug.h"
 
-#define L2_MAX_TRANSFER 2
+#define L2_MAX_TRANSFER 30
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -288,8 +288,8 @@ void send_counters(char port)
 void send_l2(uint16_t idx)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	dbg_string("sending L2\n");  // TODO: Remove
-	print_short(idx);
+	dbg_string("sending L2\n");
+	dbg_short(idx);
 	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
 
 	do {
@@ -376,6 +376,55 @@ void send_l2(uint16_t idx)
 			}
 		}
 	}
+}
+
+
+void l2_delete(uint16_t idx)
+{
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	dbg_string("L2 DELETE\n");
+	dbg_short(idx);
+	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
+
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & 0x01);
+	slen += strtox(outbuf + slen, "{\"result\":");
+	// First, search for the entry based on the index
+	reg_read_m(RTL837x_TBL_DATA_0);
+	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
+
+	REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, 0x1);
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & 0x1);
+	reg_read_m(RTL837x_L2_DATA_OUT_B);
+	if (!(sfr_data[0] & 0x20)) {
+		char_to_html('0');
+	} else {
+		sfr_data[0] &= 0x3f; // Clear SPA
+		reg_write_m(RTL837x_TBL_DATA_IN_B);
+
+		// Second half of MAC is copied
+		reg_read_m(RTL837x_L2_DATA_OUT_A);
+		reg_write_m(RTL837x_TBL_DATA_IN_A);
+
+		reg_read_m(RTL837x_L2_DATA_OUT_C);
+		sfr_data[3] &= 0xc0; // Clear age, auth and second part of ports
+		sfr_data[1] &= 0xfe; // Clear nosalearn
+		reg_write_m(RTL837x_TBL_DATA_IN_C);
+
+		reg_read_m(RTL837x_TBL_DATA_0);
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],TBL_L2_UNICAST, sfr_data[3]);
+
+		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+		do {
+			reg_read_m(RTL837X_TBL_CTRL);
+		} while (sfr_data[3] & 0x1);
+
+		char_to_html('1');
+	}
+	char_to_html('}');
 }
 
 

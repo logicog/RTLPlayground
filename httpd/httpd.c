@@ -576,6 +576,9 @@ void httpd_appcall(void)
 			} else if (is_word(q, "/l2.json")) {
 				parse_short(q + 13); // e.g.: /l2.json?idx=10
 				send_l2(short_parsed);
+			} else if (is_word(q, "/l2_del.json")) {
+				parse_short(q + 17);
+				l2_delete(short_parsed);
 			} else if (is_word(q, "/mirror.json")) {
 				send_mirror();
 			} else if (is_word(q, "/mtu.json")) {
