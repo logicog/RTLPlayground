@@ -47,8 +47,8 @@ function l2CMP(a, b)
 }
 
 function uniq(a) {
-    return a.sort().filter(function(item, pos, ary) {
-        return !pos || item != ary[pos - 1];
+    return a.filter(function(item, pos, ary) {
+        return !pos || item.idx != ary[pos - 1].idx;
     });
 }
 
@@ -56,7 +56,8 @@ function delL2(idx) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      console.log("Entry deleted");
+      var s = JSON.parse(xhttp.responseText);
+      console.log("Entry deletion result: ", s.result);
     }
   };
   xhttp.open("GET", "/l2_del.json?idx=" + idx, true);
@@ -65,25 +66,22 @@ function delL2(idx) {
 
 function fillL2(s)
 {
-  console.log("L2: ", JSON.stringify(s));
   var tbl = document.getElementById('l2table');
   if (!s.length)
     return;
   s.sort(l2CMP);
   s = uniq(s);
   var s = s.map(function(e) { e.port = e.port != 9 ? e.port : "CPU"; return e; });
-  console.log("L2 now: ", JSON.stringify(s));
+  console.log("L2: ", JSON.stringify(s));
   for (let i = 0; i < s.length; i++) {
     var e = s[i];
     console.log(i, e);
     if (tbl.rows[i+1]) {
-      console.log(i, " Updating: port ", e.port, ", mac: ", e.mac);
       tbl.rows[i+1].cells[0].innerHTML = `${e.port}`;
       tbl.rows[i+1].cells[1].innerHTML = `${e.mac}`;
       tbl.rows[i+1].cells[2].innerHTML = `${e.vlan}`;
       tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">Delete</button>';
     } else {
-      console.log(i, " Inserting: port ", e.port, ", mac: ", e.mac);
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.innerHTML = `${e.port}`;
       td = tr.insertCell(); td.innerHTML = `${e.mac}`;
@@ -92,11 +90,9 @@ function fillL2(s)
       td = tr.insertCell(); td.innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">Delete</button>';
     }
   }
-  console.log("s-length: ", s.length, "  table-length: ", tbl.rows.length);
   for (let i = tbl.rows.length - 1; i > s.length; i--)
     tbl.deleteRow(i);
   l2Entries = [];
-  console.log("L2 interval now ", l2GetInterval);
 }
 
 function getL2() {
