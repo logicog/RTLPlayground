@@ -263,14 +263,23 @@ void port_l2_learned(void) __banked
 	__xdata uint16_t first_entry = 0xffff; // Table does not have that many entries
 
 	while (1) {
-		uint8_t port = 0, other = 0;
+		uint8_t port = 0;
 		reg_read_m(RTL837x_TBL_DATA_0);
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
 
-		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, 0x1);
+		REG_WRITE(RTL837X_TBL_CTRL, (entry >> 8) & 0xf, entry, TBL_L2_UNICAST, TBL_EXECUTE);
 		do {
 			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & 0x1);
+		} while (sfr_data[3] & TBL_EXECUTE);
+
+		reg_read_m(RTL837x_TBL_DATA_0);
+		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		if (first_entry == 0xffff) {
+			first_entry = entry;
+		} else {
+			if (first_entry == entry)
+				break;
+		}
 
 		// MAC
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
@@ -278,7 +287,6 @@ void port_l2_learned(void) __banked
 			print_byte(sfr_data[2]); write_char(':');
 			print_byte(sfr_data[3]); write_char(':');
 			port = (sfr_data[0] >> 6) & 0x3;
-			other = sfr_data[0];
 			reg_read_m(RTL837x_L2_DATA_OUT_A);
 			print_byte(sfr_data[0]); write_char(':');
 			print_byte(sfr_data[1]); write_char(':');
@@ -298,22 +306,12 @@ void port_l2_learned(void) __banked
 
 			port |= (sfr_data[3] & 0x3) << 2;
 			if (port < 9)
-				write_char('1' + port);
+				write_char(machine.log_to_phys_port[port] + '0');
 			else
-				print_string("10");
+				print_string("CPU");
 		}
-		reg_read_m(RTL837x_TBL_DATA_0);
-		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3] + 1;
-		if (first_entry == 0xffff) {
-			first_entry = entry;
-		} else {
-			if (first_entry == entry)
-				break;
-		}
-#ifdef DEBUG
-		write_char(' '); print_sfr_data();
-		write_char(' '); print_byte(other);
-#endif
+
+		entry++;
 		print_string("\n");
 	}
 }
