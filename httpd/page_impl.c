@@ -294,7 +294,7 @@ void send_l2(uint16_t idx)
 
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x01);
+	} while (sfr_data[3] & TBL_EXECUTE);
 
 	/* The L2 table in the ASIC can hold up to 4096 (0x1000) entries, which
 	 * are accessed using an index. The index is the hash of the MAC address
@@ -308,19 +308,19 @@ void send_l2(uint16_t idx)
 	 * entry. The indices are sorted, so if an entry has a smaller index than
 	 * the previous one, we know that we have wrapped around the entire table.
 	 */
-	__xdata uint16_t entry = idx;
+	__xdata uint16_t entry = idx & 0xfff;
 	__xdata uint16_t first_entry = 0xffff; // An illegal entry index
 	char_to_html('[');
 	while (1) {
 		entries_left--;
 		uint8_t port = 0;
 		reg_read_m(RTL837x_TBL_DATA_0);
-		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
 
-		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, 0x1);
+		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, TBL_EXECUTE);
 		do {
 			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & 0x1);
+		} while (sfr_data[3] & TBL_EXECUTE);
 
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
 		if ((sfr_data[0] & 0x20)) {	// Check entry is valid
@@ -336,7 +336,7 @@ void send_l2(uint16_t idx)
 			byte_to_html(sfr_data[3]);
 
 			// VLAN
-			slen += strtox(outbuf + slen, "\", \"vlan\":\"");
+			slen += strtox(outbuf + slen, "\",\"vlan\":\"");
 			reg_read_m(RTL837x_L2_DATA_OUT_B);
 			charhex_to_html(sfr_data[0] & 0x0f);
 			byte_to_html(sfr_data[1]);
@@ -344,9 +344,9 @@ void send_l2(uint16_t idx)
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
 			if (sfr_data[2] & 0x1)
-				slen += strtox(outbuf + slen, "\",\"type\":\"s\", \"port\":");
+				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
 			else
-				slen += strtox(outbuf + slen, "\",\"type\":\"l\", \"port\":");
+				slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
 
 			port |= (sfr_data[3] & 0x3) << 2;
 			itoa_html(port);
@@ -388,13 +388,13 @@ void l2_delete(uint16_t idx)
 
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x01);
+	} while (sfr_data[3] & TBL_EXECUTE);
 	slen += strtox(outbuf + slen, "{\"result\":");
 	// First, search for the entry based on the index
 	reg_read_m(RTL837x_TBL_DATA_0);
-	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
+	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
 
-	REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, 0x1);
+	REG_WRITE(RTL837X_TBL_CTRL, (idx >> 8) & 0xf, idx, TBL_L2_UNICAST, TBL_EXECUTE);
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
 	} while (sfr_data[3] & 0x1);
@@ -415,12 +415,12 @@ void l2_delete(uint16_t idx)
 		reg_write_m(RTL837x_TBL_DATA_IN_C);
 
 		reg_read_m(RTL837x_TBL_DATA_0);
-		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],TBL_L2_UNICAST, sfr_data[3]);
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], TBL_L2_UNICAST, sfr_data[3]);
 
 		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
 		do {
 			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & 0x1);
+		} while (sfr_data[3] & TBL_EXECUTE);
 
 		char_to_html('1');
 	}
