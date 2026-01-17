@@ -127,6 +127,15 @@
 // Table types
 #define TBL_L2_UNICAST	0x04
 #define TBL_VLAN 	0x03
+// Table read methods for the L2 table (TBL_L2_UNICAST):
+#define TBL_LUTREAD_MAC			0
+#define TBL_LUTREAD_ADDRESS		1
+#define TBL_LUTREAD_NEXT_ADDRESS	2
+#define TBL_LUTREAD_NEXT_L2UC		3
+#define TBL_LUTREAD_NEXT_L2MC		4
+#define TBL_LUTREAD_NEXT_L3MC		5
+#define TBL_LUTREAD_NEXT_L2L3MC		6
+#define TBL_LUTREAD_NEXT_L2UCSPA	7
 
 #define RTL837X_L2_CTRL		0x5350
 #define L2_CTRL_LUT_IPMC_HASH	3

@@ -16,6 +16,8 @@
 // #define DEBUG
 #include "debug.h"
 
+#define L2_MAX_TRANSFER 30
+
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
@@ -280,6 +282,149 @@ void send_counters(char port)
 			char_to_html(',');
 	}
 	char_to_html(']');
+}
+
+
+void send_l2(uint16_t idx)
+{
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	dbg_string("sending L2\n");
+	dbg_short(idx);
+	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
+
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & TBL_EXECUTE);
+
+	/* The L2 table in the ASIC can hold up to 4096 (0x1000) entries, which
+	 * are accessed using an index. The index is the hash of the MAC address
+	 * and forwarding ID (basically VID). The hash-table is 4-way associative,
+	 * i.e. for a given hash value, 4 entries with that same hash can be stored
+	 * (i.e. the hash points to a bucket with up to 4 entries).
+	 * When the table or a hash bucket is full, further entries will lead to
+	 * L2 flooding.
+	 * To find all entries, we start with entry-index 0 and iteratively search for
+	 * the next entry (with the next higher index), until we arrive again at the first
+	 * entry. The indices are sorted, so if an entry has a smaller index than
+	 * the previous one, we know that we have wrapped around the entire table.
+	 */
+	__xdata uint16_t entry = idx & 0xfff;
+	__xdata uint16_t first_entry = 0xffff; // An illegal entry index
+	char_to_html('[');
+	while (1) {
+		entries_left--;
+		uint8_t port = 0;
+		reg_read_m(RTL837x_TBL_DATA_0);
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
+
+		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, TBL_EXECUTE);
+		do {
+			reg_read_m(RTL837X_TBL_CTRL);
+		} while (sfr_data[3] & TBL_EXECUTE);
+
+		reg_read_m(RTL837x_L2_DATA_OUT_B);
+		if ((sfr_data[0] & 0x20)) {	// Check entry is valid
+			// MAC
+			slen += strtox(outbuf + slen, "{\"mac\":\"");
+			byte_to_html(sfr_data[2]); char_to_html(':');
+			byte_to_html(sfr_data[3]); char_to_html(':');
+			port = (sfr_data[0] >> 6) & 0x3;
+			reg_read_m(RTL837x_L2_DATA_OUT_A);
+			byte_to_html(sfr_data[0]); char_to_html(':');
+			byte_to_html(sfr_data[1]); char_to_html(':');
+			byte_to_html(sfr_data[2]); char_to_html(':');
+			byte_to_html(sfr_data[3]);
+
+			// VLAN
+			slen += strtox(outbuf + slen, "\",\"vlan\":\"");
+			reg_read_m(RTL837x_L2_DATA_OUT_B);
+			charhex_to_html(sfr_data[0] & 0x0f);
+			byte_to_html(sfr_data[1]);
+
+			// type
+			reg_read_m(RTL837x_L2_DATA_OUT_C);
+			if (sfr_data[2] & 0x1)
+				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
+			else
+				slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
+
+			port |= (sfr_data[3] & 0x3) << 2;
+			itoa_html(port);
+
+			// Index
+			reg_read_m(RTL837x_TBL_DATA_0);
+			entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+			slen += strtox(outbuf + slen, ",\"idx\":\"");
+			byte_to_html(entry >> 8);
+			byte_to_html(entry);
+			char_to_html('"');
+			char_to_html('}');
+			entry += 1; // We want the next entry following after the current entry
+		} else {
+			reg_read_m(RTL837x_TBL_DATA_0);
+			entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3] + 1;
+		}
+		if (first_entry == 0xffff) {
+			char_to_html(',');
+			first_entry = entry;
+		} else {
+			if (first_entry == entry || !entries_left) {
+				char_to_html(']');
+				break;
+			} else {
+				char_to_html(',');
+			}
+		}
+	}
+}
+
+
+void l2_delete(uint16_t idx)
+{
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	dbg_string("L2 DELETE\n");
+	dbg_short(idx);
+	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
+
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & TBL_EXECUTE);
+	slen += strtox(outbuf + slen, "{\"result\":");
+	// First, search for the entry based on the index
+	reg_read_m(RTL837x_TBL_DATA_0);
+	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
+
+	REG_WRITE(RTL837X_TBL_CTRL, (idx >> 8) & 0xf, idx, TBL_L2_UNICAST, TBL_EXECUTE);
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & 0x1);
+	reg_read_m(RTL837x_L2_DATA_OUT_B);
+	if (!(sfr_data[0] & 0x20)) {
+		char_to_html('0');
+	} else {
+		sfr_data[0] &= 0x3f; // Clear SPA
+		reg_write_m(RTL837x_TBL_DATA_IN_B);
+
+		// Second half of MAC is copied
+		reg_read_m(RTL837x_L2_DATA_OUT_A);
+		reg_write_m(RTL837x_TBL_DATA_IN_A);
+
+		reg_read_m(RTL837x_L2_DATA_OUT_C);
+		sfr_data[3] &= 0xc0; // Clear age, auth and second part of ports
+		sfr_data[1] &= 0xfe; // Clear nosalearn
+		reg_write_m(RTL837x_TBL_DATA_IN_C);
+
+		reg_read_m(RTL837x_TBL_DATA_0);
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], TBL_L2_UNICAST, sfr_data[3]);
+
+		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+		do {
+			reg_read_m(RTL837X_TBL_CTRL);
+		} while (sfr_data[3] & TBL_EXECUTE);
+
+		char_to_html('1');
+	}
+	char_to_html('}');
 }
 
 
