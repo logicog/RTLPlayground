@@ -6,7 +6,7 @@ CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
 
 CC = sdcc
-CC_FLAGS = -mmcs51 -Ihttpd -Iuip
+CC_FLAGS = -mmcs51 -I. -Ihttpd -Iuip
 ASM = sdas8051
 AFLAGS= -plosgff
 
@@ -21,7 +21,7 @@ all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
 create_build_dir:
 	mkdir -p $(BUILDDIR)
 
-SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c rtl837x_stp.c machine.c
+SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c rtl837x_stp.c dhcp.c  machine.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 OBJS += uip/$(BUILDDIR)/timer.rel uip/$(BUILDDIR)/uip-fw.rel uip/$(BUILDDIR)/uip-neighbor.rel uip/$(BUILDDIR)/uip-split.rel uip/$(BUILDDIR)/uip.rel uip/$(BUILDDIR)/uip_arp.rel uip/$(BUILDDIR)/uiplib.rel httpd/$(BUILDDIR)/httpd.rel httpd/$(BUILDDIR)/page_impl.rel
 
@@ -59,17 +59,14 @@ $(BUILDDIR)%.rel: $(BUILDDIR)%.asm
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
 $(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS) $(BUILDDIR)crc16.rel
-	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS}  -Wl-bBANK1=0x14000 -Wl-r -o $@ $^
+	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS} -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
 
 $(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
 $(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 	if [ -e $@ ]; then rm $@; fi
-	echo "0000000: 00 40" | xxd -r - $@
-	cat $< >> $@
-	truncate --size=16K $@
-	dd if=$< skip=80 bs=1024 >>$@
+	tools/$(BUILDDIR)imagebuilder -i $^ $@
 	tools/$(BUILDDIR)fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
 	tools/$(BUILDDIR)crc_calculator -u $@
