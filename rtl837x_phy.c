@@ -16,8 +16,8 @@
 #include "rtl837x_phy.h"
 #include "phy.h"
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
+#pragma codeseg BANK2
+#pragma constseg BANK2
 
 extern __code uint16_t bit_mask[16];
 
