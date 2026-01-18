@@ -88,6 +88,7 @@ void print_string(__code char *p);
 void print_long(__xdata uint32_t a);
 void print_short(uint16_t a);
 void print_byte(uint8_t a);
+void itoa(uint8_t v);
 void print_sfr_data(void);
 void print_phy_data(void);
 void phy_write_mask(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v);
