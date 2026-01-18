@@ -12,6 +12,7 @@
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "dhcp.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
 #include "uip/uip.h"
@@ -80,6 +81,7 @@ volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_clock;
+extern __xdata struct dhcp_state dhcp_state;
 
 #define STP_TICK_DIVIDER 3
 
@@ -169,6 +171,22 @@ void write_char(char c)
 	}
 	tx_buf_empty = 0;
 	SBUF = c;
+}
+
+
+void itoa(uint8_t v)
+{
+	uint8_t t = (v / 100);
+	// when print_zeros is not zero, we know that a non-zero number has printed.
+	// That have to print all the next numbers.
+	uint8_t print_zeros = t;
+	if (print_zeros)
+		write_char('0' + t);
+	t = (v / 10) % 10;
+	print_zeros |= t;
+	if (print_zeros)
+		write_char('0' + t);
+	write_char('0' + (v % 10));
 }
 
 
@@ -910,6 +928,10 @@ void handle_rx(void)
 				uip_arp_out();
 				tcpip_output();
 			}
+		} else {
+#ifdef RXTXDBG
+			print_string("Unknown RX on port "); print_byte(rx_headers[3] & 0xf); write_char('\n');
+#endif
 		}
 	}
 }
@@ -923,6 +945,13 @@ void handle_tx(void)
 #ifdef RXTXDBG
 			write_char('.'); print_short(i);
 #endif
+			uip_arp_out();
+			tcpip_output();
+		}
+	}
+	for(uint8_t i = 0; i < UIP_UDP_CONNS; i++) {
+		uip_udp_periodic(i);
+		if(uip_len > 0) {
 			uip_arp_out();
 			tcpip_output();
 		}
@@ -1739,6 +1768,7 @@ void bootloader(void)
 {
 	ticks = 0;
 	stp_clock = STP_TICK_DIVIDER;
+	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
 
 	CKCON = 0;	// Initial Clock configuration

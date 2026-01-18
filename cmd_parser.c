@@ -13,6 +13,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "dhcp.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -36,6 +37,8 @@ extern __xdata uint8_t flash_buf[512];
 extern __xdata struct flash_region_t flash_region;
 
 extern __xdata char passwd[21];
+
+extern __xdata struct dhcp_state dhcp_state;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
@@ -148,6 +151,7 @@ uint8_t atoi_hex(uint8_t idx)
 
 	return ((h_idx + 1) >> 1);
 }
+
 
 uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
@@ -774,28 +778,64 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "mtu") && cmd_words_b[1] > 0) {
 			parse_mtu();
 		} else if (cmd_compare(0, "ip")) {
-			print_string("Got ip command: ");
-			if (!parse_ip(cmd_words_b[1]))
-				uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
-			else
-				print_string("Invalid IP address\n");
-			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
-			write_char('\n');
+			if (cmd_words_b[2] > 0 && cmd_compare(1, "dhcp")) {
+				dhcp_start();
+			} else if (cmd_words_b[2] < 0) {
+				print_string("Current IP: ");
+				itoa(uip_hostaddr[0]); write_char('.'); itoa(uip_hostaddr[0] >> 8); write_char('.');
+				itoa(uip_hostaddr[1]); write_char('.'); itoa(uip_hostaddr[1] >> 8);
+				if (dhcp_state.state == DHCP_LEASING) {
+					print_string(" (dhcp, renewal in sec: ");
+					print_short(dhcp_state.dhcp_timer);
+					write_char(')');
+				} else {
+					print_string(" (static)");
+				}
+				write_char('\n');
+			} else {
+				if (dhcp_state.state)
+					dhcp_stop();
+				if (!parse_ip(cmd_words_b[1])) {
+					uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
+					print_string("Setting ip: ");
+					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
+					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
+				} else {
+					print_string("Invalid IP address\n");
+					print_string("Error: ip [<ip-address>|dhcp]\n");
+					print_string("  The dhcp option enables the dhcp client, calling ip without options prints the current IP\n");
+					print_string("  Calling with a valid IP address will stop any ongoing dhcp client and set the IP address\n");
+				}
+			}
 		} else if (cmd_compare(0, "gw")) {
-			print_string("Got gw command: ");
-			if (!parse_ip(cmd_words_b[1]))
-				uip_ipaddr(&uip_draddr, ip[0], ip[1], ip[2], ip[3]);
-			else
-				print_string("Invalid IP address\n");
-			print_byte(ip[0]); print_byte(ip[1]); print_byte(ip[2]); print_byte(ip[3]);
+			if (cmd_words_b[2] < 0) {
+				print_string("Current gw: ");
+				itoa(uip_draddr[0]); write_char('.'); itoa(uip_draddr[0] >> 8); write_char('.');
+				itoa(uip_draddr[1]); write_char('.'); itoa(uip_draddr[1] >> 8);
+			} else {
+				if (!parse_ip(cmd_words_b[1]))
+					uip_ipaddr(&uip_draddr, ip[0], ip[1], ip[2], ip[3]);
+				else
+					print_string("Invalid IP address\n");
+				print_string("Setting gw: ");
+				itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
+				itoa(ip[2]); write_char('.'); itoa(ip[3]);
+			}
 			write_char('\n');
 		} else if (cmd_compare(0, "netmask")) {
-			print_string("Got netmask command: ");
-			if (!parse_ip(cmd_words_b[1]))
-				uip_ipaddr(&uip_netmask, ip[0], ip[1], ip[2], ip[3]);
-			else
-				print_string("Invalid IP address\n");
-			print_byte(ip[0]);print_byte(ip[1]);print_byte(ip[2]);print_byte(ip[3]);
+			if (cmd_words_b[2] < 0) {
+				print_string("Current netmask: ");
+				itoa(uip_netmask[0]); write_char('.'); itoa(uip_netmask[0] >> 8); write_char('.');
+				itoa(uip_netmask[1]); write_char('.'); itoa(uip_netmask[1] >> 8);
+			} else {
+				if (!parse_ip(cmd_words_b[1]))
+					uip_ipaddr(&uip_netmask, ip[0], ip[1], ip[2], ip[3]);
+				else
+					print_string("Invalid IP address\n");
+				print_string("Setting netmask: ");
+				itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
+				itoa(ip[2]); write_char('.'); itoa(ip[3]);
+			}
 			write_char('\n');
 		} else if (cmd_compare(0, "l2")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "forget"))

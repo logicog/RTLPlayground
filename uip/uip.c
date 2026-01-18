@@ -85,6 +85,7 @@
 #include "uip.h"
 #include "uipopt.h"
 #include "uip_arch.h"
+#include <stddef.h>
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -168,8 +169,8 @@ __xdata u16_t uip_listenports[UIP_LISTENPORTS];
                              /* The uip_listenports list all currently
 				listning ports. */
 #if UIP_UDP
-struct uip_udp_conn *uip_udp_conn;
-struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
+__xdata struct uip_udp_conn *uip_udp_conn;
+__xdata struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
 #endif /* UIP_UDP */
 
 __xdata static u16_t ipid;           /* Ths ipid variable is an increasing
@@ -401,7 +402,7 @@ uip_init(void) __banked
 /*---------------------------------------------------------------------------*/
 #if UIP_ACTIVE_OPEN
 __xdata struct uip_conn *
-uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport)
+uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 {
   __xdata struct uip_conn *conn, *cconn;
   
@@ -467,9 +468,9 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport)
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
 struct uip_udp_conn *
-uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport)
+uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport) __banked
 {
-  register struct uip_udp_conn *conn;
+  __xdata struct uip_udp_conn *conn;
   
   /* Find an unused local port. */
  again:
@@ -512,7 +513,7 @@ uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport)
 #endif /* UIP_UDP */
 /*---------------------------------------------------------------------------*/
 void
-uip_unlisten(u16_t port)
+uip_unlisten(u16_t port) __banked
 {
   for(c = 0; c < UIP_LISTENPORTS; ++c) {
     if(uip_listenports[c] == port) {
@@ -523,7 +524,7 @@ uip_unlisten(u16_t port)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_listen(u16_t port)
+uip_listen(u16_t port) __banked
 {
   for(c = 0; c < UIP_LISTENPORTS; ++c) {
     if(uip_listenports[c] == 0) {
@@ -721,7 +722,6 @@ uip_process(u8_t flag) __banked
     /* Reset the length variables. */
     uip_len = 0;
     uip_slen = 0;
-
     /* Check if the connection is in a state in which we simply wait
        for the connection to time out. If so, we increase the
        connection's timer and remove the connection if it times
@@ -919,12 +919,14 @@ uip_process(u8_t flag) __banked
     }
 #endif /* UIP_BROADCAST */
     
-    /* Check if the packet is destined for our IP address. */
+    /* Check if we have a DHCP packet, otherwise check if the packet is destined for our IP address. */
 #if !UIP_CONF_IPV6
-    if(!uip_ipaddr_cmpx(BUF->destipaddr, uip_hostaddr)) {
-      UIP_STAT(++uip_stat.ip.drop);
-      goto drop;
-    }
+    if(!(BUF->proto == UIP_PROTO_UDP && UDPBUF->destport == HTONS(DHCPC_CLIENT_PORT))) {
+      if(!uip_ipaddr_cmpx(BUF->destipaddr, uip_hostaddr)) {
+        UIP_STAT(++uip_stat.ip.drop);
+        goto drop;
+      }
+  }
 #else /* UIP_CONF_IPV6 */
     /* For IPv6, packet reception is a little trickier as we need to
        make sure that we listen to certain multicast addresses (all
@@ -1901,7 +1903,7 @@ htons(u16_t val)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_send(register __xdata const void *data, register uint16_t len)
+uip_send(register __xdata const void *data, register uint16_t len) __banked
 {
   if(len > 0) {
     uip_slen = len;

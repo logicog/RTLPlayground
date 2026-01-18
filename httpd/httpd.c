@@ -11,7 +11,6 @@
 // #define DEBUG
 #include "debug.h"
 
-
 #define SESSION_ID_LENGTH 12
 #define SESSION_TIMEOUT 200
 
