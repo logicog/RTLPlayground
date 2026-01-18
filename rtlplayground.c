@@ -172,6 +172,22 @@ void write_char(char c)
 }
 
 
+void itoa(uint8_t v)
+{
+	uint8_t t = (v / 100);
+	// when print_zeros is not zero, we know that a non-zero number has printed.
+	// That have to print all the next numbers.
+	uint8_t print_zeros = t;
+	if (print_zeros)
+		write_char('0' + t);
+	t = (v / 10) % 10;
+	print_zeros |= t;
+	if (print_zeros)
+		write_char('0' + t);
+	write_char('0' + (v % 10));
+}
+
+
 void print_string(__code char *p)
 {
 	while (*p)
