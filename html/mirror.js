@@ -51,7 +51,7 @@ function fetchMirror() {
       for (let i = 1; i <= numPorts; i++) {
         let p = i - 1;
         if (numPorts < 9)
-          p = physToLogPort[p];members & (1<<p)
+          p = physToLogPort[p];
         setM("mPortsTX"+i, m_tx&(1<<p)); setM("mPortsRX"+i, m_rx&(1<<p));
       }
     }
