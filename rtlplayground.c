@@ -1809,12 +1809,12 @@ void bootloader(void)
 			print_string("INCORRECT MACHINE!");
 	}
 
-	// Print SW version
-	print_sw_version();
-
 	print_string("\nStarting up...\n");
 	print_string("  Flash controller\n");
 	flash_init(1);
+
+	// Print SW version
+	print_sw_version();
 
 	// Reset NIC
 	reg_bit_set(RTL837X_REG_RESET, RESET_NIC_BIT);
