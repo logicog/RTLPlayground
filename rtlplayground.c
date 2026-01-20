@@ -16,6 +16,7 @@
 #include "rtl837x_leds.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
+#include "cmd_editor.h"
 #include "uip/uipopt.h"
 #include "uip/uip.h"
 #include "uip/uip_arp.h"
@@ -86,10 +87,13 @@ extern __xdata struct dhcp_state dhcp_state;
 
 #define STP_TICK_DIVIDER 3
 
-
-// Buffer for serial input, SBUF_SIZE must be power of 2 < 256
+/* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
+ * Writing to this buffer is under the sole control of the serial ISR
+ * Note that key-presses such as <cursor-left> can create multiple
+ * keys being sent via the serial line */
 __xdata volatile uint8_t sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
+
 __xdata uint8_t sfr_data[4];
 
 extern __xdata uint8_t gpio_last_value[8];
@@ -2102,39 +2106,9 @@ void bootloader(void)
 
 	set_sys_led_state(SYS_LED_ON);
 
-	// Wait for commands on serial connection
-	// sbuf_ptr is moved forward by serial interrupt, l is the position until we have already
-	// printed out the entered characters
-	__xdata uint8_t l = sbuf_ptr; // We have printed out entered characters until l
-	__xdata uint8_t line_start = sbuf_ptr; // This is where the current line starts
-	cmd_available = 0;
+	cmd_editor_init();
 	while (1) {
-		while (l != sbuf_ptr) {
-			// If the command buffer is currently in use, we cannot copy to it
-			if (cmd_available)
-				break;
-			write_char(sbuf[l]);
-			// Check whether there is a full line:
-			if (sbuf[l] == '\n' || sbuf[l] == '\r') {
-				write_char('\n');
-				register uint8_t i = 0;
-				while (line_start != l) {
-					cmd_buffer[i++] = sbuf[line_start++];
-					line_start &= (SBUF_SIZE - 1);
-				}
-				line_start++;
-				line_start &= (SBUF_SIZE - 1);
-				cmd_buffer[i] = '\0';
-				// If there is a command we print the prompt after execution
-				// otherwise immediately because there is nothing to execute
-				if (i)
-					cmd_available = 1;
-				else
-					print_string("\n> ");
-			}
-			l++;
-			l &= (SBUF_SIZE - 1);
-		}
+		cmd_edit();
 		idle(); // Enter Idle mode until interrupt occurs
 	}
 }
