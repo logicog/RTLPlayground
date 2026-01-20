@@ -1791,6 +1791,11 @@ void bootloader(void)
 
 	EA = 1; // Enable global interrupt
 
+	// Flash controller should be initialized before any code in other banks is being fetched
+	// See this issue: https://github.com/logicog/RTLPlayground/issues/70
+	print_string("\nInitializing Flash controller\n");
+	flash_init(1);
+
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
 	// We have not detected any link
@@ -1811,10 +1816,6 @@ void bootloader(void)
 
 	// Print SW version
 	print_sw_version();
-
-	print_string("\nStarting up...\n");
-	print_string("  Flash controller\n");
-	flash_init(1);
 
 	// Reset NIC
 	reg_bit_set(RTL837X_REG_RESET, RESET_NIC_BIT);
