@@ -10,6 +10,22 @@
 To find GPIO pins on the board, you can use the [gpio-scanner firmware](https://github.com/vDorst/RTLPlayground/tree/gpio_scanner). It prints every second the GPIO status to the console, similarly to the `GPIO` command.
 The firmware only initializes the UART pins, the rest is used as an input.
 
+### Interpet the output.
+
+The output looks like this.
+
+```
+GPIO 0: bcfbedff 00000000
+GPIO 1: 0a7fcbfb 00400000
+```
+
+`GPIO 0` are the GPIOs `31..0` and `GPIO 1` are the GPIO `64..32`.<BR>
+The first hex-value is the current state of the input-registers.<BR>
+The second hex-value is what has change, just an XOR-value of the previous sample.<BR>
+Hex-value is shown as MSB..LSB.
+In the example `00400000 = bit 22` has changes in `GPIO 1`, so the gpio change was on `GPIO54`.
+
+
 ### Probing Circuit
 
 ![Probing Circuit](assets/probe-circuit.svg)
