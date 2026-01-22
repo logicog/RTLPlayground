@@ -692,6 +692,7 @@ void print_gpio_status(void) {
 void print_sw_version(void) __banked {
 	print_string("Software version: ");
 	print_string(VERSION_SW);
+	print_string("\nBuild: " __DATE__ " " __TIME__);
 	print_string("\nHardware: ");
 	print_string(machine.machine_name);
 	write_char('\n');
