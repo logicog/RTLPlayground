@@ -9,6 +9,11 @@
 #define RTL837X_REG_HW_CONF		0x6040
 // Bits 4 & 5: CLOCK DIVIDER from 125MHz for Timer
 
+#define SYS_LED_OFF	   0
+#define SYS_LED_FAST   1
+#define SYS_LED_SLOW   2
+#define SYS_LED_ON     3
+
 #define RTL837X_REG_LED_MODE		0x6520
 // Defines the LED Mode for steering the Port LEDS and the System LED
 // BIT 17 set: LED solid on

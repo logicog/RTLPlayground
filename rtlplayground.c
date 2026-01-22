@@ -1416,6 +1416,9 @@ void led_config_9xh(void)
 	sfr_mask_data(0, 0xe0, 0xa0);
 	reg_write_m(RTL837X_REG_LED_MODE);
 
+	// Set LED blink rate to slow during booting
+	set_sys_led_state(SYS_LED_SLOW);
+
 	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
 	reg_read_m(RTL837X_REG_LED_RLDP_1);
 	sfr_mask_data(0, 0, 0x3);
@@ -1442,6 +1445,12 @@ void led_config_9xh(void)
 	reg_write_m(RTL837X_REG_LED3_0_SET1);
 }
 
+void set_sys_led_state(uint8_t state)
+{
+	reg_read_m(RTL837X_REG_LED_MODE);
+	sfr_mask_data(2, 0x03, state);
+	reg_write_m(RTL837X_REG_LED_MODE);
+}
 
 void led_config(void)
 {
@@ -1794,7 +1803,7 @@ void bootloader(void)
 	// Flash controller should be initialized before any code in other banks is being fetched
 	// See this issue: https://github.com/logicog/RTLPlayground/issues/70
 	print_string("\nInitializing Flash controller\n");
-	flash_init(0);
+	flash_init(1);
 
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
@@ -1849,6 +1858,9 @@ void bootloader(void)
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
 		print_string("Identified update image. Checking integrity...");
+
+		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
+		set_sys_led_state(SYS_LED_FAST);
 
 		crc_value = 0x0000;
 		for (i = 0; i < 1024; i++) {
@@ -1910,6 +1922,8 @@ void bootloader(void)
 		}
 	}
 
+	set_sys_led_state(SYS_LED_SLOW);
+
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
 	// Is correctly configured. Therefore, we can test it, here...
@@ -1954,6 +1968,8 @@ void bootloader(void)
 	execute_config();
 	print_string("\n> ");
 	idle_ready = 1;
+
+	set_sys_led_state(SYS_LED_ON);
 
 	// Wait for commands on serial connection
 	// sbuf_ptr is moved forward by serial interrupt, l is the position until we have already
