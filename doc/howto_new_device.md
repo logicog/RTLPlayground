@@ -14,7 +14,7 @@ The firmware only initializes the UART pins, the rest is used as an input.
 
 ![Probing Circuit](assets/probe-circuit.svg)
 
-To make probing more easy, you can make this `probing circuit` on a breadboard, using a `100 Ohm` resistor, push-button, a voltmeter, and some wires.
+To make probing more easy, you can make this `probing circuit` on a breadboard, using a `100 Ohm` resistor, push-button, a voltmeter, and some wires. This circuit works well because most of the pins are internally pull-up by default.
 
 Bottom wire have to connected to the ground of the switch. Top wire can be used to carefully probe the resistors/pins you believe to be GPIO pin, one at the time. Be careful not to short multiple pins. When you have picked a spot to probe, look at the voltmeter to see if the probed-signal is around 3.3 Volt. So you know that spot has a signal.
 When pressing the button, the voltage should drop below 0.5 Volts. When it is below 0.5 Volts, check the console to see if a GPIO has changed. Repeat button press multiple times so you are sure which GPIO it is.
