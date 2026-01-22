@@ -124,5 +124,6 @@ void get_random_32(void);
 void read_reg_timer(uint32_t * tmr);
 void sfp_print_info(uint8_t sfp);
 bool gpio_pin_test(uint8_t pin);
+void set_sys_led_state(uint8_t state);
 
 #endif

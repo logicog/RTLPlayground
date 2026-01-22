@@ -436,6 +436,9 @@ void handle_post(void)
 			flash_region.addr = CONFIG_START;
 			flash_sector_erase();
 		}
+		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
+		set_sys_led_state(SYS_LED_FAST);
+
 		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
