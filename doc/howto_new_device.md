@@ -52,7 +52,27 @@ Many boards have an empty `SO8` spot on the PCB where an I2C-EEPROM can be place
 | CLOCK / SCL | 6 |  GPIO7 |
 | Ground / GND | 4 | PIN 8 |
 
-When connected and powered-up, the `i2ctransfer` tool from the `i2c-tools` package, can be used to read/write from/to the SOC.
+When connected and powered-up, the `i2ctransfer` tool from the `i2c-tools` package, can be used to read/write from/to the SOC.<BR>
+Use `i2cdetect -l` to list all the I2C-adaptors.<BR>
+Look for `i2c-<N>  i2c i2c-tiny-usb at bus ... device ...      I2C adapter`.
+`<N>`-number is the bus number.
+
+Use `i2cdetect <N>` to scan the I2C-bus for devices.
+```
+WARNING! This program can confuse your I2C bus, cause data loss and worse!
+I will probe file /dev/i2c-7.
+I will probe address range 0x08-0x77.
+Continue? [Y/n] 
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:                         -- -- -- -- -- -- -- -- 
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+50: -- -- -- -- -- -- -- -- -- -- -- -- 5c -- -- -- 
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+70: -- -- -- -- -- -- -- --
+```
 
 The SOC's i2c-address is `0x5c` (7-bit notation).
 
@@ -74,7 +94,7 @@ Value of register `0x0004` is `0x00, 0x00, 0x72, 0x83`, so full 32-bit
 value is `0x83720000`.
 So, my device is an RTL8372.
 
-#### Dump script
+#### Dump script I2C Slave Port
 
 With this script you can dump all the registers. It takes about 45 seconds to run.
 This allows you for example to inspect the GPIO/LED settings from the original firmware.
