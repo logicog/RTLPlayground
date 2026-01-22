@@ -296,11 +296,11 @@ uint8_t stream_upload(uint16_t bptr)
 			if (verify_crc) {
 				dbg_string("CRC16: "); dbg_short(crc_final); dbg_char('\n');
 				if (crc_final == 0xb001) {
-					dbg_string("Checksum OK.");
+					print_string("Checksum OK.");
 				} else {
-					dbg_string("Checksum incorrect!");
+					print_string("Checksum incorrect!");
 				}
-				dbg_string("Upload to flash done, will reset!\n");
+				print_string("\nUpload to flash done, will reset!\n");
 				reset_chip();
 			}
 			// Make sure there is a 0 at the end of the uploaded data
@@ -424,6 +424,7 @@ void handle_post(void)
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
 		if (is_word(request_path, "upload")) {
+			print_string("Firmware upload started.");
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
 			max_upload = 1024576;
@@ -514,6 +515,7 @@ void httpd_appcall(void)
 		// Check here maxupload by subtracting uip_len and close socekt if fails!
 		if (max_upload - uip_len > 0) {
 			stream_upload(0);
+			write_char('.');
 		} else {
 			send_bad_request();
 			goto do_send;
