@@ -1794,7 +1794,7 @@ void bootloader(void)
 	// Flash controller should be initialized before any code in other banks is being fetched
 	// See this issue: https://github.com/logicog/RTLPlayground/issues/70
 	print_string("\nInitializing Flash controller\n");
-	flash_init(1);
+	flash_init(0);
 
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
@@ -1848,7 +1848,7 @@ void bootloader(void)
 		__xdata uint16_t i = 0;
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
-		print_string("Identified update image. Checking integrity...\n");
+		print_string("Identified update image. Checking integrity...");
 
 		crc_value = 0x0000;
 		for (i = 0; i < 1024; i++) {
@@ -1857,28 +1857,31 @@ void bootloader(void)
 			flash_read_bulk(flash_buf);
 			bptr = flash_buf;
 			for (j = 0; j < 0x200; j++) {
-				print_byte(*bptr); write_char(' ');
+			//	print_byte(*bptr); write_char(' ');
 				crc16(bptr++);
-				print_short(crc_value); write_char(':');
+			//	print_short(crc_value); write_char(':');
 			}
 			source += 0x200;
-			write_char('\n'); print_short(crc_value); write_char(' ');
+			// write_char('\n'); print_short(crc_value); write_char(' ');
+			if (i%16 == 0)
+				write_char('.');
 		}
 		if (crc_value == 0xb001) {
-			print_string("Checksum OK\n");
-			print_string("Update in progress, moving firmware to start of FLASH!\n");
+			print_string("\nChecksum OK\n");
+			print_string("Update in progress, moving firmware to start of FLASH.");
 			source = FIRMWARE_UPLOAD_START;
-			// A 512kByte = 4MBit Flash has 128*8=1024 512k blocks, we copy only 120
-			for (i = 0; i < 960; i++) {
-				print_string("Writing block: ");
-				print_short(dest);
+			// A 512kByte = 4MBit Flash has 128*8=1024 512byte blocks, we copy only 896 
+			// (don't overwrite config @ 0x700000)
+			for (i = 0; i < 896; i++) {
+				// print_string("Writing block: ");
+				// print_short(dest);
 				flash_region.addr = source;
 				flash_region.len = 0x200;
 				flash_read_bulk(flash_buf);
-				write_char('\n');
 				if (!(i & 0x7)) {
 					flash_region.addr = dest;
 					flash_sector_erase();
+					write_char('.');
 				}
 				flash_region.addr = dest;
 				flash_region.len = 0x200;
@@ -1886,7 +1889,7 @@ void bootloader(void)
 				dest += 0x200;
 				source += 0x200;
 			}
-			print_string("Deleting uploaded flash image\n");
+			print_string("\nDeleting uploaded flash image\n");
 			dest = FIRMWARE_UPLOAD_START;
 			for (register uint8_t i=0; i < 128; i++) {
 				flash_region.addr = dest;			
