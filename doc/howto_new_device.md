@@ -10,7 +10,7 @@
 To find GPIO pins on the board, you can use the [gpio-scanner firmware](https://github.com/vDorst/RTLPlayground/tree/gpio_scanner). It prints every second the GPIO status to the console, similarly to the `GPIO` command.
 The firmware only initializes the UART pins, the rest is used as an input.
 
-### Interpet the output.
+### How to interpret the values
 
 The output looks like this.
 
@@ -185,3 +185,30 @@ Output looks like this:
 0xfffc=0x00000000
 --- DUMP END ---
 ```
+
+### Dump script original firmware
+
+#### Manager firmware
+
+On the managed firmware you can login with a [password](https://github.com/up-n-atom/SWTG118AS?tab=readme-ov-file#uboot-password).<BR>
+After login you can use the `regget` command to fetch register values.
+
+* TODO: `MAKE SCRIPT TO DUMP VALUES FOR YOU`
+
+#### Unmanager firmware
+
+On the unmanaged firmware you can use the `rd` command to fetch register values.
+
+* TODO: `MAKE SCRIPT TO DUMP VALUES FOR YOU`
+
+#### Registers to dump
+
+| What | Address | Note |
+| --- | --- | ---|
+| MODEL_NAME | 0x0004 | This gives you the chip model number |
+| GPIO_OUT0 | 0x003c | GPIO Output value 31..0 |
+| GPIO_OUT0 | 0x0040 | GPIO Output value 63..32 |
+| OE_OUT0 | 0x004c | GPIO Output Enable value 31..0 |
+| OE_OUT0 | 0x0050 | GPIO Output Enable value 63..32 |
+| MUX_SEL_0 | 0x7F8C | GPIO Mux settings 0 |
+| MUX_SEL_1 | 0x7F90 | GPIO Mux settings 1 |
