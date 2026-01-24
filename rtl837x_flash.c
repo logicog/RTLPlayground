@@ -342,8 +342,8 @@ void flash_sector_erase(void)
 
 void flash_write_bytes(__xdata uint8_t *ptr)
 {
-	write_char('>'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('-'); print_byte(*ptr); write_char('\n');
-		while(1) {
+	// write_char('\n'); write_char('>'); print_long(flash_region.addr); write_char(':'); print_short(flash_region.len); write_char('-'); print_byte(*ptr); // write_char('\n');
+	while(1) {
 		flash_write_enable();
 		SFR_FLASH_CMD = CMD_PAGE_PROGRAM;
 		SFR_FLASH_TCONF = 0x40 | 8 | 4; // Bytes written is 4, 8 enables write, 0x40 is unknown
@@ -369,7 +369,6 @@ void flash_write_bytes(__xdata uint8_t *ptr)
 		flash_region.len -= 4;
 		flash_region.addr += 4;
 	};
-
 	while (flash_read_status() & 0x1);
 	flash_configure_mmio();
 }

@@ -1416,6 +1416,9 @@ void led_config_9xh(void)
 	sfr_mask_data(0, 0xe0, 0xa0);
 	reg_write_m(RTL837X_REG_LED_MODE);
 
+	// Set LED blink rate to slow during booting
+	set_sys_led_state(SYS_LED_SLOW);
+
 	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
 	reg_read_m(RTL837X_REG_LED_RLDP_1);
 	sfr_mask_data(0, 0, 0x3);
@@ -1442,6 +1445,12 @@ void led_config_9xh(void)
 	reg_write_m(RTL837X_REG_LED3_0_SET1);
 }
 
+void set_sys_led_state(uint8_t state)
+{
+	reg_read_m(RTL837X_REG_LED_MODE);
+	sfr_mask_data(2, 0x03, state);
+	reg_write_m(RTL837X_REG_LED_MODE);
+}
 
 void led_config(void)
 {
@@ -1848,7 +1857,10 @@ void bootloader(void)
 		__xdata uint16_t i = 0;
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
-		print_string("Identified update image. Checking integrity...\n");
+		print_string("Identified update image. Checking integrity...");
+
+		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
+		set_sys_led_state(SYS_LED_FAST);
 
 		crc_value = 0x0000;
 		for (i = 0; i < 1024; i++) {
@@ -1857,28 +1869,31 @@ void bootloader(void)
 			flash_read_bulk(flash_buf);
 			bptr = flash_buf;
 			for (j = 0; j < 0x200; j++) {
-				print_byte(*bptr); write_char(' ');
+			//	print_byte(*bptr); write_char(' ');
 				crc16(bptr++);
-				print_short(crc_value); write_char(':');
+			//	print_short(crc_value); write_char(':');
 			}
 			source += 0x200;
-			write_char('\n'); print_short(crc_value); write_char(' ');
+			// write_char('\n'); print_short(crc_value); write_char(' ');
+			if (i%16 == 0)
+				write_char('.');
 		}
 		if (crc_value == 0xb001) {
-			print_string("Checksum OK\n");
-			print_string("Update in progress, moving firmware to start of FLASH!\n");
+			print_string("\nChecksum OK\n");
+			print_string("Update in progress, moving firmware to start of FLASH.");
 			source = FIRMWARE_UPLOAD_START;
-			// A 512kByte = 4MBit Flash has 128*8=1024 512k blocks, we copy only 120
-			for (i = 0; i < 960; i++) {
-				print_string("Writing block: ");
-				print_short(dest);
+			// A 512kByte = 4MBit Flash has 128*8=1024 512byte blocks, we copy only 896 
+			// (don't overwrite config @ 0x700000)
+			for (i = 0; i < 896; i++) {
+				// print_string("Writing block: ");
+				// print_short(dest);
 				flash_region.addr = source;
 				flash_region.len = 0x200;
 				flash_read_bulk(flash_buf);
-				write_char('\n');
 				if (!(i & 0x7)) {
 					flash_region.addr = dest;
 					flash_sector_erase();
+					write_char('.');
 				}
 				flash_region.addr = dest;
 				flash_region.len = 0x200;
@@ -1886,7 +1901,7 @@ void bootloader(void)
 				dest += 0x200;
 				source += 0x200;
 			}
-			print_string("Deleting uploaded flash image\n");
+			print_string("\nDeleting uploaded flash image\n");
 			dest = FIRMWARE_UPLOAD_START;
 			for (register uint8_t i=0; i < 128; i++) {
 				flash_region.addr = dest;			
@@ -1906,6 +1921,8 @@ void bootloader(void)
 			dest += 0x1000;
 		}
 	}
+
+	set_sys_led_state(SYS_LED_SLOW);
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
@@ -1951,6 +1968,8 @@ void bootloader(void)
 	execute_config();
 	print_string("\n> ");
 	idle_ready = 1;
+
+	set_sys_led_state(SYS_LED_ON);
 
 	// Wait for commands on serial connection
 	// sbuf_ptr is moved forward by serial interrupt, l is the position until we have already
