@@ -89,7 +89,7 @@ extern __xdata struct dhcp_state dhcp_state;
 // Buffer for serial input, SBUF_SIZE must be power of 2 < 256
 __xdata volatile uint8_t sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
-__xdata uint8_t sfr_data[4];
+__data uint8_t sfr_data[4];
 
 extern __xdata uint8_t gpio_last_value[8];
 
@@ -116,7 +116,7 @@ __code uint16_t bit_mask[16] = {
 
 
 __xdata uint8_t was_offline;
-__xdata uint8_t linkbits_last[4];
+__data uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
 __xdata uint8_t sfp_pins_last;
 __xdata char sfp_module_vendor[2][17];
@@ -633,7 +633,7 @@ void print_sds_reg(uint8_t sds_id, uint8_t page, uint8_t reg)
 }
 
 
-char cmp_4(__xdata uint8_t a[], __xdata uint8_t b[])
+char cmp_4(__data uint8_t * a, __data uint8_t * b)
 {
 	for (uint8_t i = 0; i < 4; i++) {
 		if (a[i] == b[i])
@@ -646,7 +646,7 @@ char cmp_4(__xdata uint8_t a[], __xdata uint8_t b[])
 	return 0;
 }
 
-void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
+void cpy_4(__data uint8_t * dest, __data uint8_t * source)
 {
 	for (uint8_t i = 0; i < 4; i++)
 		dest[i] = source[i];
