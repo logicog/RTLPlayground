@@ -1688,6 +1688,12 @@ void n_device_init(void)
 	sds_read(1, 6, 2);
 	pval = SFR_DATA_U16;
 	sds_write_v(1, 6, 2, pval | 0x2000);
+
+	// FOR N-Version: #TX_POLARITY_SWAP
+	reg_read_m(0xa94);
+        sfr_data[2] = 0x59;
+        sfr_data[3] = 0x6a;
+	reg_write_m(0xa94);
 }
 
 bool is_n_device(void)
