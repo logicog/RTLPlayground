@@ -1515,6 +1515,17 @@ void rtl8373_revision(void)
 	reg_write_m(RTL837X_REG_CHIP_INFO);
 }
 
+/* Check if this is an N-series device using the Chip ID */
+
+bool is_n_device(void)
+{
+	reg_read_m(RTL837X_REG_CPU_INFO);
+	// Check for Chip ID ending in 0x7000 (0x83727000 or 0x83737000)
+	//if ((sfr_data[2] & 0xff) == 0x70 && (sfr_data[3] & 0xff) == 0x00) 
+	if (sfr_data[2]  == 0x70 && sfr_data[3] == 0x00) 
+		return true;
+	return false;
+}
 /*
  * Initialisation calls specifict to N-series devices
  * Calls taken from Realtek's SDK examples
@@ -1538,22 +1549,10 @@ void n_device_init(void)
 	sds_write_v(1, 6, 2, pval | 0x2000);
 
 	// FOR N-Version: #TX_POLARITY_SWAP
-	reg_read_m(0xa94);
+	reg_read_m(RTL837X_REG_CFG_PHY_TX_POLARITY_SWAP);
         sfr_data[2] = 0x59;
         sfr_data[3] = 0x6a;
-	reg_write_m(0xa94);
-}
-
-/* Check if this is an N-series device using the Chip ID */
-bool is_n_device(void)
-{
-	reg_read_m(RTL837X_REG_CHIP_INFO);
-	// Check for Chip ID ending in 0x7000 (0x83727000 or 0x83737000)
-	if ((sfr_data[2]) == 0x70 && (sfr_data[3]) == 0x00) {
-		print_string("N-series device detected\n");
-		return true;
-	}
-	return false;
+	reg_write_m(RTL837X_REG_CFG_PHY_TX_POLARITY_SWAP);
 }
 
 void rtl8373_init(void)
@@ -1859,14 +1858,22 @@ void bootloader(void)
 	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = linkbits_last_p89 = 0;
 
 	print_string("Detecting CPU: ");
-	reg_read_m(0x4);
+	reg_read_m(RTL837X_REG_CPU_INFO);
 	if (sfr_data[1] == 0x73) { // Register was 0x83730000
-		print_string("RTL8373\n");
+		print_string("RTL8373");
+		if(is_n_device())
+			print_string("N\n");
+		else 
+			print_string("\n");
 		if (!machine.isRTL8373)
 			print_string("INCORRECT MACHINE!");
 		rtl8224_enable();  // Power on the RTL8224
 	} else {
-		print_string("RTL8372\n");
+		print_string("RTL8372");
+		if(is_n_device())
+			print_string("N\n");
+		else 
+			print_string("\n");
 		if (machine.isRTL8373)
 			print_string("INCORRECT MACHINE!");
 	}
