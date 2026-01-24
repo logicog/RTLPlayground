@@ -1515,12 +1515,56 @@ void rtl8373_revision(void)
 	reg_write_m(RTL837X_REG_CHIP_INFO);
 }
 
+/*
+ * Initialisation calls specifict to N-series devices
+ * Calls taken from Realtek's SDK examples
+ */
+void n_device_init(void)
+{
+	sds_read(0, 0, 0);
+	uint16_t pval = SFR_DATA_U16;
+	sds_write_v(0, 0, 0, pval | 0x200);
+
+	sds_read(1, 0, 0);
+	pval = SFR_DATA_U16;
+	sds_write_v(1, 0, 0, pval | 0x200);
+
+	sds_read(0, 6, 2);
+	pval = SFR_DATA_U16;
+	sds_write_v(0, 6, 2, pval | 0x2000);
+
+	sds_read(1, 6, 2);
+	pval = SFR_DATA_U16;
+	sds_write_v(1, 6, 2, pval | 0x2000);
+
+	// FOR N-Version: #TX_POLARITY_SWAP
+	reg_read_m(0xa94);
+        sfr_data[2] = 0x59;
+        sfr_data[3] = 0x6a;
+	reg_write_m(0xa94);
+}
+
+/* Check if this is an N-series device using the Chip ID */
+bool is_n_device(void)
+{
+	reg_read_m(RTL837X_REG_CHIP_INFO);
+	// Check for Chip ID ending in 0x7000 (0x83727000 or 0x83737000)
+	if ((sfr_data[2]) == 0x70 && (sfr_data[3]) == 0x00) {
+		print_string("N-series device detected\n");
+		return true;
+	}
+	return false;
+}
 
 void rtl8373_init(void)
 {
 	print_string("\nrtl8373_init called\n");
 
 	led_config_9xh();
+	// Additional initialization for n-devices
+	if (is_n_device()) {
+		n_device_init();
+	}
 	sds_init();
 	// Disable all SERDES for configuration
 	REG_SET(RTL837X_REG_SDS_MODES, 0x000037ff);
@@ -1604,7 +1648,10 @@ void rtl8372_init(void)
 	print_string("\nrtl8372_init called\n");
 
 	led_config();
-
+	// Additional initialization for n-devices
+	if (is_n_device()) {
+		n_device_init();
+	}
 	sds_init();
 	phy_config(8);	// PHY configuration: External 8221B?
 	phy_config(3);	// PHY configuration: all internal PHYs?
@@ -1659,6 +1706,7 @@ void rtl8372_init(void)
 	reg_write_m(0x632c);
 	print_string("\nrtl8372_init done\n");
 }
+
 
 
 /*
