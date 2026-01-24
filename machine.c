@@ -72,6 +72,32 @@ __code const struct machine machine = {
 	.sfp_port[1].i2c = 1, /* GPIO 40 */
 	.reset_pin = 36,
 };
+#elif defined MACHINE_HI_K0402WS
+__code const struct machine machine = {
+	.machine_name = "HiSource HI-K0402WS",
+	.isRTL8373 = 0,
+	.min_port = 3,
+	.max_port = 8,
+	.n_sfp = 2,
+	.log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
+	.phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
+	.is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
+	
+	// Left SFP port
+	.sfp_port[0].pin_detect = 38, // Checked !
+	.sfp_port[0].pin_los = 27, // checked !
+	.sfp_port[0].sds = 1, 
+	.sfp_port[0].i2c = 0, //checked
+
+	// Right SFP port
+	.sfp_port[1].pin_detect = 37, // Checked !
+	.sfp_port[1].pin_los = 8, // checked !
+	.sfp_port[1].sds = 0, 
+	.sfp_port[1].i2c = 1, // checked correct
+
+	.reset_pin = 46,
+
+	};
 #elif defined DEFAULT_8C_1SFP
 __code const struct machine machine = {
 	.machine_name = "8+1 SFP Port Switch",
