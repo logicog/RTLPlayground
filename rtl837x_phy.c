@@ -25,7 +25,14 @@ extern __code uint16_t bit_mask[16];
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 
-__code uint16_t rtl8224_ca[42] = {
+// SDS-settings for RTL8224 first SerDes which is connected to the RTL837x-SOC.
+// Array contrains register-value, and SDS-CMD, which already encodes (sds_index, page, reg).
+// This array is used in phy_config_8224().
+//
+// Note: Adding `Swapping the RX for N-devices`-setting on the end of the array, didn't work.
+// Setting will apply but still no packets flow.
+// Settings are `0x2000, 0xc10c`,
+__code uint16_t rtl8224_sds0_setttings[42] = {
 	// SDS_DATA, SDS_CMD
 	0x4480, 0xc842,
 	0x0400, 0xc9c2,
@@ -47,33 +54,7 @@ __code uint16_t rtl8224_ca[42] = {
 	0xabb0, 0xcedc,
 	0x5078, 0xc90c,
 	0xc45c, 0xc18c,
-	// Note Swapping the RX for N-device here, don't work
-	// Setting will apply but still no packets flow.
-	// 0x2000, 0xc10c,
 	0, 0
-};
-
-__code uint16_t rtl8224_cb[60] = {
-	0xc45c, 0xc18c, 0x8040,
-	0x0030, 0xc040, 0x8040,
-	0x0010, 0xc040, 0x8040,
-	0x0050, 0xc040, 0x8040,
-	0x00d0, 0xc040, 0x8040,
-	0x0cd0, 0xc040, 0x8040,
-	0x04d0, 0xc040, 0x8040,
-	0x04d0, 0xc040, 0x8040,
-	0x0cd0, 0xc040, 0x8040,
-	0x00d0, 0xc040, 0x8040,
-	0x00d0, 0xc040, 0x8040,
-	0x0050, 0xc040, 0x8040,
-	0x0010, 0xc040, 0x8040,
-	0x0010, 0xc040, 0x8040,
-	0x0030, 0xc040, 0x8040,
-	0x0000, 0xc040, 0x803e,
-	0x000b, 0xc03e, 0x803e,
-	0x0000, 0xc03e, 0x8042,
-	0x4906, 0xc042, 0x82ec,
-	0xffff,0,0
 };
 
 void rtl8224_phy_enable(void) __banked
@@ -187,13 +168,13 @@ void phy_config_8224(void) __banked
 	phy_write(RTL8224_PHY_ID, 0x1e, 0x7b20, pval);
 
 	uint8_t i = 0;
-	while (rtl8224_ca[i]) {
-		phy_write(RTL8224_PHY_ID, 0x1e, 0x400, rtl8224_ca[i]);
+	while (rtl8224_sds0_setttings[i]) {
+		rtl8224_write_reg_u16(RTL837X_SDS_INDACS_WRITE_DATA, rtl8224_sds0_setttings[i]);
 		i++;
-		phy_write(RTL8224_PHY_ID, 0x1e, 0x3f8, rtl8224_ca[i]);
+		rtl8224_write_reg_u16(RTL837X_SDS_INDACS_CMD, rtl8224_sds0_setttings[i]);
 		i++;
 		do {
-			phy_read(RTL8224_PHY_ID, 0x1e, 0x3f8);
+			rtl8224_read_reg_u16(0x3f8);
 		} while (SFR_DATA_8 & 0x80);
 	}
 
