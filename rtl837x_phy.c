@@ -8,6 +8,7 @@
 
 // Phy ID of the external RTL8224 PHY.
 #define RTL8224_PHY_ID 0x00
+#define RTL8224_DEV_ID 0x1e
 
 #include <stdint.h>
 #include "rtl837x_common.h"
@@ -15,14 +16,17 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_phy.h"
 #include "phy.h"
+#include "machine.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
 extern __code uint16_t bit_mask[16];
-
+extern __code const struct machine machine;
+extern __xdata struct machine_runtime machine_detected;
 
 __code uint16_t rtl8224_ca[42] = {
+	// SDS_DATA, SDS_CMD
 	0x4480, 0xc842,
 	0x0400, 0xc9c2,
 	0x6d02, 0xcc42,
@@ -43,6 +47,9 @@ __code uint16_t rtl8224_ca[42] = {
 	0xabb0, 0xcedc,
 	0x5078, 0xc90c,
 	0xc45c, 0xc18c,
+	// Note Swapping the RX for N-device here, don't work
+	// Setting will apply but still no packets flow.
+	// 0x2000, 0xc10c,
 	0, 0
 };
 
@@ -75,18 +82,23 @@ void rtl8224_phy_enable(void) __banked
 
 	// p001e.0a90:00f3 R02f8-000000f3 R02f4-000000fc P000001.1e000a90:00fc
 	print_string("\r\nrtl8224_phy_enable called\r\n");
-	phy_read(RTL8224_PHY_ID, 0x1e, 0xa90);
+	phy_read(RTL8224_PHY_ID, RTL8224_DEV_ID, RTL837X_CFG_PHY_MDI_REVERSE);
 	pval = SFR_DATA_U16;
 
 	// PHY Initialization:
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
-
 	pval &= 0xfff0;
 	pval |= 0x0c;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 
-	phy_write(RTL8224_PHY_ID, 0x1e, 0xa90, pval);
+	phy_write(RTL8224_PHY_ID, RTL8224_DEV_ID, RTL837X_CFG_PHY_MDI_REVERSE, pval);
 	delay(50);
+
+	if (machine_detected.isN) {
+		print_string("  N-settings");
+		// TX_POLARITY_SWAP
+		rtl8224_write_reg_u16(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x596A);
+	}
 
 	print_string("\r\nrtl8224_phy_enable done\r\n");
 }
@@ -153,7 +165,15 @@ void phy_config(uint8_t phy) __banked
 void phy_config_8224(void) __banked
 {
 	uint16_t pval;
-	print_string("\r\nphy_config_8224 called\r\n");
+	print_string("\r\nphy_config_8224 called\r\nRTL8224 ID: ");
+
+	// Print RTL8224 chip id
+	rtl8224_read_reg_u16(RTL837X_REG_CHIP_ID + 1);
+	print_short(SFR_DATA_U16);
+	rtl8224_read_reg_u16(RTL837X_REG_CHIP_ID);
+	print_byte(SFR_DATA_U16 >> 8);
+	print_byte(SFR_DATA_U16);
+	write_char('\n');
 
 	// p001e.7b20:0bff R02f8-00000bff R02f4-00000bed P000001.1e007b20:0bed
 	phy_read(RTL8224_PHY_ID, 0x1e, 0x7b20);
@@ -436,4 +456,77 @@ void phy_reset(uint8_t port) __banked
 	delay(2);
 	// Re-enable PHY
 	phy_write(port, PHY_MMD_CTRL, 0xa610, v & 0xf7ff);
+}
+
+// Read RTL8224 register.
+// Registers names are the same as on the RTL837x.
+// Reading only reads the lower 16-bit part of the 32-bit register.
+// When also needing read the upper 16-bits, use register address + 1.
+// Readed values it return via sfr-data.
+void inline rtl8224_read_reg_u16(uint16_t reg) __banked
+{
+	//	void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
+	// phy_read(RTL8224_PHY_ID, 0x1e, reg);
+
+	SFR_SMI_REG_U16 = reg;		// c2, c2
+
+	SFR_SMI_PHY = RTL8224_PHY_ID;		// a5
+	SFR_SMI_DEV = RTL8224_DEV_ID << 3 | 2;	// c4
+
+	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
+// Write RTL8224 register.
+// Registers names are the same as on the RTL837x.
+// Writing only the lower 16-bit part of the 32-bit register.
+// When also needing to write the upper 16-bits, use register address + 1.
+void inline rtl8224_write_reg_u16(uint16_t reg, uint16_t val) __banked
+{
+	SFR_DATA_U16 = val;			    // SFR_A6, SFR_A7
+	SFR_SMI_REG_U16 = reg;			// SFR_C2, SFR_C3
+
+	//void phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t v)
+	// phy_write(RTL8224_PHY_ID, 0x1e, reg, val);
+
+	uint16_t phy_mask = bit_mask[RTL8224_PHY_ID];
+
+	SFR_SMI_PHYMASK = phy_mask;		// SFR_C5
+	SFR_SMI_DEV = (phy_mask >> 8) | RTL8224_DEV_ID << 3 | 2; // SFR_C4: bit 2 can also be set for some option
+	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
+	do {
+	} while (SFR_EXEC_STATUS != 0);
+}
+
+// // Modify RTL8224 register.
+// // Registers names are the same as on the RTL837x.
+// // Modifies only the lower 16-bit part of the 32-bit register.
+// // When also needing to modifie the upper 16-bits, use register address + 1.
+// void rtl8224_modify_reg_u16(uint16_t reg, uint16_t clear, uint16_t set) __banked
+// {
+// 	phy_read(RTL8224_PHY_ID, 0x1e, reg);
+// 	uint16_t pval = SFR_DATA_U16;
+// 	pval &= ~(clear);
+// 	pval |= set;
+// 	phy_write(RTL8224_PHY_ID, 0x1e, reg, pval);
+// }
+
+
+// Write to the RTL8224 SDS registers.
+void rtl8224_sds_write(uint16_t sds_cmd, uint16_t value) __banked
+{
+	// Wait for command bit is cleared
+	do {
+		rtl8224_read_reg_u16(RTL837X_SDS_INDACS_CMD);
+	} while (SFR_DATA_8 & 0x80);
+
+	rtl8224_write_reg_u16(RTL837X_SDS_INDACS_WRITE_DATA, value);
+
+	rtl8224_write_reg_u16(RTL837X_SDS_INDACS_CMD, sds_cmd);
+
+	// Wait for command bit is cleared
+	do {
+		rtl8224_read_reg_u16(RTL837X_SDS_INDACS_CMD);
+	} while (SFR_DATA_8 & 0x80);
 }
