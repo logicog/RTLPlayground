@@ -630,12 +630,14 @@ void print_reg(uint16_t reg)
 }
 
 
+/*
+// TODO: This uses 2 DSEG bytes and is not used!
 void print_sds_reg(uint8_t sds_id, uint8_t page, uint8_t reg)
 {
 	sds_read(sds_id, page, reg);
 	print_phy_data();
 }
-
+*/
 
 char cmp_4(__xdata uint8_t a[], __xdata uint8_t b[])
 {
