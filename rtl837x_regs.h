@@ -1,13 +1,19 @@
 #ifndef _RTL837X_REGS_H_
 #define _RTL837X_REGS_H_
 
-#define RTL837X_REG_CHIP_INFO		0x000c
+#define RTL837X_REG_CHIP_ID		0x0004
+#define RTL837X_REG_CHIP_INFO	0x000c
 #define RTL837X_REG_RESET		0x0024
 #define RESET_SOC_BIT			0
 #define RESET_NIC_BIT			2
 
 #define RTL837X_REG_HW_CONF		0x6040
 // Bits 4 & 5: CLOCK DIVIDER from 125MHz for Timer
+
+#define SYS_LED_OFF	   0
+#define SYS_LED_FAST   1
+#define SYS_LED_SLOW   2
+#define SYS_LED_ON     3
 
 #define RTL837X_REG_LED_MODE		0x6520
 // Defines the LED Mode for steering the Port LEDS and the System LED
@@ -30,7 +36,20 @@
 #define RTL837X_REG_SEC_COUNTER2 0x06f8
 // Used for counting seconds
 
-#define RTL837X_REG_SDS_MODES 0x7b20
+
+/*
+ * SDS
+ */
+#define RTL837X_SDS_INDACS_CMD			0x3F8
+#define RTL837X_SDS_INDACS_WRITE_DATA	0x400
+#define RTL837X_REG_SDS_MODES			0x7b20
+
+/*
+ * PHY
+ */
+ #define RTL837X_CFG_PHY_TX_POLARITY_SWAP	0xA94
+ #define RTL837X_CFG_PHY_MDI_REVERSE		0xA90
+
 /*
  * 5 Bits each give the state of the 2 SerDes of the RTL8372
  * Values are:
