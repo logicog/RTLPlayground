@@ -1381,7 +1381,7 @@ void sds_init(void)
 	p001e.000d:0010 R02f8-00000010 R02f4-0000001a P000001.1e00000d:b7fe
 	p001e.000d:0010 p001e.000d:0010	R02f8-00000010 R02f4-00000010 P000001.1e00000d:b7fe
 */
-	phy_read(0, 0x1e, 0xd);
+	phy_read(0, PHY_MMD30, 0xd);
 	uint16_t pval = SFR_DATA_U16;
 
 	// PHY Initialization:
@@ -1393,9 +1393,9 @@ void sds_init(void)
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 	delay(10);
 
-	phy_write_mask(0x1, 0x1e, 0xd, pval);
+	phy_write_mask(0x1, PHY_MMD30, 0xd, pval);
 
-	phy_read(0, 0x1e, 0xd);
+	phy_read(0, PHY_MMD30, 0xd);
 	pval = SFR_DATA_U16;
 
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
@@ -1403,7 +1403,7 @@ void sds_init(void)
 	pval &= 0xfff0;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 
-	phy_write_mask(0x1, 0x1e, 0xd, pval);
+	phy_write_mask(0x1, PHY_MMD30, 0xd, pval);
 
 	if (machine_detected.isN) {
 		uint16_t pval;
