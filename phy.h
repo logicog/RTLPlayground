@@ -14,7 +14,7 @@
 #define PHY_MMD_PMAPMD	1
 #define PHY_MMD_AN	7
 #define PHY_SDS_CTRL	30
-#define PHY_MMD_CTRL	31
+#define PHY_MMD31	31
 
 /*
  * Define registers in Auto-Negotiation page

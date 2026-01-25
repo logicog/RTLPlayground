@@ -349,7 +349,7 @@ void port_stats_print(void) __banked
 		write_char('0' + machine.log_to_phys_port[i]); write_char('\t');
 
 		if (!machine.is_sfp[i]) {
-			phy_read(i, 0x1f, 0xa610);
+			phy_read(i, PHY_MMD31, 0xa610);
 			if (SFR_DATA_8 == 0x20)
 				print_string("On\t");
 			else
