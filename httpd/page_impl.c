@@ -607,13 +607,13 @@ void send_status(void)
 			}
 		} else {
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
-			phy_read(i, 0x1f, 0xa610);
+			phy_read(i, PHY_MMD31, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
 			slen += strtox(outbuf + slen, ",\"adv\":\"");
 			phy_read(i, PHY_MMD_AN, 0x20);
 			uint16_t w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x80));		// 2500BaseN-Full
-			phy_read(i, PHY_MMD_CTRL, 0xa412);
+			phy_read(i, PHY_MMD31, 0xa412);
 			w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x0200));		// 1000Base-Full
 			phy_read(i, PHY_MMD_AN, 0x10);

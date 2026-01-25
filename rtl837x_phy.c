@@ -103,7 +103,7 @@ void phy_config(uint8_t phy) __banked
 
 	//	p031f.a432:0811 P000008.1f00a432:0831
 	// PHYCR2 PHY Specific Control Register 2, MMD 31. 0xA432), set bit 5: enable EEE
-	phy_modify(phy, 0x1f, 0xa432, 0x0000, 0x0020);
+	phy_modify(phy, PHY_MMD31, 0xa432, 0x0000, 0x0020);
 
 	//	p0307.003e:0000 P000008.0700003e:0001
 	// EEE avertisment 2 register MMMD 7.0x003e, set bit 0: 2.5G has EEE capability
@@ -112,7 +112,7 @@ void phy_config(uint8_t phy) __banked
 
 	//	p031f.a442:043c P000008.1f00a442:0430
 	// Unknown, but clear bits 2/3
-	phy_modify(phy, 0x1f, 0xa442, 0x000c, 0x0000);
+	phy_modify(phy, PHY_MMD31, 0xa442, 0x000c, 0x0000);
 	delay(20);
 
 	// P000100.1e0075b5:e084
@@ -133,10 +133,10 @@ void phy_config(uint8_t phy) __banked
 	//	p031f.a400:1040 P000008.1f00a400:5040, then: p031f.a400:5040 P000008.1f00a400:1040
 	// FEDCR (Fast Ethernet Duplex Control Register, MMD 31.0xA400)
 	// Set bit 14, sleep, then clear again, according to the datasheet these bits are reserved
-	phy_modify(phy, 0x1f, 0xa400, 0x0000, 0x4000);
+	phy_modify(phy, PHY_MMD31, 0xa400, 0x0000, 0x4000);
 	delay(20);
 
-	phy_modify(phy, 0x1f, 0xa400, 0x4000, 0x0000);
+	phy_modify(phy, PHY_MMD31, 0xa400, 0x4000, 0x0000);
 	delay(20);
 
 	print_string("\r\n  phy config done\r\n");
@@ -190,15 +190,15 @@ void phy_config_8224(void) __banked
 void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 {
 	uint16_t v;
-	phy_read(port, PHY_MMD_CTRL, 0xa610);
+	phy_read(port, PHY_MMD31, 0xa610);
 	v = SFR_DATA_U16;
 	if (speed == PHY_OFF) {
-		phy_write(port, PHY_MMD_CTRL, 0xa610, v | 0x0800);
+		phy_write(port, PHY_MMD31, 0xa610, v | 0x0800);
 		return;
 	}
 	// Port is on, make sure of it:
 	if (v & 0x0800)
-		phy_write(port, PHY_MMD_CTRL, 0xa610, v & 0xf7ff);
+		phy_write(port, PHY_MMD31, 0xa610, v & 0xf7ff);
 
 	if (speed == PHY_SPEED_AUTO) {
 			// AN Advertisement Register (MMD 7.0x0010)
@@ -208,7 +208,7 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 			// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6081);
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-			phy_modify(port, PHY_MMD_CTRL, 0xa412, 0x0000, 0x0200); // Loop timing enabled
+			phy_modify(port, PHY_MMD31, 0xa412, 0x0000, 0x0200); // Loop timing enabled
 			phy_write(port, PHY_MMD_AN, 0x00, 0x3200);	// Restart AN
 	} else {
 		// AN Control Register (MMD 7.0x0000)
@@ -221,7 +221,7 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 				phy_write(port, PHY_MMD_AN, 0x10, 0x1441);
 			else
 				phy_write(port, PHY_MMD_AN, 0x10, 0x1461);
-			phy_modify(port, PHY_MMD_CTRL, 0xa412, 0x0200, 0x0000);
+			phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
 		} else if (speed == PHY_SPEED_100M) {
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6001);
 			if (!duplex)
@@ -230,7 +230,7 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 				phy_write(port, PHY_MMD_AN, 0x10, 0x1501);
 			else
 				phy_write(port, PHY_MMD_AN, 0x10, 0x1581);
-			phy_modify(port, PHY_MMD_CTRL, 0xa412, 0x0200, 0x0000);
+			phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
 			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
@@ -240,13 +240,13 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 				// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
 				phy_write(port, PHY_MMD_AN, 0x20, 0x6001);
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-				phy_modify(port, PHY_MMD_CTRL, 0xa412, 0x0000, 0x0200);
+				phy_modify(port, PHY_MMD31, 0xa412, 0x0000, 0x0200);
 			} else if (speed == PHY_SPEED_2G5) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timin enableed
 				phy_write(port, PHY_MMD_AN, 0x20, 0x6081);
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-				phy_modify(port, PHY_MMD_CTRL, 0xa412, 0x0200, 0x0000);
+				phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
 			}
 		}
 		phy_write(port, PHY_MMD_AN, 0x00, 0x3000);	// Enable AN
@@ -260,13 +260,13 @@ void phy_set_duplex(uint8_t port, uint8_t fullduplex) __banked
 	phy_read(port, PHY_MMD_AN, 0x00);
 	v = SFR_DATA_U16;	
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
-		phy_read(port, PHY_MMD_CTRL, 0xa400);
+		phy_read(port, PHY_MMD31, 0xa400);
 		v = SFR_DATA_U16;
 		if (fullduplex)
 			v |= 0x0100;
 		else
 			v &= 0xfeff;
-		phy_write(port, PHY_MMD_CTRL, 0xa400, v);
+		phy_write(port, PHY_MMD31, 0xa400, v);
 		return;
 	}
 	// Disable AN
@@ -296,7 +296,7 @@ void phy_show(uint8_t port) __banked
 
 	// The actual PHY speed is in a Realtek propriatary register
 	print_string("\nLink speed: ");
-	phy_read(port, PHY_MMD_CTRL, 0xA434);
+	phy_read(port, PHY_MMD31, 0xA434);
 	v = SFR_DATA_U16;
 	switch(((v & 0x0600) >> 7) | ((v & 0x0030) >> 4)) {
 	case 0:
@@ -364,7 +364,7 @@ void phy_show(uint8_t port) __banked
 		default:
 			print_string("Unknown\n");
 		}
-		phy_read(port, PHY_MMD_CTRL, 0xa400);
+		phy_read(port, PHY_MMD31, 0xa400);
 		v = SFR_DATA_U16;
 		print_string("Duplex: "); print_short(v); print_string(" enabled: ");
 		if (v & 0x100)
@@ -385,7 +385,7 @@ void phy_show(uint8_t port) __banked
 			print_string(" 100Base-Half");
 		if (v & 0x0100)
 			print_string(" 100Base-Full");
-		phy_read(port, PHY_MMD_CTRL, 0xa412);
+		phy_read(port, PHY_MMD31, 0xa412);
 		v = SFR_DATA_U16;
 		if (v & 0x0200)
 			print_string(" 1000Base-Full");
@@ -405,7 +405,7 @@ void phy_show(uint8_t port) __banked
 		print_string(" 100Base-Half");
 	if (v & 0x0100)
 		print_string(" 100Base-Full");
-	phy_read(port, PHY_MMD_CTRL, 0xa414);
+	phy_read(port, PHY_MMD31, 0xa414);
 	v = SFR_DATA_U16;
 	if (v & 0x0400)
 		print_string(" 1000Base-Half");
@@ -426,17 +426,17 @@ void phy_show(uint8_t port) __banked
 void phy_reset(uint8_t port) __banked
 {
 	uint16_t v;
-	phy_read(port, PHY_MMD_CTRL, 0xa610);
+	phy_read(port, PHY_MMD31, 0xa610);
 	v = SFR_DATA_U16;
 	// If PHY off, do nothing
 	if (v & 0x0800)
 		return;
 
 	// Disable PHY
-	phy_write(port, PHY_MMD_CTRL, 0xa610, v | 0x0800);
+	phy_write(port, PHY_MMD31, 0xa610, v | 0x0800);
 	delay(2);
 	// Re-enable PHY
-	phy_write(port, PHY_MMD_CTRL, 0xa610, v & 0xf7ff);
+	phy_write(port, PHY_MMD31, 0xa610, v & 0xf7ff);
 }
 
 // Read RTL8224 register.

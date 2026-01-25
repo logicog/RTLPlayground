@@ -18,6 +18,7 @@
 #include "uip/uip.h"
 #include "uip/uip_arp.h"
 #include "machine.h"
+#include "phy.h"
 
 
 extern __code const struct machine machine;
@@ -1598,7 +1599,7 @@ void rtl8373_init(void)
 	rtl8224_phy_enable();
 
 	// Disable PHYs for configuration
-	phy_write_mask(0xff,0x1f,0xa610,0x2858);
+	phy_write_mask(0xff,PHY_MMD31,0xa610,0x2858);
 
 	// Set bits 0x13 and 0x14 of 0x5fd4
 	// r5fd4:0002914a R5fd4-001a914a
@@ -1628,7 +1629,7 @@ void rtl8373_init(void)
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
-	phy_write_mask(0xff,0x1f,0xa610,0x2058);
+	phy_write_mask(0xff,PHY_MMD31,0xa610,0x2058);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
@@ -1664,7 +1665,7 @@ void rtl8372_init(void)
 	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
 
 	// Disable PHYs for configuration
-	phy_write_mask(0xf0,0x1f,0xa610,0x2858);
+	phy_write_mask(0xf0,PHY_MMD31,0xa610,0x2858);
 
 	// Set bits 0x13 and 0x14 of 0x5fd4
 	// r5fd4:0002914a R5fd4-001a914a
@@ -1691,7 +1692,7 @@ void rtl8372_init(void)
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
-	phy_write_mask(0xf0,0x1f,0xa610,0x2058);
+	phy_write_mask(0xf0,PHY_MMD31,0xa610,0x2058);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
