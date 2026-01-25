@@ -6,6 +6,7 @@ function vlanForm() {
   clearInterval(vlanInterval);
   var t = document.getElementById('tPorts');
   var u = document.getElementById('uPorts');
+  var p = document.getElementById('pPorts');
   for (let i = 1; i <= numPorts; i++) {
     const d = document.createElement("div");
     d.classList.add("cbgroup");
@@ -29,6 +30,10 @@ function vlanForm() {
     d2.children[0].children[0].id = "uport" + i;
     d2.children[0].children[0].setAttribute('onclick', `setC("t", ${i}, false);`);
     u.appendChild(d2);
+    var d3=d.cloneNode(true);
+    d3.children[0].children[0].id = "pport" + i;
+    d3.children[0].children[0].removeAttribute('onclick');
+    p.appendChild(d3);
   }
 }
 
@@ -39,6 +44,12 @@ function setC(t, p, c){
 function utClicked(t){
   for (let i = 1; i <= numPorts; i++) {
     setC('t', i, t); setC('u', i, !t);
+  }
+}
+
+function pvClicked(p){
+  for (let i = 1; i <= numPorts; i++) {
+    setC('p', i, p);
   }
 }
 
@@ -55,8 +66,9 @@ function fetchVLAN() {
       m = parseInt(s.members, 16);
       document.getElementById('vname').value = s.name;
       for (let i = 1; i <= numPorts; i++) {
-	setC('t', i, (m>>(10+i-1))&1);
-	setC('u', i, (m>>(i-1))&1);
+        setC('t', i, (m>>(10+i-1))&1);
+        setC('u', i, (m>>(i-1))&1);
+        setC('p', i, (m>>(20+i-1))&1);
       }
     }
   };
