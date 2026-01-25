@@ -39,6 +39,11 @@ function vlanForm() {
 
 function setC(t, p, c){
   document.getElementById(t+'port'+p).checked=c;
+  // When a tagged port is checked, automatically select the PVID port as well
+  const tportElem = document.getElementById('tport'+p);
+  if (tportElem && tportElem.checked) {
+    document.getElementById('pport'+p).checked=true;
+  }
 }
 
 function utClicked(t){
