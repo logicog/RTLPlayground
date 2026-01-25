@@ -1,6 +1,7 @@
 #ifndef _RTL837X_REGS_H_
 #define _RTL837X_REGS_H_
 
+#define RTL837X_REG_CHIP_ID		0x0004
 #define RTL837X_REG_CHIP_INFO		0x000c
 #define RTL837X_REG_RESET		0x0024
 #define RESET_SOC_BIT			0
