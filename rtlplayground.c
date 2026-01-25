@@ -1403,6 +1403,39 @@ void sds_init(void)
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 
 	phy_write_mask(0x1, 0x1e, 0xd, pval);
+
+	if (machine_detected.isN) {
+		uint16_t pval;
+
+		print_string("  N-settings");
+		// Serdes 0 RX PN swap for 64B/66B
+		sds_read(1, 6, 2);
+		pval = SFR_DATA_U16;
+		sds_write_v(1, 6, 2, pval | 0x2000);
+
+		// Serdes 1 RX PN swap for 8B/10B
+		sds_read(1, 0, 0);
+		pval = SFR_DATA_U16;
+		sds_write_v(1, 0, 0, pval | 0x200);
+
+		// Serdes 0 RX PN swap for 64B/66B
+		sds_read(0, 6, 2);
+		pval = SFR_DATA_U16;
+		sds_write_v(0, 6, 2, pval | 0x2000);
+
+		if (machine_detected.isRTL8373) {
+			// RTL8224: Serdes 0 RX PN swap for 64B/66B
+			// We assume that RTL8373N always paired with RTL8224N.
+			// This sds register value is 0x0000 at reset.
+			// So only write to it.
+			RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
+		} else {
+			// Serdes 0 RX PN swap for 8B/10B
+			sds_read(0, 0, 0);
+			pval = SFR_DATA_U16;
+			sds_write_v(0, 0, 0, pval | 0x200);
+		}
+	}
 }
 
 
@@ -1549,9 +1582,18 @@ void rtl8373_init(void)
 	pval = SFR_DATA_U16;
 
 	// r0a90:000000f3 R0a90-000000fc
-	reg_read_m(0xa90);
+	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
 	sfr_mask_data(0, 0x0f,0x0c);
-	reg_write_m(0xa90);
+	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
+
+	if (machine_detected.isN) {
+		print_string("  TX_POLARITY_SWAP\n");
+		// FOR N-Version: #TX_POLARITY_SWAP
+		reg_read_m(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
+			sfr_data[2] = 0x59;
+			sfr_data[3] = 0x6a;
+		reg_write_m(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
+	}
 
 	rtl8224_phy_enable();
 
@@ -1617,9 +1659,9 @@ void rtl8372_init(void)
 	reg_write_m(RTL837X_REG_SDS_MODES);
 
 	// r0a90:000000f3 R0a90-000000fc
-	reg_read_m(0xa90);
-	sfr_mask_data(0, 0x0f,0x0c);
-	reg_write_m(0xa90);
+	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
+	sfr_mask_data(0, 0x0f, 0x0c);
+	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
 
 	// Disable PHYs for configuration
 	phy_write_mask(0xf0,0x1f,0xa610,0x2858);
