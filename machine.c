@@ -12,12 +12,14 @@ __code const struct machine machine = {
 	.is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
 	.sfp_port[0].pin_detect = 50,
 	.sfp_port[0].pin_los = 10,
+	.sfp_port[0].pin_tx_disable = 0xFF,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = 1,
+	.sfp_port[0].i2c_bus = { .sda = 3, .scl = 3 },
 	.sfp_port[1].pin_detect = 30,
 	.sfp_port[1].pin_los = 37,
+	.sfp_port[1].pin_tx_disable = 0xFF,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = 0,
+	.sfp_port[1].i2c_bus = { .sda = 4, .scl = 3 },
 	.reset_pin = 46,
 };
 #elif defined MACHINE_KP_9000_6XH_X
@@ -32,8 +34,9 @@ __code const struct machine machine = {
 	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.sfp_port[0].pin_detect = 30,
 	.sfp_port[0].pin_los = 37,
+	.sfp_port[0].pin_tx_disable = 0xFF,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = 0,
+	.sfp_port[0].i2c_bus = { .sda = 4, .scl = 3 },
 };
 #elif defined MACHINE_KP_9000_9XH_X_EU
 __code const struct machine machine = {
@@ -47,9 +50,11 @@ __code const struct machine machine = {
 	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.sfp_port[0].pin_detect = 30,
 	.sfp_port[0].pin_los = 37,
+	.sfp_port[0].pin_tx_disable = 0xFF,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = 0,
+	.sfp_port[0].i2c_bus = { .sda = 4, .scl = 3 },
 };
+
 #elif defined MACHINE_SWGT024_V2_0
 __code const struct machine machine = {
 	.machine_name = "SWGT024 V2.0",
@@ -63,15 +68,18 @@ __code const struct machine machine = {
 	// Left SFP port (J4)
 	.sfp_port[0].pin_detect = 30,
 	.sfp_port[0].pin_los = 37,
+	.sfp_port[0].pin_tx_disable = 0xFF,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = 0, /* GPIO 39 */
+	.sfp_port[0].i2c_bus = { .sda = 4, .scl = 3 }, /* GPIO 39 */
 	// Right SFP port (J2)
 	.sfp_port[1].pin_detect = 50,
 	.sfp_port[1].pin_los = 51,
+	.sfp_port[1].pin_tx_disable = 0xFF,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = 1, /* GPIO 40 */
+	.sfp_port[1].i2c_bus = { .sda = 3, .scl = 3 }, /* GPIO 40 */
 	.reset_pin = 36,
 };
+
 #elif defined DEFAULT_8C_1SFP
 __code const struct machine machine = {
 	.machine_name = "8+1 SFP Port Switch",
@@ -84,8 +92,8 @@ __code const struct machine machine = {
 	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.sfp_port[0].pin_detect = 30,
 	.sfp_port[0].pin_los = 37,
+	.sfp_port[0].pin_tx_disable = 0xFF,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = 0,
+	.sfp_port[0].i2c_bus = { .sda = 4, .scl = 3 },
 };
-
 #endif

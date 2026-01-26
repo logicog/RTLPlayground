@@ -16,12 +16,21 @@
 
 // #define DEFAULT_5C_1SFP
 
+struct i2c_bus {
+	// These are I2C bus identifiers refer to GPIO MUX document
+	// for GPIO pin assignments for given bus numbers
+	uint8_t sda : 3; // SDA pin number 0-4
+	uint8_t scl : 3; // SCL pin number 0-3
+	uint8_t reserved : 2;
+};
+
 struct sfp_port
 {
 	uint8_t pin_detect; // gpio number 0-63, 0xFF = don't have it?
 	uint8_t pin_los; // gpio number 0-63, 0xFF = don't have it?
+	uint8_t pin_tx_disable; // gpio number 0-63, 0xFF = not present
 	uint8_t sds;
-	uint8_t i2c;
+	struct i2c_bus i2c_bus;
 };
 
 typedef struct machine {

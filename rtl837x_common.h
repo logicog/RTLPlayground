@@ -7,11 +7,6 @@
 
 #define SYS_TICK_HZ 200
 
-// SCL and SDA pin numbers for SFP cage 0 and SFP cage 1
-#define SCL_PIN		3
-#define SDA_PIN_0	4
-#define SDA_PIN_1	3
-
 #define CPU_PORT        9
 
 // Define Port-masks for 9-port devices and 6-port devices
