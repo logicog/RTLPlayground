@@ -207,7 +207,7 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 			// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD
 			phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-			phy_modify(port, PHY_MMD31, 0xa412, 0x0000, 0x0200); // Loop timing enabled
+			phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200); // Loop timing enabled
 			phy_write(port, PHY_MMD_AN, 0x00, 0x3200);	// Restart AN
 	} else {
 		// AN Control Register (MMD 7.0x0000)
@@ -220,7 +220,7 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1441);
 			else
 				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1461);
-			phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
+			phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else if (speed == PHY_SPEED_100M) {
 			phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
 			if (!duplex)
@@ -229,7 +229,7 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1501);
 			else
 				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1581);
-			phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
+			phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
 			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
@@ -239,13 +239,13 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 				// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
 				phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-				phy_modify(port, PHY_MMD31, 0xa412, 0x0000, 0x0200);
+				phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200);
 			} else if (speed == PHY_SPEED_2G5) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timin enableed
 				phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-				phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
+				phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 			}
 		}
 		phy_write(port, PHY_MMD_AN, 0x00, 0x3000);	// Enable AN
@@ -384,7 +384,7 @@ void phy_show(uint8_t port) __banked
 			print_string(" 100Base-Half");
 		if (v & 0x0100)
 			print_string(" 100Base-Full");
-		phy_read(port, PHY_MMD31, 0xa412);
+		phy_read(port, PHY_MMD31, PHY_MMD31_GBCR);
 		v = SFR_DATA_U16;
 		if (v & 0x0200)
 			print_string(" 1000Base-Full");

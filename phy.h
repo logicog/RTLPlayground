@@ -32,6 +32,13 @@
 #define PHY_EEE_BIT_100M	0x02
 
 /*
+ * MMD 31 Registers
+ */
+#define PHY_MMD31_GBCR      0xa412
+
+
+
+/*
  * Define registers in Control page
  */
 #define PHY_CTRL_5	0x7582
