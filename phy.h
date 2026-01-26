@@ -38,6 +38,7 @@
  */
 #define PHY_MMD31_FEDCR     0xa400
 #define PHY_MMD31_GBCR      0xa412
+#define PHY_MMD31_GANLPAR   0xa414
 
 
 

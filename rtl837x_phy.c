@@ -404,7 +404,7 @@ void phy_show(uint8_t port) __banked
 		print_string(" 100Base-Half");
 	if (v & 0x0100)
 		print_string(" 100Base-Full");
-	phy_read(port, PHY_MMD31, 0xa414);
+	phy_read(port, PHY_MMD31, PHY_MMD31_GANLPAR);
 	v = SFR_DATA_U16;
 	if (v & 0x0400)
 		print_string(" 1000Base-Half");
