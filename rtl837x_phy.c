@@ -102,7 +102,7 @@ void phy_config(uint8_t phy) __banked
 
 	//	p031f.a432:0811 P000008.1f00a432:0831
 	// PHYCR2 PHY Specific Control Register 2, MMD 31. 0xA432), set bit 5: enable EEE
-	phy_modify(phy, PHY_MMD31, 0xa432, 0x0000, 0x0020);
+	phy_modify(phy, PHY_MMD31, PHY_MMD31_PHYCR2, 0x0000, 0x0020);
 
 	//	p0307.003e:0000 P000008.0700003e:0001
 	// EEE avertisment 2 register MMMD 7.0x003e, set bit 0: 2.5G has EEE capability
