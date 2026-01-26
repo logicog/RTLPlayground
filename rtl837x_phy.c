@@ -393,7 +393,7 @@ void phy_show(uint8_t port) __banked
 		if (v & 0x0080)
 			print_string(" 2500BaseN-Full");
 	}
-	phy_read(port, PHY_MMD_AN, 0x13);
+	phy_read(port, PHY_MMD_AN, PHY_ANEG_LP_ABILITY);
 	v = SFR_DATA_U16;
 	print_string("\nLink Partner advertises:");
 	if (v & 0x0020)
