@@ -295,7 +295,7 @@ void phy_show(uint8_t port) __banked
 
 	// The actual PHY speed is in a Realtek propriatary register
 	print_string("\nLink speed: ");
-	phy_read(port, PHY_MMD31, 0xA434);
+	phy_read(port, PHY_MMD31, PHY_MMD31_PHYSR);
 	v = SFR_DATA_U16;
 	switch(((v & 0x0600) >> 7) | ((v & 0x0030) >> 4)) {
 	case 0:
