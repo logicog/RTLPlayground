@@ -23,6 +23,7 @@
 #define PHY_ANEG_ADV		0x10
 #define PHY_ANEG_LP_ABILITY	0x13
 #define PHY_ANEG_MGBASE_CTRL 0x20
+#define PHY_ANEG_MGBASE_ADV 0x21
 #define PHY_EEE_ADV		0x3c
 #define PHY_EEE_LP_ABILITY	0x3d
 #define PHY_EEE_ADV2		0x3e
