@@ -613,7 +613,7 @@ void send_status(void)
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL);
 			uint16_t w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x80));		// 2500BaseN-Full
-			phy_read(i, PHY_MMD31, 0xa412);
+			phy_read(i, PHY_MMD31, PHY_MMD31_GBCR);
 			w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x0200));		// 1000Base-Full
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_ADV);
