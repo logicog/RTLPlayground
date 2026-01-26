@@ -356,20 +356,10 @@ void port_stats_print(void) __banked
 			else
 				print_string("Off\t");
 		} else {  // An SFP Module
-			if (i != 3) {
-				reg_read_m(RTL837X_REG_GPIO_00_31_INPUT);
-				if (!(sfr_data[0] & 0x40)) {
-					print_string("SFP OK\t");
-				} else {
-					print_string("NO SFP\t");
-				}
+			if (!gpio_pin_test(machine.sfp_port[machine.is_sfp[i]-1].pin_detect)) {
+				print_string("SFP IN\t");
 			} else {
-				reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
-				if (!(sfr_data[1] & 0x04)) {
-					print_string("SFP OK\t");
-				} else {
-					print_string("NO SFP\t");
-				}
+				print_string("NO SFP\t");
 			}
 		}
 
