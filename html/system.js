@@ -46,6 +46,12 @@ async function flashSave() {
   var configContent = document.getElementById("config_display").value;
   console.log("CONFIGURATION to save: ", configContent);
   sendConfig(configContent);
+  // Clear the command log 1 second after initiating the config save
+  setTimeout(() => {
+    fetch('/cmd_log_clear', { method: 'GET' })
+      .then(response => console.log('Command log cleared', response))
+      .catch(err => console.error('Error clearing command log:', err));
+  }, 1000);
 }
 
 function clearConfig() {

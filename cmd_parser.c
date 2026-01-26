@@ -993,7 +993,13 @@ void execute_config(void) __banked
 config_done:
 	// Start saving commands to cmd_history
 	save_cmd = 1;
+	clear_command_history();
+}
+
+void clear_command_history(void) __banked
+{
 	for (cmd_history_ptr = 0; cmd_history_ptr < CMD_HISTORY_SIZE; cmd_history_ptr++)
 		cmd_history[cmd_history_ptr] = 0;
 	cmd_history_ptr = 0;
+	return;
 }
