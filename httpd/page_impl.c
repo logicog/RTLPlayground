@@ -610,7 +610,7 @@ void send_status(void)
 			phy_read(i, PHY_MMD31, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
 			slen += strtox(outbuf + slen, ",\"adv\":\"");
-			phy_read(i, PHY_MMD_AN, 0x20);
+			phy_read(i, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL);
 			uint16_t w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x80));		// 2500BaseN-Full
 			phy_read(i, PHY_MMD31, 0xa412);
