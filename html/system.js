@@ -43,16 +43,27 @@ async function sendConfig(c) {
 }
 
 async function flashSave() {
-  fetchConfig().then((s) => {
-    parseConf(s);
-    fetchCmdLog().then((s) => {
-      parseConf(s);
-      var body = "";
-      for (const x of configuration) { body = body + x + "\n"; }
-      console.log("CONFIGURATION to save: ", body);
-      sendConfig(body);
-    });
-  });
+  var configContent = document.getElementById("config_display").value;
+  console.log("CONFIGURATION to save: ", configContent);
+  sendConfig(configContent);
+}
+
+function clearConfig() {
+  document.getElementById("config_display").value = "";
+  
+  // Validate and populate with current IP settings
+  for (let i=0; i<3; i++) {
+    if (!checkIp(document.getElementById(ips[i]).value))
+      return;
+  }
+  
+  var configLines = "";
+  for (let i=0; i<3; i++){
+    var cmd = ips[i]+' '+document.getElementById(ips[i]).value;
+    configLines += cmd + "\n";
+  }
+  
+  document.getElementById("config_display").value = configLines;
 }
 
 function fetchIP() {
@@ -65,6 +76,17 @@ function fetchIP() {
       document.getElementById("netmask").value=s.ip_netmask;
       document.getElementById("gw").value=s.ip_gateway;
       clearInterval(systemInterval);
+      // Fetch and populate the config textbox
+      fetchConfig().then((configText) => {
+        let fullConfig = configText;
+        // Fetch and append cmd_log
+        return fetchCmdLog().then((cmdLogText) => {
+          if (cmdLogText) {
+            fullConfig = fullConfig + cmdLogText;
+          }
+          document.getElementById("config_display").value = fullConfig;
+        });
+      });
     }
   }
   xhttp.open("GET", `/information.json`, true);
