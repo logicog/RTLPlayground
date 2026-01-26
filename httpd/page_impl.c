@@ -664,26 +664,45 @@ void send_status(void)
 void send_config(void)
 {
 	dbg_string("send_config called\n");
-	__xdata uint32_t pos = CONFIG_START; // 70000 , 6c000 / 0xc000 = 9
-
-	extern __xdata uint16_t len_left = CONFIG_LEN;
+	__xdata uint32_t pos = CONFIG_START;
+	__xdata uint16_t valid_len = 0;
+	__xdata uint16_t len_left = CONFIG_LEN;
+	__xdata uint8_t flash_buf[256];
+	
 	slen = strtox(outbuf, HTTP_RESPONCE_TXT);
-	while (read_flash((CONFIG_START-CODE0_SIZE) / CODE_BANK_SIZE + 1,
-		(__code uint8_t *) (((CONFIG_START + len_left - CODE0_SIZE) % CODE_BANK_SIZE) + CODE0_SIZE + len_left)) == 0xff) {
-		dbg_short(len_left);
-		len_left--;
+	
+	// Scan through config to find the end of valid data (null terminator)
+	do {
+		flash_region.addr = pos;
+		flash_region.len = (len_left > 256) ? 256 : len_left;
+		flash_read_bulk(flash_buf);
+		
+		// Look for null terminator in this chunk
+		for (uint16_t i = 0; i < flash_region.len; i++) {
+			if (flash_buf[i] == 0) {
+				// Found end of valid data
+				valid_len += i;
+				goto found_end;
+			}
+		}
+		
+		valid_len += flash_region.len;
+		len_left -= flash_region.len;
+		pos += flash_region.len;
+	} while (len_left > 0);
+	
+found_end:
+	// Now send the valid data
+	if (valid_len > (TCP_OUTBUF_SIZE - slen)) {
+		cont_len = valid_len - (TCP_OUTBUF_SIZE - slen);
+		valid_len = TCP_OUTBUF_SIZE - slen;
+		cont_addr = valid_len;
 	}
-	len_left++;
-
-	if (len_left > (TCP_OUTBUF_SIZE - slen)) {
-		cont_len = len_left - (TCP_OUTBUF_SIZE - slen);
-		len_left = TCP_OUTBUF_SIZE - slen;
-		cont_addr = len_left;
-	}
+	
 	flash_region.addr = CONFIG_START;
-	flash_region.len = len_left;
+	flash_region.len = valid_len;
 	flash_read_bulk(outbuf + slen);
-	slen += len_left;
+	slen += valid_len;
 }
 
 void send_cmd_log(void)
