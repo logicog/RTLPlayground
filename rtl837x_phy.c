@@ -202,7 +202,7 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 	if (speed == PHY_SPEED_AUTO) {
 			// AN Advertisement Register (MMD 7.0x0010)
 			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
-			phy_write(port, PHY_MMD_AN, 0x10, 0x15e1);
+			phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x15e1);
 			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 			// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6081);
@@ -215,25 +215,25 @@ void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
 		if (speed == PHY_SPEED_10M) {
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6001);
 			if (!duplex)
-				phy_write(port, PHY_MMD_AN, 0x10, 0x1421);
+				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1421);
 			else if (duplex == 1)
-				phy_write(port, PHY_MMD_AN, 0x10, 0x1441);
+				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1441);
 			else
-				phy_write(port, PHY_MMD_AN, 0x10, 0x1461);
+				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1461);
 			phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
 		} else if (speed == PHY_SPEED_100M) {
 			phy_write(port, PHY_MMD_AN, 0x20, 0x6001);
 			if (!duplex)
-				phy_write(port, PHY_MMD_AN, 0x10, 0x1481);
+				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1481);
 			if (duplex == 1)
-				phy_write(port, PHY_MMD_AN, 0x10, 0x1501);
+				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1501);
 			else
-				phy_write(port, PHY_MMD_AN, 0x10, 0x1581);
+				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1581);
 			phy_modify(port, PHY_MMD31, 0xa412, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
 			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
-			phy_write(port, PHY_MMD_AN, 0x10, 0x1001);
+			phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1001);
 			if (speed == PHY_SPEED_1G) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
@@ -270,19 +270,19 @@ void phy_set_duplex(uint8_t port, uint8_t fullduplex) __banked
 	}
 	// Disable AN
 	phy_write(port, PHY_MMD_AN, 0x00, 0x2000);
-	phy_read(port, PHY_MMD_AN, 0x10);
+	phy_read(port, PHY_MMD_AN, PHY_ANEG_ADV);
 	v = SFR_DATA_U16;
 	if (v & 0x0060) {
 		if (fullduplex)
-			phy_modify(port, PHY_MMD_AN, 0x10, 0xffbf, 0x0040);
+			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffbf, 0x0040);
 		else
-			phy_modify(port, PHY_MMD_AN, 0x10, 0xffdf, 0x0020);
+			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffdf, 0x0020);
 	}
 	if (v & 0x0180) {
 		if (fullduplex)
-			phy_modify(port, PHY_MMD_AN, 0x10, 0xfeff, 0x0100);
+			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xfeff, 0x0100);
 		else
-			phy_modify(port, PHY_MMD_AN, 0x10, 0xff7f, 0x0080);
+			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xff7f, 0x0080);
 	}
 	// Restart AN
 	phy_write(port, PHY_MMD_AN, 0x00, 0x3000);
@@ -374,7 +374,7 @@ void phy_show(uint8_t port) __banked
 
 	} else {
 		print_string("\nAN enabled, advertising:");
-		phy_read(port, PHY_MMD_AN, 0x10);
+		phy_read(port, PHY_MMD_AN, PHY_ANEG_ADV);
 		v = SFR_DATA_U16;
 		if (v & 0x0020)
 			print_string(" 10Base-Half");
