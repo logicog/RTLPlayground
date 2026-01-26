@@ -106,7 +106,7 @@ void phy_config(uint8_t phy) __banked
 
 	//	p0307.003e:0000 P000008.0700003e:0001
 	// EEE avertisment 2 register MMMD 7.0x003e, set bit 0: 2.5G has EEE capability
-	phy_modify(phy, 0x7, 0x3e, 0x0000, 0x0001);
+	phy_modify(phy, PHY_MMD_AN, PHY_EEE_ADV2, 0x0000, 0x0001);
 	delay(20);
 
 	//	p031f.a442:043c P000008.1f00a442:0430
