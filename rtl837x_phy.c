@@ -132,10 +132,10 @@ void phy_config(uint8_t phy) __banked
 	//	p031f.a400:1040 P000008.1f00a400:5040, then: p031f.a400:5040 P000008.1f00a400:1040
 	// FEDCR (Fast Ethernet Duplex Control Register, MMD 31.0xA400)
 	// Set bit 14, sleep, then clear again, according to the datasheet these bits are reserved
-	phy_modify(phy, PHY_MMD31, 0xa400, 0x0000, 0x4000);
+	phy_modify(phy, PHY_MMD31, PHY_MMD31_FEDCR, 0x0000, 0x4000);
 	delay(20);
 
-	phy_modify(phy, PHY_MMD31, 0xa400, 0x4000, 0x0000);
+	phy_modify(phy, PHY_MMD31, PHY_MMD31_FEDCR, 0x4000, 0x0000);
 	delay(20);
 
 	print_string("\r\n  phy config done\r\n");
@@ -259,13 +259,13 @@ void phy_set_duplex(uint8_t port, uint8_t fullduplex) __banked
 	phy_read(port, PHY_MMD_AN, 0x00);
 	v = SFR_DATA_U16;	
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
-		phy_read(port, PHY_MMD31, 0xa400);
+		phy_read(port, PHY_MMD31, PHY_MMD31_FEDCR);
 		v = SFR_DATA_U16;
 		if (fullduplex)
 			v |= 0x0100;
 		else
 			v &= 0xfeff;
-		phy_write(port, PHY_MMD31, 0xa400, v);
+		phy_write(port, PHY_MMD31, PHY_MMD31_FEDCR, v);
 		return;
 	}
 	// Disable AN
@@ -363,7 +363,7 @@ void phy_show(uint8_t port) __banked
 		default:
 			print_string("Unknown\n");
 		}
-		phy_read(port, PHY_MMD31, 0xa400);
+		phy_read(port, PHY_MMD31, PHY_MMD31_FEDCR);
 		v = SFR_DATA_U16;
 		print_string("Duplex: "); print_short(v); print_string(" enabled: ");
 		if (v & 0x100)
