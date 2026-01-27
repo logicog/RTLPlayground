@@ -42,9 +42,9 @@ function createPortTable() {
       for (let i = 1; i <= numPorts; i++) {
         let td = tr.insertCell();
         if (pIsSFP[i-1])
-          td.innerHTML = '<object type="image/svg+xml" data="sfp.svg", width="60"</object>'
+          td.innerHTML = '<object type="image/svg+xml" data="sfp.svg" width="60"></object>'
         else
-          td.innerHTML = '<object type="image/svg+xml" data="port.svg", width="40"</object>'
+          td.innerHTML = '<object type="image/svg+xml" data="port.svg" width="40"></object>'
       }
       tr = tbl.insertRow();
       for (let i = 1; i <= numPorts; i++) {
