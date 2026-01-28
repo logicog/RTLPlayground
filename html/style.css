@@ -65,7 +65,7 @@ button:hover { background-color: #226; color: white;}
 /*  outline: 2px solid #f00;*/
   opacity: 1.0;
 }
-object {
+object, img {
  margin: 0.5em 0.5em;
 }
 .cbgroup {
