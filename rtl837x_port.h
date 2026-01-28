@@ -28,10 +28,10 @@ void port_ingress_filter(register uint8_t port, uint8_t type) __banked;
 void port_l2_setup(void) __banked;
 void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banked;
 void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash) __banked;
-void port_eee_enable_all(void) __banked;
+void port_eee_enable_all(__xdata uint8_t speed) __banked;
 void port_eee_disable_all(void) __banked;
 void port_eee_status_all(void) __banked;
-void port_eee_enable(uint8_t port) __banked;
+void port_eee_enable(__xdata uint8_t port, __xdata uint8_t speed) __banked;
 void port_eee_disable(uint8_t port) __banked;
 void port_eee_status(uint8_t port) __banked;
 #endif
