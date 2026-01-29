@@ -42,6 +42,7 @@ extern __xdata struct dhcp_state dhcp_state;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
+extern __xdata uint16_t management_vlan;
 __xdata uint8_t gpio_last_value[8] = { 0 };
 
 // Temporatly for str to hex convertion value.
@@ -289,16 +290,20 @@ void parse_vlan(void)
 			vlan_delete(vlan);
 			return;
 		}
+		if (cmd_words_b[2] > 0 && cmd_compare(2, "mgmt")) {
+			management_vlan = vlan;
+			if (!vlan) 
+				print_string("Management VLAN disabled\n");
+			else
+				print_string("Management VLAN set to "); print_short(management_vlan); write_char('\n');
+			return;
+		}
 		uint8_t w = 2;
-		write_char('#');
-		print_byte(cmd_words_b[w] );
-		write_char('#'); write_char(cmd_buffer[cmd_words_b[w]]);
 		if (cmd_words_b[w] > 0 && isletter(cmd_buffer[cmd_words_b[w]])) {
 			register uint8_t i = 0;
 			vlan_names[vlan_ptr++] = hex[(vlan >> 8) & 0xf];
 			vlan_names[vlan_ptr++] = hex[(vlan >> 4) & 0xf] ;
 			vlan_names[vlan_ptr++] = hex[vlan & 0xf];
-			print_string("COPYING: >");
 			while(cmd_buffer[cmd_words_b[w] + i] != ' ') {
 				write_char(cmd_buffer[cmd_words_b[w] + i]);
 				vlan_names[vlan_ptr++] = cmd_buffer[cmd_words_b[w] + i++];
