@@ -12,7 +12,7 @@
 // #define MACHINE_SWGT024_V2_0
 // #define MACHINE_HORACO_ZX_SG4T2
 // #define MACHINE_TRENDNET_TEG_S562
-
+// #define MACHINE_HG0402XG_V1_1
 // #define DEFAULT_8C_1SFP
 
 // #define DEFAULT_5C_1SFP
