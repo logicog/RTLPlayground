@@ -22,6 +22,7 @@
 // Blink rate is defined by setAsicRegBits(0x6520,0xe00000,rate);
 #define RTL837X_REG_LED_GLB_IO_EN	0x65DC
 #define RTL837X_REG_LED3_0_SET1		0x6528
+#define RTL837X_REG_LED1_0_SET1		0x6540
 #define RTL837X_REG_LED3_2_SET0		0x6544
 #define RTL837X_REG_LED1_0_SET0		0x6548
 

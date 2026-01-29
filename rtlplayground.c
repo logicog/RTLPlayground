@@ -1499,6 +1499,44 @@ void set_sys_led_state(uint8_t state)
 	reg_write_m(RTL837X_REG_LED_MODE);
 }
 
+
+#ifdef MACHINE_HG0402XG_V1_1
+void led_config(void)
+{
+	reg_read_m(RTL837X_REG_LED_MODE);
+	sfr_mask_data(2, 0xe0, 0x23); 	// Mask blink rate field (0xe0), set blink rate and LED to solid (set bit 1 = bit 17 overal
+	// Configure led-mode (serial?)
+	sfr_data[2] = 0xe6;
+	sfr_data[3] = 0xb0;
+	reg_write_m(RTL837X_REG_LED_MODE);
+	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
+	reg_read_m(RTL837X_REG_LED_RLDP_1);
+	sfr_mask_data(0, 0x03, 0);
+	reg_write_m(RTL837X_REG_LED_RLDP_1);
+	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffff0000);	// Ports 0-7 0x65fc
+	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
+
+	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
+	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
+	reg_bit_set(RTL837X_PIN_MUX_0, 29);
+	reg_bit_set(RTL837X_PIN_MUX_0, 27);
+
+	REG_SET(RTL837X_REG_LED1_0_SET0, 0x141); // 0x6548
+	reg_read_m(RTL837X_REG_LED3_2_SET0);
+	sfr_data[2] = 0x01;
+	sfr_data[3] = 0x74;
+	reg_write_m(RTL837X_REG_LED3_2_SET0);
+	reg_read_m(RTL837X_REG_LED1_0_SET1); // 6540
+	sfr_data[2] = 0x01;
+	sfr_data[3] = 0x7f;
+	reg_write_m(RTL837X_REG_LED1_0_SET1);
+
+	reg_read_m(RTL837X_REG_LED3_0_SET1);
+	sfr_data[1] |= 0x0f;
+	reg_write_m(RTL837X_REG_LED3_0_SET1);
+}
+
+#else
 void led_config(void)
 {
 	// LED initialization
@@ -1547,6 +1585,7 @@ void led_config(void)
 	sfr_data[3] = 0x11;
 	reg_write_m(RTL837X_REG_LED3_0_SET1);
 }
+#endif
 
 void rtl8373_revision(void)
 {
@@ -1965,7 +2004,7 @@ void bootloader(void)
 	flash_region.addr = FIRMWARE_UPLOAD_START;
 	flash_region.len = 0x100;
 	flash_read_bulk(flash_buf);
-
+#ifndef MACHINE_HG0402XG_V1_1
 	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
 		__xdata uint32_t dest = 0x0;
 		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
@@ -2036,7 +2075,7 @@ void bootloader(void)
 			dest += 0x1000;
 		}
 	}
-
+#endif
 	set_sys_led_state(SYS_LED_SLOW);
 
 #ifdef DEBUG
