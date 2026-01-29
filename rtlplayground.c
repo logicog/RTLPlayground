@@ -106,6 +106,7 @@ __xdata uint8_t rx_headers[16]; // Packet header(s) on RX
 __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
 __xdata uint16_t rx_packet_vlan;
+__xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t stpEnabled;
@@ -116,7 +117,6 @@ __code uint16_t bit_mask[16] = {
 };
 
 
-__xdata uint8_t was_offline;
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
 __xdata uint8_t sfp_pins_last;
@@ -922,12 +922,14 @@ void handle_rx(void)
 			    tcpip_output();
 			}
 		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // TCP?
-			uip_arp_ipin();	// Learn MAC addresses in TCP packets
-			uip_input();
-			if (uip_len) {
-				// Add ethernet frame
-				uip_arp_out();
-				tcpip_output();
+			if (!management_vlan || management_vlan == rx_packet_vlan) {
+				uip_arp_ipin();	// Learn MAC addresses in TCP packets
+				uip_input();
+				if (uip_len) {
+					// Add ethernet frame
+					uip_arp_out();
+					tcpip_output();
+				}
 			}
 		} else {
 #ifdef RXTXDBG
@@ -2027,7 +2029,7 @@ void bootloader(void)
 	uip_arp_init();
 	httpd_init();
 
-	was_offline = 1;
+	management_vlan = 0; // Disabled
 
 	setup_i2c();
 
