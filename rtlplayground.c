@@ -920,12 +920,11 @@ void handle_rx(void)
 			if (uip_len) {
 			    tcpip_output();
 			}
-		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // TCP?
+		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // IP packet?
 			uip_arp_ipin();	// Learn MAC addresses in TCP packets
 			uip_input();
 			if (uip_len) {
-				// Add ethernet frame
-				uip_arp_out();
+				uip_arp_out(); // Add ethernet frame
 				tcpip_output();
 			}
 		} else {
