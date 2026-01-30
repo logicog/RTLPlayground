@@ -38,4 +38,10 @@ typedef struct machine {
 	int8_t reset_pin;
 };
 
+typedef struct machine_runtime
+{
+	uint8_t isRTL8373 : 1;
+	uint8_t isN : 1;
+};
+
 #endif
