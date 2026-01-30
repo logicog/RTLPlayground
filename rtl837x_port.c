@@ -24,6 +24,7 @@ extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata uint16_t vlan_ptr;
 extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
+extern __xdata struct machine_runtime machine_detected;
 
 __xdata	uint32_t l2_head;
 
@@ -133,7 +134,7 @@ void vlan_create(register uint16_t vlan, register uint16_t members, register uin
 
 	uint16_t a = (~members) ^ tagged ^ members;
 	// On RTL8372, port-bits 0-2 must be 0, although they are not members
-	if (!machine.isRTL8373) {
+	if (!machine_detected.isRTL8373) {
 		a &= 0x1f8;
 		tagged &= 0x3f8;
 	}
@@ -164,7 +165,7 @@ void vlan_setup(void) __banked
 	vlan_names[0] = 0;
 
 	// Initialize VLAN table for VLAN 1, by disabling that entry
-	REG_SET(RTL837x_TBL_DATA_IN_A, machine.isRTL8373? 0x0007ffff : 0x0007e3f8);
+	REG_SET(RTL837x_TBL_DATA_IN_A, machine_detected.isRTL8373? 0x0007ffff : 0x0007e3f8);
 
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);
 	do {
@@ -208,7 +209,7 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837X_VLAN_L2_LRN_DIS_1, 0);
 
 	// Enable VLAN 1: Ports 0-9, i.e. including the CPU port are untagged members
-	REG_SET(RTL837x_TBL_DATA_IN_A, machine.isRTL8373? 0x0207ffff : 0x0207e3f8);	// 02: Entry valid, 7...: membership
+	REG_SET(RTL837x_TBL_DATA_IN_A, machine_detected.isRTL8373? 0x0207ffff : 0x0207e3f8);	// 02: Entry valid, 7...: membership
 
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);	// Write VLAN 1
 	do {
@@ -240,7 +241,7 @@ uint8_t port_l2_forget(void) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);
 
 	// Flush L2 table for all ports by setting the ports and the flush-exec bit (bit 16)
-	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (machine.isRTL8373 ? PMASK_9 : PMASK_6));
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
 
 	// Wait for flush completed
 	do {
@@ -333,7 +334,7 @@ void port_l2_setup(void) __banked
 
 		// All ports may communicate with each other and CPU-Port
 		reg = RTL837X_PORT_ISOLATION_BASE + (i << 2);
-		REG_SET(reg, PMASK_CPU | (machine.isRTL8373? PMASK_9 : PMASK_6));
+		REG_SET(reg, PMASK_CPU | (machine_detected.isRTL8373? PMASK_9 : PMASK_6));
 	}
 	// When maximim entries learned, then simply flood the packet
 	reg_bit_set(RTL837X_L2_LRN_PORT_CONSTRT_ACT, 0);
@@ -349,7 +350,7 @@ void port_stats_print(void) __banked
 		write_char('0' + machine.log_to_phys_port[i]); write_char('\t');
 
 		if (!machine.is_sfp[i]) {
-			phy_read(i, 0x1f, 0xa610);
+			phy_read(i, PHY_MMD31, 0xa610);
 			if (SFR_DATA_8 == 0x20)
 				print_string("On\t");
 			else
