@@ -13,6 +13,7 @@
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "rtl837x_leds.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
@@ -2077,6 +2078,7 @@ void bootloader(void)
 	}
 #endif
 	set_sys_led_state(SYS_LED_SLOW);
+	leds_dump();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
