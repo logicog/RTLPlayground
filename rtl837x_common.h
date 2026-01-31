@@ -24,9 +24,19 @@
 #define LOOKUP_MISS_DROP_9  0x00015555
 #define LOOKUP_MISS_FLOOD   0x00000000
 
-// The serial buffer. Defines the command line size
-// Must be 2^x and <= 128
-#define SBUF_SIZE 128
+/* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
+ * Writing to this buffer is under the sole control of the serial ISR
+ * Note that key-presses such as <cursor-left> can create multiple
+ * keys (3 to 4) being sent via the serial line, so this must be
+ * sufficiently large */
+#define SBUF_SIZE 16
+#define SBUF_MASK (SBUF_SIZE - 1)
+
+extern __xdata volatile uint8_t sbuf_ptr;
+extern __xdata uint8_t sbuf[SBUF_SIZE];
+
+// Define the command buffer size, Must be 2^x and <= 128
+#define CMD_BUF_SIZE 128
 
 // Size of the TCP Output buffer
 #define TCP_OUTBUF_SIZE 2500
@@ -87,6 +97,7 @@ extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);
+void print_string_x(__xdata char *p);
 void print_long(__xdata uint32_t a);
 void print_short(uint16_t a);
 void print_byte(uint8_t a);
@@ -118,7 +129,6 @@ uint16_t strlen(register __code const char *s);
 uint16_t strlen_x(register __xdata const char *s);
 uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 void tcpip_output(void);
-void print_string_x(__xdata char *p);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(uint32_t * tmr);

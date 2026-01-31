@@ -21,7 +21,7 @@ all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
 create_build_dir:
 	mkdir -p $(BUILDDIR)
 
-SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c rtl837x_stp.c dhcp.c  machine.c
+SRCS = rtlplayground.c rtl837x_flash.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c rtl837x_stp.c dhcp.c  machine.c cmd_editor.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 OBJS += uip/$(BUILDDIR)/timer.rel uip/$(BUILDDIR)/uip-fw.rel uip/$(BUILDDIR)/uip-neighbor.rel uip/$(BUILDDIR)/uip-split.rel uip/$(BUILDDIR)/uip.rel uip/$(BUILDDIR)/uip_arp.rel uip/$(BUILDDIR)/uiplib.rel httpd/$(BUILDDIR)/httpd.rel httpd/$(BUILDDIR)/page_impl.rel
 

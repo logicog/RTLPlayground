@@ -37,7 +37,7 @@ __code const struct machine machine = {
 };
 #elif defined MACHINE_KP_9000_9XH_X_EU
 __code const struct machine machine = {
-	.machine_name = "keepLink KP-9000-6XH-X-EU",
+	.machine_name = "keepLink KP-9000-9XH-X-EU",
 	.isRTL8373 = 1,
 	.min_port = 0,
 	.max_port = 8,
