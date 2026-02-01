@@ -214,7 +214,6 @@ void leds_setup(void) __banked
 		reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
 	else
 		reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 29);
-		
 
 	// Configure the LED-mux
 	if (machine.led_mux_custom) {
