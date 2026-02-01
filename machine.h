@@ -23,6 +23,18 @@ typedef struct {
 	uint8_t scl;
 } i2c_bus_t;
 
+
+#define LED_27 1
+#define LED_28 2
+#define LED_29 4
+
+struct high_leds {
+	// Defines MUX and LED enabling for pins 27-29
+	uint8_t mux : 3;
+	uint8_t enable : 3;
+	uint8_t reserved : 2;
+};
+
 struct sfp_port
 {
 	uint8_t pin_detect; // gpio number 0-63, 0xFF = don't have it?
@@ -44,6 +56,9 @@ typedef struct machine {
 	// sfp_port[0] is the first SFP-port from the left on the device, sfp_port[1] the next if present 
 	struct sfp_port sfp_port[2];
 	int8_t reset_pin;
+	struct high_leds high_leds;
+	uint8_t port_led_set[9];
+	uint32_t led_sets[4][4];
 };
 
 typedef struct machine_runtime
