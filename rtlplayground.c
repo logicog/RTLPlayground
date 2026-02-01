@@ -8,6 +8,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
+#include "rtl837x_pins.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
@@ -807,7 +808,7 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 	}
 
 	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, machine.sfp_port[slot].i2c_bus.scl << 5 | machine.sfp_port[slot].i2c_bus.sda << 2);
+	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
 	reg_write_m(RTL837X_REG_I2C_CTRL);
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
@@ -1009,57 +1010,13 @@ bool gpio_pin_test(uint8_t pin)
 	return sfr_data[3-((pin >> 3) & 3)] & (1 << (pin & 7));
 }
 
-void gpio_mux_setup(uint8_t pin)
-{
-	// Some GPIOs require setting MUX registers to enable GPIO
-	if (pin == 36) {
-		reg_bit_set(RTL837X_PIN_MUX_1, 30);
-	} else if ( pin == 50 ) {
-		// Bit 15-16 0b00 -> GPIO
-		reg_read_m(RTL837X_PIN_MUX_1);
-		sfr_mask_data(1, 0x80, 0x00);
-		sfr_mask_data(2, 0x01, 0x00);
-		reg_write_m(RTL837X_PIN_MUX_1);	
-	} else if ( pin == 51 ) {
-		// Bit 17-18 0b00 -> GPIO
-		reg_read_m(RTL837X_PIN_MUX_1);
-		sfr_mask_data(2, 0x06, 0x00);
-		reg_write_m(RTL837X_PIN_MUX_1);	
-	} else if ( pin == 54 ) {
-		reg_bit_clear(RTL837X_PIN_MUX_2, 2);
-	}
-}
-
-/*
- * Setup a GPIO pin as input
- * pin: GPIO pin number 0-63
- */
-void gpio_input_setup(uint8_t pin) {
-	gpio_mux_setup(pin);
-	reg_bit_clear(pin < 32 ? RTL837X_REG_GPIO_00_31_DIRECTION : RTL837X_REG_GPIO_32_63_DIRECTION, (pin % 32));
-}
-
-
-/*
- * Setup a GPIO pin as output
- * pin: GPIO pin number 0-63
- */
-void gpio_output_setup(uint8_t pin) {
-	gpio_mux_setup(pin);
-	// Default output to low
-	reg_bit_clear(pin < 32 ? RTL837X_REG_GPIO_00_31_OUTPUT : RTL837X_REG_GPIO_32_63_OUTPUT, (pin % 32));
-	reg_bit_set(pin < 32 ? RTL837X_REG_GPIO_00_31_DIRECTION : RTL837X_REG_GPIO_32_63_DIRECTION, (pin % 32));
-}
-
 /* Inititalize SFP GPIOs */
 void setup_sfp_gpio(void)
 {
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
 		gpio_input_setup(machine.sfp_port[sfp].pin_detect);
 		gpio_input_setup(machine.sfp_port[sfp].pin_los);
-		if (machine.sfp_port[sfp].pin_tx_disable != 0xFF) {
-			gpio_output_setup(machine.sfp_port[sfp].pin_tx_disable);
-		}
+		gpio_output_setup(machine.sfp_port[sfp].pin_tx_disable, 0);
 	}
 }
 
@@ -1866,44 +1823,55 @@ void setup_i2c(void)
 	// HW Control register, enable I2C depending on PIN configuration
 	reg_read_m(RTL837X_PIN_MUX_1);
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
-		const uint8_t scl_bus = machine.sfp_port[sfp].i2c_bus.scl;
-		const uint8_t sda_bus = machine.sfp_port[sfp].i2c_bus.sda;
+		const uint8_t scl_bus = i2c_bus_from_scl_pin(machine.sfp_port[sfp].i2c.scl);
+		const uint8_t sda_bus = i2c_bus_from_sda_pin(machine.sfp_port[sfp].i2c.sda);
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
-		if (scl_bus == 3) {
-			// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
-			sfr_mask_data(0, 0x60, 0x40);
-		} else if (scl_bus == 2) {
-			// Bit 15-16 0b01 -> SCL
-			sfr_mask_data(1, 0x80, 0x80);
-			sfr_mask_data(2, 0x01, 0x00);
-		} else if (scl_bus == 1) {
-			// Bit 11-12 0b01 -> SCL
-			sfr_mask_data(1, 0x18, 0x08);
-		} else if (scl_bus == 0) {
-			// Bit 7-8 0b01 -> SCL
-			sfr_mask_data(0, 0x80, 0x80);
-			sfr_mask_data(1, 0x01, 0x00);
-		} else {
-			print_string("Invalid SCL bus number: "); print_byte(scl_bus); write_char('\n');
+		switch (scl_bus) {
+			case 3:
+				// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
+				sfr_mask_data(0, 0x60, 0x40);
+				break;
+			case 2: 
+				// Bit 15-16 0b01 -> SCL
+				sfr_mask_data(1, 0x80, 0x80);
+				sfr_mask_data(2, 0x01, 0x00);
+				break;
+			case 1:
+				// Bit 11-12 0b01 -> SCL
+				sfr_mask_data(1, 0x18, 0x08);
+				break;
+			case 0:
+				// Bit 7-8 0b01 -> SCL
+				sfr_mask_data(0, 0x80, 0x80);
+				sfr_mask_data(1, 0x01, 0x00);
+				break;
+			default:
+				print_string("Invalid SCL bus number: "); print_byte(scl_bus); write_char('\n');
 		}
 
-		if (sda_bus == 4) {
-			// Bit 29 0b0 -> SDA
-			sfr_mask_data(3, 0x20, 0x00);
-		} else if (sda_bus == 3) {
-			// Bit 5-6 0b10 -> SDA (implies enabled SCL on bus 3)
-			sfr_mask_data(0, 0x60, 0x40);
-		} else if (sda_bus == 2) {
-			// Bit 17-18 0b01 -> SDA
-			sfr_mask_data(2, 0x06, 0x02);
-		} else if (sda_bus == 1) {
-			// Bit 13-14 0b01 -> SDA
-			sfr_mask_data(1, 0x60, 0x20);
-		} else if (sda_bus == 0) {
-			// Bit 9-10 0b01 -> SDA
-			sfr_mask_data(1, 0x06, 0x02);
-		} else {
-			print_string("Invalid SDA bus number: "); print_byte(sda_bus); write_char('\n');
+		switch (sda_bus) {
+			case 4:
+				// Bit 29 0b0 -> SDA
+				sfr_mask_data(3, 0x20, 0x00);
+				break;
+			case 3:
+				// Bit 5-6 0b10 -> SDA (implies enabled SCL on bus 3)
+				sfr_mask_data(0, 0x60, 0x40);
+				break;
+			case 2:
+				// Bit 17-18 0b01 -> SDA
+				sfr_mask_data(2, 0x06, 0x02);
+				break;
+			case 1:
+				// Bit 13-14 0b01 -> SDA
+				sfr_mask_data(1, 0x60, 0x20);
+				break;
+			case 0:
+				// Bit 9-10 0b01 -> SDA
+				sfr_mask_data(1, 0x06, 0x02);
+				break;
+			default:
+				print_string("Invalid SDA bus number: "); print_byte(sda_bus); write_char('\n');
 		}
 	}
 	reg_write_m(RTL837X_PIN_MUX_1);	
@@ -2100,7 +2068,6 @@ void bootloader(void)
 	management_vlan = 0; // Disabled
 
 	setup_i2c();
-	setup_sfp_gpio();
 
 	print_string(greeting);
 

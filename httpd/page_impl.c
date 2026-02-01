@@ -5,6 +5,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
+#include "rtl837x_pins.h"
 #include "uip.h"
 #include "html_data.h"
 #include <stdint.h>
@@ -178,7 +179,7 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 	}
 
 	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, machine.sfp_port[slot].i2c_bus.scl << 5 | machine.sfp_port[slot].i2c_bus.sda << 2);
+	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
 	reg_write_m(RTL837X_REG_I2C_CTRL);
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
