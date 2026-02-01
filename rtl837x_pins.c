@@ -60,7 +60,15 @@ static void gpio_mux_setup(uint8_t pin)
 			reg_bit_set(RTL837X_PIN_MUX_1, 30);
 			break;
 		case GPIO37:
+		case GPIO38:
 			// Intentionally empty, always GPIO
+			break;
+		case GPIO46_I2C_SCL0:
+			// Bit 7-8 0b00 -> GPIO
+			reg_read_m(RTL837X_PIN_MUX_1);
+			sfr_mask_data(0, 0x80, 0x00);
+			sfr_mask_data(1, 0x01, 0x00);
+			reg_write_m(RTL837X_PIN_MUX_1);	
 			break;
 		case GPIO50_I2C_SCL2_UART1_TX:
 			// Bit 15-16 0b00 -> GPIO

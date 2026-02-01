@@ -21,7 +21,7 @@ __code const struct machine machine = {
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 0,
 	.sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
-	.reset_pin = 46,
+	.reset_pin = GPIO46_I2C_SCL0,
 };
 #elif defined MACHINE_KP_9000_6XH_X
 __code const struct machine machine = {
@@ -38,6 +38,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO_NA,
 };
 #elif defined MACHINE_KP_9000_9XH_X_EU
 __code const struct machine machine = {
@@ -54,6 +55,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO_NA,
 };
 
 #elif defined MACHINE_SWGT024_V2_0
@@ -78,7 +80,7 @@ __code const struct machine machine = {
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 0,
 	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 }, /* GPIO 40 */
-	.reset_pin = 36,
+	.reset_pin = GPIO36_PWM_OUT,
 };
 
 #elif defined DEFAULT_8C_1SFP
@@ -96,5 +98,6 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO_NA,
 };
 #endif
