@@ -179,7 +179,6 @@ void leds_setup(void) __banked
 		reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
 	else
 		reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 29);
-		
 
 	// Configure the LED-set of a port
 	sfr_data[3] = sfr_data[2] = sfr_data[1] = sfr_data[0] = 0;

@@ -25,14 +25,14 @@ __code const struct machine machine = {
 	.reset_pin = GPIO46_I2C_SCL0,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	/* Conditions for LED on: 
+	/* Conditions for LED on:
 	 * dual led orange: ledset_0 & ledset_2
 	 * dual led green: ledset_2 & !ledset_0
 	 * single right led green: ledset_0 & !ledset_1
 	*/
 	.led_sets = { { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
 			LEDS_2G5 | LEDS_LINK | LEDS_10G,
-			LEDS_1G | LEDS_LINK, 
+			LEDS_1G | LEDS_LINK,
 			0 },
 		    },
 };
@@ -53,14 +53,14 @@ __code const struct machine machine = {
 	.sfp_port[0].i2c_bus = { .sda = 4, .scl = 3 },
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO_NA,
-	/* Conditions for LED on: 
+	/* Conditions for LED on:
 	 * dual led orange: ledset_0 & ledset_2
 	 * dual led green: ledset_2 & !ledset_0
 	 * single right led green: ledset_0 & !ledset_1
 	*/
 	.led_sets = { { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
 			LEDS_2G5 | LEDS_LINK | LEDS_10G,
-			LEDS_1G | LEDS_LINK, 
+			LEDS_1G | LEDS_LINK,
 			0 },
 		    },
 };
@@ -114,14 +114,14 @@ __code const struct machine machine = {
 	.reset_pin = GPIO36_PWM_OUT,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	/* Conditions for LED on: 
+	/* Conditions for LED on:
 	 * dual led orange: ledset_0 & ledset_2
 	 * dual led green: ledset_2 & !ledset_0
 	 * single right led green: ledset_0 & !ledset_1
 	*/
 	.led_sets = { { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
 			LEDS_2G5 | LEDS_LINK | LEDS_10G,
-			LEDS_1G | LEDS_LINK, 
+			LEDS_1G | LEDS_LINK,
 			0 },
 		    },
 };
@@ -155,11 +155,11 @@ __code const struct machine machine = {
 	 */
 	.led_sets = { { LEDS_10M | LEDS_LINK | LEDS_ACT,
 			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_2G5 | LEDS_LINK | LEDS_ACT,
-			LEDS_2G5 | LEDS_LINK | LEDS_ACT, 
+			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
 			0 },
 			{ LEDS_100M | LEDS_10M | LEDS_LINK,
 			LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
-			LEDS_10G | LEDS_LINK, 
+			LEDS_10G | LEDS_LINK,
 			0 },
 		    },
 };
@@ -184,7 +184,7 @@ __code const struct machine machine = {
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.led_sets = { { LEDS_2G5 | LEDS_TWO_PAIR_1G | LEDS_1G | LEDS_500M | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G | LEDS_TWO_PAIR_5G | LEDS_5G | LEDS_TWO_PAIR_2G5,
 			LEDS_2G5 | LEDS_LINK,
-			LEDS_1G | LEDS_LINK, 
+			LEDS_1G | LEDS_LINK,
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };

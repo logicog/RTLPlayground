@@ -1455,140 +1455,12 @@ void sds_init(void)
 }
 
 
-void led_config_9xh(void)
-{
-	// r65d8:3ffbedff R65d8-3ffbedff
-	reg_bit_set(0x65d8, 0x1d);
-
-	//  r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0
-	reg_read_m(RTL837X_REG_LED_MODE);
-	sfr_mask_data(1, 0x1f, 0x6);
-	sfr_mask_data(0, 0xe0, 0xa0);
-	reg_write_m(RTL837X_REG_LED_MODE);
-
-	// Set LED blink rate to slow during booting
-	set_sys_led_state(SYS_LED_SLOW);
-
-	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
-	reg_read_m(RTL837X_REG_LED_RLDP_1);
-	sfr_mask_data(0, 0, 0x3);
-	reg_write_m(RTL837X_REG_LED_RLDP_1);
-	// Configure LED group for RLDP per port
-	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffffffff);	// Ports 0-7
-	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
-
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
-	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
-
-	// GPIO 27 is LED
-	reg_bit_set(RTL837X_PIN_MUX_0, 27);
-
-	// Configure LED_SET_0, ledid 0/1
-	REG_SET(RTL837X_REG_LED1_0_SET0, 0x0041017f);
-
-	// Configure LED_SET_0 ledid 2
-	REG_SET(RTL837X_REG_LED3_2_SET0, 0x01410044);
-
-	// r6528:00000000 R6528-0000000f
-	reg_read_m(RTL837X_REG_LED3_0_SET1);
-	sfr_mask_data(0, 0x0f, 0x0f);
-	reg_write_m(RTL837X_REG_LED3_0_SET1);
-}
-
 void set_sys_led_state(uint8_t state)
 {
 	reg_read_m(RTL837X_REG_LED_MODE);
 	sfr_mask_data(2, 0x03, state);
 	reg_write_m(RTL837X_REG_LED_MODE);
 }
-
-
-#ifdef MACHINE_HG0402XG_V1_1
-void led_config(void)
-{
-	reg_read_m(RTL837X_REG_LED_MODE);
-	sfr_mask_data(2, 0xe0, 0x23); 	// Mask blink rate field (0xe0), set blink rate and LED to solid (set bit 1 = bit 17 overal
-	// Configure led-mode (serial?)
-	sfr_data[2] = 0xe6;
-	sfr_data[3] = 0xb0;
-	reg_write_m(RTL837X_REG_LED_MODE);
-	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
-	reg_read_m(RTL837X_REG_LED_RLDP_1);
-	sfr_mask_data(0, 0x03, 0);
-	reg_write_m(RTL837X_REG_LED_RLDP_1);
-	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffff0000);	// Ports 0-7 0x65fc
-	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
-
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
-	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
-	reg_bit_set(RTL837X_PIN_MUX_0, 29);
-	reg_bit_set(RTL837X_PIN_MUX_0, 27);
-
-	REG_SET(RTL837X_REG_LED1_0_SET0, 0x141); // 0x6548
-	reg_read_m(RTL837X_REG_LED3_2_SET0);
-	sfr_data[2] = 0x01;
-	sfr_data[3] = 0x74;
-	reg_write_m(RTL837X_REG_LED3_2_SET0);
-	reg_read_m(RTL837X_REG_LED1_0_SET1); // 6540
-	sfr_data[2] = 0x01;
-	sfr_data[3] = 0x7f;
-	reg_write_m(RTL837X_REG_LED1_0_SET1);
-
-	reg_read_m(RTL837X_REG_LED3_0_SET1);
-	sfr_data[1] |= 0x0f;
-	reg_write_m(RTL837X_REG_LED3_0_SET1);
-}
-
-#else
-void led_config(void)
-{
-	// LED initialization
-	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0
-	reg_read_m(RTL837X_REG_LED_MODE);
-	sfr_mask_data(2, 0xe0, 0x23); 	// Mask blink rate field (0xe0), set blink rate and LED to solid (set bit 1 = bit 17 overall)
-	// Configure led-mode (serial?)
-	sfr_data[2] = 0xe6;
-	sfr_data[3] = 0xb0;
-	reg_write_m(RTL837X_REG_LED_MODE);
-
-	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
-	reg_read_m(RTL837X_REG_LED_RLDP_1);
-	sfr_mask_data(0, 0x03, 0);
-	reg_write_m(RTL837X_REG_LED_RLDP_1);
-	// Configure LED group for RLDP per port
-	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffffffff);	// Ports 0-7
-	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
-
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
-	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
-
-	// Configure GPIO for LEDs 27-29
-	if (machine.n_sfp == 2) {
-		reg_bit_set(RTL837X_PIN_MUX_0, 27);
-		reg_bit_clear(RTL837X_PIN_MUX_0, 28);
-		reg_bit_set(RTL837X_PIN_MUX_0, 29);
-	} else {
-		reg_bit_set(RTL837X_PIN_MUX_0, 27);
-		reg_bit_set(RTL837X_PIN_MUX_0, 28);
-		reg_bit_set(RTL837X_PIN_MUX_0, 29);
-	}
-	// LED setup
-	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0 r65f8:00000018 R65f8-00000018 R65fc-fffff000 r6600:00000000 R6600-0000000f r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
-	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000 R6548-00410175 r6544:01411000 R6544-01410044 r6528:00000000 R6528-00000011
-
-	// Configure LED_SET_0, ledid 0/1
-	REG_SET(RTL837X_REG_LED1_0_SET0, 0x00410175);
-
-	// Configure led-sets 2 and 3
-	REG_SET(RTL837X_REG_LED3_2_SET0, 0x01410044);
-
-	// Further configure LED_SET_0
-	// r6528:00000000 R6528-00000011
-	reg_read_m(RTL837X_REG_LED3_0_SET1);
-	sfr_data[3] = 0x11;
-	reg_write_m(RTL837X_REG_LED3_0_SET1);
-}
-#endif
 
 void rtl8373_revision(void)
 {
@@ -1608,7 +1480,9 @@ void rtl8373_init(void)
 {
 	print_string("\nrtl8373_init called\n");
 
-	led_config_9xh();
+	// r65d8:3ffbedff R65d8-3ffbedff
+	reg_bit_set(0x65d8, 0x1d);
+
 	sds_init();
 	// Disable all SERDES for configuration
 	REG_SET(RTL837X_REG_SDS_MODES, 0x000037ff);
@@ -1699,8 +1573,6 @@ void rtl8373_init(void)
 void rtl8372_init(void)
 {
 	print_string("\nrtl8372_init called\n");
-
-	led_config();
 
 	sds_init();
 	phy_config(8);	// PHY configuration: External 8221B?
@@ -1997,6 +1869,10 @@ void bootloader(void)
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
 	rtl8373_revision();
+
+	leds_setup();
+	leds_dump();
+
 	if (machine_detected.isRTL8373)
 		rtl8373_init();
 	else
@@ -2080,7 +1956,6 @@ void bootloader(void)
 	}
 #endif
 	set_sys_led_state(SYS_LED_SLOW);
-	leds_dump();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
