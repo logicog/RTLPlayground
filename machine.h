@@ -16,12 +16,19 @@
 
 // #define DEFAULT_5C_1SFP
 
+typedef struct {
+	// GPIO pins for SDA/SCL
+	uint8_t sda; 
+	uint8_t scl;
+} i2c_bus_t;
+
 struct sfp_port
 {
 	uint8_t pin_detect; // gpio number 0-63, 0xFF = don't have it?
 	uint8_t pin_los; // gpio number 0-63, 0xFF = don't have it?
+	uint8_t pin_tx_disable; // gpio number 0-63, 0xFF = not present
 	uint8_t sds;
-	uint8_t i2c;
+	i2c_bus_t i2c;
 };
 
 typedef struct machine {
