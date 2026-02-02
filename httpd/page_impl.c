@@ -5,6 +5,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
+#include "rtl837x_pins.h"
 #include "uip.h"
 #include "html_data.h"
 #include <stdint.h>
@@ -178,7 +179,7 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 	}
 
 	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, machine.sfp_port[slot].i2c == 0 ? SCL_PIN << 5 | SDA_PIN_0 << 2 : SCL_PIN << 5 | SDA_PIN_1 << 2 );
+	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
 	reg_write_m(RTL837X_REG_I2C_CTRL);
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
@@ -607,16 +608,16 @@ void send_status(void)
 			}
 		} else {
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
-			phy_read(i, 0x1f, 0xa610);
+			phy_read(i, PHY_MMD31, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
 			slen += strtox(outbuf + slen, ",\"adv\":\"");
-			phy_read(i, PHY_MMD_AN, 0x20);
+			phy_read(i, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL);
 			uint16_t w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x80));		// 2500BaseN-Full
-			phy_read(i, PHY_MMD_CTRL, 0xa412);
+			phy_read(i, PHY_MMD31, PHY_MMD31_GBCR);
 			w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x0200));		// 1000Base-Full
-			phy_read(i, PHY_MMD_AN, 0x10);
+			phy_read(i, PHY_MMD_AN, PHY_ANEG_ADV);
 			w = SFR_DATA_U16;
 			bool_to_html(!!(w & 0x0100));		// 100Base-Full
 			bool_to_html(!!(w & 0x80));		// 100Base-Half
