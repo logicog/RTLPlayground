@@ -1,6 +1,7 @@
 #include "machine.h"
 #include "rtl837x_pins.h"
 #include "rtl837x_leds.h"
+#include "rtl837x_regs.h"
 
 #ifdef MACHINE_KP_9000_6XHML_X2
 __code const struct machine machine = {
@@ -35,7 +36,13 @@ __code const struct machine machine = {
 			LEDS_1G | LEDS_LINK, 
 			0 },
 		    },
+	.led_mux_custom = 1,
+	.led_mux = {0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x0f, 0x0c, 0x0d, 0x0e, 0x10, 0x11, 0x12, 0x14,
+		    0x15, 0x16, 0x18, 0x19, 0x1a, 0x1c, 0x1d, 0x1e, 0x20, 0x21, 0x22, 0x23 },
 };
+
+void machine_custom_init(void) { }
+
 #elif defined MACHINE_KP_9000_6XH_X
 __code const struct machine machine = {
 	.machine_name = "keepLink KP-9000-6XH-X",
@@ -64,6 +71,9 @@ __code const struct machine machine = {
 			0 },
 		    },
 };
+
+void machine_custom_init(void) { }
+
 #elif defined MACHINE_KP_9000_9XH_X_EU
 __code const struct machine machine = {
 	.machine_name = "keepLink KP-9000-6XH-X-EU",
@@ -88,6 +98,8 @@ __code const struct machine machine = {
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };
+
+void machine_custom_init(void) { }
 
 #elif defined MACHINE_SWGT024_V2_0
 __code const struct machine machine = {
@@ -125,6 +137,8 @@ __code const struct machine machine = {
 			0 },
 		    },
 };
+
+void machine_custom_init(void) { }
 
 #elif defined MACHINE_HG0402XG_V1_1
 __code const struct machine machine = {
@@ -164,6 +178,8 @@ __code const struct machine machine = {
 		    },
 };
 
+void machine_custom_init(void) { }
+
 #elif defined DEFAULT_8C_1SFP
 __code const struct machine machine = {
 	.machine_name = "8+1 SFP Port Switch",
@@ -188,6 +204,9 @@ __code const struct machine machine = {
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };
+
+void machine_custom_init(void) { }
+
 #elif defined MACHINE_TRENDNET_TEG_S562
 __code const struct machine machine = {
 	.machine_name = "Trendnet TEG-S562",
@@ -210,4 +229,7 @@ __code const struct machine machine = {
 	.sfp_port[1].i2c = { .sda = GPIO49_I2C_SDA1, .scl = GPIO48_I2C_SCL1 },
 	.reset_pin = GPIO_NA,
 };
+
+void machine_custom_init(void) { }
+
 #endif

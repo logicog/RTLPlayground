@@ -38,7 +38,42 @@ void leds_dump(void) __banked
 	print_string("RTL837X_REG_LED3_0_SET1: "); print_reg(RTL837X_REG_LED3_0_SET1); write_char('\n');
 	print_string("RTL837X_REG_LED3_0_SET3: "); print_reg(RTL837X_REG_LED3_0_SET3); write_char('\n');
 	print_string("RTL837X_LED_PORT_SET_SEL: "); print_reg(RTL837X_LED_PORT_SET_SEL); write_char('\n');
-	print_string("LED Configuration:\n");
+	print_string("RTL837X_REG_LED_GLB_MUX_1: "); print_reg(RTL837X_REG_LED_GLB_MUX_1); write_char('\n');
+	print_string("RTL837X_REG_LED_GLB_MUX_2: "); print_reg(RTL837X_REG_LED_GLB_MUX_2); write_char('\n');
+	print_string("RTL837X_REG_LED_GLB_MUX_3: "); print_reg(RTL837X_REG_LED_GLB_MUX_3); write_char('\n');
+	print_string("RTL837X_REG_LED_GLB_MUX_4: "); print_reg(RTL837X_REG_LED_GLB_MUX_4); write_char('\n');
+	print_string("RTL837X_REG_LED_GLB_MUX_5: "); print_reg(RTL837X_REG_LED_GLB_MUX_5); write_char('\n');
+	print_string("RTL837X_REG_LED_GLB_MUX_6: "); print_reg(RTL837X_REG_LED_GLB_MUX_6); write_char('\n');
+	print_string("RTL837X_REG_LED_GLB_ACTIVE: "); print_reg(RTL837X_REG_LED_GLB_ACTIVE); write_char('\n');
+	print_string("LED pad Configuration:\n");
+	for (uint8_t i = 0; i < 28; i++) {
+		print_byte(i);
+		write_char(' ');
+	}
+	write_char('\n');
+	for (uint8_t i = 0; i < 28; i++) {
+		switch (i % 5) {
+		case 0:  // 0
+			reg_read_m(RTL837X_REG_LED_GLB_MUX_1 + (i / 5) * 4);
+			print_byte(sfr_data[3] & 0x3f);
+			break;
+		case 1:  // 6
+			print_byte(((sfr_data[3] >> 6) | (sfr_data[2] << 2)) & 0x3f);
+			break;
+		case 2:  // 12
+			print_byte(((sfr_data[1] << 4) | (sfr_data[2] >> 4)) & 0x3f);
+			break;
+		case 3:  // 18
+			print_byte((sfr_data[1] >> 2) & 0x3f);
+			break;
+		case 4:  // 24
+			print_byte(sfr_data[0] & 0x3f);
+			break;
+		}
+		write_char(' ');
+	}
+	write_char('\n');
+	print_string("LED-set Configuration:\n");
 	print_string("LED-ID\t\t0\t\t1\t\t2\t\t3\n");
 	for (__xdata uint8_t set = 0; set < 4; set++) {
 		print_string("SET "); write_char('0' + set); write_char(':');
@@ -181,6 +216,38 @@ void leds_setup(void) __banked
 		reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 29);
 		
 
+	// Configure the LED-mux
+	if (machine.led_mux_custom) {
+		print_string("Configuring custom LED-muxes: ");
+		for (uint8_t i = 0; i < 28; i++) {
+			switch (i % 5) {
+			case 0:  // 0
+				sfr_data[3] = machine.led_mux[i];
+				break;
+			case 1:  // 6
+				sfr_data[3] |= machine.led_mux[i] << 6;
+				sfr_data[2] = machine.led_mux[i] >> 2;
+				break;
+			case 2:  // 12
+				sfr_data[2] |= machine.led_mux[i] << 4;
+				sfr_data[1] = machine.led_mux[i] >> 4;
+				break;
+			case 3:  // 18
+				sfr_data[1] |= machine.led_mux[i] << 2;
+				break;
+			case 4:  // 24
+				sfr_data[0] = machine.led_mux[i];
+				print_sfr_data(); write_char(' ');
+				reg_write_m(RTL837X_REG_LED_GLB_MUX_1 + (i / 5) * 4);
+				break;
+			}
+			write_char(' ');
+		}
+		sfr_data[0] = 0; sfr_data[1] &= 0xf;
+		print_sfr_data(); write_char('\n');
+		reg_write_m(RTL837X_REG_LED_GLB_MUX_6);
+	}
+	
 	// Configure the LED-set of a port
 	sfr_data[3] = sfr_data[2] = sfr_data[1] = sfr_data[0] = 0;
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
@@ -188,6 +255,9 @@ void leds_setup(void) __banked
 	reg_write_m(RTL837X_LED_PORT_SET_SEL);
 
 	// Configure the LED-sets
+	sfr_data[3] = sfr_data[2] = sfr_data[1] = sfr_data[0] = 0;
+	reg_write_m(RTL837X_REG_LED3_0_SET1);
+	reg_write_m(RTL837X_REG_LED3_0_SET3);
 	__code uint8_t * __xdata lptr = &machine.led_sets[0][0];
 	for (__xdata uint8_t set = 0; set < 4; set++) {
 		sfr_data[0] = *(lptr + 5);
