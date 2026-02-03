@@ -20,6 +20,13 @@
 // BIT 17 set: LED solid on
 // Bytes 0/1 hold the LED mode, e.g. serial, RTL8231?
 // Blink rate is defined by setAsicRegBits(0x6520,0xe00000,rate);
+#define RTL837X_REG_LED_GLB_MUX_1	0x65E0
+#define RTL837X_REG_LED_GLB_MUX_2	0x65E4
+#define RTL837X_REG_LED_GLB_MUX_3	0x65E8
+#define RTL837X_REG_LED_GLB_MUX_4	0x65EC
+#define RTL837X_REG_LED_GLB_MUX_5	0x65F0
+#define RTL837X_REG_LED_GLB_MUX_6	0x65F4
+#define RTL837X_REG_LED_GLB_ACTIVE	0x65D8
 #define RTL837X_REG_LED_GLB_IO_EN	0x65DC
 #define RTL837X_REG_LED3_0_SET3		0x6524
 #define RTL837X_REG_LED3_0_SET1		0x6528
