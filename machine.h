@@ -59,6 +59,8 @@ typedef struct machine {
 	struct high_leds high_leds;
 	uint8_t port_led_set[9];
 	uint32_t led_sets[4][4];
+	uint8_t led_mux_custom;
+	uint8_t led_mux[28];
 };
 
 typedef struct machine_runtime
@@ -66,5 +68,7 @@ typedef struct machine_runtime
 	uint8_t isRTL8373 : 1;
 	uint8_t isN : 1;
 };
+
+void machine_custom_init(void);
 
 #endif
