@@ -100,4 +100,26 @@ __code const struct machine machine = {
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO_NA,
 };
+#elif defined MACHINE_TRENDNET_TEG_S562
+__code const struct machine machine = {
+	.machine_name = "Trendnet TEG-S562",
+	.isRTL8373 = 0,
+	.min_port = 3,
+	.max_port = 8,
+	.n_sfp = 2,
+	.log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
+	.phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
+	.is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
+	.sfp_port[0].pin_detect = GPIO36_PWM_OUT,
+	.sfp_port[0].pin_los = GPIO37,
+	.sfp_port[0].pin_tx_disable = GPIO51_I2C_SDA2_UART1_RX,
+	.sfp_port[0].sds = 0,
+	.sfp_port[0].i2c = { .sda = GPIO47_I2C_SDA0, .scl = GPIO46_I2C_SCL0 },
+	.sfp_port[1].pin_detect = GPIO38,
+	.sfp_port[1].pin_los = GPIO50_I2C_SCL2_UART1_TX,
+	.sfp_port[1].pin_tx_disable = GPIO54_ACL_BIT2_EN,
+	.sfp_port[1].sds = 1,
+	.sfp_port[1].i2c = { .sda = GPIO49_I2C_SDA1, .scl = GPIO48_I2C_SCL1 },
+	.reset_pin = GPIO_NA,
+};
 #endif
