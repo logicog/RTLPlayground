@@ -257,6 +257,7 @@
 #define EEE_100 	0x01
 #define EEE_1000	0x04
 #define EEE_2G5		0x10
+#define EEE_NORESET	0x80
 
 /*
  * RANDOM
