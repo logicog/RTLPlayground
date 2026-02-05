@@ -633,6 +633,57 @@ void parse_passwd(void)
 }
 
 
+void parse_eee(void)
+{
+	__xdata int8_t port = -1;
+	__xdata uint8_t speed = EEE_2G5;
+	__xdata uint8_t speed_word = 0;
+	// Check if word 2 is a speed (contains 'g' or 'm') or a port number
+	if (cmd_words_b[3] > 0) {
+		uint8_t idx = cmd_words_b[2];
+		// Skip digits to check if there's a letter after
+		while (isnumber(cmd_buffer[idx]))
+			idx++;
+		if (cmd_buffer[idx] == 'g' || cmd_buffer[idx] == 'm') {
+			// Word 2 is a speed (e.g., "2g5", "100m", "1g")
+			speed_word = 2;
+		} else if (cmd_buffer[idx] == ' ' || cmd_buffer[idx] == '\0') {
+			// Word 2 is a port number
+			port = cmd_buffer[cmd_words_b[2]] - '1';
+			port = machine.phys_to_log_port[port];
+			// Check if word 3 is a speed
+			if (cmd_words_b[4] > 0)
+				speed_word = 3;
+		}
+	}
+	// Parse speed if found
+	if (speed_word > 0) {
+		if (cmd_compare(speed_word, "100m"))
+			speed = EEE_100;
+		else if (cmd_compare(speed_word, "1g"))
+			speed = EEE_1000;
+		else if (cmd_compare(speed_word, "2g5"))
+			speed = EEE_2G5;
+	}
+	if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+		if (port >= 0)
+			port_eee_enable(port, speed);
+		else
+			port_eee_enable_all(speed);
+	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")) {
+		if (port >= 0)
+			port_eee_disable(port);
+		else
+			port_eee_disable_all();
+	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "status")) {
+		if (port >= 0)
+			port_eee_status(port);
+		else
+			port_eee_status_all();
+	}
+}
+
+
 // Parse command into words
 uint8_t cmd_tokenize(void) __banked
 {
@@ -895,27 +946,7 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "passwd")) {
 			parse_passwd();
 		} else if (cmd_compare(0, "eee")) {
-			int8_t port = -1;
-			if (cmd_words_b[3] > 0) {
-				port = cmd_buffer[cmd_words_b[2]] - '1';
-				port = machine.phys_to_log_port[port];
-			}
-			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
-				if (port >= 0)
-					port_eee_enable(port);
-				else
-					port_eee_enable_all();
-			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")) {
-				if (port >= 0)
-					port_eee_disable(port);
-				else
-					port_eee_disable_all();
-			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "status")) {
-				if (port >= 0)
-					port_eee_status(port);
-				else
-					port_eee_status_all();
-			}
+			parse_eee();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "time")) {
