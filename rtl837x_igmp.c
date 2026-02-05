@@ -24,7 +24,7 @@ extern __code struct machine machine;
 
 extern __xdata uint8_t cpuPort;
 extern __xdata uint8_t sfr_data[4];
-
+extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 
 __xdata uint16_t idx;
@@ -90,8 +90,8 @@ void igmp_setup(void) __banked
 	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
 
 	// Define ports where unknown MC addresses are flooded to:
-	REG_SET(RTL837X_IPV4_UNKN_MC_FLD_PMSK, machine.isRTL8373? PMASK_9: PMASK_6);
-	REG_SET(RTL837X_IPV6_UNKN_MC_FLD_PMSK, machine.isRTL8373? PMASK_9: PMASK_6);
+	REG_SET(RTL837X_IPV4_UNKN_MC_FLD_PMSK, machine_detected.isRTL8373? PMASK_9: PMASK_6);
+	REG_SET(RTL837X_IPV6_UNKN_MC_FLD_PMSK, machine_detected.isRTL8373? PMASK_9: PMASK_6);
 
 	// Enable lookup of IPv4 MC addresses in table
 	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
@@ -126,7 +126,7 @@ void igmp_setup(void) __banked
 
 /*	// Allow all physical ports to be dynamic router ports
 	reg_read_m(RTL837X_IGMP_ROUTER_PORT);
-	if (isRTL8373) {
+	if (machine_detected.isRTL8373) {
 		REG_WRITE(RTL837X_IGMP_ROUTER_PORT, PMASK_9 >> 8, PMASK_9 & 0xff, sfr_data[1], sfr_data[0]);
 	} else {
 		REG_WRITE(RTL837X_IGMP_ROUTER_PORT, PMASK_6 >> 8, PMASK_6 & 0xff, sfr_data[1], sfr_data[0]);
@@ -142,8 +142,8 @@ void igmp_enable(void) __banked
 	REG_SET(RTL837X_IGMP_TRAP_CFG, IGMP_CPU_PORT | IGMP_TRAP_PRIORITY);
 
 	// Drop unknown IP-MC packets
-	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, machine.isRTL8373? LOOKUP_MISS_DROP_9: LOOKUP_MISS_DROP_6);
-//	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, machine.isRTL8373? LOOKUP_MISS_DROP_9: LOOKUP_MISS_DROP_6);
+	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, machine_detected.isRTL8373? LOOKUP_MISS_DROP_9: LOOKUP_MISS_DROP_6);
+//	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, machine_detected.isRTL8373? LOOKUP_MISS_DROP_9: LOOKUP_MISS_DROP_6);
 
 	// Configure per-port IGMP configuration, bits 0-10 enable MC protocol snooping,
 	// bits 16-24 configure max MC group used by that port. Trap to CPU (10)

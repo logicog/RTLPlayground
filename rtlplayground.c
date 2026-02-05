@@ -8,6 +8,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
+#include "rtl837x_pins.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
@@ -18,12 +19,14 @@
 #include "uip/uip.h"
 #include "uip/uip_arp.h"
 #include "machine.h"
+#include "phy.h"
 
 
 extern __code const struct machine machine;
 
 extern __xdata uint16_t crc_value;
 __xdata uint8_t crc_testbytes[10];
+__xdata struct machine_runtime machine_detected;
 void crc16(__xdata uint8_t *v) __naked;
 
 // Upload Firmware to 1M
@@ -105,6 +108,7 @@ __xdata uint8_t rx_headers[16]; // Packet header(s) on RX
 __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
 __xdata uint16_t rx_packet_vlan;
+__xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t stpEnabled;
@@ -115,7 +119,6 @@ __code uint16_t bit_mask[16] = {
 };
 
 
-__xdata uint8_t was_offline;
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
 __xdata uint8_t sfp_pins_last;
@@ -683,7 +686,7 @@ void sds_config_mac(uint8_t sds, uint8_t mode)
 	case 2:
 		sfr_mask_data(1, 0xfc, 0x02 << 2);
 	}
-	if (machine.isRTL8373) // Set 3rd SERDES Mode to 0x2 for RTL8224
+	if (machine_detected.isRTL8373) // Set 3rd SERDES Mode to 0x2 for RTL8224
 		sfr_mask_data(1, 0xfc, 0x02 << 2);
 	else
 		sfr_data[2] &= 0x03;
@@ -805,7 +808,7 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 	}
 
 	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, machine.sfp_port[slot].i2c == 0 ? SCL_PIN << 5 | SDA_PIN_0 << 2 : SCL_PIN << 5 | SDA_PIN_1 << 2 );
+	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
 	reg_write_m(RTL837X_REG_I2C_CTRL);
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
@@ -921,12 +924,14 @@ void handle_rx(void)
 			    tcpip_output();
 			}
 		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // TCP?
-			uip_arp_ipin();	// Learn MAC addresses in TCP packets
-			uip_input();
-			if (uip_len) {
-				// Add ethernet frame
-				uip_arp_out();
-				tcpip_output();
+			if (!management_vlan || management_vlan == rx_packet_vlan) {
+				uip_arp_ipin();	// Learn MAC addresses in TCP packets
+				uip_input();
+				if (uip_len) {
+					// Add ethernet frame
+					uip_arp_out();
+					tcpip_output();
+				}
 			}
 		} else {
 #ifdef RXTXDBG
@@ -1005,6 +1010,15 @@ bool gpio_pin_test(uint8_t pin)
 	return sfr_data[3-((pin >> 3) & 3)] & (1 << (pin & 7));
 }
 
+/* Inititalize SFP GPIOs */
+void setup_sfp_gpio(void)
+{
+	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		gpio_input_setup(machine.sfp_port[sfp].pin_detect);
+		gpio_input_setup(machine.sfp_port[sfp].pin_los);
+		gpio_output_setup(machine.sfp_port[sfp].pin_tx_disable, 0);
+	}
+}
 
 void handle_sfp(void)
 {
@@ -1098,7 +1112,7 @@ void idle(void)
 		print_byte(linkbits_last[2]); print_byte(linkbits_last[3]);
 		print_string(">\n");
 		linkbits_last_p89 = linkbits_p89;
-		if (!machine.isRTL8373 && machine.n_sfp != 2) {
+		if (!machine_detected.isRTL8373 && machine.n_sfp != 2) {
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
@@ -1379,7 +1393,7 @@ void sds_init(void)
 	p001e.000d:0010 R02f8-00000010 R02f4-0000001a P000001.1e00000d:b7fe
 	p001e.000d:0010 p001e.000d:0010	R02f8-00000010 R02f4-00000010 P000001.1e00000d:b7fe
 */
-	phy_read(0, 0x1e, 0xd);
+	phy_read(0, PHY_MMD30, 0xd);
 	uint16_t pval = SFR_DATA_U16;
 
 	// PHY Initialization:
@@ -1391,9 +1405,9 @@ void sds_init(void)
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 	delay(10);
 
-	phy_write_mask(0x1, 0x1e, 0xd, pval);
+	phy_write_mask(0x1, PHY_MMD30, 0xd, pval);
 
-	phy_read(0, 0x1e, 0xd);
+	phy_read(0, PHY_MMD30, 0xd);
 	pval = SFR_DATA_U16;
 
 	REG_WRITE(0x2f8, 0, 0, pval >> 8, pval);
@@ -1401,7 +1415,40 @@ void sds_init(void)
 	pval &= 0xfff0;
 	REG_WRITE(0x2f4, 0, 0, pval >> 8, pval);
 
-	phy_write_mask(0x1, 0x1e, 0xd, pval);
+	phy_write_mask(0x1, PHY_MMD30, 0xd, pval);
+
+	if (machine_detected.isN) {
+		uint16_t pval;
+
+		print_string("  N-settings");
+		// Serdes 0 RX PN swap for 64B/66B
+		sds_read(1, 6, 2);
+		pval = SFR_DATA_U16;
+		sds_write_v(1, 6, 2, pval | 0x2000);
+
+		// Serdes 1 RX PN swap for 8B/10B
+		sds_read(1, 0, 0);
+		pval = SFR_DATA_U16;
+		sds_write_v(1, 0, 0, pval | 0x200);
+
+		// Serdes 0 RX PN swap for 64B/66B
+		sds_read(0, 6, 2);
+		pval = SFR_DATA_U16;
+		sds_write_v(0, 6, 2, pval | 0x2000);
+
+		if (machine_detected.isRTL8373) {
+			// RTL8224: Serdes 0 RX PN swap for 64B/66B
+			// We assume that RTL8373N always paired with RTL8224N.
+			// This sds register value is 0x0000 at reset.
+			// So only write to it.
+			RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
+		} else {
+			// Serdes 0 RX PN swap for 8B/10B
+			sds_read(0, 0, 0);
+			pval = SFR_DATA_U16;
+			sds_write_v(0, 0, 0, pval | 0x200);
+		}
+	}
 }
 
 
@@ -1501,7 +1548,6 @@ void led_config(void)
 	reg_write_m(RTL837X_REG_LED3_0_SET1);
 }
 
-
 void rtl8373_revision(void)
 {
 	reg_read_m(RTL837X_REG_CHIP_INFO);
@@ -1548,14 +1594,23 @@ void rtl8373_init(void)
 	pval = SFR_DATA_U16;
 
 	// r0a90:000000f3 R0a90-000000fc
-	reg_read_m(0xa90);
+	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
 	sfr_mask_data(0, 0x0f,0x0c);
-	reg_write_m(0xa90);
+	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
+
+	if (machine_detected.isN) {
+		print_string("  TX_POLARITY_SWAP\n");
+		// FOR N-Version: #TX_POLARITY_SWAP
+		reg_read_m(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
+			sfr_data[2] = 0x59;
+			sfr_data[3] = 0x6a;
+		reg_write_m(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
+	}
 
 	rtl8224_phy_enable();
 
 	// Disable PHYs for configuration
-	phy_write_mask(0xff,0x1f,0xa610,0x2858);
+	phy_write_mask(0xff,PHY_MMD31,0xa610,0x2858);
 
 	// Set bits 0x13 and 0x14 of 0x5fd4
 	// r5fd4:0002914a R5fd4-001a914a
@@ -1585,7 +1640,7 @@ void rtl8373_init(void)
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
-	phy_write_mask(0xff,0x1f,0xa610,0x2058);
+	phy_write_mask(0xff,PHY_MMD31,0xa610,0x2058);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
@@ -1616,12 +1671,12 @@ void rtl8372_init(void)
 	reg_write_m(RTL837X_REG_SDS_MODES);
 
 	// r0a90:000000f3 R0a90-000000fc
-	reg_read_m(0xa90);
-	sfr_mask_data(0, 0x0f,0x0c);
-	reg_write_m(0xa90);
+	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
+	sfr_mask_data(0, 0x0f, 0x0c);
+	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
 
 	// Disable PHYs for configuration
-	phy_write_mask(0xf0,0x1f,0xa610,0x2858);
+	phy_write_mask(0xf0,PHY_MMD31,0xa610,0x2858);
 
 	// Set bits 0x13 and 0x14 of 0x5fd4
 	// r5fd4:0002914a R5fd4-001a914a
@@ -1648,7 +1703,7 @@ void rtl8372_init(void)
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
-	phy_write_mask(0xf0,0x1f,0xa610,0x2058);
+	phy_write_mask(0xf0,PHY_MMD31,0xa610,0x2058);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
@@ -1678,7 +1733,7 @@ void init_smi(void)
 	REG_SET(RTL837X_REG_SMI_MAC_TYPE, machine.n_sfp == 2 ? 0x00005515 : 0x00005555);
 
 	// Configure polling of all PHYs by the MAC to detect link-state changes
-	if (machine.isRTL8373) {
+	if (machine_detected.isRTL8373) {
 		REG_SET(RTL837X_REG_SMI_PORT_POLLING, 0xff);
 	} else {
 		REG_SET(RTL837X_REG_SMI_PORT_POLLING, machine.n_sfp == 2 ? 0xf0 : 0x1f8);
@@ -1689,7 +1744,7 @@ void init_smi(void)
 	reg_write_m(RTL837X_REG_SMI_CTRL);
 	delay(50);
 
-	if (!machine.isRTL8373) {
+	if (!machine_detected.isRTL8373) {
 		// Change I2C addresses for SMI of the non-existent PHYs
 		// r6450:000020e6 R6450-000000e6
 		reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
@@ -1765,11 +1820,61 @@ void setup_i2c(void)
 
 	REG_SET(RTL837X_REG_I2C_CTRL2, 0);
 
-	// HW Control register, enable I2C?
+	// HW Control register, enable I2C depending on PIN configuration
 	reg_read_m(RTL837X_PIN_MUX_1);
-	sfr_mask_data(3, 0x20, 0x00); // Clear bit 29
-	sfr_mask_data(0, 0x60, 0x40); // Set bits 5-6 to 0b10
-	reg_write_m(RTL837X_PIN_MUX_1);
+	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		const uint8_t scl_bus = i2c_bus_from_scl_pin(machine.sfp_port[sfp].i2c.scl);
+		const uint8_t sda_bus = i2c_bus_from_sda_pin(machine.sfp_port[sfp].i2c.sda);
+		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
+		switch (scl_bus) {
+			case 3:
+				// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
+				sfr_mask_data(0, 0x60, 0x40);
+				break;
+			case 2: 
+				// Bit 15-16 0b01 -> SCL
+				sfr_mask_data(1, 0x80, 0x80);
+				sfr_mask_data(2, 0x01, 0x00);
+				break;
+			case 1:
+				// Bit 11-12 0b01 -> SCL
+				sfr_mask_data(1, 0x18, 0x08);
+				break;
+			case 0:
+				// Bit 7-8 0b01 -> SCL
+				sfr_mask_data(0, 0x80, 0x80);
+				sfr_mask_data(1, 0x01, 0x00);
+				break;
+			default:
+				print_string("Invalid SCL bus number: "); print_byte(scl_bus); write_char('\n');
+		}
+
+		switch (sda_bus) {
+			case 4:
+				// Bit 29 0b0 -> SDA
+				sfr_mask_data(3, 0x20, 0x00);
+				break;
+			case 3:
+				// Bit 5-6 0b10 -> SDA (implies enabled SCL on bus 3)
+				sfr_mask_data(0, 0x60, 0x40);
+				break;
+			case 2:
+				// Bit 17-18 0b01 -> SDA
+				sfr_mask_data(2, 0x06, 0x02);
+				break;
+			case 1:
+				// Bit 13-14 0b01 -> SDA
+				sfr_mask_data(1, 0x60, 0x20);
+				break;
+			case 0:
+				// Bit 9-10 0b01 -> SDA
+				sfr_mask_data(1, 0x06, 0x02);
+				break;
+			default:
+				print_string("Invalid SDA bus number: "); print_byte(sda_bus); write_char('\n');
+		}
+	}
+	reg_write_m(RTL837X_PIN_MUX_1);	
 }
 
 
@@ -1810,17 +1915,27 @@ void bootloader(void)
 	// We have not detected any link
 	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = linkbits_last_p89 = 0;
 
-	print_string("Detecting CPU: ");
-	reg_read_m(0x4);
-	if (sfr_data[1] == 0x73) { // Register was 0x83730000
-		print_string("RTL8373\n");
-		if (!machine.isRTL8373)
-			print_string("INCORRECT MACHINE!");
-		rtl8224_enable();  // Power on the RTL8224
+	machine_detected.isRTL8373 = 0;
+	machine_detected.isN = 0;
+	print_string("Detecting CPU: RTL837");
+	reg_read_m(RTL837X_REG_CHIP_ID);
+	if (sfr_data[1] == 0x73) { // Register was 0x8373xx00
+		machine_detected.isRTL8373 = 1;
+		write_char('3');
 	} else {
-		print_string("RTL8372\n");
-		if (machine.isRTL8373)
-			print_string("INCORRECT MACHINE!");
+		write_char('2');
+	}
+	// Detect non-N/N chip, 0xxxxx70xx
+	if (sfr_data[2] == 0x70) {
+		machine_detected.isN = 1;
+		write_char('N');
+	}
+	write_char('\n');
+	if (machine.isRTL8373 != machine_detected.isRTL8373) {
+		print_string("INCORRECT MACHINE!");
+	}
+	if (machine_detected.isRTL8373) {
+		rtl8224_enable();  // Power on the RTL8224
 	}
 
 	// Print SW version
@@ -1840,7 +1955,7 @@ void bootloader(void)
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
 	rtl8373_revision();
-	if (machine.isRTL8373)
+	if (machine_detected.isRTL8373)
 		rtl8373_init();
 	else
 		rtl8372_init();
@@ -1950,7 +2065,7 @@ void bootloader(void)
 	uip_arp_init();
 	httpd_init();
 
-	was_offline = 1;
+	management_vlan = 0; // Disabled
 
 	setup_i2c();
 
