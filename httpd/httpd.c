@@ -606,7 +606,9 @@ void httpd_appcall(void)
 			}
 		} else {
 			dbg_string("Have entry, authenticated: "); dbg_byte(authenticated); dbg_char('\n');
-			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html
+			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html 
+						|| f_data[entry].start == FDATA_START_port_svg 
+						|| f_data[entry].start == FDATA_START_sfp_svg
 						|| f_data[entry].start == FDATA_START_style_css)) {
 				send_to_login();
 				goto do_send;
@@ -618,7 +620,8 @@ void httpd_appcall(void)
 
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\n\r\n");
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nAccess-Control-Allow-Origin: *\r\n\r\n");
+
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
 				cont_len = len_left - (TCP_OUTBUF_SIZE - slen);

@@ -1,4 +1,5 @@
 async function vlanSub() {
+  var commands = [];
   var cmd = "vlan ";
   var v=document.getElementById('vid').value
   if (!v) {
@@ -14,12 +15,19 @@ async function vlanSub() {
     else if (document.getElementById('uport' + i).checked)
       cmd = cmd + ` ${i}`;
   }
+  commands.push(cmd);
+  for (let i = 1; i <= numPorts; i++) {
+    if (document.getElementById('pport' + i).checked)
+      commands.push(`pvid ${i} ${v}`);
+  }
   try {
-    const response = await fetch('/cmd', {
-      method: 'POST',
-      body: cmd
-    });
-    console.log('Completed!', response);
+    for (let c of commands) {
+      const response = await fetch('/cmd', {
+        method: 'POST',
+        body: c
+      });
+      console.log('Completed!', response);
+    }
   } catch(err) {
     console.error(`Error: ${err}`);
   }

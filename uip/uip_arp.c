@@ -142,7 +142,7 @@ static __xdata u8_t tmpage;
 void
 uip_arp_init(void) __banked
 {
-  print_string("uip_arp_init called");
+  print_string("uip_arp_init called\n");
   for(uint8_t i = 0; i < UIP_ARPTAB_SIZE; ++i) {
     memset(arp_table[i].ipaddr, 0, 4);
   }
