@@ -35,9 +35,13 @@ __code const struct machine machine = {
 			LEDS_1G | LEDS_LINK,
 			0 },
 		    },
-	.led_mux_custom = 1,
-	.led_mux = {0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x0f, 0x0c, 0x0d, 0x0e, 0x10, 0x11, 0x12, 0x14,
-		    0x15, 0x16, 0x18, 0x19, 0x1a, 0x1c, 0x1d, 0x1e, 0x20, 0x21, 0x22, 0x23 },
+	.led_mux_custom = 0,
+//		    LED0  LED1  LED2  LED3  LED4  LED5  LED6  LED7  LED8  LED9  LED10 LED11 LED12 LED13 LED14 LED15
+//								    L-SFP	R-SFP	    |       PORT 1
+//		    LED16 LED17 LED18 LED19 LED20 LED21 LED22 LED23 LED24 LED25 LED26 LED27
+//		    | PORT 2		    |	PORT 3		    |	PORT 4
+//	.led_mux = { 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x0f, 0x0c, 0x0d, 0x0e, 0x10, 0x11, 0x12, 0x14,
+//		     0x15, 0x16, 0x18, 0x19, 0x1a, 0x1c, 0x1d, 0x1e, 0x20, 0x21, 0x22, 0x23 },
 };
 #elif defined MACHINE_KP_9000_6XH_X
 __code const struct machine machine = {
@@ -166,7 +170,47 @@ __code const struct machine machine = {
 			0 },
 		    },
 };
-
+#elif defined MACHINE_ZX_SWTGW215AS_HASIVO
+__code const struct machine machine = {
+	.machine_name = "ZX-SWTGW215AS HASIVO",
+	.isRTL8373 = 0,
+	.min_port = 3,
+	.max_port = 8,
+	.n_sfp = 1,
+	.log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
+	.phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
+	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.sfp_port[0].pin_detect = GPIO30_ACL_BIT3_EN,
+	.sfp_port[0].pin_los = GPIO37,
+	.sfp_port[0].pin_tx_disable = GPIO_NA,
+	.sfp_port[0].sds = 1,
+	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO54_ACL_BIT2_EN,
+	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
+	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.led_sets = {
+		     /* The Ethernet ports have 1 amber LED (bi-color left) and 2 green LED (left/right)
+		      * The SFP port has 1 green LED
+		      * Ethernet ports use LED-set 0, SFP port uses LED-set 1
+		      * Amber-LED: ledid0 & ledid1 & !ledid2
+		      * Left-Green: ledid-2
+		      * Right-Green: ledid-0
+		      * ledid3 is not used
+		      */
+		     { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
+			LEDS_2G5 | LEDS_LINK | LEDS_10G,
+			LEDS_1G | LEDS_LINK,
+			0 },
+		      {
+			LEDS_2G5 | LEDS_TWO_PAIR_1G | LEDS_1G | LEDS_500M | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G | LEDS_TWO_PAIR_5G | LEDS_5G | LEDS_TWO_PAIR_2G5,
+			LEDS_1G | LEDS_LINK,
+			LEDS_2G5 | LEDS_LINK,
+			LEDS_COL | LEDS_DUPLEX,
+		      }
+		    },
+	.led_mux_custom = 0,
+};
 #elif defined DEFAULT_8C_1SFP
 __code const struct machine machine = {
 	.machine_name = "8+1 SFP Port Switch",
