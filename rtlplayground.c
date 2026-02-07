@@ -76,9 +76,10 @@ void crc16(__xdata uint8_t *v) __naked;
 __xdata uint8_t idle_ready;
 
 __code uint8_t ownIP[] = { 192, 168, 2, 2 };
-__code struct uip_eth_addr uip_ethaddr = {{ 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x02 }};
 __code uint8_t gatewayIP[] = { 192, 168, 2, 22};
 __code uint8_t netmask[] = { 255, 255, 255, 0};
+
+__xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
@@ -1958,10 +1959,27 @@ void bootloader(void)
 	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
 	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
+	reg_read_m(RTL837X_REG_CHIP_UUID);
+#ifdef DEBUG
+	print_string("SoC UUID: "); print_sfr_data();
+#endif
+	uip_ethaddr.addr[0] = 0x06;  // LAA prefix
+	uip_ethaddr.addr[3] = sfr_data[0] ^ sfr_data[3];
+	uip_ethaddr.addr[4] = sfr_data[1] ^ sfr_data[3];
+	uip_ethaddr.addr[5] = sfr_data[2] ^ sfr_data[3];
+	reg_read_m(RTL837X_REG_CHIP_LOT_NO);
+#ifdef DEBUG
+	print_string(", LOT: "); print_sfr_data(); write_char(' ');
+#endif
+	uip_ethaddr.addr[1] = sfr_data[0] ^ sfr_data[2];
+	uip_ethaddr.addr[2] = sfr_data[1] ^ sfr_data[3];
+	print_string("Setting MAC to: ");
+	print_byte(uip_ethaddr.addr[0]); write_char(':'); print_byte(uip_ethaddr.addr[1]); write_char(':');
+	print_byte(uip_ethaddr.addr[2]); write_char(':'); print_byte(uip_ethaddr.addr[3]); write_char(':');
+	print_byte(uip_ethaddr.addr[4]); write_char(':'); print_byte(uip_ethaddr.addr[5]); write_char('\n');
 
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
-
 
 	rtl8373_revision();
 	if (machine_detected.isRTL8373)
