@@ -664,6 +664,11 @@ void parse_eee(void)
 			speed = EEE_1000;
 		else if (cmd_compare(speed_word, "2g5"))
 			speed = EEE_2G5;
+		else 
+		{
+			print_string("Speed word invalid, use: [100m|1g|2g5]\n");
+			return;
+		}
 	}
 	if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
 		if (port >= 0)
@@ -680,6 +685,8 @@ void parse_eee(void)
 			port_eee_status(port);
 		else
 			port_eee_status_all();
+	} else {
+		print_string("eee [on|off|status] [port] [100m|1g|2g5]\n");
 	}
 }
 
