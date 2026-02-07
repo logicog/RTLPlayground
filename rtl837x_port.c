@@ -424,12 +424,17 @@ uint16_t port_isolation_get(register uint8_t port)
 
 void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 {
-	print_string("EEE on for "); print_byte(port); print_string(" speed "); print_byte(speed); write_char('\n');
-	if (machine.is_sfp[port])
-		return;
 
+	if (machine.is_sfp[port])
+	{
+		print_string("EEE can't be enabled for SFP port "); print_byte(port); print_string("\n");
+		return;
+	}
+
+	print_string("EEE on for "); print_byte(port); print_string(" speed "); 
 	// Enable all speeds up to the specified speed
 	if ((speed & (EEE_100 | EEE_1000 | EEE_2G5)) == EEE_100) {
+			print_string("100m\n");
 			REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100);
 			// Enable EEE advertisement for 100BASE-T via EEE Advertisement Reg
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_100M);
@@ -438,6 +443,7 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 			return;
 	}
 	if ((speed & (EEE_100 | EEE_1000 | EEE_2G5)) == EEE_1000) {
+			print_string("1g\n");
 			REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100 | EEE_1000);
 			// Disable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 0);
@@ -448,6 +454,7 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 			return;
 	}
 	if ((speed & (EEE_100 | EEE_1000 | EEE_2G5)) == EEE_2G5) {
+			print_string("2g5\n");
 			REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100 | EEE_1000 | EEE_2G5);
 			// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_1G | PHY_EEE_BIT_100M);
