@@ -55,8 +55,6 @@
 #include "uip.h"
 #include "../rtl837x_common.h"
 
-extern __code struct uip_eth_addr uip_ethaddr;
-
 /**
  * The Ethernet header.
  */
