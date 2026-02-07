@@ -191,6 +191,43 @@ void phy_config_8224(void) __banked
 void phy_set_speed(void) __banked
 {
 	uint16_t v;
+
+	print_string("Setting port "); write_char(machine.log_to_phys_port[phy_settings.port] + '0');
+	if (phy_settings.speed == PHY_OFF) {
+		print_string(" to disabled");
+	} else {
+		print_string(" to speed ");
+		switch(phy_settings.speed) {
+		case PHY_SPEED_AUTO:
+			print_string("auto");
+			break;
+		case PHY_SPEED_10M:
+			print_string("10M");
+			if (phy_settings.duplex)
+				print_string(" full duplex");
+			else
+				print_string(" half duplex");
+			break;
+		case PHY_SPEED_100M:
+			print_string("100M");
+			if (phy_settings.duplex)
+				print_string(" full duplex");
+			else
+				print_string(" half duplex");
+			break;
+		case PHY_SPEED_1G:
+			print_string("1G");
+			break;
+		case PHY_SPEED_2G5:
+			print_string("2G5");
+			break;
+		default:
+			print_string("UNKNOWN");
+			break;
+		}
+	}
+	write_char('\n');
+
 	phy_read(phy_settings.port, PHY_MMD31, 0xa610);
 	v = SFR_DATA_U16;
 	if (phy_settings.speed == PHY_OFF) {
@@ -258,6 +295,14 @@ void phy_set_speed(void) __banked
 void phy_set_duplex(void) __banked
 {
 	uint16_t v;
+
+	print_string("Setting port "); write_char(machine.log_to_phys_port[phy_settings.port] + '0');
+	if (phy_settings.duplex)
+		print_string(" to full duplex");
+	else
+		print_string(" to half duplex");
+	write_char('\n');
+
 	phy_read(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL);
 	v = SFR_DATA_U16;	
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
