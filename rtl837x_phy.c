@@ -210,10 +210,10 @@ void phy_set_speed(void) __banked
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
 			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200); // Loop timing enabled
-			phy_write(phy_settings.port, PHY_MMD31, PHY_ANEG_CTRL, 0x3200);	// Restart AN
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3200);	// Restart AN
 	} else {
 		// AN Control Register (MMD 7.0x0000)
-		phy_write(phy_settings.port, PHY_MMD31, PHY_ANEG_CTRL, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
+		phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
 		if (phy_settings.speed == PHY_SPEED_10M) {
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
 			if (!phy_settings.duplex)
@@ -250,7 +250,7 @@ void phy_set_speed(void) __banked
 				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 			}
 		}
-		phy_write(phy_settings.port, PHY_MMD31, PHY_ANEG_CTRL, 0x3000);	// Enable AN
+		phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);	// Enable AN
 	}
 }
 
@@ -258,7 +258,7 @@ void phy_set_speed(void) __banked
 void phy_set_duplex(void) __banked
 {
 	uint16_t v;
-	phy_read(phy_settings.port, PHY_MMD31, PHY_ANEG_CTRL);
+	phy_read(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL);
 	v = SFR_DATA_U16;	
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
 		phy_read(phy_settings.port, PHY_MMD31, PHY_MMD31_FEDCR);
@@ -271,7 +271,7 @@ void phy_set_duplex(void) __banked
 		return;
 	}
 	// Disable AN
-	phy_write(phy_settings.port, PHY_MMD31, PHY_ANEG_CTRL, 0x2000);
+	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x2000);
 	phy_read(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV);
 	v = SFR_DATA_U16;
 	if (v & 0x0060) {
@@ -287,7 +287,7 @@ void phy_set_duplex(void) __banked
 			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xff7f, 0x0080);
 	}
 	// Restart AN
-	phy_write(phy_settings.port, PHY_MMD31, PHY_ANEG_CTRL, 0x3000);
+	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);
 }
 
 
@@ -329,7 +329,7 @@ void phy_show(uint8_t port) __banked
 	else
 		print_string(" half duplex");
 
-	phy_read(port,  PHY_MMD31, PHY_ANEG_CTRL);
+	phy_read(port,  PHY_MMD_AN, PHY_ANEG_CTRL);
 	v = SFR_DATA_U16;
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
 		phy_read(port, PHY_MMD_PMAPMD, 0);
