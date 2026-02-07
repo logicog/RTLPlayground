@@ -8,6 +8,7 @@ The following devices have been tested and are fully working:
 - Lianguo LG-SWTGW218AS (RTL8373 + RTL8224 PHY: 8x 2.5GBit + 1x 10GBit SFP+)
 - No-Name ZX-SWTGW215AS, managed version of kp-9000-6hx-x, ordered on
   AliExpress as keepLINK 5+1 port managed
+- TrendNet TEG-S562 (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+)
 
 Other device based on RTL8272/3 that may work are described here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide]
 (https://github.com/up-n-atom/SWTG118AS)
