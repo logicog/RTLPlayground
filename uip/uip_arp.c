@@ -306,8 +306,8 @@ uip_arp_arpin(void) __banked
       BUF_O->opcode = HTONS(2);
 
       memcpy(BUF_O->dhwaddr.addr, BUF->shwaddr.addr, 6);
-      memcpyc(BUF_O->shwaddr.addr, uip_ethaddr.addr, 6);
-      memcpyc(BUF_O->ethhdr.src.addr, uip_ethaddr.addr, 6);
+      memcpy(BUF_O->shwaddr.addr, uip_ethaddr.addr, 6);
+      memcpy(BUF_O->ethhdr.src.addr, uip_ethaddr.addr, 6);
       memcpy(BUF_O->ethhdr.dest.addr, BUF->dhwaddr.addr, 6);
       
       BUF_O->dipaddr[0] = BUF->sipaddr[0];
@@ -399,8 +399,8 @@ uip_arp_out(void) __banked
 
       memset(BUF_O->ethhdr.dest.addr, 0xff, 6);
       memset(BUF_O->dhwaddr.addr, 0x00, 6);
-      memcpyc(BUF_O->ethhdr.src.addr, uip_ethaddr.addr, 6);
-      memcpyc(BUF_O->shwaddr.addr, uip_ethaddr.addr, 6);
+      memcpy(BUF_O->ethhdr.src.addr, uip_ethaddr.addr, 6);
+      memcpy(BUF_O->shwaddr.addr, uip_ethaddr.addr, 6);
     
       uip_ipaddr_copy(BUF_O->dipaddr, ipaddr);
       uip_ipaddr_copy(BUF_O->sipaddr, uip_hostaddr);
@@ -420,7 +420,7 @@ uip_arp_out(void) __banked
     /* Build an ethernet header. */
     memcpy(IPBUF->ethhdr.dest.addr, tabptr->ethaddr.addr, 6);
   }
-  memcpyc(IPBUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
+  memcpy(IPBUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
   
   IPBUF->ethhdr.type = HTONS(UIP_ETHTYPE_IP);
 

@@ -29,7 +29,6 @@ extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
-extern __code struct uip_eth_addr uip_ethaddr;
 
 extern __xdata uint8_t sfr_data[4];
 extern __xdata uint8_t sfp_pins_last;
