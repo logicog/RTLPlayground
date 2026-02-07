@@ -1637,6 +1637,9 @@ void rtl8373_init(void)
 
 	reg_bit_set(RTL837X_REG_HW_CONF, 0);
 
+	// enable EEE for all ports at 2.5G and 10G, but don't reset the PHYs
+	port_eee_enable_all(EEE_2G5 | EEE_NORESET);
+
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
@@ -1700,6 +1703,10 @@ void rtl8372_init(void)
 
 	reg_bit_set(RTL837X_REG_HW_CONF, 0);
 
+
+	// enable EEE for all ports at 2.5G and 10G, but don't reset the PHYs
+	port_eee_enable_all(EEE_2G5 | EEE_NORESET);
+	
 	// TODO: patch the PHYs
 
 	// Re-enable PHY after configuration
@@ -1954,6 +1961,8 @@ void bootloader(void)
 
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
+
+
 	rtl8373_revision();
 	if (machine_detected.isRTL8373)
 		rtl8373_init();
