@@ -2068,6 +2068,7 @@ void bootloader(void)
 	management_vlan = 0; // Disabled
 
 	setup_i2c();
+	setup_sfp_gpio();
 
 	print_string(greeting);
 
