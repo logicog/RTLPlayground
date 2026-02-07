@@ -11,6 +11,7 @@
 // #define MACHINE_KP_9000_9XH_X_EU
 // #define MACHINE_SWGT024_V2_0
 // #define MACHINE_HORACO_ZX_SG4T2
+// #define MACHINE_TRENDNET_TEG_S562
 
 // #define DEFAULT_8C_1SFP
 
