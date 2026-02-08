@@ -28,6 +28,8 @@ extern __xdata struct machine_runtime machine_detected;
 
 __xdata	uint32_t l2_head;
 
+__xdata struct vlan_settings vlan_settings;
+
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
 	print_string("\nport_mirror_set called \n");
@@ -46,7 +48,7 @@ void port_mirror_del(void) __banked
 }
 
 
-void port_ingress_filter(register uint8_t port, uint8_t type) __banked
+void port_ingress_filter(__xdata uint8_t port, __xdata uint8_t type) __banked
 {
 	if (type & 0x1)
 		reg_bit_set(RTL837x_REG_INGRESS, port << 1);
@@ -121,27 +123,31 @@ __xdata uint16_t vlan_name(register uint16_t vlan) __banked
 
 
 /*
+ * Create a VLAN
+ * The arguments are passed in global structure vlan_settings
  * A member that is not tagged, is untagged
  */
-void vlan_create(register uint16_t vlan, register uint16_t members, register uint16_t tagged) __banked
+void vlan_create(void) __banked
 {
 	// For now, the CPU-port is always a tagged member:
-	members |= 0x0200; // Set 10th bit
-	tagged |= 0x0200;
-	print_string("\nvlan_create called\nvlan: "); print_short(vlan);
-	print_string(", members: "); print_short(members);
-	print_string(", tagged: "); print_short(tagged); write_char('\n');
+	vlan_settings.members |= 0x0200; // Set 10th bit
+	vlan_settings.tagged |= 0x0200;
 
-	uint16_t a = (~members) ^ tagged ^ members;
+	print_string("\nvlan_create called\nvlan: "); print_short(vlan_settings.vlan);
+	print_string(", members: "); print_short(vlan_settings.members);
+	print_string(", tagged: "); print_short(vlan_settings.tagged); write_char('\n');
+
+	uint16_t a = (~vlan_settings.members) ^ vlan_settings.tagged ^ vlan_settings.members;
+
 	// On RTL8372, port-bits 0-2 must be 0, although they are not members
 	if (!machine_detected.isRTL8373) {
 		a &= 0x1f8;
-		tagged &= 0x3f8;
+		vlan_settings.tagged &= 0x3f8;
 	}
 
 	// Initialize VLAN table with VLAN 1
-	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0x02, (a >> 6) & 0x0f, (a << 2) | (members >> 8), members);
-	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0x02, (a >> 6) & 0x0f, (a << 2) | (vlan_settings.members >> 8), vlan_settings.members);
+	REG_WRITE(RTL837X_TBL_CTRL, vlan_settings.vlan >> 8, vlan_settings.vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
 	} while (sfr_data[3] & TBL_EXECUTE);
