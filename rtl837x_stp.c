@@ -17,7 +17,7 @@
 extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 
-extern __code struct uip_eth_addr uip_ethaddr;
+extern __xdata struct uip_eth_addr uip_ethaddr;
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 
@@ -164,9 +164,9 @@ void stp_cnf_send(uint8_t port)
 	STP_O->bpdu_type = 0x00;	// Config
 	STP_O->flags = 0x81;
 
-	memcpyc(STP_O->src_addr, uip_ethaddr.addr, 6);
+	memcpy(STP_O->src_addr, uip_ethaddr.addr, 6);
 	memcpy(STP_O->root.mac, root_bridge.mac, 6);
-	memcpyc(STP_O->bridge.mac, uip_ethaddr.addr, 6);
+	memcpy(STP_O->bridge.mac, uip_ethaddr.addr, 6);
 
 	STP_O->root.prio = root_bridge.prio;
 	STP_O->root.ext = 0x00;
@@ -221,7 +221,7 @@ void stp_setup(void) __banked
 
 	root_bridge.prio = 0x80; // This corresponds to 32768
 	root_bridge.ext	= 0x00;
-	memcpyc(root_bridge.mac, uip_ethaddr.addr, 6);
+	memcpy(root_bridge.mac, uip_ethaddr.addr, 6);
 }
 
 

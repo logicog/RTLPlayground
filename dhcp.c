@@ -12,7 +12,6 @@
 #include "uip.h"
 #include "uip/uip.h"
 
-extern __code struct uip_eth_addr uip_ethaddr;
 __xdata struct dhcp_state dhcp_state;
 __xdata uip_ipaddr_t server;
 
@@ -104,7 +103,7 @@ void dhcp_prepare_request(void)
 	DHCP_P->flags = 0;
 	// Clear fields client_ip to bootp_file
 	memset(DHCP_P->client_ip, 0, 224);
-	memcpyc(DHCP_P->client_addr, uip_ethaddr.addr, 6);
+	memcpy(DHCP_P->client_addr, uip_ethaddr.addr, 6);
 	DHCP_P->cookie[0] = 0x63;
 	DHCP_P->cookie[1] = 0x82;
 	DHCP_P->cookie[2] = 0x53;
@@ -117,7 +116,7 @@ void dhcp_addopt_client_id(void)
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_CLIENT_ID;
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_CLIENT_ID_LEN;
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_HW_TYPE_ETH;
-	memcpyc(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 6);
+	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 6);
 	dhcp_state.opt_ptr += 6;
 }
 
@@ -130,7 +129,7 @@ void dhcp_addopt_request_ip(void)
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[1];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[2];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[3];
-	memcpyc(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
+	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
 }
 
 
@@ -142,7 +141,7 @@ void dhcp_addopt_server_id(void)
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[1];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[2];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[3];
-	memcpyc(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
+	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
 }
 
 
