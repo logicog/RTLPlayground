@@ -1,7 +1,9 @@
 # Hisource Hi-KO4022WS
 
-Following is documentation for unmanaged switch marked as `Hi-KO4022WS` . 
+Following is documentation for unmanaged switch marked as `Hi-KO4022WS`.
+
 Original software is running UART on 9600 baud rate. 
+
 Using SPI clamp in-board is the only method for initial installation.
 
 The board has two flash chips `BY25Q16BS` with 16M-bit size. The front switch, switches between the two flash chips.
