@@ -626,13 +626,25 @@ void send_status(void)
 		}
 
 		slen += strtox(outbuf + slen, ",\"link\":");
-
-		if (i < 8)
-			reg_read_m(RTL837X_REG_LINKS);
+		
+		uint8_t b = 0;
+		// Determine link state
+		reg_read_m(RTL837X_REG_LINKS_STS);
+		if(!((sfr_data[(i / 8) + 1] >> (i % 8 ) & 1)))
+		{
+			b = 0; //link down
+		}
 		else
-			reg_read_m(RTL837X_REG_LINKS_89);
-		uint8_t b = sfr_data[3 - ((i & 7) >> 1)];
-		b = (i & 1) ? b >> 4 : b & 0xf;
+		{
+				//Determine link speed
+				if (i < 8)
+					reg_read_m(RTL837X_REG_LINKS);
+				else
+					reg_read_m(RTL837X_REG_LINKS_89);
+				
+				b = sfr_data[3 - ((i & 7) >> 1)];
+				b = ((i & 1) ? b >> 4 : b & 0xf) + 1;
+		}
 		char_to_html('0' + b);
 
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
