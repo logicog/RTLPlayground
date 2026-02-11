@@ -156,7 +156,7 @@ uint8_t atoi_hex(uint8_t idx)
 
 uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
-	uint8_t err = 1;
+	__xdata uint8_t err = 1;
 	*vlan = 0;
 
 	while (isnumber(cmd_buffer[idx])) {
@@ -1018,7 +1018,7 @@ void execute_config(void) __banked
 		flash_region.len = FLASH_READ_BURST_SIZE;
 		flash_read_bulk(flash_buf);
 
-		uint8_t cfg_idx = 0;
+		__xdata uint8_t cfg_idx = 0;
 		uint8_t c = 0;
 		do {
 			for (uint8_t cmd_idx = 0; cmd_idx < (SBUF_SIZE - 1); cmd_idx++) {

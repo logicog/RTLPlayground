@@ -118,11 +118,8 @@ void igmp_setup(void) __banked
 	 * For now the IGMP protocols are flooded (01), MLD which MAC-based is handled by ASIC
 	 * All messages are allowed and maximum MC group is 0xff
 	 */
-	for (i = machine.min_port; i <= machine.max_port; i++) {
-		print_byte(i); write_char(':');
+	for (i = machine.min_port; i <= machine.max_port; i++)
 		REG_SET(RTL837X_IGMP_PORT_CFG + (i << 2), IGMP_MAX_GROUP | IGMP_PROTOCOL_ENABLE | IGMP_FLOOD);
-		write_char('\n');
-	}
 
 /*	// Allow all physical ports to be dynamic router ports
 	reg_read_m(RTL837X_IGMP_ROUTER_PORT);
