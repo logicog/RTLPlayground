@@ -1,6 +1,6 @@
-# Hisource Hi-KO4022WS
+# Hisource Hi-K0402WS
 
-Following is documentation for unmanaged switch marked as `Hi-KO4022WS`.
+Following is documentation for unmanaged switch marked as `Hi-K0402WS`.
 
 Original software is running UART on 9600 baud rate. 
 
