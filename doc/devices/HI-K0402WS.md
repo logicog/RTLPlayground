@@ -58,4 +58,5 @@ Voltage is made by a `Techcode TD1720` .
 ### `3.3` Voltage
 
 Voltage is created by chip marked as `Techcode TD1720`.
-There seems to have been a miscalculation when choosing the inductor and the device is ~25% more efficient with an 5V power supply.
+
+**There seems to have been a miscalculation when choosing the inductor and the device is ~25% more efficient with an 5V power supply.**
