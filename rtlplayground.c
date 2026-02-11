@@ -13,6 +13,7 @@
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "rtl837x_leds.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
 #include "uip/uipopt.h"
@@ -76,9 +77,10 @@ void crc16(__xdata uint8_t *v) __naked;
 __xdata uint8_t idle_ready;
 
 __code uint8_t ownIP[] = { 192, 168, 2, 2 };
-__code struct uip_eth_addr uip_ethaddr = {{ 0x1c, 0x2a, 0xa3, 0x23, 0x00, 0x02 }};
 __code uint8_t gatewayIP[] = { 192, 168, 2, 22};
 __code uint8_t netmask[] = { 255, 255, 255, 0};
+
+__xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
@@ -629,12 +631,14 @@ void print_reg(uint16_t reg)
 }
 
 
+/*
+// TODO: This uses 2 DSEG bytes and is not used!
 void print_sds_reg(uint8_t sds_id, uint8_t page, uint8_t reg)
 {
 	sds_read(sds_id, page, reg);
 	print_phy_data();
 }
-
+*/
 
 char cmp_4(__xdata uint8_t a[], __xdata uint8_t b[])
 {
@@ -1452,100 +1456,11 @@ void sds_init(void)
 }
 
 
-void led_config_9xh(void)
-{
-	// r65d8:3ffbedff R65d8-3ffbedff
-	reg_bit_set(0x65d8, 0x1d);
-
-	//  r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0
-	reg_read_m(RTL837X_REG_LED_MODE);
-	sfr_mask_data(1, 0x1f, 0x6);
-	sfr_mask_data(0, 0xe0, 0xa0);
-	reg_write_m(RTL837X_REG_LED_MODE);
-
-	// Set LED blink rate to slow during booting
-	set_sys_led_state(SYS_LED_SLOW);
-
-	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
-	reg_read_m(RTL837X_REG_LED_RLDP_1);
-	sfr_mask_data(0, 0, 0x3);
-	reg_write_m(RTL837X_REG_LED_RLDP_1);
-	// Configure LED group for RLDP per port
-	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffffffff);	// Ports 0-7
-	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
-
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
-	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
-
-	// GPIO 27 is LED
-	reg_bit_set(RTL837X_PIN_MUX_0, 27);
-
-	// Configure LED_SET_0, ledid 0/1
-	REG_SET(RTL837X_REG_LED1_0_SET0, 0x0041017f);
-
-	// Configure LED_SET_0 ledid 2
-	REG_SET(RTL837X_REG_LED3_2_SET0, 0x01410044);
-
-	// r6528:00000000 R6528-0000000f
-	reg_read_m(RTL837X_REG_LED3_0_SET1);
-	sfr_mask_data(0, 0x0f, 0x0f);
-	reg_write_m(RTL837X_REG_LED3_0_SET1);
-}
-
 void set_sys_led_state(uint8_t state)
 {
 	reg_read_m(RTL837X_REG_LED_MODE);
 	sfr_mask_data(2, 0x03, state);
 	reg_write_m(RTL837X_REG_LED_MODE);
-}
-
-void led_config(void)
-{
-	// LED initialization
-	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0
-	reg_read_m(RTL837X_REG_LED_MODE);
-	sfr_mask_data(2, 0xe0, 0x23); 	// Mask blink rate field (0xe0), set blink rate and LED to solid (set bit 1 = bit 17 overall)
-	// Configure led-mode (serial?)
-	sfr_data[2] = 0xe6;
-	sfr_data[3] = 0xb0;
-	reg_write_m(RTL837X_REG_LED_MODE);
-
-	// Disable RLDP (Realtek Loop Detection Protocol) LEDs on loop detection
-	reg_read_m(RTL837X_REG_LED_RLDP_1);
-	sfr_mask_data(0, 0x03, 0);
-	reg_write_m(RTL837X_REG_LED_RLDP_1);
-	// Configure LED group for RLDP per port
-	REG_SET(RTL837X_REG_LED_RLDP_2, 0xffffffff);	// Ports 0-7
-	REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
-
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 29);
-	reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
-
-	// Configure GPIO for LEDs 27-29
-	if (machine.n_sfp == 2) {
-		reg_bit_set(RTL837X_PIN_MUX_0, 27);
-		reg_bit_clear(RTL837X_PIN_MUX_0, 28);
-		reg_bit_set(RTL837X_PIN_MUX_0, 29);
-	} else {
-		reg_bit_set(RTL837X_PIN_MUX_0, 27);
-		reg_bit_set(RTL837X_PIN_MUX_0, 28);
-		reg_bit_set(RTL837X_PIN_MUX_0, 29);
-	}
-	// LED setup
-	// r6520:0021fdb0 R6520-0021e7b0 r6520:0021e7b0 R6520-0021e6b0 r65f8:00000018 R65f8-00000018 R65fc-fffff000 r6600:00000000 R6600-0000000f r65dc:5fffff00 R65dc-7fffff00 r65dc:7fffff00 R65dc-77ffff00
-	// r7f8c:30000000 R7f8c-30000000 r7f8c:30000000 R7f8c-38000000 R6548-00410175 r6544:01411000 R6544-01410044 r6528:00000000 R6528-00000011
-
-	// Configure LED_SET_0, ledid 0/1
-	REG_SET(RTL837X_REG_LED1_0_SET0, 0x00410175);
-
-	// Configure led-sets 2 and 3
-	REG_SET(RTL837X_REG_LED3_2_SET0, 0x01410044);
-
-	// Further configure LED_SET_0
-	// r6528:00000000 R6528-00000011
-	reg_read_m(RTL837X_REG_LED3_0_SET1);
-	sfr_data[3] = 0x11;
-	reg_write_m(RTL837X_REG_LED3_0_SET1);
 }
 
 void rtl8373_revision(void)
@@ -1566,7 +1481,9 @@ void rtl8373_init(void)
 {
 	print_string("\nrtl8373_init called\n");
 
-	led_config_9xh();
+	// r65d8:3ffbedff R65d8-3ffbedff
+	reg_bit_set(0x65d8, 0x1d);
+
 	sds_init();
 	// Disable all SERDES for configuration
 	REG_SET(RTL837X_REG_SDS_MODES, 0x000037ff);
@@ -1660,8 +1577,6 @@ void rtl8373_init(void)
 void rtl8372_init(void)
 {
 	print_string("\nrtl8372_init called\n");
-
-	led_config();
 
 	sds_init();
 	phy_config(8);	// PHY configuration: External 8221B?
@@ -1958,12 +1873,35 @@ void bootloader(void)
 	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
 	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
+	reg_read_m(RTL837X_REG_CHIP_UUID);
+#ifdef DEBUG
+	print_string("SoC UUID: "); print_sfr_data();
+#endif
+	uip_ethaddr.addr[0] = 0x06;  // LAA prefix
+	uip_ethaddr.addr[3] = sfr_data[0] ^ sfr_data[3];
+	uip_ethaddr.addr[4] = sfr_data[1] ^ sfr_data[3];
+	uip_ethaddr.addr[5] = sfr_data[2] ^ sfr_data[3];
+	reg_read_m(RTL837X_REG_CHIP_LOT_NO);
+#ifdef DEBUG
+	print_string(", LOT: "); print_sfr_data(); write_char(' ');
+#endif
+	uip_ethaddr.addr[1] = sfr_data[0] ^ sfr_data[2];
+	uip_ethaddr.addr[2] = sfr_data[1] ^ sfr_data[3];
+	print_string("Setting MAC to: ");
+	print_byte(uip_ethaddr.addr[0]); write_char(':'); print_byte(uip_ethaddr.addr[1]); write_char(':');
+	print_byte(uip_ethaddr.addr[2]); write_char(':'); print_byte(uip_ethaddr.addr[3]); write_char(':');
+	print_byte(uip_ethaddr.addr[4]); write_char(':'); print_byte(uip_ethaddr.addr[5]); write_char('\n');
 
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
 
-
 	rtl8373_revision();
+
+	leds_setup();
+	machine_custom_init();
+
+	leds_dump();
+
 	if (machine_detected.isRTL8373)
 		rtl8373_init();
 	else
@@ -1974,7 +1912,6 @@ void bootloader(void)
 	flash_region.addr = FIRMWARE_UPLOAD_START;
 	flash_region.len = 0x100;
 	flash_read_bulk(flash_buf);
-
 	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
 		__xdata uint32_t dest = 0x0;
 		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
@@ -2045,7 +1982,6 @@ void bootloader(void)
 			dest += 0x1000;
 		}
 	}
-
 	set_sys_led_state(SYS_LED_SLOW);
 
 #ifdef DEBUG
