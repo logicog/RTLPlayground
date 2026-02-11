@@ -1902,6 +1902,8 @@ void bootloader(void)
 
 	leds_dump();
 
+	set_sys_led_state(SYS_LED_SLOW);
+
 	if (machine_detected.isRTL8373)
 		rtl8373_init();
 	else
@@ -1982,7 +1984,6 @@ void bootloader(void)
 			dest += 0x1000;
 		}
 	}
-	set_sys_led_state(SYS_LED_SLOW);
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
