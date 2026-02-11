@@ -369,15 +369,28 @@ void port_stats_print(void) __banked
 			}
 		}
 
-		if (i < 8)
-			reg_read_m(RTL837X_REG_LINKS);
+		uint8_t b = 0;
+
+		// Determine link state
+		reg_read_m(RTL837X_REG_LINKS_STS);
+		if(!((sfr_data[(i / 8) + 1] >> ( i % 8  ) & 1)))
+		{
+			b = 99;
+		}
 		else
-			reg_read_m(RTL837X_REG_LINKS_89);
-		uint8_t b = sfr_data[3 - ((i & 7) >> 1)];
-		b = (i & 1) ? b >> 4 : b & 0xf;
+		{
+			if (i < 8)
+				reg_read_m(RTL837X_REG_LINKS);
+			else
+				reg_read_m(RTL837X_REG_LINKS_89);
+
+			b = sfr_data[3 - ((i & 7) >> 1)];	
+			b = (i & 1) ? b >> 4 : b & 0xf;
+		}
+
 		switch (b) {
 		case 0:
-			print_string("Down\t");
+			print_string("10M\t");
 			break;
 		case 1:
 			print_string("100M\t");
@@ -390,6 +403,9 @@ void port_stats_print(void) __banked
 			break;
 		case 5:
 			print_string("2.5G\t");
+			break;
+		case 99:
+			print_string("Down\t");
 			break;
 		default:
 			print_string("Up\t");
