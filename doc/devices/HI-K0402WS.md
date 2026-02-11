@@ -10,7 +10,7 @@ These can be programed independently by using said switch - so it is e.g. possib
 ### Label specifications
 
 - **Name**: 2.5G Ethernet Switch  
-- **Model**: Hi-KO4022WS  
+- **Model**: Hi-K0402WS  
 - **Ports**:  
   - 4 × RJ45: 10/100/1000/2500 Mbps  
   - 2 × SFP: 1000 / 2500 / 10000 Mbps  
