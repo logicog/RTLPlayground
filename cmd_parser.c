@@ -156,7 +156,7 @@ uint8_t atoi_hex(uint8_t idx)
 
 uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
-	uint8_t err = 1;
+	__xdata uint8_t err = 1;
 	*vlan = 0;
 
 	while (isnumber(cmd_buffer[idx])) {
@@ -282,17 +282,17 @@ void parse_lag_hash(void)
 
 void parse_vlan(void)
 {
-	__xdata uint16_t vlan;
-	__xdata uint16_t members = 0;
-	__xdata uint16_t tagged = 0;
-	if (!atoi_short(&vlan, cmd_words_b[1])) {
+	vlan_settings.vlan = 0;
+	vlan_settings.members = 0;
+	vlan_settings.tagged = 0;
+	if (!atoi_short(&vlan_settings.vlan, cmd_words_b[1])) {
 		if (cmd_words_b[2] > 0 && cmd_buffer[cmd_words_b[2]] == 'd' && cmd_words_b[3] < 0) {
-			vlan_delete(vlan);
+			vlan_delete(vlan_settings.vlan);
 			return;
 		}
 		if (cmd_words_b[2] > 0 && cmd_compare(2, "mgmt")) {
-			management_vlan = vlan;
-			if (!vlan) 
+			management_vlan = vlan_settings.vlan;
+			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
 			else
 				print_string("Management VLAN set to "); print_short(management_vlan); write_char('\n');
@@ -301,9 +301,9 @@ void parse_vlan(void)
 		uint8_t w = 2;
 		if (cmd_words_b[w] > 0 && isletter(cmd_buffer[cmd_words_b[w]])) {
 			register uint8_t i = 0;
-			vlan_names[vlan_ptr++] = hex[(vlan >> 8) & 0xf];
-			vlan_names[vlan_ptr++] = hex[(vlan >> 4) & 0xf] ;
-			vlan_names[vlan_ptr++] = hex[vlan & 0xf];
+			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 8) & 0xf];
+			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 4) & 0xf] ;
+			vlan_names[vlan_ptr++] = hex[vlan_settings.vlan & 0xf];
 			while(cmd_buffer[cmd_words_b[w] + i] != ' ') {
 				write_char(cmd_buffer[cmd_words_b[w] + i]);
 				vlan_names[vlan_ptr++] = cmd_buffer[cmd_words_b[w] + i++];
@@ -313,25 +313,25 @@ void parse_vlan(void)
 			print_string("<\n");
 		}
 		while (cmd_words_b[w] > 0) {
-			uint8_t port;
+			__xdata uint8_t port;
 			if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 				port = cmd_buffer[cmd_words_b[w]] - '1';
 				if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
 					port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
 					if (cmd_buffer[cmd_words_b[w] + 2] == 't')
-						tagged |= ((uint16_t)1) << port;
+						vlan_settings.tagged |= ((uint16_t)1) << port;
 				} else {
 						port = machine.phys_to_log_port[port];
 					if (cmd_buffer[cmd_words_b[w] + 1] == 't')
-						tagged |= ((uint16_t)1) << port;
+						vlan_settings.tagged |= ((uint16_t)1) << port;
 				}
 				if (port > machine.max_port)
 					goto err;
-				members |= ((uint16_t)1) << port;
+				vlan_settings.members |= ((uint16_t)1) << port;
 			}
 			w++;
 		}
-		vlan_create(vlan, members, tagged);
+		vlan_create();
 	}
 	if (cmd_words_b[2] > 0 && isletter(cmd_buffer[cmd_words_b[2]])) {
 		print_string("vlan_ptr "); print_short(vlan_ptr); write_char(':');
@@ -422,10 +422,10 @@ void parse_mirror(void)
 void parse_port(void)
 {
 	print_string("\nPORT ");
-	uint8_t p = cmd_buffer[cmd_words_b[1]] - '1';
-	p = machine.phys_to_log_port[p];
-	print_byte(p);
-	if (machine.is_sfp[p]) {
+	phy_settings.port = cmd_buffer[cmd_words_b[1]] - '1';
+	phy_settings.port = machine.phys_to_log_port[phy_settings.port];
+	print_byte(phy_settings.port);
+	if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
 		return;
 	}
@@ -433,46 +433,53 @@ void parse_port(void)
 		print_string("\nport <port> [show|on|off|10m|100m|1g|2g5] [half|full]");
 		return;
 	}
+	phy_settings.duplex = PHY_DUPLEX_BOTH;
 	if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
+		phy_settings.speed = PHY_SPEED_10M;
 		if (cmd_words_b[3] > 0 && cmd_compare(3, "half"))
-			phy_set_speed(p, PHY_SPEED_10M, PHY_DUPLEX_HALF);
+			phy_settings.duplex = PHY_DUPLEX_HALF;
 		else if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
-			phy_set_speed(p, PHY_SPEED_10M, PHY_DUPLEX_FULL);
-		else
-			phy_set_speed(p, PHY_SPEED_10M, PHY_DUPLEX_BOTH);
+			phy_settings.duplex = PHY_DUPLEX_FULL;
+		phy_set_speed();
 	} else if (cmd_compare(2, "100m")) {
 		print_string(" 100M\n");
+		phy_settings.speed = PHY_SPEED_100M;
 		if (cmd_words_b[3] > 0 && cmd_compare(3, "half"))
-			phy_set_speed(p, PHY_SPEED_100M, PHY_DUPLEX_HALF);
+			phy_settings.duplex = PHY_DUPLEX_HALF;
 		else if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
-			phy_set_speed(p, PHY_SPEED_100M, PHY_DUPLEX_FULL);
-		else
-			phy_set_speed(p, PHY_SPEED_100M, PHY_DUPLEX_BOTH);
+			phy_settings.duplex = PHY_DUPLEX_FULL;
+		phy_set_speed();
 	} else if (cmd_compare(2, "2g5")) {
 		print_string(" 2.5G\n");
-		phy_set_speed(p, PHY_SPEED_2G5, PHY_DUPLEX_BOTH);
+		phy_settings.speed = PHY_SPEED_2G5;
+		phy_set_speed();
 	} else if (cmd_compare(2, "1g")) {
 		print_string(" 1G\n");
-		phy_set_speed(p, PHY_SPEED_1G, PHY_DUPLEX_BOTH);
+		phy_settings.speed = PHY_SPEED_1G;
+		phy_set_speed();
 	} else if (cmd_compare(2, "auto")) {
 		print_string(" AUTO\n");
-		phy_set_speed(p, PHY_SPEED_AUTO, PHY_DUPLEX_BOTH);
+		phy_settings.speed = PHY_SPEED_AUTO;
+		phy_set_speed();
 	} else if (cmd_compare(2, "off")) {
 		print_string(" OFF\n");
-		phy_set_speed(p, PHY_OFF, PHY_DUPLEX_BOTH);
+		phy_settings.speed = PHY_OFF;
+		phy_set_speed();
 	} else if (cmd_compare(2, "on")) {
 		print_string(" ON\n");
-		phy_set_speed(p, PHY_SPEED_AUTO, PHY_DUPLEX_BOTH);
+		phy_settings.speed = PHY_SPEED_AUTO;
+		phy_set_speed();
 	} else if (cmd_compare(2, "duplex")) {
 		print_string(" DUPLEX\n");
 		if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
-			phy_set_duplex(p, PHY_DUPLEX_FULL);
+			phy_settings.speed = PHY_DUPLEX_FULL;
 		else
-			phy_set_duplex(p, PHY_DUPLEX_HALF);
+			phy_settings.speed = PHY_DUPLEX_HALF;
+		phy_set_duplex();
 	}
 	if (cmd_words_b[2] > 0 && cmd_compare(2, "show")) {
-		phy_show(p);
+		phy_show(phy_settings.port);
 	}
 }
 
@@ -1011,7 +1018,7 @@ void execute_config(void) __banked
 		flash_region.len = FLASH_READ_BURST_SIZE;
 		flash_read_bulk(flash_buf);
 
-		uint8_t cfg_idx = 0;
+		__xdata uint8_t cfg_idx = 0;
 		uint8_t c = 0;
 		do {
 			for (uint8_t cmd_idx = 0; cmd_idx < (SBUF_SIZE - 1); cmd_idx++) {

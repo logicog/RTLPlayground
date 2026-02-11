@@ -24,6 +24,8 @@ extern __code uint16_t bit_mask[16];
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 
+__xdata struct phy_settings phy_settings;
+
 // SDS-settings for RTL8224 first SerDes which is connected to the RTL837x-SOC.
 // Array contrains register-value, and SDS-CMD, which already encodes (sds_index, page, reg).
 // This array is used in phy_config_8224().
@@ -186,106 +188,151 @@ void phy_config_8224(void) __banked
  * See e.g. RTL8221B datasheet
  * duplex: 0: half, 1: full, 2: both
  */
-void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked
+void phy_set_speed(void) __banked
 {
 	uint16_t v;
-	phy_read(port, PHY_MMD31, 0xa610);
+
+	print_string("Setting port "); write_char(machine.log_to_phys_port[phy_settings.port] + '0');
+	if (phy_settings.speed == PHY_OFF) {
+		print_string(" to disabled");
+	} else {
+		print_string(" to speed ");
+		switch(phy_settings.speed) {
+		case PHY_SPEED_AUTO:
+			print_string("auto");
+			break;
+		case PHY_SPEED_10M:
+			print_string("10M");
+			if (phy_settings.duplex)
+				print_string(" full duplex");
+			else
+				print_string(" half duplex");
+			break;
+		case PHY_SPEED_100M:
+			print_string("100M");
+			if (phy_settings.duplex)
+				print_string(" full duplex");
+			else
+				print_string(" half duplex");
+			break;
+		case PHY_SPEED_1G:
+			print_string("1G");
+			break;
+		case PHY_SPEED_2G5:
+			print_string("2G5");
+			break;
+		default:
+			print_string("UNKNOWN");
+			break;
+		}
+	}
+	write_char('\n');
+
+	phy_read(phy_settings.port, PHY_MMD31, 0xa610);
 	v = SFR_DATA_U16;
-	if (speed == PHY_OFF) {
-		phy_write(port, PHY_MMD31, 0xa610, v | 0x0800);
+	if (phy_settings.speed == PHY_OFF) {
+		phy_write(phy_settings.port, PHY_MMD31, 0xa610, v | 0x0800);
 		return;
 	}
 	// Port is on, make sure of it:
 	if (v & 0x0800)
-		phy_write(port, PHY_MMD31, 0xa610, v & 0xf7ff);
+		phy_write(phy_settings.port, PHY_MMD31, 0xa610, v & 0xf7ff);
 
-	if (speed == PHY_SPEED_AUTO) {
+	if (phy_settings.speed == PHY_SPEED_AUTO) {
 			// AN Advertisement Register (MMD 7.0x0010)
 			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
-			phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x15e1);
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x15e1);
 			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 			// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD
-			phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-			phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200); // Loop timing enabled
-			phy_write(port, PHY_MMD31, PHY_ANEG_CTRL, 0x3200);	// Restart AN
+			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200); // Loop timing enabled
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3200);	// Restart AN
 	} else {
 		// AN Control Register (MMD 7.0x0000)
-		phy_write(port, PHY_MMD31, PHY_ANEG_CTRL, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
-		if (speed == PHY_SPEED_10M) {
-			phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
-			if (!duplex)
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1421);
-			else if (duplex == 1)
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1441);
+		phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
+		if (phy_settings.speed == PHY_SPEED_10M) {
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
+			if (!phy_settings.duplex)
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1421);
+			else if (phy_settings.duplex == 1)
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1441);
 			else
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1461);
-			phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
-		} else if (speed == PHY_SPEED_100M) {
-			phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
-			if (!duplex)
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1481);
-			if (duplex == 1)
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1501);
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1461);
+			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
+		} else if (phy_settings.speed == PHY_SPEED_100M) {
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
+			if (!phy_settings.duplex)
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1481);
+			if (phy_settings.duplex == 1)
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1501);
 			else
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1581);
-			phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1581);
+			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
 			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
-			phy_write(port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1001);
-			if (speed == PHY_SPEED_1G) {
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1001);
+			if (phy_settings.speed == PHY_SPEED_1G) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-				phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200);
-			} else if (speed == PHY_SPEED_2G5) {
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200);
+			} else if (phy_settings.speed == PHY_SPEED_2G5) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD Loop timin enableed
-				phy_write(port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-				phy_modify(port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 			}
 		}
-		phy_write(port, PHY_MMD31, PHY_ANEG_CTRL, 0x3000);	// Enable AN
+		phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);	// Enable AN
 	}
 }
 
 
-void phy_set_duplex(uint8_t port, uint8_t fullduplex) __banked
+void phy_set_duplex(void) __banked
 {
 	uint16_t v;
-	phy_read(port, PHY_MMD31, PHY_ANEG_CTRL);
+
+	print_string("Setting port "); write_char(machine.log_to_phys_port[phy_settings.port] + '0');
+	if (phy_settings.duplex)
+		print_string(" to full duplex");
+	else
+		print_string(" to half duplex");
+	write_char('\n');
+
+	phy_read(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL);
 	v = SFR_DATA_U16;	
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
-		phy_read(port, PHY_MMD31, PHY_MMD31_FEDCR);
+		phy_read(phy_settings.port, PHY_MMD31, PHY_MMD31_FEDCR);
 		v = SFR_DATA_U16;
-		if (fullduplex)
+		if (phy_settings.duplex)
 			v |= 0x0100;
 		else
 			v &= 0xfeff;
-		phy_write(port, PHY_MMD31, PHY_MMD31_FEDCR, v);
+		phy_write(phy_settings.port, PHY_MMD31, PHY_MMD31_FEDCR, v);
 		return;
 	}
 	// Disable AN
-	phy_write(port, PHY_MMD31, PHY_ANEG_CTRL, 0x2000);
-	phy_read(port, PHY_MMD_AN, PHY_ANEG_ADV);
+	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x2000);
+	phy_read(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV);
 	v = SFR_DATA_U16;
 	if (v & 0x0060) {
-		if (fullduplex)
-			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffbf, 0x0040);
+		if (phy_settings.duplex)
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffbf, 0x0040);
 		else
-			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffdf, 0x0020);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffdf, 0x0020);
 	}
 	if (v & 0x0180) {
-		if (fullduplex)
-			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xfeff, 0x0100);
+		if (phy_settings.duplex)
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xfeff, 0x0100);
 		else
-			phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, 0xff7f, 0x0080);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xff7f, 0x0080);
 	}
 	// Restart AN
-	phy_write(port, PHY_MMD31, PHY_ANEG_CTRL, 0x3000);
+	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);
 }
 
 
@@ -327,7 +374,7 @@ void phy_show(uint8_t port) __banked
 	else
 		print_string(" half duplex");
 
-	phy_read(port,  PHY_MMD31, PHY_ANEG_CTRL);
+	phy_read(port,  PHY_MMD_AN, PHY_ANEG_CTRL);
 	v = SFR_DATA_U16;
 	if (!(v & 0x1000)) { // AN disabled, we are in forced mode
 		phy_read(port, PHY_MMD_PMAPMD, 0);

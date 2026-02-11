@@ -10,11 +10,19 @@
 #define PHY_SPEED_AUTO	0x10
 #define PHY_OFF		0xff
 
+struct phy_settings {
+	uint8_t duplex;
+	uint8_t port;
+	uint8_t speed;
+};
+
+extern __xdata struct phy_settings phy_settings;
+
 void rtl8224_phy_enable(void) __banked;
 void phy_config(uint8_t phy) __banked;
 void phy_config_8224(void) __banked;
-void phy_set_speed(uint8_t port, uint8_t speed, uint8_t duplex) __banked;
-void phy_set_duplex(uint8_t port, uint8_t fullduplex) __banked;
+void phy_set_speed(void) __banked;
+void phy_set_duplex(void) __banked;
 void phy_show(uint8_t port) __banked;
 void phy_reset(uint8_t port) __banked;
 void rtl8224_read_reg_u16(uint16_t reg) __banked;
