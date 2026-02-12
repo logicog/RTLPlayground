@@ -21,18 +21,24 @@
       <div class="lcol"> <label for="gw">Gateway:</label></div>
       <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
     </div>
-    <br/><br/>
+    <br/>
     When updating the above settings, remember to point your browser to the new IP afterwards:<br/>
     <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Update Settings"><br/>
     <br/>
+    Save all current settings to Flash:<br/>
+    <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
+    <br/><br/>
+    <hr style="width:50%;margin-left:0;"/>
+
+    <h1>Advanced Settings</h1>
     <div class="lcol"> <label for="ip">Startup configuration:</label></div>
     <textarea id="config_display" rows="8" cols="60"></textarea>
     <br/>
-    <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" value="Clear Config">
-    <br/><br/>
-    Save all current settings to Flash:<br/>
-    <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
-
+    <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" value="Clear Startup Config">
+    <br/>
+    <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" value="Save Startup Settings to Flash">
+    <br/>
+    <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" value="Reset Switch">
     </div>
     <script src="/config.js"></script>
     <script src="/system.js"></script>
