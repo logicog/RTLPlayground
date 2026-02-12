@@ -42,7 +42,21 @@ async function sendConfig(c) {
   }
 }
 
+
 async function flashSave() {
+  fetchConfig().then((s) => {
+    parseConf(s);
+    fetchCmdLog().then((s) => {
+      parseConf(s);
+      var body = "";
+      for (const x of configuration) { body = body + x + "\n"; }
+      console.log("CONFIGURATION to save: ", body);
+      sendConfig(body);
+    });
+  });
+}
+
+async function flashStartupSave() {
   var configContent = document.getElementById("config_display").value;
   console.log("CONFIGURATION to save: ", configContent);
   sendConfig(configContent);
@@ -86,17 +100,26 @@ function fetchIP() {
       fetchConfig().then((configText) => {
         let fullConfig = configText;
         // Fetch and append cmd_log
-        return fetchCmdLog().then((cmdLogText) => {
-          if (cmdLogText) {
-            fullConfig = fullConfig + cmdLogText;
-          }
-          document.getElementById("config_display").value = fullConfig;
+        //return fetchCmdLog().then((cmdLogText) => {
+        //  if (cmdLogText) {
+        //    fullConfig = fullConfig + cmdLogText;
+        //  }
+        document.getElementById("config_display").value = fullConfig;
         });
-      });
+      };
     }
-  }
   xhttp.open("GET", `/information.json`, true);
   xhttp.send();
+}
+
+function resetSwitch() {
+  if (!confirm('Are you sure you want to reset the switch?')) {
+    return;
+  }
+  fetch('/reset', { method: 'GET' }).catch(() => {});
+  setTimeout(() => {
+    alert('Switch is resetting. Please wait and refresh the page.');
+  }, 3000);
 }
 
 window.addEventListener("load", function() {

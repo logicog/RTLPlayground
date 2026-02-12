@@ -601,6 +601,9 @@ void httpd_appcall(void)
 			} else if (is_word(q, "/cmd_log_clear")) {
 				clear_command_history();
 				send_mtu(); // dummy response
+			} else if (is_word(q, "/reset")) {
+				uip_close();
+				reset_chip();
 			} else {
 				send_not_found();
 			}

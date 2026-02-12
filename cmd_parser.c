@@ -1043,7 +1043,6 @@ void execute_config(void) __banked
 config_done:
 	// Start saving commands to cmd_history
 	save_cmd = 1;
-	clear_command_history();
 }
 
 void clear_command_history(void) __banked
