@@ -217,7 +217,7 @@ void machine_custom_init(void) { }
 #elif defined MACHINE_SWTGW218AS
 
 __code const struct machine machine = {
-	.machine_name = "SWTGW218AS 8+1 SFP Port Managed Switch",
+	.machine_name = "SWTGW218AS 8+1 Managed Switch",
 	.isRTL8373 = 1,
 	.min_port = 0,
 	.max_port = 8,
