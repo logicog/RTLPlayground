@@ -80,6 +80,8 @@ struct flash_region_t {
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 extern __xdata struct uip_eth_addr uip_ethaddr;
+extern __xdata uint16_t rx_packet_vlan;
+extern __xdata uint16_t dhcpd_vlan;
 
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);

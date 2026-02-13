@@ -43,6 +43,7 @@ extern __xdata struct dhcp_state dhcp_state;
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 extern __xdata uint16_t management_vlan;
+extern __xdata uint16_t dhcpd_vlan;
 __xdata uint8_t gpio_last_value[8] = { 0 };
 
 // Temporatly for str to hex convertion value.
@@ -941,6 +942,10 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "dhcpd")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				if (cmd_words_b[2] > 0)
+					atoi_short(&dhcpd_vlan, cmd_words_b[2]);
+				else
+					dhcpd_vlan = 0;
 				dhcpd_start();
 			} else {
 				print_string("DHCP Server disabled\n");
