@@ -22,16 +22,12 @@
 #include "machine.h"
 #include "phy.h"
 
-
 extern __code const struct machine machine;
 
 extern __xdata uint16_t crc_value;
 __xdata uint8_t crc_testbytes[10];
 __xdata struct machine_runtime machine_detected;
 void crc16(__xdata uint8_t *v) __naked;
-
-// Upload Firmware to 1M
-#define FIRMWARE_UPLOAD_START 0x100000
 
 // See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200
@@ -128,6 +124,8 @@ __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
+__xdata bool button_last;
+__xdata uint8_t button_sec_counter_last;
 __sbit tx_buf_empty;
 
 #define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
@@ -1064,6 +1062,66 @@ void handle_sfp(void)
 	}
 }
 
+void flash_default_config(void)
+{
+	__xdata uint32_t source = DEFAULT_CONFIG_START;
+	__xdata uint32_t dest = CONFIG_START;
+
+	flash_region.addr = CONFIG_START;
+	flash_sector_erase();
+
+	for (uint8_t i = 0; i < 8; i++) // 8 * 512 Byte = 4 kByte (1 sector)
+	{
+		flash_region.addr = source;
+		flash_region.len = 0x200;
+		flash_read_bulk(flash_buf);
+		flash_region.addr = dest;
+		flash_region.len = 0x200;
+		flash_write_bytes(flash_buf);
+		dest += 0x200;
+		source += 0x200;
+	}
+
+	print_string("Written default config to flash\n");
+}
+
+void handle_button(void)
+{
+	if (machine.reset_pin == GPIO_NA) {
+		return;
+	}
+
+	bool button_pressed = !gpio_pin_test(machine.reset_pin);
+	if (button_last != button_pressed)
+	{
+		print_string(button_pressed ? "Button pressed\n" : "Button released\n");
+		reg_read_m(RTL837X_REG_SEC_COUNTER);
+		uint8_t diff_sec_counter = sfr_data[3] - button_sec_counter_last;
+		button_last = button_pressed;
+		button_sec_counter_last = sfr_data[3];
+
+		if (!button_pressed)
+		{
+			if (diff_sec_counter > 10)
+			{
+				print_string(">10s button detected; reverting to default settings:\n");
+				flash_default_config();
+				print_string("Now resetting...\n");
+				reset_chip();
+			}
+			else if (diff_sec_counter > 3)
+			{
+				print_string(">3s button detected; resetting chip...\n");
+				reset_chip();
+			}
+			else
+			{
+				print_string("Short button press detected; no action.\n");
+			}
+		}
+	}
+}
+
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
 //
@@ -1135,11 +1193,9 @@ void idle(void)
 	// Check for changes with SFP modules
 	handle_sfp();
 
-	/* Button pressed on KL-8xhm-x2:
-	reg_read(RTL837X_REG_GPIO_32_63_INPUT);
-	if (!(sfr_data[2] & 0x40))
-		print_string("Button pressed\n");
-	*/
+	// Check for button presses
+	handle_button();
+
 	// Check new Packets RX
 	handle_rx();
 	// Check UIP for packets to transmit
@@ -1800,6 +1856,82 @@ void setup_i2c(void)
 }
 
 
+void check_and_flash_update_image(void)
+{
+	// Check if an update image is in flash
+	flash_region.addr = FIRMWARE_UPLOAD_START;
+	flash_region.len = 0x100;
+	flash_read_bulk(flash_buf);
+	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40)
+	{
+		// Yes, flash the new image to the start of flash and reset
+		__xdata uint32_t dest = 0x0;
+		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
+		__xdata uint16_t i = 0;
+		__xdata uint16_t j = 0;
+		__xdata uint8_t * __xdata bptr;
+		print_string("Identified update image. Checking integrity...");
+		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
+		set_sys_led_state(SYS_LED_FAST);
+		crc_value = 0x0000;
+		for (i = 0; i < 1024; i++) {
+			flash_region.addr = source;
+			flash_region.len = 0x200;
+			flash_read_bulk(flash_buf);
+			bptr = flash_buf;
+			for (j = 0; j < 0x200; j++) {
+				crc16(bptr++);
+			}
+			source += 0x200;
+			if (i%16 == 0)
+				write_char('.');
+		}
+		if (crc_value == 0xb001) {
+			print_string("\nChecksum OK\n");
+			print_string("Update in progress, moving firmware to start of FLASH.");
+			source = FIRMWARE_UPLOAD_START;
+			// A 512kByte = 4MBit Flash has 128*8=1024 512byte blocks, we copy only 896
+			// (don't overwrite config @ 0x70000)
+			for (i = 0; i < 896; i++) {
+				// print_string("Writing block: ");
+				// print_short(dest);
+				flash_region.addr = source;
+				flash_region.len = 0x200;
+				flash_read_bulk(flash_buf);
+				if (!(i & 0x7)) {
+					flash_region.addr = dest;
+					flash_sector_erase();
+					write_char('.');
+				}
+				flash_region.addr = dest;
+				flash_region.len = 0x200;
+				flash_write_bytes(flash_buf);
+				dest += 0x200;
+				source += 0x200;
+			}
+			print_string("\nDeleting uploaded flash image\n");
+			dest = FIRMWARE_UPLOAD_START;
+			for (register uint8_t i=0; i < 128; i++) // TODO: Erasing the entire 512kByte upload area is probably not necessary
+			{
+				flash_region.addr = dest;
+				flash_sector_erase();
+				dest += 0x1000;
+			}
+			print_string("Resetting now");
+			delay(200);
+			reset_chip();
+		}
+		print_string("Checksum incorrect, please upload the image again\n");
+		print_string("Erasing bad uploaded flash image\n");
+		dest = FIRMWARE_UPLOAD_START;
+		for (register uint8_t i=0; i < 128; i++) {
+			flash_region.addr = dest;
+			flash_sector_erase();
+			dest += 0x1000;
+		}
+	}
+}
+
 void bootloader(void)
 {
 	ticks = 0;
@@ -1836,6 +1968,9 @@ void bootloader(void)
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
 	// We have not detected any link
 	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = linkbits_last_p89 = 0;
+
+	button_last = 0;
+	button_sec_counter_last = 0;
 
 	machine_detected.isRTL8373 = 0;
 	machine_detected.isN = 0;
@@ -1908,81 +2043,7 @@ void bootloader(void)
 		rtl8372_init();
 	delay(1000);
 
-	// Check update in progress and move blocks
-	flash_region.addr = FIRMWARE_UPLOAD_START;
-	flash_region.len = 0x100;
-	flash_read_bulk(flash_buf);
-	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40) {
-		__xdata uint32_t dest = 0x0;
-		__xdata uint32_t source = FIRMWARE_UPLOAD_START;
-		__xdata uint16_t i = 0;
-		__xdata uint16_t j = 0;
-		__xdata uint8_t * __xdata bptr;
-		print_string("Identified update image. Checking integrity...");
-
-		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
-		set_sys_led_state(SYS_LED_FAST);
-
-		crc_value = 0x0000;
-		for (i = 0; i < 1024; i++) {
-			flash_region.addr = source;
-			flash_region.len = 0x200;
-			flash_read_bulk(flash_buf);
-			bptr = flash_buf;
-			for (j = 0; j < 0x200; j++) {
-			//	print_byte(*bptr); write_char(' ');
-				crc16(bptr++);
-			//	print_short(crc_value); write_char(':');
-			}
-			source += 0x200;
-			// write_char('\n'); print_short(crc_value); write_char(' ');
-			if (i%16 == 0)
-				write_char('.');
-		}
-		if (crc_value == 0xb001) {
-			print_string("\nChecksum OK\n");
-			print_string("Update in progress, moving firmware to start of FLASH.");
-			source = FIRMWARE_UPLOAD_START;
-			// A 512kByte = 4MBit Flash has 128*8=1024 512byte blocks, we copy only 896 
-			// (don't overwrite config @ 0x700000)
-			for (i = 0; i < 896; i++) {
-				// print_string("Writing block: ");
-				// print_short(dest);
-				flash_region.addr = source;
-				flash_region.len = 0x200;
-				flash_read_bulk(flash_buf);
-				if (!(i & 0x7)) {
-					flash_region.addr = dest;
-					flash_sector_erase();
-					write_char('.');
-				}
-				flash_region.addr = dest;
-				flash_region.len = 0x200;
-				flash_write_bytes(flash_buf);
-				dest += 0x200;
-				source += 0x200;
-			}
-			print_string("\nDeleting uploaded flash image\n");
-			dest = FIRMWARE_UPLOAD_START;
-			for (register uint8_t i=0; i < 128; i++) {
-				flash_region.addr = dest;			
-				flash_sector_erase();
-				dest += 0x1000;
-			}
-			print_string("Resetting now");
-			delay(200);
-			reset_chip();
-		}
-		print_string("Checksum incorrect, please upload the image again\n");
-		print_string("Erasing bad uploaded flash image\n");
-		dest = FIRMWARE_UPLOAD_START;
-		for (register uint8_t i=0; i < 128; i++) {
-			flash_region.addr = dest;
-			flash_sector_erase();
-			dest += 0x1000;
-		}
-	}
-	set_sys_led_state(SYS_LED_SLOW);
+	check_and_flash_update_image();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS

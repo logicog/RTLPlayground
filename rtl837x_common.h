@@ -57,10 +57,14 @@ struct vlan_tag {
 // This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
 
+#define DEFAULT_CONFIG_START 0x6f000
 #define CONFIG_START 0x70000
 #define CONFIG_LEN 0x1000
 #define CODE0_SIZE 0x4000
 #define CODE_BANK_SIZE 0xc000
+
+// Store update image after running image
+#define FIRMWARE_UPLOAD_START 0x80000
 
 // Constants for the circular command buffer, the size must be 2^n
 #define CMD_HISTORY_SIZE 0x400

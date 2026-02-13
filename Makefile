@@ -2,6 +2,7 @@ BOOTLOADER_ADDRESS=0x100
 
 VERSION=0.1.0
 IMAGESIZE = 524288
+DEFAULT_CONFIG_LOCATION = 454656
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
 
@@ -32,6 +33,7 @@ $(VERSION_HEADER):
 	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
 	@echo "#define VERSION_H" >> $(VERSION_HEADER)
 	@echo "#define VERSION_SW \"v$(VERSION)-g$(shell git rev-parse --short HEAD)\"" >> $(VERSION_HEADER)
+	@echo "#define BUILD_DATE \"$(shell date +"%Y-%m-%d %H:%M:%S")\"" >> $(VERSION_HEADER)
 	@echo "#endif" >> $(VERSION_HEADER)
 
 httpd: html_data.h
@@ -67,6 +69,7 @@ $(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx
 $(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 	if [ -e $@ ]; then rm $@; fi
 	tools/$(BUILDDIR)imagebuilder -i $^ $@
+	tools/$(BUILDDIR)fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
 	tools/$(BUILDDIR)crc_calculator -u $@
