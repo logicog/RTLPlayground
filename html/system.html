@@ -3,45 +3,69 @@
   <head>
     <link rel="stylesheet" href="style.css">
     <title>System Settings</title>
+    <style>
+      .tab-bar { display: flex; border-bottom: 2px solid #226; margin-bottom: 0; margin-left: 16%; padding: 1px 16px; padding-bottom: 0; }
+      .tab-btn { padding: 10px 20px; background-color: #ddf; border: none; cursor: pointer; font-size: 1em; border-radius: 8px 8px 0 0; margin-right: 4px; }
+      .tab-btn:hover { background-color: #aaf; }
+      .tab-btn.active { background-color: #aaf; font-weight: bold; border-bottom: 2px solid #aaf; margin-bottom: -2px; }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+    </style>
   </head>
   <body>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="openTab(event, 'system-tab')">System</button>
+      <button class="tab-btn" onclick="openTab(event, 'advanced-tab')">Advanced</button>
+    </div>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
-    <h1>System Settings</h1>
-    <div class="row">
-      <div class="lcol"> <label for="ip">IP address:</label></div>
-      <div class="rcol"> <input id="ip" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
-    </div>
-    <div class="row">
-      <div class="lcol"> <label for="netmask">Netmask:</label></div>
-      <div class="rcol"><input id="netmask" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
-    </div>
-    <div class="row">
-      <div class="lcol"> <label for="gw">Gateway:</label></div>
-      <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
-    </div>
-    <br/>
-    When updating the above settings, remember to point your browser to the new IP afterwards:<br/>
-    <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Update Settings"><br/>
-    <br/>
-    Save all current settings to Flash:<br/>
-    <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
-    <br/><br/>
-    <hr style="width:50%;margin-left:0;"/>
 
-    <h1>Advanced Settings</h1>
-    <div class="lcol"> <label for="ip">Startup configuration:</label></div>
-    <textarea id="config_display" rows="8" cols="60"></textarea>
-    <br/>
-    <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" value="Clear Startup Config">
-    <br/>
-    <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" value="Save Startup Settings to Flash">
-    <br/>
-    <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" value="Reset Switch">
+    <div id="system-tab" class="tab-content active">
+      <h1>System Settings</h1>
+      <div class="row">
+        <div class="lcol"> <label for="ip">IP address:</label></div>
+        <div class="rcol"> <input id="ip" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"> <label for="netmask">Netmask:</label></div>
+        <div class="rcol"><input id="netmask" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"> <label for="gw">Gateway:</label></div>
+        <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
+      </div>
+      <br/>
+      When updating the above settings, remember to point your browser to the new IP afterwards:<br/>
+      <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Update Settings"><br/>
+      <br/>
+      Save all current settings to Flash:<br/>
+      <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
+    </div>
+
+    <div id="advanced-tab" class="tab-content">
+      <h1>Advanced Settings</h1>
+      <div class="lcol"> <label for="config_display">Startup configuration:</label></div>
+      <textarea id="config_display" rows="8" cols="60"></textarea>
+      <br/>
+      <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" value="Clear Startup Config">
+      <br/>
+      <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" value="Save Startup Settings to Flash">
+      <br/>
+      <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" value="Reset Switch">
+    </div>
+
     </div>
     <script src="/config.js"></script>
     <script src="/system.js"></script>
     <script src="/navigation.js"></script>
+    <script>
+      function openTab(evt, tabId) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        evt.currentTarget.classList.add('active');
+      }
+    </script>
   </body>
 </html>
