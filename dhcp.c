@@ -89,6 +89,7 @@ struct dhcp_pkt {
 __xdata uint32_t long_value;
 __xdata struct dhcpd_cstate cstates[DHCPD_MAX_CLIENTS];
 __xdata uint8_t client_idx;
+__xdata uint16_t dhcpd_vlan;
 
 void dhcp_print_ip(uint8_t *a)
 {
@@ -558,6 +559,10 @@ void dhcpd_start(void) __banked
 		print_string("dhcpd_start failed to set up socket\n");
 		return;
 	}
+	if (!dhcpd_vlan)
+		print_string("dhcpd: enabling for all VLANs\n");
+	else
+		print_string("dhcpd: enabling for VLAN "); print_short(dhcpd_vlan); write_char('\n');
 	dhcp_state.state = DHCP_SERVER;
 
 	dhcp_state.server[1] = uip_hostaddr[0] >> 8; dhcp_state.server[0] = uip_hostaddr[0] & 0xff;

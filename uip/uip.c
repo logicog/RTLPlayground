@@ -924,7 +924,7 @@ uip_process(u8_t flag) __banked
         UIP_STAT(++uip_stat.ip.drop);
         goto drop;
       }
-  }
+    }
 #else /* UIP_CONF_IPV6 */
     /* For IPv6, packet reception is a little trickier as we need to
        make sure that we listen to certain multicast addresses (all
@@ -938,7 +938,11 @@ uip_process(u8_t flag) __banked
     }
 #endif /* UIP_CONF_IPV6 */
   }
-
+  // If we serve only the designated DHCPD-VLAN, we drop the packet if not in that VLAN
+  if(BUF->proto == UIP_PROTO_UDP && dhcpd_vlan && UDPBUF->destport == HTONS(DHCP_SERVER_PORT) && dhcpd_vlan != rx_packet_vlan) {
+    UIP_STAT(++uip_stat.ip.drop);
+    goto drop;
+  }
 #if !UIP_CONF_IPV6
 //  if(uip_ipchksum() != 0xffff) { /* Compute and check the IP header
 //				    checksum. */

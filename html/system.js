@@ -42,9 +42,14 @@ async function ipSub() {
 }
 async function dhcpdSub() {
   var dhcpd_cmd = "dhcpd off";
-  if (document.getElementById('dhcpd').checked)
+  if (document.getElementById('dhcpd').checked) {
     dhcpd_cmd = "dhcpd on";
+    var v=document.getElementById('dhcpd_vid').value
+    if (v && v!= 0)
+      dhcpd_cmd = dhcpd_cmd + " " + v;
+  }
   try {
+    console.log("Sending: ", dhcpd_cmd);
     const response = await fetch('/cmd', {
       method: 'POST',
       body: dhcpd_cmd
