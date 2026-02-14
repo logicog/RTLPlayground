@@ -54,6 +54,9 @@ async function flashSave() {
       sendConfig(body);
     });
   });
+  setTimeout(() => {
+      fetchIP();
+  }, 500);
 }
 
 async function flashStartupSave() {
