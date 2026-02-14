@@ -9,6 +9,7 @@
 #include "uip.h"
 #include "html_data.h"
 #include <stdint.h>
+#include "dhcp.h"
 #include "phy.h"
 #include "version.h"
 #include "machine.h"
@@ -43,6 +44,8 @@ extern __xdata char sfp_module_vendor[2][17];
 extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
+
+extern __xdata struct dhcp_state dhcp_state;
 
 __code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 __code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
@@ -240,6 +243,12 @@ void send_basic_info(void)
 		send_sfp_info(1);
 		char_to_html('"');
 	}
+	if (dhcp_state.state != DHCP_OFF && dhcp_state.state != DHCP_SERVER)
+		slen += strtox(outbuf + slen, ",\"dhcp_client\":1,\"dhcp_server\":0");
+	else if (dhcp_state.state == DHCP_SERVER)
+		slen += strtox(outbuf + slen, ",\"dhcp_client\":0,\"dhcp_server\":1");
+	else
+		slen += strtox(outbuf + slen, ",\"dhcp_client\":0,\"dhcp_server\":0");
 	char_to_html('}');
 }
 

@@ -9,6 +9,7 @@
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
     <h1>System Settings</h1>
+    <label class="dhcpon">DHCP client endabled: <input id="dhcp" type="checkbox" onchange="dhcpClicked(this)"></label><br/><br/>
     <div class="row">
       <div class="lcol"> <label for="ip">IP address:</label></div>
       <div class="rcol"> <input id="ip" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
@@ -20,11 +21,13 @@
     <div class="row">
       <div class="lcol"> <label for="gw">Gateway:</label></div>
       <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
-    </div>
-    <br/><br/>
+    </div><br/>
     When updating the above settings, remember to point your browser to the new IP afterwards:<br/>
     <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Update Settings"><br/>
     <br/><br/>
+    <label class="dhcpdon">Enable DHCP Server: <input id="dhcpd" type="checkbox"></label><br/><br/>
+    <label class="dhcpdvlan">Limit DHCP Server to VLAN (0: serve all VLANs): <input type="number" min="0" max="2047" value="0" id="dhcpd_vid" name="dhcpd_vid"></label><br/>
+    <input style="width:40%;" class="action" id="dhcpd_sub" onclick="dhcpdSub();" type="button" value="Change DHCPD State"><br/><br/><br/>
     Save all current settings to Flash:<br/>
     <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
 
