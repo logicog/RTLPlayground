@@ -1161,6 +1161,9 @@ void idle(void)
 		reg_write_m(RTL837X_REG_SEC_COUNTER);
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
 
+		// Check for button presses once a second
+		handle_button();
+
 #ifdef DEBUG
 		print_sfr_data();
 		write_char('\n');
@@ -1199,9 +1202,6 @@ void idle(void)
 
 	// Check for changes with SFP modules
 	handle_sfp();
-
-	// Check for button presses
-	handle_button();
 
 	// Check new Packets RX
 	handle_rx();
