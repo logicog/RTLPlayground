@@ -16,7 +16,7 @@
 // #define MACHINE_HG0402XG_V1_1
 // #define MACHINE_SWTGW218AS
 // #define MACHINE_HI_K0402WS
-// #define DEFAULT_8C_1SFP
+// #define MACHINE_DEFAULT_8C_1SFP
 
 typedef struct {
 	// GPIO pins for SDA/SCL

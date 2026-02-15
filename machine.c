@@ -250,7 +250,7 @@ __code const struct machine machine = {
 
 void machine_custom_init(void) { }
 
-#elif defined DEFAULT_8C_1SFP
+#elif defined MACHINE_DEFAULT_8C_1SFP
 __code const struct machine machine = {
 	.machine_name = "8+1 SFP Port Switch",
 	.isRTL8373 = 1,
