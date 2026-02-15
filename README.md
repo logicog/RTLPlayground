@@ -56,20 +56,12 @@ device simulator is provided, which runs entirely under Linux as a local webserv
 Install the following particular build requisites (Debian 12/13), note that Ubuntu 24.04
 still has an older version of sdcc, but you will need sdcc version 4.5 for the code to compile:
 ```
-sudo apt install sdcc xxd python-is-python3 libjson-c-dev
+sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ```
-
+Edit machine.h with an editor like vi or nano. Select the correct machine the firmware should build for.
 Now, building the firmware image should work:
 ```
-$ make
-sdas8051 -plosgff crtstart.asm
-sdcc -mmcs51 -c rtlplayground.c
-sdcc -mmcs51 -c rtl837x_flash.c
-sdcc -mmcs51 -Wl-bHOME=0x100 -o rtlplayground.ihx crtstart.rel rtlplayground.rel rtl837x_flash.rel
-objcopy --input-target=ihex -O binary rtlplayground.ihx rtlplayground.img
-if [ -e rtlplayground.bin ]; then rm rtlplayground.bin; fi
-echo "0000000: 00 40" | xxd -r - rtlplayground.bin
-cat rtlplayground.img >> rtlplayground.bin 
+make 
 ```
 Note, that the image generated ends in .bin, not .img, in order to make
 IMSProg happy.
