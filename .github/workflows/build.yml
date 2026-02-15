@@ -18,4 +18,4 @@ jobs:
           apt update
           apt install make gcc sdcc xxd python-is-python3 libjson-c-dev -y
       - name: Make project
-        run: make
+        run: make MACHINE="KP_9000_6XHML_X2"
