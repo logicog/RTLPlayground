@@ -99,7 +99,7 @@ extern __xdata struct flash_region_t flash_region;
 __code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
 __code uint8_t * __code hex = "0123456789abcdef";
 
-__xdata uint8_t flash_buf[512];
+__xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 
 // NIC buffers for packet RX/TX
 __xdata uint8_t rx_headers[16]; // Packet header(s) on RX
@@ -1073,13 +1073,13 @@ void flash_default_config(void)
 	for (uint8_t i = 0; i < 8; i++) // 8 * 512 Byte = 4 kByte (1 sector)
 	{
 		flash_region.addr = source;
-		flash_region.len = 0x200;
+		flash_region.len = FLASH_BUF_SIZE;
 		flash_read_bulk(flash_buf);
 		flash_region.addr = dest;
-		flash_region.len = 0x200;
+		flash_region.len = FLASH_BUF_SIZE;
 		flash_write_bytes(flash_buf);
-		dest += 0x200;
-		source += 0x200;
+		dest += FLASH_BUF_SIZE;
+		source += FLASH_BUF_SIZE;
 	}
 
 	print_string("Written default config to flash\n");
@@ -1883,13 +1883,13 @@ void check_and_flash_update_image(void)
 		crc_value = 0x0000;
 		for (i = 0; i < 1024; i++) {
 			flash_region.addr = source;
-			flash_region.len = 0x200;
+			flash_region.len = FLASH_BUF_SIZE;
 			flash_read_bulk(flash_buf);
 			bptr = flash_buf;
-			for (j = 0; j < 0x200; j++) {
+			for (j = 0; j < FLASH_BUF_SIZE; j++) {
 				crc16(bptr++);
 			}
-			source += 0x200;
+			source += FLASH_BUF_SIZE;
 			if (i%16 == 0)
 				write_char('.');
 		}
@@ -1903,7 +1903,7 @@ void check_and_flash_update_image(void)
 				// print_string("Writing block: ");
 				// print_short(dest);
 				flash_region.addr = source;
-				flash_region.len = 0x200;
+				flash_region.len = FLASH_BUF_SIZE;
 				flash_read_bulk(flash_buf);
 				if (!(i & 0x7)) {
 					flash_region.addr = dest;
@@ -1911,10 +1911,10 @@ void check_and_flash_update_image(void)
 					write_char('.');
 				}
 				flash_region.addr = dest;
-				flash_region.len = 0x200;
+				flash_region.len = FLASH_BUF_SIZE;
 				flash_write_bytes(flash_buf);
-				dest += 0x200;
-				source += 0x200;
+				dest += FLASH_BUF_SIZE;
+				source += FLASH_BUF_SIZE;
 			}
 			print_string("\nDeleting uploaded flash image\n");
 			dest = FIRMWARE_UPLOAD_START;

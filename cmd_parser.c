@@ -33,7 +33,7 @@ extern volatile __xdata uint8_t sfr_data[4];
 extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
 
-extern __xdata uint8_t flash_buf[512];
+extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 extern __xdata struct flash_region_t flash_region;
 
 extern __xdata char passwd[21];
