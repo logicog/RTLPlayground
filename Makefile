@@ -17,6 +17,11 @@ SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 BUILDDIR = output/
 VERSION_HEADER := version.h
 
+ifeq ($(MACHINE),)
+else
+	CC_FLAGS += -DMACHINE_$(MACHINE)
+endif
+
 all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
 
 create_build_dir:
