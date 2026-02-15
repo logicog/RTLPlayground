@@ -6,17 +6,16 @@
 /*
  * Select your machine type below
  */
-#define MACHINE_KP_9000_6XHML_X2
+// #define MACHINE_KP_9000_6XHML_X2
 // #define MACHINE_KP_9000_6XH_X
 // #define MACHINE_KP_9000_9XH_X_EU
 // #define MACHINE_SWGT024_V2_0
 // #define MACHINE_HORACO_ZX_SG4T2
 // #define MACHINE_TRENDNET_TEG_S562
 // #define MACHINE_HG0402XG_V1_1
+// #define MACHINE_SWTGW218AS
 // #define MACHINE_HI_K0402WS
 // #define DEFAULT_8C_1SFP
-
-// #define DEFAULT_5C_1SFP
 
 typedef struct {
 	// GPIO pins for SDA/SCL
