@@ -13,12 +13,14 @@ __code const struct machine machine = {
 	.n_sfp = 2,
 	.log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
 	.phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
-	.is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
+	.is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
+	// Left SFP port (5)
 	.sfp_port[0].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[0].pin_los = GPIO10_LED10,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 0,
 	.sfp_port[0].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+	// Right SFP port (6)
 	.sfp_port[1].pin_detect = GPIO30_ACL_BIT3_EN,
 	.sfp_port[1].pin_los = GPIO37,
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
@@ -37,9 +39,6 @@ __code const struct machine machine = {
 			LEDS_1G | LEDS_LINK,
 			0 },
 		    },
-	.led_mux_custom = 1,
-	.led_mux = {0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x0f, 0x0c, 0x0d, 0x0e, 0x10, 0x11, 0x12, 0x14,
-		    0x15, 0x16, 0x18, 0x19, 0x1a, 0x1c, 0x1d, 0x1e, 0x20, 0x21, 0x22, 0x23 },
 };
 
 void machine_custom_init(void) { }
@@ -98,6 +97,9 @@ __code const struct machine machine = {
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };
+
+void machine_custom_init(void) { }
+
 #elif defined MACHINE_KP_9000_9XHML_X
 __code const struct machine machine = {
 	.machine_name = "keepLink KP-9000-9XHML-X",
@@ -214,6 +216,40 @@ __code const struct machine machine = {
 
 void machine_custom_init(void) { }
 
+#elif defined MACHINE_SWTGW218AS
+
+__code const struct machine machine = {
+	.machine_name = "SWTGW218AS 8+1 Managed Switch",
+	.isRTL8373 = 1,
+	.min_port = 0,
+	.max_port = 8,
+	.n_sfp = 1,
+	.log_to_phys_port = {1, 2, 3, 4, 5, 6, 7, 8, 9},
+	.phys_to_log_port = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.sfp_port[0].pin_detect = GPIO30_ACL_BIT3_EN,
+	.sfp_port[0].pin_los = GPIO37,
+	.sfp_port[0].pin_tx_disable = GPIO_NA,
+	.sfp_port[0].sds = 1,
+	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO54_ACL_BIT2_EN,
+	.high_leds = { .mux = LED_27 | LED_28 | LED_29, .enable = LED_28 | LED_29 },
+	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.led_sets = { { LEDS_2G5 | LEDS_LINK | LEDS_ACT, // Green LED (right)
+					0, // unused
+					LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT, // Amber LED (left)
+					0
+				  }, // unused
+				  { LEDS_10G | LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT, // SFP LED
+					0, // unused
+					0, // unused
+					0
+				  }, // unused		    	},
+				},
+};
+
+void machine_custom_init(void) { }
+
 #elif defined DEFAULT_8C_1SFP
 __code const struct machine machine = {
 	.machine_name = "8+1 SFP Port Switch",
@@ -315,4 +351,6 @@ __code const struct machine machine = {
 void machine_custom_init(void) { 
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
 }
+#else
+	#error "Please select a machine type in machine.h"
 #endif
