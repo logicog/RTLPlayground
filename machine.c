@@ -97,6 +97,9 @@ __code const struct machine machine = {
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };
+
+void machine_custom_init(void) { }
+
 #elif defined MACHINE_KP_9000_9XHML_X
 __code const struct machine machine = {
 	.machine_name = "keepLink KP-9000-9XHML-X",
