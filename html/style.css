@@ -6,8 +6,9 @@ ul {
   margin: 0;
   padding: 0;
   width: 12%;
-  height: 100%;
+  height: calc(100% - 50px);
   position: fixed;
+  top: 50px;
   overflow: auto;
 }
 
