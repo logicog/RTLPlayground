@@ -49,7 +49,8 @@ async function fetchCmdLog() {
     console.log("CMD-Log: ", response);
     const t = await response.text();
     return t;
-  } catch(error) {
+  } catch(err) {
     console.error("Error: ", err);
+    return "";
   }
 }

@@ -301,6 +301,8 @@ uint8_t stream_upload(uint16_t bptr)
 					print_string("Checksum incorrect!");
 				}
 				print_string("\nUpload to flash done, will reset!\n");
+				// close connection to avoid retries by browser
+				uip_close();
 				reset_chip();
 			}
 			// Make sure there is a 0 at the end of the uploaded data
@@ -310,6 +312,9 @@ uint8_t stream_upload(uint16_t bptr)
 			flash_write_bytes(flash_buf);
 			if (bptr >= uip_len)
 				return 0;
+			if(!verify_crc)
+				//ugly hack to signal connection finished after config upload.
+				uip_close();
 			return 1;
 		}
 		if (p[bptr] == boundary[bindex]) {
@@ -593,6 +598,13 @@ void httpd_appcall(void)
 				send_config();
 			} else if (is_word(q, "/cmd_log")) {
 				send_cmd_log();
+			} else if (is_word(q, "/cmd_log_clear")) {
+				clear_command_history();
+				send_mtu(); // dummy response
+			} else if (is_word(q, "/reset")) {
+				uip_close();
+				delay(1000); //wait for the close packet to be sent, otherwise the browser will retry
+				reset_chip();
 			} else {
 				send_not_found();
 			}
