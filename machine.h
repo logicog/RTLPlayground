@@ -56,7 +56,7 @@ typedef struct machine {
 	uint8_t is_sfp[9];  // 0 for non-SFP ports 1 or 2 for the I2C port number
 	// sfp_port[0] is the first SFP-port from the left on the device, sfp_port[1] the next if present 
 	struct sfp_port sfp_port[2];
-	int8_t reset_pin;
+	uint8_t reset_pin;
 	struct high_leds high_leds;
 	uint8_t port_led_set[9];
 	uint32_t led_sets[4][4];

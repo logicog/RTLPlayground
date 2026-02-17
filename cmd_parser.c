@@ -33,7 +33,7 @@ extern volatile __xdata uint8_t sfr_data[4];
 extern __code uint8_t * __code greeting;
 extern __code uint8_t * __code hex;
 
-extern __xdata uint8_t flash_buf[512];
+extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 extern __xdata struct flash_region_t flash_region;
 
 extern __xdata char passwd[21];
@@ -760,9 +760,8 @@ void print_gpio_status(void) {
 
 // Show software version
 void print_sw_version(void) __banked {
-	print_string("Software version: ");
-	print_string(VERSION_SW);
-	print_string("\nBuild: " __DATE__ " " __TIME__);
+	print_string("Software version: " VERSION_SW);
+	print_string("\nBuild date: " BUILD_DATE);
 	print_string("\nHardware: ");
 	print_string(machine.machine_name);
 	write_char('\n');
