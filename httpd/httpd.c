@@ -14,9 +14,6 @@
 #define SESSION_ID_LENGTH 12
 #define SESSION_TIMEOUT 200
 
-// Upload Firmware to 1M
-#define FIRMWARE_UPLOAD_START 0x100000
-
 // SPI FLASH MEMORY PAGE SIZE.
 #define FLASHMEM_PAGE_SIZE 0x100
 
@@ -32,7 +29,7 @@ extern __code char * __code mime_strings[];
 extern __xdata struct flash_region_t flash_region;
 
 // Flash buffer to optimize flash writing speed, write_len is the current filling position
-extern __xdata uint8_t flash_buf[512];
+extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 __xdata uint32_t uptr; // Current flash write position
 __xdata uint16_t write_len;
 
