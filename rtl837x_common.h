@@ -29,6 +29,9 @@
 // Size of the memory area dedicated to VLAN-names
 #define VLAN_NAMES_SIZE 1024
 
+// Size of the flash buffer used for writing to flash, must be a multiple of the flash page size (0x100)
+#define FLASH_BUF_SIZE 512
+
 // For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
 // the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
 // the VLAN tag is inserted after the RTL tag
@@ -57,10 +60,14 @@ struct vlan_tag {
 // This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
 
+#define DEFAULT_CONFIG_START 0x6f000
 #define CONFIG_START 0x70000
 #define CONFIG_LEN 0x1000
 #define CODE0_SIZE 0x4000
 #define CODE_BANK_SIZE 0xc000
+
+// Store update image after running image
+#define FIRMWARE_UPLOAD_START 0x80000
 
 // Constants for the circular command buffer, the size must be 2^n
 #define CMD_HISTORY_SIZE 0x400

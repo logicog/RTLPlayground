@@ -230,6 +230,8 @@ void send_basic_info(void)
 	byte_to_html(uip_ethaddr.addr[5]);
 	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
 	slen += strtox(outbuf + slen, VERSION_SW);
+	slen += strtox(outbuf + slen, "\",\"build_date\":\"");
+	slen += strtox(outbuf + slen, BUILD_DATE);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
 	slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
