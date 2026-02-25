@@ -24,9 +24,9 @@
 #include "phy.h"
 
 extern __code const struct machine machine;
+extern __xdata uint32_t flash_size;
 
 extern __xdata uint16_t crc_value;
-__xdata uint8_t crc_testbytes[10];
 __xdata struct machine_runtime machine_detected;
 void crc16(__xdata uint8_t *v) __naked;
 
@@ -546,16 +546,6 @@ uint8_t read_flash(uint8_t bank, __code uint8_t *addr)
 	v = *addr;
 	PSBANK = current_bank;
 	return v;
-}
-
-
-void print_long_x(__xdata uint8_t v[])
-{
-	write_char('0'); write_char('x');
-	for (uint8_t i=0; i < 4; i++) {
-		write_char(hex[v[i] >> 4]);
-		write_char(hex[v[i] & 0xf]);
-	}
 }
 
 /*
@@ -1869,6 +1859,19 @@ void setup_i2c(void)
 
 void check_and_flash_update_image(void)
 {
+	flash_read_jedecid(); // This initializes also __xdata flash_size variable
+
+	print_long(flash_size); print_string(" flash size detected.\n");
+	print_long(FIRMWARE_UPLOAD_START*2); print_string(" bytes needed for update.\n");
+	if (flash_size < FIRMWARE_UPLOAD_START*2) {
+		print_string("Flash too small for updating; skipping update check\n");
+		return;
+	}
+	else {
+		print_string("Flash size ok.\n");
+	}
+
+
 	// Check if an update image is in flash
 	flash_region.addr = FIRMWARE_UPLOAD_START;
 	flash_region.len = 0x100;
@@ -1881,7 +1884,7 @@ void check_and_flash_update_image(void)
 		__xdata uint16_t i = 0;
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
-		print_string("Identified update image. Checking integrity...");
+		print_string("Identified update image. Checking integrity");
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
 		set_sys_led_state(SYS_LED_FAST);
 		crc_value = 0x0000;
@@ -1894,25 +1897,20 @@ void check_and_flash_update_image(void)
 				crc16(bptr++);
 			}
 			source += FLASH_BUF_SIZE;
-			if (i%16 == 0)
-				write_char('.');
+			if (i%16 == 0) write_char('.');
 		}
 		if (crc_value == 0xb001) {
-			print_string("\nChecksum OK\n");
-			print_string("Update in progress, moving firmware to start of FLASH.");
+			print_string("Checksum OK.\nUpdate in progress, moving firmware to start of flash");
 			source = FIRMWARE_UPLOAD_START;
-			// A 512kByte = 4MBit Flash has 128*8=1024 512byte blocks, we copy only 896
-			// (don't overwrite config @ 0x70000)
-			for (i = 0; i < 896; i++) {
-				// print_string("Writing block: ");
-				// print_short(dest);
+			// Don't copy the config area at the end of flash
+			for (i = 0; i < CONFIG_START/FLASH_BUF_SIZE; i++) {
 				flash_region.addr = source;
 				flash_region.len = FLASH_BUF_SIZE;
 				flash_read_bulk(flash_buf);
-				if (!(i & 0x7)) {
+				if (i%8 == 0) {
 					flash_region.addr = dest;
 					flash_sector_erase();
-					write_char('.');
+					if (i%16 == 0) write_char('.');
 				}
 				flash_region.addr = dest;
 				flash_region.len = FLASH_BUF_SIZE;
@@ -1920,15 +1918,16 @@ void check_and_flash_update_image(void)
 				dest += FLASH_BUF_SIZE;
 				source += FLASH_BUF_SIZE;
 			}
-			print_string("\nDeleting uploaded flash image\n");
+			print_string("Done.\nDeleting uploaded flash image");
 			dest = FIRMWARE_UPLOAD_START;
 			for (register uint8_t i=0; i < 128; i++) // TODO: Erasing the entire 512kByte upload area is probably not necessary
 			{
 				flash_region.addr = dest;
 				flash_sector_erase();
 				dest += 0x1000;
+				if (i%4 == 0) write_char('.');
 			}
-			print_string("Resetting now");
+			print_string("Done.\nResetting now");
 			delay(200);
 			reset_chip();
 		}
