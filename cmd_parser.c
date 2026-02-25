@@ -51,17 +51,16 @@ __xdata uint8_t hexvalue[4] = { 0 };
 
 
 // Buffer for writing to flash 0x1fd000, copy to 0x1fe000
-__xdata uint8_t cmd_buffer[SBUF_SIZE];
+__xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 __xdata uint8_t cmd_available;
 
-__xdata	uint8_t l;
 __xdata uint8_t line_ptr;
 __xdata	char is_white;
 __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
 
-#define N_WORDS SBUF_SIZE
+#define N_WORDS CMD_BUF_SIZE
 __xdata signed char cmd_words_b[N_WORDS];
 
 __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
@@ -93,7 +92,7 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 	signed char j = 0;
 
 	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && cmd_buffer[i] != ' '; i++) {
-		i &= SBUF_SIZE - 1;
+		i &= CMD_BUF_SIZE - 1;
 //		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
 //		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
 		if (!cmd[j] && !isletter(cmd_buffer[i]))
@@ -710,7 +709,7 @@ uint8_t cmd_tokenize(void) __banked
 	is_white = 1;
 	uint8_t word = 0;
 	cmd_words_b[0] = -1;
-	while (cmd_buffer[line_ptr] && line_ptr < SBUF_SIZE - 1) {
+	while (cmd_buffer[line_ptr] && line_ptr < CMD_BUF_SIZE - 1) {
 		if (is_white && cmd_buffer[line_ptr] != ' ') {
 			is_white = 0;
 			cmd_words_b[word++] = line_ptr;
@@ -723,7 +722,7 @@ uint8_t cmd_tokenize(void) __banked
 			return 1;
 		}
 	}
-	if (line_ptr == SBUF_SIZE - 1)
+	if (line_ptr == CMD_BUF_SIZE - 1)
 		return 1;
 	cmd_words_b[word++] = line_ptr;
 	cmd_words_b[word++] = -1;
@@ -1001,6 +1000,16 @@ void cmd_parser(void) __banked
 	}
 }
 
+
+void clear_command_history(void) __banked
+{
+	for (cmd_history_ptr = 0; cmd_history_ptr < CMD_HISTORY_SIZE; cmd_history_ptr++)
+		cmd_history[cmd_history_ptr] = 0;
+	cmd_history_ptr = 0;
+	return;
+}
+
+
 #define FLASH_READ_BURST_SIZE 0x100
 #define PASSWORD "1234"
 void execute_config(void) __banked
@@ -1020,7 +1029,7 @@ void execute_config(void) __banked
 		__xdata uint8_t cfg_idx = 0;
 		uint8_t c = 0;
 		do {
-			for (uint8_t cmd_idx = 0; cmd_idx < (SBUF_SIZE - 1); cmd_idx++) {
+			for (uint8_t cmd_idx = 0; cmd_idx < (CMD_BUF_SIZE - 1); cmd_idx++) {
 				c = flash_buf[cfg_idx++];
 				if (c == 0 || c == '\n') {
 					cmd_buffer[cmd_idx] = '\0';
@@ -1041,13 +1050,6 @@ void execute_config(void) __banked
 
 config_done:
 	// Start saving commands to cmd_history
+	clear_command_history();
 	save_cmd = 1;
-}
-
-void clear_command_history(void) __banked
-{
-	for (cmd_history_ptr = 0; cmd_history_ptr < CMD_HISTORY_SIZE; cmd_history_ptr++)
-		cmd_history[cmd_history_ptr] = 0;
-	cmd_history_ptr = 0;
-	return;
 }
