@@ -26,7 +26,7 @@ __code const struct machine machine = {
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 1,
 	.sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
-	.reset_pin = GPIO46_I2C_SCL0,
+	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	/* Conditions for LED on:
