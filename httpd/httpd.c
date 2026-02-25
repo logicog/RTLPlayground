@@ -27,6 +27,7 @@ extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
 extern __xdata struct flash_region_t flash_region;
+extern __xdata uint32_t flash_size;
 
 // Flash buffer to optimize flash writing speed, write_len is the current filling position
 extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
@@ -426,6 +427,12 @@ void handle_post(void)
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
 		if (is_word(request_path, "upload")) {
+			if (flash_size < FIRMWARE_UPLOAD_START*2)
+			{
+				print_string("Flash too small for firmware upload!\n");
+				send_bad_request();
+				return;
+			}
 			print_string("Firmware upload started.");
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
