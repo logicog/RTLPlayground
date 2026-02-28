@@ -9,7 +9,7 @@
 
 __xdata uint8_t dio_enabled;
 __xdata struct flash_region_t flash_region;
-
+__xdata uint32_t flash_size;
 
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
@@ -17,8 +17,9 @@ __xdata struct flash_region_t flash_region;
 // Don't use command `READ 0x03`, because on many device this command can't run at maximum SPI-clock speed.
 // Use `Fast READ 0x0b` instead!
 //#define CMD_READ		0x03
+#define CMD_READ_STATUS		0x05
 #define CMD_WRITE_ENABLE	0x06
-#define CMD_FREAD		0x0b
+#define CMD_FREAD			0x0b
 #define CMD_SECTOR_ERASE	0x20
 #define CMD_READ_SECURITY_REGS	0x48
 #define CMD_READ_UNIQUE_ID	0x4b
@@ -87,7 +88,7 @@ uint8_t flash_read_status(void)
 
 	// setup status read command
 	SFR_FLASH_TCONF = 0x11;
-	SFR_FLASH_CMD_R = 5;
+	SFR_FLASH_CMD_R = CMD_READ_STATUS;
 
 	// execute and wait for controller done
 	SFR_FLASH_EXEC_GO = 1;
@@ -119,9 +120,10 @@ void flash_read_uid(void)
 	print_byte(SFR_FLASH_DATA8);
 	print_byte(SFR_FLASH_DATA16);
 	print_byte(SFR_FLASH_DATA24);
+	write_char(' ');
 
+	SFR_FLASH_DUMMYCYCLES = 24;	// Doesn't seem to work; we get the same data as for the first transfer
 	SFR_FLASH_EXEC_GO = 1;
-	SFR_FLASH_DUMMYCYCLES = 24;
 	while(SFR_FLASH_EXEC_BUSY);
 
 	print_byte(SFR_FLASH_DATA0);
@@ -148,15 +150,17 @@ void flash_read_jedecid(void)
 	SFR_FLASH_EXEC_GO = 1;
 	while(SFR_FLASH_EXEC_BUSY);
 
+	print_string("Maufacturer ID: 0x");
 	print_byte(SFR_FLASH_DATA0);
+	print_string("\nMemory Type:    0x");
 	print_byte(SFR_FLASH_DATA8);
-	print_byte(SFR_FLASH_DATA16);
-	print_byte(SFR_FLASH_DATA24);
-
-	// Reset slow read mode
-	SFR_FLASH_MODEB = 0x0;
-	SFR_FLASH_CMD_R = CMD_FREAD;
-	SFR_FLASH_DUMMYCYCLES = 8;
+	print_string("\nCapacity:       0x");
+	uint8_t cap = SFR_FLASH_DATA16;
+	flash_size = 1UL << cap;
+	print_byte(cap);
+	print_string(" = ");
+	print_long(flash_size);
+	print_string(" Bytes\n");
 
 	flash_configure_mmio();
 }
@@ -186,51 +190,6 @@ void flash_write_enable(void)
 	do {
 		status = flash_read_status();
 	} while (!(status & 0x2));
-}
-
-
-void flash_dump(uint8_t len)
-{
-	short status;
-	do {
-		status = flash_read_status();
-		print_short(status);
-	} while (status & 0x1);
-
-	// Set fast read mode
-	if (dio_enabled) {
-		SFR_FLASH_MODEB = 0x18;
-		SFR_FLASH_CMD_R = CMD_FREAD_DIO;
-		SFR_FLASH_DUMMYCYCLES = 4;
-	} else {
-		SFR_FLASH_MODEB = 0x0;
-		SFR_FLASH_CMD_R = CMD_FREAD;	// Fast read
-		SFR_FLASH_DUMMYCYCLES = 8;	// Add 8 dummy clocks after read?
-	}
-	// Read 4 bytes
-	SFR_FLASH_TCONF = 4;
-	while (len) {
-		SFR_FLASH_ADDR16 = flash_region.addr >> 16;
-		SFR_FLASH_ADDR8 = flash_region.addr >> 8;
-		SFR_FLASH_ADDR0 = flash_region.addr;
-		flash_region.addr += 4;
-
-		SFR_FLASH_EXEC_GO = 1;
-		while(SFR_FLASH_EXEC_BUSY);
-
-		print_short(SFR_FLASH_DATA0);
-		if (len == 1)
-			return;
-		print_short(SFR_FLASH_DATA8);
-		if (len == 2)
-			return;
-		print_short(SFR_FLASH_DATA16);
-		if (len == 3)
-			return;
-		print_short(SFR_FLASH_DATA24);
-
-		len -= 4;
-	}
 }
 
 /*
@@ -315,7 +274,7 @@ void flash_read_security(void)
 		if (flash_region.len == 3)
 			break;
 		print_byte(SFR_FLASH_DATA24);
-
+		write_char(' ');
 		flash_region.len -= 4;
 	} while(flash_region.len);
 
