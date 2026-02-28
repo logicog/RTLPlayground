@@ -35,7 +35,6 @@ extern __xdata char logbuf[LOGBUF_SIZE];
 extern __xdata uint16_t logptr_w;
 extern __xdata uint8_t full_line_available;
 extern __xdata uint8_t syslog_enabled;
-extern __xdata char char_to_write;
 
 // See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200
@@ -186,9 +185,6 @@ void write_char(char c)
 	tx_buf_empty = 0;
 	SBUF = c;
 
-	char_to_write = c;
-	// syslog_write_char(); // why does this gives a linker error?
-
 	if (syslog_enabled) {
 		logbuf[logptr_w++] = c;
 		logptr_w &= (LOGBUF_SIZE - 1);
@@ -322,7 +318,7 @@ void print_byte(uint8_t a)
 void isr_ext0(void) __interrupt(0)
 {
 	EX0 = 0;	// Disable interrupt for the moment
-	write_char('X');
+	//write_char('X');
 	IT0 = 1;	// Trigger on falling edge of external interrupt
 	EX0 = 1;	// Re-enable interrupt
 }
@@ -337,7 +333,7 @@ void isr_ext1(void) __interrupt(2)
 {
 	// This flag should only be reset after all packets have been read
 	EX1 = 0;
-	write_char('Y');
+	//write_char('Y');
 	EX1 = 1;
 }
 
@@ -348,7 +344,7 @@ void isr_ext1(void) __interrupt(2)
 void isr_ext2(void) __interrupt(8)
 {
 	EXIF &= 0xef;	// Clear IRQ flag (bit 7) in EXIF
-	write_char('Z');
+	//write_char('Z');
 	PCON |= 1; // Enter Idle mode until interrupt occurs
 }
 
@@ -359,7 +355,7 @@ void isr_ext2(void) __interrupt(8)
 void isr_ext3(void) __interrupt(9)
 {
 	EXIF &= 0xdf;	// Clear IRQ flag (bit 6) in EXIF
-	write_char('W');
+	//write_char('W');
 }
 
 // Timer2: handles system tick.
@@ -2086,6 +2082,8 @@ void main(void)
 
 	check_and_flash_update_image();
 
+	syslog_init();
+
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
 	// Is correctly configured. Therefore, we can test it, here...
@@ -2111,7 +2109,6 @@ void main(void)
 	uip_init();
 	uip_arp_init();
 	httpd_init();
-	syslog_init();
 
 	management_vlan = 0; // Disabled
 
