@@ -13,7 +13,6 @@ __xdata uint16_t logptr_w = 0;
 __xdata uint16_t logptr_r = 0;
 __xdata uint8_t full_line_available = 0;
 __xdata uint8_t syslog_enabled = 0;
-__xdata char char_to_write = 0;
 __xdata uip_ipaddr_t syslog_addr;
 
 #define DEST_OFFSET (0)
@@ -25,17 +24,11 @@ __xdata uip_ipaddr_t syslog_addr;
 
 void syslog_init(void) __banked
 {
+	syslog_enabled = 0;
+	logptr_w = 0;
+	logptr_r = 0;
+	full_line_available = 0;
 	syslog_addr[0] = 0xffff; syslog_addr[1] = 0xffff; // Default to broadcast
-}
-
-void syslog_write_char(void) __banked
-{
-	if (syslog_enabled) {
-		logbuf[logptr_w++] = char_to_write;
-		logptr_w &= (LOGBUF_SIZE - 1);
-		if (char_to_write == '\n')
-			full_line_available = 1;
-	}
 }
 
 void handle_syslog(void) __banked
@@ -60,7 +53,7 @@ void handle_syslog(void) __banked
 		SYSLOG_O[ETHERTYPE_OFFSET] = 0x08; SYSLOG_O[ETHERTYPE_OFFSET + 1] = 0x00; // Ethertype: IPv4
 
 		SYSLOG_O[IP_HEADER_OFFSET     ] = 0x45; SYSLOG_O[IP_HEADER_OFFSET +  1] = 0x00; // IPv4, no options
-		SYSLOG_O[IP_HEADER_OFFSET +  2] = (20+8+4+log_size)>>8; SYSLOG_O[IP_HEADER_OFFSET +  3] = (20+8+4+log_size)&0xff; // Total Length
+		SYSLOG_O[IP_HEADER_OFFSET +  2] = (20+8+4+log_size) >> 8; SYSLOG_O[IP_HEADER_OFFSET + 3] = (20+8+4+log_size) & 0xff; // Total Length (IP header + UDP header + payload)
 		SYSLOG_O[IP_HEADER_OFFSET +  4] = 0x00; SYSLOG_O[IP_HEADER_OFFSET +  5] = 0x00; // Identification
 		SYSLOG_O[IP_HEADER_OFFSET +  6] = 0x00; SYSLOG_O[IP_HEADER_OFFSET +  7] = 0x00; // Flags, Fragment Offset
 		SYSLOG_O[IP_HEADER_OFFSET +  8] = 0x40; SYSLOG_O[IP_HEADER_OFFSET +  9] = 0x11; // TTL, Protocol (UDP)
@@ -72,7 +65,7 @@ void handle_syslog(void) __banked
 		
 		SYSLOG_O[UDP_HEADER_OFFSET    ] = 0x02; SYSLOG_O[UDP_HEADER_OFFSET + 1] = 0x02; // Source Port
 		SYSLOG_O[UDP_HEADER_OFFSET + 2] = 0x02; SYSLOG_O[UDP_HEADER_OFFSET + 3] = 0x02; // Destination Port
-		SYSLOG_O[UDP_HEADER_OFFSET + 4] = (8+4+log_size)>>8; SYSLOG_O[UDP_HEADER_OFFSET + 5] = (8+4+log_size)&0xff; // Length
+		SYSLOG_O[UDP_HEADER_OFFSET + 4] = (8+4+log_size) >> 8; SYSLOG_O[UDP_HEADER_OFFSET + 5] = (8+4+log_size) & 0xff; // Length (UDP header + payload)
 		SYSLOG_O[UDP_HEADER_OFFSET + 6] = 0x00; SYSLOG_O[UDP_HEADER_OFFSET + 7] = 0x00; // Header Checksum (not calculated)
 
 		memcpyc(SYSLOG_O + UDP_PAYLOAD_OFFSET, "<14>", 4); // Syslog priority prefix
