@@ -14,6 +14,7 @@ __xdata uint16_t logptr_r = 0;
 __xdata uint8_t full_line_available = 0;
 __xdata uint8_t syslog_enabled = 0;
 __xdata char char_to_write = 0;
+__xdata uip_ipaddr_t syslog_addr;
 
 #define DEST_OFFSET (0)
 #define SOURCE_OFFSET (DEST_OFFSET + 6)
@@ -24,9 +25,7 @@ __xdata char char_to_write = 0;
 
 void syslog_init(void) __banked
 {
-	logptr_r = 0;
-	logptr_w = 0;
-	full_line_available = 0;
+	syslog_addr[0] = 0xffff; syslog_addr[1] = 0xffff; // Default to broadcast
 }
 
 void syslog_write_char(void) __banked
@@ -57,11 +56,7 @@ void handle_syslog(void) __banked
 		SYSLOG_O[DEST_OFFSET]     = 255;  SYSLOG_O[DEST_OFFSET + 1] = 255; SYSLOG_O[DEST_OFFSET + 2] = 255; 
 		SYSLOG_O[DEST_OFFSET + 3] = 255;  SYSLOG_O[DEST_OFFSET + 4] = 255; SYSLOG_O[DEST_OFFSET + 5] = 255; // broadcast
 		memcpy(SYSLOG_O + SOURCE_OFFSET, uip_ethaddr.addr, 6); // Source MAC address
-/*
-		SYSLOG_O[SOURCE_OFFSET]     = uip_ethaddr.addr[0]; SYSLOG_O[SOURCE_OFFSET + 1] = uip_ethaddr.addr[1]; 
-		SYSLOG_O[SOURCE_OFFSET + 2] = uip_ethaddr.addr[2]; SYSLOG_O[SOURCE_OFFSET + 3] = uip_ethaddr.addr[3];  
-		SYSLOG_O[SOURCE_OFFSET + 4] = uip_ethaddr.addr[4]; SYSLOG_O[SOURCE_OFFSET + 5] = uip_ethaddr.addr[5];
-*/		 
+
 		SYSLOG_O[ETHERTYPE_OFFSET] = 0x08; SYSLOG_O[ETHERTYPE_OFFSET + 1] = 0x00; // Ethertype: IPv4
 
 		SYSLOG_O[IP_HEADER_OFFSET     ] = 0x45; SYSLOG_O[IP_HEADER_OFFSET +  1] = 0x00; // IPv4, no options
@@ -70,10 +65,10 @@ void handle_syslog(void) __banked
 		SYSLOG_O[IP_HEADER_OFFSET +  6] = 0x00; SYSLOG_O[IP_HEADER_OFFSET +  7] = 0x00; // Flags, Fragment Offset
 		SYSLOG_O[IP_HEADER_OFFSET +  8] = 0x40; SYSLOG_O[IP_HEADER_OFFSET +  9] = 0x11; // TTL, Protocol (UDP)
 		SYSLOG_O[IP_HEADER_OFFSET + 10] = 0x00; SYSLOG_O[IP_HEADER_OFFSET + 11] = 0x00; // Header Checksum (not calculated)
-		SYSLOG_O[IP_HEADER_OFFSET + 12] = uip_hostaddr[0]&0xff; SYSLOG_O[IP_HEADER_OFFSET + 13] = uip_hostaddr[0]>>8; 
-		SYSLOG_O[IP_HEADER_OFFSET + 14] = uip_hostaddr[1]&0xff; SYSLOG_O[IP_HEADER_OFFSET + 15] = uip_hostaddr[1]>>8;	// Source IP
-		SYSLOG_O[IP_HEADER_OFFSET + 16] = 192;                  SYSLOG_O[IP_HEADER_OFFSET + 17] = 168; 
-		SYSLOG_O[IP_HEADER_OFFSET + 18] = 10;                   SYSLOG_O[IP_HEADER_OFFSET + 19] = 240;	// Destination IP	
+		SYSLOG_O[IP_HEADER_OFFSET + 12] = uip_hostaddr[0] & 0xff; SYSLOG_O[IP_HEADER_OFFSET + 13] = uip_hostaddr[0] >> 8; 
+		SYSLOG_O[IP_HEADER_OFFSET + 14] = uip_hostaddr[1] & 0xff; SYSLOG_O[IP_HEADER_OFFSET + 15] = uip_hostaddr[1] >> 8;	// Source IP
+		SYSLOG_O[IP_HEADER_OFFSET + 16] = syslog_addr[0] & 0xff;  SYSLOG_O[IP_HEADER_OFFSET + 17] = syslog_addr[0] >> 8; 
+		SYSLOG_O[IP_HEADER_OFFSET + 18] = syslog_addr[1] & 0xff;  SYSLOG_O[IP_HEADER_OFFSET + 19] = syslog_addr[1] >> 8;	// Destination IP
 		
 		SYSLOG_O[UDP_HEADER_OFFSET    ] = 0x02; SYSLOG_O[UDP_HEADER_OFFSET + 1] = 0x02; // Source Port
 		SYSLOG_O[UDP_HEADER_OFFSET + 2] = 0x02; SYSLOG_O[UDP_HEADER_OFFSET + 3] = 0x02; // Destination Port
