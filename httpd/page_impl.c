@@ -17,6 +17,7 @@
 // #define DEBUG
 #include "debug.h"
 
+extern __xdata uip_ipaddr_t syslog_addr;
 
 #define L2_MAX_TRANSFER 30
 
@@ -227,6 +228,11 @@ void send_basic_info(void)
 	itoa_html(uip_netmask[0] >> 8); char_to_html('.');
 	itoa_html(uip_netmask[1]); char_to_html('.');
 	itoa_html(uip_netmask[1] >> 8);
+	slen += strtox(outbuf + slen, "\",\"syslog_address\":\"");
+	itoa_html(syslog_addr[0]); char_to_html('.');
+	itoa_html(syslog_addr[0] >> 8); char_to_html('.');
+	itoa_html(syslog_addr[1]); char_to_html('.');
+	itoa_html(syslog_addr[1] >> 8);
 	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
