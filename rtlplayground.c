@@ -22,6 +22,7 @@
 #include "uip/uip_arp.h"
 #include "machine.h"
 #include "phy.h"
+#include "syslog.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -29,6 +30,12 @@ extern __xdata uint32_t flash_size;
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
 void crc16(__xdata uint8_t *v) __naked;
+
+extern __xdata char logbuf[LOGBUF_SIZE];
+extern __xdata uint16_t logptr_w;
+extern __xdata uint8_t full_line_available;
+extern __xdata uint8_t syslog_enabled;
+extern __xdata char char_to_write;
 
 // See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200
@@ -178,8 +185,17 @@ void write_char(char c)
 	}
 	tx_buf_empty = 0;
 	SBUF = c;
-}
 
+	char_to_write = c;
+	// syslog_write_char(); // why does this gives a linker error?
+
+	if (syslog_enabled) {
+		logbuf[logptr_w++] = c;
+		logptr_w &= (LOGBUF_SIZE - 1);
+		if (c == '\n')
+			full_line_available = 1;
+	}
+}
 
 void itoa(uint8_t v)
 {
@@ -930,7 +946,7 @@ void handle_rx(void)
 			if (uip_len) {
 			    tcpip_output();
 			}
-		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // TCP?
+		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // IP?
 			if (!management_vlan || management_vlan == rx_packet_vlan) {
 				uip_arp_ipin();	// Learn MAC addresses in TCP packets
 				uip_input();
@@ -1228,6 +1244,8 @@ void idle(void)
 			cmd_parser();
 		print_string("\n> ");
 	}
+
+	handle_syslog();
 }
 
 
@@ -2093,6 +2111,7 @@ void main(void)
 	uip_init();
 	uip_arp_init();
 	httpd_init();
+	syslog_init();
 
 	management_vlan = 0; // Disabled
 
@@ -2117,6 +2136,7 @@ void main(void)
 	set_sys_led_state(SYS_LED_ON);
 
 	cmd_editor_init();
+
 	while (1) {
 		cmd_edit();
 		idle(); // Enter Idle mode until interrupt occurs
