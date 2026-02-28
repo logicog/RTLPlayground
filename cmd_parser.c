@@ -41,6 +41,8 @@ extern __xdata char passwd[21];
 
 extern __xdata struct dhcp_state dhcp_state;
 
+extern __xdata uint8_t syslog_enabled;
+
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 extern __xdata uint16_t management_vlan;
@@ -1198,6 +1200,21 @@ void cmd_parser(void) __banked
 			parse_port();
 		} else if (cmd_compare(0, "mtu") && cmd_words_b[1] > 0) {
 			parse_mtu();
+		} else if (cmd_compare(0, "log")) {
+			print_string("Logging to UDP.\n");
+			uip_len = 100;
+			for (uint8_t i=0; i<uip_len; i++)
+				uip_buf[i+12] = i;
+			print_string("STP TX\n");
+			tcpip_output();
+		} else if (cmd_compare(0, "syslog")) {
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				print_string("UDP syslog enabled\n");
+				syslog_enabled = 1;
+			} else {
+				print_string("UDP syslog disabled\n");
+				syslog_enabled = 0;
+			}
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
