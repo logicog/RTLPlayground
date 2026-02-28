@@ -96,6 +96,8 @@
 
 #include "../rtl837x_common.h"
 
+extern __xdata uint8_t syslog_enabled;
+
 /*---------------------------------------------------------------------------*/
 /* Variable definitions. */
 
@@ -234,7 +236,7 @@ __xdata struct uip_stats uip_stat;
 #endif /* UIP_STATISTICS == 1 */
 
 #if UIP_LOGGING == 1
-#define UIP_LOG(m) print_string(m)
+#define UIP_LOG(m) uint8_t tmp = syslog_enabled; syslog_enabled = 0; print_string(m); syslog_enabled = tmp;
 #else
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
