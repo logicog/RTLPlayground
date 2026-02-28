@@ -41,6 +41,7 @@ extern __xdata char passwd[21];
 extern __xdata struct dhcp_state dhcp_state;
 
 extern __xdata uint8_t syslog_enabled;
+extern __xdata uip_ipaddr_t syslog_addr;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
@@ -841,9 +842,23 @@ void cmd_parser(void) __banked
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
 				print_string("UDP syslog enabled\n");
 				syslog_enabled = 1;
-			} else {
+			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")){
 				print_string("UDP syslog disabled\n");
 				syslog_enabled = 0;
+			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "ip")) {
+				if (cmd_words_b[3] < 0) {
+					print_string("Current syslog IP: ");
+					itoa(syslog_addr[0]); write_char('.'); itoa(syslog_addr[0] >> 8); write_char('.');
+					itoa(syslog_addr[1]); write_char('.'); itoa(syslog_addr[1] >> 8);
+					return;
+				} else if (!parse_ip(cmd_words_b[2])) {
+					uip_ipaddr(&syslog_addr, ip[0], ip[1], ip[2], ip[3]);
+					print_string("Setting syslog IP: ");
+					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
+					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
+				} else {
+					print_string("Invalid IP address\n");
+				}
 			}
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_words_b[2] > 0 && cmd_compare(1, "dhcp")) {
