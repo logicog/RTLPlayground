@@ -10,6 +10,7 @@
 __xdata uint8_t dio_enabled;
 __xdata struct flash_region_t flash_region;
 __xdata uint32_t flash_size;
+__xdata char flash_size_str[16];
 
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
@@ -159,8 +160,17 @@ void flash_read_jedecid(void)
 	flash_size = 1UL << cap;
 	print_byte(cap);
 	print_string(" = ");
-	print_long(flash_size);
-	print_string(" Bytes\n");
+	switch(cap) {
+		case 0x12: memcpyc(flash_size_str, "256 KB", 7); break;
+		case 0x13: memcpyc(flash_size_str, "512 KB", 7); break;
+		case 0x14: memcpyc(flash_size_str, "1 MB", 5); break;
+		case 0x15: memcpyc(flash_size_str, "2 MB", 5); break;
+		case 0x16: memcpyc(flash_size_str, "4 MB", 5); break;
+		case 0x17: memcpyc(flash_size_str, "8 MB", 5); break;
+		case 0x18: memcpyc(flash_size_str, "16 MB", 6); break;
+		default:   memcpyc(flash_size_str, "unknown", 8); break;
+	}
+	print_string_x(flash_size_str);	write_char('\n');
 
 	flash_configure_mmio();
 }
