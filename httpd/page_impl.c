@@ -17,6 +17,8 @@
 // #define DEBUG
 #include "debug.h"
 
+extern __xdata char flash_size_str[10];
+
 #define L2_MAX_TRANSFER 30
 
 #pragma codeseg BANK1
@@ -96,6 +98,10 @@ void itoa_html(uint8_t v)
 	char_to_html('0' + (v % 10));
 }
 
+void string_to_html(register char *s)
+{
+	while (*s) char_to_html(*s++);
+}
 
 uint16_t stat_content(void)
 {
@@ -234,6 +240,9 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, BUILD_DATE);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
+	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
+	string_to_html(flash_size_str);
+
 	slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
 	send_sfp_info(0);
 	char_to_html('"');

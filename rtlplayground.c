@@ -25,6 +25,7 @@
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
+extern __xdata char flash_size_str[10];
 
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
@@ -232,6 +233,15 @@ void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register 
 }
 
 uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
+{
+	__xdata uint8_t *b = dst;
+	while (*s)
+		*dst++ = *s++;
+	*dst = 0;
+	return dst - b;
+}
+
+uint16_t strcpy(register __xdata uint8_t *dst, register const char *s)
 {
 	__xdata uint8_t *b = dst;
 	while (*s)
@@ -1861,17 +1871,13 @@ void check_and_flash_update_image(void)
 {
 	flash_read_jedecid(); // This initializes also __xdata flash_size variable
 
-	print_long(flash_size); print_string(" flash size detected.\n");
-	print_long(FIRMWARE_UPLOAD_START*2); print_string(" bytes needed for update.\n");
+	print_string_x(flash_size_str); print_string(" flash size detected. (1 MB is needed for image updating)\n");
 	if (flash_size < FIRMWARE_UPLOAD_START*2) {
 		print_string("Flash too small for updating; skipping update check\n");
 		return;
 	}
-	else {
-		print_string("Flash size ok.\n");
-	}
 
-
+	print_string("Checking for update image in flash... ");
 	// Check if an update image is in flash
 	flash_region.addr = FIRMWARE_UPLOAD_START;
 	flash_region.len = 0x100;
@@ -1884,7 +1890,7 @@ void check_and_flash_update_image(void)
 		__xdata uint16_t i = 0;
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
-		print_string("Identified update image. Checking integrity");
+		print_string("found update image! Checking integrity");
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
 		set_sys_led_state(SYS_LED_FAST);
 		crc_value = 0x0000;
@@ -1939,6 +1945,10 @@ void check_and_flash_update_image(void)
 			flash_sector_erase();
 			dest += 0x1000;
 		}
+	}
+	else
+	{
+		print_string("no update image found.\n");
 	}
 }
 
