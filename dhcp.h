@@ -16,7 +16,7 @@
 void dhcp_start(void) __banked;
 void dhcp_stop(void) __banked;
 // void dhcp_periodic(void) __banked;
-void dhcp_callback(void) __banked;
+void dhcp_callback(uint16_t lport) __banked;
 
 
 struct dhcp_state {

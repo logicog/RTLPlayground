@@ -353,8 +353,10 @@ void dhcp_stop(void) __banked
 }
 
 
-void dhcp_callback(void) __banked
+void dhcp_callback(uint16_t lport) __banked
 {
+	if (lport != HTONS(DHCPC_CLIENT_PORT)) // Is this call for us? If not, ignore it
+		return;
 	if (!dhcp_state.state)
 		return;
 	if (uip_closed()) {
