@@ -8,6 +8,6 @@
 void syslog_init(void) __banked;
 void syslog_start(void) __banked;
 void syslog_stop(void) __banked;
-void syslog_callback(void) __banked;
+void syslog_callback(uint16_t lport) __banked;
 
 #endif
