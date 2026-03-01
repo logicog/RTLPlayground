@@ -38,7 +38,6 @@ void syslog_start(void) __banked
 		print_string("Started syslog to IP ");
 		itoa(syslog_addr[0]); write_char('.'); itoa(syslog_addr[0]>>8); write_char('.');
 		itoa(syslog_addr[1]); write_char('.'); itoa(syslog_addr[1]>>8); write_char('\n');
-
 		syslog_enabled = 1;
 	}
 	else {
@@ -58,8 +57,11 @@ void syslog_stop(void) __banked
 	}
 }
 
-void syslog_callback(void) __banked
+void syslog_callback(uint16_t lport) __banked
 {
+	if (lport != syslog_conn->lport)
+		return;
+
 	if ((logptr_r != logptr_w) && full_line_available)
 	{
 		int16_t log_size = logptr_w - logptr_r;
