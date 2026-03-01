@@ -285,6 +285,25 @@
 #define RTL837X_RAND_NUM0		0x107C
 #define RTL837X_RAND_NUM1		0x1080
 
+/*
+ * Bandwidth control
+ */
+#define RTL837X_IGBW_CTRL		0x4c10
+#define IGBW_INC_BYPASS_PKT		0x100
+#define IGBW_INC_IFG			0x80
+#define IGBW_ADM_DHCP			0x20
+#define IGBW_ADM_ARPREQ			0x10
+#define IGBW_ADM_RMA			0x08
+#define IGBW_ADM_BPDU			0x04
+#define IGBW_ADM_RTKPKT			0x02
+#define IGBW_ADM_IGMP			0x01
+#define RTL837X_IGBW_PORT_CTRL		0x4C18
+#define RTL837X_IGBW_PORT_FC_CTRL	0x4C8C
+#define RTL837X_EGBW_PORT_CTRL		0x1c34
+#define RTL837X_EGBW_CTRL		0x447c
+#define EGBW_INC_IFG			0x02
+#define EGBW_CPUMODE			0x01
+
 #ifdef REGDBG
 
 #define REG_SET(r, v) SFR_DATA_24 = (((uint32_t)v) >> 24) & 0xff; \
