@@ -41,7 +41,6 @@ extern __xdata char passwd[21];
 
 extern __xdata struct dhcp_state dhcp_state;
 
-extern __xdata uint8_t syslog_enabled;
 extern __xdata uip_ipaddr_t syslog_addr;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
@@ -1210,11 +1209,9 @@ void cmd_parser(void) __banked
 			tcpip_output();
 		} else if (cmd_compare(0, "syslog")) {
 			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
-				print_string("UDP syslog enabled\n");
-				syslog_enabled = 1;
+				syslog_start();
 			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")){
-				print_string("UDP syslog disabled\n");
-				syslog_enabled = 0;
+				syslog_stop();
 			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "ip")) {
 				if (cmd_words_b[3] < 0) {
 					print_string("Current syslog IP: ");

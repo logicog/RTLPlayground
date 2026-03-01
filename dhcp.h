@@ -40,9 +40,4 @@ struct dhcp_state {
 
 typedef struct dhcp_state uip_udp_appstate_t;
 
-/* Finally we define the application function to be called by uIP. */
-#ifndef UIP_UDP_APPCALL
-#define UIP_UDP_APPCALL dhcp_callback
-#endif /* UIP_APPCALL */
-
 #endif

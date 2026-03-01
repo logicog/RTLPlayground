@@ -387,7 +387,7 @@ void port_l2_setup(void) __banked
 
 void port_stats_print(void) __banked
 {
-	print_string("\n Port\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");
+	print_string("\nPort\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		write_char('0' + machine.log_to_phys_port[i]); write_char('\t');
 
