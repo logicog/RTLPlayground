@@ -106,6 +106,10 @@ int main(int argc, char **argv)
 			printf("Error reading input file.\n");
 			return 5;
 	}
+	if (buffer[0] != 2) {
+			printf("Expected LJMP at offset 0.\n");
+			return 5;
+	}
 	for (int b = BANK0_SIZE; b < BANK_STRIDE + BANK0_SIZE; b ++) {
 		if (buffer[b]) {
 			printf("WARNING: Bank 0: code segment too large at 0x%x!\n", b);

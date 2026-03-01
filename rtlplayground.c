@@ -1942,7 +1942,7 @@ void check_and_flash_update_image(void)
 	}
 }
 
-void bootloader(void)
+void main(void)
 {
 	ticks = 0;
 	stp_clock = STP_TICK_DIVIDER;

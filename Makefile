@@ -1,5 +1,3 @@
-BOOTLOADER_ADDRESS=0x100
-
 VERSION=0.1.0
 IMAGESIZE = 524288
 DEFAULT_CONFIG_LOCATION = 454656
@@ -65,8 +63,8 @@ $(BUILDDIR)%.rel: $(BUILDDIR)%.asm
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)rtlplayground.ihx: $(BUILDDIR)crtstart.rel $(OBJS) $(BUILDDIR)crc16.rel
-	$(CC) $(CC_FLAGS) -Wl-bHOME=${BOOTLOADER_ADDRESS} -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
+$(BUILDDIR)rtlplayground.ihx: $(OBJS) $(BUILDDIR)crtstart.rel $(BUILDDIR)crc16.rel
+	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
 
 $(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
