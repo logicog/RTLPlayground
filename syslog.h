@@ -5,9 +5,9 @@
 
 #define LOGBUF_SIZE 512
 
-extern __xdata char logbuf[LOGBUF_SIZE];
-
 void syslog_init(void) __banked;
-void handle_syslog(void) __banked;
+void syslog_start(void) __banked;
+void syslog_stop(void) __banked;
+void syslog_callback(void) __banked;
 
 #endif
