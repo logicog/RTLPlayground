@@ -101,7 +101,7 @@ extern __xdata struct uip_eth_addr uip_ethaddr;
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string(__code char *p);
 void print_string_x(__xdata char *p);
-void print_long(__xdata uint32_t a);
+void print_long(uint32_t a);
 void print_short(uint16_t a);
 void print_byte(uint8_t a);
 void itoa(uint8_t v);
