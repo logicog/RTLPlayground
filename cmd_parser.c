@@ -842,10 +842,12 @@ void cmd_parser(void) __banked
 					itoa(syslog_addr[1]); write_char('.'); itoa(syslog_addr[1] >> 8);
 					return;
 				} else if (!parse_ip(cmd_words_b[2])) {
+					syslog_stop();
 					uip_ipaddr(&syslog_addr, ip[0], ip[1], ip[2], ip[3]);
 					print_string("Setting syslog IP: ");
 					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
 					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
+					syslog_start();
 				} else {
 					print_string("Invalid IP address\n");
 				}
