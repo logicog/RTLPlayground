@@ -1238,10 +1238,8 @@ void idle(void)
 		cmd_available = 0;
 		if (!cmd_tokenize())
 			cmd_parser();
-		print_string("\n> ");
+		print_cmd_prompt();
 	}
-
-	handle_syslog();
 }
 
 
@@ -2127,7 +2125,7 @@ void main(void)
 	port_stats_print();
 
 	execute_config();
-	print_string("\n> ");
+	print_cmd_prompt();
 	idle_ready = 1;
 
 	set_sys_led_state(SYS_LED_ON);

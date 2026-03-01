@@ -197,7 +197,7 @@ void cmd_edit(void) __banked
 			if (cmd_line_len)
 				cmd_available = 1;
 			else
-				print_string("\n> ");
+				print_cmd_prompt();
 			cursor = 0;
 			cmd_line_len = 0;
 			history_editptr = 0xffff;
