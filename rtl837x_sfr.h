@@ -40,6 +40,9 @@ __sfr __at(0x91) EXIF;
 __sfr __at(0xf8) EIP;
 __sbit __at(0xf9) PX3;
 
+/* MPAGE page (sdcc _XPAGE) register for "movx @Ri" */
+__sfr __at(0x92) _XPAGE; /* _XPAGE is used by sdcc in xstack mode */
+__sfr __at(0x92) MPAGE;
 /* SFR Bank control register: 0x0-3f. A value of 0 is bank 1 */
 __sfr __at(0x96) PSBANK;
 // SFR used to store return bank for trampoline
