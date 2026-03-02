@@ -31,11 +31,6 @@ extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
 void crc16(__xdata uint8_t *v) __naked;
 
-extern __xdata char logbuf[LOGBUF_SIZE];
-extern __xdata uint16_t logptr_w;
-extern __xdata uint8_t full_line_available;
-extern __xdata uint8_t syslog_enabled;
-
 // See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200
 
@@ -172,7 +167,7 @@ void isr_serial(void) __interrupt(4)
 }
 
 
-void write_char(char c)
+void write_char_no_syslog(char c)
 {
 	do {
 	} while (tx_buf_empty == 0);
@@ -184,12 +179,17 @@ void write_char(char c)
 	}
 	tx_buf_empty = 0;
 	SBUF = c;
+}
 
-	if (syslog_enabled) {
-		logbuf[logptr_w++] = c;
-		logptr_w &= (LOGBUF_SIZE - 1);
+void write_char(char c)
+{
+	write_char_no_syslog(c);
+
+	if (syslog_state.enabled) {
+		logbuf[syslog_state.writeptr++] = c;
+		syslog_state.writeptr &= (LOGBUF_SIZE - 1);
 		if (c == '\n')
-			full_line_available = 1;
+			syslog_state.line_available = 1;
 	}
 }
 
@@ -213,6 +213,12 @@ void print_string(__code char *p)
 {
 	while (*p)
 		write_char(*p++);
+}
+
+void print_string_no_syslog(__code char *p)
+{
+	while (*p)
+		write_char_no_syslog(*p++);
 }
 
 void print_string_x(__xdata char *p)
@@ -309,6 +315,11 @@ void print_byte(uint8_t a)
 		low += 'a' - ('0' + 10);
 	}
 	write_char(low);
+}
+
+void print_cmd_prompt(void)
+{
+	print_string_no_syslog("\n> ");
 }
 
 /*
