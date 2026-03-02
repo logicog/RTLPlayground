@@ -260,27 +260,44 @@ uint16_t strlen_x(register __xdata const char *s)
 
 void print_short(uint16_t a)
 {
+	// allocating the registers first improves the sdcc code here
+	uint8_t h = a >> 8;
+	uint8_t l = a;
+
 	print_string("0x");
-	for (signed char i = 12; i >= 0; i -= 4) {
-		write_char(hex[(a >> i) & 0xf]);
-	}
+	print_byte(h);
+	print_byte(l);
 }
 
-
-void print_long(__xdata uint32_t a)
+void print_long(uint32_t a)
 {
+	// allocating the registers first improves the sdcc code here
+	uint8_t a24 = a >> 24;
+	uint8_t a16 = a >> 16;
+	uint8_t a8 = a >> 8;
+	uint8_t a0 = a;
+
 	print_string("0x");
-	for (signed char i = 28; i >= 0; i -= 4) {
-		write_char(hex[(a >> i) & 0xf]);
-	}
+	print_byte(a24);
+	print_byte(a16);
+	print_byte(a8);
+	print_byte(a0);
 }
 
 void print_byte(uint8_t a)
 {
-	write_char(hex[(a >> 4) & 0xf]);
-	write_char(hex[a & 0xf]);
-}
+	char high = (a >> 4) + '0';
+	if (high > '9') {
+		high += 'a' - ('0' + 10);
+	}
+	write_char(high);
 
+	char low = (a & 0xf) + '0';
+	if (low > '9') {
+		low += 'a' - ('0' + 10);
+	}
+	write_char(low);
+}
 
 /*
  * External IRQ 0 Service Routine: Called on link change?
@@ -594,14 +611,10 @@ void print_sfr_data(void)
 {
 	write_char('0');
 	write_char('x');
-	write_char(hex[sfr_data[0] >> 4]);
-	write_char(hex[sfr_data[0] & 0xf]);
-	write_char(hex[sfr_data[1] >> 4]);
-	write_char(hex[sfr_data[1] & 0xf]);
-	write_char(hex[sfr_data[2] >> 4]);
-	write_char(hex[sfr_data[2] & 0xf]);
-	write_char(hex[sfr_data[3] >> 4]);
-	write_char(hex[sfr_data[3] & 0xf]);
+	print_byte(sfr_data[0]);
+	print_byte(sfr_data[1]);
+	print_byte(sfr_data[2]);
+	print_byte(sfr_data[3]);
 }
 
 
@@ -609,10 +622,8 @@ void print_phy_data(void)
 {
 	write_char('0');
 	write_char('x');
-	write_char(hex[SFR_DATA_8 >> 4]);
-	write_char(hex[SFR_DATA_8 & 0xf]);
-	write_char(hex[SFR_DATA_0 >> 4]);
-	write_char(hex[SFR_DATA_0 & 0xf]);
+	print_byte(SFR_DATA_8);
+	print_byte(SFR_DATA_0);
 }
 
 
