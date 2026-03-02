@@ -9,74 +9,72 @@
 #define SYSLOG_P ((__xdata uint8_t *)uip_appdata)
 
 __xdata char logbuf[LOGBUF_SIZE];
-__xdata uint16_t logptr_w ;
-__xdata uint16_t logptr_r;
-__xdata uint8_t full_line_available;
-__xdata uint8_t syslog_enabled;
-__xdata uip_ipaddr_t syslog_addr;
+__xdata struct syslog_state syslog_state;
+__xdata uip_ipaddr_t server_ip;
 
-struct uip_udp_conn *syslog_conn;
+#define state syslog_state 
 
 void syslog_init(void) __banked
 {
-	syslog_enabled = 0;
-	syslog_conn = 0;
-	logptr_w = 0;
-	logptr_r = 0;
-	full_line_available = 0;
-	syslog_addr[0] = 0; syslog_addr[1] = 0; // Default to 0.0.0.0
+	state.enabled = 0;
+	state.syslog_conn = 0;
+	state.writeptr = 0;
+	state.readptr = 0;
+	state.line_available = 0;
+	state.server_ip[0] = 0; state.server_ip[1] = 0; state.server_ip[2] = 0; state.server_ip[3] = 0;// Default to 0.0.0.0
 }
 
 void syslog_start(void) __banked
 {
-	if (syslog_conn == 0) {
-		syslog_conn = uip_udp_new(&syslog_addr, HTONS(514));
-		if (syslog_conn == 0) {
-			print_string("Failed to create a new UDP client\n");
+	if (state.syslog_conn == 0) {
+		uip_ipaddr(server_ip, state.server_ip[0], state.server_ip[1], state.server_ip[2], state.server_ip[3]);
+		state.syslog_conn = uip_udp_new(&server_ip, HTONS(514));
+		if (state.syslog_conn == 0) {
+			print_string_no_syslog("Failed to create a new UDP client\n");
 			return;
 		}
-		print_string("Started syslog to IP ");
-		itoa(syslog_addr[0]); write_char('.'); itoa(syslog_addr[0]>>8); write_char('.');
-		itoa(syslog_addr[1]); write_char('.'); itoa(syslog_addr[1]>>8); write_char('\n');
-		syslog_enabled = 1;
+		print_string_no_syslog("Started syslog to IP ");
+		itoa(state.server_ip[0]); write_char('.'); itoa(state.server_ip[1]); write_char('.');
+		itoa(state.server_ip[2]); write_char('.'); itoa(state.server_ip[3]); write_char('\n');
+		state.enabled = 1;
 	}
 	else {
-		print_string("Syslog is already running\n");
+		print_string_no_syslog("Syslog is already running\n");
 	}
 }
 
 void syslog_stop(void) __banked
 {
-	syslog_enabled = 0;
-	if (syslog_conn != 0) {
-		uip_udp_remove(syslog_conn);
-		syslog_conn = 0;
-		print_string("Stopped syslog\n");
+	state.enabled = 0;
+	if (state.syslog_conn != 0) {
+		uip_udp_remove(state.syslog_conn);
+		state.syslog_conn = 0;
+		print_string_no_syslog("Stopped syslog\n");
 	} else {
-		print_string("Syslog is not running\n");
+		print_string_no_syslog("Syslog is not running\n");
 	}
 }
 
 void syslog_callback(uint16_t lport) __banked
 {
-	if (lport != syslog_conn->lport)
+	if (lport != state.syslog_conn->lport)
 		return;
 
-	if ((logptr_r != logptr_w) && full_line_available)
+	if ((state.readptr != state.writeptr) && state.line_available)
 	{
-		int16_t log_size = logptr_w - logptr_r;
+		int16_t log_size = state.writeptr - state.readptr;
 		if (log_size < 0)
 			log_size += LOGBUF_SIZE;
 		
 		// Skipping linefeeds at the start of the log line
-		uint16_t log_start = logptr_r;
+		uint16_t log_start = state.readptr;
 		while (log_size > 0 && logbuf[log_start] == '\n') {
 			log_start = (log_start + 1) & (LOGBUF_SIZE - 1);
 			log_size--;
 		}
 
 		// Skipping linefeeds and whitespaces at the end of the log line
-		uint16_t log_end = logptr_w;
+		uint16_t log_end = state.writeptr;
 		while ( (log_size > 0) && 
 				((logbuf[(log_end-1) & (LOGBUF_SIZE - 1)] == '\n') ||
 				 (logbuf[(log_end-1) & (LOGBUF_SIZE - 1)] == ' ')))
@@ -86,8 +84,8 @@ void syslog_callback(uint16_t lport) __banked
 		}
 
 		if (log_size == 0) {
-			logptr_r = logptr_w;
-			full_line_available = 0;
+			state.readptr = state.writeptr;
+			state.line_available = 0;
 			return;
 		}
 
@@ -101,7 +99,7 @@ void syslog_callback(uint16_t lport) __banked
 		}
 
 		uip_udp_send(log_size+4);
-		logptr_r = logptr_w;
-		full_line_available = 0;
+		state.readptr = state.writeptr;
+		state.line_available = 0;
 	}
 }

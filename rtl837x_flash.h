@@ -13,3 +13,4 @@ void flash_write_bytes(__xdata uint8_t *ptr);
 __code char* get_flash_size_str(void);
 
 #endif
+
