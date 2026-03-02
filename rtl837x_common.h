@@ -99,6 +99,7 @@ extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
 // Headers for calls in the common code area (HOME/BANK0)
+void print_string_no_syslog(__code char *p);
 void print_string(__code char *p);
 void print_string_x(__xdata char *p);
 void print_long(uint32_t a);
@@ -120,6 +121,7 @@ void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
 void delay(uint16_t t);
 void sleep(uint16_t t);
+void write_char_no_syslog(char c);
 void write_char(char c);
 void print_reg(uint16_t reg);
 uint8_t sfp_read_reg(uint8_t slot, uint8_t reg);

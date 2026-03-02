@@ -15,6 +15,7 @@
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "dhcp.h"
+#include "syslog.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -40,8 +41,6 @@ extern __xdata struct flash_region_t flash_region;
 extern __xdata char passwd[21];
 
 extern __xdata struct dhcp_state dhcp_state;
-
-extern __xdata uip_ipaddr_t syslog_addr;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
@@ -1208,15 +1207,14 @@ void cmd_parser(void) __banked
 			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "ip")) {
 				if (cmd_words_b[3] < 0) {
 					print_string("Current syslog IP: ");
-					itoa(syslog_addr[0]); write_char('.'); itoa(syslog_addr[0] >> 8); write_char('.');
-					itoa(syslog_addr[1]); write_char('.'); itoa(syslog_addr[1] >> 8);
+					itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
+					itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
 					return;
 				} else if (!parse_ip(cmd_words_b[2])) {
 					syslog_stop();
-					uip_ipaddr(&syslog_addr, ip[0], ip[1], ip[2], ip[3]);
-					print_string("Setting syslog IP: ");
-					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
-					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
+					print_string("Setting new syslog IP.\n");
+					syslog_state.server_ip[0] = ip[0]; syslog_state.server_ip[1] = ip[1];
+					syslog_state.server_ip[2] = ip[2]; syslog_state.server_ip[3] = ip[3];
 					syslog_start();
 				} else {
 					print_string("Invalid IP address\n");
