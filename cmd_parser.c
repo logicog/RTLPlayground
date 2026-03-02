@@ -1211,13 +1211,32 @@ void cmd_parser(void) __banked
 					itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
 					return;
 				} else if (!parse_ip(cmd_words_b[2])) {
-					syslog_stop();
+					uint8_t was_enabled = syslog_state.enabled;
+					if (was_enabled)
+						syslog_stop();
 					print_string("Setting new syslog IP.\n");
 					syslog_state.server_ip[0] = ip[0]; syslog_state.server_ip[1] = ip[1];
 					syslog_state.server_ip[2] = ip[2]; syslog_state.server_ip[3] = ip[3];
-					syslog_start();
+					if (was_enabled)
+						syslog_start();
 				} else {
 					print_string("Invalid IP address\n");
+				}
+			}
+			else if (cmd_words_b[1] < 0) {
+				print_string("Error: syslog [on|off|ip [ip-address]]\n");
+				print_string("  on/off enables or disables syslog, ip sets the syslog server IP address\n");
+			}
+			else
+			{
+				print_string("Current syslog status: ");
+				if (syslog_state.enabled) {
+					print_string("enabled, sending to ");
+					itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
+					itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+					write_char('\n');
+				} else {
+					print_string("disabled\n");
 				}
 			}
 		} else if (cmd_compare(0, "ip")) {
