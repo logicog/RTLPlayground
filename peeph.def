@@ -1,0 +1,103 @@
+// optimized strlen
+replace {
+	clr	c
+	subb	a,%1
+	mov	%1,a
+	mov	a,%2
+	subb	a,%3
+	mov	%3,a
+	dec	%1
+	cjne	%1,#0xff,%4
+	dec	%3
+%4:
+} by {
+	setb	c
+	subb	a,%1
+	mov	%1,a
+	mov	a,%2
+	subb	a,%3
+	mov	%3,a
+	;	Peephole optimized decrement, merged into previous
+} if labelRefCount(%4 1)
+
+replace restart {
+%1:
+	mov	dpl,%2
+	mov	dph,%3
+	clr	a
+	movc	a,@a+dptr
+	mov	%4,a
+	inc	dptr
+	mov	%2,dpl
+	mov	%3,dph
+	mov	a,%4
+	jnz	%1
+} by {
+	mov	dpl,%2
+	mov	dph,%3
+%1:
+	clr	a
+	movc	a,@a+dptr
+	mov	%4,a
+	inc	dptr
+	jnz	%1
+	;	Peephole hoisted temporary update out of loop
+	mov	%2,dpl
+	mov	%3,dph
+	mov	a,%4
+} if labelRefCount(%1 1)
+
+replace restart {
+%1:
+	mov	dpl,%2
+	mov	dph,%3
+	movx	a,@dptr
+	mov	%4,a
+	inc	dptr
+	mov	%2,dpl
+	mov	%3,dph
+	mov	a,%4
+	jnz	%1
+} by {
+	mov	dpl,%2
+	mov	dph,%3
+%1:
+	movx	a,@dptr
+	mov	%4,a
+	inc	dptr
+	jnz	%1
+	;	Peephole hoisted temporary update out of loop
+	mov	%2,dpl
+	mov	%3,dph
+	mov	a,%4
+} if labelRefCount(%1 1)
+
+replace {
+	mov	%1, dpl
+	mov	%2, dph
+	mov	a%3,%1
+	mov	a%4,%2
+} by {
+	mov	%1, dpl
+	mov	%2, dph
+	mov	%3, dpl
+	mov	%4, dph
+	;	Peephole modified moves to enable further optimizations
+}
+
+replace {
+	mov	%1,a
+	mov	a,%2
+	subb	a,%3
+	mov	%3,a
+	mov	dpl,%1
+	mov	dph,%3
+	ret
+} by {
+	mov	dpl,a
+	;	Peephole removed redundant move before return
+	mov	a,%2
+	subb	a,%3
+	mov	dph,a
+	ret
+}
