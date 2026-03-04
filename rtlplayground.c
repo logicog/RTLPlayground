@@ -457,6 +457,23 @@ void reg_bit_clear(uint16_t reg_addr, char bit)
 	reg_write_m(reg_addr);
 }
 
+
+/*
+ * This sets a bit in the 32bit wide switch register reg_addr
+ */
+uint8_t reg_bit_test(uint16_t reg_addr, char bit)
+{
+	uint8_t bit_mask = 1 << (bit & 0x7);
+
+	bit >>= 3;
+	reg_read_m(reg_addr);
+	bit_mask = bit_mask;
+	if (sfr_data[3-bit] & bit_mask)
+		return 1;
+	return 0;
+}
+
+
 /*
  * This masks the sfr data fields, first &-ing with ~mask, then setting the bits in set
  */
