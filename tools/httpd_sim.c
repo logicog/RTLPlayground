@@ -15,7 +15,7 @@
 #define PASSWORD "1234"
 #define SESSION_TIMEOUT 2000
 
-#define PORTS 9
+#define PORTS 6
 #define NSFP 1
 
 #define N_COUNTERS 52
@@ -229,7 +229,7 @@ void send_status(int s)
 
 void send_counters(int s, int port)
 {
-	struct json_object *v, *counters;
+	struct json_object *counters;
 	const char *jstring;
         char *header = "HTTP/1.1 200 OK\r\n"
 		       "Cache-Control: no-cache\r\n"
@@ -239,7 +239,6 @@ void send_counters(int s, int port)
 	counters = json_object_new_array_ext(N_COUNTERS);
 
 	for (int i = 0; i < N_COUNTERS; i++) {
-		v = json_object_new_object();
 		sprintf(counter_buf, "0x%016lx", 0x1234UL + i);
 		json_object_array_add(counters, json_object_new_string(counter_buf));
 	}
@@ -272,6 +271,56 @@ void send_eee(int s)
 		sprintf(eee_buf, "%08b", eee_lp);
 		json_object_object_add(v, "eee_lp", json_object_new_string(eee_buf));
 		json_object_object_add(v, "active", json_object_new_int((i % 2) ? 1 : 0));
+		json_object_array_add(ports, v);
+	}
+
+        write(s, header, strlen(header));
+	
+	jstring = json_object_to_json_string_ext(ports, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(ports);
+}
+
+
+void send_bandwidth(int s)
+{
+	struct json_object *ports, *v;
+	const char *jstring;
+	uint32_t bw;
+	int limited, fcEnabled;
+	char *header = "HTTP/1.1 200 OK\r\n"
+		"Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	ports = json_object_new_array_ext(PORTS);
+	for (int i = 1; i <= PORTS; i++) {
+		v = json_object_new_object();
+		json_object_object_add(v, "portNum", json_object_new_int(i));
+		if (i % 2) {
+			limited = 1;
+			fcEnabled = i % 4 ? 1 : 0;
+			bw = 0x100;
+		} else {
+			limited = 0;
+			fcEnabled = 0;
+			bw = 0xfffff;
+		}
+		char bw_buf[20];
+		sprintf(bw_buf, "%08x", bw);
+		json_object_object_add(v, "iLimited", json_object_new_int(limited));
+		json_object_object_add(v, "iFC", json_object_new_int(fcEnabled));
+		json_object_object_add(v, "iBW", json_object_new_string(bw_buf));
+
+		if (i % 4) {
+			limited = 1;
+			bw = 0x1000;
+		} else {
+			limited = 0;
+			bw = 0xfffff;
+		}
+		sprintf(bw_buf, "%08x", bw);
+		json_object_object_add(v, "eLimited", json_object_new_int(limited));
+		json_object_object_add(v, "eBW", json_object_new_string(bw_buf));
+
 		json_object_array_add(ports, v);
 	}
 
@@ -592,6 +641,13 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_eee(new_socket);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/bandwidth.json", 15)) {
+					printf("Bandwidth request\n");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_bandwidth(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/information.json", 17)) {
 					printf("Status request\n");
