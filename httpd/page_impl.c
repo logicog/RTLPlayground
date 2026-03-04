@@ -546,6 +546,50 @@ void send_eee(void)
 	}
 }
 
+
+void send_bandwidth(void)
+{
+	dbg_string("send_bandwidth called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	char_to_html('[');
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"iLimited\":");
+		reg_read_m(RTL837X_IGBW_PORT_CTRL + i * 4);
+		if (sfr_data[1] & 0x10)
+			char_to_html('1');
+		else
+			char_to_html('0');
+		slen += strtox(outbuf + slen, ",\"iBW\":\"");
+		byte_to_html(sfr_data[1] & 0x0f);
+		byte_to_html(sfr_data[2]);
+		byte_to_html(sfr_data[3]);
+		slen += strtox(outbuf + slen, "\",\"iFC\":");
+		if (reg_bit_test(RTL837X_IGBW_PORT_FC_CTRL, i))
+			char_to_html('1');
+		else
+			char_to_html('0');
+		reg_read_m(RTL837X_EGBW_PORT_CTRL + i * 1024);
+		slen += strtox(outbuf + slen, ",\"eLimited\":");
+		if (sfr_data[1] & 0x10)
+			char_to_html('1');
+		else
+			char_to_html('0');
+		slen += strtox(outbuf + slen, ",\"eBW\":\"");
+		byte_to_html(sfr_data[1] & 0x0f);
+		byte_to_html(sfr_data[2]);
+		byte_to_html(sfr_data[3]);
+		char_to_html('"');
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+}
+
+
 void send_mtu(void)
 {
 	dbg_string("send_mtu called\n");
