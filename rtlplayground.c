@@ -25,7 +25,6 @@
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
-extern __xdata char flash_size_str[10];
 
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
@@ -241,14 +240,6 @@ uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
 	return dst - b;
 }
 
-uint16_t strcpy(register __xdata uint8_t *dst, register const char *s)
-{
-	__xdata uint8_t *b = dst;
-	while (*s)
-		*dst++ = *s++;
-	*dst = 0;
-	return dst - b;
-}
 
 uint16_t strlen(register __code const char *s)
 {
@@ -1871,7 +1862,7 @@ void check_and_flash_update_image(void)
 {
 	flash_read_jedecid(); // This initializes also __xdata flash_size variable
 
-	print_string_x(flash_size_str); print_string(" flash size detected. (1 MB is needed for image updating)\n");
+	print_string(get_flash_size_str()); print_string(" flash size detected. (1 MB is needed for image updating)\n");
 	if (flash_size < FIRMWARE_UPLOAD_START*2) {
 		print_string("Flash too small for updating; skipping update check\n");
 		return;

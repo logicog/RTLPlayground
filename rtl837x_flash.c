@@ -9,8 +9,11 @@
 
 __xdata uint8_t dio_enabled;
 __xdata struct flash_region_t flash_region;
+
 __xdata uint32_t flash_size;
-__xdata char flash_size_str[16];
+__xdata uint8_t flash_capacity_code;
+__code char * __code flash_size_text[] = { "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB" };
+
 
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
@@ -135,6 +138,13 @@ void flash_read_uid(void)
 	flash_configure_mmio();
 }
 
+__code char* get_flash_size_str(void)
+{
+	if (flash_capacity_code >= 0x12 && flash_capacity_code <= 0x18)
+		return flash_size_text[flash_capacity_code - 0x12];
+	else
+		return "unknown";
+}
 
 void flash_read_jedecid(void)
 {
@@ -151,26 +161,16 @@ void flash_read_jedecid(void)
 	SFR_FLASH_EXEC_GO = 1;
 	while(SFR_FLASH_EXEC_BUSY);
 
-	print_string("Maufacturer ID: 0x");
+	print_string("Flash information:\n");
+	print_string("  Manufacturer ID: 0x");
 	print_byte(SFR_FLASH_DATA0);
-	print_string("\nMemory Type:    0x");
+	print_string("\n  Memory Type:     0x");
 	print_byte(SFR_FLASH_DATA8);
-	print_string("\nCapacity:       0x");
-	uint8_t cap = SFR_FLASH_DATA16;
-	flash_size = 1UL << cap;
-	print_byte(cap);
-	print_string(" = ");
-	switch(cap) {
-		case 0x12: memcpyc(flash_size_str, "256 KB", 7); break;
-		case 0x13: memcpyc(flash_size_str, "512 KB", 7); break;
-		case 0x14: memcpyc(flash_size_str, "1 MB", 5); break;
-		case 0x15: memcpyc(flash_size_str, "2 MB", 5); break;
-		case 0x16: memcpyc(flash_size_str, "4 MB", 5); break;
-		case 0x17: memcpyc(flash_size_str, "8 MB", 5); break;
-		case 0x18: memcpyc(flash_size_str, "16 MB", 6); break;
-		default:   memcpyc(flash_size_str, "unknown", 8); break;
-	}
-	print_string_x(flash_size_str);	write_char('\n');
+	print_string("\n  Capacity:        0x");
+	flash_capacity_code = SFR_FLASH_DATA16;
+	flash_size = 1UL << flash_capacity_code;
+	print_byte(flash_capacity_code);
+	print_string(" = "); print_string(get_flash_size_str()); write_char('\n');
 
 	flash_configure_mmio();
 }
