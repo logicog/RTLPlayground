@@ -9,7 +9,9 @@
 
 __xdata uint8_t dio_enabled;
 __xdata struct flash_region_t flash_region;
+
 __xdata uint32_t flash_size;
+__xdata uint8_t flash_capacity_code;
 
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
@@ -134,6 +136,19 @@ void flash_read_uid(void)
 	flash_configure_mmio();
 }
 
+__code char* get_flash_size_str(void)
+{
+	switch (flash_capacity_code) {
+		case 0x12: return "256 KB";
+		case 0x13: return "512 KB";
+		case 0x14: return "1 MB";
+		case 0x15: return "2 MB";
+		case 0x16: return "4 MB";
+		case 0x17: return "8 MB";
+		case 0x18: return "16 MB";
+		default: return "unknown";
+	}
+}
 
 void flash_read_jedecid(void)
 {
@@ -150,17 +165,16 @@ void flash_read_jedecid(void)
 	SFR_FLASH_EXEC_GO = 1;
 	while(SFR_FLASH_EXEC_BUSY);
 
-	print_string("Maufacturer ID: 0x");
+	print_string("Flash information:\n");
+	print_string("  Manufacturer ID: 0x");
 	print_byte(SFR_FLASH_DATA0);
-	print_string("\nMemory Type:    0x");
+	print_string("\n  Memory Type:     0x");
 	print_byte(SFR_FLASH_DATA8);
-	print_string("\nCapacity:       0x");
-	uint8_t cap = SFR_FLASH_DATA16;
-	flash_size = 1UL << cap;
-	print_byte(cap);
-	print_string(" = ");
-	print_long(flash_size);
-	print_string(" Bytes\n");
+	print_string("\n  Capacity:        0x");
+	flash_capacity_code = SFR_FLASH_DATA16;
+	flash_size = 1UL << flash_capacity_code;
+	print_byte(flash_capacity_code);
+	print_string(" = "); print_string(get_flash_size_str()); write_char('\n');
 
 	flash_configure_mmio();
 }

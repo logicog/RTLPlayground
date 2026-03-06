@@ -10,4 +10,6 @@ void flash_read_security(void);
 void flash_sector_erase(void);
 void flash_read_bulk(__xdata uint8_t *dst);
 void flash_write_bytes(__xdata uint8_t *ptr);
+__code char* get_flash_size_str(void);
+
 #endif
