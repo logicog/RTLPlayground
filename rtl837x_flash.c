@@ -12,8 +12,6 @@ __xdata struct flash_region_t flash_region;
 
 __xdata uint32_t flash_size;
 __xdata uint8_t flash_capacity_code;
-__code char * __code flash_size_text[] = { "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB" };
-
 
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
@@ -140,10 +138,16 @@ void flash_read_uid(void)
 
 __code char* get_flash_size_str(void)
 {
-	if (flash_capacity_code >= 0x12 && flash_capacity_code <= 0x18)
-		return flash_size_text[flash_capacity_code - 0x12];
-	else
-		return "unknown";
+	switch (flash_capacity_code) {
+		case 0x12: return "256 KB";
+		case 0x13: return "512 KB";
+		case 0x14: return "1 MB";
+		case 0x15: return "2 MB";
+		case 0x16: return "4 MB";
+		case 0x17: return "8 MB";
+		case 0x18: return "16 MB";
+		default: return "unknown";
+	}
 }
 
 void flash_read_jedecid(void)
