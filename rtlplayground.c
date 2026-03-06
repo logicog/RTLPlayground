@@ -240,6 +240,7 @@ uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
 	return dst - b;
 }
 
+
 uint16_t strlen(register __code const char *s)
 {
 	uint16_t l = 0;
@@ -1872,17 +1873,13 @@ void check_and_flash_update_image(void)
 {
 	flash_read_jedecid(); // This initializes also __xdata flash_size variable
 
-	print_long(flash_size); print_string(" flash size detected.\n");
-	print_long(FIRMWARE_UPLOAD_START*2); print_string(" bytes needed for update.\n");
+	print_string(get_flash_size_str()); print_string(" flash size detected. (1 MB is needed for image updating)\n");
 	if (flash_size < FIRMWARE_UPLOAD_START*2) {
 		print_string("Flash too small for updating; skipping update check\n");
 		return;
 	}
-	else {
-		print_string("Flash size ok.\n");
-	}
 
-
+	print_string("Checking for update image in flash... ");
 	// Check if an update image is in flash
 	flash_region.addr = FIRMWARE_UPLOAD_START;
 	flash_region.len = 0x100;
@@ -1895,7 +1892,7 @@ void check_and_flash_update_image(void)
 		__xdata uint16_t i = 0;
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
-		print_string("Identified update image. Checking integrity");
+		print_string("found update image! Checking integrity");
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
 		set_sys_led_state(SYS_LED_FAST);
 		crc_value = 0x0000;
@@ -1950,6 +1947,10 @@ void check_and_flash_update_image(void)
 			flash_sector_erase();
 			dest += 0x1000;
 		}
+	}
+	else
+	{
+		print_string("no update image found.\n");
 	}
 }
 

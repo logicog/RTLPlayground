@@ -131,6 +131,7 @@ void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register 
 uint16_t strlen(register __code const char *s);
 uint16_t strlen_x(register __xdata const char *s);
 uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
+uint16_t strcpy(register __xdata uint8_t *dst, register const char *s);
 void tcpip_output(void);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
