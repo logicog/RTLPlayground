@@ -3,7 +3,6 @@ var vlanInterval = Number();
 function vlanForm() {
   if (!numPorts)
     return;
-  clearInterval(vlanInterval);
   var t = document.getElementById('tPorts');
   var u = document.getElementById('uPorts');
   var p = document.getElementById('pPorts');
@@ -58,10 +57,6 @@ function pvClicked(p){
   }
 }
 
-window.addEventListener("load", function() {
-  vlanInterval = setInterval(vlanForm, 100);
-});
-
 function fetchVLAN() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -83,5 +78,12 @@ function fetchVLAN() {
     return;
   }
   xhttp.open("GET", `/vlan.json?vid=${v}`, true);
-  xhttp.send(); 
+  sendXHTTP(xhttp);
 }
+
+window.addEventListener("load", function() {
+  update( () => {
+    vlanForm();
+    const interval = setInterval(update, 2000);
+  });
+});

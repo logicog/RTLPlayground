@@ -3,7 +3,6 @@ var clicked = new Int8Array(10);
 function createPortTable() {
   var tbl = document.getElementById('speedtable');
    if (tbl.rows.length <= 2 && numPorts) {
-     clearInterval(pTableInterval);
      const sSelect = '<select name="speed_sel" id="speed_sel">'
       + '<option value="auto">Auto</option>'
       + '<option value="2g5">2500MBit/Full</option>'
@@ -130,17 +129,19 @@ function getMTUs() {
         if (!mtu)
           continue;
         mtu.value = mtus[n];
-        clearInterval(pMTUInterval);
       }
     }
   };
   xhttp.open("GET", "/mtu.json", true);
-  xhttp.timeout = 1500; xhttp.send();
+  xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
 window.addEventListener("load", function() {
-  const updatePortTableInterval = setInterval(updatePortTable, 1000);
+  update( () => {
+    createPortTable();
+    updatePortTable();
+    getMTUs()
+    const interval = setInterval(update, 2000);
+    const updatePortTableInterval = setInterval(updatePortTable, 1000);
+  });
 });
-
-const pTableInterval = setInterval(createPortTable, 1000);
-const pMTUInterval = setInterval(getMTUs, 1200);
