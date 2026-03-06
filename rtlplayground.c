@@ -22,6 +22,7 @@
 #include "uip/uip_arp.h"
 #include "machine.h"
 #include "phy.h"
+#include "syslog.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -166,7 +167,7 @@ void isr_serial(void) __interrupt(4)
 }
 
 
-void write_char(char c)
+void write_char_no_syslog(char c)
 {
 	do {
 	} while (tx_buf_empty == 0);
@@ -180,6 +181,17 @@ void write_char(char c)
 	SBUF = c;
 }
 
+void write_char(char c)
+{
+	write_char_no_syslog(c);
+
+	if (syslog_state.enabled) {
+		logbuf[syslog_state.writeptr++] = c;
+		syslog_state.writeptr &= (LOGBUF_SIZE - 1);
+		if (c == '\n')
+			syslog_state.line_available = 1;
+	}
+}
 
 void itoa(uint8_t v)
 {
@@ -201,6 +213,12 @@ void print_string(__code char *p)
 {
 	while (*p)
 		write_char(*p++);
+}
+
+void print_string_no_syslog(__code char *p)
+{
+	while (*p)
+		write_char_no_syslog(*p++);
 }
 
 void print_string_x(__xdata char *p)
@@ -298,6 +316,11 @@ void print_byte(uint8_t a)
 		low += 'a' - ('0' + 10);
 	}
 	write_char(low);
+}
+
+void print_cmd_prompt(void)
+{
+	print_string_no_syslog("\n> ");
 }
 
 /*
@@ -931,7 +954,7 @@ void handle_rx(void)
 			if (uip_len) {
 			    tcpip_output();
 			}
-		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // TCP?
+		} else if (uip_buf[ETHERTYPE_OFFSET] == 0x08 && uip_buf[ETHERTYPE_OFFSET + 1] == 0x00) { // IP?
 			if (!management_vlan || management_vlan == rx_packet_vlan) {
 				uip_arp_ipin();	// Learn MAC addresses in TCP packets
 				uip_input();
@@ -1227,7 +1250,7 @@ void idle(void)
 		cmd_available = 0;
 		if (!cmd_tokenize())
 			cmd_parser();
-		print_string("\n> ");
+		print_cmd_prompt();
 	}
 }
 
@@ -2069,6 +2092,8 @@ void main(void)
 
 	check_and_flash_update_image();
 
+	syslog_init();
+
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
 	// Is correctly configured. Therefore, we can test it, here...
@@ -2112,12 +2137,13 @@ void main(void)
 	port_stats_print();
 
 	execute_config();
-	print_string("\n> ");
+	print_cmd_prompt();
 	idle_ready = 1;
 
 	set_sys_led_state(SYS_LED_ON);
 
 	cmd_editor_init();
+
 	while (1) {
 		cmd_edit();
 		idle(); // Enter Idle mode until interrupt occurs

@@ -14,6 +14,7 @@
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "dhcp.h"
+#include "syslog.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -828,6 +829,46 @@ void cmd_parser(void) __banked
 			parse_port();
 		} else if (cmd_compare(0, "mtu") && cmd_words_b[1] > 0) {
 			parse_mtu();
+		} else if (cmd_compare(0, "syslog")) {
+			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+				syslog_start();
+			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")){
+				syslog_stop();
+			} else if (cmd_words_b[1] > 0 && cmd_compare(1, "ip")) {
+				if (cmd_words_b[3] < 0) {
+					print_string("Current syslog IP: ");
+					itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
+					itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+					return;
+				} else if (!parse_ip(cmd_words_b[2])) {
+					uint8_t was_enabled = syslog_state.enabled;
+					if (was_enabled)
+						syslog_stop();
+					print_string("Setting new syslog IP.\n");
+					syslog_state.server_ip[0] = ip[0]; syslog_state.server_ip[1] = ip[1];
+					syslog_state.server_ip[2] = ip[2]; syslog_state.server_ip[3] = ip[3];
+					if (was_enabled)
+						syslog_start();
+				} else {
+					print_string("Invalid IP address\n");
+				}
+			}
+			else if (cmd_words_b[1] < 0) {
+				print_string("Error: syslog [on|off|ip [ip-address]]\n");
+				print_string("  on/off enables or disables syslog, ip sets the syslog server IP address\n");
+			}
+			else
+			{
+				print_string("Current syslog status: ");
+				if (syslog_state.enabled) {
+					print_string("enabled, sending to ");
+					itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
+					itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+					write_char('\n');
+				} else {
+					print_string("disabled\n");
+				}
+			}
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_words_b[2] > 0 && cmd_compare(1, "dhcp")) {
 				dhcp_start();
@@ -959,6 +1000,9 @@ void cmd_parser(void) __banked
 					write_char(cmd_history[p]);
 				p = (p + 1) & CMD_HISTORY_MASK;
 			}
+		}
+		else {
+			print_string("Unknown command\n");
 		}
 		if (save_cmd) {
 			uint8_t i;
