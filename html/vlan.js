@@ -39,11 +39,6 @@ function vlanForm() {
 
 function setC(t, p, c){
   document.getElementById(t+'port'+p).checked=c;
-  // When a tagged port is checked, automatically select the PVID port as well
-  const tportElem = document.getElementById('tport'+p);
-  if (tportElem && tportElem.checked) {
-    document.getElementById('pport'+p).checked=true;
-  }
 }
 
 function utClicked(t){
@@ -70,10 +65,16 @@ function fetchVLAN() {
       console.log("VLAN: ", JSON.stringify(s));
       m = parseInt(s.members, 16);
       document.getElementById('vname').value = s.name;
+      var members = m & 0x3FF;
+      var untag = (m >> 10) & 0x3FF;
+      var pvid = parseInt(s.pvid, 16);
       for (let i = 1; i <= numPorts; i++) {
-        setC('t', i, (m>>(10+i-1))&1);
-        setC('u', i, (m>>(i-1))&1);
-        setC('p', i, (m>>(20+i-1))&1);
+        var bit = i - 1;
+        var isMember = (members >> bit) & 1;
+        var isUntag = (untag >> bit) & 1;
+        setC('t', i, isMember && !isUntag);
+        setC('u', i, isMember && isUntag);
+        setC('p', i, (pvid >> bit) & 1);
       }
     }
   };
