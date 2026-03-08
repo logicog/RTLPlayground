@@ -13,6 +13,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
+#include "rtl837x_bandwidth.h"
 #include "dhcp.h"
 #include "uip/uip.h"
 #include "version.h"
@@ -697,6 +698,79 @@ void parse_eee(void)
 }
 
 
+void parse_bw(void)
+{
+	__xdata uint8_t port;
+	__xdata uint32_t bw = 0;
+
+	if (cmd_words_b[3] < 0) // Check for at least 2 arguments
+		goto err;
+
+	port = cmd_buffer[cmd_words_b[2]] - '1';
+	if (port < 0 || port > 9)
+		goto err;
+
+	port = machine.phys_to_log_port[port];
+
+	if (cmd_compare(1, "status")) {
+		bandwidth_status(port);
+		return;
+	}
+
+	if (cmd_words_b[4] < 0) // Check for at least 3 arguments
+		goto err;
+
+	if (cmd_compare(3, "drop")) {
+		if (cmd_compare(1, "in")) {
+			bandwidth_ingress_drop(port);
+			return;
+		}
+		goto err;
+	}
+
+	if (cmd_compare(3, "fc")) {
+		if (cmd_compare(1, "in")) {
+			bandwidth_ingress_fc(port);
+			return;
+		}
+		goto err;
+	}
+
+	if (cmd_compare(3, "off")) {
+		if (cmd_compare(1, "in")) {
+			bandwidth_ingress_disable(port);
+			return;
+		} else if (cmd_compare(1, "out")) {
+			bandwidth_egress_disable(port);
+			return;
+		}
+		goto err;
+	}
+
+	uint8_t hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size == 0 || hex_size > 4) {
+		goto err;
+	}
+	uint8_t i = 0;
+	while (hex_size) {
+		hex_size--;
+		*(((uint8_t *) &bw) + hex_size) = hexvalue[i++];
+	}
+
+	if (cmd_compare(1, "in")) {
+		bandwidth_ingress_set(port, bw);
+	} else if (cmd_compare(1, "out")) {
+		bandwidth_egress_set(port, bw);
+	} else {
+		goto err;
+	}
+
+	return;
+
+err:
+	print_string("usage: bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
+}
+
 // Parse command into words
 uint8_t cmd_tokenize(void) __banked
 {
@@ -939,6 +1013,8 @@ void cmd_parser(void) __banked
 			parse_passwd();
 		} else if (cmd_compare(0, "eee")) {
 			parse_eee();
+		} else if (cmd_compare(0, "bw")) {
+			parse_bw();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "time")) {

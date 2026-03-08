@@ -14,6 +14,7 @@
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
+#include "rtl837x_bandwidth.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
 #include "cmd_editor.h"
@@ -2091,6 +2092,7 @@ void main(void)
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
+	bandwidth_setup();
 	uip_init();
 	uip_arp_init();
 	httpd_init();
