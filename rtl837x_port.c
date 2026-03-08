@@ -104,7 +104,7 @@ void vlan_delete(uint16_t vlan) __banked
  */
 int8_t vlan_get(register uint16_t vlan) __banked
 {
-	if (vlan >= 0x3ff) // VLAN 4095 is special
+	if (vlan >= 0xfff) // VLAN 4095 is special
 		return -1;
 
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_EXECUTE);
