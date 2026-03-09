@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <script src="/main.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>Ingress and Egress Bandwidth</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>Ingress and Egress Bandwidth</h1>
+    <table id="bwtable">
+      <tr> <th> </th> <th colspan="3"> Ingress </th> <th colspan="2">Egress</th>  <th></th></tr>
+      <tr> <th>Port</th> <th>Limit</th> <th>Bandwidth [kBit/s]</th> <th>Flow Control</th> <th>Limit</th> <th>Bandwidth [kBit/s]</th> <th>Apply</th></tr>
+    </table>
+    <script src="/bandwidth.js"></script>
+    </div>
+    <script src="/navigation.js"></script>
+  </body>
+</html>

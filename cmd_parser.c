@@ -150,6 +150,14 @@ uint8_t atoi_hex(uint8_t idx)
 		h_idx++;
 	}
 
+	if (h_idx & 1) {
+		hexvalue[h_idx >> 1] <<= 4;
+		hexvalue[3] = hexvalue[3] >> 4 | (hexvalue[2] << 4);
+		hexvalue[2] = hexvalue[2] >> 4 | (hexvalue[1] << 4);
+		hexvalue[1] = hexvalue[1] >> 4 | (hexvalue[0] << 4);
+		hexvalue[0] >>= 4;
+	}
+
 	return ((h_idx + 1) >> 1);
 }
 
@@ -707,7 +715,7 @@ void parse_bw(void)
 		goto err;
 
 	port = cmd_buffer[cmd_words_b[2]] - '1';
-	if (port < 0 || port > 9)
+	if (port > 9)
 		goto err;
 
 	port = machine.phys_to_log_port[port];
