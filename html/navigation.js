@@ -7,5 +7,6 @@ document.getElementById('sidebar').innerHTML =
  + "<li><a href='mirror.html'>Mirroring</a></li>"
  + "<li><a href='lag.html'>Link Aggregation</a></li>"
  + "<li><a href='eee.html'>EEE</a></li>"
+ + "<li><a href='bandwidth.html'>Bandwidth Limits</a></li>"
  + "<li><a href='system.html'>System Settings</a></li>"
  + "<li><a href='update.html'>Firmware Update</a></li></ul>";
