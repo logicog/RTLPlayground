@@ -2,6 +2,13 @@
 <html>
   <script src="/main.js"></script>
   <script src="/main_info.js"></script>
+  <script>
+  window.addEventListener("load", function() {
+    update( () => {
+      const interval = setInterval(update, 2000);
+    });
+  });
+  </script>
   <link rel="stylesheet" href="style.css">
   <title>FreeSwitchOS Main Page</title>
 </head>

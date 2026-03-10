@@ -3,7 +3,6 @@ function createBW() {
   var tbl = document.getElementById('bwtable');
   const limit = '<input type="checkbox" id="limit_port" onchange="exec();">'
   if (tbl.rows.length <= 2  && numPorts) {
-     clearInterval(createBWInterval);
      console.log("CREATING TABLE ", tbl.rows.length);
      for (let i = 2; i < 2 + numPorts; i++) {
        const tr = tbl.insertRow();
@@ -94,6 +93,7 @@ async function applyBandwidth(i) {
 function getBW() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
+    console.log("IN getBW ");
     if (this.readyState == 4 && this.status == 200) {
       const s = JSON.parse(xhttp.responseText);
       console.log("BW: ", JSON.stringify(s));
@@ -126,11 +126,13 @@ function getBW() {
     }
   };
   xhttp.open("GET", "/bandwidth.json", true);
-  xhttp.timeout = 1500; xhttp.send();
+  xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
 window.addEventListener("load", function() {
-  getBW();
-  const iCount = setInterval(getBW, 2000);
+  update( () => {
+    createBW();
+    getBW();
+    const interval = setInterval(update, 2000);
+  });
 });
-const createBWInterval = setInterval(createBW, 1010);

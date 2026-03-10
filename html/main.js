@@ -9,6 +9,8 @@ var pAdvertised = new Int8Array(10);
 var numPorts = 0;
 var logToPhysPort = new Int8Array(10);
 var physToLogPort = new Int8Array(10);
+var currentRequests = [];
+var currentCallback;
 function drawPorts() {
   var f = document.getElementById('ports');
   console.log("DRAWING PORTS: ", numPorts);
@@ -38,9 +40,10 @@ function drawPorts() {
   }
 }
 
-function update() {
+function update(callback) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
+    console.log("IN UPDATE ");
     if (this.readyState == 4 && this.status == 401)
 	    document.location = "/login.html"
     if (this.readyState == 4 && this.status == 200) {
@@ -105,13 +108,40 @@ function update() {
 	  tt.innerHTML = iHTML;
 	}
       }
+      if (callback)
+	callback();
     }
   };
   xhttp.open("GET", "/status.json", true);
-  xhttp.timeout = 5000; xhttp.send();
+  xhttp.timeout = 5000;
+  sendXHTTP(xhttp);
 }
 
-window.addEventListener("load", function() {
-  update();
-  const interval = setInterval(update, 2000);
-});
+function callbackXHTTP()
+{
+  x = currentRequests.shift();
+  x.onreadystatechange = currentCallback;
+  x.onreadystatechange();
+  if (currentRequests.length === 0)
+    return;
+  x = currentRequests[0];
+  currentCallback = x.onreadystatechange;
+  x.onreadystatechange = callbackXHTTP;
+  setTimeout(() => {
+	  x.send();
+  }, 20);
+}
+
+function sendXHTTP(x)
+{
+  console.log("sendXHTTP ", x);
+  if (currentRequests.length === 0) {
+    currentRequests.push(x);
+    currentCallback = x.onreadystatechange;
+    x.onreadystatechange = callbackXHTTP;
+    x.send();
+    return;
+  }
+  currentRequests.push(x);
+}
+

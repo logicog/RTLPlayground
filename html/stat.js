@@ -151,7 +151,7 @@ function getCounters(port) {
     }
   };
   xhttp.open("GET", "/counters.json?port=" + port, true);
-  xhttp.timeout = 1500; xhttp.send();
+  xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
 
@@ -184,8 +184,6 @@ function fillStats() {
   }
 }
 
-const stat = setInterval(fillStats, 1000);
-
 const popup = document.getElementById('popup');
 const closePopup = document.getElementById('closePopup');
 closePopup.addEventListener('click', () => {
@@ -195,4 +193,13 @@ window.addEventListener('click', (event) => {
   if (event.target === popup) {
     popup.style.display = 'none';
   }
+});
+
+window.addEventListener("load", function() {
+  update( () => {
+    update();
+    fillStats();
+    const stat = setInterval(fillStats, 1000);
+    const interval = setInterval(update, 2000);
+  });
 });
