@@ -9,7 +9,7 @@ CC_FLAGS = -mmcs51 -I. -Ihttpd -Iuip
 ASM = sdas8051
 AFLAGS= -plosgff
 
-SUBDIRS := tools uip httpd
+SUBDIRS := tools
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 BUILDDIR = output/
@@ -24,11 +24,14 @@ all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
+	mkdir -p $(BUILDDIR)/uip
+	mkdir -p $(BUILDDIR)/httpd
 
-SRCS = rtlplayground.c rtl837x_flash.c rtl837x_leds.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c \
-	rtl837x_stp.c rtl837x_pins.c dhcp.c machine.c cmd_editor.c rtl837x_bandwidth.c
+SRCS = rtlplayground.c rtl837x_flash.c rtl837x_leds.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c
+SRCS += rtl837x_stp.c rtl837x_pins.c dhcp.c machine.c cmd_editor.c rtl837x_bandwidth.c
+SRCS += uip/timer.c uip/uip.c uip/uip_arp.c uip/uiplib.c uip/uip-fw.c uip/uip-neighbor.c uip/uip-split.c
+SRCS += httpd/httpd.c httpd/page_impl.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
-OBJS += uip/$(BUILDDIR)/timer.rel uip/$(BUILDDIR)/uip-fw.rel uip/$(BUILDDIR)/uip-neighbor.rel uip/$(BUILDDIR)/uip-split.rel uip/$(BUILDDIR)/uip.rel uip/$(BUILDDIR)/uip_arp.rel uip/$(BUILDDIR)/uiplib.rel httpd/$(BUILDDIR)/httpd.rel httpd/$(BUILDDIR)/page_impl.rel
 
 html_data.c html_data.h: html tools
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
@@ -46,21 +49,13 @@ $(SUBDIRS):
 	$(MAKE) -C $@
 
 clean:
-	-make -C uip clean
-	-make -C httpd clean
-	-rm html_data.c html_data.h $(VERSION_HEADER)
-	-rm -r $(BUILDDIR)
-
-$(BUILDDIR)crtstart.rel: crtstart.asm
-	$(ASM) $(AFLAGS) -o $@ $<
-
-$(BUILDDIR)crc16.rel: crc16.asm
-	$(ASM) $(AFLAGS) -o $@ $<
+	-rm -f html_data.c html_data.h $(VERSION_HEADER)
+	-rm -rf $(BUILDDIR)
 
 $(BUILDDIR)%.rel: %.c
 	$(CC) $(CC_FLAGS) -o $@ -c $<
 
-$(BUILDDIR)%.rel: $(BUILDDIR)%.asm
+$(BUILDDIR)%.rel: %.asm
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
@@ -79,4 +74,4 @@ $(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 	tools/$(BUILDDIR)crc_calculator -u $@
 
 
-.PHONY: clean all $(SUBDIRS)
+.PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
