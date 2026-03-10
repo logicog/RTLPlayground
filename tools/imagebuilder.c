@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 	}
 
 	int nbanks = (filesize - BANK0_SIZE) / BANK_STRIDE;
-	printf("Input file contains %d banks\n", nbanks);
+	printf("Input file contains %d banks\n", nbanks+1);
 
 	/* Verify the size of banks in input file:
 	 * Bank 0: 0x00002 - 0x04000 <- 0x00000 - 0x03ffe
@@ -119,8 +119,8 @@ int main(int argc, char **argv)
 	for (int bank = 1; bank <= nbanks; bank++) {
 		for (int b = (bank + 1) * BANK_STRIDE; b < (bank + 1) * BANK_STRIDE + BANK0_SIZE; b ++) {
 			if (buffer[b]) {
-				printf("WARNING: Bank %d: code segment too large at 0x%x!\n", bank, b);
-				break;
+				printf("Error: Bank %d: code segment too large at 0x%x!\n", bank, b);
+				return 5;
 			}
 		}
 	}
