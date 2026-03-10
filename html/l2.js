@@ -130,10 +130,14 @@ function getL2() {
     }
   };
   xhttp.open("GET", "/l2.json?idx=" + l2CurrentEntry, true);
-  xhttp.timeout = 1500; xhttp.send();
+  xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
 window.addEventListener("load", function() {
-  l2GetInterval = setInterval(getL2, 1000);
+  update( () => {
+    getL2();
+    const interval = setInterval(update, 2000);
+    l2GetInterval = setInterval(getL2, 1000);
+  });;
 });
 

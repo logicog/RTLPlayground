@@ -3,7 +3,6 @@ var lagInterval = Number();
 function lagForm() {
   if (!numPorts)
     return;
-  clearInterval(lagInterval);
   for (let j=0; j < 4; j++) {
     var lag = "mLAG" + j
     console.log("Adding LAG " + lag)
@@ -35,9 +34,6 @@ function setL(p, c){
   console.log("LAG setting: ", p, " to ", c);
   document.getElementById(p).checked=c;
 }
-window.addEventListener("load", function() {
-  lagInterval = setInterval(lagForm, 200);
-});
 
 function fetchLag() {
   var xhttp = new XMLHttpRequest();
@@ -58,7 +54,7 @@ function fetchLag() {
     }
   };
   xhttp.open("GET", `/lag.json`, true);
-  xhttp.send();
+  sendXHTTP(xhttp);
 }
 async function lagSub(l) {
   var cmd = "lag " + l;
@@ -76,3 +72,10 @@ async function lagSub(l) {
     console.error(`Error: ${err}`);
   }
 }
+
+window.addEventListener("load", function() {
+  update( () => {
+    lagForm();
+    const interval = setInterval(update, 2000);
+  });
+});

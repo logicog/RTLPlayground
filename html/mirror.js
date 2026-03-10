@@ -4,7 +4,6 @@ const mirrors = ["mPortsTX", "mPortsRX"];
 function mirrorForm() {
   if (!numPorts)
     return;
-  clearInterval(mirrorInterval);
   for (let j=0; j < mirrors.length; j++) {
     console.log("Adding Mirror " + j)
     var m = document.getElementById(mirrors[j]);
@@ -34,9 +33,6 @@ function mirrorForm() {
 function setM(p, c){
   document.getElementById(p).checked=c;
 }
-window.addEventListener("load", function() {
-  mirrorInterval = setInterval(mirrorForm, 200);
-});
 
 function fetchMirror() {
   var xhttp = new XMLHttpRequest();
@@ -51,11 +47,18 @@ function fetchMirror() {
       for (let i = 1; i <= numPorts; i++) {
         let p = i - 1;
         if (numPorts < 9)
-          p = physToLogPort[p];members & (1<<p)
+          p = physToLogPort[p];
         setM("mPortsTX"+i, m_tx&(1<<p)); setM("mPortsRX"+i, m_rx&(1<<p));
       }
     }
   };
   xhttp.open("GET", `/mirror.json`, true);
-  xhttp.send();
+  sendXHTTP(xhttp);
 }
+
+window.addEventListener("load", function() {
+  update( () => {
+    mirrorForm();
+    const interval = setInterval(update, 2000);
+  });
+});

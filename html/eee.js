@@ -1,7 +1,6 @@
 function createEEE() {
   var tbl = document.getElementById('eeetable');
    if (tbl.rows.length <= 2  && numPorts) {
-     clearInterval(createEEEInterval);
      console.log("CREATING TABLE ", tbl.rows.length);
      for (let i = 2; i < 2 + numPorts; i++) {
       console.log("Table row: " + i + "pState: " + pState[i-2]);
@@ -40,11 +39,14 @@ function getEEE() {
     }
   };
   xhttp.open("GET", "/eee.json", true);
-  xhttp.timeout = 1500; xhttp.send();
+  xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
 window.addEventListener("load", function() {
-  getEEE();
-  const iCount = setInterval(getEEE, 2000);
+  update( () => {
+    createEEE();
+    getEEE();
+    const interval = setInterval(update, 2000);
+    const iCount = setInterval(getEEE, 2000);
+  });
 });
-const createEEEInterval = setInterval(createEEE, 1000);
