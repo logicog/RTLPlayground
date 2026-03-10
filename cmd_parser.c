@@ -21,8 +21,8 @@
 #include "machine.h"
 #include "phy.h"
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
+#pragma codeseg BANK2
+#pragma constseg BANK2
 
 extern __code struct machine machine;
 extern __xdata uint8_t stpEnabled;
