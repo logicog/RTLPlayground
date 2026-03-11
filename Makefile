@@ -34,7 +34,7 @@ SRCS += httpd/httpd.c httpd/page_impl.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)%.d}
 
-html_data.c html_data.h: html tools
+html_data.c: html tools
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
