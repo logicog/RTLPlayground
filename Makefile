@@ -12,7 +12,7 @@ AFLAGS= -plosgff
 SUBDIRS := tools
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
-BUILDDIR = output/
+BUILDDIR = output
 VERSION_HEADER := version.h
 
 ifeq ($(MACHINE),)
@@ -20,7 +20,7 @@ else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
 
-all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)rtlplayground.bin
+all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground.bin
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
@@ -31,11 +31,11 @@ SRCS = rtlplayground.c rtl837x_flash.c rtl837x_leds.c rtl837x_phy.c rtl837x_port
 SRCS += rtl837x_stp.c rtl837x_pins.c dhcp.c machine.c cmd_editor.c rtl837x_bandwidth.c
 SRCS += uip/timer.c uip/uip.c uip/uip_arp.c uip/uiplib.c uip/uip-fw.c uip/uip-neighbor.c uip/uip-split.c
 SRCS += httpd/httpd.c httpd/page_impl.c
-OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
-DEPS := ${SRCS:%.c=$(BUILDDIR)%.d}
+OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
+DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
 
 html_data.c: html tools
-	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
 	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
@@ -53,26 +53,26 @@ clean:
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-rm -rf $(BUILDDIR)
 
-$(BUILDDIR)%.rel: %.c
+$(BUILDDIR)/%.rel: %.c
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
-$(BUILDDIR)%.rel: %.asm
+$(BUILDDIR)/%.rel: %.asm
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)rtlplayground.ihx: $(OBJS) $(BUILDDIR)crtstart.rel $(BUILDDIR)crc16.rel
+$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtstart.rel $(BUILDDIR)/crc16.rel
 	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
 
-$(BUILDDIR)rtlplayground.img: $(BUILDDIR)rtlplayground.ihx
+$(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
+$(BUILDDIR)/rtlplayground.bin: $(BUILDDIR)/rtlplayground.img
 	if [ -e $@ ]; then rm $@; fi
-	tools/$(BUILDDIR)imagebuilder -i $^ $@
-	tools/$(BUILDDIR)fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/$(BUILDDIR)fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
-	tools/$(BUILDDIR)crc_calculator -u $@
+	tools/$(BUILDDIR)/imagebuilder -i $^ $@
+	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
+	tools/$(BUILDDIR)/crc_calculator -u $@
 
 
 .PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
