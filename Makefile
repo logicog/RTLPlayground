@@ -32,6 +32,7 @@ SRCS += rtl837x_stp.c rtl837x_pins.c dhcp.c machine.c cmd_editor.c rtl837x_bandw
 SRCS += uip/timer.c uip/uip.c uip/uip_arp.c uip/uiplib.c uip/uip-fw.c uip/uip-neighbor.c uip/uip-split.c
 SRCS += httpd/httpd.c httpd/page_impl.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)%.rel}
+DEPS := ${SRCS:%.c=$(BUILDDIR)%.d}
 
 html_data.c html_data.h: html tools
 	tools/$(BUILDDIR)fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
@@ -53,7 +54,7 @@ clean:
 	-rm -rf $(BUILDDIR)
 
 $(BUILDDIR)%.rel: %.c
-	$(CC) $(CC_FLAGS) -o $@ -c $<
+	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
 $(BUILDDIR)%.rel: %.asm
 	${ASM} ${AFLAGS} -o $@ $<
@@ -75,3 +76,5 @@ $(BUILDDIR)rtlplayground.bin: $(BUILDDIR)rtlplayground.img
 
 
 .PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
+
+-include $(DEPS)
