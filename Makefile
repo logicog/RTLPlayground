@@ -33,8 +33,9 @@ SRCS += uip/timer.c uip/uip.c uip/uip_arp.c uip/uiplib.c uip/uip-fw.c uip/uip-ne
 SRCS += httpd/httpd.c httpd/page_impl.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
+HTML := $(shell find $(html) -name '*.js' -or -name '*.html' -or -name '*.svg')
 
-html_data.c: html tools
+html_data.c html_data.h: $(HTML) tools/$(BUILDDIR)/fileadder
 	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
