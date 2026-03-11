@@ -1,27 +1,27 @@
 CC = gcc
 CCFLAGS = -Wall -o
-BUILDDIR = output/
+BUILDDIR = output
 
-all: create_build_dir $(BUILDDIR)injector $(BUILDDIR)fileadder $(BUILDDIR)httpd_sim\
-	$(BUILDDIR)crc_calculator $(BUILDDIR)imagebuilder
+all: create_build_dir $(BUILDDIR)/injector $(BUILDDIR)/fileadder $(BUILDDIR)/httpd_sim\
+	$(BUILDDIR)/crc_calculator $(BUILDDIR)/imagebuilder
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
 
 clean:
-	rm -r $(BUILDDIR)
+	rm -rf $(BUILDDIR)
 
-$(BUILDDIR)injector: injector.c
+$(BUILDDIR)/injector: injector.c
 	gcc $^ $(CCFLAGS) $@
 
-$(BUILDDIR)fileadder: fileadder.c
+$(BUILDDIR)/fileadder: fileadder.c
 	gcc $^ $(CCFLAGS) $@
 
-$(BUILDDIR)crc_calculator: crc_calculator.c
+$(BUILDDIR)/crc_calculator: crc_calculator.c
 	gcc $^ $(CCFLAGS) $@
 
-$(BUILDDIR)httpd_sim: httpd_sim.c httpd_sim.h
+$(BUILDDIR)/httpd_sim: httpd_sim.c httpd_sim.h
 	gcc $< $(CCFLAGS) $@ -I/usr/include/json-c -ljson-c
 
-$(BUILDDIR)imagebuilder: imagebuilder.c
+$(BUILDDIR)/imagebuilder: imagebuilder.c
 	gcc $^ $(CCFLAGS) $@
