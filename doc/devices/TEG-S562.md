@@ -14,10 +14,11 @@ The memory chip is `Winbond W25Q16JV` with 16M-bit size.
 1. 2.5G ports on all advertised speeds.
 2. SFP+ communication.
 3. Serial, Web UI.
+4. All LEDs
 
 ## Known issues
 
-1. LEDs are not initialized properly.
+None.
 
 ## PCB
 
@@ -136,8 +137,6 @@ GPIO mapping unknown.
 
 ## LEDs
 
-Leds are not yet working as in stock firmware. This will be handled later.
-
 Ports 1-4 are amber for 100M/1G links, Green for 2.5G.
 Port 5-6 are green for 10G/1G link. Both should flash on activity.
 
@@ -166,7 +165,7 @@ Voltage is made by a `APW8713` (U3).
 
 ### `3.3` Voltage
 
-Voltage is crated regulated by chip marke as `GoIAT` (U2).
+Voltage is crated regulated by chip marked as `GoIAT` (U2).
 
 ## SFP SPI
 
