@@ -97,10 +97,14 @@ function update(callback) {
 	    if (p.sfp_options & 0x40) {
 	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + (Number(p.sfp_temp) >> 8) + "." + ((Number(p.sfp_temp) & 0xff)/256.0 * 100).toFixed(0) + "&#8239;&#8451;</td></tr>";
 	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + (Number(p.sfp_vcc) / 10000.0).toFixed(2) + "&#8239;V</td></tr>";
+	      iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
+	      iHTML += "<tr><td>TX-Disabled</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
 	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + (Number(p.sfp_txbias) / 500.0).toFixed(1) + "&#8239;mA</td></tr>";
 	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
 	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
+	      iHTML += "<tr><td>RX-LOS</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x2)) + "</td></tr>";
 	    }
+	    iHTML += "<tr><td>RX-LOS pin</td><td>:</td><td>" + Boolean(Number(p.sfp_los)) + "</td></tr>";
 	  } else {
 	    pAdvertised[n] = parseInt(p.adv, 2);
 	  }
