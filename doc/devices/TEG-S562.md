@@ -39,10 +39,10 @@ Bottom
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                   ┌──────────┐ ┌──────────┐ │
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │ SFP      │ │ SFP      │ │
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │ SFP    2 │ │ SFP    1 │ │
 │ │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │   │ PORT   5 │ │ PORT   6 │ │
-│ │  PORT 1 │ │  PORT 2 │ │  PORT 3 │ │  PORT 4 │   │ MAC    ? │ │ MAC    ? │ │
-│ │  MAC  4 │ │  MAC  5 │ │  MAC  6 │ │  MAC  7 │   │ SerDes ? │ │ SerDes ? │ │
+│ │  PORT 1 │ │  PORT 2 │ │  PORT 3 │ │  PORT 4 │   │ MAC    8 │ │ MAC    3 │ │
+│ │  MAC  4 │ │  MAC  5 │ │  MAC  6 │ │  MAC  7 │   │ SerDes 0 │ │ SerDes 1 │ │
 │ └─────────┘ └─────────┘ └─────────┘ └─────────┘   └──────────┘ └──────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -106,9 +106,9 @@ GPIO mapping unknown.
 | 00000002 | GPIO01 |                 | GPIO33 |                        |
 | 00000004 | GPIO02 |                 | GPIO34 | Random changes         |
 | 00000008 | GPIO03 |                 | GPIO35 |                        |
-| 00000010 | GPIO04 |                 | GPIO36 | SFP1 Present           |
-| 00000020 | GPIO05 |                 | GPIO37 | SFP1 RX Los            |
-| 00000040 | GPIO06 |                 | GPIO38 | SFP2 Present           |
+| 00000010 | GPIO04 |                 | GPIO36 | SFP2 Present           |
+| 00000020 | GPIO05 |                 | GPIO37 | SFP2 RX Los            |
+| 00000040 | GPIO06 |                 | GPIO38 | SFP1 Present           |
 | 00000080 | GPIO07 |                 | GPIO39 |                        |
 | 00000100 | GPIO08 |                 | GPIO40 |                        |
 | 00000200 | GPIO09 |                 | GPIO41 |                        |
@@ -120,11 +120,11 @@ GPIO mapping unknown.
 | 00008000 | GPIO15 | PORT2 Link      | GPIO47 | SFP1 I2C SDA           |
 | 00010000 | GPIO16 | PORT2-LED-GREEN | GPIO48 | SFP2 I2C CLK           |
 | 00020000 | GPIO17 | PORT2-LED-AMBER | GPIO49 | SFP2 I2C SDA           |
-| 00040000 | GPIO18 | PORT3 Link      | GPIO50 | SFP2 Rx LOS            |
-| 00080000 | GPIO19 | PORT3-LED-GREEN | GPIO51 | SFP1 TX Disable        |
+| 00040000 | GPIO18 | PORT3 Link      | GPIO50 | SFP1 Rx LOS            |
+| 00080000 | GPIO19 | PORT3-LED-GREEN | GPIO51 | SFP2 TX Disable        |
 | 00100000 | GPIO20 | PORT4-LED-AMBER | GPIO52 |                        |
 | 00200000 | GPIO21 | PORT4 Link      | GPIO53 |                        |
-| 00400000 | GPIO22 | PORT4-LED-GREEN | GPIO54 | SFP2 TX Disable        |
+| 00400000 | GPIO22 | PORT4-LED-GREEN | GPIO54 | SFP1 TX Disable        |
 | 00800000 | GPIO23 | PORT4-LED-AMBER | GPIO55 |                        |
 | 01000000 | GPIO24 |                 | GPIO56 |                        |
 | 02000000 | GPIO25 |                 | GPIO57 |                        |
