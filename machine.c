@@ -339,6 +339,22 @@ __code const struct machine machine = {
 	.sfp_port[1].sds = 1,
 	.sfp_port[1].i2c = { .sda = GPIO49_I2C_SDA1, .scl = GPIO48_I2C_SCL1 },
 	.reset_pin = GPIO_NA,
+	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
+	.led_sets = {
+		{
+			0, // Unused
+			LEDS_2G5 | LEDS_LINK | LEDS_ACT, // Green
+			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT, // Amber
+			0 // Unused
+		},
+		{
+			0, // Unused
+			0, // Unused
+			LEDS_10G | LEDS_1G | LEDS_LINK | LEDS_ACT, // Green
+			0, // Unused
+		},
+	},
+
 };
 
 void machine_custom_init(void) { }
