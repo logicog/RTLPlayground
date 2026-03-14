@@ -244,19 +244,19 @@ uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
 
 uint16_t strlen(register __code const char *s)
 {
-	uint16_t l = 0;
-	while (s[l])
-		l++;
-	return l;
+	__code const char *x = s;
+	while (*(x++));
+	// x - s includes the nul character, adjust by -1
+	return x - s - 1;
 }
 
 
 uint16_t strlen_x(register __xdata const char *s)
 {
-	uint16_t l = 0;
-	while (s[l])
-		l++;
-	return l;
+	__xdata const char *x = s;
+	while (*(x++));
+	// x - s includes the nul character, adjust by -1
+	return x - s - 1;
 }
 
 
