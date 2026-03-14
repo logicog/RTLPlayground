@@ -169,7 +169,7 @@ void cmd_edit(void) __banked
 			} else { // An unknown or not yet complete Escape sequence: wait
 				continue;
 			}
-		} else if (sbuf[l] == 127) {  // Backspace
+		} else if (sbuf[l] == 127 || sbuf[l] == 8) {  // Backspace DEL or BS/^H
 			if (cursor > 0) {
 				write_char('\010');
 				for (uint8_t i = cursor; i < cmd_line_len; i++)
