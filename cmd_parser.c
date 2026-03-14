@@ -96,8 +96,8 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 		i &= CMD_BUF_SIZE - 1;
 //		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
 //		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
-		if (!cmd[j] && !isletter(cmd_buffer[i]))
-			return 1;
+		if (!cmd[j]) // end of command reached, but cmd_buffer has more characters, so no match
+			return 0;
 		if (cmd_buffer[i] != cmd[j++])
 			break;
 	}
@@ -1044,6 +1044,11 @@ void cmd_parser(void) __banked
 				p = (p + 1) & CMD_HISTORY_MASK;
 			}
 		}
+		else {
+			print_string("Unknown command\n");
+		}
+
+
 		if (save_cmd) {
 			uint8_t i;
 			for (i = 0; i < N_WORDS; i++) {
