@@ -103,7 +103,7 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 	}
 //	write_char('.'); print_byte(i); write_char(':'); print_byte(j); write_char(','); print_byte (cmd[j-1]);
 //	write_char(','); print_byte(cmd[j]);
-	if (i == cmd_words_b[start + 1] || (cmd_buffer[i] == ' ' && !cmd[j]))
+	if ( ((i == cmd_words_b[start + 1]) || (cmd_buffer[i] == ' ')) && !cmd[j])  // next word reached and command fully matched
 		return 1;
 	return 0;
 }
