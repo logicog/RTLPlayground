@@ -102,9 +102,22 @@ function update(callback) {
 	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + (Number(p.sfp_txbias) / 500.0).toFixed(1) + "&#8239;mA</td></tr>";
 	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
 	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
-	      iHTML += "<tr><td>RX-LOS</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x2)) + "</td></tr>";
 	    }
-	    iHTML += "<tr><td>RX-LOS pin</td><td>:</td><td>" + Boolean(Number(p.sfp_los)) + "</td></tr>";
+	    iHTML += "<tr><td>RX-LOS</td><td>:</td><td>"
+	    var rx_los_pin = Boolean(Number(p.sfp_los));
+	    if (p.sfp_options & 0x40) {
+	      var rx_los_module = Boolean(Number(p.sfp_state) & 0x2);
+	      if (rx_los_module != rx_los_pin) {
+	        iHTML += "pin=" + rx_los_pin + "<br/>";
+	        iHTML += "mod=" + rx_los_module + "<br/>";
+	        iHTML += "❗❗❗❗";
+	      } else {
+	        iHTML += rx_los_pin;
+	      }
+	    } else {
+	      iHTML += Boolean(Number(p.sfp_los));
+	    }
+	    iHTML += "</td></tr>";
 	  } else {
 	    pAdvertised[n] = parseInt(p.adv, 2);
 	  }
