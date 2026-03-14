@@ -33,8 +33,8 @@ An entry is deleted by adding an invalid entry (00 instead of 0x02 in
 RTL837x_TBL_DATA_IN_A).
 
 A port is assigned a PVID by setting the PVID-bits of the corresponding
-register of the port. 2 ports share a register. One port uses the higher
-16 bits, the other (even ports) use the lower. The base register is
+register of the port. 2 ports share a register. An odd port uses bits [23:12],
+an even port uses bits [11:0].  The base register is
 RTL837x_PVID_BASE_REG (0x4e1c) and the registers go to 0x4e2c so that also
 the CPU-Port may have a PVID.
 
@@ -51,7 +51,9 @@ registers 0x1238, 0x1338, ...
 The code currently provides the following functions:
 ```
 void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked;
-void vlan_create(uint16_t vlan, uint16_t members, uint16_t tagged) __banked;
+uint16_t port_pvid_get(uint8_t port) __banked;
+void vlan_create(void) __banked;   // reads from global vlan_settings
+int8_t vlan_get(register uint16_t vlan) __banked;  // returns data in sfr_data
 void vlan_delete(uint16_t vlan) __banked;
 
 ```
