@@ -342,16 +342,86 @@ void parse_vlan(void)
 			w++;
 		}
 		vlan_create();
+	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+		vlan_dump();
+	} else {
+		goto err;
 	}
+
 	if (cmd_words_b[2] > 0 && isletter(cmd_buffer[cmd_words_b[2]])) {
 		print_string("vlan_ptr "); print_short(vlan_ptr); write_char(':');
 		write_char('>'); print_string_x(&vlan_names[0]); write_char('<'); write_char('\n');
 	}
 	return;
 err:
-	print_string("Error: vlan <vlan-id> [port][t/u]...");
+	print_string("Error: vlan (<vlan-id>|show) [port][t/u]...");
 }
 
+bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
+{
+	switch (c) {
+	case 'u':
+		*mode = VLAN_UNTAGGED;
+		return true;
+	case 't':
+		*mode = VLAN_TAGGED;
+		return true;
+	case 'a':
+		*mode = VLAN_ALL;
+		return true;
+	default:
+		*mode = VLAN_INVALID;
+		return false;
+	}
+}
+
+void parse_ingress(void)
+{
+	if (cmd_words_b[1] <= 0) {
+		goto err;
+	}
+	__xdata uint8_t log_port = 0;
+	__xdata vlan_ingress_mode_t mode = VLAN_INVALID;
+	__xdata uint8_t w = 1;
+
+	if (vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[w]], &mode)) {
+		// Setting mode for all ports at once
+		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
+			if (!port_ingress_filter(log_port, mode)) {
+				print_string("Error setting ingress filter for port "); print_byte(machine.log_to_phys_port[log_port]); write_char('\n');
+				return;
+			}
+			print_string("All ports ingress filter set to: ");
+			print_port_ingress_filter_mode(mode); write_char('\n');
+		}
+		return;
+	} else {
+		for(w = 1; cmd_words_b[w] > 0; w++) {
+			if (!isnumber(cmd_buffer[cmd_words_b[w]])) {
+				continue;
+			}
+			if (cmd_buffer[cmd_words_b[w]] - '1' > 9) {
+				print_string("Invalid physical port number: "); write_char(cmd_buffer[cmd_words_b[w]]); write_char('\n');
+				continue;
+			}
+			log_port = machine.phys_to_log_port[cmd_buffer[cmd_words_b[w]] - '1'];
+			if (!vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[w] + 1], &mode)) {
+				print_string("Invalid ingress mode for port "); write_char(cmd_buffer[cmd_words_b[w]]); print_string(" in ingress command\n");
+				goto err;
+			}
+			if (!port_ingress_filter(log_port, mode)) {
+				print_string("Error setting ingress filter for port "); write_char(cmd_buffer[cmd_words_b[w]]); write_char('\n');
+				return;
+			}
+			print_string("Port "); write_char(cmd_buffer[cmd_words_b[w]]);
+			print_string(" ingress filter set to: ");
+			print_port_ingress_filter_mode(mode); write_char('\n');
+		}
+		return;	
+	}
+err:
+	print_string("Error: ingress [p]<u/t/a>... \n");
+}
 
 void parse_mirror(void)
 {
@@ -1044,6 +1114,8 @@ void cmd_parser(void) __banked
 					write_char(cmd_history[p]);
 				p = (p + 1) & CMD_HISTORY_MASK;
 			}
+		} else if (cmd_compare(0, "ingress")) {
+			parse_ingress();
 		}
 		else {
 			print_string("Unknown command\n");
@@ -1069,7 +1141,6 @@ void cmd_parser(void) __banked
 		}
 	}
 }
-
 
 void clear_command_history(void) __banked
 {

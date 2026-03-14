@@ -48,16 +48,38 @@ void port_mirror_del(void) __banked
 }
 
 
-void port_ingress_filter(__xdata uint8_t port, __xdata uint8_t type) __banked
+bool port_ingress_filter(__xdata uint8_t port, __xdata vlan_ingress_mode_t type) __banked
 {
-	if (type & 0x1)
+	if (port > 9 || type >= VLAN_INVALID) {
+		print_string("Invalid port or ingress filter type\n");
+		return false;
+	}
+
+	if (type & 0x1) {
 		reg_bit_set(RTL837x_REG_INGRESS, port << 1);
-	else
+	} else {
 		reg_bit_clear(RTL837x_REG_INGRESS, port << 1);
-	if (type & 0x2)
+	}
+	if (type & 0x2) {
 		reg_bit_set(RTL837x_REG_INGRESS, (port << 1) + 1);
-	else
+	} else {
 		reg_bit_clear(RTL837x_REG_INGRESS, (port << 1) + 1);
+	}
+	return true;
+}
+
+vlan_ingress_mode_t port_ingress_filter_get(__xdata uint8_t port) __banked
+{
+	reg_read_m(RTL837x_REG_INGRESS);
+    if (port > 9) {
+        return VLAN_INVALID;
+    }
+
+	// Each port is represented by 2 bits in the ingress register, starting from bit 0 for port 0
+	const uint8_t sfr_index = 3 - (port / 4);
+    const uint8_t shift = (port % 4) << 1;
+	
+    return (vlan_ingress_mode_t)((sfr_data[sfr_index] >> shift) & 0x03);
 }
 
 
@@ -210,7 +232,8 @@ void vlan_setup(void) __banked
 		// EGRESS filtering for port: removal of additional VLAN tag (mode 0x3 for each port)
 		reg_bit_clear(RTL837X_VLAN_PORT_EGR_TAG, i << 1);
 		reg_bit_clear(RTL837X_VLAN_PORT_EGR_TAG, (i << 1) + 1);
-		reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, i);
+		// Enable INGRESS filtering for port: discard packets not belonging to member VLAN on that port
+		port_ingress_vlan_filter_set(i, true);
 
 #ifdef DEBUG
 		print_string("\n");
@@ -235,6 +258,7 @@ void vlan_setup(void) __banked
 
 #ifdef DEBUG
 	print_string("\nvlan_setup, REG 0x6738: "); print_reg(0x6738);
+	print_string("\nvlan_setup, REG 0x4e10: "); print_reg(0x4e10);
 	print_string("\nvlan_setup, REG 0x4e18: "); print_reg(0x4e18);
 	print_string("\nvlan_setup, REG 0x4e14: "); print_reg(0x4e14);
 	print_string("\nvlan_setup, REG 0x4e30: "); print_reg(0x4e30);
@@ -635,4 +659,78 @@ void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash_bits) __banked
 	if (lag > 3)
 		print_string("Link aggregation group must be 0-3!");
 	REG_WRITE(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2), 0, 0, 0, hash_bits);
+}
+
+void print_port_ingress_filter_mode(vlan_ingress_mode_t mode) __banked
+{
+	switch (mode) {
+	case VLAN_UNTAGGED:
+		print_string("Untag.");
+		break;
+	case VLAN_TAGGED:
+		print_string("Tagged");
+		break;
+	case VLAN_ALL:
+		print_string("Any");
+		break;
+	default:
+		print_string("!!err!!");
+	}
+}
+
+static void print_phys_port(uint8_t port) __banked
+{
+	if (port >= machine.min_port && port <= machine.max_port)
+		write_char(machine.log_to_phys_port[port] + '0');
+	else if (port == 9)
+		write_char('9');
+	else
+		write_char('?');
+}
+
+void print_vlan_ingress_port(uint8_t log_port) __banked
+{
+	print_phys_port(log_port);write_char('\t');
+	print_short(port_pvid_get(log_port));write_char('\t');
+	print_port_ingress_filter_mode(port_ingress_filter_get(log_port));write_char('\t');
+	port_ingress_vlan_filter_get(log_port) ? print_string("Enabled") : print_string("Disabled");
+	write_char('\n');
+}
+/*
+ * Dumps the VLAN ingress configuration
+ */
+void vlan_dump(void) __banked
+{
+	print_string("Ingress VLAN configuration:\n");
+	print_string("Port\tPVID\tType\tFiltering\n");
+	for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
+		print_vlan_ingress_port(port);
+	}
+	print_vlan_ingress_port(9);
+
+	write_char('\n');
+	print_string("Type - Which frame types are allowed: untagged, tagged or any\n");
+	print_string("Filtering - Whether packets not belonging to member VLANs on that port are dropped\n");
+	print_string("PVID - Assumed VLAN for untagged packets\n");
+}
+
+
+/** Set the ingress VLAN filtering */
+bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked
+{
+	if (port < machine.min_port || port > machine.max_port && port != 9) {
+		return false;
+	}
+	reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, port);
+	return true;
+}
+
+/** Get the ingress VLAN filtering status */
+bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked
+{
+	if (port < machine.min_port || port > machine.max_port && port != 9) {
+		return false;
+	}
+
+	return reg_bit_test(RTL837X_VLAN_PORT_IGR_FLTR, port);
 }
