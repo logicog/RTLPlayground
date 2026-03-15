@@ -811,7 +811,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	if (mode != SDS_QXGMII)
 		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
 
-	if (sds == 0 && mode == SDS_1000BX_FIBER) {
+	if (mode == SDS_1000BX_FIBER) {
 		sds_write_v(sds, 0x02, 0x04, 0x0020); 	// Q000204:0020
 		sds_write_v(sds, 0x00, 0x02, 0x73d0); 	// Q000002:73d0
 		sds_write_v(sds, 0x00, 0x04, 0x074d); 	// Q000004:074d
