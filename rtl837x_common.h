@@ -72,18 +72,9 @@ struct vlan_tag {
 #define RTL_FRAME_TAG_ID	0x8899
 #define RTL_FRAME_TAG_VERSION	0x04
 
-struct rtl_frame_desc {
-	uint8_t padding[VLAN_TAG_SIZE]; // Pad to the size of a RTL-VLAN tag or dot1q-tag
-	uint8_t tx_seq;
-	uint8_t chksum_flags;	// 0x7 enables Checksums for frame header, L2 and L3
-	uint8_t reserved_1 [2];
-	uint16_t len; // Length is Little Endian
-	uint8_t reserved_2 [2];
-};
-
 // For TX, an 8 byte (plus 4 byte padding when when VLAN is enabled)
 // header describing the frame to be moved to the Asic is used
-#define RTL_FRAME_DESC_SIZE	(sizeof (struct rtl_frame_desc))
+#define RTL_FRAME_DESC_SIZE	12
 
 // This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
