@@ -112,8 +112,8 @@ int main(int argc, char **argv)
 	}
 	for (int b = BANK0_SIZE; b < BANK_STRIDE + BANK0_SIZE; b ++) {
 		if (buffer[b]) {
-			printf("WARNING: Bank 0: code segment too large at 0x%x!\n", b);
-			break;
+			printf("Error: Bank 0: code segment too large at 0x%x!\n", b);
+			return 5;
 		}
 	}
 	for (int bank = 1; bank <= nbanks; bank++) {
