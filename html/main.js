@@ -90,11 +90,12 @@ function update(callback) {
 	  var iHTML = "<table border=\"0\" class=\"tt_table\">";
 	  iHTML += "<tr><td align=\"left\">Link speed</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
 	  if (p.isSFP) {
-            pAdvertised[n] = 0;
+	    pAdvertised[n] = 0;
+	    const hasExtendedStatus = p.sfp_options & 0x40;
 	    iHTML += "<tr><td>Vendor</td><td>:</td><td>" + p.sfp_vendor + "</td></tr>";
 	    iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
 	    iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
-	    if (p.sfp_options & 0x40) {
+	    if (hasExtendedStatus) {
 	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + (Number(p.sfp_temp) >> 8) + "." + ((Number(p.sfp_temp) & 0xff)/256.0 * 100).toFixed(0) + "&#8239;&#8451;</td></tr>";
 	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + (Number(p.sfp_vcc) / 10000.0).toFixed(2) + "&#8239;V</td></tr>";
 	      iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
@@ -103,35 +104,33 @@ function update(callback) {
 	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
 	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
 	    }
-	    iHTML += "<tr><td>RX-LOS</td><td>:</td><td>"
-	    var rx_los_pin = Boolean(Number(p.sfp_los));
-	    if (p.sfp_options & 0x40) {
-	      var rx_los_module = Boolean(Number(p.sfp_state) & 0x2);
-	      if (rx_los_module != rx_los_pin) {
-	        iHTML += "pin=" + rx_los_pin + "<br/>";
-	        iHTML += "mod=" + rx_los_module + "<br/>";
-	        iHTML += "❗❗❗❗";
-	      } else {
-	        iHTML += rx_los_pin;
-	      }
-	    } else {
-	      iHTML += Boolean(Number(p.sfp_los));
+	    // Not all devices & modules have LOS pin...
+	    const rx_los_pin = p.sfp_los !== null ? Boolean(Number(p.sfp_los)) : null;
+	    const rx_los_module = hasExtendedStatus ? Boolean(Number(p.sfp_state) & 0x2) : null;
+	    if (rx_los_module !== null || rx_los_pin !== null) {
+	      iHTML += `<tr><td>RX-LOS</td><td>:</td><td>${rxLosHTML(rx_los_pin, rx_los_module)}</td></tr>`;
 	    }
-	    iHTML += "</td></tr>";
 	  } else {
 	    pAdvertised[n] = parseInt(p.adv, 2);
-	  }
+	  };
 	  iHTML += "</table>";
 	  tt.innerHTML = iHTML;
-	}
-      }
-      if (callback)
-	callback();
-    }
-  };
-  xhttp.open("GET", "/status.json", true);
-  xhttp.timeout = 5000;
-  sendXHTTP(xhttp);
+	}}
+	if (callback)
+	  callback();
+	}};
+	xhttp.open("GET", "/status.json", true);
+	xhttp.timeout = 5000;
+	sendXHTTP(xhttp);
+}
+
+function rxLosHTML(pinStatus, moduleStatus) {
+  if (moduleStatus !== null && pinStatus !== null && moduleStatus !== pinStatus) {
+    return `pin=${pinStatus}<br/>mod=${moduleStatus}<br/>❗❗❗❗`;
+  }
+
+	// Returns first non null value
+  return moduleStatus ?? pinStatus;
 }
 
 function callbackXHTTP()
