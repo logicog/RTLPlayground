@@ -89,21 +89,23 @@ inline uint8_t isnumber(uint8_t l)
 
 uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 {
+	if ((start > 0) && (cmd_words_b[start] <= 0) )// nothing on this word -> no match
+		return 0;
+
 	signed char i;
 	signed char j = 0;
-
 	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && cmd_buffer[i] != ' '; i++) {
 		i &= CMD_BUF_SIZE - 1;
 //		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
 //		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
-		if (!cmd[j] && !isletter(cmd_buffer[i]))
-			return 1;
+		if (!cmd[j]) // end of command reached, but cmd_buffer has more characters, so no match
+			return 0;
 		if (cmd_buffer[i] != cmd[j++])
 			break;
 	}
 //	write_char('.'); print_byte(i); write_char(':'); print_byte(j); write_char(','); print_byte (cmd[j-1]);
 //	write_char(','); print_byte(cmd[j]);
-	if (i == cmd_words_b[start + 1] || (cmd_buffer[i] == ' ' && !cmd[j]))
+	if ( ((i == cmd_words_b[start + 1]) || (cmd_buffer[i] == ' ')) && !cmd[j])  // next word reached and command fully matched
 		return 1;
 	return 0;
 }
@@ -200,7 +202,7 @@ void parse_lag(void)
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
 
-	if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+	if (cmd_compare(1, "show")) {
 		print_string("LAG status:\n");
 		for (uint8_t i = 0; i < 4; i++) {
 			write_char(' '); write_char('1' + i);
@@ -298,7 +300,7 @@ void parse_vlan(void)
 			vlan_delete(vlan_settings.vlan);
 			return;
 		}
-		if (cmd_words_b[2] > 0 && cmd_compare(2, "mgmt")) {
+		if (cmd_compare(2, "mgmt")) {
 			management_vlan = vlan_settings.vlan;
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
@@ -357,7 +359,7 @@ void parse_mirror(void)
 	__xdata uint16_t rx_pmask = 0;
 	__xdata uint16_t tx_pmask = 0;
 
-	if (cmd_words_b[1] > 0 && cmd_compare(1, "status")) {
+	if (cmd_compare(1, "status")) {
 		reg_read_m(RTL837x_MIRROR_CTRL);
 		uint8_t mPort = sfr_data[3];
 		if (mPort & 1) {
@@ -378,7 +380,7 @@ void parse_mirror(void)
 		print_short(m);
 		write_char('\n');
 		return;
-	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")) {
+	} else if (cmd_compare(1, "off")) {
 		port_mirror_del();
 		return;
 	}
@@ -445,17 +447,17 @@ void parse_port(void)
 	if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
 		phy_settings.speed = PHY_SPEED_10M;
-		if (cmd_words_b[3] > 0 && cmd_compare(3, "half"))
+		if (cmd_compare(3, "half"))
 			phy_settings.duplex = PHY_DUPLEX_HALF;
-		else if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
+		else if (cmd_compare(3, "full"))
 			phy_settings.duplex = PHY_DUPLEX_FULL;
 		phy_set_speed();
 	} else if (cmd_compare(2, "100m")) {
 		print_string(" 100M\n");
 		phy_settings.speed = PHY_SPEED_100M;
-		if (cmd_words_b[3] > 0 && cmd_compare(3, "half"))
+		if (cmd_compare(3, "half"))
 			phy_settings.duplex = PHY_DUPLEX_HALF;
-		else if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
+		else if (cmd_compare(3, "full"))
 			phy_settings.duplex = PHY_DUPLEX_FULL;
 		phy_set_speed();
 	} else if (cmd_compare(2, "2g5")) {
@@ -480,13 +482,13 @@ void parse_port(void)
 		phy_set_speed();
 	} else if (cmd_compare(2, "duplex")) {
 		print_string(" DUPLEX\n");
-		if (cmd_words_b[3] > 0 && cmd_compare(3, "full"))
+		if (cmd_compare(3, "full"))
 			phy_settings.speed = PHY_DUPLEX_FULL;
 		else
 			phy_settings.speed = PHY_DUPLEX_HALF;
 		phy_set_duplex();
 	}
-	if (cmd_words_b[2] > 0 && cmd_compare(2, "show")) {
+	if (cmd_compare(2, "show")) {
 		phy_show(phy_settings.port);
 	}
 }
@@ -497,7 +499,7 @@ void parse_mtu(void)
 	__xdata uint16_t mtu;
 	uint8_t p;
 
-	if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+	if (cmd_compare(1, "show")) {
 		for (p = machine.min_port; p <= machine.max_port; p++) {
 			reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8));
 			mtu = SFR_DATA_U16 & 0x3fff;
@@ -520,7 +522,6 @@ void parse_mtu(void)
 	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (mtu >> 10) & 0xf, (mtu >> 2) & 0xff,
 		  ((mtu & 0x3) << 6) | ((mtu >> 8) & 0x3f), mtu & 0xff);
 }
-
 
 void sfp_print_measurements(uint8_t sfp)
 {
@@ -685,17 +686,17 @@ void parse_eee(void)
 			return;
 		}
 	}
-	if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+	if (cmd_compare(1, "on")) {
 		if (port >= 0)
 			port_eee_enable(port, speed);
 		else
 			port_eee_enable_all(speed);
-	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "off")) {
+	} else if (cmd_compare(1, "off")) {
 		if (port >= 0)
 			port_eee_disable(port);
 		else
 			port_eee_disable_all();
-	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "status")) {
+	} else if (cmd_compare(1, "status")) {
 		if (port >= 0)
 			port_eee_status(port);
 		else
@@ -911,7 +912,7 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "mtu") && cmd_words_b[1] > 0) {
 			parse_mtu();
 		} else if (cmd_compare(0, "ip")) {
-			if (cmd_words_b[2] > 0 && cmd_compare(1, "dhcp")) {
+			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
 			} else if (cmd_words_b[2] < 0) {
 				print_string("Current IP: ");
@@ -971,19 +972,19 @@ void cmd_parser(void) __banked
 			}
 			write_char('\n');
 		} else if (cmd_compare(0, "l2")) {
-			if (cmd_words_b[1] > 0 && cmd_compare(1, "forget"))
+			if (cmd_compare(1, "forget"))
 				port_l2_forget();
 			else
 				port_l2_learned();
 		} else if (cmd_compare(0, "igmp")) {
-			if (cmd_words_b[1] > 0 && cmd_compare(1, "on"))
+			if (cmd_compare(1, "on"))
 				igmp_enable();
-			else if (cmd_words_b[1] > 0 && cmd_compare(1, "show"))
+			else if (cmd_compare(1, "show"))
 				igmp_show();
 			else
 				igmp_setup();  // Reverts to default with IP-MC being flooded
 		} else if (cmd_compare(0, "stp")) {
-			if (cmd_words_b[1] > 0 && cmd_compare(1, "on")) {
+			if (cmd_compare(1, "on")) {
 				print_string("STP enabled\n");
 				stpEnabled = 1;
 				stp_setup();
@@ -1044,6 +1045,11 @@ void cmd_parser(void) __banked
 				p = (p + 1) & CMD_HISTORY_MASK;
 			}
 		}
+		else {
+			print_string("Unknown command\n");
+		}
+
+
 		if (save_cmd) {
 			uint8_t i;
 			for (i = 0; i < N_WORDS; i++) {
