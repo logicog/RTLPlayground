@@ -70,6 +70,8 @@ function update(callback) {
 	  continue;
 	var bgs = psvg.contentDocument.getElementsByClassName("bg");
 	var leds = psvg.contentDocument.getElementsByClassName("led");
+        if (leds[0] == null || leds[0].style == null)
+          continue;
 	if (p.enabled == 0) {
 	  pState[n] = -1;
 	  bgs[0].style.fill = "red";
@@ -127,9 +129,25 @@ function callbackXHTTP()
   x = currentRequests[0];
   currentCallback = x.onreadystatechange;
   x.onreadystatechange = callbackXHTTP;
-  setTimeout(() => {
-	  x.send();
-  }, 20);
+  var retries = 10;
+  while (retries) {
+    try {
+      setTimeout(() => {
+              x.send();
+              console.log("B1");
+      }, 20);
+    } catch (error) {
+      retries--;
+      setTimeout(() => {
+        console.log(`Retry ${retries}/${maxRetries} failed: ${error.message}`);
+      }, 200);
+      if (retries < 1) {
+        throw error;
+      }
+    }
+    console.log("B2");
+    return;
+  }
 }
 
 function sendXHTTP(x)
@@ -139,7 +157,24 @@ function sendXHTTP(x)
     currentRequests.push(x);
     currentCallback = x.onreadystatechange;
     x.onreadystatechange = callbackXHTTP;
-    x.send();
+    var retries = 10;
+    while (retries) {
+      try {
+        x.send();
+        console.log("A1");
+      } catch (error) {
+        retries--;
+        setTimeout(() => {
+          console.log(`Retry ${retries}/${maxRetries} failed: ${error.message}`);
+        }, 200);
+        if (retries < 1) {
+          throw error;
+        }
+      }
+      console.log("A2");
+      return;
+    }
+    console.log("A3");
     return;
   }
   currentRequests.push(x);
