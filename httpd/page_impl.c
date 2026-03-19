@@ -655,7 +655,12 @@ void send_status(void)
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
 				for (register uint8_t s = 0; s < 16; s++)
 					outbuf[slen++] = sfp_module_serial[machine.is_sfp[i]-1][s];
-				char_to_html('"');
+				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
+				if (machine.sfp_port[machine.is_sfp[i]-1].pin_los == GPIO_NA) {
+					slen += strtox(outbuf + slen,"null");
+				} else {
+					bool_to_html(sfp_pins_last & (0x2 << (((machine.is_sfp[i]-1) << 2))));
+				}
 			} else {
 				bool_to_html(0);
 			}

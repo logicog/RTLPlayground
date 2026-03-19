@@ -124,6 +124,9 @@ __code uint16_t bit_mask[16] = {
 
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
+// Last known state of the SFP detection/Loss of Signal pins
+// SFP1 b0 = 1 => module missing, b1 = 1 => LOS;
+// SFP2 b4 = 1 => module missing, b5 = 1 => LOS;
 __xdata uint8_t sfp_pins_last;
 __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
