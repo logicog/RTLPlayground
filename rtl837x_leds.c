@@ -35,6 +35,7 @@ void leds_dump(void) __banked
 	print_string("RTL837X_REG_LED1_0_SET2: "); print_reg(RTL837X_REG_LED1_0_SET2); write_char('\n');
 	print_string("RTL837X_REG_LED3_2_SET2: "); print_reg(RTL837X_REG_LED3_2_SET2); write_char('\n');
 	print_string("RTL837X_REG_LED1_0_SET3: "); print_reg(RTL837X_REG_LED1_0_SET3); write_char('\n');
+	print_string("RTL837X_REG_LED3_2_SET3: "); print_reg(RTL837X_REG_LED3_2_SET3); write_char('\n');
 	print_string("RTL837X_REG_LED3_0_SET1: "); print_reg(RTL837X_REG_LED3_0_SET1); write_char('\n');
 	print_string("RTL837X_REG_LED3_0_SET3: "); print_reg(RTL837X_REG_LED3_0_SET3); write_char('\n');
 	print_string("RTL837X_LED_PORT_SET_SEL: "); print_reg(RTL837X_LED_PORT_SET_SEL); write_char('\n');
