@@ -78,6 +78,17 @@ void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 	}
 }
 
+uint16_t port_pvid_get(uint8_t port) __banked
+{
+	uint16_t reg = RTL837x_PVID_BASE_REG + ((port >> 1) << 2);
+	reg_read_m(reg);
+	if (port & 0x1) {
+		return (sfr_data[1] << 4) | (sfr_data[2] >> 4);
+	} else {
+		return ((sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+	}
+}
+
 
 void vlan_delete(uint16_t vlan) __banked
 {
@@ -93,7 +104,7 @@ void vlan_delete(uint16_t vlan) __banked
  */
 int8_t vlan_get(register uint16_t vlan) __banked
 {
-	if (vlan >= 0x3ff) // VLAN 4095 is special
+	if (vlan >= 0xfff) // VLAN 4095 is special
 		return -1;
 
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_EXECUTE);
