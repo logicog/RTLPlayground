@@ -270,6 +270,14 @@ void send_vlan(uint16_t vlan)
 		while(vlan_names[n] && vlan_names[n] != ' ')
 			char_to_html(vlan_names[n++]);
 	}
+	slen += strtox(outbuf + slen, "\",\"pvid\":\"0x");
+	uint16_t pvid_mask = 0;
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		if (port_pvid_get(i) == vlan)
+			pvid_mask |= (1 << i);
+}
+	byte_to_html(pvid_mask >> 8);
+	byte_to_html(pvid_mask);
 	slen += strtox(outbuf + slen, "\"}");
 }
 
