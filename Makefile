@@ -72,7 +72,7 @@ $(BUILDDIR)/rtlplayground.bin: $(BUILDDIR)/rtlplayground.img
 	tools/$(BUILDDIR)/imagebuilder -i $^ $@
 	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data $@
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data -b BANK1 $@
 	tools/$(BUILDDIR)/crc_calculator -u $@
 
 
