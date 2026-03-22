@@ -63,13 +63,14 @@ function fetchVLAN() {
       var members = m & 0x3FF;
       var untag = (m >> 10) & 0x3FF;
       var pvid = parseInt(s.pvid, 16);
-      for (let i = 1; i <= numPorts; i++) {
-        var bit = i - 1;
+      console.log("PVID: ", pvid);
+      for (let p = 1; p <= numPorts; p++) {
+        var bit = physToLogPort[p-1];
         var isMember = (members >> bit) & 1;
         var isUntag = (untag >> bit) & 1;
-        setC('t', i, isMember && !isUntag);
-        setC('u', i, isMember && isUntag);
-        setC('p', i, (pvid >> bit) & 1);
+        setC('t', p, isMember && !isUntag);
+        setC('u', p, isMember && isUntag);
+        setC('p', p, (pvid >> bit) & 1);
       }
     }
   };
