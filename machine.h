@@ -21,6 +21,7 @@
 // #define MACHINE_K0501W_V2_0
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
 // #define MACHINE_ZX310S_4T2XH
+#define MACHINE_ZX310S_4T2XH
 // #define MACHINE_DEFAULT_8C_1SFP
 
 typedef struct {
