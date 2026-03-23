@@ -86,6 +86,75 @@ void rtl8224_phy_enable(void) __banked
 }
 
 
+void phy_config_8261(uint8_t phy) __banked
+{
+	print_string("phy_config_8261:\n");
+	phy_write(phy, 0x1e, 0x141, 0x80aa);  // P000008.1e000141:80aa P000008.1e000143:8c07 p031e.0143:0c07
+	phy_write(phy, 0x1e, 0x143, 0x8c07);
+	phy_read(phy, 0x1e, 0x143);
+	print_phy_data();
+	phy_write(phy, 0x1e, 0x141, 0x5078); // P000008.1e000141:5078 P000008.1e000143:8c86 p031e.0143:0c86
+	phy_write(phy, 0x1e, 0x143, 0x8c86);
+	phy_read(phy, 0x1e, 0x143);
+	print_phy_data();
+	phy_read(phy, 0x1e, 0x105);
+	print_phy_data(); // p031e.0105:0000
+
+	phy_write(phy, 0x1e, 0xe1, 0x00); // P000008.1e0000e1:0000
+	phy_write(phy, 0x1e, 0xe3, 0x00); // P000008.1e0000e3:0000
+	phy_write(phy, 0x1e, 0xe4, 0x01); // P000008.1e0000e4:0001
+	phy_write(phy, 0x1e, 0xe0, 0x2f); // P000008.1e0000e0:002f
+
+	// The following are actually bit-ops:
+	phy_write(phy, 0x1f, 0xa442, 0x8418); // p031f.a442:0418 P000008.1f00a442:8418
+	phy_write(phy, 0x1f, 0xa448, 0x07a0); // p031f.a448:07a0 P000008.1f00a448:07a0
+	phy_write(phy, 0x1f, 0xa43a, 0x003f); // p031f.a43a:0030 P000008.1e0000e2:003f
+
+	phy_write(phy, 0x1f, 0xc800, 0x5a02); // P000008.1f00c800:5a02
+
+	phy_write(phy, 0x1e, 0x01ee, 0x5a02); // p031e.01ee:5a00 P000008.1e0001ee:5a02
+	phy_write(phy, 0x1e, 0x0230, 0x0002); // p031e.0230:0000 P000008.1e000230:0002
+	phy_write(phy, 0x1f, 0xc802, 0x0073); // p031f.c802:0000 P000008.1f00c802:0073
+	phy_write(phy, 0x1e, 0x01ef, 0xe004); // p031e.01ef:0004 P000008.1e0001ef:e004
+	delay(20);
+	phy_write(phy, 0x1e, 0x01ef, 0x0004); // p031e.01ef:e004 P000008.1e0001ef:0004
+	delay(20);
+	phy_write(phy, 0x1e, 0x0230, 0x01c2); // p031e.0230:01c2 P000008.1e000230:0002
+	
+	phy_read(phy, 0x1e, 0x103);
+	print_phy_data(); // p031e.0103:8261
+
+	phy_write(phy, 0x1e, 0x01c8, 0x0104); // p031e.01c8:0104 P000008.1e0001c8:0104
+	phy_write(phy, 0x1e, 0x01c9, 0x8080); // p031e.01c9:8080 P000008.1e0001c9:8080
+	phy_write(phy, 0x1e, 0x01ca, 0x2020); // p031e.01ca:2020 P000008.1e0001ca:2020
+	phy_write(phy, 0x1e, 0x0105, 0x0000); // p031e.0105:0000 P000008.1e000105:0000
+	phy_write(phy, 0x1e, 0x00c2, 0x880d); // p031e.00c2:880d P000008.1e0000c2:880d
+	phy_write(phy, 0x1e, 0x03f1, 0x0072); // p031e.03f1:0072 P000008.1e0003f1:0072
+	phy_write(phy, 0x1e, 0x02a2, 0x0010); // p031e.02a2:0010 P000008.1e0002a2:0010
+	phy_write(phy, 0x1e, 0x00c1, 0x0127); // p031e.00c1:0127 P000008.1e0000c1:0127
+	phy_write(phy, 0x1e, 0x00c1, 0x0167); // p031e.00c1:0127 P000008.1e0000c1:0167
+
+	sds_write_v(0, 0x21, 0x00, 0x4096); // Q002100:4906
+	sds_write_v(0, 0x36, 0x05, 0x4000); // Q003605:4000
+	sds_write_v(0, 0x1f, 0x02, 0x001f); // Q001f02:001f
+
+	phy_read(phy, 0x01, 0x0000);
+	print_phy_data(); // p0301.0000:2040
+
+	phy_write(phy, 0x01, 0x0000, 0x2040);  // P000008.01000000:2040
+	delay(20);
+
+	sds_write_v(0, 0, 0, 0x1603); // Q000000:1603
+	delay(20);
+	sds_write_v(0, 0, 0, 0x1601); // Q000000:1601
+	delay(20);
+	sds_write_v(0, 0, 0, 0x1603); //Q000000:1603
+	delay(20);
+	// r6330:00005555 R6330-00005555 r7b20:000003ed R7b20-000003ed
+	print_string("\r\nphy_config_8261 done\n");
+}
+
+
 void phy_config(uint8_t phy) __banked
 {
 	print_string("\r\nphy_config: ");
