@@ -807,7 +807,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	print_string("sds_config sds: "); print_byte(sds); print_string(", mode: "); print_byte(mode); write_char('\n');
 	sds_config_mac(sds, mode);
 
-	if (mode == SDS_10GR || mode == SDS_QXGMII) // 10G Fiber, 10G connection to RTL8224
+	if (mode == SDS_10GR || mode == SDS_QXGMII)
 		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
 	else
 		sds_write_v(sds, 0x21, 0x10, 0x6480); // Q002110:6480
@@ -843,7 +843,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	}
 	sds_write_v(sds, 0x36, 0x10, v); // Q003610:0200
 
-	if (page == 0x2e) {  // 10G Fiber
+	if (page == 0x2e) {  // 10G Fiber / SDS_QXGMII
 		sds_write_v(sds, page, 0x04, 0x0080); // Q012e04:0080
 		sds_write_v(sds, page, 0x06, 0x0408); // Q012e06:0408
 		sds_write_v(sds, page, 0x07, 0x020d); // Q012e07:020d
@@ -872,6 +872,30 @@ void sds_config(uint8_t sds, uint8_t mode)
 	sds_write_v(sds, 0x07, 0x0c, 0x9401); // Q00070c:9401
 	sds_write_v(sds, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
 	sds_write_v(sds, 0x06, 0x03, 0xc45c); // Q000603:c45c
+
+	// RTL8261BE on sds 0
+	if (machine.n_10g && mode == SDS_QXGMII) {
+		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
+		sds_write_v(sds, 0x07, 0x11, 0x054f); // Q000711:054f
+		sds_write_v(sds, 0x20, 0x00, 0x0030); // Q002000:0030
+		sds_write_v(sds, 0x20, 0x00, 0x0010); // Q002000:0010
+		sds_write_v(sds, 0x20, 0x00, 0x0050); // Q002000:0050
+		sds_write_v(sds, 0x20, 0x00, 0x00d0); // Q002000:00d0
+		sds_write_v(sds, 0x20, 0x00, 0x0cd0); // Q002000:0cd0
+		sds_write_v(sds, 0x20, 0x00, 0x04d0); // Q002000:04d0
+		sds_write_v(sds, 0x20, 0x00, 0x04d0); // Q002000:04d0
+		sds_write_v(sds, 0x20, 0x00, 0x0cd0); // Q002000:0cd0
+		sds_write_v(sds, 0x20, 0x00, 0x00d0); // Q002000:00d0
+		sds_write_v(sds, 0x20, 0x00, 0x00d0); // Q002000:00d0
+		sds_write_v(sds, 0x20, 0x00, 0x0050); // Q002000:0050
+		sds_write_v(sds, 0x20, 0x00, 0x0010); // Q002000:0010
+		sds_write_v(sds, 0x20, 0x00, 0x0010); // Q002000:0010
+		sds_write_v(sds, 0x20, 0x00, 0x0030); // Q002000:0030
+		sds_write_v(sds, 0x20, 0x00, 0x0000); // Q002000:0000
+		sds_write_v(sds, 0x1f, 0x00, 0x000b); // Q001f00:000b
+		sds_write_v(sds, 0x1f, 0x00, 0x0000); // Q001f00:0000
+		return;
+	}
 	if (mode != SDS_QXGMII)
 		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
 
@@ -1276,13 +1300,15 @@ void idle(void)
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
-			// Handle link change of the RTL8221 PHY, adjust SDS mode
-			if (p5_last != p5) {
+			// Handle link change of the RTL8221 PHY, adjust SDS mode, RTL8226 always uses SDS_QXGMII
+			if (!machine.n_10g && p5_last != p5) {
 				if (p5 == 0x5) // 2.5GBit Mode
 					sds_config(0, SDS_HISGMII);
 				else if (p5 == 0x2) // 1GBit
 					sds_config(0, SDS_SGMII);
 			}
+			if (machine.n_10g)
+				sds_config(0, SDS_QXGMII);
 		} else {
 			cpy_4(linkbits_last, sfr_data);
 		}
@@ -1576,6 +1602,8 @@ void sds_init(void)
 		uint16_t pval;
 
 		print_string("  N-settings");
+		if (machine.n_10g)
+			print_string(" - 10g");
 		// Serdes 0 RX PN swap for 64B/66B
 		sds_read(1, 6, 2);
 		pval = SFR_DATA_U16;
@@ -1585,23 +1613,31 @@ void sds_init(void)
 		sds_read(1, 0, 0);
 		pval = SFR_DATA_U16;
 		sds_write_v(1, 0, 0, pval | 0x200);
-
+	
 		// Serdes 0 RX PN swap for 64B/66B
 		sds_read(0, 6, 2);
 		pval = SFR_DATA_U16;
 		sds_write_v(0, 6, 2, pval | 0x2000);
 
-		if (machine_detected.isRTL8373) {
-			// RTL8224: Serdes 0 RX PN swap for 64B/66B
-			// We assume that RTL8373N always paired with RTL8224N.
-			// This sds register value is 0x0000 at reset.
-			// So only write to it.
-			RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
-		} else {
-			// Serdes 0 RX PN swap for 8B/10B
-			sds_read(0, 0, 0);
-			pval = SFR_DATA_U16;
-			sds_write_v(0, 0, 0, pval | 0x200);
+		if (!machine.n_10g) {
+			if (machine_detected.isRTL8373) {
+				// RTL8224: Serdes 0 RX PN swap for 64B/66B
+				// We assume that RTL8373N always paired with RTL8224N.
+				// This sds register value is 0x0000 at reset.
+				// So only write to it.
+				RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
+			} else {
+				// Serdes 0 RX PN swap for 8B/10B
+				sds_read(0, 0, 0);
+				pval = SFR_DATA_U16;
+				sds_write_v(0, 0, 0, pval | 0x200);
+			}
+		}
+		if (machine.n_10g) {
+			reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
+			sfr_mask_data(0, 0x0f,0x0c);
+			reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
+			REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
 		}
 	}
 }
@@ -1734,11 +1770,14 @@ void rtl8372_init(void)
 	phy_config(3);	// PHY configuration: all internal PHYs?
 	// Set the MAC SerDes Modes Bits 0-4: SDS 0 = 0x2 (0x2), Bits 5-9: SDS 1: 1f (off)
 	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
-	reg_read_m(RTL837X_REG_SDS_MODES);
-	sfr_mask_data(1, 0, 0x03);
-	sfr_mask_data(0, 0, 0xe2);
-	reg_write_m(RTL837X_REG_SDS_MODES);
-
+	if (machine.n_10g) {
+		REG_SET(RTL837X_REG_SDS_MODES, 0x3ed); // Disable SFP for now, set RTL8226 SDS 0 to 0xd
+	} else {
+		reg_read_m(RTL837X_REG_SDS_MODES);
+		sfr_mask_data(1, 0, 0x03);
+		sfr_mask_data(0, 0, 0xe2);
+		reg_write_m(RTL837X_REG_SDS_MODES);
+	}
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
 	sfr_mask_data(0, 0x0f, 0x0c);
