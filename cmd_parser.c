@@ -382,9 +382,8 @@ void parse_ingress(void)
 	}
 	__xdata uint8_t log_port = 0;
 	__xdata vlan_ingress_mode_t mode = VLAN_INVALID;
-	__xdata uint8_t w = 1;
 
-	if (vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[w]], &mode)) {
+	if (vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[1]], &mode)) {
 		// Setting mode for all ports at once
 		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
 			if (!port_ingress_filter(log_port, mode)) {
@@ -396,7 +395,7 @@ void parse_ingress(void)
 		}
 		return;
 	} else {
-		for(w = 1; cmd_words_b[w] > 0; w++) {
+		for(uint8_t w = 1; cmd_words_b[w] > 0; w++) {
 			if (!isnumber(cmd_buffer[cmd_words_b[w]])) {
 				continue;
 			}
