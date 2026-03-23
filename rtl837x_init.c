@@ -111,7 +111,7 @@ void rtl8373_init(void)
 	phy_config_8224();
 	sds_config_mac(1, SDS_OFF);    // Off for now until SFP+ port used
 	sds_config_mac(2, SDS_SGMII);  // For RTL8224
-	sds_config(0, SDS_QXGMII);
+	sds_config(0, SDS_QXGMII);     // For RTL8224
 
 	// SDS 1 setup
 	// q012100:4902 Q012100:4906 q013605:0000 Q013605:4000 Q011f02:001f q011f15:0086
@@ -191,7 +191,10 @@ void rtl8372_init(void)
 
 	sds_init();
 	phy_config(8);	// PHY configuration: External 8221B?
-	phy_config(3);	// PHY configuration: all internal PHYs?
+	if (machine.n_10g)
+		phy_config_8261(3);
+	else
+		phy_config(3);	// PHY configuration: all internal PHYs?
 	// Set the MAC SerDes Modes Bits 0-4: SDS 0 = 0x2 (0x2), Bits 5-9: SDS 1: 1f (off)
 	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
 	if (machine.n_10g) {
@@ -202,6 +205,7 @@ void rtl8372_init(void)
 		sfr_mask_data(0, 0, 0xe2);
 		reg_write_m(RTL837X_REG_SDS_MODES);
 	}
+
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
 	sfr_mask_data(0, 0x0f, 0x0c);
