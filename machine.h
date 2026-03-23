@@ -58,6 +58,7 @@ typedef struct machine {
 	// Highest logical port number
 	uint8_t max_port;
 	uint8_t n_sfp;
+	uint8_t n_10g;
 	uint8_t log_to_phys_port[9];
 	uint8_t phys_to_log_port[9]; // Starts at 0 for port 1
 	uint8_t is_sfp[9];  // 0 for non-SFP ports 1 or 2 for the I2C port number
