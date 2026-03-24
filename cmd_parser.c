@@ -87,7 +87,7 @@ inline uint8_t isnumber(uint8_t l)
 }
 
 
-uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
+uint8_t cmd_compare(uint8_t start, __code uint8_t *cmd)
 {
 	if ((start > 0) && (cmd_words_b[start] <= 0) )// nothing on this word -> no match
 		return 0;
@@ -529,6 +529,14 @@ void parse_port(void)
 		else if (cmd_compare(3, "full"))
 			phy_settings.duplex = PHY_DUPLEX_FULL;
 		phy_set_speed();
+	} else if (cmd_compare(2, "10g")) {
+		print_string(" 10G\n");
+		phy_settings.speed = PHY_SPEED_10G;
+		phy_set_speed();
+	} else if (cmd_compare(2, "5g")) {
+		print_string(" 5G\n");
+		phy_settings.speed = PHY_SPEED_5G;
+		phy_set_speed();
 	} else if (cmd_compare(2, "2g5")) {
 		print_string(" 2.5G\n");
 		phy_settings.speed = PHY_SPEED_2G5;
@@ -726,6 +734,9 @@ void parse_eee(void)
 	__xdata int8_t port = -1;
 	__xdata uint8_t speed = EEE_2G5;
 	__xdata uint8_t speed_word = 0;
+
+	if (machine.n_10g)
+		speed = EEE_10G;
 	// Check if word 2 is a speed (contains 'g' or 'm') or a port number
 	if (cmd_words_b[3] > 0) {
 		uint8_t idx = cmd_words_b[2];
