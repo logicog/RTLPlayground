@@ -33,6 +33,16 @@ struct vlan_settings {
 	uint16_t tagged;
 };
 
+/* 
+ * Port EEE settings
+ */
+#define EEE_100 	0x01
+#define EEE_1000	0x04
+#define EEE_2G5		0x10
+#define EEE_5G		0x20
+#define EEE_10G		0x40
+#define EEE_NORESET	0x80
+
 extern __xdata struct vlan_settings vlan_settings;
 
 uint8_t port_l2_forget(void) __banked;
