@@ -14,6 +14,7 @@ struct phy_settings {
 	uint8_t duplex;
 	uint8_t port;
 	uint8_t speed;
+	uint8_t is10g_port;
 };
 
 extern __xdata struct phy_settings phy_settings;
