@@ -77,14 +77,17 @@ void static sds_init(void)
 				pval = SFR_DATA_U16;
 				sds_write_v(0, 0, 0, pval | 0x200);
 			}
-		}
-		if (machine.n_10g) {
+		} else if (machine.n_10g == 1) {
 			reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
 			sfr_mask_data(0, 0x0f,0x0c);
 			reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
 			REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
+		} else if (machine.n_10g == 2) {
+			REG_SET(RTL837X_CFG_PHY_MDI_REVERSE, 0xc);
+			REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
 		}
 	}
+	print_string("\nsds_init done\n");
 }
 
 
@@ -190,15 +193,20 @@ void rtl8372_init(void)
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();
-	phy_config(8);	// PHY configuration: External 8221B?
+	if (machine.n_10g != 2)
+		phy_config(8);	// PHY configuration: External 8221B?
 	if (machine.n_10g)
-		phy_config_8261(3);
+		phy_config_8261(3, 0);
+	if (machine.n_10g == 2)
+		phy_config_8261(8, 1);
 	else
 		phy_config(3);	// PHY configuration: all internal PHYs?
 	// Set the MAC SerDes Modes Bits 0-4: SDS 0 = 0x2 (0x2), Bits 5-9: SDS 1: 1f (off)
 	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
-	if (machine.n_10g) {
+	if (machine.n_10g == 1) {
 		REG_SET(RTL837X_REG_SDS_MODES, 0x3ed); // Disable SFP for now, set RTL8261BE SDS 0 to 0xd
+	} else if(machine.n_10g == 2) {
+		REG_SET(RTL837X_REG_SDS_MODES, 0x1ad); // Both 10g ports use SDS_QXGMII
 	} else {
 		reg_read_m(RTL837X_REG_SDS_MODES);
 		sfr_mask_data(1, 0, 0x03);

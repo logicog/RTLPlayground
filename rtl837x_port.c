@@ -580,7 +580,7 @@ void port_eee_status(uint8_t port) __banked
 		if (v & PHY_EEE_BIT_10G)
 			print_string(" 10G");
 		else
-			print_string("     ");
+			print_string("    ");
 	}
 	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV2);
 	v = SFR_DATA_U16;
@@ -588,7 +588,7 @@ void port_eee_status(uint8_t port) __banked
 		if (v & PHY_EEE_BIT_5G)
 			print_string(" 5G");
 		else
-			print_string("     ");
+			print_string("   ");
 	}
 	v = SFR_DATA_U16;
 	if (v & PHY_EEE_BIT_2G5)
@@ -613,7 +613,7 @@ void port_eee_status(uint8_t port) __banked
 		if (v & PHY_EEE_BIT_10G)
 			print_string(" 10G");
 		else
-			print_string("     ");
+			print_string("    ");
 	}
 	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
 	v = SFR_DATA_U16;
@@ -621,7 +621,7 @@ void port_eee_status(uint8_t port) __banked
 		if (v & PHY_EEE_BIT_5G)
 			print_string(" 5G");
 		else
-			print_string("     ");
+			print_string("   ");
 	}
 	if (v & PHY_EEE_BIT_2G5)
 		print_string(" 2.5G");

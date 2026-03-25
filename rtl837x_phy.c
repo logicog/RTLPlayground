@@ -263,6 +263,10 @@ void phy_set_speed(void) __banked
 	uint16_t v;
 
 	print_string("Setting port "); write_char(machine.log_to_phys_port[phy_settings.port] + '0');
+	if (machine.n_10g && phy_settings.port == 3)
+		phy_settings.is10g_port = 1;
+	if (machine.n_10g == 2 && phy_settings.port == 8)
+		phy_settings.is10g_port = 1;
 	if (phy_settings.speed == PHY_OFF) {
 		print_string(" to disabled");
 	} else {
@@ -270,6 +274,8 @@ void phy_set_speed(void) __banked
 		switch(phy_settings.speed) {
 		case PHY_SPEED_AUTO:
 			print_string("auto");
+			if (phy_settings.is10g_port)
+				print_string (" (10g)");
 			break;
 		case PHY_SPEED_10M:
 			print_string("10M");
@@ -316,7 +322,10 @@ void phy_set_speed(void) __banked
 			// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
-			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200); // Loop timing enabled
+			if (phy_settings.is10g_port)
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0e00);
+			else
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0200);
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3200);	// Restart AN
 	} else {
 		// AN Control Register (MMD 7.0x0000)
@@ -355,6 +364,12 @@ void phy_set_speed(void) __banked
 				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
 				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
+			} else if (phy_settings.speed == PHY_SPEED_5G) {
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0400, 0x0000);
+			} else if (phy_settings.speed == PHY_SPEED_10G) {
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0800, 0x0000);
 			}
 		}
 		phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);	// Enable AN
@@ -512,6 +527,10 @@ void phy_show(uint8_t port) __banked
 		v = SFR_DATA_U16;
 		if (v & 0x0080)
 			print_string(" 2500BaseN-Full");
+		if (v & 0x0100)
+			print_string(" 5000BaseN-Full");
+		if (v & 0x1000)
+			print_string(" 10GBaseN-Full");
 	}
 	phy_read(port, PHY_MMD_AN, PHY_ANEG_LP_ABILITY);
 	v = SFR_DATA_U16;
