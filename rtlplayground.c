@@ -749,6 +749,7 @@ void early_boot_handle_button(void)
 	if (gpio_pin_test(machine.reset_pin))
 		return;
 
+	set_sys_led_state(SYS_LED_FAST);
 	print_string("\n[Reset button held at boot]\n");
 
 	if (gpio_pin_test(machine.reset_pin))
@@ -756,7 +757,13 @@ void early_boot_handle_button(void)
 
 	const __xdata uint32_t min_hold_ticks = 10UL * SYS_TICK_HZ;
 	const __xdata uint32_t max_hold_ticks = 30UL * SYS_TICK_HZ;
+	const __xdata uint32_t blink_ticks = SYS_TICK_HZ / 10;      // 100 ms
+	const __xdata uint32_t pause_ticks = SYS_TICK_HZ / 2;       // 500 ms
 	__xdata uint32_t start_ticks = ticks;
+	__xdata uint32_t last_blink_step = start_ticks;
+	__xdata uint8_t blink_step = 0;
+
+	set_sys_led_state(SYS_LED_ON);
 
 	while (!gpio_pin_test(machine.reset_pin)) {
 		__xdata uint32_t held_ticks = ticks - start_ticks;
@@ -766,12 +773,25 @@ void early_boot_handle_button(void)
 			return;
 		}
 
+		// Double blink pattern while button is held:
+		// ON (100ms), OFF (100ms), ON (100ms), OFF (500ms)
+		__xdata uint32_t step_ticks = (blink_step == 3) ? pause_ticks : blink_ticks;
+		if ((ticks - last_blink_step) >= step_ticks) {
+			blink_step = (blink_step + 1) & 0x3;
+			set_sys_led_state((blink_step == 0 || blink_step == 2) ? SYS_LED_ON : SYS_LED_OFF);
+			last_blink_step = ticks;
+		}
+
 		PCON |= 1;
 	}
 
+	set_sys_led_state(SYS_LED_ON);
+
 	if ((ticks - start_ticks) >= min_hold_ticks) {
 		print_string("[Button held 10s-30s at boot; restoring default config]\n");
+		set_sys_led_state(SYS_LED_FAST);
 		flash_default_config();
+		delay(3UL * SYS_TICK_HZ);
 	}
 }
 
