@@ -95,6 +95,7 @@ extern __xdata struct dhcp_state dhcp_state;
 __xdata volatile uint8_t sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 
+// Registry data in sfr is in *big endian* order, so sfr_data[0] is the MSB and sfr_data[3] the LSB
 __xdata uint8_t sfr_data[4];
 
 extern __xdata uint8_t gpio_last_value[8];
@@ -462,7 +463,7 @@ void reg_bit_clear(uint16_t reg_addr, char bit)
 
 
 /*
- * This sets a bit in the 32bit wide switch register reg_addr
+ * This tests a bit in the 32bit wide switch register reg_addr
  */
 uint8_t reg_bit_test(uint16_t reg_addr, char bit)
 {
