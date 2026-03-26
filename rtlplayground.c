@@ -30,6 +30,8 @@ extern __xdata uint32_t flash_size;
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
 void crc16(__xdata uint8_t *v) __naked;
+void flash_default_config(void);
+void early_boot_handle_button(void);
 
 // See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200
@@ -734,6 +736,44 @@ void delay(uint16_t t)
 		PCON |= 1;
 }
 
+void early_boot_handle_button(void)
+{
+	if (machine.reset_pin == GPIO_NA)
+		return;
+
+	gpio_input_setup(machine.reset_pin);
+
+	// Debounce after init
+	delay(100);
+	// If the button is not already held at boot, continue normally.
+	if (gpio_pin_test(machine.reset_pin))
+		return;
+
+	print_string("\n[Reset button held at boot]\n");
+
+	if (gpio_pin_test(machine.reset_pin))
+		return;
+
+	const __xdata uint32_t min_hold_ticks = 10UL * SYS_TICK_HZ;
+	const __xdata uint32_t max_hold_ticks = 30UL * SYS_TICK_HZ;
+	__xdata uint32_t start_ticks = ticks;
+
+	while (!gpio_pin_test(machine.reset_pin)) {
+		__xdata uint32_t held_ticks = ticks - start_ticks;
+
+		if (held_ticks > max_hold_ticks) {
+			print_string("[Button held >30s at boot; continuing normal boot]\n");
+			return;
+		}
+
+		PCON |= 1;
+	}
+
+	if ((ticks - start_ticks) >= min_hold_ticks) {
+		print_string("[Button held 10s-30s at boot; restoring default config]\n");
+		flash_default_config();
+	}
+}
 
 /*
  * Configure the SerDes of the SoC for a particular mode
@@ -2132,6 +2172,8 @@ void main(void)
 	print_string("\nVerifying PHY settings:\n");
 //	p031f.a610:2058 p041f.a610:2058  p051f.a610:2058  r4f3c:00000000 p061f.a610:2058 p071f.a610:2058 
 	port_stats_print();
+
+	early_boot_handle_button();
 
 	execute_config();
 	print_string("\n> ");
