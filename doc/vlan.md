@@ -38,10 +38,18 @@ an even port uses bits [11:0].  The base register is
 RTL837x_PVID_BASE_REG (0x4e1c) and the registers go to 0x4e2c so that also
 the CPU-Port may have a PVID.
 
-Register RTL837x_REG_INGRESS (0x4e10) allows to define the iingress rules of
+Register RTL837x_REG_INGRESS (0x4e10) allows to define the ingress rules of
 a port. 2 bits define a rule and bits 0-19 are being used. A value of 00
 defines no filtering, 01 (0x01) allows only tagged packets, while 10 (0x02)
-allows only untagged packets to enter a port. The default PVID is 1.
+allows only untagged packets to enter a port.
+
+Register RTL837X_VLAN_PORT_IGR_FLTR (0x4e18) enables or disables ingres VLAN
+filtering, each bit corresponds to given port (port0 -> bit0, port9 -> bit9).
+When enabled, incomming package's vlan tag is checked against VLAN membership
+on given port. When package contains VLAN not in member list, package is dropped.
+
+The default PVID on all port is 1, ingress VLAN filtering is enabled and all types of
+frames are accepted on input on all ports.
 
 By default, the ports transmit Ethernet frames with Realtek's proprietary
 tag format. By setting bit 6 (0x40) of the respective port configuration
@@ -68,9 +76,20 @@ vlan <VLAN-ID> p[t/u]...
 vlan <VLAN-ID> d
   deletes the VLAN
 
+vlan show
+  Dumps the current ingress vlan settings.
+
 pvid <port> <VLAN-ID>
   assigns PVID to a port. ports are numbered as on the casing
 
-ingress <port> [tagged|untagged|all]
-  Allows ingress only for the named packages at the given port
+ingress [p]<t|u|a>...
+  Allows ingress packages on port `p` only when `t`agged, `u`ntagged or `a`ny.
+  Multiple ports can be given at once as in vlan. When `p` is missing, all ports
+  are assigned the same mode. CPU port can not be changed.
+
+  Use `vlan show` to see current configuration.
+
+  Example:
+  `ingress 1t 2a` -> Set port 1 as tagged input only, set port 2 accepting any frames.
+  `ingress a` -> Set all ports to accept both tagged and untagged frames (default behaviour).
 ```
