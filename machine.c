@@ -409,9 +409,9 @@ void machine_custom_init(void) {
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
 }
 
-#elif defined MACHINE_K0501W
+#elif defined MACHINE_K0501W_V2_0
 __code const struct machine machine = {
-	.machine_name = "K0501W",
+	.machine_name = "K0501W V2.0",
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
