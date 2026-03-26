@@ -17,7 +17,7 @@
 // #define MACHINE_SWTG018AS_A_V_2_0
 // #define MACHINE_SWTGW218AS
 // #define MACHINE_HI_K0402WS
-// #define MACHINE_K0501W
+// #define MACHINE_K0501W_V2_0
 // #define MACHINE_DEFAULT_8C_1SFP
 
 typedef struct {
