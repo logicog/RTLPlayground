@@ -44,8 +44,8 @@ Port 5 RJ45 is interfaced through a RTL8221B IC.
 |`J4` SFP PINs | Signal | GPIO | Notes |
 |---|---|---|---|
 |3|	TX_DISABLE	      | GPIO_NA | Not connected |
-|4|	MODDEF2 – SDA     | GPIO39 | I2C SDA (shared with U4) |
-|5|	MODDEF1 – SCL     | GPIO40	| I2C SCL (shared with both SFP/U4) |
+|4|	MODDEF2 – SDA     | GPIO39 | I2C SDA |
+|5|	MODDEF1 – SCL     | GPIO40	| I2C SCL |
 |6|	MODDEF0 – PRESENT | GPIO30 | Detect |
 |8|	LOS	              | GPIO37 | RX Loss of Signal |
 ### Notes
@@ -93,7 +93,7 @@ For detailed Slave Interface functionality and protocol information, see [T3 doc
 
 ### Notes
 * 1 pin is square shaped.
-* Mapping unverified but assumed the same as [SWTG024AS.md]
+* Mapping unverified but assumed the same as [LIANGUO SWTG024AS](SWTG024AS.md#t8).
 
 # Reset Circuit
 | Function | GPIO |
@@ -104,6 +104,8 @@ For detailed Slave Interface functionality and protocol information, see [T3 doc
 
 # GPIO
 
+Note: T3/U4/U10-related signal annotations below are copied from [LIANGUO SWTG024AS T3 section](SWTG024AS.md#t3-slave-interface) as well as T8 port from [LIANGUO SWTG024AS T8 section](SWTG024AS.md#t8). They should be treated as assumed identical for ZX-SWTGW215AS as it has not been 100% confirmed true at the moment. 
+
 | HEX VAL. | GPIO   | Component / Purpose | Notes |  | GPIO | Component / Purpose | Notes |
 | -------- | ------ |  ---- | ---- | ---- | ---- | ---- | ---- |
 | 00000001 | GPIO00 | | |  | GPIO32 | T5-3 | U0RXD |
@@ -113,17 +115,17 @@ For detailed Slave Interface functionality and protocol information, see [T3 doc
 | 00000010 | GPIO04 | | |  | GPIO36 |   |  |
 | 00000020 | GPIO05 | | |  | GPIO37 | J4-8 | SFP LOS |
 | 00000040 | GPIO06 | | |  | GPIO38 |   |  |
-| 00000080 | GPIO07 | | |  | GPIO39 | J4-4, T3 | I2C-SDA (U4/SFP) |
-| 00000100 | GPIO08 | | |  | GPIO40 | J4-5, T3 | I2C-SCL (U4/SFP) |
+| 00000080 | GPIO07 | | |  | GPIO39 | J4-4 | SFP I2C SDA |
+| 00000100 | GPIO08 | | |  | GPIO40 | J4-5 | SFP I2C SCL |
 | 00000200 | GPIO09 | | |  | GPIO41 |   |  |
-| 00000400 | GPIO10 | | |  | GPIO42 | U10-P6, T3 | SPI FLASH CLK |
-| 00000800 | GPIO11 | | |  | GPIO43 | U10-P5, T3 | SPI FLASH DI/IO0 |
-| 00001000 | GPIO12 | | |  | GPIO44 | U10-P2, T3 | SPI FLASH DO/IO1 |
-| 00002000 | GPIO13 | PORT1 LED GREEN |  |  | GPIO45 | U10-P1, T3 | SPI FLASH CS  |
-| 00004000 | GPIO14 | PORT1 LED ORANGE |  |  | GPIO46 | T8-1 |  |
-| 00008000 | GPIO15 | | |  | GPIO47 | T8-5 |  |
-| 00010000 | GPIO16 | PORT2 LED GREEN |  |  | GPIO48 | T8-3 |  |
-| 00020000 | GPIO17 | PORT2 LED ORANGE |  |  | GPIO49 | T8-6 |  |
+| 00000400 | GPIO10 | | |  | GPIO42 | U10-P6, U4-P6, T3-1 | SPI FLASH CLK / I2C-SCL (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
+| 00000800 | GPIO11 | | |  | GPIO43 | U10-P5, U4-P5, T3-3 | SPI FLASH DI/IO0 / I2C-SDA (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
+| 00001000 | GPIO12 | | |  | GPIO44 | U10-P2, T3-5 | SPI FLASH DO/IO1 (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
+| 00002000 | GPIO13 | PORT1 LED GREEN |  |  | GPIO45 | U10-P1, T3-6 | SPI FLASH CS (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
+| 00004000 | GPIO14 | PORT1 LED ORANGE |  |  | GPIO46 | T8-1 | (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
+| 00008000 | GPIO15 | | |  | GPIO47 | T8-5 | (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
+| 00010000 | GPIO16 | PORT2 LED GREEN |  |  | GPIO48 | T8-3 | (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
+| 00020000 | GPIO17 | PORT2 LED ORANGE |  |  | GPIO49 | T8-6 | (from [LIANGUO SWTG024AS](SWTG024AS.md#gpio)) |
 | 00040000 | GPIO18 | PORT3 LED GREEN |  |  | GPIO50 |   |  |
 | 00080000 | GPIO19 | PORT3 LED ORANGE |  |  | GPIO51 |   |  |
 | 00100000 | GPIO20 | PORT4 LED GREEN |  |  | GPIO52 |   |  |
