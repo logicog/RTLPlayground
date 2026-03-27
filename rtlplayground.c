@@ -1056,7 +1056,7 @@ void handle_tx(void)
 
 static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
 {
-	if (rate == 0xd)
+	if (rate == 0xc || rate == 0xd)
 		return SDS_1000BX_FIBER;
 	if (rate >= 0x19 && rate <= 0x20)  // Ethernet 2.5 GBit
 		return SDS_HSG;
