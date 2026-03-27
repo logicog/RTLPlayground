@@ -40,6 +40,78 @@ function drawPorts() {
   }
 }
 
+function parseUint16(val) {
+  return parseInt(val, 16) & 0xffff;
+}
+
+function parseInt16(val) {
+  let valInt = parseInt(val, 16);
+  let num = valInt & 0x7fff;
+  if (valInt & 0x8000) {
+    return num - 0x8000;
+  }
+  return num;
+}
+
+function applyCalibrationSlopeOffset(val, cal) {
+  if (typeof cal !== 'string') {
+    return val;
+  }
+  if (cal.startsWith("0x")) {
+    cal = cal.substring(2);
+  }
+  if (cal.length != 8) {
+    return val;
+  }
+  let slope = parseUint16(cal.substring(0, 4)) / 256;
+  let offset = parseInt16(cal.substring(4, 8));
+  return slope * val + offset;
+}
+
+function applyRxPowerCalibration(val, cal) {
+  if (typeof cal !== 'string') {
+    return val;
+  }
+  if (cal.startsWith("0x")) {
+    cal = cal.substring(2);
+  }
+  if (cal.length != 40) {
+    return val;
+  }
+  let bytes = cal.match(/.{1,2}/g).map(function (x) { return parseInt(x, 16); });
+  let view = new DataView(new Uint8Array(bytes).buffer);
+  return view.getFloat32(0) * Math.pow(val, 4)
+    + view.getFloat32(4) * Math.pow(val, 3)
+    + view.getFloat32(8) * Math.pow(val, 2)
+    + view.getFloat32(12) * val
+    + view.getFloat32(16);
+}
+
+function decodeSfpTemp(val, cal) {
+  let temp = parseInt16(val);
+  return applyCalibrationSlopeOffset(temp, cal) / 256;
+}
+
+function decodeSfpVcc(val, cal) {
+  let vcc = parseUint16(val);
+  return applyCalibrationSlopeOffset(vcc, cal) / 10000;
+}
+
+function decodeSfpTxBias(val, cal) {
+  let bias = parseUint16(val);
+  return applyCalibrationSlopeOffset(bias, cal) / 500;
+}
+
+function decodeSfpTxPower(val, cal) {
+  let txPower = parseUint16(val);
+  return applyCalibrationSlopeOffset(txPower, cal) / 10000;
+}
+
+function decodeSfpRxPower(val, cal) {
+  let rxPower = parseUint16(val);
+  return applyRxPowerCalibration(rxPower, cal) / 10000;
+}
+
 function update(callback) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -98,13 +170,13 @@ function update(callback) {
 	    iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
 	    iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
 	    if (hasExtendedStatus) {
-	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + (Number(p.sfp_temp) >> 8) + "." + ((Number(p.sfp_temp) & 0xff)/256.0 * 100).toFixed(0) + "&#8239;&#8451;</td></tr>";
-	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + (Number(p.sfp_vcc) / 10000.0).toFixed(2) + "&#8239;V</td></tr>";
+	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + decodeSfpTemp(p.sfp_temp, p.sfp_temp_cal).toFixed(2) + "&#8239;&#8451;</td></tr>";
+	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + decodeSfpVcc(p.sfp_vcc, p.sfp_vcc_cal).toFixed(2) + "&#8239;V</td></tr>";
 	      iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
 	      iHTML += "<tr><td>TX-Disabled</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
-	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + (Number(p.sfp_txbias) / 500.0).toFixed(1) + "&#8239;mA</td></tr>";
-	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10000.0).toFixed(3) + "&#8239;mW</td></tr>";
-	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10000.0).toFixed(3) + "&#8239;mW</td></tr>";
+	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + decodeSfpTxBias(p.sfp_txbias, p.sfp_txbias_cal).toFixed(1) + "&#8239;mA</td></tr>";
+	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + decodeSfpTxPower(p.sfp_txpower, p.sfp_txpower_cal).toFixed(3) + "&#8239;mW</td></tr>";
+	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + decodeSfpRxPower(p.sfp_rxpower, p.sfp_rxpower_cal).toFixed(3) + "&#8239;mW</td></tr>";
 	    }
 	    // Not all devices & modules have LOS pin...
 	    const rx_los_pin = p.sfp_los !== null ? Boolean(Number(p.sfp_los)) : null;
