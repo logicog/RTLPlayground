@@ -252,7 +252,7 @@ void parse_lag(void)
 	port_lag_members_set(group, members);
 	return;
 err:
-	print_string("Error: lag <lag> [port]...");
+	print_string("Error: lag <lag> [port]...\n");
 }
 
 
@@ -354,7 +354,7 @@ void parse_vlan(void)
 	}
 	return;
 err:
-	print_string("Error: vlan (<vlan-id>|show) [port][t/u]...");
+	print_string("Error: vlan (<vlan-id>|show) [port][t/u]...\n");
 }
 
 bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
@@ -455,7 +455,7 @@ void parse_mirror(void)
 	}
 
 	if (!isnumber(cmd_buffer[cmd_words_b[1]])) {
-		print_string("Port missing: mirror <mirroring port> [port][t/r]...");
+		print_string("Port missing: mirror <mirroring port> [port][t/r]...\n");
 		return;
 	}
 
@@ -580,7 +580,7 @@ void parse_mtu(void)
 	p = machine.phys_to_log_port[p];
 	print_byte(p);
 	if (cmd_words_b[2] <= 0) {
-		print_string("mtu [port] [size]");
+		print_string("mtu [port] [size]\n");
 		return;
 	}
 	atoi_short(&mtu, cmd_words_b[2]);
@@ -590,6 +590,7 @@ void parse_mtu(void)
 	}
 	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (mtu >> 10) & 0xf, (mtu >> 2) & 0xff,
 		  ((mtu & 0x3) << 6) | ((mtu >> 8) & 0x3f), mtu & 0xff);
+	write_char('\n');
 }
 
 void sfp_print_measurements(uint8_t sfp)
@@ -633,6 +634,7 @@ void parse_regget(void)
 
 	reg_read_m(reg);
 	print_sfr_data();
+	write_char('\n');
 	return;
 
 err:
@@ -681,6 +683,7 @@ void parse_regset(void)
 
 	print_string(": VAL: ");
 	print_sfr_data();
+	write_char('\n');
 	return;
 
 err:
@@ -1079,6 +1082,7 @@ void cmd_parser(void) __banked
 			parse_lag_hash();
 		} else if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
+			write_char('\n');
 		} else if (cmd_compare(0, "gpio")) {
 			print_gpio_status();
 		} else if (cmd_compare(0, "regget")) {

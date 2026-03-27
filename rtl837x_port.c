@@ -35,6 +35,7 @@ void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata u
 	print_string("\nport_mirror_set called \n");
 	print_string("Mirroring port: "); print_byte(port); print_string(" with rx-mask: ");
 	print_short(rx_pmask); print_string(", tx mask: "); print_short(tx_pmask);
+	write_char('\n');
 
 	REG_WRITE(RTL837x_MIRROR_CONF, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
 	REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (port << 1) | 0x1);
@@ -640,8 +641,9 @@ void port_rldp_on(__xdata uint16_t p_ms)
 void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banked
 {
 	print_string("port_lag_members_set, lag: "); print_byte(lag); print_string(", members: "); print_short(members);
+	write_char('\n');
 	if (lag > 3)
-		print_string("Link aggregation group must be 0-3!");
+		print_string("Link aggregation group must be 0-3!\n");
 	reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2));
 	if (!(sfr_data[0] | sfr_data [1] | sfr_data [2] | sfr_data [3]))
 		REG_SET(RTL837X_TRK_HASH_CTRL_BASE, LAG_HASH_DEFAULT);
@@ -656,8 +658,9 @@ void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banke
 void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash_bits) __banked
 {
 	print_string("port_lag_hash_set, lag: "); print_byte(lag); print_string(", hash: "); print_byte(hash_bits);
+	write_char('\n');
 	if (lag > 3)
-		print_string("Link aggregation group must be 0-3!");
+		print_string("Link aggregation group must be 0-3!\n");
 	REG_WRITE(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2), 0, 0, 0, hash_bits);
 }
 
