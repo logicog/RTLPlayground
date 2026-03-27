@@ -705,6 +705,104 @@ err:
 }
 
 
+void parse_sdsget(void)
+{
+	__xdata uint8_t sds_id, page, reg, hex_size;
+
+	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0) {
+		goto err;
+	}
+
+	if (atoi_byte(&sds_id, cmd_words_b[1])) {
+		goto err;
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	page = hexvalue[0];
+
+	hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	reg = hexvalue[0];
+
+	print_string("SDSGET: ");
+	itoa(sds_id);
+	print_string(":0x");
+	print_byte(page);
+	print_string(":0x");
+	print_byte(reg);
+	print_string(": VAL: ");
+
+	sds_read(sds_id, page, reg);
+	print_phy_data();
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: sdsget <sds-id> <hex:page> <hex:reg>\n");
+	return;
+}
+
+
+void parse_sdsset(void)
+{
+	__xdata uint8_t sds_id, page, reg, hex_size;
+	__xdata uint16_t val;
+
+	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0 || cmd_words_b[4] < 0) {
+		goto err;
+	}
+
+	if (atoi_byte(&sds_id, cmd_words_b[1])) {
+		goto err;
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	page = hexvalue[0];
+
+	hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	reg = hexvalue[0];
+
+	hex_size = atoi_hex(cmd_words_b[4]);
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+	val = hexvalue[0];
+	if (hex_size == 2) {
+		val <<= 8;
+		val |= hexvalue[1];
+	}
+
+	print_string("SDSSET: ");
+	itoa(sds_id);
+	print_string(":0x");
+	print_byte(page);
+	print_string(":0x");
+	print_byte(reg);
+	print_string(": VAL: ");
+
+	sds_write_v(sds_id, page, reg, val);
+
+	print_short(val);
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: sdsset <sds-id> <hex:page> <hex:reg> <hex:val>\n");
+	return;
+}
+
+
 void parse_rnd(void)
 {
 	// In order to get a new random numner, this bit has to be set each time!
@@ -1103,6 +1201,10 @@ void cmd_parser(void) __banked
 			parse_regget();
 		} else if (cmd_compare(0, "regset")) {
 			parse_regset();
+		} else if (cmd_compare(0, "sdsget")) {
+			parse_sdsget();
+		} else if (cmd_compare(0, "sdsset")) {
+			parse_sdsset();
 		} else if (cmd_compare(0, "rnd")) {
 			parse_rnd();
 		} else if (cmd_compare(0, "passwd")) {
