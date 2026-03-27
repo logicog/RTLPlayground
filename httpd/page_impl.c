@@ -651,6 +651,19 @@ void send_status(void)
 					sfp_send_data(machine.is_sfp[i] - 1, 230, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_rxpower\":\"0x");
 					sfp_send_data(machine.is_sfp[i] - 1, 232, 2);
+					if (sfp_options[machine.is_sfp[i]-1] & 0x10) {
+						slen += strtox(outbuf + slen,"\",\"sfp_temp_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 212, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_vcc_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 216, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_txbias_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 204, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_txpower_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 208, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_rxpower_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 184, 16);
+						sfp_send_data(machine.is_sfp[i] - 1, 200, 4);
+					}
 					slen += strtox(outbuf + slen,"\",\"sfp_state\":\"0x");
 					sfp_send_data(machine.is_sfp[i] - 1, 238, 1);
 				}
