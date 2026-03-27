@@ -641,7 +641,6 @@ void send_status(void)
 				slen += strtox(outbuf + slen,",\"sfp_options\":\"0x");
 				byte_to_html(sfp_options[machine.is_sfp[i]-1]);
 				if (sfp_options[machine.is_sfp[i]-1] & 0x40) {
-					sfp_send_data(machine.is_sfp[i] - 1, 92, 1);
 					slen += strtox(outbuf + slen,"\",\"sfp_temp\":\"0x");
 					sfp_send_data(machine.is_sfp[i] - 1, 224, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_vcc\":\"0x");
