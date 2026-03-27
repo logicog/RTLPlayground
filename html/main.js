@@ -112,6 +112,10 @@ function decodeSfpRxPower(val, cal) {
   return applyRxPowerCalibration(rxPower, cal) / 10000;
 }
 
+function convertPowerTodBm(val) {
+  return 10 * Math.log10(val);
+}
+
 function update(callback) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -170,13 +174,17 @@ function update(callback) {
 	    iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
 	    iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
 	    if (hasExtendedStatus) {
+	      let txPower = decodeSfpTxPower(p.sfp_txpower, p.sfp_txpower_cal);
+	      let txPowerdBm = convertPowerTodBm(txPower);
+	      let rxPower = decodeSfpRxPower(p.sfp_rxpower, p.sfp_rxpower_cal);
+	      let rxPowerdBm = convertPowerTodBm(rxPower);
 	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + decodeSfpTemp(p.sfp_temp, p.sfp_temp_cal).toFixed(2) + "&#8239;&#8451;</td></tr>";
 	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + decodeSfpVcc(p.sfp_vcc, p.sfp_vcc_cal).toFixed(2) + "&#8239;V</td></tr>";
 	      iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
 	      iHTML += "<tr><td>TX-Disabled</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
 	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + decodeSfpTxBias(p.sfp_txbias, p.sfp_txbias_cal).toFixed(1) + "&#8239;mA</td></tr>";
-	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + decodeSfpTxPower(p.sfp_txpower, p.sfp_txpower_cal).toFixed(3) + "&#8239;mW</td></tr>";
-	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + decodeSfpRxPower(p.sfp_rxpower, p.sfp_rxpower_cal).toFixed(3) + "&#8239;mW</td></tr>";
+	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + txPower.toFixed(3) + "&#8239;mW / " + txPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
+	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + rxPower.toFixed(3) + "&#8239;mW / " + rxPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
 	    }
 	    // Not all devices & modules have LOS pin...
 	    const rx_los_pin = p.sfp_los !== null ? Boolean(Number(p.sfp_los)) : null;
