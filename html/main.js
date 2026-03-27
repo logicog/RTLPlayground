@@ -103,8 +103,8 @@ function update(callback) {
 	      iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
 	      iHTML += "<tr><td>TX-Disabled</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
 	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + (Number(p.sfp_txbias) / 500.0).toFixed(1) + "&#8239;mA</td></tr>";
-	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
-	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10.0).toFixed(0) + "&#8239;mW</td></tr>";
+	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + (Number(p.sfp_txpower) / 10000.0).toFixed(3) + "&#8239;mW</td></tr>";
+	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + (Number(p.sfp_rxpower) / 10000.0).toFixed(3) + "&#8239;mW</td></tr>";
 	    }
 	    // Not all devices & modules have LOS pin...
 	    const rx_los_pin = p.sfp_los !== null ? Boolean(Number(p.sfp_los)) : null;
