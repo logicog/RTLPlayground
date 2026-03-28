@@ -29,6 +29,7 @@ typedef struct {
 
 
 #define LED_27 1
+// SYSTEM LED
 #define LED_28_SYS 2
 #define LED_29 4
 
