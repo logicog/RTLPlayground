@@ -41,6 +41,8 @@ This list is incomplete.
 | Winbond    | W25Q32FV   |
 | Winbond    | W25Q32JV   |
 | Winbond    | W25Q16JL   |
+| Winbond    | W25Q16DV   |
+| Winbond    | W25Q80DV   |
 | Fundan     | FM25Q16A   |
 
 *NOTE*: Part numbers are incomplete. Part numbers may contain additional information such as package, temperature specifications, and even the number of devices on a reel. So always check the datasheet so that you have the right orderable partnumber.
