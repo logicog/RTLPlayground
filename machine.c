@@ -27,7 +27,7 @@ __code const struct machine machine = {
 	.sfp_port[1].sds = 1,
 	.sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO54_ACL_BIT2_EN,
-	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	/* Conditions for LED on:
 	 * dual led orange: ledset_0 & ledset_2
@@ -89,7 +89,7 @@ __code const struct machine machine = {
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO_NA,
-	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.led_sets = { { LEDS_2G5 | LEDS_TWO_PAIR_1G | LEDS_1G | LEDS_500M | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G | LEDS_TWO_PAIR_5G | LEDS_5G | LEDS_TWO_PAIR_2G5,
 			LEDS_2G5 | LEDS_LINK,
@@ -115,7 +115,7 @@ __code const struct machine machine = {
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO48_I2C_SCL1,
-	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.led_sets = {
 		{   /* RJ45: First LED, yellow, second LED: green */
@@ -160,7 +160,7 @@ __code const struct machine machine = {
 	.sfp_port[1].sds = 0,
 	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 }, /* GPIO 40 */
 	.reset_pin = GPIO36_PWM_OUT,
-	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	/* Conditions for LED on:
 	 * dual led orange: ledset_0 & ledset_2
@@ -192,7 +192,7 @@ __code const struct machine machine = {
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO_NA,
-	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.led_sets = {
 		{   /* RJ45: First LED, yellow, second LED: green */
@@ -274,7 +274,7 @@ __code const struct machine machine = {
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO54_ACL_BIT2_EN,
-	.high_leds = { .mux = LED_27 | LED_28 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.led_sets = { { LEDS_2G5 | LEDS_LINK | LEDS_ACT, // Green LED (right)
 					0, // unused
@@ -306,7 +306,7 @@ __code const struct machine machine = {
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO54_ACL_BIT2_EN,
-	.high_leds = { .mux = LED_27 | LED_28 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.led_sets = { { LEDS_2G5 | LEDS_LINK | LEDS_ACT, // Green LED (right)
 					0, // unused
@@ -340,7 +340,7 @@ __code const struct machine machine = {
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO_NA,
-	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28 | LED_29 },
+	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.led_sets = { { LEDS_2G5 | LEDS_TWO_PAIR_1G | LEDS_1G | LEDS_500M | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G | LEDS_TWO_PAIR_5G | LEDS_5G | LEDS_TWO_PAIR_2G5,
 			LEDS_2G5 | LEDS_LINK,
@@ -416,7 +416,7 @@ __code const struct machine machine = {
 	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 }, 
 
 	.reset_pin = GPIO_NA,
-	.high_leds = { .mux =  LED_28 | LED_29, .enable = LED_27 | LED_28 | LED_29 },
+	.high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
 	.led_sets = { 
 			{
