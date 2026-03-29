@@ -190,7 +190,8 @@ void leds_setup(void) __banked
 	else
 		reg_bit_clear(RTL837X_PIN_MUX_0, 27);
 
-	if (machine.high_leds.mux & LED_28)
+	// SYSTEM LED
+	if (machine.high_leds.mux & LED_28_SYS)
 		reg_bit_set(RTL837X_PIN_MUX_0, 28);
 	else
 		reg_bit_clear(RTL837X_PIN_MUX_0, 28);
@@ -205,7 +206,8 @@ void leds_setup(void) __banked
 	else
 		reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 27);
 
-	if (machine.high_leds.enable & LED_28)
+	// SYSTEM LED
+	if (machine.high_leds.enable & LED_28_SYS)
 		reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 28);
 	else
 		reg_bit_clear(RTL837X_REG_LED_GLB_IO_EN, 28);
