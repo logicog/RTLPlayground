@@ -137,9 +137,9 @@ __code const struct machine machine = {
 
 void machine_custom_init(void) { }
 
-#elif defined MACHINE_SWGT024_V2_0
+#elif defined MACHINE_SWGT024_V2_0_MANAGED
 __code const struct machine machine = {
-	.machine_name = "SWGT024 V2.0",
+	.machine_name = "SWGT024 V2.0 Managed",
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
