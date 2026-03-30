@@ -175,11 +175,15 @@ void send_sfp_info(uint8_t sfp)
 
 void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 {
+	// maximum supported transfer size is 16 bytes
+	if (len > 16)
+		return;
+
 	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
 		reg &= 0x7f;
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | len & 0xf,  0x51 >> 5, (0x51 << 3) & 0xff);
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (len - 1) & 0xf,  0x51 >> 5, (0x51 << 3) & 0xff);
 	} else {
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | len & 0xf,  0x50 >> 5, (0x50 << 3) & 0xff);
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (len - 1) & 0xf,  0x50 >> 5, (0x50 << 3) & 0xff);
 	}
 
 	reg_read_m(RTL837X_REG_I2C_CTRL);
@@ -196,13 +200,10 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 		reg_read_m(RTL837X_REG_I2C_CTRL);
 	} while (sfr_data[3] & 0x1);
 
-	for (uint8_t i = 0; i < len & 0xf; i++) {
+	for (uint8_t i = 0; i < len; i++) {
 		if (!(i & 0x3))
-			reg_read_m(RTL837X_REG_I2C_OUT + (i >> 2));
-		if (len & 0x80)
-			char_to_html(sfr_data[3 - (i & 0x3)]);
-		else
-			byte_to_html(sfr_data[3 - (i & 0x3)]);
+			reg_read_m(RTL837X_REG_I2C_OUT + i);
+		byte_to_html(sfr_data[3 - (i & 0x3)]);
 	}
 }
 
@@ -640,7 +641,6 @@ void send_status(void)
 				slen += strtox(outbuf + slen,",\"sfp_options\":\"0x");
 				byte_to_html(sfp_options[machine.is_sfp[i]-1]);
 				if (sfp_options[machine.is_sfp[i]-1] & 0x40) {
-					sfp_send_data(machine.is_sfp[i] - 1, 92, 1);
 					slen += strtox(outbuf + slen,"\",\"sfp_temp\":\"0x");
 					sfp_send_data(machine.is_sfp[i] - 1, 224, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_vcc\":\"0x");
@@ -651,6 +651,19 @@ void send_status(void)
 					sfp_send_data(machine.is_sfp[i] - 1, 230, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_rxpower\":\"0x");
 					sfp_send_data(machine.is_sfp[i] - 1, 232, 2);
+					if (sfp_options[machine.is_sfp[i]-1] & 0x10) {
+						slen += strtox(outbuf + slen,"\",\"sfp_temp_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 212, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_vcc_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 216, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_txbias_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 204, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_txpower_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 208, 4);
+						slen += strtox(outbuf + slen,"\",\"sfp_rxpower_cal\":\"0x");
+						sfp_send_data(machine.is_sfp[i] - 1, 184, 16);
+						sfp_send_data(machine.is_sfp[i] - 1, 200, 4);
+					}
 					slen += strtox(outbuf + slen,"\",\"sfp_state\":\"0x");
 					sfp_send_data(machine.is_sfp[i] - 1, 238, 1);
 				}
