@@ -78,4 +78,15 @@ $(BUILDDIR)/rtlplayground.bin: $(BUILDDIR)/rtlplayground.img
 
 .PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
 
+.PHONY:
+machine_check:
+	@mkdir -p $(BUILDDIR)/tmp
+	@set -eo pipefail; \
+	for MACHINE in `grep -e ' MACHINE_' machine.c | sed -e 's%^.* MACHINE_%%' -e 's%[ ]*//.*$$%%' | sort -u`; \
+	do \
+	echo "Checking $${MACHINE}"; \
+	$(CC) $(CC_FLAGS) -DMACHINE_$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine.c; \
+	done
+	@rm -rf $(BUILDDIR)/tmp
+
 -include $(DEPS)

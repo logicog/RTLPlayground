@@ -17,5 +17,7 @@ jobs:
         run: |
           apt update
           apt install make gcc sdcc xxd python-is-python3 libjson-c-dev -y
+      - name: Check if machine.c can be compiled for all machines
+        run: make machine_check
       - name: Make project
         run: make MACHINE="KP_9000_6XHML_X2"
