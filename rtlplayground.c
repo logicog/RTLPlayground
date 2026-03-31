@@ -145,10 +145,7 @@ struct eth_in {
 	struct uip_eth_addr src;
 	struct rtl_tag rtl_tag;
 	struct vlan_tag vlan_tag;
-	u16_t hwtype;
-	u16_t protocol;
-	u8_t hwlen;
-	u8_t protolen;
+	u16_t ether_type;
 };
 
 struct rtl_dot1q_frame {
@@ -983,7 +980,7 @@ void tcpip_output(void)
 	if (management_vlan) {
 		// Shift the ethernet header before the HW type including the rtl_frame_desc to the beginning of uip_buf
 		// to allow space to insert the dot 1Q tag
-		for (uint8_t i = 0; i < sizeof(struct rtl_dot1q_frame) - sizeof(struct rtl_frame_desc) + VLAN_TAG_SIZE; i++)
+		for (uint8_t i = 0; i < sizeof(struct rtl_dot1q_frame) - (VLAN_TAG_SIZE * 2); i++)
 			uip_buf[i] = uip_buf[i + DOT_1Q_TAG_SIZE];
 		FRAME_Q->desc.len += DOT_1Q_TAG_SIZE;
 		FRAME_Q->tpid = HTONS(0x8100);
@@ -1057,12 +1054,12 @@ void handle_rx(void)
 			if (uip_len) {
 				tcpip_output();
 			}
-		} else if (ETH_IN->hwtype == HTONS(0x0806)) { // ARP?
+		} else if (ETH_IN->ether_type == HTONS(0x0806)) { // ARP
 			uip_arp_arpin();
 			if (uip_len) {
 			    tcpip_output();
 			}
-		} else if (ETH_IN->hwtype == HTONS(0x0800)) { // TCP?
+		} else if (ETH_IN->ether_type == HTONS(0x0800)) { // IPv4
 			if (!management_vlan || management_vlan == rx_packet_vlan) {
 				uip_arp_ipin();	// Learn MAC addresses in TCP packets
 				uip_input();
