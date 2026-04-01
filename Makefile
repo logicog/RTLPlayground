@@ -54,12 +54,11 @@ clean:
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-rm -rf $(BUILDDIR)
 
-$(BUILDDIR)/%.rel: %.c
-	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
-
 $(BUILDDIR)/%.rel: %.asm
 	${ASM} ${AFLAGS} -o $@ $<
-#	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
+
+$(BUILDDIR)/%.rel: %.c
+	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
 $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtstart.rel $(BUILDDIR)/crc16.rel
 	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
