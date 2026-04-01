@@ -149,11 +149,29 @@ struct eth_in {
 };
 
 struct rtl_dot1q_frame {
-	struct rtl_frame_desc desc;
-	struct uip_eth_addr dst;
-	struct uip_eth_addr src;
-	uint16_t tpid;
-	uint16_t tci;
+	union {
+	struct {
+		uint8_t tx_seq;
+		uint8_t chksum_flags;	// 0x7 enables Checksums for frame header, L2 and L3
+		uint8_t reserved_1 [2];
+		uint16_t len; // Length is Little Endian
+		uint8_t reserved_2 [2];
+		struct uip_eth_addr dst;
+		struct uip_eth_addr src;
+		uint16_t tpid;
+		uint16_t tci;
+	} q_frame;
+	struct {
+		uint8_t padding[VLAN_TAG_SIZE]; // Pad to the size of a RTL-VLAN tag or dot1q-tag
+		uint8_t tx_seq;
+		uint8_t chksum_flags;	// 0x7 enables Checksums for frame header, L2 and L3
+		uint8_t reserved_1 [2];
+		uint16_t len; // Length is Little Endian
+		uint8_t reserved_2 [2];
+		struct uip_eth_addr dst;
+		struct uip_eth_addr src;
+	} nonq_frame;
+	};
 };
 
 // Dot 1Q tag size is the size of tpid + tci
@@ -163,10 +181,10 @@ struct rtl_dot1q_frame {
 #define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
 
 // The output frame structure with initial frame descriptor including padding
-#define FRAME ((__xdata struct rtl_frame_desc *)&uip_buf[0])
+#define FRAME (((__xdata struct rtl_dot1q_frame *)&uip_buf[0])->nonq_frame)
 
 // The output frame structure with 802.1Q field and the padding moved before the buffer-start
-#define FRAME_Q ((__xdata struct rtl_dot1q_frame *)&uip_buf[-VLAN_TAG_SIZE])
+#define FRAME_Q (((__xdata struct rtl_dot1q_frame *)&uip_buf[-VLAN_TAG_SIZE])->q_frame)
 
 void isr_timer0(void) __interrupt(1)
 {
@@ -594,10 +612,13 @@ void nic_tx_packet(uint16_t ring_ptr)
 	 */
 	if (management_vlan) {
 		SFR_NIC_DATA_U16LE = (uint16_t) uip_buf;
-		len = FRAME_Q->desc.len;
+		len = FRAME_Q.len;
+		/*
+		(__xdata struct rtl_dot1q_frame *)uip_buf
+#define FRAME (((__xdata struct rtl_dot1q_frame *)&uip_buf[0]).nonq_frame)*/
 	} else {
 		SFR_NIC_DATA_U16LE = (uint16_t) uip_buf + VLAN_TAG_SIZE;
-		len = FRAME->len;
+		len = FRAME.len;
 	}
 
 #ifdef RXTXDBG
@@ -970,11 +991,11 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 void tcpip_output(void)
 {
 	// Add TX-TAG
-	FRAME->tx_seq = tx_seq++;
-	FRAME->chksum_flags = 0x07;    // Enable all checksums
-	FRAME->reserved_1[0] = 0x00; FRAME->reserved_1[1] = 0x00;
-	FRAME->len = uip_len;
-	FRAME->reserved_2[0] = 0x00; FRAME->reserved_2[1] = 0x00;
+	FRAME.tx_seq = tx_seq++;
+	FRAME.chksum_flags = 0x07;    // Enable all checksums
+	FRAME.reserved_1[0] = 0x00; FRAME.reserved_1[1] = 0x00;
+	FRAME.len = uip_len;
+	FRAME.reserved_2[0] = 0x00; FRAME.reserved_2[1] = 0x00;
 
 	// For the management VLAN we insert an 802.1Q VLAN tag
 	if (management_vlan) {
@@ -982,9 +1003,9 @@ void tcpip_output(void)
 		// to allow space to insert the dot 1Q tag
 		for (uint8_t i = 0; i < sizeof(struct rtl_dot1q_frame) - (VLAN_TAG_SIZE * 2); i++)
 			uip_buf[i] = uip_buf[i + DOT_1Q_TAG_SIZE];
-		FRAME_Q->desc.len += DOT_1Q_TAG_SIZE;
-		FRAME_Q->tpid = HTONS(0x8100);
-		FRAME_Q->tci = HTONS(management_vlan);
+		FRAME_Q.len += DOT_1Q_TAG_SIZE;
+		FRAME_Q.tpid = HTONS(0x8100);  // Change ether-type to Dot1Q
+		FRAME_Q.tci = HTONS(management_vlan);
 	}
 
 	reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
