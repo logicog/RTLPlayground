@@ -573,23 +573,19 @@ void port_eee_status(uint8_t port) __banked
 
 	uint16_t v;
 	print_string("Advertising: ");
+	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_10G)
+		print_string(" 10G");
+	else
+		print_string("    ");
 
-	if (machine.n_10g) {
-		phy_read(port, PHY_MMD_AN, PHY_EEE_ADV);
-		v = SFR_DATA_U16;
-		if (v & PHY_EEE_BIT_10G)
-			print_string(" 10G");
-		else
-			print_string("     ");
-	}
 	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV2);
 	v = SFR_DATA_U16;
-	if (machine.n_10g) {
-		if (v & PHY_EEE_BIT_5G)
-			print_string(" 5G");
-		else
-			print_string("     ");
-	}
+	if (v & PHY_EEE_BIT_5G)
+		print_string(" 5G ");
+	else
+		print_string("    ");
 	v = SFR_DATA_U16;
 	if (v & PHY_EEE_BIT_2G5)
 		print_string(" 2.5G");
@@ -607,22 +603,18 @@ void port_eee_status(uint8_t port) __banked
 		print_string("     ");
 
 	print_string("   Link Partner: ");
-	if (machine.n_10g) {
-		phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
-		v = SFR_DATA_U16;
-		if (v & PHY_EEE_BIT_10G)
-			print_string(" 10G");
-		else
-			print_string("     ");
-	}
+	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_10G)
+		print_string(" 10G");
+	else
+		print_string("    ");
 	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
 	v = SFR_DATA_U16;
-	if (machine.n_10g) {
-		if (v & PHY_EEE_BIT_5G)
-			print_string(" 5G");
-		else
-			print_string("     ");
-	}
+	if (v & PHY_EEE_BIT_5G)
+		print_string(" 5G");
+	else
+		print_string("   ");
 	if (v & PHY_EEE_BIT_2G5)
 		print_string(" 2.5G");
 	else
@@ -649,8 +641,16 @@ void port_eee_status(uint8_t port) __banked
 
 void port_eee_enable_all(__xdata uint8_t speed) __banked
 {
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		port_eee_enable(i, speed);
+	if (speed == EEE_NORESET) {
+		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+			if (machine.n_10g == 1 && i == 3)
+				port_eee_enable(i, EEE_10G | EEE_NORESET);
+			else
+				port_eee_enable(i, EEE_2G5 | EEE_NORESET);
+		}
+	} else {
+		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
+			port_eee_enable(i, speed);
 	}
 }
 
