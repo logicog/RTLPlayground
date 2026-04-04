@@ -164,6 +164,20 @@ uint8_t atoi_hex(uint8_t idx)
 }
 
 
+uint8_t atoi_byte(register uint8_t *out, register uint8_t idx)
+{
+	__xdata uint8_t err = 1;
+	*out = 0;
+
+	while (isnumber(cmd_buffer[idx])) {
+		err = 0;
+		*out = (*out * 10) + cmd_buffer[idx] - '0';
+		idx++;
+	}
+	return err;
+}
+
+
 uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
 	__xdata uint8_t err = 1;
