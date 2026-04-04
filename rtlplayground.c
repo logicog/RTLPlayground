@@ -137,7 +137,7 @@ __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
-__sbit tx_buf_empty;
+volatile __bit tx_buf_empty;
 
 #define ETHERTYPE_OFFSET (12 + VLAN_TAG_SIZE + RTL_TAG_SIZE)
 
