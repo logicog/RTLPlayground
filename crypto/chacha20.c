@@ -4,7 +4,7 @@
 // generate a block of ChaCha20 keystream as per RFC7539
 
 
-__xdata struct chacha20_t chacha20;
+__xdata struct chacha20_t __at(0x7000) chacha20;
 
 
 void chacha20_block(void)

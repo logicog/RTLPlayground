@@ -26,6 +26,7 @@ create_build_dir:
 	mkdir -p $(BUILDDIR)
 	mkdir -p $(BUILDDIR)/uip
 	mkdir -p $(BUILDDIR)/httpd
+	mkdir -p $(BUILDDIR)/crypto
 
 SRCS = rtlplayground.c rtl837x_flash.c rtl837x_leds.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c
 SRCS += rtl837x_stp.c rtl837x_pins.c dhcp.c machine.c cmd_editor.c rtl837x_bandwidth.c rtl837x_init.c
