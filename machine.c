@@ -588,7 +588,7 @@ __code const struct machine machine = {
 	.sfp_port[0].sds = 1,
 	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 	.reset_pin = GPIO48_I2C_SCL1,
-	.high_leds = { .mux =  LED_28, .enable = LED_27 | LED_28 | LED_29 },
+	.high_leds = { .mux =  LED_28_SYS, .enable = LED_27 | LED_28_SYS | LED_29 },
 	.led_mux_custom = 1,
 	.led_mux = { 0x00, 0x01, 0x04, 0x05, 0x08, // 65e0
 		     0x09, 0x0c, 0x3f, 0x0d, 0x10, // 65e4
