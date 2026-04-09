@@ -1165,6 +1165,7 @@ void execute_config(void) __banked
 	strtox(passwd, PASSWORD);
 	save_cmd = 0;
 
+	uint8_t cmd_idx = 0;
 	do {
 		flash_region.addr = pos;
 		flash_region.len = FLASH_READ_BURST_SIZE;
@@ -1172,21 +1173,23 @@ void execute_config(void) __banked
 
 		__xdata uint8_t cfg_idx = 0;
 		uint8_t c = 0;
-		do {
-			for (uint8_t cmd_idx = 0; cmd_idx < (CMD_BUF_SIZE - 1); cmd_idx++) {
-				c = flash_buf[cfg_idx++];
-				if (c == 0 || c == '\n') {
-					cmd_buffer[cmd_idx] = '\0';
-					if (cmd_idx && !cmd_tokenize())
-						cmd_parser();
-					if (c == 0)
-						goto config_done;
-					break;
-				}
-
-				cmd_buffer[cmd_idx] = c;
+		while (cmd_idx < (CMD_BUF_SIZE - 1)) {
+			c = flash_buf[cfg_idx++];
+			if (c == 0 || c == '\n') {
+				cmd_buffer[cmd_idx] = '\0';
+				if (cmd_idx && !cmd_tokenize())
+					cmd_parser();
+				if (c == 0)
+					goto config_done;
+				cmd_idx = 0;
+				continue;
 			}
-		} while(cfg_idx);
+
+			cmd_buffer[cmd_idx] = c;
+			cmd_idx++;
+			if (!cfg_idx)
+				break;
+		}
 
 		len_left -= FLASH_READ_BURST_SIZE;
 		pos += FLASH_READ_BURST_SIZE;
