@@ -164,6 +164,20 @@ uint8_t atoi_hex(uint8_t idx)
 }
 
 
+uint8_t atoi_byte(register uint8_t *out, register uint8_t idx)
+{
+	__xdata uint8_t err = 1;
+	*out = 0;
+
+	while (isnumber(cmd_buffer[idx])) {
+		err = 0;
+		*out = (*out * 10) + cmd_buffer[idx] - '0';
+		idx++;
+	}
+	return err;
+}
+
+
 uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
 {
 	__xdata uint8_t err = 1;
@@ -691,6 +705,207 @@ err:
 }
 
 
+void parse_sdsget(void)
+{
+	__xdata uint8_t sds_id, page, reg, hex_size;
+
+	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0) {
+		goto err;
+	}
+
+	if (atoi_byte(&sds_id, cmd_words_b[1])) {
+		goto err;
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	page = hexvalue[0];
+
+	hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	reg = hexvalue[0];
+
+	print_string("SDSGET: ");
+	itoa(sds_id);
+	print_string(":0x");
+	print_byte(page);
+	print_string(":0x");
+	print_byte(reg);
+	print_string(": VAL: ");
+
+	sds_read(sds_id, page, reg);
+	print_phy_data();
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: sdsget <sds-id> <hex:page> <hex:reg>\n");
+	return;
+}
+
+
+void parse_sdsset(void)
+{
+	__xdata uint8_t sds_id, page, reg, hex_size;
+	__xdata uint16_t val;
+
+	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0 || cmd_words_b[4] < 0) {
+		goto err;
+	}
+
+	if (atoi_byte(&sds_id, cmd_words_b[1])) {
+		goto err;
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	page = hexvalue[0];
+
+	hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size != 1) {
+		goto err;
+	}
+	reg = hexvalue[0];
+
+	hex_size = atoi_hex(cmd_words_b[4]);
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+	val = hexvalue[0];
+	if (hex_size == 2) {
+		val <<= 8;
+		val |= hexvalue[1];
+	}
+
+	print_string("SDSSET: ");
+	itoa(sds_id);
+	print_string(":0x");
+	print_byte(page);
+	print_string(":0x");
+	print_byte(reg);
+	print_string(": VAL: ");
+
+	sds_write_v(sds_id, page, reg, val);
+
+	print_short(val);
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: sdsset <sds-id> <hex:page> <hex:reg> <hex:val>\n");
+	return;
+}
+
+
+void parse_phyget(void)
+{
+	__xdata uint8_t phy_id, dev_id, hex_size;
+	__xdata uint16_t reg;
+
+	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0) {
+		goto err;
+	}
+
+	if (atoi_byte(&phy_id, cmd_words_b[1])) {
+		goto err;
+	}
+
+	if (atoi_byte(&dev_id, cmd_words_b[2])) {
+		goto err;
+	}
+
+	hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+	reg = hexvalue[0];
+	if (hex_size == 2) {
+		reg <<= 8;
+		reg |= hexvalue[1];
+	}
+
+	print_string("PHYGET: ");
+	itoa(phy_id);
+	print_string(":");
+	itoa(dev_id);
+	print_string(".");
+	print_short(reg);
+	print_string(": VAL: ");
+
+	phy_read(phy_id, dev_id, reg);
+	print_phy_data();
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: phyget <phy-id> <dev-id> <hex:reg>\n");
+	return;
+}
+
+
+void parse_physet(void)
+{
+	__xdata uint8_t phy_id, dev_id, hex_size;
+	__xdata uint16_t reg, val;
+
+	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0 || cmd_words_b[4] < 0) {
+		goto err;
+	}
+
+	if (atoi_byte(&phy_id, cmd_words_b[1])) {
+		goto err;
+	}
+
+	if (atoi_byte(&dev_id, cmd_words_b[2])) {
+		goto err;
+	}
+
+	hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+	reg = hexvalue[0];
+	if (hex_size == 2) {
+		reg <<= 8;
+		reg |= hexvalue[1];
+	}
+
+	hex_size = atoi_hex(cmd_words_b[4]);
+	if (hex_size == 0 || hex_size > 2) {
+		goto err;
+	}
+	val = hexvalue[0];
+	if (hex_size == 2) {
+		val <<= 8;
+		val |= hexvalue[1];
+	}
+
+	print_string("PHYSET: ");
+	itoa(phy_id);
+	print_string(":");
+	itoa(dev_id);
+	print_string(".");
+	print_short(reg);
+	print_string(": VAL: ");
+
+	phy_write(phy_id, dev_id, reg, val);
+
+	print_short(val);
+	write_char('\n');
+	return;
+
+err:
+	print_string("usage: physet <phy-id> <dev-id> <hex:reg> <hex:val>\n");
+	return;
+}
+
+
 void parse_rnd(void)
 {
 	// In order to get a new random numner, this bit has to be set each time!
@@ -1089,6 +1304,14 @@ void cmd_parser(void) __banked
 			parse_regget();
 		} else if (cmd_compare(0, "regset")) {
 			parse_regset();
+		} else if (cmd_compare(0, "sdsget")) {
+			parse_sdsget();
+		} else if (cmd_compare(0, "sdsset")) {
+			parse_sdsset();
+		} else if (cmd_compare(0, "phyget")) {
+			parse_phyget();
+		} else if (cmd_compare(0, "physet")) {
+			parse_physet();
 		} else if (cmd_compare(0, "rnd")) {
 			parse_rnd();
 		} else if (cmd_compare(0, "passwd")) {
