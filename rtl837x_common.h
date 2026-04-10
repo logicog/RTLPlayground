@@ -115,6 +115,8 @@ void reg_read(uint16_t reg_addr);
 void reg_read_m(uint16_t reg_addr);
 void reg_write(uint16_t reg_addr);
 void reg_write_m(uint16_t reg_addr);
+void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
+void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
 void delay(uint16_t t);
 void sleep(uint16_t t);
 void write_char(char c);
