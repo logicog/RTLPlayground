@@ -125,6 +125,67 @@ function resetSwitch() {
   }, 3000);
 }
 
+async function sendCmd(cmd) {
+  try {
+    const response = await fetch('/cmd', { method: 'POST', body: cmd });
+    console.log('cmd sent:', cmd, response);
+  } catch (err) {
+    console.error(`Error sending cmd '${cmd}':`, err);
+  }
+}
+
+function svcToggleStp(enabled) {
+  sendCmd(enabled ? 'stp on' : 'stp off').then(fetchServices);
+}
+
+function svcToggleLbd(enabled) {
+  if (enabled) {
+    const timer = document.getElementById('svc_lbd_timer').value || 1000;
+    sendCmd('lbd on ' + timer).then(fetchServices);
+  } else {
+    sendCmd('lbd off').then(fetchServices);
+  }
+}
+
+function svcApplyMgmtVlan() {
+  const vlan = parseInt(document.getElementById('svc_mgmt_vlan').value || '0', 10);
+  if (isNaN(vlan) || vlan < 0 || vlan > 4094) {
+    alert('Invalid VLAN ID');
+    return;
+  }
+  sendCmd('vlan ' + vlan + ' mgmt').then(fetchServices);
+}
+
+function svcToggleDhcpd(enabled) {
+  if (enabled) {
+    const start = parseInt(document.getElementById('svc_dhcpd_pool_start').value || '100', 10);
+    const count = parseInt(document.getElementById('svc_dhcpd_pool_count').value || '8', 10);
+    const lease = parseInt(document.getElementById('svc_dhcpd_lease').value || '3600', 10);
+    sendCmd('dhcpd on ' + start + ' ' + count + ' ' + lease).then(fetchServices);
+  } else {
+    sendCmd('dhcpd off').then(fetchServices);
+  }
+}
+
+function fetchServices() {
+  fetch('/services.json')
+    .then(r => r.json())
+    .then(s => {
+      document.getElementById('svc_stp').checked = !!s.stp;
+      document.getElementById('svc_lbd').checked = !!s.lbd;
+      if (s.lbd_timer) document.getElementById('svc_lbd_timer').value = s.lbd_timer;
+      document.getElementById('svc_mgmt_vlan').value = s.mgmt_vlan || 0;
+      document.getElementById('svc_dhcpd').checked = !!s.dhcpd;
+      if (s.dhcpd_pool_start) document.getElementById('svc_dhcpd_pool_start').value = s.dhcpd_pool_start;
+      if (s.dhcpd_pool_count) document.getElementById('svc_dhcpd_pool_count').value = s.dhcpd_pool_count;
+      if (s.dhcpd_lease_time) document.getElementById('svc_dhcpd_lease').value = s.dhcpd_lease_time;
+      document.getElementById('svc_dhcpd_leases').textContent = s.dhcpd_leases || 0;
+    })
+    .catch(err => console.error('Error fetching services:', err));
+}
+
 window.addEventListener("load", function() {
   systemInterval = setInterval(fetchIP, 1000);
+  fetchServices();
+  setInterval(fetchServices, 5000);
 });

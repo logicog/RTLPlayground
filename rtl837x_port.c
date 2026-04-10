@@ -620,14 +620,41 @@ void port_eee_status_all(void) __banked
 }
 
 /*
- * Enable RLDP, Realtek's version of LLDP
+ * Enable RLDP, Realtek's Loop Detection Protocol. The device will
+ * periodically send a detection frame which, if it is received again
+ * on any of the configured ports, indicates a forwarding loop.
+ * The timer value p_ms controls the interval between detection frames
+ * in milliseconds.
  */
-void port_rldp_on(__xdata uint16_t p_ms)
+void port_rldp_on(__xdata uint16_t p_ms) __banked
 {
 	REG_WRITE(RTL8373_RLDP_TIMER, p_ms >> 8, p_ms, p_ms >> 8, p_ms);
 
+	// Do not trap reserved multicast addresses to the CPU so that RLDP
+	// detection packets can travel through the switch fabric.
 	REG_SET(RTL837X_RMA0_CONF, 0x00000000); // R4ecc
 	REG_SET(RTL837X_RMA_CONF, 0x00000000); // R4ecc
+}
+
+
+/*
+ * Disable RLDP by clearing the detection timer. The RMA configuration
+ * is restored so that reserved multicast addresses are trapped again.
+ */
+void port_rldp_off(void) __banked
+{
+	REG_SET(RTL8373_RLDP_TIMER, 0x00000000);
+}
+
+
+/*
+ * Returns the currently configured RLDP timer in milliseconds. A
+ * value of 0 indicates that loop detection is disabled.
+ */
+uint16_t port_rldp_get(void) __banked
+{
+	reg_read_m(RTL8373_RLDP_TIMER);
+	return ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
 }
 
 

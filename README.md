@@ -4,8 +4,8 @@ A Playground for Firmware development for advanced user of RTL8372/RTL8373 based
 For each hardware configuration of these devices, there is usually a managed and an
 umanaged version sold, with mostly identical hardware. The aim is to provide management
 features also for unmanaged devices with additional features such as Management VLAN,
-dhcp servers, multi-language support, IPv6 and TLS-encrypted web-pages. At present, however
-only the following features are provided:
+dhcp servers, multi-language support, IPv6 and TLS-encrypted web-pages. At present, the
+following features are provided:
 - A modern web-interface with mouse-over to display further information
 - A serial console interface to configure all features
 - IGMP to configure Multicast streaming
@@ -15,22 +15,30 @@ only the following features are provided:
   for particular devices
 - EEE (Energy Efficient Ethernet) can be configured per-port. Detailed information is
   provided for support offered by the link partner and the EEE status of a port.
-- VLAN configuration
+- VLAN configuration including an optional Management VLAN that restricts access
+  to the web/CLI management interface to a single tagged VLAN
 - SFP information is displayed on the inserted modules, the current sensor values such as
   temperatures, RX and TX power are displayed in the CLI and as mouse-over on the web
 - Mirror configuration
 - Link Aggregation Groups can be set up
 - Detailed information on port packet statistics
+- Spanning Tree Protocol (RSTP) can be enabled/disabled from the serial console and
+  the Services tab of the web-interface
+- Loop detection using Realtek's loop detection protocol (RLDP) with a configurable
+  probe interval, controllable from the serial console and the web-interface
+- A minimal integrated DHCP server that hands out leases from a configurable pool
+  on the management subnet; useful for unmanaged devices that need to bootstrap an
+  isolated test network
+- A DHCP client that can automatically obtain the management IP address
 - Configuration saved to flash via the web-interface
 - Firmware updates via the web
 - Installation as a firmware upgrade from the original web-interface
 
 <img width="1420" height="623" alt="GUI" src="doc/images/gui.png" />
 
-While the firmware provides already considerable improvements over the original managed firmware,
-the firmware still lacks support for STP and the proprietary loop prevention
-protocols as well as DHCP. If you need these features, do not install the playground on your managed
-devices. In any case, installation is strongly discouraged unless you can at least make
+While the firmware provides already considerable improvements over the original managed
+firmware, it still lacks support for IPv6, TLS-encrypted web pages and multi-language
+support. In any case, installation is strongly discouraged unless you can at least make
 a backup of the original flash content via a SOIC clamp such as also used for BIOS
 backups and can re-install that firmware in case something is wrong. For this no soldering
 skills are necessary.

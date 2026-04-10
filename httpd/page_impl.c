@@ -13,6 +13,7 @@
 #include "version.h"
 #include "machine.h"
 #include "page_impl.h"
+#include "dhcp.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -44,6 +45,11 @@ extern __xdata char sfp_module_vendor[2][17];
 extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
+
+extern __xdata uint8_t stpEnabled;
+extern __xdata uint16_t management_vlan;
+extern __xdata struct dhcp_state dhcp_state;
+extern __xdata struct dhcpd_state dhcpd_state;
 
 __code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
 __code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
@@ -796,6 +802,76 @@ found_end:
 	flash_read_bulk(outbuf + slen);
 	slen += valid_len;
 }
+
+/*
+ * Report the current state of on-device "services": spanning tree,
+ * loop detection, management VLAN, DHCP client and DHCP server.
+ * Returns a JSON object that the Services tab in the web UI reads
+ * to render checkboxes and status fields.
+ */
+void send_services(void)
+{
+	dbg_string("send_services called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"stp\":");
+	bool_to_html(stpEnabled);
+
+	slen += strtox(outbuf + slen, ",\"lbd\":");
+	__xdata uint16_t lbd_timer = port_rldp_get();
+	bool_to_html(lbd_timer != 0);
+	slen += strtox(outbuf + slen, ",\"lbd_timer\":");
+	{
+		__xdata uint16_t v = lbd_timer;
+		__xdata uint8_t d[5];
+		uint8_t n = 0;
+		if (!v) {
+			outbuf[slen++] = '0';
+		} else {
+			while (v) { d[n++] = '0' + (v % 10); v /= 10; }
+			while (n) outbuf[slen++] = d[--n];
+		}
+	}
+
+	slen += strtox(outbuf + slen, ",\"mgmt_vlan\":");
+	{
+		__xdata uint16_t v = management_vlan;
+		__xdata uint8_t d[5];
+		uint8_t n = 0;
+		if (!v) {
+			outbuf[slen++] = '0';
+		} else {
+			while (v) { d[n++] = '0' + (v % 10); v /= 10; }
+			while (n) outbuf[slen++] = d[--n];
+		}
+	}
+
+	slen += strtox(outbuf + slen, ",\"dhcp_client\":");
+	bool_to_html(dhcp_state.state == DHCP_LEASING);
+
+	slen += strtox(outbuf + slen, ",\"dhcpd\":");
+	bool_to_html(dhcpd_state.enabled);
+	slen += strtox(outbuf + slen, ",\"dhcpd_pool_start\":");
+	itoa_html(dhcpd_state.pool_first);
+	slen += strtox(outbuf + slen, ",\"dhcpd_pool_count\":");
+	itoa_html(dhcpd_state.pool_count);
+	slen += strtox(outbuf + slen, ",\"dhcpd_leases\":");
+	itoa_html(dhcpd_active_leases());
+	slen += strtox(outbuf + slen, ",\"dhcpd_lease_time\":");
+	{
+		__xdata uint32_t v = dhcpd_state.lease_time;
+		__xdata uint8_t d[10];
+		uint8_t n = 0;
+		if (!v) {
+			outbuf[slen++] = '0';
+		} else {
+			while (v) { d[n++] = '0' + (v % 10); v /= 10; }
+			while (n) outbuf[slen++] = d[--n];
+		}
+	}
+	char_to_html('}');
+}
+
 
 void send_cmd_log(void)
 {

@@ -87,6 +87,7 @@ volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_clock;
 extern __xdata struct dhcp_state dhcp_state;
+extern __xdata struct dhcpd_state dhcpd_state;
 
 #define STP_TICK_DIVIDER 3
 
@@ -1252,6 +1253,9 @@ void idle(void)
 		// Check for button presses once a second
 		handle_button();
 
+		// Age out DHCP server leases once per second
+		dhcpd_tick();
+
 #ifdef DEBUG
 		print_sfr_data();
 		write_char('\n');
@@ -2169,6 +2173,13 @@ void main(void)
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
 	stpEnabled = 0;
+	// Loop detection (RLDP) starts disabled
+	port_rldp_off();
+	// DHCP server starts disabled; enable via CLI command or config
+	dhcpd_state.enabled = 0;
+	dhcpd_state.pool_count = 0;
+	dhcpd_state.lease_time = 0;
+	dhcpd_state.conn = 0;
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();

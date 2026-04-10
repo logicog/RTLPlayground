@@ -40,6 +40,7 @@ extern __xdata struct flash_region_t flash_region;
 extern __xdata char passwd[21];
 
 extern __xdata struct dhcp_state dhcp_state;
+extern __xdata struct dhcpd_state dhcpd_state;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
@@ -1279,6 +1280,62 @@ void cmd_parser(void) __banked
 				print_string("STP disabled\n");
 				stp_off();
 				stpEnabled = 0;
+			}
+		} else if (cmd_compare(0, "dhcpd")) {
+			// Integrated DHCP server control:
+			//   dhcpd on [<first-octet>] [<count>] [<lease-seconds>]
+			//   dhcpd off
+			//   dhcpd status
+			if (cmd_compare(1, "on")) {
+				if (cmd_words_b[2] > 0) {
+					__xdata uint8_t first = 100;
+					__xdata uint8_t count = 8;
+					atoi_byte(&first, cmd_words_b[2]);
+					if (cmd_words_b[3] > 0)
+						atoi_byte(&count, cmd_words_b[3]);
+					dhcpd_set_pool(first, count);
+				}
+				if (cmd_words_b[4] > 0) {
+					__xdata uint16_t secs;
+					if (!atoi_short(&secs, cmd_words_b[4]))
+						dhcpd_set_lease_time((uint32_t)secs);
+				}
+				dhcpd_start();
+			} else if (cmd_compare(1, "off")) {
+				dhcpd_stop();
+			} else {
+				print_string("DHCP server ");
+				if (dhcpd_state.enabled) {
+					print_string("running, pool .");
+					print_byte(dhcpd_state.pool_first); print_string(" +");
+					print_byte(dhcpd_state.pool_count);
+					print_string(", leases in use: "); print_byte(dhcpd_active_leases());
+				} else {
+					print_string("stopped");
+				}
+				write_char('\n');
+			}
+		} else if (cmd_compare(0, "lbd")) {
+			// Loop detection (RLDP) control:
+			//   lbd on [<timer-ms>]    - enable with optional interval (default 1000 ms)
+			//   lbd off                - disable
+			//   lbd status             - show current timer value
+			if (cmd_compare(1, "on")) {
+				__xdata uint16_t ms = 1000;
+				if (cmd_words_b[2] > 0)
+					atoi_short(&ms, cmd_words_b[2]);
+				port_rldp_on(ms);
+				print_string("Loop detection enabled, timer "); print_short(ms); print_string(" ms\n");
+			} else if (cmd_compare(1, "off")) {
+				port_rldp_off();
+				print_string("Loop detection disabled\n");
+			} else {
+				__xdata uint16_t t = port_rldp_get();
+				if (t)
+					print_string("Loop detection enabled, timer ");
+				else
+					print_string("Loop detection disabled, timer ");
+				print_short(t); print_string(" ms\n");
 			}
 		} else if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
 			__xdata uint16_t pvid;

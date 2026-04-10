@@ -600,6 +600,8 @@ void httpd_appcall(void)
 				send_mtu();
 			} else if (is_word(q, "/lag.json")) {
 				send_lag();
+			} else if (is_word(q, "/services.json")) {
+				send_services();
 			} else if (is_word(q, "/config")) {
 				send_config();
 			} else if (is_word(q, "/cmd_log")) {

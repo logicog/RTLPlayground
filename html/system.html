@@ -15,6 +15,7 @@
   <body>
     <div class="tab-bar">
       <button class="tab-btn active" onclick="openTab(event, 'system-tab')">System</button>
+      <button class="tab-btn" onclick="openTab(event, 'services-tab')">Services</button>
       <button class="tab-btn" onclick="openTab(event, 'advanced-tab')">Advanced</button>
     </div>
     <nav id="sidebar"></nav>
@@ -41,6 +42,60 @@
       <br/>
       Save all current settings to Flash:<br/>
       <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
+    </div>
+
+    <div id="services-tab" class="tab-content">
+      <h1>Services</h1>
+      <p>These services can be toggled here. Settings are applied immediately.
+        To persist them, use "Save Settings to Flash" on the System tab.</p>
+
+      <h2>Spanning Tree (STP)</h2>
+      <div class="row">
+        <div class="lcol"><label for="svc_stp">Enable STP:</label></div>
+        <div class="rcol"><input id="svc_stp" type="checkbox" onchange="svcToggleStp(this.checked);"/></div>
+      </div>
+
+      <h2>Loop Detection (RLDP)</h2>
+      <div class="row">
+        <div class="lcol"><label for="svc_lbd">Enable loop detection:</label></div>
+        <div class="rcol"><input id="svc_lbd" type="checkbox" onchange="svcToggleLbd(this.checked);"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"><label for="svc_lbd_timer">Detection interval (ms):</label></div>
+        <div class="rcol"><input id="svc_lbd_timer" type="number" min="10" max="65535" value="1000" size="6"/></div>
+      </div>
+
+      <h2>Management VLAN</h2>
+      <div class="row">
+        <div class="lcol"><label for="svc_mgmt_vlan">VLAN ID (0 = disabled):</label></div>
+        <div class="rcol"><input id="svc_mgmt_vlan" type="number" min="0" max="4094" value="0" size="6"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"></div>
+        <div class="rcol"><input class="action" type="button" value="Apply Management VLAN" onclick="svcApplyMgmtVlan();"/></div>
+      </div>
+
+      <h2>DHCP Server</h2>
+      <div class="row">
+        <div class="lcol"><label for="svc_dhcpd">Enable DHCP server:</label></div>
+        <div class="rcol"><input id="svc_dhcpd" type="checkbox" onchange="svcToggleDhcpd(this.checked);"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"><label for="svc_dhcpd_pool_start">Pool start (last octet):</label></div>
+        <div class="rcol"><input id="svc_dhcpd_pool_start" type="number" min="1" max="254" value="100" size="6"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"><label for="svc_dhcpd_pool_count">Pool size (max 8):</label></div>
+        <div class="rcol"><input id="svc_dhcpd_pool_count" type="number" min="1" max="8" value="8" size="6"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"><label for="svc_dhcpd_lease">Lease time (seconds):</label></div>
+        <div class="rcol"><input id="svc_dhcpd_lease" type="number" min="60" max="65535" value="3600" size="8"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol">Active leases:</div>
+        <div class="rcol"><span id="svc_dhcpd_leases">0</span></div>
+      </div>
     </div>
 
     <div id="advanced-tab" class="tab-content">

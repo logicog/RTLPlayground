@@ -61,4 +61,7 @@ void port_eee_status(uint8_t port) __banked;
 void print_port_ingress_filter_mode(vlan_ingress_mode_t mode) __banked;
 bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked;
 bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked;
+void port_rldp_on(__xdata uint16_t p_ms) __banked;
+void port_rldp_off(void) __banked;
+uint16_t port_rldp_get(void) __banked;
 #endif
