@@ -98,6 +98,8 @@ struct flash_region_t {
     uint16_t len;
 };
 
+extern __xdata char port_names[9][PORT_NAME_SIZE];
+
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
