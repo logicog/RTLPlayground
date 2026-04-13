@@ -7,6 +7,7 @@
 
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_available;
+extern __xdata char port_names[9][PORT_NAME_SIZE];
 
 uint8_t cmd_tokenize(void) __banked;
 void cmd_parser(void) __banked;

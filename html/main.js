@@ -9,6 +9,7 @@ var pAdvertised = new Int8Array(10);
 var numPorts = 0;
 var logToPhysPort = new Int8Array(10);
 var physToLogPort = new Int8Array(10);
+var portNames = new Array(10);
 var currentRequests = [];
 var currentCallback;
 function drawPorts() {
@@ -136,6 +137,7 @@ function update(callback) {
 	let n = p.portNum;
 	logToPhysPort[p.logPort] = n;
 	physToLogPort[n-1] = p.logPort;
+	portNames[p.logPort] = p.name;
 	let pid = "port" + n;
 	let ttid = "tt_" + n;
 	n--;
@@ -148,12 +150,17 @@ function update(callback) {
 	var leds = psvg.contentDocument.getElementsByClassName("led");
         if (leds[0] == null || leds[0].style == null)
           continue;
+	const portName = p.name || portNames[p.logPort] || '';
+	var iHTML = "<table border=\"0\" class=\"tt_table\">";
+	iHTML += "<tr><td align=\"left\">Name</td><td>:</td><td>" + portName + "</td></tr>";
 	if (p.enabled == 0) {
 	  pState[n] = -1;
 	  bgs[0].style.fill = "red";
 	  leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	  psvg.style.opacity = 0.4;
-	  tt.innerHTML = "Not enabled.";
+	  iHTML += "<tr><td align=\"left\">Status</td><td>:</td><td>Not enabled.</td></tr>";
+	  iHTML += "</table>";
+	  tt.innerHTML = iHTML;
 	} else {
 	  psvg.style.opacity = 1.0;
 	  pState[n] = p.link;
@@ -165,7 +172,6 @@ function update(callback) {
 	    leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	    psvg.style.opacity = 0.4
 	  }
-	  var iHTML = "<table border=\"0\" class=\"tt_table\">";
 	  iHTML += "<tr><td align=\"left\">Link speed</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
 	  if (p.isSFP) {
 	    pAdvertised[n] = 0;
