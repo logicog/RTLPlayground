@@ -1974,7 +1974,7 @@ void check_and_flash_update_image(void)
 		__xdata uint16_t i = 0;
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
-		print_string("found update image! Checking integrity");
+		print_string("found update image!\nChecking integrity");
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
 		set_sys_led_state(SYS_LED_FAST);
 		crc_value = 0x0000;
