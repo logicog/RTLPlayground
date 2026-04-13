@@ -13,6 +13,7 @@
 #include "version.h"
 #include "machine.h"
 #include "page_impl.h"
+#include "cmd_parser.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -633,6 +634,11 @@ void send_status(void)
 		itoa_html(machine.log_to_phys_port[i]);
 		slen += strtox(outbuf + slen, ",\"logPort\":");
 		itoa_html(i);
+		slen += strtox(outbuf + slen, ",\"name\":\"");
+		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
+			char_to_html(port_names[i][j]);
+		}
+		slen += strtox(outbuf + slen, "\"");
 
 		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");

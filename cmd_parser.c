@@ -43,6 +43,9 @@ extern __xdata struct dhcp_state dhcp_state;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
+
+__xdata char port_names[9][PORT_NAME_SIZE];
+
 extern __xdata uint16_t management_vlan;
 __xdata uint8_t gpio_last_value[8] = { 0 };
 
@@ -514,20 +517,47 @@ void parse_mirror(void)
 
 void parse_port(void)
 {
-	print_string("\nPORT ");
+	if (cmd_words_b[3] <= 0) {
+		print_string("\nUsage:");
+		print_string("\nport <port> [show|on|off]");
+		print_string("\nport <port> [10m|100m|1g|2g5|duplex] [half|full]");
+		print_string("\nport <port> name [custom port name]\n");
+		return;
+	}
+
+	if (cmd_buffer[cmd_words_b[1]] < '1' || cmd_buffer[cmd_words_b[1]] > '9' || cmd_buffer[cmd_words_b[1] + 1] != ' ' ) {
+		print_string("Illegal port number\n");
+		return;
+	}
 	phy_settings.port = cmd_buffer[cmd_words_b[1]] - '1';
 	phy_settings.port = machine.phys_to_log_port[phy_settings.port];
-	print_byte(phy_settings.port);
-	if (machine.is_sfp[phy_settings.port]) {
-		print_string(" is SFP no PHY information available.\n");
+	if (phy_settings.port > machine.max_port || phy_settings.port < machine.min_port) {
+		print_string("This machine has no port with the specified number\n");
 		return;
 	}
-	if (cmd_words_b[2] <= 0) {
-		print_string("\nport <port> [show|on|off|10m|100m|1g|2g5] [half|full]");
-		return;
-	}
+
+	print_string("Logical Port: "); print_byte(phy_settings.port); write_char('\n');
 	phy_settings.duplex = PHY_DUPLEX_BOTH;
-	if (cmd_compare(2, "10m")) {
+
+	if (cmd_compare(2, "show")) {
+		print_string("Name: ");
+		print_string_x(port_names[phy_settings.port]);
+		if (!machine.is_sfp[phy_settings.port]) {
+			phy_show(phy_settings.port);
+		}
+	} else if (cmd_compare(2, "name")) {
+		uint8_t i = 0;
+		while ( (i < PORT_NAME_SIZE-1) && (cmd_buffer[cmd_words_b[3] + i] != '\0') ) {
+			port_names[phy_settings.port][i] = cmd_buffer[cmd_words_b[3] + i];
+			i++;
+		}
+		port_names[phy_settings.port][i] = '\0';
+		print_string("\nName set to: \"");
+		print_string_x(port_names[phy_settings.port]);
+		print_string("\"\n");
+	} else if (machine.is_sfp[phy_settings.port]) {
+		print_string(" is SFP no PHY information available.\n");
+	} else if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
 		phy_settings.speed = PHY_SPEED_10M;
 		if (cmd_compare(3, "half"))
@@ -570,9 +600,8 @@ void parse_port(void)
 		else
 			phy_settings.speed = PHY_DUPLEX_HALF;
 		phy_set_duplex();
-	}
-	if (cmd_compare(2, "show")) {
-		phy_show(phy_settings.port);
+	} else {
+		print_string("Unknown port command\n");
 	}
 }
 
