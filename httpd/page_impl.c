@@ -13,7 +13,6 @@
 #include "version.h"
 #include "machine.h"
 #include "page_impl.h"
-#include "cmd_parser.h"
 
 // #define DEBUG
 #include "debug.h"
