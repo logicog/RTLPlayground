@@ -1146,7 +1146,10 @@ uint8_t cmd_tokenize(void) __banked
 	line_ptr = 0;
 	is_white = 1;
 	uint8_t word = 0;
-	cmd_words_b[0] = -1;
+
+	for (uint8_t i = 0; i < N_WORDS; i++)
+		cmd_words_b[i] = -1;
+
 	while (cmd_buffer[line_ptr] && line_ptr < CMD_BUF_SIZE - 1) {
 		if (is_white && cmd_buffer[line_ptr] != ' ') {
 			is_white = 0;
