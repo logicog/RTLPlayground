@@ -19,6 +19,8 @@ function createPortTable() {
       console.log("Table row: " + i + "pState: " + pState[i-2]);
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i}`));
+      let portName = portNames[physToLogPort[i-1]] || '';
+      td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
       td = tr.insertCell(); td.innerHTML = linkS[pState[i] + 1];
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
       td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
@@ -66,7 +68,7 @@ function updatePortTable() {
   for (let i = 1; i <= numPorts ; i++) {
     if (pIsSFP[i-1])
       continue;
-    tbl.rows[i].cells[1].innerHTML = `${linkS[pState[i-1]+1]}`;
+    tbl.rows[i].cells[2].innerHTML = `${linkS[pState[i-1]+1]}`;
     if (!clicked[i] && pState[i - 1] < 0) {
       document.getElementById('speed_sel_' + i).disabled = true;
       document.getElementById('disable_port_' + i).checked = true;

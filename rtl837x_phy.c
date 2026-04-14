@@ -367,12 +367,15 @@ void phy_show(uint8_t port) __banked
 		print_string("5G");
 		break;
 	default:
-		print_string("10M");
+		print_string("Down");
 	}
-	if (v & 0x8)
-		print_string(" full duplex");
-	else
-		print_string(" half duplex");
+
+	if ( (((v & 0x0600) >> 7) | ((v & 0x0030) >> 4)) <= 6) { // Link is up
+		if (v & 0x8)
+			print_string(" full duplex");
+		else
+			print_string(" half duplex");
+	}
 
 	phy_read(port,  PHY_MMD_AN, PHY_ANEG_CTRL);
 	v = SFR_DATA_U16;
