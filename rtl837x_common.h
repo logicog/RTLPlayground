@@ -36,6 +36,9 @@ extern __xdata uint8_t sbuf[SBUF_SIZE];
 // Size of the TCP Output buffer
 #define TCP_OUTBUF_SIZE 2500
 
+// Size of the port name, including the terminating null byte
+#define PORT_NAME_SIZE 32
+
 // Size of the memory area dedicated to VLAN-names
 #define VLAN_NAMES_SIZE 1024
 
@@ -94,6 +97,8 @@ struct flash_region_t {
     uint32_t addr;
     uint16_t len;
 };
+
+extern __xdata char port_names[9][PORT_NAME_SIZE];
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 extern __xdata struct uip_eth_addr uip_ethaddr;
