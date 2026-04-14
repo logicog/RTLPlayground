@@ -152,7 +152,7 @@ function update(callback) {
           continue;
 	const portName = p.name || portNames[p.logPort] || '';
 	var iHTML = "<table border=\"0\" class=\"tt_table\">";
-	iHTML += "<tr><td align=\"left\">Name</td><td>:</td><td>" + portName + "</td></tr>";
+	if (portName) iHTML += "<tr><td align=\"left\">Name</td><td>:</td><td>" + portName + "</td></tr>";
 	if (p.enabled == 0) {
 	  pState[n] = -1;
 	  bgs[0].style.fill = "red";
