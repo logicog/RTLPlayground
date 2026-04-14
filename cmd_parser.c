@@ -1190,6 +1190,13 @@ void execute_config(void) __banked
 			if (!cfg_idx)
 				break;
 		}
+		if (cmd_idx >= (CMD_BUF_SIZE - 1)) {
+			cmd_buffer[cmd_idx] = '\0';
+			print_string("ERROR: Command too long: ");
+			print_string_x(cmd_buffer);
+			write_char('\n');
+			goto config_done;
+		}
 
 		len_left -= FLASH_READ_BURST_SIZE;
 		pos += FLASH_READ_BURST_SIZE;
