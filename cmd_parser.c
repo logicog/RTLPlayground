@@ -371,6 +371,74 @@ err:
 	print_string("Error: vlan (<vlan-id>|show) [port][t/u]...\n");
 }
 
+
+void parse_isolate(void)
+{
+	__xdata uint16_t members = 0;
+
+	if (cmd_words_b[3] <= 0)
+		goto err;
+
+	print_string("\nISOLATE ");
+
+	__xdata int8_t port_configured = cmd_buffer[cmd_words_b[1]] - '1';
+	port_configured = machine.phys_to_log_port[port_configured];
+	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))  // CPU-port, logical port 9
+		port_configured = (port_configured + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
+	if (port_configured < 0 || port_configured > 9)
+		goto err;
+
+	print_byte(port_configured); write_char('\n');
+
+	if (cmd_compare(2, "show")) {
+		members = port_isolation_get(port_configured);
+		for (uint8_t i = 0; i < 10; i++) {
+			if (members & 1) {
+				if (i < 9)
+					write_char(machine.log_to_phys_port[i] + '0');
+				else
+					print_string("CPU");
+				write_char(' ');
+			}
+			members >>= 1;
+		}
+		return;
+        }
+
+	if (cmd_compare(2, "off")) {
+		for (uint8_t i = machine.min_port; i < machine.max_port; i++)
+			members |= ((uint16_t)1) << i;
+		members |= 0x200; // CPU-port
+		port_isolate(port_configured, members);
+		return;
+	}
+
+	uint8_t w = 2;
+	while (cmd_words_b[w] > 0) {
+		__xdata uint8_t port;
+		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
+			port = cmd_buffer[cmd_words_b[w]] - '1';
+			if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
+				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1'; // logical port
+				if (port != 9) // CPU port is logical port 9
+					goto err;
+			} else {
+				port = machine.phys_to_log_port[port];
+				if (port < machine.min_port || port > machine.max_port)
+					goto err;
+			}
+			members |= ((uint16_t)1) << port;
+		}
+		w++;
+	}
+	port_isolate(port_configured, members);
+	return;
+
+err:
+	print_string("Error: isolate <port> [show|off] [port]...\n");
+}
+
+
 bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
 {
 	switch (c) {
@@ -1078,7 +1146,10 @@ uint8_t cmd_tokenize(void) __banked
 	line_ptr = 0;
 	is_white = 1;
 	uint8_t word = 0;
-	cmd_words_b[0] = -1;
+
+	for (uint8_t i = 0; i < N_WORDS; i++)
+		cmd_words_b[i] = -1;
+
 	while (cmd_buffer[line_ptr] && line_ptr < CMD_BUF_SIZE - 1) {
 		if (is_white && cmd_buffer[line_ptr] != ' ') {
 			is_white = 0;
@@ -1289,6 +1360,8 @@ void cmd_parser(void) __banked
 				port_pvid_set(port, pvid);
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
+		} else if (cmd_compare(0, "isolate")) {
+			parse_isolate();
 		} else if (cmd_compare(0, "mirror")) {
 			parse_mirror();
 		} else if (cmd_compare(0, "lag")) {
