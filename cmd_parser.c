@@ -95,20 +95,20 @@ uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
 	if ((start > 0) && (cmd_words_b[start] <= 0) )// nothing on this word -> no match
 		return 0;
 
-	signed char i;
 	signed char j = 0;
-	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && cmd_buffer[i] != ' '; i++) {
+	signed char i = cmd_words_b[start];
+	while (i != cmd_words_b[start + 1]) {
+		if (cmd_buffer[i] == ' ')
+			break;
 		i &= CMD_BUF_SIZE - 1;
-//		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
-//		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
 		if (!cmd[j]) // end of command reached, but cmd_buffer has more characters, so no match
 			return 0;
 		if (cmd_buffer[i] != cmd[j++])
 			break;
+		i++;
 	}
-//	write_char('.'); print_byte(i); write_char(':'); print_byte(j); write_char(','); print_byte (cmd[j-1]);
-//	write_char(','); print_byte(cmd[j]);
-	if ( ((i == cmd_words_b[start + 1]) || (cmd_buffer[i] == ' ')) && !cmd[j])  // next word reached and command fully matched
+	// check next word reached and command fully matched
+	if ( ((i == cmd_words_b[start + 1]) || (cmd_buffer[i] == ' ')) && !cmd[j])
 		return 1;
 	return 0;
 }
