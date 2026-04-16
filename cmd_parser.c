@@ -67,6 +67,8 @@ __xdata signed char cmd_words_b[N_WORDS];
 __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
 __xdata uint16_t cmd_history_ptr;
 
+// Error set by commands
+__xdata uint8_t err_status;
 
 inline uint8_t isletter(uint8_t l)
 {
@@ -860,6 +862,7 @@ uint8_t cmd_tokenize(void) __banked
 	print_string_x(&cmd_buffer[0]);
 	write_char('<'); write_char('\n');
 #endif
+	err_status = ERR_OK;
 	line_ptr = 0;
 	is_white = 1;
 	uint8_t word = 0;
@@ -874,11 +877,14 @@ uint8_t cmd_tokenize(void) __banked
 		line_ptr++;
 		if (word >= N_WORDS - 1) {
 			print_string("\ntoo many arguments, truncated");
+			err_status = ERR_TOO_MANY_ARGUMENTS;
 			return 1;
 		}
 	}
-	if (line_ptr == CMD_BUF_SIZE - 1)
+	if (line_ptr == CMD_BUF_SIZE - 1) {
+		err_status = ERR_CMD_TOO_LONG;
 		return 1;
+	}
 	cmd_words_b[word++] = line_ptr;
 	cmd_words_b[word++] = -1;
 
@@ -1173,12 +1179,23 @@ void execute_config(void) __banked
 
 		__xdata uint8_t cfg_idx = 0;
 		uint8_t c = 0;
-		while (cmd_idx < (CMD_BUF_SIZE - 1)) {
+		do {
+			if (cmd_idx >= (CMD_BUF_SIZE - 1)) {
+				cmd_buffer[cmd_idx] = '\0';
+				print_string("ERROR: Command too long: ");
+				print_string_x(cmd_buffer);
+				write_char('\n');
+				err_status = ERR_CMD_TOO_LONG;
+				goto config_done;
+			}
 			c = flash_buf[cfg_idx++];
 			if (c == 0 || c == '\n') {
 				cmd_buffer[cmd_idx] = '\0';
-				if (cmd_idx && !cmd_tokenize())
+				if (cmd_idx && !cmd_tokenize()) {
 					cmd_parser();
+					if (err_status)
+						goto config_done;
+				}
 				if (c == 0)
 					goto config_done;
 				cmd_idx = 0;
@@ -1187,16 +1204,7 @@ void execute_config(void) __banked
 
 			cmd_buffer[cmd_idx] = c;
 			cmd_idx++;
-			if (!cfg_idx)
-				break;
-		}
-		if (cmd_idx >= (CMD_BUF_SIZE - 1)) {
-			cmd_buffer[cmd_idx] = '\0';
-			print_string("ERROR: Command too long: ");
-			print_string_x(cmd_buffer);
-			write_char('\n');
-			goto config_done;
-		}
+		} while (cfg_idx);
 
 		len_left -= FLASH_READ_BURST_SIZE;
 		pos += FLASH_READ_BURST_SIZE;
