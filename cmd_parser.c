@@ -92,26 +92,35 @@ inline uint8_t isnumber(uint8_t l)
 }
 
 
-uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
+uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 {
-	if ((start > 0) && (cmd_words_b[start] <= 0) )// nothing on this word -> no match
+	if (cmd_words_len == 0 || start > (cmd_words_len - 1)) {
 		return 0;
-
-	signed char i;
-	signed char j = 0;
-	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && cmd_buffer[i] != ' '; i++) {
-		i &= CMD_BUF_SIZE - 1;
-//		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
-//		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
-		if (!cmd[j]) // end of command reached, but cmd_buffer has more characters, so no match
-			return 0;
-		if (cmd_buffer[i] != cmd[j++])
-			break;
 	}
-//	write_char('.'); print_byte(i); write_char(':'); print_byte(j); write_char(','); print_byte (cmd[j-1]);
-//	write_char(','); print_byte(cmd[j]);
-	if ( ((i == cmd_words_b[start + 1]) || (cmd_buffer[i] == ' ')) && !cmd[j])  // next word reached and command fully matched
-		return 1;
+	uint8_t i = cmd_words_b[start];
+	uint8_t j = 0;
+
+	do {
+		uint8_t c = cmd[j];
+		uint8_t b = cmd_buffer[i];
+
+		// cmd is garanteerd to be NULL-terminated.
+        if (c == '\0') {
+            if ((b == ' ') || (b == '\0')) {
+				// Match
+                return 1;
+            }
+            break;
+        }
+        if (b != c) {
+            break;
+        }
+
+		j += 1;
+        i += 1;
+	} while (i < CMD_BUF_SIZE);
+
+	// No match
 	return 0;
 }
 
