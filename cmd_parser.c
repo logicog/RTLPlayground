@@ -476,7 +476,7 @@ bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
 
 void parse_ingress(void)
 {
-	if (cmd_words_b[1] <= 0) {
+	if (cmd_words_len < 2) {
 		goto err;
 	}
 	__xdata uint8_t log_port = 0;
@@ -494,24 +494,25 @@ void parse_ingress(void)
 		}
 		return;
 	} else {
-		for(uint8_t w = 1; cmd_words_b[w] > 0; w++) {
-			if (!isnumber(cmd_buffer[cmd_words_b[w]])) {
+		for(uint8_t w = 1; w < cmd_words_len; w++) {
+			uint8_t p = cmd_buffer[cmd_words_b[w]];
+			if (!isnumber(p)) {
 				continue;
 			}
-			if (cmd_buffer[cmd_words_b[w]] - '1' > 9) {
-				print_string("Invalid physical port number: "); write_char(cmd_buffer[cmd_words_b[w]]); write_char('\n');
+			if (p - '1' > 9) {
+				print_string("Invalid physical port number: "); write_char(p); write_char('\n');
 				continue;
 			}
-			log_port = machine.phys_to_log_port[cmd_buffer[cmd_words_b[w]] - '1'];
+			log_port = machine.phys_to_log_port[p - '1'];
 			if (!vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[w] + 1], &mode)) {
-				print_string("Invalid ingress mode for port "); write_char(cmd_buffer[cmd_words_b[w]]); print_string(" in ingress command\n");
+				print_string("Invalid ingress mode for port "); write_char(p); print_string(" in ingress command\n");
 				goto err;
 			}
 			if (!port_ingress_filter(log_port, mode)) {
-				print_string("Error setting ingress filter for port "); write_char(cmd_buffer[cmd_words_b[w]]); write_char('\n');
+				print_string("Error setting ingress filter for port "); write_char(p); write_char('\n');
 				return;
 			}
-			print_string("Port "); write_char(cmd_buffer[cmd_words_b[w]]);
+			print_string("Port "); write_char(p);
 			print_string(" ingress filter set to: ");
 			print_port_ingress_filter_mode(mode); write_char('\n');
 		}
