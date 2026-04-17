@@ -20,6 +20,7 @@
 // #define MACHINE_HI_K0402WS
 // #define MACHINE_K0501W_V2_0
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
+#define MACHINE_ZX310S_4T2XH
 // #define MACHINE_DEFAULT_8C_1SFP
 
 typedef struct {
@@ -58,6 +59,7 @@ typedef struct machine {
 	// Highest logical port number
 	uint8_t max_port;
 	uint8_t n_sfp;
+	uint8_t n_10g;
 	uint8_t log_to_phys_port[9];
 	uint8_t phys_to_log_port[9]; // Starts at 0 for port 1
 	uint8_t is_sfp[9];  // 0 for non-SFP ports 1 or 2 for the I2C port number
