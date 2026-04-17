@@ -706,7 +706,7 @@ void parse_mtu(void)
 	p = cmd_buffer[cmd_words_b[1]] - '1';
 	p = machine.phys_to_log_port[p];
 	print_byte(p);
-	if (cmd_words_b[2] <= 0) {
+	if (cmd_words_len != 3) {
 		print_string("mtu [port] [size]\n");
 		return;
 	}
