@@ -295,7 +295,7 @@ void parse_lag_hash(void)
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
-	while (cmd_words_b[w + 1] > 0) {
+	while (w < cmd_words_len) {
 		if (cmd_compare(w, "spa"))
 			hash |= LAG_HASH_SOURCE_PORT_NUMBER;
 		else if (cmd_compare(w, "smac"))
