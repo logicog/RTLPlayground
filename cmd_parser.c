@@ -554,18 +554,19 @@ void parse_mirror(void)
 		return;
 	}
 
-	if (!isnumber(cmd_buffer[cmd_words_b[1]])) {
-		print_string("Port missing: mirror <mirroring port> [port][t/r]...\n");
+	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]])) {
+		print_string("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
 		return;
 	}
 
 	mirroring_port = cmd_buffer[cmd_words_b[1]] - '1';
 	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))
 		mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
-		mirroring_port = machine.phys_to_log_port[mirroring_port];
+	mirroring_port = machine.phys_to_log_port[mirroring_port];
+	
 
 	uint8_t w = 2;
-	while (cmd_words_b[w] > 0) {
+	while (w < cmd_words_len) {
 		uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
