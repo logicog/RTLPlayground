@@ -1274,6 +1274,7 @@ void cmd_parser(void) __banked
 	print_string_x(&cmd_buffer[0]);
 	write_char('<'); write_char('\n');
 	print_string("CMD-words: ");
+	print_byte(cmd_words_len); write_char(' ');
 	print_byte(cmd_words_b[0]); write_char(' ');
 	print_byte(cmd_words_b[1]); write_char(' ');
 	print_byte(cmd_words_b[2]); write_char(' ');
@@ -1282,7 +1283,7 @@ void cmd_parser(void) __banked
 	print_byte(cmd_words_b[5]); write_char(' ');
 	print_byte(cmd_words_b[6]); write_char('\n');
 #endif
-	if (cmd_words_b[0] >= 0 && cmd_words_b[1] >= 0) {
+	if (cmd_words_len >= 1) {
 		if (cmd_compare(0, "reset")) {
 			print_string("\nRESET\n\n");
 			reset_chip();
@@ -1301,35 +1302,38 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
-		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 's') {
-			print_string("\nSECURITY REGISTERS\n");
-			// The following will only show something else than 0xff if it was programmed for a managed switch
-			print_string("Region 1: ");
-			flash_region.addr = 0x0001000;
-			flash_region.len = 40;
-			flash_read_security();
-			print_string("\nRegion 2: ");
-			flash_region.addr = 0x0002000;
-			flash_region.len = 40;
-			flash_read_security();
-			print_string("\nRegion 3: ");
-			flash_region.addr = 0x0003000;
-			flash_region.len = 40;
-			flash_read_security();
-		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
-			print_string("\nJEDEC ID\n");
-			flash_read_jedecid();
-		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'u') {
-			print_string("\nUNIQUE ID (note: only 4 bytes are likely correct here!)\n");
-			flash_read_uid();
-		} else if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
+		} else if (cmd_compare(0, "flash") && cmd_words_len == 2) {
+			uint8_t c = cmd_buffer[cmd_words_b[1]];
+			if (c == 's') {
+				print_string("\nSECURITY REGISTERS\n");
+				// The following will only show something else than 0xff if it was programmed for a managed switch
+				print_string("Region 1: ");
+				flash_region.addr = 0x0001000;
+				flash_region.len = 40;
+				flash_read_security();
+				print_string("\nRegion 2: ");
+				flash_region.addr = 0x0002000;
+				flash_region.len = 40;
+				flash_read_security();
+				print_string("\nRegion 3: ");
+				flash_region.addr = 0x0003000;
+				flash_region.len = 40;
+				flash_read_security();
+			} else if (c == 'j') {
+				print_string("\nJEDEC ID\n");
+				flash_read_jedecid();
+			} else if (c == 'u') {
+				print_string("\nUNIQUE ID (note: only 4 bytes are likely correct here!)\n");
+				flash_read_uid();
+			}
+		} else if (cmd_compare(0, "port")) {
 			parse_port();
-		} else if (cmd_compare(0, "mtu") && cmd_words_b[1] > 0) {
+		} else if (cmd_compare(0, "mtu")) {
 			parse_mtu();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
-			} else if (cmd_words_b[2] < 0) {
+			} else if (cmd_words_len == 1) {
 				print_string("Current IP: ");
 				itoa(uip_hostaddr[0]); write_char('.'); itoa(uip_hostaddr[0] >> 8); write_char('.');
 				itoa(uip_hostaddr[1]); write_char('.'); itoa(uip_hostaddr[1] >> 8);
@@ -1357,7 +1361,7 @@ void cmd_parser(void) __banked
 				}
 			}
 		} else if (cmd_compare(0, "gw")) {
-			if (cmd_words_b[2] < 0) {
+			if (cmd_words_len == 1) {
 				print_string("Current gw: ");
 				itoa(uip_draddr[0]); write_char('.'); itoa(uip_draddr[0] >> 8); write_char('.');
 				itoa(uip_draddr[1]); write_char('.'); itoa(uip_draddr[1] >> 8);
@@ -1372,7 +1376,7 @@ void cmd_parser(void) __banked
 			}
 			write_char('\n');
 		} else if (cmd_compare(0, "netmask")) {
-			if (cmd_words_b[2] < 0) {
+			if (cmd_words_len == 1) {
 				print_string("Current netmask: ");
 				itoa(uip_netmask[0]); write_char('.'); itoa(uip_netmask[0] >> 8); write_char('.');
 				itoa(uip_netmask[1]); write_char('.'); itoa(uip_netmask[1] >> 8);
@@ -1408,7 +1412,7 @@ void cmd_parser(void) __banked
 				stp_off();
 				stpEnabled = 0;
 			}
-		} else if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
+		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
 			__xdata uint16_t pvid;
 			uint8_t port;
 			port = cmd_buffer[cmd_words_b[1]] - '1';
@@ -1478,22 +1482,21 @@ void cmd_parser(void) __banked
 		}
 
 
-		if (save_cmd) {
-			uint8_t i;
-			for (i = 0; i < N_WORDS; i++) {
-				if (cmd_words_b[i] < 0)
-					break;
-			}
-			if (i < N_WORDS) {
-				i = cmd_words_b[--i];
-				cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
-				__xdata uint16_t p = cmd_history_ptr;
-				cmd_history[cmd_history_ptr++] = '\n';
-				do {
-					i--;
-					cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
-				} while (i);
-			}
+		if (save_cmd && cmd_words_len) {
+			// Find end of the cmd-buffer, looking for the NULL-byte.
+			uint8_t i = cmd_words_b[cmd_words_len - 1];
+			do {
+				i++;
+			} while(cmd_buffer[i] != '\0');
+
+			// Copy last cmd-buffer to history.
+			cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
+			__xdata uint16_t p = cmd_history_ptr;
+			cmd_history[cmd_history_ptr++] = '\n';
+			do {
+				i--;
+				cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
+			} while (i);
 		}
 	}
 }
