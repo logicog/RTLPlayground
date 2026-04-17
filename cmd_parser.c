@@ -58,14 +58,17 @@ __xdata uint8_t hexvalue[4] = { 0 };
 __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 __xdata uint8_t cmd_available;
 
-__xdata uint8_t line_ptr;
-__xdata	char is_white;
 __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
 
-#define N_WORDS CMD_BUF_SIZE
-__xdata signed char cmd_words_b[N_WORDS];
+// These variables combined create a Fixed-capacity vector/bounded buffer.
+// `N_WORDS`: The total number of command arguments that can be tracked.
+// `cmd_words_len` stores the number of arguments found inside `cmd_buffer`
+// `cmd_words_b` stores the index into `cmd_buffer`, check `cmd_words_len` is index is valid.
+#define N_WORDS 15
+__xdata uint8_t cmd_words_len;
+__xdata uint8_t cmd_words_b[N_WORDS];
 
 __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
 __xdata uint16_t cmd_history_ptr;
@@ -1176,6 +1179,8 @@ err:
 }
 
 // Parse command into words
+// cmd_words_len contains the number of words found.
+// cmd_words_b[] contains only start of a word offset.
 uint8_t cmd_tokenize(void) __banked
 {
 #ifdef DEBUG
@@ -1184,33 +1189,41 @@ uint8_t cmd_tokenize(void) __banked
 	write_char('<'); write_char('\n');
 #endif
 	err_status = ERR_OK;
-	line_ptr = 0;
-	is_white = 1;
+	uint8_t line_ptr = 0;
+	uint8_t is_white = 1;
 	uint8_t word = 0;
+	uint8_t c = 0;
 
-	for (uint8_t i = 0; i < N_WORDS; i++)
-		cmd_words_b[i] = -1;
-
-	while (cmd_buffer[line_ptr] && line_ptr < CMD_BUF_SIZE - 1) {
-		if (is_white && cmd_buffer[line_ptr] != ' ') {
-			is_white = 0;
-			cmd_words_b[word++] = line_ptr;
+	while(1) {
+		c = cmd_buffer[line_ptr];
+		
+		if (c == '\0') {
+			// Store the word count
+			cmd_words_len = word;
+			break;
 		}
-		if (cmd_buffer[line_ptr] == ' ')
-			is_white = 1;
-		line_ptr++;
-		if (word >= N_WORDS - 1) {
-			print_string("\ntoo many arguments, truncated");
-			err_status = ERR_TOO_MANY_ARGUMENTS;
+
+		if (line_ptr == CMD_BUF_SIZE - 1) {
+			err_status = ERR_CMD_TOO_LONG;
 			return 1;
 		}
+
+		if (is_white && c != ' ') {
+			is_white = 0;
+
+			cmd_words_b[word++] = line_ptr;
+			if (word >= N_WORDS) {
+				cmd_words_len = 0;
+				print_string("\ntoo many arguments, truncated");
+				err_status = ERR_TOO_MANY_ARGUMENTS;
+				return 1;
+			}
+		} else if (c == ' ') {
+			is_white = 1;
+		}
+
+		line_ptr++;
 	}
-	if (line_ptr == CMD_BUF_SIZE - 1) {
-		err_status = ERR_CMD_TOO_LONG;
-		return 1;
-	}
-	cmd_words_b[word++] = line_ptr;
-	cmd_words_b[word++] = -1;
 
 	return 0;
 }
