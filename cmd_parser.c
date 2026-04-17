@@ -259,12 +259,12 @@ void parse_lag(void)
 		return;
 	}
 
-	if (cmd_words_b[2] <= 0 || !isnumber(cmd_buffer[cmd_words_b[1]]))
+	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]]))
 		goto err;
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
-	while (cmd_words_b[w + 1] > 0) {
+	while (w < cmd_words_len) {
 //		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
 		uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
