@@ -393,7 +393,7 @@ void parse_isolate(void)
 {
 	__xdata uint16_t members = 0;
 
-	if (cmd_words_b[3] <= 0)
+	if (cmd_words_len < 3)
 		goto err;
 
 	print_string("\nISOLATE ");
@@ -431,7 +431,7 @@ void parse_isolate(void)
 	}
 
 	uint8_t w = 2;
-	while (cmd_words_b[w] > 0) {
+	while (w < cmd_words_len) {
 		__xdata uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
