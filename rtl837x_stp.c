@@ -62,7 +62,7 @@ struct stp_pkt_in {
 	uint8_t stp_addr[6];
 	uint8_t src_addr[6];
 	struct rtl_tag rtl_tag;
-	uint8_t vtag[4];
+	struct vlan_tag vlan_tag;
 	uint16_t msg_len;
 	uint8_t dsap;
 	uint8_t ssap;
@@ -82,7 +82,7 @@ struct stp_pkt_in {
 	uint16_t fwd_delay;
 };
 
-#define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE])
+#define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 #define STP_I ((__xdata struct stp_pkt_in *)&uip_buf[0])
 
 #define FLAG_PROPOSAL 0x02
@@ -149,8 +149,8 @@ void stp_cnf_send(uint8_t port)
 	STP_O->stp_addr[0] = 0x01; STP_O->stp_addr[1] = 0x80; STP_O->stp_addr[2] = 0xc2;
 	STP_O->stp_addr[3] = STP_O->stp_addr[4] = STP_O->stp_addr[5] = 0x00;
 
-	STP_O->rtl_tag.tag = HTONS(0x8899);
-	STP_O->rtl_tag.version = 0x04;
+	STP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
+	STP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	STP_O->rtl_tag.reason = 0x00;
 	STP_O->rtl_tag.flags = 0x0020; // Disable L2 learning
 	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
