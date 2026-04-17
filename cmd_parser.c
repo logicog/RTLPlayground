@@ -1114,7 +1114,7 @@ void parse_bw(void)
 	__xdata uint8_t port;
 	__xdata uint32_t bw = 0;
 
-	if (cmd_words_b[3] < 0) // Check for at least 2 arguments
+	if (cmd_words_len < 2) // Check for at least 2 arguments
 		goto err;
 
 	port = cmd_buffer[cmd_words_b[2]] - '1';
@@ -1128,7 +1128,7 @@ void parse_bw(void)
 		return;
 	}
 
-	if (cmd_words_b[4] < 0) // Check for at least 3 arguments
+	if (cmd_words_len < 4) // Check for at least 4 arguments
 		goto err;
 
 	if (cmd_compare(3, "drop")) {
