@@ -1035,11 +1035,15 @@ void parse_rnd(void)
 
 void parse_passwd(void)
 {
-	if (cmd_words_b[2] > 0) {
-		signed char i;
-		signed char j = 0;
-		for (i = cmd_words_b[1]; (i != cmd_words_b[2] && i - cmd_words_b[1] < 20); i++)
-			passwd[j++] = cmd_buffer[i];
+	// cmd_words_len can be more then 2 if a space in the password.
+	if (cmd_words_len >= 2) {
+		uint8_t i = cmd_words_b[1];		
+		uint8_t c = 0;
+		uint8_t j = 0;
+		do {
+			c = cmd_buffer[i++];
+			passwd[j++] = c;
+		} while (c != '\0' && j < 20);
 		passwd[j] = '\0';
 		return;
 	}
