@@ -601,11 +601,11 @@ void parse_mirror(void)
 
 void parse_port(void)
 {
-	if (cmd_words_b[3] <= 0) {
-		print_string("\nUsage:");
-		print_string("\nport <port> [show|on|off]");
-		print_string("\nport <port> [10m|100m|1g|2g5|duplex] [half|full]");
-		print_string("\nport <port> name [custom port name]\n");
+	if (cmd_words_len < 3) {
+		print_string("\nUsage:" \
+					 "\nport <port> [show|on|off]" \
+					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
+					 "\nport <port> name [custom port name]\n");
 		return;
 	}
 
