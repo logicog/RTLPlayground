@@ -737,7 +737,7 @@ void parse_regget(void)
 {
 	uint16_t reg = 0;
 
-	if (cmd_words_b[1] < 0) {
+	if (cmd_words_len != 2) {
 		goto err;
 	}
 
@@ -772,7 +772,7 @@ void parse_regset(void)
 {
 	uint16_t reg = 0;
 
-	if (cmd_words_b[2] < 0) {
+	if (cmd_words_len != 2) {
 		goto err;
 	}
 
