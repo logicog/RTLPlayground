@@ -650,7 +650,14 @@ void port_eee_status(uint8_t port) __banked
 void port_eee_enable_all(__xdata uint8_t speed) __banked
 {
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		port_eee_enable(i, speed);
+		if (machine.n_10g && i == 3) {
+			port_eee_enable(i, speed);
+		} else {
+			if (speed & EEE_10G)
+				port_eee_enable(i, speed & EEE_NORESET | EEE_2G5);
+			else
+				port_eee_enable(i, speed);
+		}
 	}
 }
 
