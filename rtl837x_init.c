@@ -91,7 +91,7 @@ void static sds_init(void)
 }
 
 
-void rtl8373_init(void)
+void rtl8373_init(void) __banked
 {
 	print_string("\nrtl8373_init called\n");
 
@@ -168,7 +168,7 @@ void rtl8373_init(void)
 
 	reg_bit_set(RTL837X_REG_HW_CONF, 0);
 
-	// enable EEE for all ports at 2.5G and 10G, but don't reset the PHYs
+	// enable EEE for all ports at 2.5G, but don't reset the PHYs
 	port_eee_enable_all(EEE_2G5 | EEE_NORESET);
 
 	// TODO: patch the PHYs
@@ -188,7 +188,7 @@ void rtl8373_init(void)
 }
 
 
-void rtl8372_init(void)
+void rtl8372_init(void) __banked
 {
 	print_string("\nrtl8372_init called\n");
 
@@ -246,7 +246,7 @@ void rtl8372_init(void)
 
 
 	// enable EEE for all ports at 2.5G and 10G, but don't reset the PHYs
-	port_eee_enable_all(EEE_2G5 | EEE_NORESET);
+	port_eee_enable_all(EEE_10G | EEE_NORESET);
 	
 	// TODO: patch the PHYs
 
