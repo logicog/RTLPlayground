@@ -27,6 +27,20 @@ async function ipSub() {
   }
 }
 
+async function cmdSub() {
+  var cmd = document.getElementById('console_cmd').value;
+  try {
+    const response = await fetch('/cmd', {
+      method: 'POST',
+      body: cmd
+    });
+    console.log('Completed!', response);
+  } catch(err) {
+      console.error(`Error: ${err}`);
+  }
+}
+
+
 async function sendConfig(c) {
     const form = new FormData();
   form.append("MAX_FILE_SIZE", "4096");

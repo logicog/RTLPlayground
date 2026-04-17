@@ -153,7 +153,7 @@ typedef unsigned short uip_stats_t;
    our project. */
 /*#include "smtp.h"*/
 #include "httpd.h"
-#include "dhcp.h"
+#include "udp_apps.h"
 /*#include "telnetd.h"*/
 /*#include "webserver.h" */
 /*#include "dhcpc.h"*/

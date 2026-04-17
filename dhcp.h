@@ -16,7 +16,7 @@
 void dhcp_start(void) __banked;
 void dhcp_stop(void) __banked;
 // void dhcp_periodic(void) __banked;
-void dhcp_callback(void) __banked;
+void dhcp_callback(uint16_t lport) __banked;
 
 
 struct dhcp_state {
@@ -39,10 +39,5 @@ struct dhcp_state {
 };
 
 typedef struct dhcp_state uip_udp_appstate_t;
-
-/* Finally we define the application function to be called by uIP. */
-#ifndef UIP_UDP_APPCALL
-#define UIP_UDP_APPCALL dhcp_callback
-#endif /* UIP_APPCALL */
 
 #endif
