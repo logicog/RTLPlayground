@@ -1162,10 +1162,14 @@ void clear_command_history(void) __banked
 
 #define FLASH_READ_BURST_SIZE 0x100
 #define PASSWORD "1234"
+
+#if CONFIG_LEN % FLASH_READ_BURST_SIZE
+	#error "CONFIG_LEN not a multiple of FLASH_READ_BURST_SIZE"
+#endif
 void execute_config(void) __banked
 {
 	__xdata uint32_t pos = CONFIG_START;
-	__xdata uint16_t len_left = CONFIG_LEN;
+	__xdata uint8_t pages_left = CONFIG_LEN / FLASH_READ_BURST_SIZE;
 
 	// Set default password, it can be overwritten in the configuration file
 	strtox(passwd, PASSWORD);
@@ -1206,9 +1210,9 @@ void execute_config(void) __banked
 			cmd_idx++;
 		} while (cfg_idx);
 
-		len_left -= FLASH_READ_BURST_SIZE;
+		pages_left--;
 		pos += FLASH_READ_BURST_SIZE;
-	} while(len_left);
+	} while(pages_left);
 
 config_done:
 	// Start saving commands to cmd_history
