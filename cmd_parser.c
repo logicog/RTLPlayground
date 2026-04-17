@@ -820,7 +820,7 @@ void parse_sdsget(void)
 {
 	__xdata uint8_t sds_id, page, reg, hex_size;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0) {
+	if (cmd_words_len != 4) {
 		goto err;
 	}
 
@@ -864,7 +864,7 @@ void parse_sdsset(void)
 	__xdata uint8_t sds_id, page, reg, hex_size;
 	__xdata uint16_t val;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0 || cmd_words_b[4] < 0) {
+	if (cmd_words_len != 5) {
 		goto err;
 	}
 
@@ -919,7 +919,7 @@ void parse_phyget(void)
 	__xdata uint8_t phy_id, dev_id, hex_size;
 	__xdata uint16_t reg;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0) {
+	if (cmd_words_len != 4) {
 		goto err;
 	}
 
@@ -965,7 +965,7 @@ void parse_physet(void)
 	__xdata uint8_t phy_id, dev_id, hex_size;
 	__xdata uint16_t reg, val;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0 || cmd_words_b[4] < 0) {
+	if (cmd_words_len != 5) {
 		goto err;
 	}
 
