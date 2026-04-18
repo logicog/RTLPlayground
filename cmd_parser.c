@@ -169,7 +169,7 @@ uint8_t atoi_hex(uint8_t idx)
 }
 
 
-uint8_t atoi_byte(uint8_t __xdata *out, uint8_t idx)
+uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 {
 	uint8_t err = 1;
 	uint8_t num = 0;
@@ -185,7 +185,7 @@ uint8_t atoi_byte(uint8_t __xdata *out, uint8_t idx)
 }
 
 
-uint8_t atoi_short(uint16_t __xdata *vlan, uint8_t idx)
+uint8_t atoi_short(__xdata uint16_t *vlan, uint8_t idx)
 {
 	uint8_t err = 1;
 
@@ -200,7 +200,7 @@ uint8_t atoi_short(uint16_t __xdata *vlan, uint8_t idx)
 }
 
 
-uint8_t parse_ip(register uint8_t idx)
+uint8_t parse_ip(uint8_t idx)
 {
 	__xdata uint8_t b;
 
