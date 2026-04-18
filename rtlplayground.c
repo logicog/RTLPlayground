@@ -688,7 +688,7 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 }
 
 
-void read_reg_timer(uint32_t * tmr)
+void read_reg_timer(__xdata uint32_t * tmr)
 {
 	uint8_t * val = (uint8_t *)tmr;
 	SFR_REG_ADDR_U16 = RTL837X_REG_SEC_COUNTER;
