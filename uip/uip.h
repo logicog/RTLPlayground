@@ -880,8 +880,8 @@ struct uip_udp_conn *uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport) __banked;
  */
 #if !UIP_CONF_IPV6
 #define uip_ipaddr_copy(dest, src) do { \
-                     ((u16_t *)dest)[0] = ((u16_t *)src)[0]; \
-                     ((u16_t *)dest)[1] = ((u16_t *)src)[1]; \
+                     ((u16_t __xdata *)dest)[0] = ((u16_t __xdata *)src)[0]; \
+                     ((u16_t __xdata *)dest)[1] = ((u16_t __xdata *)src)[1]; \
                   } while(0)
 #else /* !UIP_CONF_IPV6 */
 #define uip_ipaddr_copy(dest, src) memcpy(dest, src, sizeof(uip_ip6addr_t))
