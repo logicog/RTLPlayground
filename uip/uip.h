@@ -763,7 +763,7 @@ void uip_send(register __xdata const void *data, register uint16_t len) __banked
  * \return The uip_udp_conn structure for the new connection or NULL
  * if no connection could be allocated.
  */
-__xdata struct uip_udp_conn *uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport) __banked;
+__xdata struct uip_udp_conn *uip_udp_new(__xdata uip_ipaddr_t *ripaddr, u16_t rport) __banked;
 
 /**
  * Removed a UDP connection.
