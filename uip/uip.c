@@ -465,7 +465,7 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banke
 #endif /* UIP_ACTIVE_OPEN */
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
-struct uip_udp_conn *
+__xdata struct uip_udp_conn *
 uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport) __banked
 {
   __xdata struct uip_udp_conn *conn;
