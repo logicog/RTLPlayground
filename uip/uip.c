@@ -466,7 +466,7 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banke
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
 __xdata struct uip_udp_conn *
-uip_udp_new(__xdata uip_ipaddr_t *ripaddr, u16_t rport) __banked
+uip_udp_new(__xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 {
   __xdata struct uip_udp_conn *conn;
   
@@ -1901,7 +1901,7 @@ htons(u16_t val)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_send(register __xdata const void *data, register uint16_t len) __banked
+uip_send(__xdata const void *data, __xdata uint16_t len) __banked
 {
   if(len > 0) {
     uip_slen = len;
