@@ -92,7 +92,7 @@ inline uint8_t isnumber(uint8_t l)
 }
 
 
-uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
+uint8_t cmd_compare(uint8_t start, uint8_t * cmd)
 {
 	if ((start > 0) && (cmd_words_b[start] <= 0) )// nothing on this word -> no match
 		return 0;
@@ -169,35 +169,38 @@ uint8_t atoi_hex(uint8_t idx)
 }
 
 
-uint8_t atoi_byte(register uint8_t *out, register uint8_t idx)
+uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 {
-	__xdata uint8_t err = 1;
-	*out = 0;
+	uint8_t err = 1;
+	uint8_t num = 0;
 
 	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
-		*out = (*out * 10) + cmd_buffer[idx] - '0';
+		num = (num * 10) + cmd_buffer[idx] - '0';
 		idx++;
 	}
+
+	*out = num;
 	return err;
 }
 
 
-uint8_t atoi_short(register uint16_t *vlan, register uint8_t idx)
+uint8_t atoi_short(__xdata uint16_t *vlan, uint8_t idx)
 {
-	__xdata uint8_t err = 1;
-	*vlan = 0;
+	uint8_t err = 1;
 
 	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
-		*vlan = (*vlan * 10) + cmd_buffer[idx] - '0';
+		uint8_t val = cmd_buffer[idx] - '0';
+		*vlan = (*vlan * 10) + val;
 		idx++;
 	}
+
 	return err;
 }
 
 
-uint8_t parse_ip(register uint8_t idx)
+uint8_t parse_ip(uint8_t idx)
 {
 	__xdata uint8_t b;
 
@@ -444,7 +447,7 @@ err:
 }
 
 
-bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
+bool vlan_ingress_mode_parse(char c, __xdata vlan_ingress_mode_t *mode)
 {
 	switch (c) {
 	case 'u':
