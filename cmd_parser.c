@@ -92,7 +92,7 @@ inline uint8_t isnumber(uint8_t l)
 }
 
 
-uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
+uint8_t cmd_compare(uint8_t start, uint8_t * cmd)
 {
 	if ((start > 0) && (cmd_words_b[start] <= 0) )// nothing on this word -> no match
 		return 0;
@@ -447,7 +447,7 @@ err:
 }
 
 
-bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
+bool vlan_ingress_mode_parse(char c, __xdata vlan_ingress_mode_t *mode)
 {
 	switch (c) {
 	case 'u':
