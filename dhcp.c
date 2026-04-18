@@ -216,7 +216,7 @@ void dhcp_send_request(void)
 }
 
 
-void ip_opt(uint8_t * __xdata ip)
+void ip_opt(__xdata uint8_t * ip)
 {
 	dhcp_state.opt_ptr++;
 	uint8_t len = DHCP_OPT[dhcp_state.opt_ptr++];
