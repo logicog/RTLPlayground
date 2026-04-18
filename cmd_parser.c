@@ -447,7 +447,7 @@ err:
 }
 
 
-bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
+bool vlan_ingress_mode_parse(char c, __xdata vlan_ingress_mode_t *mode)
 {
 	switch (c) {
 	case 'u':
