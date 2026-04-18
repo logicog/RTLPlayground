@@ -1059,7 +1059,7 @@ void parse_eee(void)
 	__xdata uint8_t speed = EEE_2G5;
 	__xdata uint8_t speed_word = 0;
 	// Check if word 2 is a speed (contains 'g' or 'm') or a port number
-	if (cmd_words_b[3] > 0) {
+	if (cmd_words_len >= 3) {
 		uint8_t idx = cmd_words_b[2];
 		// Skip digits to check if there's a letter after
 		while (isnumber(cmd_buffer[idx]))
@@ -1072,7 +1072,7 @@ void parse_eee(void)
 			port = cmd_buffer[cmd_words_b[2]] - '1';
 			port = machine.phys_to_log_port[port];
 			// Check if word 3 is a speed
-			if (cmd_words_b[4] > 0)
+			if (cmd_words_len >= 4)
 				speed_word = 3;
 		}
 	}
