@@ -8,12 +8,53 @@
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;width:40%;">
     <h1>Firmware Update</h1>
-    <form enctype="multipart/form-data" action="/upload" method="POST">
+    <form enctype="multipart/form-data" action="/upload" method="POST" target="uploadFrame" onsubmit="handleUpload();">
     <input type="hidden" name="MAX_FILE_SIZE" value="1000000" />
       Choose a firmware update file to upload: <br/> <br/>
-      <input name="uploadedfile" type="file" accept=".bin" /><br />
+      <input name="uploadedfile" type="file" accept=".bin" required /><br />
     <input style="margin-top:3em" type="submit" value="Upload File" />
     </form>
+    <iframe name="uploadFrame" style="display:none;"></iframe>
+    <div id="uploadStatus" class="status-message">Select a .bin file and start the upload. Firmware update may take about one minute.</div>
+    <script>
+      function handleUpload() {
+        document.getElementById('uploadStatus').textContent = 'Firmware upload in progress. Device will reboot automatically. Please wait...';
+        setTimeout(() => {
+          document.getElementById('uploadStatus').textContent = 'Upload finished. Switch is rebooting...';
+        }, 40000); // Show "finished" after 40 seconds
+        setTimeout(waitForSwitch, 45000); // Start polling after 45 seconds
+        return true;
+      }
+
+      async function waitForSwitch() {
+        const start = Date.now();
+        const timeout = 90000;
+        const probeUrl = 'login.html';
+        const pollInterval = 3000;
+
+        document.getElementById('uploadStatus').textContent = 'Switch is rebooting. Checking if switch is back online...';
+
+        while (Date.now() - start < timeout) {
+          try {
+            const response = await fetch(`${probeUrl}?probe=${Date.now()}`, { method: 'GET', cache: 'no-store' });
+            if (response.ok) {
+              document.getElementById('uploadStatus').textContent = 'Switch is back online. Redirecting to login page...';
+              setTimeout(() => { window.location.href = probeUrl; }, 1000);
+              return;
+            }
+          } catch (e) {
+            // ignore errors while rebooting
+          }
+          
+          const elapsed = Math.round((Date.now() - start) / 1000);
+          document.getElementById('uploadStatus').textContent = `Still waiting for switch to come back online (${elapsed}s)...`;
+          
+          await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        }
+
+        document.getElementById('uploadStatus').textContent = 'Switch did not respond. It may still be rebooting. Please refresh the page manually.';
+      }
+    </script>
     <script src="/navigation.js"></script>
   </body>
 </html>

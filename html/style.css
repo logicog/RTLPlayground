@@ -98,6 +98,16 @@ input[type=file] {
   width: 70%;
 }
 
+.status-message {
+  margin-top: 1em;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.95);
+  color: #222;
+  border-radius: 12px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.12);
+  font-size: 0.95rem;
+}
+
 .action {
   width: auto;
   margin-right: 10px;
