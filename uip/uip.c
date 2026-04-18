@@ -241,7 +241,7 @@ __xdata struct uip_stats uip_stat;
 
 #if ! UIP_ARCH_ADD32
 void
-uip_add32(u8_t *op32, u16_t op16)
+uip_add32(u8_t __xdata * op32, u16_t op16)
 {
   uip_acc32[3] = op32[3] + (op16 & 0xff);
   uip_acc32[2] = op32[2] + (op16 >> 8);
