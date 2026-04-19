@@ -58,14 +58,17 @@ __xdata uint8_t hexvalue[4] = { 0 };
 __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 __xdata uint8_t cmd_available;
 
-__xdata uint8_t line_ptr;
-__xdata	char is_white;
 __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
 
-#define N_WORDS CMD_BUF_SIZE
-__xdata signed char cmd_words_b[N_WORDS];
+// These variables combined create a Fixed-capacity vector/bounded buffer.
+// `N_WORDS`: The total number of command arguments that can be tracked.
+// `cmd_words_len` stores the number of arguments found inside `cmd_buffer`
+// `cmd_words_b` stores the index into `cmd_buffer`, check `cmd_words_len` is index is valid.
+#define N_WORDS 15
+__xdata uint8_t cmd_words_len;
+__xdata uint8_t cmd_words_b[N_WORDS];
 
 __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
 __xdata uint16_t cmd_history_ptr;
@@ -92,26 +95,35 @@ inline uint8_t isnumber(uint8_t l)
 }
 
 
-uint8_t cmd_compare(uint8_t start, uint8_t * __code cmd)
+uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 {
-	if ((start > 0) && (cmd_words_b[start] <= 0) )// nothing on this word -> no match
+	if (cmd_words_len == 0 || start > (cmd_words_len - 1)) {
 		return 0;
-
-	signed char i;
-	signed char j = 0;
-	for (i = cmd_words_b[start]; i != cmd_words_b[start + 1] && cmd_buffer[i] != ' '; i++) {
-		i &= CMD_BUF_SIZE - 1;
-//		print_byte(i); write_char(':'); print_byte(j); write_char('#'); print_string("\n");
-//		write_char('>'); write_char(cmd[j]); write_char('-'); write_char(cmd_buffer[i]); print_string("\n");
-		if (!cmd[j]) // end of command reached, but cmd_buffer has more characters, so no match
-			return 0;
-		if (cmd_buffer[i] != cmd[j++])
-			break;
 	}
-//	write_char('.'); print_byte(i); write_char(':'); print_byte(j); write_char(','); print_byte (cmd[j-1]);
-//	write_char(','); print_byte(cmd[j]);
-	if ( ((i == cmd_words_b[start + 1]) || (cmd_buffer[i] == ' ')) && !cmd[j])  // next word reached and command fully matched
-		return 1;
+	uint8_t i = cmd_words_b[start];
+	uint8_t j = 0;
+
+	do {
+		uint8_t c = cmd[j];
+		uint8_t b = cmd_buffer[i];
+
+		// cmd is garanteerd to be NULL-terminated.
+        if (c == '\0') {
+            if ((b == ' ') || (b == '\0')) {
+				// Match
+                return 1;
+            }
+            break;
+        }
+        if (b != c) {
+            break;
+        }
+
+		j += 1;
+        i += 1;
+	} while (i < CMD_BUF_SIZE);
+
+	// No match
 	return 0;
 }
 
@@ -247,12 +259,12 @@ void parse_lag(void)
 		return;
 	}
 
-	if (cmd_words_b[2] <= 0 || !isnumber(cmd_buffer[cmd_words_b[1]]))
+	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]]))
 		goto err;
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
-	while (cmd_words_b[w + 1] > 0) {
+	while (w < cmd_words_len) {
 //		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
 		uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
@@ -283,7 +295,7 @@ void parse_lag_hash(void)
 	group = cmd_buffer[cmd_words_b[1]] - '0';
 
 	uint8_t w = 2;
-	while (cmd_words_b[w + 1] > 0) {
+	while (w < cmd_words_len) {
 		if (cmd_compare(w, "spa"))
 			hash |= LAG_HASH_SOURCE_PORT_NUMBER;
 		else if (cmd_compare(w, "smac"))
@@ -315,7 +327,7 @@ void parse_vlan(void)
 	vlan_settings.members = 0;
 	vlan_settings.tagged = 0;
 	if (!atoi_short(&vlan_settings.vlan, cmd_words_b[1])) {
-		if (cmd_words_b[2] > 0 && cmd_buffer[cmd_words_b[2]] == 'd' && cmd_words_b[3] < 0) {
+		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
 			vlan_delete(vlan_settings.vlan);
 			return;
 		}
@@ -328,7 +340,7 @@ void parse_vlan(void)
 			return;
 		}
 		uint8_t w = 2;
-		if (cmd_words_b[w] > 0 && isletter(cmd_buffer[cmd_words_b[w]])) {
+		if (cmd_words_len > w && isletter(cmd_buffer[cmd_words_b[w]])) {
 			register uint8_t i = 0;
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 8) & 0xf];
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 4) & 0xf] ;
@@ -341,7 +353,7 @@ void parse_vlan(void)
 			w++;
 			print_string("<\n");
 		}
-		while (cmd_words_b[w] > 0) {
+		while (cmd_words_len > w) {
 			__xdata uint8_t port;
 			if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 				port = cmd_buffer[cmd_words_b[w]] - '1';
@@ -361,13 +373,13 @@ void parse_vlan(void)
 			w++;
 		}
 		vlan_create();
-	} else if (cmd_words_b[1] > 0 && cmd_compare(1, "show")) {
+	} else if (cmd_compare(1, "show")) {
 		vlan_dump();
 	} else {
 		goto err;
 	}
 
-	if (cmd_words_b[2] > 0 && isletter(cmd_buffer[cmd_words_b[2]])) {
+	if (cmd_words_len >= 3 && isletter(cmd_buffer[cmd_words_b[2]])) {
 		print_string("vlan_ptr "); print_short(vlan_ptr); write_char(':');
 		write_char('>'); print_string_x(&vlan_names[0]); write_char('<'); write_char('\n');
 	}
@@ -381,7 +393,7 @@ void parse_isolate(void)
 {
 	__xdata uint16_t members = 0;
 
-	if (cmd_words_b[3] <= 0)
+	if (cmd_words_len < 3)
 		goto err;
 
 	print_string("\nISOLATE ");
@@ -419,7 +431,7 @@ void parse_isolate(void)
 	}
 
 	uint8_t w = 2;
-	while (cmd_words_b[w] > 0) {
+	while (w < cmd_words_len) {
 		__xdata uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
@@ -464,7 +476,7 @@ bool vlan_ingress_mode_parse(char c, vlan_ingress_mode_t *mode)
 
 void parse_ingress(void)
 {
-	if (cmd_words_b[1] <= 0) {
+	if (cmd_words_len < 2) {
 		goto err;
 	}
 	__xdata uint8_t log_port = 0;
@@ -482,24 +494,25 @@ void parse_ingress(void)
 		}
 		return;
 	} else {
-		for(uint8_t w = 1; cmd_words_b[w] > 0; w++) {
-			if (!isnumber(cmd_buffer[cmd_words_b[w]])) {
+		for(uint8_t w = 1; w < cmd_words_len; w++) {
+			uint8_t p = cmd_buffer[cmd_words_b[w]];
+			if (!isnumber(p)) {
 				continue;
 			}
-			if (cmd_buffer[cmd_words_b[w]] - '1' > 9) {
-				print_string("Invalid physical port number: "); write_char(cmd_buffer[cmd_words_b[w]]); write_char('\n');
+			if (p - '1' > 9) {
+				print_string("Invalid physical port number: "); write_char(p); write_char('\n');
 				continue;
 			}
-			log_port = machine.phys_to_log_port[cmd_buffer[cmd_words_b[w]] - '1'];
+			log_port = machine.phys_to_log_port[p - '1'];
 			if (!vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[w] + 1], &mode)) {
-				print_string("Invalid ingress mode for port "); write_char(cmd_buffer[cmd_words_b[w]]); print_string(" in ingress command\n");
+				print_string("Invalid ingress mode for port "); write_char(p); print_string(" in ingress command\n");
 				goto err;
 			}
 			if (!port_ingress_filter(log_port, mode)) {
-				print_string("Error setting ingress filter for port "); write_char(cmd_buffer[cmd_words_b[w]]); write_char('\n');
+				print_string("Error setting ingress filter for port "); write_char(p); write_char('\n');
 				return;
 			}
-			print_string("Port "); write_char(cmd_buffer[cmd_words_b[w]]);
+			print_string("Port "); write_char(p);
 			print_string(" ingress filter set to: ");
 			print_port_ingress_filter_mode(mode); write_char('\n');
 		}
@@ -541,18 +554,19 @@ void parse_mirror(void)
 		return;
 	}
 
-	if (!isnumber(cmd_buffer[cmd_words_b[1]])) {
-		print_string("Port missing: mirror <mirroring port> [port][t/r]...\n");
+	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]])) {
+		print_string("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
 		return;
 	}
 
 	mirroring_port = cmd_buffer[cmd_words_b[1]] - '1';
 	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))
 		mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
-		mirroring_port = machine.phys_to_log_port[mirroring_port];
+	mirroring_port = machine.phys_to_log_port[mirroring_port];
+	
 
 	uint8_t w = 2;
-	while (cmd_words_b[w] > 0) {
+	while (w < cmd_words_len) {
 		uint8_t port;
 		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
 			port = cmd_buffer[cmd_words_b[w]] - '1';
@@ -587,11 +601,11 @@ void parse_mirror(void)
 
 void parse_port(void)
 {
-	if (cmd_words_b[3] <= 0) {
-		print_string("\nUsage:");
-		print_string("\nport <port> [show|on|off]");
-		print_string("\nport <port> [10m|100m|1g|2g5|duplex] [half|full]");
-		print_string("\nport <port> name [custom port name]\n");
+	if (cmd_words_len < 3) {
+		print_string("\nUsage:" \
+					 "\nport <port> [show|on|off]" \
+					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
+					 "\nport <port> name [custom port name]\n");
 		return;
 	}
 
@@ -692,7 +706,7 @@ void parse_mtu(void)
 	p = cmd_buffer[cmd_words_b[1]] - '1';
 	p = machine.phys_to_log_port[p];
 	print_byte(p);
-	if (cmd_words_b[2] <= 0) {
+	if (cmd_words_len != 3) {
 		print_string("mtu [port] [size]\n");
 		return;
 	}
@@ -725,7 +739,7 @@ void parse_regget(void)
 {
 	uint16_t reg = 0;
 
-	if (cmd_words_b[1] < 0) {
+	if (cmd_words_len != 2) {
 		goto err;
 	}
 
@@ -760,7 +774,7 @@ void parse_regset(void)
 {
 	uint16_t reg = 0;
 
-	if (cmd_words_b[2] < 0) {
+	if (cmd_words_len != 2) {
 		goto err;
 	}
 
@@ -808,7 +822,7 @@ void parse_sdsget(void)
 {
 	__xdata uint8_t sds_id, page, reg, hex_size;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0) {
+	if (cmd_words_len != 4) {
 		goto err;
 	}
 
@@ -852,7 +866,7 @@ void parse_sdsset(void)
 	__xdata uint8_t sds_id, page, reg, hex_size;
 	__xdata uint16_t val;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0 || cmd_words_b[4] < 0) {
+	if (cmd_words_len != 5) {
 		goto err;
 	}
 
@@ -907,7 +921,7 @@ void parse_phyget(void)
 	__xdata uint8_t phy_id, dev_id, hex_size;
 	__xdata uint16_t reg;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0) {
+	if (cmd_words_len != 4) {
 		goto err;
 	}
 
@@ -953,7 +967,7 @@ void parse_physet(void)
 	__xdata uint8_t phy_id, dev_id, hex_size;
 	__xdata uint16_t reg, val;
 
-	if (cmd_words_b[1] < 0 || cmd_words_b[2] < 0 || cmd_words_b[3] < 0 || cmd_words_b[4] < 0) {
+	if (cmd_words_len != 5) {
 		goto err;
 	}
 
@@ -1023,11 +1037,15 @@ void parse_rnd(void)
 
 void parse_passwd(void)
 {
-	if (cmd_words_b[2] > 0) {
-		signed char i;
-		signed char j = 0;
-		for (i = cmd_words_b[1]; (i != cmd_words_b[2] && i - cmd_words_b[1] < 20); i++)
-			passwd[j++] = cmd_buffer[i];
+	// cmd_words_len can be more then 2 if a space in the password.
+	if (cmd_words_len >= 2) {
+		uint8_t i = cmd_words_b[1];		
+		uint8_t c = 0;
+		uint8_t j = 0;
+		do {
+			c = cmd_buffer[i++];
+			passwd[j++] = c;
+		} while (c != '\0' && j < 20);
 		passwd[j] = '\0';
 		return;
 	}
@@ -1041,7 +1059,7 @@ void parse_eee(void)
 	__xdata uint8_t speed = EEE_2G5;
 	__xdata uint8_t speed_word = 0;
 	// Check if word 2 is a speed (contains 'g' or 'm') or a port number
-	if (cmd_words_b[3] > 0) {
+	if (cmd_words_len >= 3) {
 		uint8_t idx = cmd_words_b[2];
 		// Skip digits to check if there's a letter after
 		while (isnumber(cmd_buffer[idx]))
@@ -1054,7 +1072,7 @@ void parse_eee(void)
 			port = cmd_buffer[cmd_words_b[2]] - '1';
 			port = machine.phys_to_log_port[port];
 			// Check if word 3 is a speed
-			if (cmd_words_b[4] > 0)
+			if (cmd_words_len >= 4)
 				speed_word = 3;
 		}
 	}
@@ -1098,7 +1116,7 @@ void parse_bw(void)
 	__xdata uint8_t port;
 	__xdata uint32_t bw = 0;
 
-	if (cmd_words_b[3] < 0) // Check for at least 2 arguments
+	if (cmd_words_len < 2) // Check for at least 2 arguments
 		goto err;
 
 	port = cmd_buffer[cmd_words_b[2]] - '1';
@@ -1112,7 +1130,7 @@ void parse_bw(void)
 		return;
 	}
 
-	if (cmd_words_b[4] < 0) // Check for at least 3 arguments
+	if (cmd_words_len < 4) // Check for at least 4 arguments
 		goto err;
 
 	if (cmd_compare(3, "drop")) {
@@ -1167,7 +1185,9 @@ err:
 }
 
 // Parse command into words
-uint8_t cmd_tokenize(void) __banked
+// cmd_words_len contains the number of words found.
+// cmd_words_b[] contains only start of a word offset.
+void cmd_tokenize(void) __banked
 {
 #ifdef DEBUG
 	print_string("Tokenizing command\n");
@@ -1175,35 +1195,41 @@ uint8_t cmd_tokenize(void) __banked
 	write_char('<'); write_char('\n');
 #endif
 	err_status = ERR_OK;
-	line_ptr = 0;
-	is_white = 1;
+	uint8_t line_ptr = 0;
+	uint8_t is_white = 1;
 	uint8_t word = 0;
+	uint8_t c = 0;
 
-	for (uint8_t i = 0; i < N_WORDS; i++)
-		cmd_words_b[i] = -1;
+	while(1) {
+		c = cmd_buffer[line_ptr];
+		
+		if (c == '\0') {
+			// Store the word count
+			cmd_words_len = word;
+			break;
+		}
 
-	while (cmd_buffer[line_ptr] && line_ptr < CMD_BUF_SIZE - 1) {
-		if (is_white && cmd_buffer[line_ptr] != ' ') {
+		if (line_ptr == CMD_BUF_SIZE - 1) {
+			err_status = ERR_CMD_TOO_LONG;
+			return;
+		}
+
+		if (is_white && c != ' ') {
 			is_white = 0;
-			cmd_words_b[word++] = line_ptr;
-		}
-		if (cmd_buffer[line_ptr] == ' ')
-			is_white = 1;
-		line_ptr++;
-		if (word >= N_WORDS - 1) {
-			print_string("\ntoo many arguments, truncated");
-			err_status = ERR_TOO_MANY_ARGUMENTS;
-			return 1;
-		}
-	}
-	if (line_ptr == CMD_BUF_SIZE - 1) {
-		err_status = ERR_CMD_TOO_LONG;
-		return 1;
-	}
-	cmd_words_b[word++] = line_ptr;
-	cmd_words_b[word++] = -1;
 
-	return 0;
+			cmd_words_b[word++] = line_ptr;
+			if (word >= N_WORDS) {
+				cmd_words_len = 0;
+				print_string("\nSyntax error: too many arguments.");
+				err_status = ERR_TOO_MANY_ARGUMENTS;
+				return;
+			}
+		} else if (c == ' ') {
+			is_white = 1;
+		}
+
+		line_ptr++;
+	}
 }
 
 // Print GPIO status
@@ -1252,6 +1278,7 @@ void cmd_parser(void) __banked
 	print_string_x(&cmd_buffer[0]);
 	write_char('<'); write_char('\n');
 	print_string("CMD-words: ");
+	print_byte(cmd_words_len); write_char(' ');
 	print_byte(cmd_words_b[0]); write_char(' ');
 	print_byte(cmd_words_b[1]); write_char(' ');
 	print_byte(cmd_words_b[2]); write_char(' ');
@@ -1260,7 +1287,7 @@ void cmd_parser(void) __banked
 	print_byte(cmd_words_b[5]); write_char(' ');
 	print_byte(cmd_words_b[6]); write_char('\n');
 #endif
-	if (cmd_words_b[0] >= 0 && cmd_words_b[1] >= 0) {
+	if (cmd_words_len >= 1) {
 		if (cmd_compare(0, "reset")) {
 			print_string("\nRESET\n\n");
 			reset_chip();
@@ -1279,35 +1306,38 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
-		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 's') {
-			print_string("\nSECURITY REGISTERS\n");
-			// The following will only show something else than 0xff if it was programmed for a managed switch
-			print_string("Region 1: ");
-			flash_region.addr = 0x0001000;
-			flash_region.len = 40;
-			flash_read_security();
-			print_string("\nRegion 2: ");
-			flash_region.addr = 0x0002000;
-			flash_region.len = 40;
-			flash_read_security();
-			print_string("\nRegion 3: ");
-			flash_region.addr = 0x0003000;
-			flash_region.len = 40;
-			flash_read_security();
-		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'j') {
-			print_string("\nJEDEC ID\n");
-			flash_read_jedecid();
-		} else if (cmd_compare(0, "flash") && cmd_words_b[1] > 0 && cmd_buffer[cmd_words_b[1]] == 'u') {
-			print_string("\nUNIQUE ID (note: only 4 bytes are likely correct here!)\n");
-			flash_read_uid();
-		} else if (cmd_compare(0, "port") && cmd_words_b[1] > 0) {
+		} else if (cmd_compare(0, "flash") && cmd_words_len == 2) {
+			uint8_t c = cmd_buffer[cmd_words_b[1]];
+			if (c == 's') {
+				print_string("\nSECURITY REGISTERS\n");
+				// The following will only show something else than 0xff if it was programmed for a managed switch
+				print_string("Region 1: ");
+				flash_region.addr = 0x0001000;
+				flash_region.len = 40;
+				flash_read_security();
+				print_string("\nRegion 2: ");
+				flash_region.addr = 0x0002000;
+				flash_region.len = 40;
+				flash_read_security();
+				print_string("\nRegion 3: ");
+				flash_region.addr = 0x0003000;
+				flash_region.len = 40;
+				flash_read_security();
+			} else if (c == 'j') {
+				print_string("\nJEDEC ID\n");
+				flash_read_jedecid();
+			} else if (c == 'u') {
+				print_string("\nUNIQUE ID (note: only 4 bytes are likely correct here!)\n");
+				flash_read_uid();
+			}
+		} else if (cmd_compare(0, "port")) {
 			parse_port();
-		} else if (cmd_compare(0, "mtu") && cmd_words_b[1] > 0) {
+		} else if (cmd_compare(0, "mtu")) {
 			parse_mtu();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
-			} else if (cmd_words_b[2] < 0) {
+			} else if (cmd_words_len == 1) {
 				print_string("Current IP: ");
 				itoa(uip_hostaddr[0]); write_char('.'); itoa(uip_hostaddr[0] >> 8); write_char('.');
 				itoa(uip_hostaddr[1]); write_char('.'); itoa(uip_hostaddr[1] >> 8);
@@ -1335,7 +1365,7 @@ void cmd_parser(void) __banked
 				}
 			}
 		} else if (cmd_compare(0, "gw")) {
-			if (cmd_words_b[2] < 0) {
+			if (cmd_words_len == 1) {
 				print_string("Current gw: ");
 				itoa(uip_draddr[0]); write_char('.'); itoa(uip_draddr[0] >> 8); write_char('.');
 				itoa(uip_draddr[1]); write_char('.'); itoa(uip_draddr[1] >> 8);
@@ -1350,7 +1380,7 @@ void cmd_parser(void) __banked
 			}
 			write_char('\n');
 		} else if (cmd_compare(0, "netmask")) {
-			if (cmd_words_b[2] < 0) {
+			if (cmd_words_len == 1) {
 				print_string("Current netmask: ");
 				itoa(uip_netmask[0]); write_char('.'); itoa(uip_netmask[0] >> 8); write_char('.');
 				itoa(uip_netmask[1]); write_char('.'); itoa(uip_netmask[1] >> 8);
@@ -1386,7 +1416,7 @@ void cmd_parser(void) __banked
 				stp_off();
 				stpEnabled = 0;
 			}
-		} else if (cmd_compare(0, "pvid") && cmd_words_b[1] > 0 && cmd_words_b[2] > 0) {
+		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
 			__xdata uint16_t pvid;
 			uint8_t port;
 			port = cmd_buffer[cmd_words_b[1]] - '1';
@@ -1456,22 +1486,21 @@ void cmd_parser(void) __banked
 		}
 
 
-		if (save_cmd) {
-			uint8_t i;
-			for (i = 0; i < N_WORDS; i++) {
-				if (cmd_words_b[i] < 0)
-					break;
-			}
-			if (i < N_WORDS) {
-				i = cmd_words_b[--i];
-				cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
-				__xdata uint16_t p = cmd_history_ptr;
-				cmd_history[cmd_history_ptr++] = '\n';
-				do {
-					i--;
-					cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
-				} while (i);
-			}
+		if (save_cmd && cmd_words_len) {
+			// Find end of the cmd-buffer, looking for the NULL-byte.
+			uint8_t i = cmd_words_b[cmd_words_len - 1];
+			do {
+				i++;
+			} while(cmd_buffer[i] != '\0');
+
+			// Copy last cmd-buffer to history.
+			cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
+			__xdata uint16_t p = cmd_history_ptr;
+			cmd_history[cmd_history_ptr++] = '\n';
+			do {
+				i--;
+				cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
+			} while (i);
 		}
 	}
 }
@@ -1520,10 +1549,11 @@ void execute_config(void) __banked
 			c = flash_buf[cfg_idx++];
 			if (c == 0 || c == '\n') {
 				cmd_buffer[cmd_idx] = '\0';
-				if (cmd_idx && !cmd_tokenize()) {
-					cmd_parser();
-					if (err_status)
+				if (cmd_idx) {
+					cmd_tokenize();
+					if (err_status != ERR_OK)
 						goto config_done;
+					cmd_parser();
 				}
 				if (c == 0)
 					goto config_done;
