@@ -164,7 +164,9 @@ function update(callback) {
 	} else {
 	  psvg.style.opacity = 1.0;
 	  pState[n] = p.link;
-	  if (p.link == 4 || p.link == 5 || p.link == 6) {
+	  if (p.link == 5 || p.link == 7) {
+	    leds[0].style.fill = "green"; leds[1].style.fill = "blue";
+	  } else if (p.link == 4 || p.link == 6) {
 	    leds[0].style.fill = "green"; leds[1].style.fill = "orange";
 	  } else if (p.link == 1 || p.link == 2 || p.link == 3) {
 	    leds[0].style.fill = "green"; leds[1].style.fill = "green";
