@@ -1187,7 +1187,7 @@ err:
 // Parse command into words
 // cmd_words_len contains the number of words found.
 // cmd_words_b[] contains only start of a word offset.
-uint8_t cmd_tokenize(void) __banked
+void cmd_tokenize(void) __banked
 {
 #ifdef DEBUG
 	print_string("Tokenizing command\n");
@@ -1211,7 +1211,7 @@ uint8_t cmd_tokenize(void) __banked
 
 		if (line_ptr == CMD_BUF_SIZE - 1) {
 			err_status = ERR_CMD_TOO_LONG;
-			return 1;
+			return;
 		}
 
 		if (is_white && c != ' ') {
@@ -1220,9 +1220,9 @@ uint8_t cmd_tokenize(void) __banked
 			cmd_words_b[word++] = line_ptr;
 			if (word >= N_WORDS) {
 				cmd_words_len = 0;
-				print_string("\ntoo many arguments, truncated");
+				print_string("\nSyntax error: too many arguments.");
 				err_status = ERR_TOO_MANY_ARGUMENTS;
-				return 1;
+				return;
 			}
 		} else if (c == ' ') {
 			is_white = 1;
@@ -1230,8 +1230,6 @@ uint8_t cmd_tokenize(void) __banked
 
 		line_ptr++;
 	}
-
-	return 0;
 }
 
 // Print GPIO status
@@ -1551,10 +1549,11 @@ void execute_config(void) __banked
 			c = flash_buf[cfg_idx++];
 			if (c == 0 || c == '\n') {
 				cmd_buffer[cmd_idx] = '\0';
-				if (cmd_idx && !cmd_tokenize()) {
-					cmd_parser();
-					if (err_status)
+				if (cmd_idx) {
+					cmd_tokenize();
+					if (err_status != ERR_OK)
 						goto config_done;
+					cmd_parser();
 				}
 				if (c == 0)
 					goto config_done;
