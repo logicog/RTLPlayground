@@ -1666,7 +1666,11 @@ void init_smi(void)
 	/* Set the SMI(i.e.I2C) type for PHY polling, 0b01 is 2.5/10G PHY. Disable (0b00) for the SFP-ports
 	 * which are at port 8 and additionally at port 3 for a dual SFP device
 	 */
-	REG_SET(RTL837X_REG_SMI_MAC_TYPE, machine.n_sfp == 2 ? 0x00005515 : 0x00005555);
+	if (machine.n_10g == 2) {
+		REG_SET(RTL837X_REG_SMI_MAC_TYPE, 0x00015555);
+	} else {
+		REG_SET(RTL837X_REG_SMI_MAC_TYPE, machine.n_sfp == 2 ? 0x00005515 : 0x00005555);
+	}
 
 	// Configure polling of all PHYs by the MAC to detect link-state changes
 	if (machine_detected.isRTL8373) {
@@ -1692,6 +1696,11 @@ void init_smi(void)
 		sfr_mask_data(2, 0x0f, 0);
 		sfr_mask_data(1, 0x80, 0);
 		reg_write_m(RTL837X_REG_SMI_PORT0_5_ADDR);
+	}
+
+	if (machine.n_10g == 2) {
+		// Set address of second external PHY on port 8
+		REG_SET(RTL837X_REG_SMI_PORT6_9_ADDR, 0x000040e6);
 	}
 }
 
