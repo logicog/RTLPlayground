@@ -201,6 +201,7 @@ uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 uint8_t atoi_short(__xdata uint16_t *vlan, uint8_t idx)
 {
 	uint8_t err = 1;
+	*vlan = 0;
 
 	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
@@ -1191,6 +1192,7 @@ err:
 // Parse command into words
 // cmd_words_len contains the number of words found.
 // cmd_words_b[] contains only start of a word offset.
+// Returns the parsing status via `err_status`-variable.
 void cmd_tokenize(void) __banked
 {
 #ifdef DEBUG
