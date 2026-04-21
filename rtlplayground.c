@@ -27,6 +27,7 @@
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
+extern __xdata uint8_t err_status;
 
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
@@ -1330,7 +1331,8 @@ void idle(void)
 	// Check whether a command is waiting in the cmd_buffer and execute
 	if (cmd_available) {
 		cmd_available = 0;
-		if (!cmd_tokenize())
+		cmd_tokenize();
+		if (err_status == ERR_OK)
 			cmd_parser();
 		print_cmd_prompt();
 	}
