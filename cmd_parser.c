@@ -200,6 +200,7 @@ uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 uint8_t atoi_short(__xdata uint16_t *vlan, uint8_t idx)
 {
 	uint8_t err = 1;
+	*vlan = 0;
 
 	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
