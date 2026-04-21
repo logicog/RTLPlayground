@@ -64,7 +64,7 @@
  *
  */
 void
-timer_set(struct timer *t, clock_time_t interval)
+timer_set(__xdata struct timer *t, clock_time_t interval)
 {
   t->interval = interval;
   t->start = clock_time();
@@ -84,7 +84,7 @@ timer_set(struct timer *t, clock_time_t interval)
  * \sa timer_restart()
  */
 void
-timer_reset(struct timer *t)
+timer_reset(__xdata struct timer *t)
 {
   t->start += t->interval;
 }
@@ -104,7 +104,7 @@ timer_reset(struct timer *t)
  * \sa timer_reset()
  */
 void
-timer_restart(struct timer *t)
+timer_restart(__xdata struct timer *t)
 {
   t->start = clock_time();
 }
@@ -121,7 +121,7 @@ timer_restart(struct timer *t)
  *
  */
 int
-timer_expired(struct timer *t)
+timer_expired(__xdata struct timer *t)
 {
   return (clock_time_t)(clock_time() - t->start) >= (clock_time_t)t->interval;
 }

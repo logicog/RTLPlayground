@@ -35,7 +35,7 @@ struct dhcp_state {
 	uint32_t rebind;
 	uint32_t renewal;
 
-	struct uip_udp_conn *conn;
+	__xdata struct uip_udp_conn *conn;
 };
 
 typedef struct dhcp_state uip_udp_appstate_t;

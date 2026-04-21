@@ -81,7 +81,7 @@
  *
  * \param op16 A 16-bit integer in host byte order.
  */
-void uip_add32(u8_t *op32, u16_t op16);
+void uip_add32(__xdata u8_t * op32, u16_t op16);
 
 /**
  * Calculate the Internet checksum over a buffer.

@@ -36,11 +36,19 @@ extern __xdata uint8_t sbuf[SBUF_SIZE];
 // Size of the TCP Output buffer
 #define TCP_OUTBUF_SIZE 2500
 
+// Size of the port name, including the terminating null byte
+#define PORT_NAME_SIZE 32
+
 // Size of the memory area dedicated to VLAN-names
 #define VLAN_NAMES_SIZE 1024
 
 // Size of the flash buffer used for writing to flash, must be a multiple of the flash page size (0x100)
 #define FLASH_BUF_SIZE 512
+
+// Errors for commands
+#define ERR_OK			0
+#define ERR_TOO_MANY_ARGUMENTS	1
+#define ERR_CMD_TOO_LONG	2
 
 // For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
 // the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
@@ -95,6 +103,8 @@ struct flash_region_t {
     uint16_t len;
 };
 
+extern __xdata char port_names[9][PORT_NAME_SIZE];
+
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
@@ -141,7 +151,7 @@ uint16_t strcpy(register __xdata uint8_t *dst, register const char *s);
 void tcpip_output(void);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
-void read_reg_timer(uint32_t * tmr);
+void read_reg_timer(__xdata uint32_t * tmr);
 void sfp_print_info(uint8_t sfp);
 bool gpio_pin_test(uint8_t pin);
 void set_sys_led_state(uint8_t state);

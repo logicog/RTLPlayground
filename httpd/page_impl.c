@@ -97,7 +97,7 @@ void itoa_html(uint8_t v)
 	char_to_html('0' + (v % 10));
 }
 
-void string_to_html(register char *s)
+void string_to_html(__code char *s)
 {
 	while (*s) char_to_html(*s++);
 }
@@ -638,6 +638,11 @@ void send_status(void)
 		itoa_html(machine.log_to_phys_port[i]);
 		slen += strtox(outbuf + slen, ",\"logPort\":");
 		itoa_html(i);
+		slen += strtox(outbuf + slen, ",\"name\":\"");
+		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
+			char_to_html(port_names[i][j]);
+		}
+		slen += strtox(outbuf + slen, "\"");
 
 		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
