@@ -241,7 +241,7 @@ __xdata struct uip_stats uip_stat;
 
 #if ! UIP_ARCH_ADD32
 void
-uip_add32(u8_t *op32, u16_t op16)
+uip_add32(u8_t __xdata * op32, u16_t op16)
 {
   uip_acc32[3] = op32[3] + (op16 & 0xff);
   uip_acc32[2] = op32[2] + (op16 >> 8);
@@ -465,8 +465,8 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banke
 #endif /* UIP_ACTIVE_OPEN */
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
-struct uip_udp_conn *
-uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport) __banked
+__xdata struct uip_udp_conn *
+uip_udp_new(__xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 {
   __xdata struct uip_udp_conn *conn;
   
@@ -1901,7 +1901,7 @@ htons(u16_t val)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_send(register __xdata const void *data, register uint16_t len) __banked
+uip_send(__xdata const void *data, __xdata uint16_t len) __banked
 {
   if(len > 0) {
     uip_slen = len;

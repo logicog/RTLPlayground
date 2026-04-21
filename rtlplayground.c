@@ -711,7 +711,7 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 }
 
 
-void read_reg_timer(uint32_t * tmr)
+void read_reg_timer(__xdata uint32_t * tmr)
 {
 	uint8_t * val = (uint8_t *)tmr;
 	SFR_REG_ADDR_U16 = RTL837X_REG_SEC_COUNTER;
@@ -1997,7 +1997,7 @@ void check_and_flash_update_image(void)
 		__xdata uint16_t i = 0;
 		__xdata uint16_t j = 0;
 		__xdata uint8_t * __xdata bptr;
-		print_string("found update image! Checking integrity");
+		print_string("found update image!\nChecking integrity");
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing will fail
 		set_sys_led_state(SYS_LED_FAST);
 		crc_value = 0x0000;

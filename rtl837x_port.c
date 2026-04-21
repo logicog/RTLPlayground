@@ -463,14 +463,14 @@ void port_stats_print(void) __banked
 }
 
 
-void port_isolate(register uint8_t port, __xdata uint16_t pmask)
+void port_isolate(register uint8_t port, __xdata uint16_t pmask) __banked
 {
 	if (port <= machine.max_port)
 		REG_SET(RTL837X_PORT_ISOLATION_BASE + (port << 2), pmask);
 }
 
 
-uint16_t port_isolation_get(register uint8_t port)
+uint16_t port_isolation_get(register uint8_t port) __banked
 {
 	if (port > machine.max_port)
 		return 0;
