@@ -2,7 +2,10 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 
-uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin) {
+#pragma codeseg BANK2
+#pragma constseg BANK2
+
+uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin) __banked {
 	switch (sda_pin) {
 		case GPIO47_I2C_SDA0:
 			return 0;
@@ -19,7 +22,7 @@ uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin) {
 	}
 }
 
-uint8_t i2c_bus_from_scl_pin(uint8_t scl_pin) {
+uint8_t i2c_bus_from_scl_pin(uint8_t scl_pin) __banked{
 	switch (scl_pin) {
 		case GPIO46_I2C_SCL0:
 			return 0;
@@ -35,18 +38,18 @@ uint8_t i2c_bus_from_scl_pin(uint8_t scl_pin) {
 }
 
 /* Returns RTL837X_REG_GPIO_XX_OUTPUT register address */
-static uint16_t gpio_output_reg(uint8_t pin) {
+static uint16_t gpio_output_reg(uint8_t pin) __banked{
 	return pin < 32 ? RTL837X_REG_GPIO_00_31_OUTPUT : RTL837X_REG_GPIO_32_63_OUTPUT;
 } 
 
 /* Returns RTL837X_REG_GPIO_XX_DIRECTION register address */
-static uint16_t gpio_direction_reg(uint8_t pin) {
+static uint16_t gpio_direction_reg(uint8_t pin) __banked {
 	return pin < 32 ? RTL837X_REG_GPIO_00_31_DIRECTION : RTL837X_REG_GPIO_32_63_DIRECTION;
 } 
 
 
 /* Enable GPIO functions for pin */
-static void gpio_mux_setup(uint8_t pin)
+static void gpio_mux_setup(uint8_t pin) __banked
 {
 	// Some GPIOs require setting MUX registers to enable GPIO
 	switch (pin) {
@@ -94,7 +97,7 @@ static void gpio_mux_setup(uint8_t pin)
 	}
 }
 
-void gpio_input_setup(uint8_t pin) {
+void gpio_input_setup(uint8_t pin) __banked {
 	if (pin == GPIO_NA) { 
 		return;
 	}
@@ -103,7 +106,7 @@ void gpio_input_setup(uint8_t pin) {
 	reg_bit_clear(gpio_direction_reg(pin), (pin % 32));
 }
 
-void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) {
+void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) __banked{
 	if (pin == GPIO_NA) { 
 		return;
 	}
