@@ -82,7 +82,7 @@ struct dhcp_pkt {
 __xdata uint32_t long_value;
 
 
-void dhcp_print_ip(uint8_t *a)
+void dhcp_print_ip(__xdata uint8_t *a)
 {
 	itoa(a[0]); write_char('.');
 	itoa(a[1]); write_char('.');
@@ -216,7 +216,7 @@ void dhcp_send_request(void)
 }
 
 
-void ip_opt(uint8_t * __xdata ip)
+void ip_opt(__xdata uint8_t * ip)
 {
 	dhcp_state.opt_ptr++;
 	uint8_t len = DHCP_OPT[dhcp_state.opt_ptr++];
