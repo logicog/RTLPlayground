@@ -97,7 +97,7 @@ void itoa_html(uint8_t v)
 	char_to_html('0' + (v % 10));
 }
 
-void string_to_html(register char *s)
+void string_to_html(__code char *s)
 {
 	while (*s) char_to_html(*s++);
 }
