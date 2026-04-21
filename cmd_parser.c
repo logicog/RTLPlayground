@@ -1191,6 +1191,7 @@ err:
 // Parse command into words
 // cmd_words_len contains the number of words found.
 // cmd_words_b[] contains only start of a word offset.
+// Returns the parsing status via `err_status`-variable.
 void cmd_tokenize(void) __banked
 {
 #ifdef DEBUG
