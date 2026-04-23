@@ -28,6 +28,7 @@
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
+#include "crypto/chacha.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
