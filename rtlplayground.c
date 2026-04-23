@@ -24,6 +24,7 @@
 #include "uip/uip_arp.h"
 #include "machine.h"
 #include "phy.h"
+#include "crypto/chacha.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -2037,6 +2038,7 @@ void main(void)
 	set_sys_led_state(SYS_LED_ON);
 
 	cmd_editor_init();
+
 	while (1) {
 		cmd_edit();
 		idle(); // Enter Idle mode until interrupt occurs
