@@ -68,7 +68,8 @@
 
 struct arp_hdr_i {
   struct uip_eth_hdr ethhdr;
-  uint8_t rtl_tag[RTL_TAG_SIZE + VLAN_TAG_SIZE];
+  struct rtl_tag rtl_tag;
+  struct vlan_tag vlan_tag;
   u16_t hwtype;
   u16_t protocol;
   u8_t hwlen;
@@ -131,8 +132,8 @@ static __xdata u8_t arptime;
 static __xdata u8_t tmpage;
 
 #define BUF   ((__xdata struct arp_hdr_i *)&uip_buf[0])
-#define BUF_O ((__xdata struct arp_hdr_o *)&uip_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE])
-#define IPBUF ((__xdata struct ethip_hdr *)&uip_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE])
+#define BUF_O ((__xdata struct arp_hdr_o *)&uip_buf[RTL_FRAME_DESC_SIZE])
+#define IPBUF ((__xdata struct ethip_hdr *)&uip_buf[RTL_FRAME_DESC_SIZE])
 /*-----------------------------------------------------------------------------------*/
 /**
  * Initialize the ARP module.
