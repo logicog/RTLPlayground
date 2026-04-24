@@ -1070,8 +1070,10 @@ __xdata struct uip_udp_conn *uip_udp_new(__xdata uip_ipaddr_t *ripaddr, __xdata 
 #ifndef HTONS
 #   if UIP_BYTE_ORDER == UIP_BIG_ENDIAN
 #      define HTONS(n) (n)
+#      define NTOHS(n) (n)
 #   else /* UIP_BYTE_ORDER == UIP_BIG_ENDIAN */
 #      define HTONS(n) (u16_t)((((u16_t) (n)) << 8) | (((u16_t) (n)) >> 8))
+#      define NTOHS(n) (u16_t)((((u16_t) (n)) << 8) | (((u16_t) (n)) >> 8))
 #   endif /* UIP_BYTE_ORDER == UIP_BIG_ENDIAN */
 #else
 #error "HTONS already defined!"

@@ -71,11 +71,6 @@ struct dhcp_pkt {
 	uint8_t cookie[4];
 };
 
-/*
-#define DHCP_P ((__xdata struct dhcp_pkt *)&uip_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE])
-#define DHCP_OPT ((__xdata uint8_t *)&uip_buf[RTL_TAG_SIZE + VLAN_TAG_SIZE + sizeof (struct dhcp_pkt)])
-*/
-
 #define DHCP_P ((__xdata struct dhcp_pkt *)uip_appdata)
 #define DHCP_OPT ((__xdata uint8_t *)(uip_appdata) + sizeof (struct dhcp_pkt))
 

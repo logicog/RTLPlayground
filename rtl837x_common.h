@@ -70,10 +70,11 @@ struct vlan_tag {
 #define RTL_TAG_SIZE		(sizeof (struct rtl_tag))
 #define VLAN_TAG_SIZE		(sizeof (struct vlan_tag))
 #define RTL_FRAME_TAG_ID	0x8899
+#define RTL_FRAME_TAG_VERSION	0x04
 
-// For RX and TX, an 8 byte header describing the frame to be moved to the Asic
-// and received from the Asic is used
-#define RTL_FRAME_HEADER_SIZE	8
+// For TX, an 8 byte (plus 4 byte padding when when VLAN is enabled)
+// header describing the frame to be moved to the Asic is used
+#define RTL_FRAME_DESC_SIZE	12
 
 // This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
@@ -155,5 +156,8 @@ void read_reg_timer(__xdata uint32_t * tmr);
 void sfp_print_info(uint8_t sfp);
 bool gpio_pin_test(uint8_t pin);
 void set_sys_led_state(uint8_t state);
-
+void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
+void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
+void sds_config_mac(uint8_t sds, uint8_t mode);
+void sds_config(uint8_t sds, uint8_t mode);
 #endif
