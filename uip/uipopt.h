@@ -447,7 +447,7 @@ void uip_log(char *msg);
 #ifdef UIP_CONF_LLH_LEN
 #define UIP_LLH_LEN UIP_CONF_LLH_LEN
 #else /* UIP_CONF_LLH_LEN */
-#define UIP_LLH_LEN     ETHER_HEADER_SIZE + RTL_TAG_SIZE + VLAN_TAG_SIZE
+#define UIP_LLH_LEN     ETHER_HEADER_SIZE + RTL_FRAME_DESC_SIZE
 #endif /* UIP_CONF_LLH_LEN */
 
 /** @} */
