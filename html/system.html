@@ -16,6 +16,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" onclick="openTab(event, 'system-tab')">System</button>
       <button class="tab-btn" onclick="openTab(event, 'advanced-tab')">Advanced</button>
+      <button class="tab-btn" onclick="openTab(event, 'console-tab')">Console</button>
     </div>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
@@ -54,6 +55,17 @@
       <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" value="Save Startup Settings to Flash">
       <br/>
       <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" value="Reset Switch">
+    </div>
+
+    <div id="console-tab" class="tab-content">
+      <h1>Console Command</h1>
+      <label for="console_command">Enter command:</label>
+      <input type="text" id="console_cmd" name="console_cmd" style="width:40%;">
+      <input style="width:20%;" class="action" id="cmd_sub" onclick="cmdSub();" type="button" value="Send Command"><br/>
+      <br/><br/> 
+      Be careful when entering console commands, you can lock yourself out!<br/>
+
+
     </div>
 
     </div>

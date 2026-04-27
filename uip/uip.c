@@ -234,7 +234,7 @@ __xdata struct uip_stats uip_stat;
 #endif /* UIP_STATISTICS == 1 */
 
 #if UIP_LOGGING == 1
-#define UIP_LOG(m) print_string(m)
+#define UIP_LOG(m) print_string_no_syslog(m);
 #else
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
