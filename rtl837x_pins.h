@@ -72,22 +72,22 @@
 #define GPIO_NA                   0xFF
 
 /* Convert SDA PIN GPIO to I2C bus number */
-uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin);
+uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin) __banked;
 
 /* Convert SCL PIN GPIO to I2C bus number */
-uint8_t i2c_bus_from_scl_pin(uint8_t scl_pin);
+uint8_t i2c_bus_from_scl_pin(uint8_t scl_pin) __banked;
 
 /*
  * Setup a GPIO pin as input
  * pin: GPIO pin number 0-63
  */
-void gpio_input_setup(uint8_t pin);
+void gpio_input_setup(uint8_t pin) __banked;
 
 /*
  * Setup a GPIO pin as output
  * pin: GPIO pin number 0-63
  * initial_val: 1 for bit set in RTL837X_REG_GPIO_xx_OUTPUT, 0 for bit not set
  */
-void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val);
+void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) __banked;
 
 #endif

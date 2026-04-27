@@ -15,6 +15,7 @@
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "dhcp.h"
+#include "syslog.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -1188,6 +1189,52 @@ err:
 	print_string("usage: bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
 }
 
+void parse_syslog(void)
+{
+	if (cmd_words_len < 2) // no argument -> print status
+	{
+		print_string("Current syslog status: ");
+		if (syslog_state.enabled) {
+			print_string("enabled, sending to ");
+			itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
+			itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+			write_char('\n');
+		} else {
+			print_string("disabled\n");
+		}
+		return;
+	}
+
+	if (cmd_compare(1, "on")) {
+		syslog_start();
+	} else if (cmd_compare(1, "off")){
+		syslog_stop();
+	} else if (cmd_compare(1, "ip")) {
+		if (cmd_words_len < 3) { // no additional arguemnt -> print current ip
+			print_string("Current syslog IP: ");
+			itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
+			itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+			return;
+		} else if (!parse_ip(cmd_words_b[2])) {
+			uint8_t was_enabled = syslog_state.enabled;
+			if (was_enabled)
+				syslog_stop();
+			print_string("Setting new syslog IP.\n");
+			syslog_state.server_ip[0] = ip[0]; syslog_state.server_ip[1] = ip[1];
+			syslog_state.server_ip[2] = ip[2]; syslog_state.server_ip[3] = ip[3];
+			if (was_enabled)
+				syslog_start();
+		} else {
+			print_string("Invalid IP address\n");
+		}
+	}
+	else
+	{
+		print_string("Error: syslog [on|off|ip [ip-address]]\n");
+		print_string("  on/off enables or disables syslog, ip sets the syslog server IP address\n");
+	}
+}
+
 // Parse command into words
 // cmd_words_len contains the number of words found.
 // cmd_words_b[] contains only start of a word offset.
@@ -1339,6 +1386,8 @@ void cmd_parser(void) __banked
 			parse_port();
 		} else if (cmd_compare(0, "mtu")) {
 			parse_mtu();
+		} else if (cmd_compare(0, "syslog")) {
+			parse_syslog();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
