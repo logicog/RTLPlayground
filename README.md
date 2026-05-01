@@ -52,23 +52,49 @@ devices by looking at the image using e.g. Ghidra. If you want to contribute to 
 design of the web-interface or get a feeling for the interface first, a standalone
 device simulator is provided, which runs entirely under Linux as a local webserver.
 
-## Compiling
+## Compiling Requirements
+
 Install the following particular build requisites (Debian 12/13), note that Ubuntu 24.04
 still has an older version of sdcc, but you will need sdcc version 4.5 for the code to compile:
 ```
 sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ```
+/!\ DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE ORIGINAL FIRMWARE!
+/!\ ERRORS IN THE FLASHING PROCEDURE CAN LOCK YOUR DEVICE AND THE ONLY WAY OUT IS A SOIC CLAMP !
+
+
+## (1) Compiling for direct chip flashing AND upgrading an existing RTLPlayground running device
+
 Edit machine.h with an editor like vi or nano. Select the correct machine the firmware should build for.
 Now, building the firmware image should work:
 ```
 make 
 ```
-Note, that the image generated ends in .bin, not .img, in order to make
-IMSProg happy.
+Note, that the image generated ends in .bin, not .img, in order to make IMSProg happy.
+
+image location is stored in `RTLPlayground/output/rtlplayground.bin`
+
+/!\ This image can be flashed directly to the chip OR through the firmware updade interface of RLTPlaygound interface
+
+## (2) Compiling for OEM running device with management options (web updrage)
 
 Managed switches can be updated from the existing original firmware using an upgrade image.
-In the `installer`folder of the source code you will need to run `make` which will build
-an image out of `rtlplayground.bin` built in the previous step:
+
+You first need to build the firmware for direct chip flashing : See below
+
+Then
+
+```
+cd installer
+make 
+```
+image location is stored in  `RTLPlayground/installer/output/rtlplayground.bin`
+
+/!\ This image must ONLY be used for OEM original firmware web interface firmware upgrade
+/!\ You do not need this image if you are already on RTLplayground firmware.
+
+example of compilation console output
+
 ```
 RTLPlayground/installer$ make
 mkdir -p output/
@@ -87,10 +113,6 @@ Payload sum with header is: 0x2b0fc
 Payload sum is: 0xad8a75
 Header checksum is: 0x4c3
 ```
-The resulting image can be found in `RTLPlayground/installer/output/rtlplayground.bin`
-> [!CAUTION]
-> DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE
-> ORIGINAL FIRMWARE!
 
 ## Installation
 You can play with the image using ghidra or flash real Switch Hardware. For
