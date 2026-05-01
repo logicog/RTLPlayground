@@ -60,7 +60,7 @@ still has an older version of sdcc, but you will need sdcc version 4.5 for the c
 sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ```
 > [!CAUTION]
-> DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE ORIGINAL FIRMWARE!
+> DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE ORIGINAL FIRMWARE.
 > ERRORS IN THE FLASHING PROCEDURE CAN LOCK YOUR DEVICE AND THE ONLY WAY OUT IS A SOIC CLAMP !
 
 ## (1) Compiling for direct chip flashing AND upgrading an existing RTLPlayground running device
@@ -93,7 +93,7 @@ make
 image location is stored in  `RTLPlayground/installer/output/rtlplayground.bin`
 
 > [!CAUTION]
-> This image must ONLY be used for OEM original firmware web interface firmware upgrade
+> This image must ONLY be used for OEM original firmware web interface firmware upgrade.
 > You do not need this image if you are already on RTLplayground firmware.
 
 example of compilation console output
@@ -132,27 +132,38 @@ original firmware just as if you were installing a firmware upgrade. However,
 this is strongly discouraged, as you may brick your device, unless you can make
 firmware backups via a SOIC clamp or soldered flash socket, first!
 
-For unmanaged devices, the only way to install RTLPlayground is by flashing the
-Flash memory directly.
+You can also flash the image directly to the chip. By the way direct flashing is the
+only method to install RTLPlayground fot unmanaged devices.
+
+> [!REMINDER]
+> If your device already runs RTLPlayground, you must upload the binary file /RTLPlayground/output/rtlplayground.bin
+> If your device is OEM, you must upload the binary file /RTLPlayground/installer/output/rtlplayground.bin
+> If you flash the chip directly, you must use the binary file /RTLPlayground/output/rtlplayground.bin
+
+## Flashing the ROM
 
 You will need to open your switch to flash the image directly onto the flash chip,
 which is done easiest using a SOIC-8 clip (alternatively you de-solder the
 flash chip and install a SOIC adapter):
-- Disconnect power from switch
-- Attach the clip onto the flash chip
-- Connect USB of flash programmer, the power LED on the switch will light
-  up, check cabling if not. Don't panic, mixing up GND and 3.3V does not
-  seem to destroy the switch (at leasts the on I did this to).
-- Use IMSProg (flashrom should work, too) to detect the clip
-- MAKE A BACKUP OF THE EXISTING FIRMWARE!
-- then load the firmware into IMSProg
-- and program flash
+- Disconnect power from switch.
+- Attach the clip onto the flash chip (Red line on Pin 1, Pin 1 has a point marker).
+- Connect USB of flash programmer, the power LED on the switch will light up, check cabling if not.
+- Don't panic, mixing up GND and 3.3V usually does not destroy the switch.
+- Use IMSProg, Flashrom, or whatever Programmer to detect the chip.
+- MAKE A BACKUP (DUMP) OF THE EXISTING FIRMWARE!
+- Load the firmware into IMSProg
+- Flash is to the ROM chip
 
-Now you can connect a serial cable to the UART port found on all the
-devices, set 8N1 @ 115200 baud and power up the switch.
+## Connecting a serial interface (optional)
 
-The device will perform some examples and provide a minimal console, the
-documentation of which can be found in the source code rtlplayground.c`.
+You can connect a serial cable to the UART port found on all the devices, 
+set 8N1 @ 115200 baud.
+
+## Power Up
+
+When you power up the switch, the device will perform some examples and provide
+a minimal console (if wired to a serial interface), the documentation of which can
+be found in the source code rtlplayground.c`.
 
 ## The web-interface
 The web-interface can be reached under the [default 192.168.10.247](http://192.168.10.247).
