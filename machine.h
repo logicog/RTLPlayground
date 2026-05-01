@@ -20,6 +20,7 @@
 // #define MACHINE_HI_K0402WS
 // #define MACHINE_K0501W_V2_0
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
+#define MACHINE_STEAMEMO_IG204_V1
 // #define MACHINE_DEFAULT_8C_1SFP
 
 typedef struct {
