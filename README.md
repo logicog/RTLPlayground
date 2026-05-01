@@ -59,9 +59,9 @@ still has an older version of sdcc, but you will need sdcc version 4.5 for the c
 ```
 sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ```
-/!\ DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE ORIGINAL FIRMWARE!
-/!\ ERRORS IN THE FLASHING PROCEDURE CAN LOCK YOUR DEVICE AND THE ONLY WAY OUT IS A SOIC CLAMP !
-
+> [!CAUTION]
+> DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE ORIGINAL FIRMWARE!
+> ERRORS IN THE FLASHING PROCEDURE CAN LOCK YOUR DEVICE AND THE ONLY WAY OUT IS A SOIC CLAMP !
 
 ## (1) Compiling for direct chip flashing AND upgrading an existing RTLPlayground running device
 
@@ -74,7 +74,9 @@ Note, that the image generated ends in .bin, not .img, in order to make IMSProg 
 
 image location is stored in `RTLPlayground/output/rtlplayground.bin`
 
-/!\ This image can be flashed directly to the chip OR through the firmware updade interface of RLTPlaygound interface
+> [!CAUTION]
+> This image can be flashed directly to the chip
+> OR through the firmware updade interface of RLTPlaygound interface
 
 ## (2) Compiling for OEM running device with management options (web updrage)
 
@@ -90,8 +92,9 @@ make
 ```
 image location is stored in  `RTLPlayground/installer/output/rtlplayground.bin`
 
-/!\ This image must ONLY be used for OEM original firmware web interface firmware upgrade
-/!\ You do not need this image if you are already on RTLplayground firmware.
+> [!CAUTION]
+> This image must ONLY be used for OEM original firmware web interface firmware upgrade
+> You do not need this image if you are already on RTLplayground firmware.
 
 example of compilation console output
 
