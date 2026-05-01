@@ -60,11 +60,12 @@ __xdata uint32_t now;
 __xdata uint8_t *timeptr;
 __xdata uint32_t last_session_use;
 
-#define TSTATE_NONE	0
-#define TSTATE_TX	1
-#define TSTATE_ACKED 	2
-#define TSTATE_CLOSED 	3
-#define TSTATE_POST 	4
+#define TSTATE_NONE		0
+#define TSTATE_TX		1
+#define TSTATE_ACKED 		2
+#define TSTATE_CLOSED 		3
+#define TSTATE_POST 		4
+#define TSTATE_MULTIPART	5
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
@@ -355,21 +356,46 @@ void handle_post(void)
 	__xdata uint8_t *p = uip_appdata;
 	__xdata uint8_t *request_path = p + 6;
 
-	dbg_string("Is POST\n");
-	p += 5;  // Skip post
-	// Find end of request path
-	while (*p && !is_separator(*p))
-		p++;
-	*p++ = '\0';
+	// Was the multipart header sent in multiple packets?
+	if (s->tstate != TSTATE_MULTIPART) {
+		dbg_string("Is POST\n");
+		p += 5;  // Skip post
+		// Find end of request path
+		while (*p && !is_separator(*p))
+			p++;
+		*p++ = '\0';
 
-	// Find end of request header
-	boundary[0] ='\0';
-	p = scan_header(p);
-	dbg_string("Boundary: >"); dbg_string_x(boundary); dbg_string("<\n");
-	if (!*p || !content_type) {
-		dbg_string("Bad Request!\n");
-		send_not_found();
-		return;
+		// Find end of request header
+		boundary[0] ='\0';
+		p = scan_header(p);
+		dbg_string("Boundary: >"); dbg_string_x(boundary); dbg_string("<\n");
+		if (!*p || !content_type) {
+			dbg_string("Bad Request!\n");
+			send_not_found();
+			return;
+		}
+		if (is_word(request_path, "upload")) {
+			if (flash_size < FIRMWARE_UPLOAD_START*2)
+			{
+				print_string("Flash too small for firmware upload!\n");
+				send_bad_request();
+				return;
+			}
+			print_string("Firmware upload started.");
+			uptr = FIRMWARE_UPLOAD_START;
+			verify_crc = 1;
+			max_upload = 1024576;
+		} else if (is_word(request_path, "config")) {
+			dbg_string("Configuration upload, erasing config mem!\n");
+			uptr = CONFIG_START;
+			verify_crc = 0;
+			max_upload = 2048;
+			flash_region.addr = CONFIG_START;
+			flash_sector_erase();
+		}
+		// Check for other POST requests, which are not multipart, below
+	} else {
+		dbg_string("Multipart request\n");
 	}
 
 	if (is_word(request_path, "cmd")) {
@@ -401,7 +427,7 @@ void handle_post(void)
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: login.html\r\n\r\n");
 		}
 		return;
-	} else if (is_word(request_path, "upload") || is_word(request_path, "config")) {
+	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
 		dbg_string("POST upload/config request\n");
 		if (!authenticated) {
 			send_unauthorized();
@@ -415,8 +441,10 @@ void handle_post(void)
 		// We skip the intial parts as part of the header
 		do {
 			p = skip_boundary(p);
-			if (!*p)
-				goto bad_request;
+			if (!*p) {
+				s->tstate = TSTATE_MULTIPART;
+				return;
+			}
 			p = scan_header(p);
 			if (!*p)
 				goto bad_request;
@@ -426,25 +454,6 @@ void handle_post(void)
 		dbg_string("Have content octets\n");
 		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
-		if (is_word(request_path, "upload")) {
-			if (flash_size < FIRMWARE_UPLOAD_START*2)
-			{
-				print_string("Flash too small for firmware upload!\n");
-				send_bad_request();
-				return;
-			}
-			print_string("Firmware upload started.");
-			uptr = FIRMWARE_UPLOAD_START;
-			verify_crc = 1;
-			max_upload = 1024576;
-		} else {
-			dbg_string("Configuration upload, erasing config mem!\n");
-			uptr = CONFIG_START;
-			verify_crc = 0;
-			max_upload = 2048;
-			flash_region.addr = CONFIG_START;
-			flash_sector_erase();
-		}
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
 		set_sys_led_state(SYS_LED_FAST);
 
@@ -473,6 +482,12 @@ void httpd_appcall(void)
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
 	dbg_char('P');
+#ifdef DEBUG
+	if (uip_newdata())
+		write_char('N');
+	print_byte(s->tstate);
+	write_char(' ');
+#endif
 	if(uip_connected() && s->tstate == TSTATE_CLOSED) {
 		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
@@ -544,10 +559,10 @@ void httpd_appcall(void)
 		dbg_char('\n');
 #endif
 		p = uip_appdata;
-		if (is_word(p, "POST")) {
+		if (is_word(p, "POST") || s->tstate == TSTATE_MULTIPART) {
 			handle_post();
 			// If this is an ongoing post stream, then wait for the next packet
-			if (s->tstate == TSTATE_POST) {
+			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART) {
 				uip_len = 0;
 				return;
 			}
