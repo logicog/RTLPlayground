@@ -22,16 +22,21 @@
 #define PHY_ANEG_CTRL		0x00
 #define PHY_ANEG_ADV		0x10
 #define PHY_ANEG_LP_ABILITY	0x13
-#define PHY_ANEG_MGBASE_CTRL 0x20
-#define PHY_ANEG_MGBASE_ADV 0x21
+#define PHY_ANEG_MGBASE_CTRL	0x20
+#define PHY_ANEG_MGBASE_ADV	0x21
 #define PHY_EEE_ADV		0x3c
 #define PHY_EEE_LP_ABILITY	0x3d
 #define PHY_EEE_ADV2		0x3e
 #define PHY_EEE_LP_ABILITY2	0x3f
+
 // Register bits for EEE capabilities at a given speed
+// PHY_EEE_ADV2
 #define PHY_EEE_BIT_2G5		0x01
+#define PHY_EEE_BIT_5G		0x02
+// PHY_EEE_ADV
 #define PHY_EEE_BIT_1G		0x04
 #define PHY_EEE_BIT_100M	0x02
+#define PHY_EEE_BIT_10G		0x08
 
 /*
  * MMD 31 Registers

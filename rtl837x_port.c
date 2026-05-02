@@ -440,6 +440,9 @@ void port_stats_print(void) __banked
 		case 5:
 			print_string("2.5G\t");
 			break;
+		case 6:
+			print_string("5G\t");
+			break;
 		case 99:
 			print_string("Down\t");
 			break;
@@ -489,20 +492,19 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 		return;
 	}
 
+	REG_SET(RTL837X_EEE_CTRL_BASE + (port << 8), EEE_RX_ENABLE | EEE_TX_ENABLE);
 	print_string("EEE on for "); print_byte(port); print_string(" speed "); 
 	// Enable all speeds up to the specified speed
-	if ((speed & (EEE_100 | EEE_1000 | EEE_2G5)) == EEE_100) {
+	if (speed & EEE_100) {
 			print_string("100m\n");
-			REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100);
 			// Enable EEE advertisement for 100BASE-T via EEE Advertisement Reg
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_100M);
 			if (!(speed & EEE_NORESET))
 				phy_reset(port);
 			return;
 	}
-	if ((speed & (EEE_100 | EEE_1000 | EEE_2G5)) == EEE_1000) {
+	if (speed & EEE_1000) {
 			print_string("1g\n");
-			REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100 | EEE_1000);
 			// Disable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 0);
 			// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
@@ -511,13 +513,32 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 				phy_reset(port);
 			return;
 	}
-	if ((speed & (EEE_100 | EEE_1000 | EEE_2G5)) == EEE_2G5) {
+	if (speed & EEE_2G5) {
 			print_string("2g5\n");
-			REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), EEE_100 | EEE_1000 | EEE_2G5);
 			// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_1G | PHY_EEE_BIT_100M);
 			// Enable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, PHY_EEE_BIT_2G5);
+			if (!(speed & EEE_NORESET))
+				phy_reset(port);
+			return;
+	}
+	if (speed & EEE_5G) {
+			print_string("5g\n");
+			// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
+			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_1G | PHY_EEE_BIT_100M);
+			// Enable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
+			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, PHY_EEE_BIT_2G5 | PHY_EEE_BIT_5G);
+			if (!(speed & EEE_NORESET))
+				phy_reset(port);
+			return;
+	}
+	if (speed & EEE_10G) {
+			print_string("10g\n");
+			// Enable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
+			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_10G | PHY_EEE_BIT_1G | PHY_EEE_BIT_100M);
+			// Enable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
+			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, PHY_EEE_BIT_2G5 | PHY_EEE_BIT_5G);
 			if (!(speed & EEE_NORESET))
 				phy_reset(port);
 			return;
@@ -532,7 +553,7 @@ void port_eee_disable(uint8_t port) __banked
 		return;
 
 	print_string("EEE off for "); print_byte(port); write_char('\n');
-	REG_SET(RTL8373_EEE_CTRL_BASE + (port << 2), 0);
+	REG_SET(RTL837X_EEE_CTRL_BASE + (port << 8), 0);
 	// Disable EEE advertisement for 100/1000BASE-T via EEE Advertisement Reg
 	phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, 0);
 	// Disable EEE advertisement for 2.5GBASE-T via EEE Advertisement Reg 2
@@ -552,7 +573,23 @@ void port_eee_status(uint8_t port) __banked
 
 	uint16_t v;
 	print_string("Advertising: ");
+
+	if (machine.n_10g) {
+		phy_read(port, PHY_MMD_AN, PHY_EEE_ADV);
+		v = SFR_DATA_U16;
+		if (v & PHY_EEE_BIT_10G)
+			print_string(" 10G");
+		else
+			print_string("    ");
+	}
 	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV2);
+	v = SFR_DATA_U16;
+	if (machine.n_10g) {
+		if (v & PHY_EEE_BIT_5G)
+			print_string(" 5G");
+		else
+			print_string("   ");
+	}
 	v = SFR_DATA_U16;
 	if (v & PHY_EEE_BIT_2G5)
 		print_string(" 2.5G");
@@ -570,8 +607,22 @@ void port_eee_status(uint8_t port) __banked
 		print_string("     ");
 
 	print_string("   Link Partner: ");
+	if (machine.n_10g) {
+		phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
+		v = SFR_DATA_U16;
+		if (v & PHY_EEE_BIT_10G)
+			print_string(" 10G");
+		else
+			print_string("    ");
+	}
 	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
 	v = SFR_DATA_U16;
+	if (machine.n_10g) {
+		if (v & PHY_EEE_BIT_5G)
+			print_string(" 5G");
+		else
+			print_string("   ");
+	}
 	if (v & PHY_EEE_BIT_2G5)
 		print_string(" 2.5G");
 	else
@@ -599,7 +650,16 @@ void port_eee_status(uint8_t port) __banked
 void port_eee_enable_all(__xdata uint8_t speed) __banked
 {
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		port_eee_enable(i, speed);
+		if (i == 3 && machine.n_10g) {
+			port_eee_enable(i, speed);
+		} else if (i == 8 && machine.n_10g == 2) {
+			port_eee_enable(i, speed);
+		} else {
+			if (speed & EEE_10G)
+				port_eee_enable(i, speed & EEE_NORESET | EEE_2G5);
+			else
+				port_eee_enable(i, speed);
+		}
 	}
 }
 
