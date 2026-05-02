@@ -16,11 +16,21 @@ BUILDDIR = output
 VERSION_HEADER := version.h
 
 ifeq ($(MACHINE),)
+	MACHINE:= $(shell grep "^\s*#define MACHINE_" machine.h | sed "s/^\s*#define MACHINE_//")
 else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
 
-all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground.bin
+GIT_VERSION := $(shell git rev-parse --short HEAD)
+ifeq ($(shell git status --porcelain),) then
+else
+	GIT_VERSION := $(GIT_VERSION)-dirty
+endif
+
+VERSION_EXTENSION = v$(VERSION)-$(GIT_VERSION)
+FILENAME_EXTENSION = $(VERSION_EXTENSION)-$(MACHINE)
+
+all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
@@ -41,7 +51,7 @@ html_data.c html_data.h: $(HTML) tools/$(BUILDDIR)/fileadder
 $(VERSION_HEADER):
 	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
 	@echo "#define VERSION_H" >> $(VERSION_HEADER)
-	@echo "#define VERSION_SW \"v$(VERSION)-g$(shell git rev-parse --short HEAD)\"" >> $(VERSION_HEADER)
+	@echo "#define VERSION_SW \"$(VERSION_EXTENSION)\"" >> $(VERSION_HEADER)
 	@echo "#define BUILD_DATE \"$(shell date +"%Y-%m-%d %H:%M:%S")\"" >> $(VERSION_HEADER)
 	@echo "#endif" >> $(VERSION_HEADER)
 
@@ -67,14 +77,14 @@ $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtstart.rel $(BUILDDIR)/crc1
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)/rtlplayground.bin: $(BUILDDIR)/rtlplayground.img
+$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img
 	if [ -e $@ ]; then rm $@; fi
 	tools/$(BUILDDIR)/imagebuilder -i $^ $@
 	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data -b BANK1 $@
 	tools/$(BUILDDIR)/crc_calculator -u $@
-
+	ln -sf rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/rtlplayground.bin
 
 .PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
 
