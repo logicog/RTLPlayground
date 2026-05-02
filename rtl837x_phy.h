@@ -14,6 +14,7 @@ struct phy_settings {
 	uint8_t duplex;
 	uint8_t port;
 	uint8_t speed;
+	uint8_t is10g_port;
 };
 
 extern __xdata struct phy_settings phy_settings;
@@ -28,6 +29,7 @@ void phy_reset(uint8_t port) __banked;
 void rtl8224_read_reg_u16(uint16_t reg) __banked;
 void rtl8224_write_reg_u16(uint16_t reg, uint16_t val) __banked;
 void rtl8224_sds_write(uint16_t sds_cmd, uint16_t val) __banked;
+void phy_config_8261(uint8_t phy, uint8_t sds) __banked;
 
 #define	RTL8224_SDS_WRITE(sds_id, page, reg, v) uint16_t _sdscmd = (uint16_t)(sds_id & 0x01) | (1 << 14) | (1 << 15); \
 	_sdscmd |= (page & 0x3F) << 1; \
