@@ -16,8 +16,9 @@ BUILDDIR = output
 VERSION_HEADER := version.h
 MACHINE_NAME = $(shell grep -v "//" machine.h | grep "#define MACHINE" | sed 's/.* MACHINE_//')
 VERSION_NAME = $(shell git rev-parse --short HEAD)
-BUILD_DATE = $(shell date +"%Y-%m-%d_%H-%M-%S")
-BUILDNAME = $(MACHINE_NAME)_$(VERSION_NAME)_$(BUILD_DATE)
+BUILD_DATE = $(shell date +"%Y-%m-%d")
+BUILD_TIME = $(shell data +"%H-%M-%S") 
+BUILDNAME = $(MACHINE_NAME)_$(VERSION)_$(VERSION_NAME)_$(BUILD_DATE)
 
 
 ifeq ($(MACHINE),)
@@ -47,7 +48,7 @@ $(VERSION_HEADER):
 	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
 	@echo "#define VERSION_H" >> $(VERSION_HEADER)
 	@echo "#define VERSION_SW \"v$(VERSION)-g$(VERSION_NAME)\"" >> $(VERSION_HEADER)
-	@echo "#define BUILD_DATE \"$(BUILD_DATE)\"" >> $(VERSION_HEADER)
+	@echo "#define BUILD_DATE \"$(BUILD_DATE)_$(BUILD_TIME)\"" >> $(VERSION_HEADER)
 	@echo "#endif" >> $(VERSION_HEADER)
 
 httpd: html_data.h
