@@ -267,7 +267,7 @@ nano config.txt
 
 If you want to modify settings after the flash is done, go to the Advanced Settings tab in System Settings
 
-<img width="1085" height="646" alt="ADVANCED SETTINGS" src="doc/images/advanced_seetings.png" />
+<img width="1085" height="646" alt="ADVANCED SETTINGS" src="doc/images/advanced_settings.png" />
 
 ```
 ip xxx.xxx.xxx.xxx = IP adress of the switch
