@@ -14,13 +14,18 @@ SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 BUILDDIR = output
 VERSION_HEADER := version.h
+MACHINE_NAME = $(shell grep -v "//" machine.h | grep "#define MACHINE" | sed 's/.* MACHINE_//')
+VERSION_NAME = $(shell git rev-parse --short HEAD)
+BUILD_DATE = $(shell date +"%Y-%m-%d_%H-%M-%S")
+BUILDNAME = $(MACHINE_NAME)_$(VERSION_NAME)_$(BUILD_DATE)
+
 
 ifeq ($(MACHINE),)
 else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
 
-all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground.bin
+all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/$(BUILDNAME).bin
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
@@ -41,8 +46,8 @@ html_data.c html_data.h: $(HTML) tools/$(BUILDDIR)/fileadder
 $(VERSION_HEADER):
 	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
 	@echo "#define VERSION_H" >> $(VERSION_HEADER)
-	@echo "#define VERSION_SW \"v$(VERSION)-g$(shell git rev-parse --short HEAD)\"" >> $(VERSION_HEADER)
-	@echo "#define BUILD_DATE \"$(shell date +"%Y-%m-%d %H:%M:%S")\"" >> $(VERSION_HEADER)
+	@echo "#define VERSION_SW \"v$(VERSION)-g$(VERSION_NAME)\"" >> $(VERSION_HEADER)
+	@echo "#define BUILD_DATE \"$(BUILD_DATE)\"" >> $(VERSION_HEADER)
 	@echo "#endif" >> $(VERSION_HEADER)
 
 httpd: html_data.h
@@ -61,13 +66,13 @@ $(BUILDDIR)/%.rel: %.asm
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtstart.rel $(BUILDDIR)/crc16.rel
+$(BUILDDIR)/$(BUILDNAME).ihx: $(OBJS) $(BUILDDIR)/crtstart.rel $(BUILDDIR)/crc16.rel
 	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
 
-$(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
+$(BUILDDIR)/$(BUILDNAME).img: $(BUILDDIR)/$(BUILDNAME).ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)/rtlplayground.bin: $(BUILDDIR)/rtlplayground.img
+$(BUILDDIR)/$(BUILDNAME).bin: $(BUILDDIR)/$(BUILDNAME).img
 	if [ -e $@ ]; then rm $@; fi
 	tools/$(BUILDDIR)/imagebuilder -i $^ $@
 	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
