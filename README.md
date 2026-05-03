@@ -76,7 +76,7 @@ image location is stored in `RTLPlayground/output/rtlplayground.bin`
 
 > [!CAUTION]
 > This image can be flashed directly to the chip
-> OR through the firmware updade interface of RLTPlaygound interface
+> OR through the firmware update/upgrade interface of RTLPlaygound interface
 
 ## (2) Compiling for OEM running device with management options (web updrage)
 
