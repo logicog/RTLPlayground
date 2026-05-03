@@ -270,11 +270,12 @@ If you want to modify settings after the flash is done, go to the Advanced Setti
 <img width="1085" height="646" alt="ADVANCED SETTINGS" src="doc/images/advanced_settings.png" />
 
 ```
-ip xxx.xxx.xxx.xxx = IP adress of the switch
-gw yyy.yyy.yyy.yyy = IP adress of the gateway
-port x name xxx    = Name xxx the port number x
-port z 1g          = Set 1g speed for port z
-igmp on/off        = Turn IGMP on or off
+ip xxx.xxx.xxx.xxx      = IP adress of the switch
+gw yyy.yyy.yyy.yyy      = IP adress of the gateway
+netmask zzz.zzz.zzz.zzz = Network mask of the switch 
+port x name xxx         = Name xxx the port number x
+port z 1g               = Set 1g speed for port z
+igmp on/off             = Turn IGMP on or off
 ```
 
 
