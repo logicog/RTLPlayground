@@ -254,6 +254,30 @@ Rate: 67  Encoding: 01
 Lightron Inc.   WSPXG-ES3LC-IHA 0000
 
 ```
+
+## Advanced settings
+
+You can configure more deeply the switch without the need of the console mode.
+
+While in compilation part, you might write directly to config.txt file before making the binary firmware
+
+```
+nano config.txt
+```
+
+If you want to modify settings after the flash is done, go to the Advanced Settings tab in System Settings
+
+<img width="1085" height="646" alt="ADVANCED SETTINGS" src="doc/images/advanced_seetings.png" />
+
+```
+ip xxx.xxx.xxx.xxx = IP adress of the switch
+gw yyy.yyy.yyy.yyy = IP adress of the gateway
+port x name xxx    = Name xxx the port number x
+port z 1g          = Set 1g speed for port z
+igmp on/off        = Turn IGMP on or off
+```
+
+
 Enjoy playing!
 
 ## Other documents
