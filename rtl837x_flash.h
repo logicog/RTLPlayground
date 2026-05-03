@@ -1,6 +1,8 @@
 #ifndef _RTL837X_FLASH_H_
 #define _RTL837X_FLASH_H_
 
+#define FLASH_SECTOR_SIZE 0x1000
+
 void flash_init(uint8_t enable_dio);
 void flash_read_uid(void);
 void flash_write_enable(void);
