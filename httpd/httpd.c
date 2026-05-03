@@ -332,6 +332,10 @@ uint8_t stream_upload(uint16_t bptr)
 			if (write_len >= FLASHMEM_PAGE_SIZE) {
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
 				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
+				if (uptr % FLASH_SECTOR_SIZE == 0) {
+					flash_region.addr = uptr;
+					flash_sector_erase();
+				}
 				flash_region.addr = uptr;
 				flash_region.len = FLASHMEM_PAGE_SIZE;
 				flash_write_bytes(flash_buf);
