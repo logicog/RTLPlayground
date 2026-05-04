@@ -62,6 +62,10 @@ $(SUBDIRS):
 
 clean:
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
+	-if [ -d $(BUILDDIR) ]; then find $(BUILDDIR) -type f ! -name "*.bin" -delete; fi
+
+distclean:
+	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-rm -rf $(BUILDDIR)
 
 $(BUILDDIR)/%.rel: %.c
