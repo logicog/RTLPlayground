@@ -22,7 +22,7 @@ else
 endif
 
 GIT_VERSION := $(shell git rev-parse --short HEAD)
-ifeq ($(shell git status --porcelain),) then
+ifeq ($(shell git status --porcelain --untracked-files=no),)
 else
 	GIT_VERSION := $(GIT_VERSION)-dirty
 endif
