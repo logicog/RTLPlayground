@@ -95,7 +95,7 @@ Then
 cd installer
 make 
 ```
-image location is stored in  `RTLPlayground/installer/output/rtlplayground.bin`
+image location is stored in  `RTLPlayground/installer/output/rtlplayground_oem_upgrade.bin`
 
 > [!CAUTION]
 > This image must ONLY be used for original OEM firmware web interface firmware upgrade.
@@ -107,21 +107,20 @@ example of compilation console output
 
 ```
 RTLPlayground/installer$ make
-mkdir -p output/
+mkdir -p output
 gcc updatebuilder.c -o output/updatebuilder
 sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
 sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
 sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
-cp ../output//rtlplayground.bin output/
-./output//updatebuilder -i output/rtlinstaller.ihx output/rtlplayground.bin
+./output/updatebuilder -i output/rtlinstaller.ihx -o output/rtlplayground_oem_upgrade.bin ../output/rtlplayground.bin
 Input file size: 524288
 Bytes read: 524288
 EOF
-Payload sum 1 is: 0x29d10
-Payload sum 2 is: 0x29d10
-Payload sum with header is: 0x2b0fc
-Payload sum is: 0xad8a75
-Header checksum is: 0x4c3
+Payload sum 1 is: 0x25100
+Payload sum 2 is: 0x25100
+Payload sum with header is: 0x264ec
+Payload sum is: 0xf8fe94
+Header checksum is: 0x5a1
 ```
 
 ## (3) Sandbox Usage with Ghidra (optional)
@@ -138,7 +137,7 @@ Go to "Firmware update" tab, select the correct file.
 
 > [!IMPORTANT]
 > If your device already runs RTLPlayground, you must upload the binary file /RTLPlayground/output/rtlplayground_Version_Machine.bin
-> If your device is OEM, you must upload the binary file /RTLPlayground/installer/output/rtlplayground.bin
+> If your device is OEM, you must upload the binary file /RTLPlayground/installer/outputrtlplayground_oem_upgrade.bin
 
 > [!CAUTION]
 > Check one more time that your device matches the machine type before flashing.
