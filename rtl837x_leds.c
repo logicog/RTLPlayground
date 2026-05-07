@@ -46,6 +46,7 @@ void leds_dump(void) __banked
 	print_string("RTL837X_REG_LED_GLB_MUX_5: "); print_reg(RTL837X_REG_LED_GLB_MUX_5); write_char('\n');
 	print_string("RTL837X_REG_LED_GLB_MUX_6: "); print_reg(RTL837X_REG_LED_GLB_MUX_6); write_char('\n');
 	print_string("RTL837X_REG_LED_GLB_ACTIVE: "); print_reg(RTL837X_REG_LED_GLB_ACTIVE); write_char('\n');
+	print_string("RTL837X_REG_LED_MODE: "); print_reg(RTL837X_REG_LED_MODE); write_char('\n');
 	print_string("LED pad Configuration:\n");
 	for (uint8_t i = 0; i < 28; i++) {
 		print_byte(i);
