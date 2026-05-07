@@ -22,6 +22,7 @@
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
 // #define MACHINE_ZX310S_4T2XH
 // #define MACHINE_DEFAULT_8C_1SFP
+// #define MACHINE_HI_K0801WS
 
 typedef struct {
 	// GPIO pins for SDA/SCL
