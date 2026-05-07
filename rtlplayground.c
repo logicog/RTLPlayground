@@ -890,13 +890,14 @@ void early_boot_handle_button(void)
  * to connect to an SFP module or a PHY
  * Valid modes are SDS_10GR, SDS_QXGMII, SDS_HISGMII, SDS_HSG, SDS_SGMII and SDS_1000BX_FIBER
  * The SerDes ID may be 0 or 1 for RTL8272 and 0-2 for RTL8373
+ * SDS_QXGMII is used for 10G Fiber, RTL8224 and RTL8261BE
  */
 void sds_config(uint8_t sds, uint8_t mode)
 {
 	print_string("sds_config sds: "); print_byte(sds); print_string(", mode: "); print_byte(mode); write_char('\n');
 	sds_config_mac(sds, mode);
 
-	if (mode == SDS_10GR || mode == SDS_QXGMII) // 10G Fiber, 10G connection to RTL8224
+	if (mode == SDS_10GR || mode == SDS_QXGMII)
 		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
 	else
 		sds_write_v(sds, 0x21, 0x10, 0x6480); // Q002110:6480
@@ -932,7 +933,7 @@ void sds_config(uint8_t sds, uint8_t mode)
 	}
 	sds_write_v(sds, 0x36, 0x10, v); // Q003610:0200
 
-	if (page == 0x2e) {  // 10G Fiber
+	if (page == 0x2e) {  // 10G Fiber / SDS_QXGMII
 		sds_write_v(sds, page, 0x04, 0x0080); // Q012e04:0080
 		sds_write_v(sds, page, 0x06, 0x0408); // Q012e06:0408
 		sds_write_v(sds, page, 0x07, 0x020d); // Q012e07:020d
@@ -961,6 +962,30 @@ void sds_config(uint8_t sds, uint8_t mode)
 	sds_write_v(sds, 0x07, 0x0c, 0x9401); // Q00070c:9401
 	sds_write_v(sds, 0x1f, 0x0b, 0x0003); // Q001f0b:0003
 	sds_write_v(sds, 0x06, 0x03, 0xc45c); // Q000603:c45c
+
+	// RTL8261BE
+	if (machine.n_10g && mode == SDS_QXGMII) {
+		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
+		sds_write_v(sds, 0x07, 0x11, 0x054f); // Q000711:054f
+		sds_write_v(sds, 0x20, 0x00, 0x0030); // Q002000:0030
+		sds_write_v(sds, 0x20, 0x00, 0x0010); // Q002000:0010
+		sds_write_v(sds, 0x20, 0x00, 0x0050); // Q002000:0050
+		sds_write_v(sds, 0x20, 0x00, 0x00d0); // Q002000:00d0
+		sds_write_v(sds, 0x20, 0x00, 0x0cd0); // Q002000:0cd0
+		sds_write_v(sds, 0x20, 0x00, 0x04d0); // Q002000:04d0
+		sds_write_v(sds, 0x20, 0x00, 0x04d0); // Q002000:04d0
+		sds_write_v(sds, 0x20, 0x00, 0x0cd0); // Q002000:0cd0
+		sds_write_v(sds, 0x20, 0x00, 0x00d0); // Q002000:00d0
+		sds_write_v(sds, 0x20, 0x00, 0x00d0); // Q002000:00d0
+		sds_write_v(sds, 0x20, 0x00, 0x0050); // Q002000:0050
+		sds_write_v(sds, 0x20, 0x00, 0x0010); // Q002000:0010
+		sds_write_v(sds, 0x20, 0x00, 0x0010); // Q002000:0010
+		sds_write_v(sds, 0x20, 0x00, 0x0030); // Q002000:0030
+		sds_write_v(sds, 0x20, 0x00, 0x0000); // Q002000:0000
+		sds_write_v(sds, 0x1f, 0x00, 0x000b); // Q001f00:000b
+		sds_write_v(sds, 0x1f, 0x00, 0x0000); // Q001f00:0000
+		return;
+	}
 	if (mode != SDS_QXGMII)
 		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
 
@@ -1365,13 +1390,17 @@ void idle(void)
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
-			// Handle link change of the RTL8221 PHY, adjust SDS mode
-			if (p5_last != p5) {
+			// Handle link change of the RTL8221 PHY, adjust SDS mode, RTL8261BE always uses SDS_QXGMII
+			if (!machine.n_10g && p5_last != p5) {
 				if (p5 == 0x5) // 2.5GBit Mode
 					sds_config(0, SDS_HISGMII);
 				else if (p5 == 0x2) // 1GBit
 					sds_config(0, SDS_SGMII);
 			}
+			if (machine.n_10g)
+				sds_config(0, SDS_QXGMII);
+			if (machine.n_10g == 2)
+				sds_config(1, SDS_QXGMII);
 		} else {
 			cpy_4(linkbits_last, sfr_data);
 		}
@@ -1660,7 +1689,11 @@ void init_smi(void)
 	/* Set the SMI(i.e.I2C) type for PHY polling, 0b01 is 2.5/10G PHY. Disable (0b00) for the SFP-ports
 	 * which are at port 8 and additionally at port 3 for a dual SFP device
 	 */
-	REG_SET(RTL837X_REG_SMI_MAC_TYPE, machine.n_sfp == 2 ? 0x00005515 : 0x00005555);
+	if (machine.n_10g == 2) {
+		REG_SET(RTL837X_REG_SMI_MAC_TYPE, 0x00015555);
+	} else {
+		REG_SET(RTL837X_REG_SMI_MAC_TYPE, machine.n_sfp == 2 ? 0x00005515 : 0x00005555);
+	}
 
 	// Configure polling of all PHYs by the MAC to detect link-state changes
 	if (machine_detected.isRTL8373) {
@@ -1686,6 +1719,11 @@ void init_smi(void)
 		sfr_mask_data(2, 0x0f, 0);
 		sfr_mask_data(1, 0x80, 0);
 		reg_write_m(RTL837X_REG_SMI_PORT0_5_ADDR);
+	}
+
+	if (machine.n_10g == 2) {
+		// Set address of second external PHY on port 8
+		REG_SET(RTL837X_REG_SMI_PORT6_9_ADDR, 0x000040e6);
 	}
 }
 
@@ -2041,7 +2079,6 @@ void main(void)
 
 	setup_i2c();
 	setup_sfp_gpio();
-
 	print_string(greeting);
 
 	print_string("\nClock register: ");

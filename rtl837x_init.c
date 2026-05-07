@@ -19,14 +19,6 @@ extern __xdata struct machine_runtime machine_detected;
  */
 void static sds_init(void)
 {
-/*
-	p001e.000d:9535 R02f8-00009535 R02f4-0000953a P000001.1e00000d:953a
-	p001e.000d:953a p001e.000d:953a R02f8-0000953a R02f4-00009530 P000001.1e00000d:9530
-
-	RTL8373:
-	p001e.000d:0010 R02f8-00000010 R02f4-0000001a P000001.1e00000d:b7fe
-	p001e.000d:0010 p001e.000d:0010	R02f8-00000010 R02f4-00000010 P000001.1e00000d:b7fe
-*/
 	phy_read(0, PHY_MMD30, 0xd);
 	uint16_t pval = SFR_DATA_U16;
 
@@ -55,6 +47,8 @@ void static sds_init(void)
 		uint16_t pval;
 
 		print_string("  N-settings");
+		if (machine.n_10g)
+			print_string(" - 10g");
 		// Serdes 0 RX PN swap for 64B/66B
 		sds_read(1, 6, 2);
 		pval = SFR_DATA_U16;
@@ -70,19 +64,30 @@ void static sds_init(void)
 		pval = SFR_DATA_U16;
 		sds_write_v(0, 6, 2, pval | 0x2000);
 
-		if (machine_detected.isRTL8373) {
-			// RTL8224: Serdes 0 RX PN swap for 64B/66B
-			// We assume that RTL8373N always paired with RTL8224N.
-			// This sds register value is 0x0000 at reset.
-			// So only write to it.
-			RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
-		} else {
-			// Serdes 0 RX PN swap for 8B/10B
-			sds_read(0, 0, 0);
-			pval = SFR_DATA_U16;
-			sds_write_v(0, 0, 0, pval | 0x200);
+		if (!machine.n_10g) {
+			if (machine_detected.isRTL8373) {
+				// RTL8224: Serdes 0 RX PN swap for 64B/66B
+				// We assume that RTL8373N always paired with RTL8224N.
+				// This sds register value is 0x0000 at reset.
+				// So only write to it.
+				RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
+			} else {
+				// Serdes 0 RX PN swap for 8B/10B
+				sds_read(0, 0, 0);
+				pval = SFR_DATA_U16;
+				sds_write_v(0, 0, 0, pval | 0x200);
+			}
+		} else if (machine.n_10g == 1) {
+			reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
+			sfr_mask_data(0, 0x0f,0x0c);
+			reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
+			REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
+		} else if (machine.n_10g == 2) {
+			REG_SET(RTL837X_CFG_PHY_MDI_REVERSE, 0xc);
+			REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
 		}
 	}
+	print_string("\nsds_init done\n");
 }
 
 
@@ -109,7 +114,7 @@ void rtl8373_init(void) __banked
 	phy_config_8224();
 	sds_config_mac(1, SDS_OFF);    // Off for now until SFP+ port used
 	sds_config_mac(2, SDS_SGMII);  // For RTL8224
-	sds_config(0, SDS_QXGMII);
+	sds_config(0, SDS_QXGMII);     // For RTL8224
 
 	// SDS 1 setup
 	// q012100:4902 Q012100:4906 q013605:0000 Q013605:4000 Q011f02:001f q011f15:0086
@@ -163,7 +168,7 @@ void rtl8373_init(void) __banked
 
 	reg_bit_set(RTL837X_REG_HW_CONF, 0);
 
-	// enable EEE for all ports at 2.5G and 10G, but don't reset the PHYs
+	// enable EEE for all ports at 2.5G, but don't reset the PHYs
 	port_eee_enable_all(EEE_2G5 | EEE_NORESET);
 
 	// TODO: patch the PHYs
@@ -188,14 +193,26 @@ void rtl8372_init(void) __banked
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();
-	phy_config(8);	// PHY configuration: External 8221B?
-	phy_config(3);	// PHY configuration: all internal PHYs?
+	if (machine.n_10g != 2)
+		phy_config(8);	// PHY configuration: External 8221B?
+	if (machine.n_10g)
+		phy_config_8261(3, 0);
+	if (machine.n_10g == 2)
+		phy_config_8261(8, 1);
+	else
+		phy_config(3);	// PHY configuration: all internal PHYs?
 	// Set the MAC SerDes Modes Bits 0-4: SDS 0 = 0x2 (0x2), Bits 5-9: SDS 1: 1f (off)
 	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
-	reg_read_m(RTL837X_REG_SDS_MODES);
-	sfr_mask_data(1, 0, 0x03);
-	sfr_mask_data(0, 0, 0xe2);
-	reg_write_m(RTL837X_REG_SDS_MODES);
+	if (machine.n_10g == 1) {
+		REG_SET(RTL837X_REG_SDS_MODES, 0x3ed); // Disable SFP for now, set RTL8261BE SDS 0 to 0xd
+	} else if(machine.n_10g == 2) {
+		REG_SET(RTL837X_REG_SDS_MODES, 0x1ad); // Both 10g ports use SDS_QXGMII
+	} else {
+		reg_read_m(RTL837X_REG_SDS_MODES);
+		sfr_mask_data(1, 0, 0x03);
+		sfr_mask_data(0, 0, 0xe2);
+		reg_write_m(RTL837X_REG_SDS_MODES);
+	}
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
@@ -229,7 +246,7 @@ void rtl8372_init(void) __banked
 
 
 	// enable EEE for all ports at 2.5G and 10G, but don't reset the PHYs
-	port_eee_enable_all(EEE_2G5 | EEE_NORESET);
+	port_eee_enable_all(EEE_10G | EEE_NORESET);
 	
 	// TODO: patch the PHYs
 
