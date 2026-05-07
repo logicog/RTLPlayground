@@ -63,8 +63,10 @@ sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ## (1) Compiling for direct chip flashing AND upgrading an existing RTLPlayground running device
 
 Edit machine.h with an editor like vi or nano. Select the correct machine the firmware should build for.
-Optionally, you can write configuration parameters in config.txt (see below) in order your switch to get
-straight at the first boot, a correct IP configuration.
+
+> [!TIP]
+> You can write configuration parameters in config.txt (see below) in order your switch to get
+> straight at the first boot, a correct IP configuration.
 
 Now, building the firmware image should work:
 ```
@@ -134,7 +136,7 @@ Unmanaged switch cannot be flashed this way (see 5).
 
 Go to "Firmware update" tab, select the correct file.
 
-> [!REMINDER]
+> [!IMPORTANT]
 > If your device already runs RTLPlayground, you must upload the binary file /RTLPlayground/output/rtlplayground_Version_Machine.bin
 > If your device is OEM, you must upload the binary file /RTLPlayground/installer/output/rtlplayground.bin
 
@@ -150,7 +152,7 @@ Finally, push the Upload File Button and you're done !
 This procedure is the only way to flash unmanaged switches, if the ROM chip is large enough.
 This is also the only way to unbrick your device if something went wroong.
 
-> [!REMINDER]
+> [!IMPORTANT]
 > You need a SOIC-8 clip to flash the ROM chip directly onboard.
 > Alternatively you can de-solder the flash chip and install a SOIC adapter).
 > For flashing the chip directly, you must use the binary file /RTLPlayground/output/rtlplayground_Version_Machine.bin
@@ -184,7 +186,9 @@ When you power up the switch, the device will perform some examples and provide 
 
 The web-interface can be reached under the [default 192.168.10.247](http://192.168.10.247) unless you
 specified an IP adress in the config.txt before compilation.
-The default password is `1234`.
+
+> [!TIP]
+> The default password is `1234`.
 
 ## (9) The command line
 
