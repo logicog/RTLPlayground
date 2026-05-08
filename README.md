@@ -52,88 +52,145 @@ devices by looking at the image using e.g. Ghidra. If you want to contribute to 
 design of the web-interface or get a feeling for the interface first, a standalone
 device simulator is provided, which runs entirely under Linux as a local webserver.
 
-## Compiling
+## (0) Compiling Requirements
+
 Install the following particular build requisites (Debian 12/13), note that Ubuntu 24.04
 still has an older version of sdcc, but you will need sdcc version 4.5 for the code to compile:
 ```
 sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ```
+
+## (1) Compiling for direct chip flashing AND upgrading an existing RTLPlayground running device
+
 Edit machine.h with an editor like vi or nano. Select the correct machine the firmware should build for.
+
+> [!TIP]
+> You can write configuration parameters in config.txt (see below) in order your switch to get
+> straight at the first boot, a correct IP configuration.
+
 Now, building the firmware image should work:
 ```
 make 
 ```
-Note, that the image generated ends in .bin, not .img, in order to make
-IMSProg happy.
+Note, that the image generated ends in .bin, not .img, in order to make IMSProg happy.
 
-Managed switches can be updated from the existing original firmware using an upgrade image.
-In the `installer`folder of the source code you will need to run `make` which will build
-an image out of `rtlplayground.bin` built in the previous step:
+image location is stored in `RTLPlayground/output/rtlplayground_version_machine.bin`
+for example
+```
+rtlplayground-v0.1.0-12c98ba-dirty-LIANGUO_ZX_SWTGW215AS.bin
+```
+
+> [!CAUTION]
+> This image can be flashed directly to the chip OR through the firmware update/upgrade
+> interface of RTLPlaygound interface
+
+## (2) Compiling for OEM running device with management options (web upgrade)
+
+Managed switches can be updated from the existing original firmware using a SPECIFIC upgrade image.
+You first need to build the firmware for direct chip flashing : See below (1)
+
+Then
+
+```
+cd installer
+make 
+```
+image location is stored in  `RTLPlayground/installer/output/rtlplayground_oem_upgrade.bin`
+
+> [!CAUTION]
+> This image must ONLY be used for original OEM firmware web interface firmware upgrade.
+> You do not need this image if you are already on RTLplayground firmware.
+> Unless you go back to the original OEM firmware, you would only flash this specific firmware
+> only once. Future upgrades of RTLPlayground will only need to follow (1)
+
+example of compilation console output
+
 ```
 RTLPlayground/installer$ make
-mkdir -p output/
+mkdir -p output
 gcc updatebuilder.c -o output/updatebuilder
 sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
 sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
 sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
-cp ../output//rtlplayground.bin output/
-./output//updatebuilder -i output/rtlinstaller.ihx output/rtlplayground.bin
+./output/updatebuilder -i output/rtlinstaller.ihx -o output/rtlplayground_oem_upgrade.bin ../output/rtlplayground.bin
 Input file size: 524288
 Bytes read: 524288
 EOF
-Payload sum 1 is: 0x29d10
-Payload sum 2 is: 0x29d10
-Payload sum with header is: 0x2b0fc
-Payload sum is: 0xad8a75
-Header checksum is: 0x4c3
+Payload sum 1 is: 0x25100
+Payload sum 2 is: 0x25100
+Payload sum with header is: 0x264ec
+Payload sum is: 0xf8fe94
+Header checksum is: 0x5a1
 ```
-The resulting image can be found in `RTLPlayground/installer/output/rtlplayground.bin`
-> [!CAUTION]
-> DO NOT UPLOAD THE UPGADE IMAGE UNLESS YOU CAN MAKE A BACKUP USING A SOIC CLAMP OF THE
-> ORIGINAL FIRMWARE!
 
-## Installation
+## (3) Sandbox Usage with Ghidra (optional)
+
 You can play with the image using ghidra or flash real Switch Hardware. For
 ghidra see this information about [Ghidra images](ghidra.md).
 
+## (4) Installation through the Web interface (software way)
+
+Managed switches (OEM firmware of RTLplaygroud firmware) can be upgraded via the web interface.
+Unmanaged switch cannot be flashed this way (see 5).
+
+Go to "Firmware update" tab, select the correct file.
+
+> [!IMPORTANT]
+> If your device already runs RTLPlayground, you must upload the binary file /RTLPlayground/output/rtlplayground_Version_Machine.bin
+> If your device is OEM, you must upload the binary file /RTLPlayground/installer/outputrtlplayground_oem_upgrade.bin
+
 > [!CAUTION]
-> NOTE THAT WHILE THIS PROCEDURE HAS BEEN SUCCESSFULLY TESTED ON ALL DEVICES ABOVE,
-> ABSOLUTELY NO GUARANTY CAN BE GIVEN THAT YOU WILL NOT DESTROY YOUR SWITCH,
-> ANY OTHER EQUIPMENT INVOLVED OR HARM YOURSELF BY OPENING THE ELECTRONIC
-> DEVICE. OPENING THE SWITCH WILL VOID ITS WARRANTY.
+> Check one more time that your device matches the machine type before flashing.
+> Be shure you have a backup of the original firmware before diving in RTLPlaygroung.
 
-You can upload the upgrade image of managed switches via the web interface of the
-original firmware just as if you were installing a firmware upgrade. However,
-this is strongly discouraged, as you may brick your device, unless you can make
-firmware backups via a SOIC clamp or soldered flash socket, first!
+Finally, push the Upload File Button and you're done !
 
-For unmanaged devices, the only way to install RTLPlayground is by flashing the
-Flash memory directly.
 
-You will need to open your switch to flash the image directly onto the flash chip,
-which is done easiest using a SOIC-8 clip (alternatively you de-solder the
-flash chip and install a SOIC adapter):
-- Disconnect power from switch
-- Attach the clip onto the flash chip
-- Connect USB of flash programmer, the power LED on the switch will light
-  up, check cabling if not. Don't panic, mixing up GND and 3.3V does not
-  seem to destroy the switch (at leasts the on I did this to).
-- Use IMSProg (flashrom should work, too) to detect the clip
-- MAKE A BACKUP OF THE EXISTING FIRMWARE!
-- then load the firmware into IMSProg
-- and program flash
+## (5) Flashing the ROM directly (hardware way, but also only way to rescue)
 
-Now you can connect a serial cable to the UART port found on all the
-devices, set 8N1 @ 115200 baud and power up the switch.
+This procedure is the only way to flash unmanaged switches, if the ROM chip is large enough.
+This is also the only way to unbrick your device if something went wroong.
 
-The device will perform some examples and provide a minimal console, the
-documentation of which can be found in the source code rtlplayground.c`.
+> [!IMPORTANT]
+> You need a SOIC-8 clip to flash the ROM chip directly onboard.
+> Alternatively you can de-solder the flash chip and install a SOIC adapter).
+> For flashing the chip directly, you must use the binary file /RTLPlayground/output/rtlplayground_Version_Machine.bin
 
-## The web-interface
-The web-interface can be reached under the [default 192.168.10.247](http://192.168.10.247).
-The default password is `1234`.
+> [!CAUTION]
+> As you need to open your switch case, consider that the warranty is gone.
 
-## The command line
+- Disconnect power from switch.
+- Open the switch.
+- Attach the clip onto the flash chip (Red line on Pin 1, Pin 1 has a point marker).
+- Connect USB of flash programmer, the power LED on the switch will light up, check cabling if not.
+- Don't panic, mixing up GND and 3.3V usually does not destroy the switch.
+- Use IMSProg, Flashrom, or whatever Programmer to detect the chip.
+- MAKE A BACKUP (DUMP) OF THE EXISTING FIRMWARE !
+- ERASE THE ROM (BLANK) !
+- Load the firmware into IMSProg.
+- Flash is to the ROM chip.
+- Disconect the clip from the ROM chip.
+- You're done, ready for the first boot.
+
+## (6) Connecting a serial interface (optional)
+
+You can connect a serial cable to the UART port found on all the devices, set 8N1 @ 115200 baud.
+
+## (7) Power Up
+
+When you power up the switch, the device will perform some examples and provide a minimal console
+(if wired to a serial interface), the documentation of which can be found in the source code rtlplayground.c`.
+
+## (8) The web-interface
+
+The web-interface can be reached under the [default 192.168.10.247](http://192.168.10.247) unless you
+specified an IP adress in the config.txt before compilation.
+
+> [!TIP]
+> The default password is `1234`.
+
+## (9) The command line
+
 The command line is very rudimentary and mostly for testing purposes.
 The following is a boot-log with some examples:
 ```
@@ -198,7 +255,6 @@ PORT 04 1G
 <MODULE INSERTED>  Rate: 67  Encoding: 01
 Lightron Inc.   WSPXG-ES3LC-IHA 0000
 
-
 > stat
   CMD: stat
  Port   State   Link    TxGood          TxBad           RxGood          RxBad
@@ -216,17 +272,40 @@ Lightron Inc.   WSPXG-ES3LC-IHA 0000
   CMD: sfp
 Rate: 67  Encoding: 01
 Lightron Inc.   WSPXG-ES3LC-IHA 0000
+```
+
+## (10) Advanced configuration
+
+You can configure more deeply the switch without the need of the console mode.
+
+While in compilation part, you might write directly to config.txt file before making the binary firmware
 
 ```
+nano config.txt
+```
+
+If you want to modify settings after the flash is done, go to the Advanced Settings tab in System Settings
+
+<img width="1085" height="646" alt="ADVANCED SETTINGS" src="doc/images/advanced_settings.png" />
+
+```
+ip xxx.xxx.xxx.xxx      = IP adress of the switch
+gw yyy.yyy.yyy.yyy      = IP adress of the gateway
+netmask zzz.zzz.zzz.zzz = Network mask of the switch 
+port x name xxx         = Name xxx the port number x
+port z 1g               = Set 1g speed for port z
+igmp on/off             = Turn IGMP on or off
+```
+[To be continue]
+
 Enjoy playing!
 
-## Other documents
-The following documents give further documentation on specific features of
-the RTL837x SoCs:
+## (11) Other documents
+
+The following documents give further documentation on specific features of the RTL837x SoCs:
 - [RTL8372/3 Feature support](doc/hardware.md)
 - [CPU Port](doc/CpuPort.md)
 - [L2 learning](doc/l2.md) 
-- [CPU Port](doc/CpuPort.md)
 - [IGMP (IP-MC streaming)](doc/igmp.md)
 - [SFP+ ports](doc/sfp.md) 
 - [Trunking aka. port aggregation](doc/trunking.md)
