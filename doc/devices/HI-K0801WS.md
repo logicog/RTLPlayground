@@ -1,4 +1,4 @@
-# Hisource Hi-K0402WS
+# Hisource Hi-K0801WS
 
 Following is documentation for unmanaged switch marked as `Hi-K0801WS`.
 
