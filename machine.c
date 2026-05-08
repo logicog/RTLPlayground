@@ -613,6 +613,7 @@ __code const struct machine machine = {
 		    },
 };
 
+void machine_custom_init(void) { }
 
 #elif defined MACHINE_HI_K0801WS
 __code const struct machine machine = {
@@ -662,7 +663,6 @@ __code const struct machine machine = {
         },
     },
 };
-
 
 void machine_custom_init(void) { }
 
