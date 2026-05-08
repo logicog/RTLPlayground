@@ -1,56 +1,97 @@
 var configInterval = Number();
 var configuration = [];
+
+// THE WHITELIST (Sanitized)
 const conf_cmds = [
-  /ip\s+(\d{1,3}\.){3}\d{1,3}/, /gw\s+(\d{1,3}\.){3}\d{1,3}/, /netmask\s+(\d{1,3}\.){3}\d{1,3}/,
-  /eee(\s+\d)?\s+(on|off)/, /mirror(\s+(\d|10))(\s+(\d|10)(t|r)?)+/, /vlan\s+(\d{1,4})(\s+(\d|10)(t|u)?)+/
-];
-const conf_overwrite = [
-  /ip/, /gw/, /netmask/, /eee\s+\w+/, /eee(\s+\w)/, /mirror/, /vlan\s+(\d{1,4})/
+  /^ip\s+(\d{1,3}\.){3}\d{1,3}/, 
+  /^gw\s+(\d{1,3}\.){3}\d{1,3}/, 
+  /^netmask\s+(\d{1,3}\.){3}\d{1,3}/,
+  /^eee(?:\s+\d+)?\s+(on|off)/,   
+  /^mirror/,                      
+  /^vlan\s+\d+.*/,                
+  /^pvid\s+\d+.*/,                
+  /^lag\s+\d+.*/,                 
+  /^bw\s+(in|out)\s+\d+.*/,       
+  /^igmp\s+(on|off)/,             
+  /^port\s+\d+.*/                 
 ];
 
-function parseConf(s){
+// THE OVERWRITE KEYS (Sanitized)
+const conf_overwrite = [
+  /^ip/, 
+  /^gw/, 
+  /^netmask/, 
+  /^eee(?:\s+\d+)?/,              
+  /^mirror/,                      
+  /^vlan\s+\d+/,                  
+  /^pvid\s+\d+/,                  
+  /^lag\s+\d+/,                   
+  /^bw\s+(in|out)\s+\d+/,         
+  /^igmp/,                        
+  /^port\s+\d+/                   
+];
+
+function parseConf(s) {
   var a = s.split(/\r\n|\n/);
-    for (var l = 0; l < a.length; l++) {
-      if (!a[l].length || a[l] == "\n" || a[l] == "\r\n")
-        continue;
-      console.log(l + ' --> ' + a[l]);
-      var ignore = true;
-      for (const x of conf_cmds)
-        if (x.test(a[l])) ignore = false;
-      if (ignore) continue;
-      for (const x of conf_overwrite) {
-        if (x.test(a[l])) {
-          console.log("Match ", x, " to ", a[l]);
-          m = a[l].match(x);
-          console.log("Starts with ", m[0]);
-          configuration = configuration.filter(item => !(item.startsWith(m[0])));
-        }
+  for (var l = 0; l < a.length; l++) {
+    
+    // QUADRUPLE-CHECK FIX: Space Normalization.
+    // 1. .trim() removes leading/trailing spaces and \r carriage returns.
+    // 2. .replace(/\s+/g, ' ') turns any tabs or double-spaces into a single space.
+    // This absolutely guarantees string-matching alignment.
+    var line = a[l].trim().replace(/\s+/g, ' ');
+    if (!line.length) continue;
+    
+    console.log(l + ' --> ' + line);
+    var ignore = true;
+    
+    // Whitelist Check
+    for (const x of conf_cmds) {
+      if (x.test(line)) {
+        ignore = false;
+        break;
       }
-      configuration.push(a[l]);
     }
-    console.log("Configuration now:");
-    for (const x of configuration) { console.log(x); }
+    
+    if (ignore) continue;
+    
+    // Overwrite Logic
+    for (const x of conf_overwrite) {
+      if (x.test(line)) {
+        let m = line.match(x);
+        let matchStr = m[0]; 
+        
+        configuration = configuration.filter(item => {
+          // Because we normalized all spaces above, we know for a fact that 
+          // matchStr + " " will perfectly align with existing commands,
+          // safely isolating 'pvid 1' from 'pvid 10' without double-space bugs.
+          return !(item === matchStr || item.startsWith(matchStr + " "));
+        });
+        break; 
+      }
+    }
+    configuration.push(line);
+  }
 }
 
 async function fetchConfig() {
   try {
     const response = await fetch('/config');
-    console.log("CONFIG: ", response);
     const t = await response.text();
     return t;
   } catch(err) {
-    console.error("Error: ", err);
+    console.error("Error fetching config: ", err);
+    return "";
   }
 }
 
 async function fetchCmdLog() {
   try {
     const response = await fetch('/cmd_log');
-    console.log("CMD-Log: ", response);
     const t = await response.text();
     return t;
   } catch(err) {
-    console.error("Error: ", err);
+    console.error("Error fetching cmd_log: ", err);
     return "";
   }
 }
