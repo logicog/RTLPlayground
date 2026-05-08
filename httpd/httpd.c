@@ -14,9 +14,6 @@
 #define SESSION_ID_LENGTH 12
 #define SESSION_TIMEOUT 200
 
-// SPI FLASH MEMORY PAGE SIZE.
-#define FLASHMEM_PAGE_SIZE 0x100
-
 #define CMARK_S 6
 
 #pragma codeseg BANK1
@@ -329,7 +326,7 @@ uint8_t stream_upload(uint16_t bptr)
 			}
 			crc16(p + bptr);
 			flash_buf[write_len++] = p[bptr++];
-			if (write_len >= FLASHMEM_PAGE_SIZE) {
+			if (write_len >= FLASH_PAGE_SIZE) {
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
 				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
 				if (uptr % FLASH_SECTOR_SIZE == 0) {
@@ -337,14 +334,14 @@ uint8_t stream_upload(uint16_t bptr)
 					flash_sector_erase();
 				}
 				flash_region.addr = uptr;
-				flash_region.len = FLASHMEM_PAGE_SIZE;
+				flash_region.len = FLASH_PAGE_SIZE;
 				flash_write_bytes(flash_buf);
-				uptr += FLASHMEM_PAGE_SIZE;
-				write_len -= FLASHMEM_PAGE_SIZE;
+				uptr += FLASH_PAGE_SIZE;
+				write_len -= FLASH_PAGE_SIZE;
 
 				// Copy the remaining byte for the next page to the beginning of the buffer.
 				if (write_len > 0) {
-					memcpy(flash_buf, flash_buf + FLASHMEM_PAGE_SIZE, write_len);
+					memcpy(flash_buf, flash_buf + FLASH_PAGE_SIZE, write_len);
 				}
 			}
 			bindex = 0;
