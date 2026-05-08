@@ -31,9 +31,6 @@ Bottom
 
 <img src="photos/K0801W-V2.0-unmanaged\PCB-bottom.jpg" width="300" />
 
-### T2, serial console
-
-
 ## Power supply
 
 Input power is delivered via barell plug, `12V 1A` adapter was provided.
