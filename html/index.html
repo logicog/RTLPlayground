@@ -31,6 +31,8 @@
     .btn-danger:hover:not(:disabled) { background: #dc2626; }
     .btn-warning { background: var(--warning); color: #000; }
     .btn-warning:hover:not(:disabled) { background: #d97706; }
+    .btn-success { background: var(--success); }
+    .btn-success:hover:not(:disabled) { background: #059669; }
     
     .input-row { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
     input[type="text"], input[type="number"], select, textarea { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
@@ -168,13 +170,19 @@
     <div class="input-row"><label style="width:100px;">Gateway:</label><input type="text" id="sys-gw" style="width:150px;"></div>
     <button class="btn" onclick="applyIP()">Apply Network Settings</button>
 
+    <h3>Device Management</h3>
+    <p style="color: #64748b; margin-bottom: 15px;">Changes made in the UI are held in temporary memory. You must save them to flash to persist across reboots.</p>
+    <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+      <button class="btn btn-success" id="saveGlobalBtn" onclick="flashSaveConfig()">Save All UI Changes to Flash</button>
+      <button class="btn btn-danger" onclick="rebootSwitch()">Reboot Switch</button>
+    </div>
+
     <h3>Manual Configuration</h3>
     <p style="color: #64748b; margin-bottom: 10px;">Edit the raw system configuration below.</p>
     <textarea id="config-window" rows="12" style="width:100%; font-family:monospace;" placeholder="Fetching configuration..."></textarea>
     
-    <div style="display: flex; gap: 15px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-      <button class="btn btn-warning" id="saveBtn" onclick="saveManualConfig()">Save Text Config to Flash</button>
-      <button class="btn btn-danger" onclick="rebootSwitch()">Reboot Switch</button>
+    <div style="display: flex; gap: 15px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+      <button class="btn btn-warning" id="saveBtn" onclick="saveManualConfig()">Save Text Config Directly</button>
     </div>
   </div>
 
@@ -211,12 +219,9 @@ const linkS = ["Disabled", "Down", "10M", "100M", "1000M", "500M", "10G", "2.5G"
 let globalNumPorts = 0, physToLogMap = {}, sfpMap = {};
 
 function fetchAPI(method, url, cb, data = null) {
-  // If we are actively flashing, block ALL new requests immediately.
   if (isFlashing) return;
-  
   if (inFlight && inFlight.url === url && inFlight.method === method) return;
   if (reqQ.some(r => r.url === url && r.method === method)) return;
-  
   reqQ.push({ method, url, cb, data });
   if (!busy) processQ();
 }
@@ -230,7 +235,6 @@ function processQ() {
   x.onreadystatechange = function() {
     if (this.readyState === 4) {
       inFlight = null; 
-      // Protect against redirects if flashing engaged mid-request
       if (isFlashing) return; 
       
       if (this.status === 200 && r.cb) r.cb(this.responseText);
@@ -544,14 +548,14 @@ function getL2Features() {
         rows += `<tr>
           <td><strong>Port ${portNum}</strong></td>
           <td><select id="speed${portNum}" style="width:150px;">
-            <option value="auto" ${speedVal==='auto'?'selected':''}>Auto</option>
-            <option value="off" ${speedVal==='off'?'selected':''}>Disabled</option>
-            <option value="2g5" ${speedVal==='2g5'?'selected':''}>2500MBit/Full</option>
-            <option value="1g" ${speedVal==='1g'?'selected':''}>1000MBit/Full</option>
-            <option value="100m full" ${speedVal==='100m full'?'selected':''}>100MBit/Full</option>
-            <option value="100m half" ${speedVal==='100m half'?'selected':''}>100MBit/Half</option>
-            <option value="10m full" ${speedVal==='10m full'?'selected':''}>10MBit/Full</option>
-            <option value="10m half" ${speedVal==='10m half'?'selected':''}>10MBit/Half</option>
+            <option value=\"auto\" ${speedVal==='auto'?'selected':''}>Auto</option>
+            <option value=\"off\" ${speedVal==='off'?'selected':''}>Disabled</option>
+            <option value=\"2g5\" ${speedVal==='2g5'?'selected':''}>2500MBit/Full</option>
+            <option value=\"1g\" ${speedVal==='1g'?'selected':''}>1000MBit/Full</option>
+            <option value=\"100m full\" ${speedVal==='100m full'?'selected':''}>100MBit/Full</option>
+            <option value=\"100m half\" ${speedVal==='100m half'?'selected':''}>100MBit/Half</option>
+            <option value=\"10m full\" ${speedVal==='10m full'?'selected':''}>10MBit/Full</option>
+            <option value=\"10m half\" ${speedVal==='10m half'?'selected':''}>10MBit/Half</option>
           </select></td>
           <td><select id="mtu${portNum}">
             <option value="1522" ${mtuHex===1522?'selected':''}>1522</option>
@@ -602,6 +606,77 @@ function rebootSwitch() {
   fetchAPI("GET", "/reset", () => notify("Switch is rebooting...", "info"));
 }
 
+/** CONFIGURATION MERGE LOGIC **/
+let configuration = [];
+const conf_cmds = [
+  /^ip\s+(\d{1,3}\.){3}\d{1,3}/, /^gw\s+(\d{1,3}\.){3}\d{1,3}/, /^netmask\s+(\d{1,3}\.){3}\d{1,3}/,
+  /^eee(?:\s+\d+)?\s+(on|off)/, /^mirror/, /^vlan\s+\d+.*/, /^pvid\s+\d+.*/, /^lag\s+\d+.*/,
+  /^bw\s+(in|out)\s+\d+.*/, /^igmp\s+(on|off)/, /^port\s+\d+.*/
+];
+const conf_overwrite = [
+  /^ip/, /^gw/, /^netmask/, /^eee(?:\s+\d+)?/, /^mirror/, /^vlan\s+\d+/, /^pvid\s+\d+/,
+  /^lag\s+\d+/, /^bw\s+(in|out)\s+\d+/, /^igmp/, /^port\s+\d+/
+];
+
+function parseConf(s) {
+  var a = s.split(/\r\n|\n/);
+  for (var l = 0; l < a.length; l++) {
+    var line = a[l].trim().replace(/\s+/g, ' ');
+    if (!line.length) continue;
+    var ignore = true;
+    for (const x of conf_cmds) { if (x.test(line)) { ignore = false; break; } }
+    if (ignore) continue;
+    for (const x of conf_overwrite) {
+      if (x.test(line)) {
+        let m = line.match(x);
+        let matchStr = m[0];
+        configuration = configuration.filter(item => !(item === matchStr || item.startsWith(matchStr + " ")));
+        break;
+      }
+    }
+    configuration.push(line);
+  }
+}
+
+async function flashSaveConfig() {
+  const btn = document.getElementById('saveGlobalBtn');
+  btn.disabled = true;
+  notify("Merging memory and saving to flash...", "info");
+
+  try {
+    configuration = [];
+    const resConfig = await fetch('/config');
+    if (resConfig.ok) parseConf(await resConfig.text());
+    
+    const resLog = await fetch('/cmd_log');
+    if (resLog.ok) parseConf(await resLog.text());
+
+    const mergedConfig = configuration.join('\n') + '\n';
+    
+    const form = new FormData();
+    form.append("MAX_FILE_SIZE", "4096");
+    form.append("configuration", new Blob([mergedConfig], { type: "application/octet-stream" }), "config.txt");
+    
+    const saveResponse = await fetch('/config', { method: 'POST', body: form });
+    if (!saveResponse.ok) throw new Error("HTTP " + saveResponse.status);
+    
+    notify("All UI changes saved to flash memory!", "success");
+    fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
+    
+    document.getElementById('config-window').value = mergedConfig;
+  } catch(err) {
+    if (err instanceof TypeError || err.message === 'Failed to fetch') {
+      notify("Configuration saved! (Connection reset expected)", "success");
+      fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
+    } else {
+      notify("Failed to save. Check console.", "error");
+      console.error(err);
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function saveManualConfig() {
   const btn = document.getElementById('saveBtn');
   btn.disabled = true;
@@ -617,10 +692,12 @@ function saveManualConfig() {
   xhr.onload = function() {
       notify("Manual configuration saved to flash!", "success");
       btn.disabled = false;
+      fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
   };
   xhr.onerror = function() {
       notify("Configuration saved! (Connection reset expected)", "success");
       btn.disabled = false;
+      fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
   }
   xhr.send(form);
 }
@@ -632,9 +709,6 @@ function startFlash() {
   if (file.size > 2 * 1024 * 1024) return notify("File too large (>2MB).", "error");
   if (!confirm("WARNING: Flashing interrupts traffic. Do not power off. Proceed?")) return;
 
-  // FIX 1: Complete Polling Kill-Switch
-  // By turning isFlashing true, we permanently block processQ and fetchAPI from 
-  // triggering any network errors that might force a redirect to login.html.
   isFlashing = true;
   clearInterval(poller); 
   if (systemInterval) clearInterval(systemInterval);
@@ -653,6 +727,7 @@ function startFlash() {
 
   const xhr = new XMLHttpRequest(); 
   xhr.open("POST", "/upload", true);
+  xhr.setRequestHeader("Cache-Control", "no-cache"); 
   
   let fNote = false;
   let rebootTimer = null;
@@ -690,10 +765,8 @@ function startFlash() {
   xhr.onerror = () => console.log("Upload HTTP Error (Expected during reboot)");
 
   const fd = new FormData(); 
-  // FIX 2: Recreated the exact HTML form structure your C-parser expects
-  // The backend was choking because MAX_FILE_SIZE wasn't the first boundary payload!
   fd.append("MAX_FILE_SIZE", "1000000"); 
-  fd.append("uploadedfile", file); 
+  fd.append("uploadedfile", new Blob([file], { type: "application/octet-stream" }), "update.bin"); 
   xhr.send(fd);
 }
 
