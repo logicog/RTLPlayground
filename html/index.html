@@ -123,6 +123,10 @@
       <thead><tr><th>Port</th><th class="cb-cell">Tagged (Member)</th><th class="cb-cell">Untagged (Member)</th><th class="cb-cell">Default PVID</th></tr></thead>
       <tbody id="vlan-body"><tr><td colspan="4" style="text-align:center; color:#94a3b8;">Enter a VLAN ID and click Load</td></tr></tbody>
     </table>
+    <div class="input-row" style="margin-top: 20px;">
+      <button class="btn btn-accent" onclick="applyVLAN()">Save VLAN Settings</button>
+      <span style="color: #64748b; font-size: 13px; margin-left: 15px;">Remember to click "Save All UI Changes to Flash" in System Settings to keep these changes after a reboot.</span>
+    </div>
   </div>
 
   <div id="l2" class="panel">
@@ -134,6 +138,14 @@
       <label style="font-weight:600;">Enable IGMP Snooping:</label>
       <input type="checkbox" id="igmp-en" style="transform: scale(1.5); margin: 0 15px;">
       <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyIGMP()">Save IGMP Settings</button>
+    </div>
+
+    <h3>Energy Efficient Ethernet (EEE)</h3>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 14px;">Reduce switch power consumption during periods of low data activity.</p>
+    <div class="input-row">
+      <label style="font-weight:600;">Enable Global EEE:</label>
+      <input type="checkbox" id="eee-en" style="transform: scale(1.5); margin: 0 15px;">
+      <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyEEE()">Save EEE Settings</button>
     </div>
 
     <h3>Link Aggregation (LAG)</h3>
@@ -398,9 +410,11 @@ function getInfo() {
      
      const igmpMatch = raw.match(/^igmp\s+(on|off)/m);
      const igmpCheckbox = document.getElementById('igmp-en');
-     if (igmpCheckbox) {
-         igmpCheckbox.checked = (igmpMatch && igmpMatch[1] === 'on');
-     }
+     if (igmpCheckbox) igmpCheckbox.checked = (igmpMatch && igmpMatch[1] === 'on');
+     
+     const eeeMatch = raw.match(/^eee\s+(on|off)/m);
+     const eeeCheckbox = document.getElementById('eee-en');
+     if (eeeCheckbox) eeeCheckbox.checked = (eeeMatch && eeeMatch[1] === 'on');
   });
 }
 
@@ -490,11 +504,42 @@ function fetchVLAN() {
   });
 }
 
+function applyVLAN() {
+  const vid = document.getElementById('vlan-vid').value;
+  if (!vid) return notify("Please enter a VLAN ID first.", "warning");
+  
+  const portCount = globalNumPorts || 10;
+  let members = [];
+  
+  for (let p = 1; p <= portCount; p++) {
+    const isTagged = document.getElementById(`tport${p}`).checked;
+    const isUntagged = document.getElementById(`uport${p}`).checked;
+    if (isTagged || isUntagged) members.push(p);
+  }
+  
+  let cmdVlan = `vlan ${vid}`;
+  if (members.length > 0) cmdVlan += ` ${members.join(' ')}`;
+  
+  fetchAPI("POST", "/cmd", () => notify(`VLAN ${vid} members saved temporarily.`, "success"), cmdVlan);
+  
+  for (let p = 1; p <= portCount; p++) {
+    if (document.getElementById(`pport${p}`).checked) {
+      fetchAPI("POST", "/cmd", () => {}, `pvid ${p} ${vid}`);
+    }
+  }
+}
+
 /** L2 FEATURES **/
 function applyIGMP() {
   const isEnabled = document.getElementById('igmp-en').checked;
   const cmd = isEnabled ? "igmp on" : "igmp off";
   fetchAPI("POST", "/cmd", () => notify(`IGMP Snooping turned ${isEnabled ? 'ON' : 'OFF'}.`, "success"), cmd);
+}
+
+function applyEEE() {
+  const isEnabled = document.getElementById('eee-en').checked;
+  const cmd = isEnabled ? "eee on" : "eee off";
+  fetchAPI("POST", "/cmd", () => notify(`Energy Efficient Ethernet turned ${isEnabled ? 'ON' : 'OFF'}.`, "success"), cmd);
 }
 
 function getL2Features() {
