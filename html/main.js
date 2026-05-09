@@ -1,3 +1,11 @@
+/**
+ * main.js
+ * Core frontend logic for the RTLPlayground switch Web UI.
+ * Includes a robust, strictly-serialized HTTP queue to protect 
+ * the hardware's uIP network stack from concurrent connection crashes.
+ */
+
+// Sized strictly to 10 for the 10-port hardware profile to optimize memory
 var txG = new BigInt64Array(10);
 var txB = new BigInt64Array(10);
 var rxG = new BigInt64Array(10);
@@ -10,13 +18,58 @@ var numPorts = 0;
 var logToPhysPort = new Int8Array(10);
 var physToLogPort = new Int8Array(10);
 var portNames = new Array(10);
+
+// --- ROBUST HTTP QUEUE ---
 var currentRequests = [];
-var currentCallback;
+var isRequestPending = false;
+
+function processXHTTPQueue() {
+  if (currentRequests.length === 0) {
+    isRequestPending = false;
+    return;
+  }
+
+  isRequestPending = true;
+  let x = currentRequests.shift(); // Get oldest request
+  let originalCallback = x.onreadystatechange;
+  
+  // Guard against browser quirks double-firing readyState 4
+  let completed = false; 
+
+  x.onreadystatechange = function() {
+    // Fire the original callback using strict context
+    if (originalCallback) {
+      originalCallback.call(this); 
+    }
+
+    // Only advance the queue once per request, applying a 20ms hardware breather
+    if (!completed && this.readyState === 4) {
+      completed = true;
+      setTimeout(processXHTTPQueue, 20);
+    }
+  };
+
+  try {
+    x.send();
+  } catch (err) {
+    console.error("XHR send failed immediately:", err);
+    // If it fails to send (e.g. physical disconnect), keep the queue moving
+    setTimeout(processXHTTPQueue, 20); 
+  }
+}
+
+function sendXHTTP(x) {
+  currentRequests.push(x);
+  if (!isRequestPending) {
+    processXHTTPQueue();
+  }
+}
+// -------------------------
+
 function drawPorts() {
   var f = document.getElementById('ports');
   console.log("DRAWING PORTS: ", numPorts);
   for (let i = 0; i < numPorts; i++) {
-    console.log("DRAWING isSFP: ", pIsSFP[i]);
     const d = document.createElement("div");
     d.classList.add('tooltip');
     const s = document.createElement("span");
@@ -120,167 +173,121 @@ function convertPowerTodBm(val) {
 function update(callback) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
-    console.log("IN UPDATE ");
-    if (this.readyState == 4 && this.status == 401)
-	    document.location = "/login.html"
+    if (this.readyState == 4 && this.status == 401) {
+      document.location = "/login.html";
+    }
+    
     if (this.readyState == 4 && this.status == 200) {
-      const s = JSON.parse(xhttp.responseText);
-      if (!numPorts) {
-	numPorts = s.length;
-	for (let i = 0; i < s.length; i++)
-	  pIsSFP[s[i].portNum-1] = s[i].isSFP;
-	drawPorts();
+      let s;
+      
+      // Guard against malformed JSON from truncated uIP payload responses
+      try {
+        s = JSON.parse(xhttp.responseText);
+      } catch (err) {
+        console.error("Bad status.json response:", err, xhttp.responseText);
+        return;
       }
-      console.log("RES:", JSON.stringify(s));
+      
+      if (!numPorts) {
+        numPorts = s.length;
+        for (let i = 0; i < s.length; i++)
+          pIsSFP[s[i].portNum-1] = s[i].isSFP;
+        drawPorts();
+      }
+      
       for (let i = 0; i < s.length; i++) {
-	p = s[i];
-	let n = p.portNum;
-	logToPhysPort[p.logPort] = n;
-	physToLogPort[n-1] = p.logPort;
-	portNames[p.logPort] = p.name;
-	let pid = "port" + n;
-	let ttid = "tt_" + n;
-	n--;
-	txG[n] = BigInt(p.txG); txB[n] = BigInt(p.txB); rxG[n] = BigInt(p.rxG); rxB[n] = BigInt(p.rxB);
-	var psvg = document.getElementById(pid);
-	var tt = document.getElementById(ttid);
-	if (psvg == null || !psvg.contentDocument)
-	  continue;
-	var bgs = psvg.contentDocument.getElementsByClassName("bg");
-	var leds = psvg.contentDocument.getElementsByClassName("led");
+        let p = s[i]; 
+        let n = p.portNum;
+        logToPhysPort[p.logPort] = n;
+        physToLogPort[n-1] = p.logPort;
+        portNames[p.logPort] = p.name;
+        let pid = "port" + n;
+        let ttid = "tt_" + n;
+        n--;
+        txG[n] = BigInt(p.txG); txB[n] = BigInt(p.txB); rxG[n] = BigInt(p.rxG); rxB[n] = BigInt(p.rxB);
+        var psvg = document.getElementById(pid);
+        var tt = document.getElementById(ttid);
+        if (psvg == null || !psvg.contentDocument)
+          continue;
+        var bgs = psvg.contentDocument.getElementsByClassName("bg");
+        var leds = psvg.contentDocument.getElementsByClassName("led");
         if (leds[0] == null || leds[0].style == null)
           continue;
-	const portName = p.name || portNames[p.logPort] || '';
-	var iHTML = "<table border=\"0\" class=\"tt_table\">";
-	if (portName) iHTML += "<tr><td align=\"left\">Name</td><td>:</td><td>" + portName + "</td></tr>";
-	if (p.enabled == 0) {
-	  pState[n] = -1;
-	  bgs[0].style.fill = "red";
-	  leds[0].style.fill = "black"; leds[1].style.fill = "black";
-	  psvg.style.opacity = 0.4;
-	  iHTML += "<tr><td align=\"left\">Status</td><td>:</td><td>Not enabled.</td></tr>";
-	  iHTML += "</table>";
-	  tt.innerHTML = iHTML;
-	} else {
-	  psvg.style.opacity = 1.0;
-	  pState[n] = p.link;
-	  if (p.link == 5 || p.link == 7) {
-	    leds[0].style.fill = "green"; leds[1].style.fill = "blue";
-	  } else if (p.link == 4 || p.link == 6) {
-	    leds[0].style.fill = "green"; leds[1].style.fill = "orange";
-	  } else if (p.link == 1 || p.link == 2 || p.link == 3) {
-	    leds[0].style.fill = "green"; leds[1].style.fill = "green";
-	  } else {
-	    leds[0].style.fill = "black"; leds[1].style.fill = "black";
-	    psvg.style.opacity = 0.4
-	  }
-	  iHTML += "<tr><td align=\"left\">Link speed</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
-	  if (p.isSFP) {
-	    pAdvertised[n] = 0;
-	    const hasExtendedStatus = p.sfp_options & 0x40;
-	    iHTML += "<tr><td>Vendor</td><td>:</td><td>" + p.sfp_vendor + "</td></tr>";
-	    iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
-	    iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
-	    if (hasExtendedStatus) {
-	      let txPower = decodeSfpTxPower(p.sfp_txpower, p.sfp_txpower_cal);
-	      let txPowerdBm = convertPowerTodBm(txPower);
-	      let rxPower = decodeSfpRxPower(p.sfp_rxpower, p.sfp_rxpower_cal);
-	      let rxPowerdBm = convertPowerTodBm(rxPower);
-	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + decodeSfpTemp(p.sfp_temp, p.sfp_temp_cal).toFixed(2) + "&#8239;&#8451;</td></tr>";
-	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + decodeSfpVcc(p.sfp_vcc, p.sfp_vcc_cal).toFixed(2) + "&#8239;V</td></tr>";
-	      iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
-	      iHTML += "<tr><td>TX-Disabled</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
-	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + decodeSfpTxBias(p.sfp_txbias, p.sfp_txbias_cal).toFixed(1) + "&#8239;mA</td></tr>";
-	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + txPower.toFixed(3) + "&#8239;mW / " + txPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
-	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + rxPower.toFixed(3) + "&#8239;mW / " + rxPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
-	    }
-	    // Not all devices & modules have LOS pin...
-	    const rx_los_pin = p.sfp_los !== null ? Boolean(Number(p.sfp_los)) : null;
-	    const rx_los_module = hasExtendedStatus ? Boolean(Number(p.sfp_state) & 0x2) : null;
-	    if (rx_los_module !== null || rx_los_pin !== null) {
-	      iHTML += `<tr><td>RX-LOS</td><td>:</td><td>${rxLosHTML(rx_los_pin, rx_los_module)}</td></tr>`;
-	    }
-	  } else {
-	    pAdvertised[n] = parseInt(p.adv, 2);
-	  };
-	  iHTML += "</table>";
-	  tt.innerHTML = iHTML;
-	}}
-	if (callback)
-	  callback();
-	}};
-	xhttp.open("GET", "/status.json", true);
-	xhttp.timeout = 5000;
-	sendXHTTP(xhttp);
+        
+        const portName = p.name || portNames[p.logPort] || '';
+        var iHTML = "<table border=\"0\" class=\"tt_table\">";
+        if (portName) iHTML += "<tr><td align=\"left\">Name</td><td>:</td><td>" + portName + "</td></tr>";
+        
+        if (p.enabled == 0) {
+          pState[n] = -1;
+          bgs[0].style.fill = "red";
+          leds[0].style.fill = "black"; leds[1].style.fill = "black";
+          psvg.style.opacity = 0.4;
+          iHTML += "<tr><td align=\"left\">Status</td><td>:</td><td>Not enabled.</td></tr>";
+          iHTML += "</table>";
+          tt.innerHTML = iHTML;
+        } else {
+          psvg.style.opacity = 1.0;
+          pState[n] = p.link;
+          if (p.link == 5 || p.link == 7) {
+            leds[0].style.fill = "green"; leds[1].style.fill = "blue";
+          } else if (p.link == 4 || p.link == 6) {
+            leds[0].style.fill = "green"; leds[1].style.fill = "orange";
+          } else if (p.link == 1 || p.link == 2 || p.link == 3) {
+            leds[0].style.fill = "green"; leds[1].style.fill = "green";
+          } else {
+            leds[0].style.fill = "black"; leds[1].style.fill = "black";
+            psvg.style.opacity = 0.4;
+          }
+          iHTML += "<tr><td align=\"left\">Link speed</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
+          
+          if (p.isSFP) {
+            pAdvertised[n] = 0;
+            const hasExtendedStatus = p.sfp_options & 0x40;
+            iHTML += "<tr><td>Vendor</td><td>:</td><td>" + p.sfp_vendor + "</td></tr>";
+            iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
+            iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
+            if (hasExtendedStatus) {
+              let txPower = decodeSfpTxPower(p.sfp_txpower, p.sfp_txpower_cal);
+              let txPowerdBm = convertPowerTodBm(txPower);
+              let rxPower = decodeSfpRxPower(p.sfp_rxpower, p.sfp_rxpower_cal);
+              let rxPowerdBm = convertPowerTodBm(rxPower);
+              iHTML += "<tr><td>Temp</td><td>:</td><td>" + decodeSfpTemp(p.sfp_temp, p.sfp_temp_cal).toFixed(2) + "&#8239;&#8451;</td></tr>";
+              iHTML += "<tr><td>Vcc</td><td>:</td><td>" + decodeSfpVcc(p.sfp_vcc, p.sfp_vcc_cal).toFixed(2) + "&#8239;V</td></tr>";
+              iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
+              iHTML += "<tr><td>TX-Disabled</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
+              iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + decodeSfpTxBias(p.sfp_txbias, p.sfp_txbias_cal).toFixed(1) + "&#8239;mA</td></tr>";
+              iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + txPower.toFixed(3) + "&#8239;mW / " + txPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
+              iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + rxPower.toFixed(3) + "&#8239;mW / " + rxPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
+            }
+            const rx_los_pin = p.sfp_los !== null ? Boolean(Number(p.sfp_los)) : null;
+            const rx_los_module = hasExtendedStatus ? Boolean(Number(p.sfp_state) & 0x2) : null;
+            if (rx_los_module !== null || rx_los_pin !== null) {
+              iHTML += `<tr><td>RX-LOS</td><td>:</td><td>${rxLosHTML(rx_los_pin, rx_los_module)}</td></tr>`;
+            }
+          } else {
+            pAdvertised[n] = parseInt(p.adv, 2);
+          }
+          iHTML += "</table>";
+          tt.innerHTML = iHTML;
+        }
+      }
+      
+      // Callback placed safely outside the loop
+      if (callback) {
+        callback();
+      }
+    }
+  };
+  
+  xhttp.open("GET", "/status.json", true);
+  xhttp.timeout = 5000;
+  sendXHTTP(xhttp);
 }
 
 function rxLosHTML(pinStatus, moduleStatus) {
   if (moduleStatus !== null && pinStatus !== null && moduleStatus !== pinStatus) {
     return `pin=${pinStatus}<br/>mod=${moduleStatus}<br/>❗❗❗❗`;
   }
-
-	// Returns first non null value
   return moduleStatus ?? pinStatus;
 }
-
-function callbackXHTTP()
-{
-  x = currentRequests.shift();
-  x.onreadystatechange = currentCallback;
-  x.onreadystatechange();
-  if (currentRequests.length === 0)
-    return;
-  x = currentRequests[0];
-  currentCallback = x.onreadystatechange;
-  x.onreadystatechange = callbackXHTTP;
-  var retries = 10;
-  while (retries) {
-    try {
-      setTimeout(() => {
-              x.send();
-              console.log("B1");
-      }, 20);
-    } catch (error) {
-      retries--;
-      setTimeout(() => {
-        console.log(`Retry ${retries}/${maxRetries} failed: ${error.message}`);
-      }, 200);
-      if (retries < 1) {
-        throw error;
-      }
-    }
-    console.log("B2");
-    return;
-  }
-}
-
-function sendXHTTP(x)
-{
-  console.log("sendXHTTP ", x);
-  if (currentRequests.length === 0) {
-    currentRequests.push(x);
-    currentCallback = x.onreadystatechange;
-    x.onreadystatechange = callbackXHTTP;
-    var retries = 10;
-    while (retries) {
-      try {
-        x.send();
-        console.log("A1");
-      } catch (error) {
-        retries--;
-        setTimeout(() => {
-          console.log(`Retry ${retries}/${maxRetries} failed: ${error.message}`);
-        }, 200);
-        if (retries < 1) {
-          throw error;
-        }
-      }
-      console.log("A2");
-      return;
-    }
-    console.log("A3");
-    return;
-  }
-  currentRequests.push(x);
-}
-

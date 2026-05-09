@@ -135,7 +135,7 @@ function getMTUs() {
     }
   };
   xhttp.open("GET", "/mtu.json", true);
-  xhttp.timeout = 1500; sendXHTTP(xhttp);
+  xhttp.timeout = 5000; sendXHTTP(xhttp);
 }
 
 window.addEventListener("load", function() {
@@ -143,7 +143,7 @@ window.addEventListener("load", function() {
     createPortTable();
     updatePortTable();
     getMTUs()
-    const interval = setInterval(update, 2000);
-    const updatePortTableInterval = setInterval(updatePortTable, 1000);
+    const interval = setInterval(update, 5000);
+    const updatePortTableInterval = setInterval(updatePortTable, 3000);
   });
 });

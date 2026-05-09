@@ -59,6 +59,6 @@ function fetchMirror() {
 window.addEventListener("load", function() {
   update( () => {
     mirrorForm();
-    const interval = setInterval(update, 2000);
+    const interval = setInterval(update, 5000);
   });
 });

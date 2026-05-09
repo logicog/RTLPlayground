@@ -151,7 +151,7 @@ function getCounters(port) {
     }
   };
   xhttp.open("GET", "/counters.json?port=" + port, true);
-  xhttp.timeout = 1500; sendXHTTP(xhttp);
+  xhttp.timeout = 5000; sendXHTTP(xhttp);
 }
 
 
@@ -202,6 +202,6 @@ window.addEventListener("load", function() {
     update();
     fillStats();
     const stat = setInterval(fillStats, 1000);
-    const interval = setInterval(update, 2000);
+    const interval = setInterval(update, 5000);
   });
 });

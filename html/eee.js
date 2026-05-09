@@ -39,14 +39,14 @@ function getEEE() {
     }
   };
   xhttp.open("GET", "/eee.json", true);
-  xhttp.timeout = 1500; sendXHTTP(xhttp);
+  xhttp.timeout = 5000; sendXHTTP(xhttp);
 }
 
 window.addEventListener("load", function() {
   update( () => {
     createEEE();
     getEEE();
-    const interval = setInterval(update, 2000);
+    const interval = setInterval(update, 5000);
     const iCount = setInterval(getEEE, 2000);
   });
 });

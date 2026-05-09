@@ -86,6 +86,6 @@ function fetchVLAN() {
 window.addEventListener("load", function() {
   update( () => {
     vlanForm();
-    const interval = setInterval(update, 2000);
+    const interval = setInterval(update, 5000);
   });
 });

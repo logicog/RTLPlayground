@@ -61,7 +61,7 @@ function delL2(idx) {
     }
   };
   xhttp.open("GET", "/l2_del.json?idx=" + idx, true);
-  xhttp.timeout = 1500; xhttp.send();
+  xhttp.timeout = 5000; xhttp.send();
 }
 
 function fillL2(s)
@@ -130,13 +130,13 @@ function getL2() {
     }
   };
   xhttp.open("GET", "/l2.json?idx=" + l2CurrentEntry, true);
-  xhttp.timeout = 1500; sendXHTTP(xhttp);
+  xhttp.timeout = 5000; sendXHTTP(xhttp);
 }
 
 window.addEventListener("load", function() {
   update( () => {
     getL2();
-    const interval = setInterval(update, 2000);
+    const interval = setInterval(update, 5000);
     l2GetInterval = setInterval(getL2, 1000);
   });;
 });
