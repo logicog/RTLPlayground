@@ -103,8 +103,8 @@
   <div id="stat" class="panel">
     <h2>Port Statistics</h2>
     <table id="stat-table">
-      <thead><tr><th>Port</th><th>Link</th><th>Tx Good</th><th>Tx Bad</th><th>Rx Good</th><th>Rx Bad</th><th style="width: 80px;">Action</th></tr></thead>
-      <tbody id="stat-body"><tr><td colspan="7" style="text-align:center;">Loading statistics...</td></tr></tbody>
+      <thead><tr><th>Port</th><th>Name</th><th>Link</th><th>Tx Good</th><th>Tx Bad</th><th>Rx Good</th><th>Rx Bad</th><th style="width: 80px;">Action</th></tr></thead>
+      <tbody id="stat-body"><tr><td colspan="8" style="text-align:center;">Loading statistics...</td></tr></tbody>
     </table>
   </div>
 
@@ -154,10 +154,10 @@
        <div style="color:#94a3b8;">Loading LAG data...</div>
     </div>
 
-    <h3>Port Configuration (Speed & MTU)</h3>
+    <h3>Port Configuration (Speed, MTU, Name)</h3>
     <table id="port-cfg-table">
-      <thead><tr><th>Port</th><th>Link Speed</th><th>MTU Size</th><th style="width:80px;">Action</th></tr></thead>
-      <tbody id="port-cfg-body"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody>
+      <thead><tr><th>Port</th><th>Name</th><th>Link Speed</th><th>MTU Size</th><th style="width:80px;">Action</th></tr></thead>
+      <tbody id="port-cfg-body"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
     </table>
 
     <h3>Port Mirroring</h3>
@@ -228,7 +228,7 @@ let isFlashing = false;
 
 let reqQ = [], busy = false, poller = null, systemInterval = null, infoLoaded = false, inFlight = null;
 const linkS = ["Disabled", "Down", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
-let globalNumPorts = 0, physToLogMap = {}, sfpMap = {};
+let globalNumPorts = 0, physToLogMap = {}, sfpMap = {}, portNames = {};
 
 function fetchAPI(method, url, cb, data = null) {
   if (isFlashing) return;
@@ -319,7 +319,7 @@ function getPorts() {
           if (isNaN(portNum)) return;
           const tr = document.createElement('tr');
           tr.id = 'stat-' + portNum;
-          for(let i=0; i<7; i++) tr.appendChild(document.createElement('td'));
+          for(let i=0; i<8; i++) tr.appendChild(document.createElement('td')); // Updated to 8 for Name col
           sBody.appendChild(tr);
         });
       }
@@ -329,6 +329,7 @@ function getPorts() {
         if (isNaN(portNum)) return; 
         physToLogMap[portNum] = p.logPort; 
         sfpMap[portNum] = p.isSFP;
+        portNames[portNum] = p.name || ''; // Extract hardware port name securely
         
         const linkRaw = parseInt(p.link, 10);
         let linkText = "UNKNOWN";
@@ -354,6 +355,20 @@ function getPorts() {
             }
             
             d.appendChild(document.createTextNode(`PORT ${portNum}`));
+            
+            // Dynamic Name Label for Dashboard Grid
+            if (portNames[portNum]) {
+               const nSpan = document.createElement('div');
+               nSpan.style.fontSize = '11px'; 
+               nSpan.style.color = isUp ? '#065f46' : '#94a3b8';
+               nSpan.style.marginTop = '2px';
+               nSpan.style.overflow = 'hidden'; 
+               nSpan.style.textOverflow = 'ellipsis';
+               nSpan.style.whiteSpace = 'nowrap';
+               nSpan.textContent = portNames[portNum];
+               d.appendChild(nSpan);
+            }
+            
             d.appendChild(document.createElement('br'));
             const span = document.createElement('span');
             span.style.fontSize = '16px'; span.textContent = linkText;
@@ -365,12 +380,13 @@ function getPorts() {
           const tr = document.getElementById('stat-' + portNum);
           if (tr) {
             tr.cells[0].innerHTML = `<strong>Port ${portNum}</strong>`;
-            tr.cells[1].textContent = linkText;
-            tr.cells[2].textContent = p.txG ? BigInt(p.txG).toString() : "0"; tr.cells[2].style.color = 'var(--success)';
-            tr.cells[3].textContent = p.txB ? BigInt(p.txB).toString() : "0"; tr.cells[3].style.color = 'var(--danger)';
-            tr.cells[4].textContent = p.rxG ? BigInt(p.rxG).toString() : "0"; tr.cells[4].style.color = 'var(--success)';
-            tr.cells[5].textContent = p.rxB ? BigInt(p.rxB).toString() : "0"; tr.cells[5].style.color = 'var(--danger)';
-            tr.cells[6].innerHTML = `<button class="btn" onclick="showCounters(${portNum})" style="padding: 4px 8px; font-size: 11px;">Details</button>`;
+            tr.cells[1].textContent = portNames[portNum]; // Port Name column
+            tr.cells[2].textContent = linkText;
+            tr.cells[3].textContent = p.txG ? BigInt(p.txG).toString() : "0"; tr.cells[3].style.color = 'var(--success)';
+            tr.cells[4].textContent = p.txB ? BigInt(p.txB).toString() : "0"; tr.cells[4].style.color = 'var(--danger)';
+            tr.cells[5].textContent = p.rxG ? BigInt(p.rxG).toString() : "0"; tr.cells[5].style.color = 'var(--success)';
+            tr.cells[6].textContent = p.rxB ? BigInt(p.rxB).toString() : "0"; tr.cells[6].style.color = 'var(--danger)';
+            tr.cells[7].innerHTML = `<button class="btn" onclick="showCounters(${portNum})" style="padding: 4px 8px; font-size: 11px;">Details</button>`;
           }
         }
       });
@@ -508,6 +524,8 @@ function applyVLAN() {
   const vid = document.getElementById('vlan-vid').value;
   if (!vid) return notify("Please enter a VLAN ID first.", "warning");
   
+  // Safe space replacement to match strict CLI backend rules
+  const vlanName = document.getElementById('vlan-name').value.trim().replace(/\s+/g, '_');
   const portCount = globalNumPorts || 10;
   let members = [];
   
@@ -518,9 +536,10 @@ function applyVLAN() {
   }
   
   let cmdVlan = `vlan ${vid}`;
+  if (vlanName) cmdVlan += ` ${vlanName}`;
   if (members.length > 0) cmdVlan += ` ${members.join(' ')}`;
   
-  fetchAPI("POST", "/cmd", () => notify(`VLAN ${vid} members saved temporarily.`, "success"), cmdVlan);
+  fetchAPI("POST", "/cmd", () => notify(`VLAN ${vid} members and name saved.`, "success"), cmdVlan);
   
   for (let p = 1; p <= portCount; p++) {
     if (document.getElementById(`pport${p}`).checked) {
@@ -592,6 +611,7 @@ function getL2Features() {
         
         rows += `<tr>
           <td><strong>Port ${portNum}</strong></td>
+          <td><input type="text" id="pname${portNum}" value="${portNames[portNum] || ''}" style="width:100px;" placeholder="Name"></td>
           <td><select id="speed${portNum}" style="width:150px;">
             <option value=\"auto\" ${speedVal==='auto'?'selected':''}>Auto</option>
             <option value=\"off\" ${speedVal==='off'?'selected':''}>Disabled</option>
@@ -629,6 +649,15 @@ function applyLAG(l) {
 function applyPortCfg(portNum) {
   const speed = document.getElementById(`speed${portNum}`).value;
   const mtu = document.getElementById(`mtu${portNum}`).value;
+  
+  // Clean custom name input, replace spaces with underscores to prevent CLI breakage
+  const pname = document.getElementById(`pname${portNum}`).value.trim().replace(/\s+/g, '_');
+  if (pname) {
+    fetchAPI("POST", "/cmd", () => {}, `port ${portNum} name ${pname}`);
+  } else {
+    fetchAPI("POST", "/cmd", () => {}, `port ${portNum} name ""`);
+  }
+  
   fetchAPI("POST", "/cmd", () => {}, `port ${portNum} ${speed}`);
   fetchAPI("POST", "/cmd", () => notify(`Port ${portNum} saved successfully.`, "success"), `mtu ${portNum} ${mtu}`);
 }
@@ -660,7 +689,9 @@ const conf_cmds = [
 ];
 const conf_overwrite = [
   /^ip/, /^gw/, /^netmask/, /^eee(?:\s+\d+)?/, /^mirror/, /^vlan\s+\d+/, /^pvid\s+\d+/,
-  /^lag\s+\d+/, /^bw\s+(in|out)\s+\d+/, /^igmp/, /^port\s+\d+/
+  /^lag\s+\d+/, /^bw\s+(in|out)\s+\d+/, /^igmp/, 
+  /^port\s+\d+\s+name/,    // FIX: Isolates port names from being overwritten by speeds
+  /^port\s+\d+(?!\s+name)/ // FIX: Isolates port speeds from being overwritten by names
 ];
 
 function parseConf(s) {
