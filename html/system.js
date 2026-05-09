@@ -1,6 +1,6 @@
 /**
  * system.js
- * * Handles frontend interactions for the RTLPlayground switch Web UI.
+ * Handles frontend interactions for the RTLPlayground switch Web UI.
  * Includes critical protections against CPU resource exhaustion, 
  * asynchronous data loss, and partial-state network lockouts.
  */
@@ -14,7 +14,6 @@ var isSaving = false;
 /**
  * Toggles the UI state to provide visual feedback during hardware operations.
  * Prevents user panic-clicking by disabling buttons and showing a wait cursor.
- * * @param {boolean} locked - True to lock UI, false to unlock.
  */
 function setUILock(locked) {
   document.body.style.cursor = locked ? 'wait' : 'default';
@@ -24,8 +23,6 @@ function setUILock(locked) {
 
 /**
  * Validates IPv4 address formatting strictly (0-255 octets).
- * * @param {string} ip - The IP string to test.
- * @returns {boolean} - True if valid, false if invalid.
  */
 function checkIp(ip) {
   const ipv4 = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}$/;
@@ -35,11 +32,9 @@ function checkIp(ip) {
 
 /**
  * Applies IP, Netmask, and Gateway sequentially. 
- * Designed as a strict transaction to prevent partial-state lockouts 
- * (e.g., applying an IP but failing to apply the matching subnet mask).
+ * Designed as a strict transaction to prevent partial-state lockouts.
  */
 async function ipSub() {
-  // Pass 1: Validate all inputs before sending any commands to the hardware
   for (let i = 0; i < 3; i++) {
     if (!checkIp(document.getElementById(ips[i]).value)) return;
   }
@@ -47,23 +42,16 @@ async function ipSub() {
   setUILock(true);
   
   try {
-    // Pass 2: Send commands sequentially to the device RAM
     for (let i = 0; i < 3; i++) {
       const val = document.getElementById(ips[i]).value;
       const response = await fetch('/cmd', { method: 'POST', body: `${ips[i]} ${val}` });
-      
-      // Explicit ok check required because fetch() ignores 500-level server errors
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      
-      // Hardware throttle: Give the RTL8372 CPU 100ms to process before the next command
-      await new Promise(r => setTimeout(r, 100)); 
+      await new Promise(r => setTimeout(r, 100)); // Hardware breathing room
     }
-    // Await ensures the UI only updates after all commands are fully applied
     await fetchIP(false);
   } catch (err) {
     console.error(`Critical Error applying IP settings: ${err}`);
     alert(`Network update halted! Check console to prevent lockout.`);
-    // Silent abort: prevents subsequent commands from applying over a broken state
   } finally {
     setUILock(false);
   }
@@ -87,62 +75,95 @@ async function cmdSub() {
 }
 
 /**
- * Core Save Routine. Commits the merged configuration text blob directly to SPI Flash.
- * * @param {string} c - The raw configuration text block to save.
+ * Core Save Routine. Commits the merged configuration to SPI Flash.
  */
 async function sendConfig(c) {
-  // Silent return if a save is already in progress
   if (isSaving) return; 
   
   isSaving = true;
-  setUILock(true);
+  setUILock(true); 
+  clearInterval(systemInterval); // Stop polling during CPU-blocking flash write
   
-  // CRITICAL: Stop background IP polling. 
-  // Writing to SPI flash halts the CPU. If a background poll hits the HTTP daemon 
-  // during this halt, the web server crashes (ERR_EMPTY_RESPONSE).
-  clearInterval(systemInterval);
-  
-  // Package config as a binary blob per executeconfig() C-backend expectations
-  const form = new FormData();
-  form.append("MAX_FILE_SIZE", "4096");
-  form.append("configuration", new Blob([c], {type: "application/octet-stream"}));
+  let saveSucceeded = false;
   
   try {
-    const response = await fetch('/config', { method: 'POST', body: form });
+    const form = new FormData();
+    form.append("MAX_FILE_SIZE", "4096");
+    
+    // CRITICAL C-PARSER FIX: Must be a Blob, must be application/octet-stream, 
+    // and must have a filename so the C-backend multipart parser doesn't crash.
+    form.append(
+      "configuration", 
+      new Blob([c], { type: "application/octet-stream" }), 
+      "config.txt"
+    );
+    
+    const response = await fetch('/config', { 
+      method: 'POST', 
+      body: form 
+      // DO NOT SET HEADERS MANUALLY. The browser must dynamically generate 
+      // the multipart boundary string to satisfy httpd.c line 437.
+    });
+    
     if (!response.ok) throw new Error(`Server rejected flash write: ${response.status}`);
     
+    saveSucceeded = true;
     console.log('Flash write completed successfully!');
     alert("Configuration successfully saved to flash memory.");
     
-    // SAFEGUARD: Only clear the temporary RAM log if the flash write succeeded.
-    // Otherwise, unsaved user input would be lost on a failed save.
-    const clearResponse = await fetch('/cmd_log_clear', { method: 'GET' });
-    if (!clearResponse.ok) throw new Error("Flash saved, but log clear failed.");
-    console.log('Command log cleared.');
-    
   } catch(err) {
     console.error(`Error writing to flash: ${err}`);
-    alert("Save failed. Your configuration was NOT saved. Please check the console.");
-  } finally {
-    // ALWAYS release locks and restart polling, even if the save crashed
-    isSaving = false;
-    setUILock(false); 
-    // Defensive reset: Clear interval again to prevent orphaned timer memory leaks
-    clearInterval(systemInterval);
-    systemInterval = setInterval(() => fetchIP(false), 5000);
+    alert("Save failed. The switch's web server crashed or rejected the payload.");
   }
+  
+  // Best-effort cleanup: Decoupled so a timeout here doesn't mask a successful save
+  if (saveSucceeded) {
+    try {
+      const clearResponse = await fetch('/cmd_log_clear', { method: 'GET' });
+      if (!clearResponse.ok) {
+        console.warn("Log clear failed (non-fatal).");
+      } else {
+        console.log('Command log cleared.');
+      }
+    } catch (err) {
+      console.warn("Log clear request failed (non-fatal):", err);
+    }
+  }
+
+  isSaving = false;
+  setUILock(false); 
+  clearInterval(systemInterval); 
+  systemInterval = setInterval(() => fetchIP(false), 5000);
 }
 
 /**
- * Bypasses broken regex parsers by forwarding the exact UI textbox contents to the flash writer.
+ * THE MERGE FIX: Combines old flash baseline with live RAM session before saving.
  */
 async function flashSave() {
-  flashStartupSave(); 
-}
+  if (typeof configuration === 'undefined' || typeof parseConf !== 'function') {
+    alert("Critical Error: config.js logic is missing. Cannot safely merge config.");
+    return;
+  }
 
-async function flashStartupSave() {
-  const configContent = document.getElementById("config_display").value;
-  await sendConfig(configContent);
+  try {
+    configuration = []; 
+    
+    const savedConfig = await fetchConfig();   
+    const cmdLog = await fetchCmdLog();        
+
+    if (savedConfig) parseConf(savedConfig);  
+    if (cmdLog) parseConf(cmdLog);       
+
+    const mergedConfig = configuration.join('\n') + '\n';
+    
+    await sendConfig(mergedConfig);
+    
+    await fetchIP(true); 
+
+  } catch (err) {
+    console.error("Configuration merge failed:", err);
+    alert("Failed to build save file. Aborted to prevent data loss.");
+  }
 }
 
 /**
@@ -163,11 +184,8 @@ function clearConfig() {
 
 /**
  * Background polling routine. Keeps UI in sync with hardware state.
- * * @param {boolean} forceConfigUpdate - If true, forcefully overwrites the config textbox. 
- * If false, only populates the box if it is currently empty.
  */
 async function fetchIP(forceConfigUpdate = false) {
-  // Never poll while the switch is busy writing to flash
   if (isSaving) return; 
 
   try {
@@ -181,8 +199,6 @@ async function fetchIP(forceConfigUpdate = false) {
 
     const displayBox = document.getElementById("config_display");
     
-    // SAFEGUARD: Only update the heavy text box if forced (on load) or if empty.
-    // This prevents background polls from deleting user typing mid-keystroke.
     if (displayBox && (forceConfigUpdate || displayBox.value.trim() === "")) {
       const configResponse = await fetch('/config');
       if (configResponse.ok) {
@@ -199,7 +215,7 @@ async function fetchIP(forceConfigUpdate = false) {
  */
 function resetSwitch() {
   if (!confirm('Are you sure you want to reset the switch?')) { return; }
-  setUILock(true); // Lock the UI to prevent interactions while the SoC restarts
+  setUILock(true); 
   fetch('/reset', { method: 'GET' }).catch(() => {});
   setTimeout(() => {
     alert('Switch is resetting. Please wait and refresh the page.');
@@ -209,7 +225,7 @@ function resetSwitch() {
 
 // Initialization routine
 window.addEventListener("load", function() {
-  fetchIP(true); // Force populate the full config file into the UI on first boot
-  clearInterval(systemInterval); // Defensively clear any phantom timers created by browser quirks
-  systemInterval = setInterval(() => fetchIP(false), 5000); // Poll status every 5 seconds (not 1s)
+  fetchIP(true); 
+  clearInterval(systemInterval); 
+  systemInterval = setInterval(() => fetchIP(false), 5000); 
 });
