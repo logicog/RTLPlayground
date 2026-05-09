@@ -223,9 +223,7 @@ function notify(msg, type = 'info') {
   toastTimer = setTimeout(() => { t.className = t.className.replace('show', '').trim(); }, 4000);
 }
 
-// GLOBAL KILL-SWITCH FOR UPLOADS
 let isFlashing = false;
-
 let reqQ = [], busy = false, poller = null, systemInterval = null, infoLoaded = false, inFlight = null;
 const linkS = ["Disabled", "Down", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
 let globalNumPorts = 0, physToLogMap = {}, sfpMap = {}, portNames = {};
@@ -242,13 +240,21 @@ function processQ() {
   if (reqQ.length === 0 || isFlashing) { busy = false; return; }
   
   busy = true; const r = reqQ.shift(); inFlight = { url: r.url, method: r.method };
-  const x = new XMLHttpRequest(); x.open(r.method, r.url, true); x.timeout = 4000; 
+  const x = new XMLHttpRequest(); 
+  
+  // CACHE BUSTER: Append timestamp to all GET requests to prevent stale memory reads
+  let finalUrl = r.url;
+  if (r.method === "GET") {
+    finalUrl += (finalUrl.includes('?') ? '&' : '?') + '_t=' + new Date().getTime();
+  }
+  
+  x.open(r.method, finalUrl, true); 
+  x.timeout = 4000; 
   
   x.onreadystatechange = function() {
     if (this.readyState === 4) {
       inFlight = null; 
       if (isFlashing) return; 
-      
       if (this.status === 200 && r.cb) r.cb(this.responseText);
       else if (this.status === 401) { document.location = '/login.html'; return; }
       setTimeout(processQ, 50);
@@ -319,7 +325,7 @@ function getPorts() {
           if (isNaN(portNum)) return;
           const tr = document.createElement('tr');
           tr.id = 'stat-' + portNum;
-          for(let i=0; i<8; i++) tr.appendChild(document.createElement('td')); // Updated to 8 for Name col
+          for(let i=0; i<8; i++) tr.appendChild(document.createElement('td'));
           sBody.appendChild(tr);
         });
       }
@@ -329,7 +335,7 @@ function getPorts() {
         if (isNaN(portNum)) return; 
         physToLogMap[portNum] = p.logPort; 
         sfpMap[portNum] = p.isSFP;
-        portNames[portNum] = p.name || ''; // Extract hardware port name securely
+        portNames[portNum] = p.name || ''; 
         
         const linkRaw = parseInt(p.link, 10);
         let linkText = "UNKNOWN";
@@ -356,7 +362,6 @@ function getPorts() {
             
             d.appendChild(document.createTextNode(`PORT ${portNum}`));
             
-            // Dynamic Name Label for Dashboard Grid
             if (portNames[portNum]) {
                const nSpan = document.createElement('div');
                nSpan.style.fontSize = '11px'; 
@@ -380,7 +385,7 @@ function getPorts() {
           const tr = document.getElementById('stat-' + portNum);
           if (tr) {
             tr.cells[0].innerHTML = `<strong>Port ${portNum}</strong>`;
-            tr.cells[1].textContent = portNames[portNum]; // Port Name column
+            tr.cells[1].textContent = portNames[portNum]; 
             tr.cells[2].textContent = linkText;
             tr.cells[3].textContent = p.txG ? BigInt(p.txG).toString() : "0"; tr.cells[3].style.color = 'var(--success)';
             tr.cells[4].textContent = p.txB ? BigInt(p.txB).toString() : "0"; tr.cells[4].style.color = 'var(--danger)';
@@ -524,7 +529,6 @@ function applyVLAN() {
   const vid = document.getElementById('vlan-vid').value;
   if (!vid) return notify("Please enter a VLAN ID first.", "warning");
   
-  // Safe space replacement to match strict CLI backend rules
   const vlanName = document.getElementById('vlan-name').value.trim().replace(/\s+/g, '_');
   const portCount = globalNumPorts || 10;
   let members = [];
@@ -650,7 +654,6 @@ function applyPortCfg(portNum) {
   const speed = document.getElementById(`speed${portNum}`).value;
   const mtu = document.getElementById(`mtu${portNum}`).value;
   
-  // Clean custom name input, replace spaces with underscores to prevent CLI breakage
   const pname = document.getElementById(`pname${portNum}`).value.trim().replace(/\s+/g, '_');
   if (pname) {
     fetchAPI("POST", "/cmd", () => {}, `port ${portNum} name ${pname}`);
@@ -682,16 +685,18 @@ function rebootSwitch() {
 
 /** CONFIGURATION MERGE LOGIC **/
 let configuration = [];
+// FIX 1: Added MTU explicitly to the whitelist so it successfully merges
 const conf_cmds = [
   /^ip\s+(\d{1,3}\.){3}\d{1,3}/, /^gw\s+(\d{1,3}\.){3}\d{1,3}/, /^netmask\s+(\d{1,3}\.){3}\d{1,3}/,
   /^eee(?:\s+\d+)?\s+(on|off)/, /^mirror/, /^vlan\s+\d+.*/, /^pvid\s+\d+.*/, /^lag\s+\d+.*/,
-  /^bw\s+(in|out)\s+\d+.*/, /^igmp\s+(on|off)/, /^port\s+\d+.*/
+  /^bw\s+(in|out)\s+\d+.*/, /^igmp\s+(on|off)/, /^port\s+\d+.*/, /^mtu\s+\d+.*/
 ];
 const conf_overwrite = [
   /^ip/, /^gw/, /^netmask/, /^eee(?:\s+\d+)?/, /^mirror/, /^vlan\s+\d+/, /^pvid\s+\d+/,
   /^lag\s+\d+/, /^bw\s+(in|out)\s+\d+/, /^igmp/, 
-  /^port\s+\d+\s+name/,    // FIX: Isolates port names from being overwritten by speeds
-  /^port\s+\d+(?!\s+name)/ // FIX: Isolates port speeds from being overwritten by names
+  /^port\s+\d+\s+name/,    
+  /^port\s+\d+(?!\s+name)/,
+  /^mtu\s+\d+/
 ];
 
 function parseConf(s) {
@@ -717,38 +722,57 @@ function parseConf(s) {
 async function flashSaveConfig() {
   const btn = document.getElementById('saveGlobalBtn');
   btn.disabled = true;
+  notify("Processing pending changes...", "info");
+
+  // FIX 2: HTTP Queue Drain. Guarantees `/cmd_log` is fully up to date before fetching.
+  while (reqQ.length > 0 || inFlight !== null || busy) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+
   notify("Merging memory and saving to flash...", "info");
 
   try {
     configuration = [];
-    const resConfig = await fetch('/config');
+    
+    // FIX 3: Cache-busters to prevent fetching stale memory logs
+    const resConfig = await fetch('/config?_t=' + Date.now(), { cache: "no-store" });
     if (resConfig.ok) parseConf(await resConfig.text());
     
-    const resLog = await fetch('/cmd_log');
+    const resLog = await fetch('/cmd_log?_t=' + Date.now(), { cache: "no-store" });
     if (resLog.ok) parseConf(await resLog.text());
 
-    const mergedConfig = configuration.join('\n') + '\n';
+    // FIX 4: Hardened newline format for embedded parsers
+    const mergedConfig = configuration.join('\r\n') + '\r\n';
     
     const form = new FormData();
     form.append("MAX_FILE_SIZE", "4096");
     form.append("configuration", new Blob([mergedConfig], { type: "application/octet-stream" }), "config.txt");
     
-    const saveResponse = await fetch('/config', { method: 'POST', body: form });
-    if (!saveResponse.ok) throw new Error("HTTP " + saveResponse.status);
+    // FIX 5: Switched to pure XMLHttpRequest to match Firmware Upload success behavior
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/config", true);
+    xhr.setRequestHeader("Cache-Control", "no-cache");
     
-    notify("All UI changes saved to flash memory!", "success");
-    fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
+    xhr.onload = function() {
+      notify("All UI changes saved to flash memory!", "success");
+      // Delayed log clear so it doesn't abort the SPI write
+      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
+      document.getElementById('config-window').value = mergedConfig;
+      btn.disabled = false;
+    };
     
-    document.getElementById('config-window').value = mergedConfig;
-  } catch(err) {
-    if (err instanceof TypeError || err.message === 'Failed to fetch') {
+    xhr.onerror = function() {
       notify("Configuration saved! (Connection reset expected)", "success");
-      fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
-    } else {
-      notify("Failed to save. Check console.", "error");
-      console.error(err);
-    }
-  } finally {
+      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
+      document.getElementById('config-window').value = mergedConfig;
+      btn.disabled = false;
+    };
+    
+    xhr.send(form);
+    
+  } catch(err) {
+    notify("Failed to prepare save. Check console.", "error");
+    console.error(err);
     btn.disabled = false;
   }
 }
@@ -768,12 +792,12 @@ function saveManualConfig() {
   xhr.onload = function() {
       notify("Manual configuration saved to flash!", "success");
       btn.disabled = false;
-      fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
+      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
   };
   xhr.onerror = function() {
       notify("Configuration saved! (Connection reset expected)", "success");
       btn.disabled = false;
-      fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{});
+      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
   }
   xhr.send(form);
 }
