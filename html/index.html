@@ -242,7 +242,6 @@ function processQ() {
   busy = true; const r = reqQ.shift(); inFlight = { url: r.url, method: r.method };
   const x = new XMLHttpRequest(); 
   
-  // CACHE BUSTER: Append timestamp to all GET requests to prevent stale memory reads
   let finalUrl = r.url;
   if (r.method === "GET") {
     finalUrl += (finalUrl.includes('?') ? '&' : '?') + '_t=' + new Date().getTime();
@@ -426,14 +425,19 @@ function getInfo() {
   });
   
   fetchAPI("GET", "/config", (raw) => {
-     const w = document.getElementById('config-window');
-     if (w && document.activeElement !== w) w.value = raw;
+     // CRITICAL GARBAGE FIX: Strictly limits string to printable ASCII, Tab, CR, and LF.
+     // This strips out null bytes, \uFFFD replacement chars, and raw 0xFF silicon data
+     // resulting from httpd.c reading past EOF in the memory sector.
+     const cleanRaw = raw.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '').trim();
      
-     const igmpMatch = raw.match(/^igmp\s+(on|off)/m);
+     const w = document.getElementById('config-window');
+     if (w && document.activeElement !== w) w.value = cleanRaw;
+     
+     const igmpMatch = cleanRaw.match(/^igmp\s+(on|off)/m);
      const igmpCheckbox = document.getElementById('igmp-en');
      if (igmpCheckbox) igmpCheckbox.checked = (igmpMatch && igmpMatch[1] === 'on');
      
-     const eeeMatch = raw.match(/^eee\s+(on|off)/m);
+     const eeeMatch = cleanRaw.match(/^eee\s+(on|off)/m);
      const eeeCheckbox = document.getElementById('eee-en');
      if (eeeCheckbox) eeeCheckbox.checked = (eeeMatch && eeeMatch[1] === 'on');
   });
@@ -491,8 +495,10 @@ function closeCounters() {
 /** VLAN LOGIC **/
 function initVlanTable() {
   const tbody = document.getElementById('vlan-body');
-  if (tbody.children.length > 1) return;
   const portCount = globalNumPorts || 10; 
+  
+  if (tbody.children.length === portCount && tbody.children[0].cells.length > 1) return;
+  
   let rows = '';
   for (let i = 1; i <= portCount; i++) {
     rows += `<tr><td><strong>Port ${i}</strong></td><td class="cb-cell"><input type="checkbox" id="tport${i}" onclick="document.getElementById('uport${i}').checked=false"></td><td class="cb-cell"><input type="checkbox" id="uport${i}" onclick="document.getElementById('tport${i}').checked=false"></td><td class="cb-cell"><input type="checkbox" id="pport${i}"></td></tr>`;
@@ -685,7 +691,6 @@ function rebootSwitch() {
 
 /** CONFIGURATION MERGE LOGIC **/
 let configuration = [];
-// FIX 1: Added MTU explicitly to the whitelist so it successfully merges
 const conf_cmds = [
   /^ip\s+(\d{1,3}\.){3}\d{1,3}/, /^gw\s+(\d{1,3}\.){3}\d{1,3}/, /^netmask\s+(\d{1,3}\.){3}\d{1,3}/,
   /^eee(?:\s+\d+)?\s+(on|off)/, /^mirror/, /^vlan\s+\d+.*/, /^pvid\s+\d+.*/, /^lag\s+\d+.*/,
@@ -700,7 +705,10 @@ const conf_overwrite = [
 ];
 
 function parseConf(s) {
-  var a = s.split(/\r\n|\n/);
+  // CRITICAL GARBAGE FIX: Scrub the raw input to remove 0xFF and unreadable bytes before splitting.
+  var cleanString = s.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
+  var a = cleanString.split(/\r\n|\n/);
+  
   for (var l = 0; l < a.length; l++) {
     var line = a[l].trim().replace(/\s+/g, ' ');
     if (!line.length) continue;
@@ -724,7 +732,6 @@ async function flashSaveConfig() {
   btn.disabled = true;
   notify("Processing pending changes...", "info");
 
-  // FIX 2: HTTP Queue Drain. Guarantees `/cmd_log` is fully up to date before fetching.
   while (reqQ.length > 0 || inFlight !== null || busy) {
     await new Promise(r => setTimeout(r, 100));
   }
@@ -734,28 +741,31 @@ async function flashSaveConfig() {
   try {
     configuration = [];
     
-    // FIX 3: Cache-busters to prevent fetching stale memory logs
     const resConfig = await fetch('/config?_t=' + Date.now(), { cache: "no-store" });
     if (resConfig.ok) parseConf(await resConfig.text());
     
     const resLog = await fetch('/cmd_log?_t=' + Date.now(), { cache: "no-store" });
     if (resLog.ok) parseConf(await resLog.text());
 
-    // FIX 4: Hardened newline format for embedded parsers
-    const mergedConfig = configuration.join('\r\n') + '\r\n';
+    const mergedConfig = configuration.join('\n') + '\n';
     
+    // CRITICAL C-PARSER FIX: Restored FormData. 
+    // httpd.c expects multipart boundaries. Plain text triggers 400 Bad Request.
     const form = new FormData();
     form.append("MAX_FILE_SIZE", "4096");
     form.append("configuration", new Blob([mergedConfig], { type: "application/octet-stream" }), "config.txt");
     
-    // FIX 5: Switched to pure XMLHttpRequest to match Firmware Upload success behavior
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/config", true);
     xhr.setRequestHeader("Cache-Control", "no-cache");
     
     xhr.onload = function() {
-      notify("All UI changes saved to flash memory!", "success");
-      // Delayed log clear so it doesn't abort the SPI write
+      // PROPER HTTP CHECK IMPLEMENTED
+      if (this.status === 200) {
+          notify("All UI changes saved to flash memory!", "success");
+      } else {
+          notify(`Save failed (HTTP ${this.status}).`, "error");
+      }
       setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
       document.getElementById('config-window').value = mergedConfig;
       btn.disabled = false;
@@ -789,8 +799,14 @@ function saveManualConfig() {
   
   const xhr = new XMLHttpRequest();
   xhr.open("POST", "/config", true);
+  xhr.setRequestHeader("Cache-Control", "no-cache");
   xhr.onload = function() {
-      notify("Manual configuration saved to flash!", "success");
+      // PROPER HTTP CHECK IMPLEMENTED
+      if (this.status === 200) {
+          notify("Manual configuration saved to flash!", "success");
+      } else {
+          notify(`Save failed (HTTP ${this.status}).`, "error");
+      }
       btn.disabled = false;
       setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
   };
