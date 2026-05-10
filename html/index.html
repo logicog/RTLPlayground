@@ -9,24 +9,27 @@
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; display: flex; height: 100vh; color: var(--text); background: var(--bg); overflow: hidden; }
     
-    #nav { width: 240px; background: var(--sidebar); color: #f8fafc; display: flex; flex-direction: column; transition: 0.3s; z-index: 10; }
+    /* Sidebar Navigation */
+    #nav { width: 240px; background: var(--sidebar); color: #f8fafc; display: flex; flex-direction: column; transition: 0.3s; z-index: 10; flex-shrink: 0; }
     #nav .brand { padding: 24px; font-weight: 800; font-size: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 0.5px; }
-    #nav ul { list-style: none; padding: 0; margin: 0; }
-    #nav li { padding: 16px 24px; cursor: pointer; transition: 0.2s; border-left: 4px solid transparent; font-weight: 500; }
+    #nav ul { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
+    #nav li { padding: 16px 24px; cursor: pointer; transition: 0.2s; border-left: 4px solid transparent; font-weight: 500; font-size: 14px; }
     #nav li:hover, #nav li.active { background: var(--sidebar-hover); }
     #nav li.active { border-left-color: var(--accent); color: #fff; }
 
+    /* Main Content Area */
     #content { flex: 1; overflow-y: auto; padding: 40px; }
-    .panel { display: none; background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); max-width: 1000px; margin: 0 auto; animation: fadeIn 0.3s ease; }
+    .panel { display: none; background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); max-width: 1100px; margin: 0 auto; animation: fadeIn 0.3s ease; }
     .panel.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
     h2 { margin-top: 0; color: #0f172a; border-bottom: 2px solid var(--bg); padding-bottom: 12px; margin-bottom: 24px; }
     h3 { color: var(--sidebar); margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
 
-    .btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
+    /* Buttons & Inputs */
+    .btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; white-space: nowrap; }
     .btn:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
-    .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+    .btn:disabled { background: #cbd5e1; color: #64748b; cursor: not-allowed; }
     .btn-danger { background: var(--danger); }
     .btn-danger:hover:not(:disabled) { background: #dc2626; }
     .btn-warning { background: var(--warning); color: #000; }
@@ -34,39 +37,59 @@
     .btn-success { background: var(--success); }
     .btn-success:hover:not(:disabled) { background: #059669; }
     
-    .input-row { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+    .input-row { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
     input[type="text"], input[type="number"], select, textarea { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
     input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+    input:disabled, select:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
 
+    /* Port Grid (Dashboard) */
     .port-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; margin-bottom: 32px; }
-    .port { border: 2px solid #e2e8f0; border-radius: 8px; padding: 12px 6px; text-align: center; font-size: 12px; font-weight: 700; background: #f8fafc; color: #64748b; position: relative; }
+    .port { border: 2px solid #e2e8f0; border-radius: 8px; padding: 12px 6px; text-align: center; font-size: 12px; font-weight: 700; background: #f8fafc; color: #64748b; position: relative; cursor: help; transition: 0.2s; }
+    .port:hover { border-color: var(--accent); }
     .port.up { border-color: var(--success); color: var(--success); background: #f0fdf4; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1); }
     .sfp-badge { display: inline-block; background: #cbd5e1; color: #1e293b; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; font-weight: 800; letter-spacing: 0.5px; }
     .port.up .sfp-badge { background: #a7f3d0; color: #065f46; }
     
-    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; }
-    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e2e8f0; }
-    th { background: #f8fafc; font-weight: 600; color: #475569; }
+    /* Tables */
+    .table-responsive { overflow-x: auto; width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; position: sticky; top: 0; }
     tr:hover td { background: #f8fafc; }
     .cb-cell { text-align: center; }
 
+    /* LAG Grid */
     .lag-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
     .lag-group { border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; background: #f8fafc; }
     .lag-group h4 { margin: 0 0 10px 0; color: var(--sidebar); font-size: 14px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; }
     
+    /* Modal & Toast */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
     .modal-content { background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 800px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
     .modal-close { position: absolute; top: 16px; right: 20px; cursor: pointer; font-size: 28px; font-weight: bold; color: #94a3b8; line-height: 1; }
     .modal-close:hover { color: var(--danger); }
-    .mib-table { width: 100%; font-size: 12px; }
-    .mib-table th, .mib-table td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
-
+    
     #toast { position: fixed; top: 24px; right: 24px; padding: 16px 24px; border-radius: 8px; background: #333; color: #fff; font-weight: 600; font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: translateX(150%); transition: transform 0.3s; z-index: 1000; }
     #toast.show { transform: translateX(0); }
     #toast.success { background: var(--success); }
     #toast.error { background: var(--danger); }
     #toast.info { background: var(--accent); }
-    #toast.warning { background: var(--warning); color: #000; }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      #nav { width: 100%; height: auto; flex-direction: row; align-items: center; overflow-x: auto; white-space: nowrap; padding-right: 20px; }
+      #nav .brand { border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); padding: 16px; }
+      #nav ul { display: flex; flex-direction: row; }
+      #nav li { padding: 16px 12px; border-left: none; border-bottom: 4px solid transparent; }
+      #nav li.active { border-left: none; border-bottom-color: var(--accent); }
+      #content { padding: 16px; }
+      .panel { padding: 20px; }
+      .input-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .input-row > * { width: 100% !important; }
+      .btn { width: 100%; }
+      .action-btns { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -77,7 +100,7 @@
   <div class="modal-content">
     <span class="modal-close" onclick="closeCounters()">&times;</span>
     <h2 id="statsModalTitle" style="margin-top:0; border-bottom:none;">Detailed Port Counters</h2>
-    <div id="statsModalBody">Loading MIB counters...</div>
+    <div id="statsModalBody" class="table-responsive">Loading MIB counters...</div>
   </div>
 </div>
 
@@ -85,11 +108,12 @@
   <div class="brand">RTLPlayground</div>
   <ul>
     <li onclick="nav('dash')" id="nav-dash" class="active">Dashboard</li>
-    <li onclick="nav('stat')" id="nav-stat">Port Statistics</li>
+    <li onclick="nav('port')" id="nav-port">Port Settings (L1)</li>
     <li onclick="nav('vlan')" id="nav-vlan">VLAN Config</li>
     <li onclick="nav('l2')" id="nav-l2">L2 Features</li>
-    <li onclick="nav('sys')" id="nav-sys">System Settings</li>
-    <li onclick="nav('update')" id="nav-update">Firmware Update</li>
+    <li onclick="nav('stat')" id="nav-stat">Statistics</li>
+    <li onclick="nav('sys')" id="nav-sys">System</li>
+    <li onclick="nav('update')" id="nav-update">Firmware</li>
   </ul>
 </nav>
 
@@ -97,15 +121,49 @@
   <div id="dash" class="panel active">
     <h2>System Overview</h2>
     <div class="port-grid" id="port-grid">Loading ports...</div>
-    <table id="info-table"><tr><td style="color:#94a3b8; text-align:center;">Loading system information...</td></tr></table>
+    <div class="table-responsive">
+      <table id="info-table"><tr><td style="color:#94a3b8; text-align:center;">Loading system information...</td></tr></table>
+    </div>
+  </div>
+
+  <div id="port" class="panel">
+    <h2>Port Settings (Layer 1)</h2>
+    
+    <h3>Global Energy Efficient Ethernet (EEE)</h3>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Enable or disable global EEE. When enabled, per-port EEE overrides are disabled.</p>
+    <div class="input-row">
+      <label style="font-weight:600;">Enable Global EEE:</label>
+      <input type="checkbox" id="eee-en" style="transform: scale(1.5); margin: 0 15px;">
+      <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyGlobalEEE()">Save Global EEE</button>
+    </div>
+
+    <h3>Physical Port Configuration</h3>
+    <div class="table-responsive">
+      <table id="port-cfg-table">
+        <thead><tr><th>Port</th><th>Name</th><th>Link Speed</th><th>MTU Size</th><th>EEE</th><th style="width:80px;">Action</th></tr></thead>
+        <tbody id="port-cfg-body"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3>Bandwidth Control</h3>
+    <div class="table-responsive">
+      <table id="bw-table">
+        <thead>
+          <tr> <th>Port</th> <th>In Limit</th> <th>In BW [kBit/s]</th> <th>Flow Control</th> <th>Out Limit</th> <th>Out BW [kBit/s]</th> <th>Apply</th></tr>
+        </thead>
+        <tbody id="bw-body"><tr><td colspan="7" style="text-align:center;">Loading bandwidth data...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <div id="stat" class="panel">
     <h2>Port Statistics</h2>
-    <table id="stat-table">
-      <thead><tr><th>Port</th><th>Name</th><th>Link</th><th>Tx Good</th><th>Tx Bad</th><th>Rx Good</th><th>Rx Bad</th><th style="width: 80px;">Action</th></tr></thead>
-      <tbody id="stat-body"><tr><td colspan="8" style="text-align:center;">Loading statistics...</td></tr></tbody>
-    </table>
+    <div class="table-responsive">
+      <table id="stat-table">
+        <thead><tr><th>Port</th><th>Name</th><th>Link</th><th>Tx Good</th><th>Tx Bad</th><th>Rx Good</th><th>Rx Bad</th><th style="width: 80px;">Action</th></tr></thead>
+        <tbody id="stat-body"><tr><td colspan="8" style="text-align:center;">Loading statistics...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <div id="vlan" class="panel">
@@ -119,13 +177,15 @@
       <label style="font-weight:600;">VLAN Name:</label>
       <input type="text" id="vlan-name" placeholder="e.g. Management" style="width: 250px;">
     </div>
-    <table id="vlan-table">
-      <thead><tr><th>Port</th><th class="cb-cell">Tagged (Member)</th><th class="cb-cell">Untagged (Member)</th><th class="cb-cell">Default PVID</th></tr></thead>
-      <tbody id="vlan-body"><tr><td colspan="4" style="text-align:center; color:#94a3b8;">Enter a VLAN ID and click Load</td></tr></tbody>
-    </table>
+    <div class="table-responsive">
+      <table id="vlan-table">
+        <thead><tr><th>Port</th><th class="cb-cell">Tagged (Member)</th><th class="cb-cell">Untagged (Member)</th><th class="cb-cell">Default PVID</th></tr></thead>
+        <tbody id="vlan-body"><tr><td colspan="4" style="text-align:center; color:#94a3b8;">Enter a VLAN ID and click Load</td></tr></tbody>
+      </table>
+    </div>
     <div class="input-row" style="margin-top: 20px;">
       <button class="btn btn-accent" onclick="applyVLAN()">Save VLAN Settings</button>
-      <span style="color: #64748b; font-size: 13px; margin-left: 15px;">Remember to click "Save All UI Changes to Flash" in System Settings to keep these changes after a reboot.</span>
+      <span style="color: #64748b; font-size: 12px; margin-left: 15px;">(Remember to 'Save UI Changes to Flash' in System tab to persist reboots)</span>
     </div>
   </div>
 
@@ -133,32 +193,18 @@
     <h2>Layer 2 Features</h2>
     
     <h3>IGMP Snooping (IPv4 Multicast)</h3>
-    <p style="color: #64748b; margin-bottom: 15px; font-size: 14px;">Enable IGMP v3 snooping to prevent Layer-3 multicast packets (e.g., IPTV streams) from flooding all ports.</p>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Enable IGMP v3 snooping to prevent Layer-3 multicast packets from flooding all ports.</p>
     <div class="input-row">
       <label style="font-weight:600;">Enable IGMP Snooping:</label>
       <input type="checkbox" id="igmp-en" style="transform: scale(1.5); margin: 0 15px;">
       <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyIGMP()">Save IGMP Settings</button>
     </div>
 
-    <h3>Energy Efficient Ethernet (EEE)</h3>
-    <p style="color: #64748b; margin-bottom: 15px; font-size: 14px;">Reduce switch power consumption during periods of low data activity.</p>
-    <div class="input-row">
-      <label style="font-weight:600;">Enable Global EEE:</label>
-      <input type="checkbox" id="eee-en" style="transform: scale(1.5); margin: 0 15px;">
-      <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyEEE()">Save EEE Settings</button>
-    </div>
-
     <h3>Link Aggregation (LAG)</h3>
-    <p style="color: #64748b; margin-bottom: 15px; font-size: 14px;">Select port members to bundle them into a Link Aggregation Group.</p>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Select port members to bundle them into a Link Aggregation Group.</p>
     <div id="lag-container" class="lag-container">
        <div style="color:#94a3b8;">Loading LAG data...</div>
     </div>
-
-    <h3>Port Configuration (Speed, MTU, Name)</h3>
-    <table id="port-cfg-table">
-      <thead><tr><th>Port</th><th>Name</th><th>Link Speed</th><th>MTU Size</th><th style="width:80px;">Action</th></tr></thead>
-      <tbody id="port-cfg-body"><tr><td colspan="5" style="text-align:center;">Loading...</td></tr></tbody>
-    </table>
 
     <h3>Port Mirroring</h3>
     <div class="input-row" style="margin-top: 20px;">
@@ -166,11 +212,14 @@
       <input type="checkbox" id="mirror-en" style="transform: scale(1.5); margin: 0 15px;">
       <label style="font-weight:600;">Destination Port:</label>
       <input type="number" id="mirror-port" style="width:80px;" min="1" max="10">
+      <button class="btn" style="padding: 6px 12px; font-size: 12px; margin-left: 15px;" onclick="applyMirror()">Save Mirror Settings</button>
     </div>
-    <table id="mirror-table">
-      <thead><tr><th>Port</th><th class="cb-cell">Mirror TX (Egress)</th><th class="cb-cell">Mirror RX (Ingress)</th></tr></thead>
-      <tbody id="mirror-body"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody>
-    </table>
+    <div class="table-responsive">
+      <table id="mirror-table">
+        <thead><tr><th>Port</th><th class="cb-cell">Mirror TX (Egress)</th><th class="cb-cell">Mirror RX (Ingress)</th></tr></thead>
+        <tbody id="mirror-body"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <div id="sys" class="panel">
@@ -183,17 +232,17 @@
     <button class="btn" onclick="applyIP()">Apply Network Settings</button>
 
     <h3>Device Management</h3>
-    <p style="color: #64748b; margin-bottom: 15px;">Changes made in the UI are held in temporary memory. You must save them to flash to persist across reboots.</p>
-    <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Changes made in the UI are held in temporary memory. You must save them to flash to persist across reboots.</p>
+    <div class="action-btns" style="display: flex; gap: 15px; margin-bottom: 30px;">
       <button class="btn btn-success" id="saveGlobalBtn" onclick="flashSaveConfig()">Save All UI Changes to Flash</button>
       <button class="btn btn-danger" onclick="rebootSwitch()">Reboot Switch</button>
     </div>
 
     <h3>Manual Configuration</h3>
-    <p style="color: #64748b; margin-bottom: 10px;">Edit the raw system configuration below.</p>
+    <p style="color: #64748b; margin-bottom: 10px; font-size: 13px;">Edit the raw system configuration below.</p>
     <textarea id="config-window" rows="12" style="width:100%; font-family:monospace;" placeholder="Fetching configuration..."></textarea>
     
-    <div style="display: flex; gap: 15px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+    <div class="action-btns" style="display: flex; gap: 15px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
       <button class="btn btn-warning" id="saveBtn" onclick="saveManualConfig()">Save Text Config Directly</button>
     </div>
   </div>
@@ -214,679 +263,6 @@
   </div>
 </main>
 
-<script>
-/** INFRASTRUCTURE **/
-let toastTimer;
-function notify(msg, type = 'info') {
-  const t = document.getElementById('toast');
-  clearTimeout(toastTimer); t.className = `show ${type}`; t.innerText = msg;
-  toastTimer = setTimeout(() => { t.className = t.className.replace('show', '').trim(); }, 4000);
-}
-
-let isFlashing = false;
-let reqQ = [], busy = false, poller = null, systemInterval = null, infoLoaded = false, inFlight = null;
-const linkS = ["Disabled", "Down", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
-let globalNumPorts = 0, physToLogMap = {}, sfpMap = {}, portNames = {};
-
-function fetchAPI(method, url, cb, data = null) {
-  if (isFlashing) return;
-  if (inFlight && inFlight.url === url && inFlight.method === method) return;
-  if (reqQ.some(r => r.url === url && r.method === method)) return;
-  reqQ.push({ method, url, cb, data });
-  if (!busy) processQ();
-}
-
-function processQ() {
-  if (reqQ.length === 0 || isFlashing) { busy = false; return; }
-  
-  busy = true; const r = reqQ.shift(); inFlight = { url: r.url, method: r.method };
-  const x = new XMLHttpRequest(); 
-  
-  let finalUrl = r.url;
-  if (r.method === "GET") {
-    finalUrl += (finalUrl.includes('?') ? '&' : '?') + '_t=' + new Date().getTime();
-  }
-  
-  x.open(r.method, finalUrl, true); 
-  x.timeout = 4000; 
-  
-  x.onreadystatechange = function() {
-    if (this.readyState === 4) {
-      inFlight = null; 
-      if (isFlashing) return; 
-      if (this.status === 200 && r.cb) r.cb(this.responseText);
-      else if (this.status === 401) { document.location = '/login.html'; return; }
-      setTimeout(processQ, 50);
-    }
-  };
-  x.ontimeout = x.onerror = () => { inFlight = null; setTimeout(processQ, 100); };
-  x.send(r.data);
-}
-
-/** NAVIGATION ROUTING **/
-function nav(id) {
-  if (isFlashing || document.getElementById('flashBtn').disabled) return notify("Locked during update.", "warning");
-  
-  clearInterval(poller); poller = null;
-  clearInterval(systemInterval); systemInterval = null;
-  
-  document.querySelectorAll('.panel, #nav li').forEach(e => e.classList.remove('active'));
-  
-  const targetPanel = document.getElementById(id);
-  const targetNav = document.getElementById('nav-' + id);
-  if (targetPanel) targetPanel.classList.add('active');
-  if (targetNav) targetNav.classList.add('active');
-  
-  if (id === 'dash' || id === 'stat') {
-    getPorts(); poller = setInterval(getPorts, 5000);
-  } else if (id === 'vlan') {
-    initVlanTable(); 
-  } else if (id === 'l2') {
-    getL2Features();
-  }
-  
-  if (id === 'dash' || id === 'sys' || id === 'l2') {
-    getInfo(); 
-    systemInterval = setInterval(getInfo, 5000);
-    infoLoaded = true;
-  }
-}
-
-/** DASHBOARD & STATS LOGIC **/
-function getPorts() {
-  fetchAPI("GET", "/status.json", (raw) => {
-    try {
-      const data = JSON.parse(raw);
-      const grid = document.getElementById('port-grid');
-      const sBody = document.getElementById('stat-body');
-      const isDash = document.getElementById('dash').classList.contains('active');
-      const isStat = document.getElementById('stat').classList.contains('active');
-      
-      if (!globalNumPorts || globalNumPorts !== data.length) {
-          globalNumPorts = data.length;
-          grid.innerHTML = ''; 
-          sBody.innerHTML = '';
-      }
-
-      if (isDash && !grid.children.length && data.length > 0) {
-        data.forEach(p => {
-          const portNum = parseInt(p.portNum, 10);
-          if (isNaN(portNum)) return;
-          const d = document.createElement('div');
-          d.id = 'port-' + portNum; d.className = 'port'; grid.appendChild(d);
-        });
-      }
-
-      if (isStat && (!sBody.children.length || sBody.children[0].children.length === 1)) {
-        sBody.innerHTML = '';
-        data.forEach(p => {
-          const portNum = parseInt(p.portNum, 10);
-          if (isNaN(portNum)) return;
-          const tr = document.createElement('tr');
-          tr.id = 'stat-' + portNum;
-          for(let i=0; i<8; i++) tr.appendChild(document.createElement('td'));
-          sBody.appendChild(tr);
-        });
-      }
-
-      data.forEach(p => {
-        const portNum = parseInt(p.portNum, 10);
-        if (isNaN(portNum)) return; 
-        physToLogMap[portNum] = p.logPort; 
-        sfpMap[portNum] = p.isSFP;
-        portNames[portNum] = p.name || ''; 
-        
-        const linkRaw = parseInt(p.link, 10);
-        let linkText = "UNKNOWN";
-        let isUp = false;
-        
-        if (p.enabled == 0) {
-            linkText = "Disabled";
-        } else if (!isNaN(linkRaw)) {
-            isUp = linkRaw > 0;
-            linkText = linkS[linkRaw + 1] || "UNKNOWN";
-        }
-        
-        if (isDash) {
-          const d = document.getElementById('port-' + portNum);
-          if (d) {
-            d.className = isUp ? 'port up' : 'port';
-            d.innerHTML = ''; 
-            
-            if (p.isSFP) {
-              const badge = document.createElement('div');
-              badge.className = 'sfp-badge'; badge.textContent = 'SFP';
-              d.appendChild(badge); d.appendChild(document.createElement('br'));
-            }
-            
-            d.appendChild(document.createTextNode(`PORT ${portNum}`));
-            
-            if (portNames[portNum]) {
-               const nSpan = document.createElement('div');
-               nSpan.style.fontSize = '11px'; 
-               nSpan.style.color = isUp ? '#065f46' : '#94a3b8';
-               nSpan.style.marginTop = '2px';
-               nSpan.style.overflow = 'hidden'; 
-               nSpan.style.textOverflow = 'ellipsis';
-               nSpan.style.whiteSpace = 'nowrap';
-               nSpan.textContent = portNames[portNum];
-               d.appendChild(nSpan);
-            }
-            
-            d.appendChild(document.createElement('br'));
-            const span = document.createElement('span');
-            span.style.fontSize = '16px'; span.textContent = linkText;
-            d.appendChild(span);
-          }
-        }
-        
-        if (isStat) {
-          const tr = document.getElementById('stat-' + portNum);
-          if (tr) {
-            tr.cells[0].innerHTML = `<strong>Port ${portNum}</strong>`;
-            tr.cells[1].textContent = portNames[portNum]; 
-            tr.cells[2].textContent = linkText;
-            tr.cells[3].textContent = p.txG ? BigInt(p.txG).toString() : "0"; tr.cells[3].style.color = 'var(--success)';
-            tr.cells[4].textContent = p.txB ? BigInt(p.txB).toString() : "0"; tr.cells[4].style.color = 'var(--danger)';
-            tr.cells[5].textContent = p.rxG ? BigInt(p.rxG).toString() : "0"; tr.cells[5].style.color = 'var(--success)';
-            tr.cells[6].textContent = p.rxB ? BigInt(p.rxB).toString() : "0"; tr.cells[6].style.color = 'var(--danger)';
-            tr.cells[7].innerHTML = `<button class="btn" onclick="showCounters(${portNum})" style="padding: 4px 8px; font-size: 11px;">Details</button>`;
-          }
-        }
-      });
-    } catch (e) { console.warn("Parse error:", e); }
-  });
-}
-
-function getInfo() {
-  fetchAPI("GET", "/information.json", (raw) => {
-    try {
-      const data = JSON.parse(raw);
-      const tbl = document.getElementById('info-table');
-      if (tbl) {
-        tbl.innerHTML = '';
-        for (const [k, v] of Object.entries(data)) {
-          const row = tbl.insertRow();
-          const keyCell = row.insertCell();
-          const strong = document.createElement('strong');
-          strong.textContent = k;
-          keyCell.appendChild(strong);
-          row.insertCell().textContent = v; 
-        }
-      }
-
-      const sysIp = document.getElementById('sys-ip');
-      if (sysIp && document.activeElement !== sysIp) {
-        sysIp.value = data.ip_address || '';
-        document.getElementById('sys-mask').value = data.ip_netmask || '';
-        document.getElementById('sys-gw').value = data.ip_gateway || '';
-      }
-    } catch (e) { console.warn(e); }
-  });
-  
-  fetchAPI("GET", "/config", (raw) => {
-     // CRITICAL GARBAGE FIX: Strictly limits string to printable ASCII, Tab, CR, and LF.
-     // This strips out null bytes, \uFFFD replacement chars, and raw 0xFF silicon data
-     // resulting from httpd.c reading past EOF in the memory sector.
-     const cleanRaw = raw.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '').trim();
-     
-     const w = document.getElementById('config-window');
-     if (w && document.activeElement !== w) w.value = cleanRaw;
-     
-     const igmpMatch = cleanRaw.match(/^igmp\s+(on|off)/m);
-     const igmpCheckbox = document.getElementById('igmp-en');
-     if (igmpCheckbox) igmpCheckbox.checked = (igmpMatch && igmpMatch[1] === 'on');
-     
-     const eeeMatch = cleanRaw.match(/^eee\s+(on|off)/m);
-     const eeeCheckbox = document.getElementById('eee-en');
-     if (eeeCheckbox) eeeCheckbox.checked = (eeeMatch && eeeMatch[1] === 'on');
-  });
-}
-
-/** DETAILED MIB COUNTERS **/
-const mib_counters = [ "Interface in Octets", 8, "", 0, "Interface out Octets", 8, "", 0, "Interface in Unicast Pkts", 8, "", 0, "Interface in Multicast Pkts", 8, "", 0, "Interface in Broadcast Pkts", 8, "", 0, "Interface out Unicast Pkts", 8, "", 0, "Interface out Multicast Pkts", 8, "", 0, "Interface out Broadcast Pkts", 8, "", 0, "Interface out discards", 4, "802.1d Tp Port in discards", 4, "802.3 Single collision frames", 4, "802.3 Multi collision frames", 4, "802.3 Deferred transmissions", 4, "802.3 Late collisions", 4, "802.3 Excessive collisions", 4, "802.3 Symbol errors", 4, "802.3 Control in unknown opcodes", 4, "802.3 In Pause frames", 4, "802.3 Out Pause frames", 4, "Ether drop events", 4, "TX Ether Broadcast Pkts", 4, "TX Ether Multicast Pkts", 4, "TX Ether CRC Align errors", 4, "RX Ether CRC Align errors", 4, "TX Ether Undersized Pkts", 4, "RX Ether Undersized Pkts", 4, "TX Ether Oversized Pkts", 4, "RX Ether Oversized Pkts", 4, "TX Ether Fragments", 4, "RX Ether fragments", 4, "TX Ether Jabbers", 4, "RX Ether Jabbers", 4, "TX Ether Collisions", 4, "TX Ether Pkts 640 Octets", 4, "RX Ether Pkts 640 Octets", 4, "TX Ether 65-127 Octets", 4, "RX Ether 65-127 Octets", 4, "TX Ether Pkts 128-255 Octets", 4, "RX Ether Pkts 128-255 Octets", 4, "TX Ether Pkts 256-511 Octets", 4, "RX Ether Pkts 256-511 Octets", 4, "TX Ether Pkts 512-1023 Octets", 4, "RX Ether Pkts 512-1023 Octets", 4, "TX Ether Pkts 1024-1518 Octets", 4, "RX Ether Pkts 1024-1518 Octets", 4, "", 4, "RX Ether Undersized Drop Pkts", 4, "TX Ether Pkts >1518 Octets", 4, "RX Ether Pkts >1518 Octets", 4, "TX Ether Pkts too large", 4, "RX Ether Pkts too large", 4, "TX Ether Flexible Octets Set 1", 4, "RX Ether Flexible Octets Set 1", 4, "TX Ether Flexible Octets CRC Set 1", 4, "RX Ether Flexible Octets CRC Set 1", 4, "TX Ether Flexible Octets Set 0", 4, "RX Ether Flexible Octets Set 0", 4, "TX Ether Flexible Octets CRC Set 0", 4, "RX Ether Flexible Octets CRC Set 0", 4, "Lenth Field Errors", 4, "False Carriers", 4, "Undersized Octets", 4, "Framing Errors", 4, "", 4, "RX MAC Discards", 4, "RX MAC IPG Short Drop", 4, "", 4, "802.1d TP Learned Entry Discards", 4, "Egress Queue 7 Dropped Pkts", 4, "Egress Queue 6 Dropped Pkts", 4, "Egress Queue 5 Dropped Pkts", 4, "Egress Queue 4 Dropped Pkts", 4, "Egress Queue 3 Dropped Pkts", 4, "Egress Queue 2 Dropped Pkts", 4, "Egress Queue 1 Dropped Pkts", 4, "Egress Queue 0 Dropped Pkts", 4, "Egress Queue 7 Out Pkts", 4, "Egress Queue 6 Out Pkts", 4, "Egress Queue 5 Out Pkts", 4, "Egress Queue 4 Out Pkts", 4, "Egress Queue 3 Out Pkts", 4, "Egress Queue 2 Out Pkts", 4, "Egress Queue 1 Out Pkts", 4, "Egress Queue 0 Out Pkts", 4, "TX Good Counter", 8, "", 0, "RX Good Counter", 8, "", 0, "RX Error Counter", 4, "TX Error Counter", 4, "TX Good Counter PHY", 8, "", 0, "RX Good Counter PHY", 8, "", 0, "RX Error Counter PHY", 4, "TX Error Counter PHY", 4 ];
-
-function showCounters(portNum) {
-  const queryPort = physToLogMap[portNum] !== undefined ? physToLogMap[portNum] : (portNum - 1);
-  document.getElementById('statsModalTitle').textContent = `Detailed Counters: Port ${portNum}`;
-  document.getElementById('statsModalBody').innerHTML = "Loading...";
-  document.getElementById('statsModal').style.display = "flex";
-  
-  fetchAPI("GET", `/counters.json?port=${queryPort}`, (raw) => {
-    try {
-      const s = JSON.parse(raw);
-      let t = `<table class="mib-table"><thead><tr><th style="width:35%">Counter</th><th style="width:15%">Value</th><th style="width:35%">Counter</th><th style="width:15%">Value</th></tr></thead><tbody><tr>`;
-      let c = 0;
-      
-      for (let i = 0; i < mib_counters.length; i += 4) {
-        if (mib_counters[i] === "" && mib_counters[i + 1] === 8) continue;
-        
-        let countRaw = s[Math.floor(i / 4)];
-        let count = countRaw ? BigInt(countRaw) : 0n;
-        
-        if (mib_counters[i+1] === 8) {
-          t += `<td>${mib_counters[i]}</td><td><strong>${count.toString()}</strong></td>`;
-          c += 1;
-        } else if (mib_counters[i+1] === 4) {
-          if (mib_counters[i] !== "") {
-            t += `<td>${mib_counters[i]}</td><td><strong>${(count >> 32n).toString()}</strong></td>`;
-            c += 1;
-          }
-          if (c === 2) { t += "</tr><tr>"; c = 0; }
-          if (mib_counters[i+2] !== "") {
-            t += `<td>${mib_counters[i+2]}</td><td><strong>${(count & 4294967295n).toString()}</strong></td>`;
-            c += 1;
-          }
-        }
-        if (c === 2) { t += "</tr><tr>"; c = 0; }
-      }
-      t += "</tr></tbody></table>";
-      document.getElementById('statsModalBody').innerHTML = t;
-    } catch (e) {
-      document.getElementById('statsModalBody').innerHTML = "Error parsing counters data.";
-    }
-  });
-}
-
-function closeCounters() {
-  document.getElementById('statsModal').style.display = "none";
-}
-
-/** VLAN LOGIC **/
-function initVlanTable() {
-  const tbody = document.getElementById('vlan-body');
-  const portCount = globalNumPorts || 10; 
-  
-  if (tbody.children.length === portCount && tbody.children[0].cells.length > 1) return;
-  
-  let rows = '';
-  for (let i = 1; i <= portCount; i++) {
-    rows += `<tr><td><strong>Port ${i}</strong></td><td class="cb-cell"><input type="checkbox" id="tport${i}" onclick="document.getElementById('uport${i}').checked=false"></td><td class="cb-cell"><input type="checkbox" id="uport${i}" onclick="document.getElementById('tport${i}').checked=false"></td><td class="cb-cell"><input type="checkbox" id="pport${i}"></td></tr>`;
-  }
-  tbody.innerHTML = rows;
-}
-
-function fetchVLAN() {
-  const vid = document.getElementById('vlan-vid').value;
-  if (!vid) return notify("Please enter a VLAN ID first.", "warning");
-  
-  fetchAPI("GET", `/vlan.json?vid=${vid}`, (raw) => {
-    try {
-      const s = JSON.parse(raw);
-      document.getElementById('vlan-name').value = s.name || '';
-      
-      const members = parseInt(s.members, 16);
-      const untag = s.untag !== undefined ? parseInt(s.untag, 16) : ((members >> 10) & 0x3FF);
-      const pvidMask = parseInt(s.pvid, 16); 
-      
-      const portCount = globalNumPorts || 10;
-      for (let p = 1; p <= portCount; p++) {
-        const bit = physToLogMap[p] !== undefined ? physToLogMap[p] : (p - 1);
-        document.getElementById(`tport${p}`).checked = ((members >> bit) & 1) && !((untag >> bit) & 1);
-        document.getElementById(`uport${p}`).checked = ((members >> bit) & 1) && ((untag >> bit) & 1);
-        document.getElementById(`pport${p}`).checked = (pvidMask >> bit) & 1;
-      }
-      notify(`Loaded VLAN ${vid} successfully.`, "success");
-    } catch (e) { notify("VLAN not found.", "error"); }
-  });
-}
-
-function applyVLAN() {
-  const vid = document.getElementById('vlan-vid').value;
-  if (!vid) return notify("Please enter a VLAN ID first.", "warning");
-  
-  const vlanName = document.getElementById('vlan-name').value.trim().replace(/\s+/g, '_');
-  const portCount = globalNumPorts || 10;
-  let members = [];
-  
-  for (let p = 1; p <= portCount; p++) {
-    const isTagged = document.getElementById(`tport${p}`).checked;
-    const isUntagged = document.getElementById(`uport${p}`).checked;
-    if (isTagged || isUntagged) members.push(p);
-  }
-  
-  let cmdVlan = `vlan ${vid}`;
-  if (vlanName) cmdVlan += ` ${vlanName}`;
-  if (members.length > 0) cmdVlan += ` ${members.join(' ')}`;
-  
-  fetchAPI("POST", "/cmd", () => notify(`VLAN ${vid} members and name saved.`, "success"), cmdVlan);
-  
-  for (let p = 1; p <= portCount; p++) {
-    if (document.getElementById(`pport${p}`).checked) {
-      fetchAPI("POST", "/cmd", () => {}, `pvid ${p} ${vid}`);
-    }
-  }
-}
-
-/** L2 FEATURES **/
-function applyIGMP() {
-  const isEnabled = document.getElementById('igmp-en').checked;
-  const cmd = isEnabled ? "igmp on" : "igmp off";
-  fetchAPI("POST", "/cmd", () => notify(`IGMP Snooping turned ${isEnabled ? 'ON' : 'OFF'}.`, "success"), cmd);
-}
-
-function applyEEE() {
-  const isEnabled = document.getElementById('eee-en').checked;
-  const cmd = isEnabled ? "eee on" : "eee off";
-  fetchAPI("POST", "/cmd", () => notify(`Energy Efficient Ethernet turned ${isEnabled ? 'ON' : 'OFF'}.`, "success"), cmd);
-}
-
-function getL2Features() {
-  fetchAPI("GET", "/lag.json", (raw) => {
-    try {
-      const s = JSON.parse(raw);
-      const portCount = globalNumPorts || 10;
-      let lagHtml = '';
-      for (let l = 0; l < 4; l++) {
-        let members = s[l] ? parseInt(s[l].members, 2) : 0;
-        lagHtml += `<div class="lag-group"><h4>LAG Group ${l}</h4><div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">`;
-        for(let i=1; i<=portCount; i++) {
-          const bit = physToLogMap[i] !== undefined ? physToLogMap[i] : (i - 1);
-          const isChecked = (members & (1 << bit)) ? 'checked' : '';
-          lagHtml += `<label style="font-size:13px; cursor:pointer;"><input type="checkbox" id="lag${l}_p${i}" ${isChecked} style="margin-right:4px;">P${i}</label>`;
-        }
-        lagHtml += `</div><button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyLAG(${l})">Save LAG ${l}</button></div>`;
-      }
-      document.getElementById('lag-container').innerHTML = lagHtml;
-    } catch (e) { console.warn(e); }
-  });
-
-  fetchAPI("GET", "/mirror.json", (raw) => {
-    try {
-      const s = JSON.parse(raw);
-      document.getElementById('mirror-en').checked = s.enabled;
-      document.getElementById('mirror-port').value = s.mPort;
-      
-      const m_tx = parseInt(s.mirror_tx, 16);
-      const m_rx = parseInt(s.mirror_rx, 16);
-      
-      const portCount = globalNumPorts || 10;
-      let rows = '';
-      for (let i = 1; i <= portCount; i++) {
-        const bit = physToLogMap[i] !== undefined ? physToLogMap[i] : (i - 1);
-        rows += `<tr><td><strong>Port ${i}</strong></td><td class="cb-cell"><input type="checkbox" id="mtx${i}" ${(m_tx & (1<<bit)) ? 'checked' : ''}></td><td class="cb-cell"><input type="checkbox" id="mrx${i}" ${(m_rx & (1<<bit)) ? 'checked' : ''}></td></tr>`;
-      }
-      document.getElementById('mirror-body').innerHTML = rows;
-    } catch (e) { console.warn(e); }
-  });
-
-  fetchAPI("GET", "/mtu.json", (raw) => {
-    try {
-      let rows = '';
-      JSON.parse(raw).forEach(p => {
-        const portNum = parseInt(p.portNum, 10);
-        if(isNaN(portNum)) return;
-        const mtuHex = parseInt(p.mtu, 16);
-        const speedVal = p.speed ? p.speed : (p.enabled == 0 ? "off" : "auto"); 
-        
-        rows += `<tr>
-          <td><strong>Port ${portNum}</strong></td>
-          <td><input type="text" id="pname${portNum}" value="${portNames[portNum] || ''}" style="width:100px;" placeholder="Name"></td>
-          <td><select id="speed${portNum}" style="width:150px;">
-            <option value=\"auto\" ${speedVal==='auto'?'selected':''}>Auto</option>
-            <option value=\"off\" ${speedVal==='off'?'selected':''}>Disabled</option>
-            <option value=\"2g5\" ${speedVal==='2g5'?'selected':''}>2500MBit/Full</option>
-            <option value=\"1g\" ${speedVal==='1g'?'selected':''}>1000MBit/Full</option>
-            <option value=\"100m full\" ${speedVal==='100m full'?'selected':''}>100MBit/Full</option>
-            <option value=\"100m half\" ${speedVal==='100m half'?'selected':''}>100MBit/Half</option>
-            <option value=\"10m full\" ${speedVal==='10m full'?'selected':''}>10MBit/Full</option>
-            <option value=\"10m half\" ${speedVal==='10m half'?'selected':''}>10MBit/Half</option>
-          </select></td>
-          <td><select id="mtu${portNum}">
-            <option value="1522" ${mtuHex===1522?'selected':''}>1522</option>
-            <option value="1536" ${mtuHex===1536?'selected':''}>1536</option>
-            <option value="1552" ${mtuHex===1552?'selected':''}>1552</option>
-            <option value="9216" ${mtuHex===9216?'selected':''}>9216</option>
-            <option value="16383" ${mtuHex===16383?'selected':''}>16383</option>
-          </select></td>
-          <td><button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="applyPortCfg(${portNum})">Save</button></td>
-        </tr>`;
-      });
-      document.getElementById('port-cfg-body').innerHTML = rows;
-    } catch(e) { console.warn(e); }
-  });
-}
-
-function applyLAG(l) {
-  const portCount = globalNumPorts || 10;
-  let cmd = `lag ${l}`;
-  for(let i=1; i<=portCount; i++) {
-    if (document.getElementById(`lag${l}_p${i}`).checked) cmd += ` ${i}`;
-  }
-  fetchAPI("POST", "/cmd", () => notify(`LAG Group ${l} updated successfully.`, "success"), cmd);
-}
-
-function applyPortCfg(portNum) {
-  const speed = document.getElementById(`speed${portNum}`).value;
-  const mtu = document.getElementById(`mtu${portNum}`).value;
-  
-  const pname = document.getElementById(`pname${portNum}`).value.trim().replace(/\s+/g, '_');
-  if (pname) {
-    fetchAPI("POST", "/cmd", () => {}, `port ${portNum} name ${pname}`);
-  } else {
-    fetchAPI("POST", "/cmd", () => {}, `port ${portNum} name ""`);
-  }
-  
-  fetchAPI("POST", "/cmd", () => {}, `port ${portNum} ${speed}`);
-  fetchAPI("POST", "/cmd", () => notify(`Port ${portNum} saved successfully.`, "success"), `mtu ${portNum} ${mtu}`);
-}
-
-/** SYSTEM CONFIGURATION **/
-function applyIP() {
-  const ip = document.getElementById('sys-ip').value;
-  const nm = document.getElementById('sys-mask').value;
-  const gw = document.getElementById('sys-gw').value;
-  const ipv4 = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}$/;
-  if (!ipv4.test(ip) || !ipv4.test(nm) || !ipv4.test(gw)) return notify("Invalid IPv4 address format.", "error");
-
-  fetchAPI("POST", "/cmd", () => notify("IP applied temporarily.", "success"), `ip ${ip}`);
-  fetchAPI("POST", "/cmd", () => {}, `netmask ${nm}`);
-  fetchAPI("POST", "/cmd", () => {}, `gw ${gw}`);
-}
-
-function rebootSwitch() {
-  if (!confirm('Are you sure you want to reboot the switch? Unsaved changes will be lost.')) return;
-  fetchAPI("GET", "/reset", () => notify("Switch is rebooting...", "info"));
-}
-
-/** CONFIGURATION MERGE LOGIC **/
-let configuration = [];
-const conf_cmds = [
-  /^ip\s+(\d{1,3}\.){3}\d{1,3}/, /^gw\s+(\d{1,3}\.){3}\d{1,3}/, /^netmask\s+(\d{1,3}\.){3}\d{1,3}/,
-  /^eee(?:\s+\d+)?\s+(on|off)/, /^mirror/, /^vlan\s+\d+.*/, /^pvid\s+\d+.*/, /^lag\s+\d+.*/,
-  /^bw\s+(in|out)\s+\d+.*/, /^igmp\s+(on|off)/, /^port\s+\d+.*/, /^mtu\s+\d+.*/
-];
-const conf_overwrite = [
-  /^ip/, /^gw/, /^netmask/, /^eee(?:\s+\d+)?/, /^mirror/, /^vlan\s+\d+/, /^pvid\s+\d+/,
-  /^lag\s+\d+/, /^bw\s+(in|out)\s+\d+/, /^igmp/, 
-  /^port\s+\d+\s+name/,    
-  /^port\s+\d+(?!\s+name)/,
-  /^mtu\s+\d+/
-];
-
-function parseConf(s) {
-  // CRITICAL GARBAGE FIX: Scrub the raw input to remove 0xFF and unreadable bytes before splitting.
-  var cleanString = s.replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '');
-  var a = cleanString.split(/\r\n|\n/);
-  
-  for (var l = 0; l < a.length; l++) {
-    var line = a[l].trim().replace(/\s+/g, ' ');
-    if (!line.length) continue;
-    var ignore = true;
-    for (const x of conf_cmds) { if (x.test(line)) { ignore = false; break; } }
-    if (ignore) continue;
-    for (const x of conf_overwrite) {
-      if (x.test(line)) {
-        let m = line.match(x);
-        let matchStr = m[0];
-        configuration = configuration.filter(item => !(item === matchStr || item.startsWith(matchStr + " ")));
-        break;
-      }
-    }
-    configuration.push(line);
-  }
-}
-
-async function flashSaveConfig() {
-  const btn = document.getElementById('saveGlobalBtn');
-  btn.disabled = true;
-  notify("Processing pending changes...", "info");
-
-  while (reqQ.length > 0 || inFlight !== null || busy) {
-    await new Promise(r => setTimeout(r, 100));
-  }
-
-  notify("Merging memory and saving to flash...", "info");
-
-  try {
-    configuration = [];
-    
-    const resConfig = await fetch('/config?_t=' + Date.now(), { cache: "no-store" });
-    if (resConfig.ok) parseConf(await resConfig.text());
-    
-    const resLog = await fetch('/cmd_log?_t=' + Date.now(), { cache: "no-store" });
-    if (resLog.ok) parseConf(await resLog.text());
-
-    const mergedConfig = configuration.join('\n') + '\n';
-    
-    // CRITICAL C-PARSER FIX: Restored FormData. 
-    // httpd.c expects multipart boundaries. Plain text triggers 400 Bad Request.
-    const form = new FormData();
-    form.append("MAX_FILE_SIZE", "4096");
-    form.append("configuration", new Blob([mergedConfig], { type: "application/octet-stream" }), "config.txt");
-    
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/config", true);
-    xhr.setRequestHeader("Cache-Control", "no-cache");
-    
-    xhr.onload = function() {
-      // PROPER HTTP CHECK IMPLEMENTED
-      if (this.status === 200) {
-          notify("All UI changes saved to flash memory!", "success");
-      } else {
-          notify(`Save failed (HTTP ${this.status}).`, "error");
-      }
-      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
-      document.getElementById('config-window').value = mergedConfig;
-      btn.disabled = false;
-    };
-    
-    xhr.onerror = function() {
-      notify("Configuration saved! (Connection reset expected)", "success");
-      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
-      document.getElementById('config-window').value = mergedConfig;
-      btn.disabled = false;
-    };
-    
-    xhr.send(form);
-    
-  } catch(err) {
-    notify("Failed to prepare save. Check console.", "error");
-    console.error(err);
-    btn.disabled = false;
-  }
-}
-
-function saveManualConfig() {
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  notify("Saving manual configuration to flash...", "info");
-  
-  const textConfig = document.getElementById('config-window').value;
-  const form = new FormData();
-  form.append("MAX_FILE_SIZE", "4096");
-  form.append("configuration", new Blob([textConfig], { type: "application/octet-stream" }), "config.txt");
-  
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", "/config", true);
-  xhr.setRequestHeader("Cache-Control", "no-cache");
-  xhr.onload = function() {
-      // PROPER HTTP CHECK IMPLEMENTED
-      if (this.status === 200) {
-          notify("Manual configuration saved to flash!", "success");
-      } else {
-          notify(`Save failed (HTTP ${this.status}).`, "error");
-      }
-      btn.disabled = false;
-      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
-  };
-  xhr.onerror = function() {
-      notify("Configuration saved! (Connection reset expected)", "success");
-      btn.disabled = false;
-      setTimeout(() => { fetch('/cmd_log_clear', { method: 'GET' }).catch(()=>{}); }, 1500);
-  }
-  xhr.send(form);
-}
-
-/** FIRMWARE FLASH **/
-function startFlash() {
-  const file = document.getElementById('binFile').files[0];
-  if (!file || !file.name.toLowerCase().endsWith('.bin')) return notify("Select a valid .bin file.", "error");
-  if (file.size > 2 * 1024 * 1024) return notify("File too large (>2MB).", "error");
-  if (!confirm("WARNING: Flashing interrupts traffic. Do not power off. Proceed?")) return;
-
-  isFlashing = true;
-  clearInterval(poller); 
-  if (systemInterval) clearInterval(systemInterval);
-  reqQ = []; 
-  inFlight = null; 
-
-  const btn = document.getElementById('flashBtn');
-  const bar = document.getElementById('fBar');
-  const text = document.getElementById('fText');
-  const status = document.getElementById('fStatus');
-
-  bar.style.width = '0%'; bar.style.background = 'var(--accent)'; text.innerText = '0%';
-  btn.disabled = true; document.getElementById('nav-dash').style.opacity = '0.5';
-  document.getElementById('progress-wrap').style.display = 'block';
-  status.innerText = "UPLOADING FIRMWARE TO RAM...";
-
-  const xhr = new XMLHttpRequest(); 
-  xhr.open("POST", "/upload", true);
-  xhr.setRequestHeader("Cache-Control", "no-cache"); 
-  
-  let fNote = false;
-  let rebootTimer = null;
-
-  xhr.upload.onprogress = (e) => {
-    if (e.lengthComputable) {
-      const p = Math.round((e.loaded / e.total) * 100);
-      const visualP = Math.round(p * 0.2);
-      bar.style.width = visualP + "%"; text.innerText = visualP + "%";
-      
-      if (p === 100 && !fNote) { 
-        fNote = true; 
-        status.innerText = "WRITING TO FLASH. DO NOT UNPLUG!"; 
-        notify("Upload complete. Flashing memory...", "warning"); 
-        
-        let fakeP = 20;
-        rebootTimer = setInterval(() => {
-          fakeP += 1;
-          if (fakeP <= 99) {
-            bar.style.width = fakeP + "%";
-            text.innerText = fakeP + "%";
-          }
-          if (fakeP === 100) {
-             clearInterval(rebootTimer);
-             status.innerText = "REBOOT COMPLETE. RELOADING...";
-             bar.style.background = "var(--success)";
-             setTimeout(() => window.location.href = '/login.html', 2000);
-          }
-        }, 600);
-      }
-    }
-  };
-  
-  xhr.onload = () => console.log("Upload HTTP 200 OK");
-  xhr.onerror = () => console.log("Upload HTTP Error (Expected during reboot)");
-
-  const fd = new FormData(); 
-  fd.append("MAX_FILE_SIZE", "1000000"); 
-  fd.append("uploadedfile", new Blob([file], { type: "application/octet-stream" }), "update.bin"); 
-  xhr.send(fd);
-}
-
-window.onload = () => { nav('dash'); };
-</script>
+<script src="/main.js"></script>
 </body>
 </html>
