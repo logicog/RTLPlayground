@@ -12,18 +12,19 @@ async function ipSub() {
     if (!checkIp(document.getElementById(ips[i]).value))
       return;
   }
+  var cmd = '';
   for (let i=0; i<3;i++){
-    var cmd = ips[i]+' '+document.getElementById(ips[i]).value;
-    try {
-      const response = await fetch('/cmd', {
-        method: 'POST',
-        body: cmd
-      });
-      console.log('Completed!', response);
-      fetchIP();
-    } catch(err) {
-      console.error(`Error: ${err}`);
-    }
+    cmd += ips[i]+' '+document.getElementById(ips[i]).value+'\n';
+  }
+  try {
+    const response = await fetch('/cmd', {
+      method: 'POST',
+      body: cmd
+    });
+    console.log('Completed!', response);
+    fetchIP();
+  } catch(err) {
+    console.error(`Error: ${err}`);
   }
 }
 

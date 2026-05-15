@@ -400,17 +400,16 @@ void handle_post(void)
 	}
 
 	if (is_word(request_path, "cmd")) {
-		register uint8_t i = 0;
 		p += 4;
 		if (!authenticated) {
 			send_unauthorized();
 			return;
 		}
-		while (*p && *p != '\n' && *p != '\r')
-			cmd_buffer[i++] = *p++;
-		cmd_buffer[i] = '\0';
-		if (i)
-			cmd_available = 1;
+		execute_commands(p);
+		if (err_status != ERR_OK) {
+			send_bad_request();
+			return;
+		}
 	} else if (is_word(request_path, "login")) {
 		dbg_string("POST login\n");
 		p += 8; // Read also over "pwd="
