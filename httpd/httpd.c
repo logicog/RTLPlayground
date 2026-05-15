@@ -292,14 +292,14 @@ uint8_t stream_upload(uint16_t bptr)
 			if (verify_crc) {
 				dbg_string("CRC16: "); dbg_short(crc_final); dbg_char('\n');
 				if (crc_final == 0xb001) {
-					print_string("Checksum OK.");
+					print_string("Checksum OK.\nUpload to flash done, will reset!\n");
+					// close connection to avoid retries by browser
+					uip_close();
+					reset_chip();
 				} else {
-					print_string("Checksum incorrect!");
+					print_string("Checksum incorrect! Aborting.\n");
+					uip_close();
 				}
-				print_string("\nUpload to flash done, will reset!\n");
-				// close connection to avoid retries by browser
-				uip_close();
-				reset_chip();
 			}
 			// Make sure there is a 0 at the end of the uploaded data
 			flash_buf[0] = 0;
@@ -387,6 +387,10 @@ void handle_post(void)
 			verify_crc = 1;
 			max_upload = 1024576;
 		} else if (is_word(request_path, "config")) {
+			if (!authenticated) {
+				send_unauthorized();
+				return;
+			}
 			dbg_string("Configuration upload, erasing config mem!\n");
 			uptr = CONFIG_START;
 			verify_crc = 0;
