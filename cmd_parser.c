@@ -1639,3 +1639,37 @@ config_done:
 	clear_command_history();
 	save_cmd = 1;
 }
+
+// Execute multiple commands
+// If a command is too long or can't be tokenized, remaining commands are not executed
+// Returns the status via `err_status`-variable.
+void execute_commands(__xdata uint8_t *p) __banked {
+	err_status = ERR_OK;
+	uint8_t cmd_idx = 0;
+	while (1) {
+		if (*p == 0 || *p == '\n' || *p == '\r') {
+			if (cmd_idx) {
+				cmd_buffer[cmd_idx] = '\0';
+				cmd_tokenize();
+				if (err_status != ERR_OK)
+					return;
+				cmd_parser();
+			}
+			if (*p == 0)
+				return;
+			cmd_idx = 0;
+		} else {
+			if (cmd_idx < (CMD_BUF_SIZE - 1)) {
+				cmd_buffer[cmd_idx++] = *p;
+			} else {
+				cmd_buffer[CMD_BUF_SIZE - 1] = '\0';
+				print_string("ERROR: Command too long: ");
+				print_string_x(cmd_buffer);
+				write_char('\n');
+				err_status = ERR_CMD_TOO_LONG;
+				return;
+			}
+		}
+		p++;
+	};
+}
