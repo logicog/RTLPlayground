@@ -1,30 +1,169 @@
 <!DOCTYPE html>
-<html>
-  <title>RTL Switch Login</title>
-  <link rel="stylesheet" href="style.css">
-  <script>
-    function removeNote() {
-      document.getElementById("incorrect").innerHTML = "";
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTL Switch | Login</title>
+  <style>
+    :root { 
+      --bg: #f4f6f8; 
+      --primary: #1e293b; 
+      --accent: #3b82f6; 
+      --accent-hover: #2563eb; 
+      --text: #334155; 
+      --error-bg: #fee2e2;
+      --error-text: #ef4444;
     }
+    
+    * { box-sizing: border-box; }
+    
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      margin: 0; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      height: 100vh; 
+      background: var(--bg); 
+      color: var(--text); 
+    }
+    
+    .login-card { 
+      background: #fff; 
+      width: 100%; 
+      max-width: 400px; 
+      border-radius: 12px; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+      overflow: hidden; 
+      animation: slideUp 0.4s ease; 
+    }
+    
+    @keyframes slideUp { 
+      from { opacity: 0; transform: translateY(20px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+    
+    .card-header { 
+      background: var(--primary); 
+      color: #fff; 
+      padding: 30px; 
+      text-align: center; 
+    }
+    
+    .card-header h1 { 
+      margin: 0; 
+      font-size: 1.5rem; 
+      font-weight: 800; 
+      letter-spacing: 0.5px; 
+    }
+    
+    .card-header p { 
+      margin: 10px 0 0 0; 
+      color: #94a3b8; 
+      font-size: 0.9rem; 
+    }
+    
+    .card-body { 
+      padding: 40px 30px; 
+    }
+    
+    .input-group { 
+      margin-bottom: 20px; 
+    }
+    
+    .input-group label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      font-size: 0.9rem; 
+      color: #475569; 
+    }
+    
+    .input-group input { 
+      width: 100%; 
+      padding: 12px 16px; 
+      border: 1px solid #cbd5e1; 
+      border-radius: 6px; 
+      font-size: 1rem; 
+      outline: none; 
+      transition: 0.2s; 
+    }
+    
+    .input-group input:focus { 
+      border-color: var(--accent); 
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); 
+    }
+    
+    .btn { 
+      width: 100%; 
+      background: var(--accent); 
+      color: white; 
+      border: none; 
+      padding: 14px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-weight: 700; 
+      font-size: 1rem; 
+      transition: 0.2s; 
+      margin-top: 10px; 
+    }
+    
+    .btn:hover { 
+      background: var(--accent-hover); 
+      transform: translateY(-1px); 
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); 
+    }
+    
+    .error-msg { 
+      display: none; 
+      background: var(--error-bg); 
+      color: var(--error-text); 
+      padding: 12px; 
+      border-radius: 6px; 
+      font-size: 0.9rem; 
+      font-weight: 600; 
+      margin-bottom: 20px; 
+      text-align: center; 
+      border: 1px solid #fca5a5; 
+    }
+  </style>
+
+  <script>
+    // Hides the error banner when the user clicks to type
+    function removeNote() {
+      document.getElementById("incorrect").style.display = "none";
+    }
+
+    // Displays the error banner if redirected from a failed login attempt
     window.addEventListener("load", function() {
-      if (document.referrer.endsWith("login.html"))
-      document.getElementById("incorrect").innerHTML = "Wrong password!";
+      if (document.referrer.endsWith("login.html")) {
+        const errorBox = document.getElementById("incorrect");
+        errorBox.innerHTML = "Wrong password! Please try again.";
+        errorBox.style.display = "block";
+      }
     });
-    </script>
+  </script>
 </head>
 
-<body class="login_page">
-  <div class = "center">
-  <h1> RTL Switch Login</h1>
-  <form method="post" action="login">
-  <div class="txt_field">
-    <input name="pwd" type="password" onclick="removeNote()" required />
-    <span></span>
-    <label>Password</label>
+<body>
+  <div class="login-card">
+    <div class="card-header">
+      <h1>RTL Switch</h1>
+      <p>Management Interface</p>
+    </div>
+    
+    <div class="card-body">
+      <div id="incorrect" class="error-msg"></div>
+      
+      <form method="post" action="login">
+        <div class="input-group">
+          <label for="pwd">System Password</label>
+          <input type="password" id="pwd" name="pwd" placeholder="••••••••" onclick="removeNote()" required autofocus />
+        </div>
+        
+        <button type="submit" class="btn">Secure Login</button>
+      </form>
+    </div>
   </div>
-  <input type="submit" value="Login"/>
-  <h3 id="incorrect" style="margin-top: 5em;"></h3>
-  </form>
 </body>
 </html>
-

@@ -1,31 +1,268 @@
 <!DOCTYPE html>
-<html>
-  <script src="/main.js"></script>
-  <script src="/main_info.js"></script>
-  <script>
-  window.addEventListener("load", function() {
-    update( () => {
-      const interval = setInterval(update, 2000);
-    });
-  });
-  </script>
-  <link rel="stylesheet" href="style.css">
-  <title>FreeSwitchOS Main Page</title>
-</head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTLPlayground | Management</title>
+  <style>
+    :root { --bg: #f4f6f8; --sidebar: #1e293b; --sidebar-hover: #334155; --text: #334155; --accent: #3b82f6; --accent-hover: #2563eb; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; display: flex; height: 100vh; color: var(--text); background: var(--bg); overflow: hidden; }
+    
+    /* Sidebar Navigation */
+    #nav { width: 240px; background: var(--sidebar); color: #f8fafc; display: flex; flex-direction: column; transition: 0.3s; z-index: 10; flex-shrink: 0; }
+    #nav .brand { padding: 24px; font-weight: 800; font-size: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 0.5px; }
+    #nav ul { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
+    #nav li { padding: 16px 24px; cursor: pointer; transition: 0.2s; border-left: 4px solid transparent; font-weight: 500; font-size: 14px; }
+    #nav li:hover, #nav li.active { background: var(--sidebar-hover); }
+    #nav li.active { border-left-color: var(--accent); color: #fff; }
 
+    /* Main Content Area */
+    #content { flex: 1; overflow-y: auto; padding: 40px; }
+    .panel { display: none; background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); max-width: 1100px; margin: 0 auto; animation: fadeIn 0.3s ease; }
+    .panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    h2 { margin-top: 0; color: #0f172a; border-bottom: 2px solid var(--bg); padding-bottom: 12px; margin-bottom: 24px; }
+    h3 { color: var(--sidebar); margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+
+    /* Buttons & Inputs */
+    .btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; white-space: nowrap; }
+    .btn:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn:disabled { background: #cbd5e1; color: #64748b; cursor: not-allowed; }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover:not(:disabled) { background: #dc2626; }
+    .btn-warning { background: var(--warning); color: #000; }
+    .btn-warning:hover:not(:disabled) { background: #d97706; }
+    .btn-success { background: var(--success); }
+    .btn-success:hover:not(:disabled) { background: #059669; }
+    
+    .input-row { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+    input[type="text"], input[type="number"], select, textarea { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+    input:disabled, select:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+
+    /* Port Grid (Dashboard) */
+    .port-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; margin-bottom: 32px; }
+    .port { border: 2px solid #e2e8f0; border-radius: 8px; padding: 12px 6px; text-align: center; font-size: 12px; font-weight: 700; background: #f8fafc; color: #64748b; position: relative; cursor: help; transition: 0.2s; }
+    .port:hover { border-color: var(--accent); }
+    .port.up { border-color: var(--success); color: var(--success); background: #f0fdf4; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1); }
+    .sfp-badge { display: inline-block; background: #cbd5e1; color: #1e293b; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; font-weight: 800; letter-spacing: 0.5px; }
+    .port.up .sfp-badge { background: #a7f3d0; color: #065f46; }
+    
+    /* Tables */
+    .table-responsive { overflow-x: auto; width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; position: sticky; top: 0; }
+    tr:hover td { background: #f8fafc; }
+    .cb-cell { text-align: center; }
+
+    /* LAG Grid */
+    .lag-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+    .lag-group { border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; background: #f8fafc; }
+    .lag-group h4 { margin: 0 0 10px 0; color: var(--sidebar); font-size: 14px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; }
+    
+    /* Modal & Toast */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+    .modal-content { background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 800px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+    .modal-close { position: absolute; top: 16px; right: 20px; cursor: pointer; font-size: 28px; font-weight: bold; color: #94a3b8; line-height: 1; }
+    .modal-close:hover { color: var(--danger); }
+    
+    #toast { position: fixed; top: 24px; right: 24px; padding: 16px 24px; border-radius: 8px; background: #333; color: #fff; font-weight: 600; font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: translateX(150%); transition: transform 0.3s; z-index: 1000; }
+    #toast.show { transform: translateX(0); }
+    #toast.success { background: var(--success); }
+    #toast.error { background: var(--danger); }
+    #toast.info { background: var(--accent); }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      #nav { width: 100%; height: auto; flex-direction: row; align-items: center; overflow-x: auto; white-space: nowrap; padding-right: 20px; }
+      #nav .brand { border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); padding: 16px; }
+      #nav ul { display: flex; flex-direction: row; }
+      #nav li { padding: 16px 12px; border-left: none; border-bottom: 4px solid transparent; }
+      #nav li.active { border-left: none; border-bottom-color: var(--accent); }
+      #content { padding: 16px; }
+      .panel { padding: 20px; }
+      .input-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .input-row > * { width: 100% !important; }
+      .btn { width: 100%; }
+      .action-btns { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    }
+  </style>
+</head>
 <body>
-  <nav id="sidebar"></nav>
-  <div style="margin-left:16%;padding:1px 16px;height:1000px;">
-    <div id="ports"></div>
-    <h1>Switch Configuration</h1>
-    <table id="infoTable">
-      <tr>
-        <th colspan="2">Settings</th>
-      </tr>
-      <tbody>
-      </tbody>
-    </table>
+
+<div id="toast"></div>
+
+<div id="statsModal" class="modal-overlay" onclick="if(event.target===this) closeCounters()">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeCounters()">&times;</span>
+    <h2 id="statsModalTitle" style="margin-top:0; border-bottom:none;">Detailed Port Counters</h2>
+    <div id="statsModalBody" class="table-responsive">Loading MIB counters...</div>
   </div>
-  <script src="/navigation.js"></script>
+</div>
+
+<nav id="nav">
+  <div class="brand">RTLPlayground</div>
+  <ul>
+    <li onclick="nav('dash')" id="nav-dash" class="active">Dashboard</li>
+    <li onclick="nav('port')" id="nav-port">Port Settings (L1)</li>
+    <li onclick="nav('vlan')" id="nav-vlan">VLAN Config</li>
+    <li onclick="nav('l2')" id="nav-l2">L2 Features</li>
+    <li onclick="nav('stat')" id="nav-stat">Statistics</li>
+    <li onclick="nav('sys')" id="nav-sys">System</li>
+    <li onclick="nav('update')" id="nav-update">Firmware</li>
+  </ul>
+</nav>
+
+<main id="content">
+  <div id="dash" class="panel active">
+    <h2>System Overview</h2>
+    <div class="port-grid" id="port-grid">Loading ports...</div>
+    <div class="table-responsive">
+      <table id="info-table"><tr><td style="color:#94a3b8; text-align:center;">Loading system information...</td></tr></table>
+    </div>
+  </div>
+
+  <div id="port" class="panel">
+    <h2>Port Settings (Layer 1)</h2>
+    
+    <h3>Global Energy Efficient Ethernet (EEE)</h3>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Enable or disable global EEE. When enabled, per-port EEE overrides are disabled.</p>
+    <div class="input-row">
+      <label style="font-weight:600;">Enable Global EEE:</label>
+      <input type="checkbox" id="eee-en" style="transform: scale(1.5); margin: 0 15px;">
+      <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyGlobalEEE()">Save Global EEE</button>
+    </div>
+
+    <h3>Physical Port Configuration</h3>
+    <div class="table-responsive">
+      <table id="port-cfg-table">
+        <thead><tr><th>Port</th><th>Name</th><th>Link Speed</th><th>MTU Size</th><th>EEE</th><th style="width:80px;">Action</th></tr></thead>
+        <tbody id="port-cfg-body"><tr><td colspan="6" style="text-align:center;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <h3>Bandwidth Control</h3>
+    <div class="table-responsive">
+      <table id="bw-table">
+        <thead>
+          <tr> <th>Port</th> <th>In Limit</th> <th>In BW [kBit/s]</th> <th>Flow Control</th> <th>Out Limit</th> <th>Out BW [kBit/s]</th> <th>Apply</th></tr>
+        </thead>
+        <tbody id="bw-body"><tr><td colspan="7" style="text-align:center;">Loading bandwidth data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="stat" class="panel">
+    <h2>Port Statistics</h2>
+    <div class="table-responsive">
+      <table id="stat-table">
+        <thead><tr><th>Port</th><th>Name</th><th>Link</th><th>Tx Good</th><th>Tx Bad</th><th>Rx Good</th><th>Rx Bad</th><th style="width: 80px;">Action</th></tr></thead>
+        <tbody id="stat-body"><tr><td colspan="8" style="text-align:center;">Loading statistics...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="vlan" class="panel">
+    <h2>VLAN Configuration</h2>
+    <div class="input-row">
+      <label style="font-weight:600;">VLAN ID:</label>
+      <input type="number" id="vlan-vid" placeholder="1-4094" min="1" max="4094" style="width: 100px;">
+      <button class="btn" onclick="fetchVLAN()">Load VLAN</button>
+    </div>
+    <div class="input-row">
+      <label style="font-weight:600;">VLAN Name:</label>
+      <input type="text" id="vlan-name" placeholder="e.g. Management" style="width: 250px;">
+    </div>
+    <div class="table-responsive">
+      <table id="vlan-table">
+        <thead><tr><th>Port</th><th class="cb-cell">Tagged (Member)</th><th class="cb-cell">Untagged (Member)</th><th class="cb-cell">Default PVID</th></tr></thead>
+        <tbody id="vlan-body"><tr><td colspan="4" style="text-align:center; color:#94a3b8;">Enter a VLAN ID and click Load</td></tr></tbody>
+      </table>
+    </div>
+    <div class="input-row" style="margin-top: 20px;">
+      <button class="btn btn-accent" onclick="applyVLAN()">Save VLAN Settings</button>
+      <span style="color: #64748b; font-size: 12px; margin-left: 15px;">(Remember to 'Save UI Changes to Flash' in System tab to persist reboots)</span>
+    </div>
+  </div>
+
+  <div id="l2" class="panel">
+    <h2>Layer 2 Features</h2>
+    
+    <h3>IGMP Snooping (IPv4 Multicast)</h3>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Enable IGMP v3 snooping to prevent Layer-3 multicast packets from flooding all ports.</p>
+    <div class="input-row">
+      <label style="font-weight:600;">Enable IGMP Snooping:</label>
+      <input type="checkbox" id="igmp-en" style="transform: scale(1.5); margin: 0 15px;">
+      <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="applyIGMP()">Save IGMP Settings</button>
+    </div>
+
+    <h3>Link Aggregation (LAG)</h3>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Select port members to bundle them into a Link Aggregation Group.</p>
+    <div id="lag-container" class="lag-container">
+       <div style="color:#94a3b8;">Loading LAG data...</div>
+    </div>
+
+    <h3>Port Mirroring</h3>
+    <div class="input-row" style="margin-top: 20px;">
+      <label style="font-weight:600;">Enable Mirroring:</label>
+      <input type="checkbox" id="mirror-en" style="transform: scale(1.5); margin: 0 15px;">
+      <label style="font-weight:600;">Destination Port:</label>
+      <input type="number" id="mirror-port" style="width:80px;" min="1" max="10">
+      <button class="btn" style="padding: 6px 12px; font-size: 12px; margin-left: 15px;" onclick="applyMirror()">Save Mirror Settings</button>
+    </div>
+    <div class="table-responsive">
+      <table id="mirror-table">
+        <thead><tr><th>Port</th><th class="cb-cell">Mirror TX (Egress)</th><th class="cb-cell">Mirror RX (Ingress)</th></tr></thead>
+        <tbody id="mirror-body"><tr><td colspan="3" style="text-align:center;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="sys" class="panel">
+    <h2>System Settings</h2>
+    
+    <h3>Network Configuration</h3>
+    <div class="input-row"><label style="width:100px;">IP Address:</label><input type="text" id="sys-ip" style="width:150px;"></div>
+    <div class="input-row"><label style="width:100px;">Netmask:</label><input type="text" id="sys-mask" style="width:150px;"></div>
+    <div class="input-row"><label style="width:100px;">Gateway:</label><input type="text" id="sys-gw" style="width:150px;"></div>
+    <button class="btn" onclick="applyIP()">Apply Network Settings</button>
+
+    <h3>Device Management</h3>
+    <p style="color: #64748b; margin-bottom: 15px; font-size: 13px;">Changes made in the UI are held in temporary memory. You must save them to flash to persist across reboots.</p>
+    <div class="action-btns" style="display: flex; gap: 15px; margin-bottom: 30px;">
+      <button class="btn btn-success" id="saveGlobalBtn" onclick="flashSaveConfig()">Save All UI Changes to Flash</button>
+      <button class="btn btn-danger" onclick="rebootSwitch()">Reboot Switch</button>
+    </div>
+
+    <h3>Manual Configuration</h3>
+    <p style="color: #64748b; margin-bottom: 10px; font-size: 13px;">Edit the raw system configuration below.</p>
+    <textarea id="config-window" rows="12" style="width:100%; font-family:monospace;" placeholder="Fetching configuration..."></textarea>
+    
+    <div class="action-btns" style="display: flex; gap: 15px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+      <button class="btn btn-warning" id="saveBtn" onclick="saveManualConfig()">Save Text Config Directly</button>
+    </div>
+  </div>
+
+  <div id="update" class="panel">
+    <h2>Firmware Update</h2>
+    <div class="input-row" style="border: 2px dashed #cbd5e1; padding: 30px; justify-content: center; background:#f8fafc; border-radius:8px;">
+      <input type="file" id="binFile" accept=".bin">
+    </div>
+    <button class="btn btn-danger" id="flashBtn" onclick="startFlash()">Start Firmware Flash</button>
+    <div id="progress-wrap" style="display:none; margin-top:24px;">
+      <p id="fStatus" style="font-weight:700; color:var(--sidebar);" aria-live="assertive">Preparing to flash...</p>
+      <div style="background:#e2e8f0; border-radius:20px; height:24px; position:relative; overflow:hidden; margin-top:8px;">
+        <div id="fBar" style="background:var(--accent); width:0%; height:100%; transition:width 0.3s;"></div>
+        <div id="fText" style="position:absolute; width:100%; top:0; text-align:center; color:#fff; font-size:12px; font-weight:bold; line-height:24px; text-shadow:0 1px 3px rgba(0,0,0,0.6);">0%</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="/main.js"></script>
 </body>
 </html>
