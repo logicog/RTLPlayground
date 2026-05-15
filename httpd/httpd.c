@@ -131,6 +131,31 @@ char is_word(__xdata uint8_t *c, __code uint8_t * __xdata d)
 }
 
 
+char is_url_word_x(__xdata uint8_t *c,  __xdata uint8_t *d)
+{
+	uint8_t i = 0, j = 0;
+
+	while (d[i]) {
+		if (c[j] == '%') {
+			uint8_t v;
+			j++;
+			v  = c[j] - '0' < 10 ? (c[j] - '0') << 4 : (c[j] - 'A' + 10) << 4;
+			j++;
+			v += c[j] - '0' < 10 ? c[j] - '0' : c[j] - 'A' + 10;
+			if (d[i] != v)
+				return 0;
+		} else if (d[i] != c[j])
+			return 0;
+		i++;
+		j++;
+	}
+
+	if (c[j] != ' ' && c[j] != '\t' && c[j] != ':' && c[j] != '?' && c[j] != '=' && c[j] != '\n' && c[j] != '\r' && c[j])
+		return 0;
+	return 1;
+}
+
+
 char is_word_x(__xdata uint8_t *c, __xdata uint8_t *d)
 {
 	register uint8_t i = 0;
@@ -414,7 +439,7 @@ void handle_post(void)
 	} else if (is_word(request_path, "login")) {
 		dbg_string("POST login\n");
 		p += 8; // Read also over "pwd="
-		if (is_word_x(p, passwd)) {
+		if (is_url_word_x(p, passwd)) {
 			dbg_string("Password accepted!\n");
 			read_reg_timer(&last_session_use);
 			gen_random_bytes(session_id, SESSION_ID_LENGTH);
