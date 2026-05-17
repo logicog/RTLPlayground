@@ -131,28 +131,46 @@ char is_word(__xdata uint8_t *c, __code uint8_t * __xdata d)
 }
 
 
-char is_url_word_x(__xdata uint8_t *c,  __xdata uint8_t *d)
+bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 {
-	uint8_t i = 0, j = 0;
+	uint8_t u, s;
 
-	while (d[i]) {
-		if (c[j] == '%') {
-			uint8_t v;
-			j++;
-			v  = c[j] - '0' < 10 ? (c[j] - '0') << 4 : (c[j] - 'A' + 10) << 4;
-			j++;
-			v += c[j] - '0' < 10 ? c[j] - '0' : c[j] - 'A' + 10;
-			if (d[i] != v)
-				return 0;
-		} else if (d[i] != c[j])
-			return 0;
-		i++;
-		j++;
+	while(1) {
+		u = *uri_str_p++;
+		s = *src_str_p++;
+
+		if (s == '\0') {
+			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+				return false;
+			return true;
+		}
+
+		if (u == '%') {
+			bool again = true;
+			u = 0;
+
+			while(1) {
+				// Swap instruction is fine for rotation
+				u = (u << 4) | (u >> 4);
+
+				uint8_t p = *uri_str_p++;
+				u |= p - '0' < 10 ? (p - '0') : (p - 'A' + 10);
+
+				// force `jbc`-instruction.
+				if (again) {
+					again = false;
+				} else {
+					break;
+				}
+			}
+		} else if (u == '+') {
+			u = ' ';
+		}
+
+		if (s != u) {
+			return false;
+		}
 	}
-
-	if (c[j] != ' ' && c[j] != '\t' && c[j] != ':' && c[j] != '?' && c[j] != '=' && c[j] != '\n' && c[j] != '\r' && c[j])
-		return 0;
-	return 1;
 }
 
 
@@ -461,6 +479,7 @@ void handle_post(void)
 				outbuf[slen++] = session_id[i];
 			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 		} else {
+			dbg_string("Password invalid!\n");
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: login.html\r\n\r\n");
 		}
 		return;
