@@ -116,7 +116,7 @@ char strcmp(__xdata uint8_t *c, __code uint8_t * __xdata d)
 }
 
 
-char is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
+bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 {
 	uint8_t u, c;
 
@@ -126,12 +126,12 @@ char is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 
 		if (c == '\0') {
 			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
-				return 0;
-			return 1;
+				return false;
+			return true;
 		}
 
 		if (c != u) {
-			return 0;
+			return false;
 		}
 	}
 }
