@@ -442,6 +442,13 @@ void handle_post(void)
 			cmd_available = 1;
 	} else if (is_word(request_path, "login")) {
 		dbg_string("POST login\n");
+
+		if (!content_type || !is_word(content_type, "application/x-www-form-urlencoded")) {
+			dbg_string("Bad request!\n");
+			send_bad_request();
+			return;
+		}
+
 		p += 8; // Read also over "pwd="
 		if (is_url_word_x(p, passwd)) {
 			dbg_string("Password accepted!\n");
