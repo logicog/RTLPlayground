@@ -162,7 +162,7 @@ char is_url_word_x(__xdata uint8_t *c,  __xdata uint8_t *d)
 }
 
 
-char is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
+bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 {
 	uint8_t u, c;
 
@@ -172,12 +172,12 @@ char is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 
 		if (c == '\0') {
 			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
-				return 0;
-			return 1;
+				return false;
+			return true;
 		}
 
 		if (c != u) {
-			return 0;
+			return false;
 		}
 	}
 }
