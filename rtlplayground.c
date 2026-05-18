@@ -28,7 +28,6 @@
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
-extern __xdata uint8_t err_status;
 
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
