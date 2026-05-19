@@ -136,7 +136,7 @@ void stp_in(void) __banked
 //	print_string("Flags: "); print_byte(STP_I->flags); write_char('\n');
 	print_string("Check new Root\n");
 	if (STP_I->root.prio < root_bridge.prio
-		|| ((STP_I->root.prio == root_bridge.prio) && cmpMAC(STP_I->root.mac, STP_I->root.mac) < 0)) {
+		|| ((STP_I->root.prio == root_bridge.prio) && cmpMAC(STP_I->root.mac, root_bridge.mac) < 0)) {
 		print_string("Updating Root bridge\n");
 			root_bridge.prio = STP_I->root.prio;
 			memcpy(root_bridge.mac, STP_I->root.mac, 6);
