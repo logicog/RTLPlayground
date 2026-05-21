@@ -36,6 +36,22 @@
       <br/> <input style="width:40%;" class="action" id="vlan_sub" onclick="vlanSub();" type="button" value="Update / Create">
       <script src="/vlan_sub.js"></script>
     </form>
+    <h2>Configured VLANs</h2>
+    <table id="vlanTable" style="width:90%">
+      <thead>
+        <tr>
+          <th>VLAN</th>
+          <th>Name</th>
+          <th>Member Ports</th>
+          <th>Tagged Ports</th>
+          <th>Untagged Ports</th>
+          <th>PVID Ports</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody id="vlanTableBody">
+      </tbody>
+    </table>
     </div>
     <script src="/navigation.js"></script>
   </body>
