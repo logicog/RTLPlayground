@@ -119,7 +119,7 @@ async function loadVlanTable() {
     var s = await vresp.json();
     var m = parseInt(s.members, 16);
     var members = m & 0x3FF;
-    var untag   = (m >> 10) & 0x3FF;
+    var untag   = ((m >> 10) & 0x3FF) & members;
     var tagged  = members & ~untag;
     var pvid    = parseInt(s.pvid, 16) & 0x3FF;
     var tr = document.createElement('tr');
