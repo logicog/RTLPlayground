@@ -83,9 +83,40 @@ function fetchVLAN() {
   sendXHTTP(xhttp);
 }
 
+function loadVlanList() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState !== 4) return;
+    var sel = document.getElementById('vlanSelect');
+    if (this.status !== 200) {
+      sel.style.display = 'none';
+      return;
+    }
+    var vlans = JSON.parse(this.responseText);
+    if (!vlans.length) {
+      sel.style.display = 'none';
+      return;
+    }
+    sel.options.length = 1;
+    for (var i = 0; i < vlans.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = vlans[i].id;
+      opt.text = vlans[i].name ? vlans[i].id + ' — ' + vlans[i].name : String(vlans[i].id);
+      sel.appendChild(opt);
+    }
+  };
+  xhttp.open('GET', '/vlanlist', true);
+  sendXHTTP(xhttp);
+}
+
 window.addEventListener("load", function() {
   update( () => {
     vlanForm();
+    loadVlanList();
+    document.getElementById('vlanSelect').onchange = function() {
+      document.getElementById('vid').value = this.value;
+      fetchVLAN();
+    };
     const interval = setInterval(update, 2000);
   });
 });
