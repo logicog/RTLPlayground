@@ -116,8 +116,42 @@ uint16_t port_pvid_get(uint8_t port) __banked
 void vlan_delete(uint16_t vlan) __banked
 {
 	print_string("\nvlan_delete called \n"); print_short(vlan);
+	vlan_name_remove(vlan);
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0, 0, 0, 0);
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
+}
+
+
+void vlan_name_remove(uint16_t vlan) __banked
+{
+	static __xdata uint16_t name_pos;
+	static __xdata uint16_t entry_start;
+	static __xdata uint16_t pos;
+	static __xdata uint16_t entry_len;
+	static __xdata uint16_t move_count;
+	static __xdata uint16_t j;
+
+	name_pos = vlan_name(vlan);
+	if (name_pos == 0xffff)
+		return;
+
+	entry_start = name_pos - 3;
+	pos = entry_start;
+
+	while (pos < vlan_ptr && vlan_names[pos] != ' ')
+		pos++;
+	if (pos >= vlan_ptr)
+		return;
+	pos++;
+
+	entry_len = pos - entry_start;
+	move_count = vlan_ptr - pos;
+
+	for (j = 0; j < move_count; j++)
+		vlan_names[entry_start + j] = vlan_names[pos + j];
+
+	vlan_ptr -= entry_len;
+	vlan_names[vlan_ptr] = 0;
 }
 
 
