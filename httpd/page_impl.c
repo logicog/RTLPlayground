@@ -97,6 +97,19 @@ void itoa_html(uint8_t v)
 	char_to_html('0' + (v % 10));
 }
 
+void itoa16_html(uint16_t v)
+{
+	uint8_t print_zeros = 0;
+	uint8_t d;
+	d = v / 1000;
+	if (d) { char_to_html('0' + d); print_zeros = 1; }
+	d = (v / 100) % 10;
+	if (d || print_zeros) { char_to_html('0' + d); print_zeros = 1; }
+	d = (v / 10) % 10;
+	if (d || print_zeros) char_to_html('0' + d);
+	char_to_html('0' + (v % 10));
+}
+
 void string_to_html(__code char *s)
 {
 	while (*s) char_to_html(*s++);
@@ -824,4 +837,45 @@ void send_cmd_log(void)
 			outbuf[slen++] = cmd_history[p];
 		p = (p + 1) & CMD_HISTORY_MASK;
 	}
+}
+
+
+void send_vlanlist(void)
+{
+	/* Worst case per entry: {"id":4094,"name":"<name>"}, ~45 bytes.
+	 * HTTP header ~50 bytes. TCP_OUTBUF_SIZE=2500 fits ~53 VLANs safely. */
+	__xdata uint16_t i;
+	__xdata uint16_t n;
+	uint8_t first = 1;
+
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	char_to_html('[');
+
+	for (i = 1; i < 4095; i++) {
+		if (vlan_get(i) < 0)
+			continue;
+		if (!(sfr_data[0] & 0x02))
+			continue;
+
+		if (!first)
+			char_to_html(',');
+		first = 0;
+
+		slen += strtox(outbuf + slen, "{\"id\":");
+		itoa16_html(i);
+		slen += strtox(outbuf + slen, ",\"name\":\"");
+
+		n = vlan_name(i);
+		if (n != 0xffff) {
+			while (vlan_names[n] && vlan_names[n] != ' ')
+				char_to_html(vlan_names[n++]);
+		}
+
+		slen += strtox(outbuf + slen, "\"}");
+
+		if (slen > TCP_OUTBUF_SIZE - 60)
+			break;
+	}
+
+	char_to_html(']');
 }
