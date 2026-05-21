@@ -28,6 +28,7 @@ async function vlanSub() {
       });
       console.log('Completed!', response);
     }
+    loadVlanList();
   } catch(err) {
     console.error(`Error: ${err}`);
   }
