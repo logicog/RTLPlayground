@@ -693,9 +693,9 @@ void parse_port(void)
 	} else if (cmd_compare(2, "duplex")) {
 		print_string(" DUPLEX\n");
 		if (cmd_compare(3, "full"))
-			phy_settings.speed = PHY_DUPLEX_FULL;
+			phy_settings.duplex = PHY_DUPLEX_FULL;
 		else
-			phy_settings.speed = PHY_DUPLEX_HALF;
+			phy_settings.duplex = PHY_DUPLEX_HALF;
 		phy_set_duplex();
 	} else {
 		print_string("Unknown port command\n");
