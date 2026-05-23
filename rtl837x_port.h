@@ -50,6 +50,7 @@ void port_l2_learned(void) __banked;
 void port_stats_print(void) __banked;
 int8_t vlan_get(register uint16_t vlan) __banked;
 __xdata uint16_t vlan_name(register uint16_t vlan) __banked;
+void vlan_name_remove(uint16_t vlan) __banked;
 void vlan_setup(void) __banked;
 void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked;
 uint16_t port_pvid_get(uint8_t port) __banked;

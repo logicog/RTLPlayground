@@ -331,6 +331,8 @@ void parse_vlan(void)
 	vlan_settings.vlan = 0;
 	vlan_settings.members = 0;
 	vlan_settings.tagged = 0;
+	if (cmd_words_len < 2)
+		goto err;
 	if (!atoi_short(&vlan_settings.vlan, cmd_words_b[1])) {
 		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
 			vlan_delete(vlan_settings.vlan);
@@ -347,10 +349,11 @@ void parse_vlan(void)
 		uint8_t w = 2;
 		if (cmd_words_len > w && isletter(cmd_buffer[cmd_words_b[w]])) {
 			register uint8_t i = 0;
+			vlan_name_remove(vlan_settings.vlan);
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 8) & 0xf];
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 4) & 0xf] ;
 			vlan_names[vlan_ptr++] = hex[vlan_settings.vlan & 0xf];
-			while(cmd_buffer[cmd_words_b[w] + i] != ' ') {
+			while(cmd_buffer[cmd_words_b[w] + i] != ' ' && cmd_buffer[cmd_words_b[w] + i] != '\0') {
 				write_char(cmd_buffer[cmd_words_b[w] + i]);
 				vlan_names[vlan_ptr++] = cmd_buffer[cmd_words_b[w] + i++];
 			}
