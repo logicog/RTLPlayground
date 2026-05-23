@@ -79,6 +79,12 @@ vlan <VLAN-ID> d
 vlan show
   Dumps the current ingress vlan settings.
 
+vlan <VLAN-ID> mgmt
+  Restricts network access to the switch (web UI, syslog) to the given
+  VLAN. Use `vlan 0 mgmt` to disable the filter. Default is `vlan 1 mgmt`.
+  Warning: setting this to an unreachable VLAN locks out the web UI;
+  recovery requires serial console.
+
 pvid <port> <VLAN-ID>
   assigns PVID to a port. ports are numbered as on the casing
 
