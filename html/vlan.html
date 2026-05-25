@@ -11,6 +11,13 @@
     <h1>VLAN Configuration</h1>
     <form id="vform" action="/vlan.html">
       <div>
+        <label for="vlanSelect">VLAN auswählen:</label>
+        <select id="vlanSelect" style="margin: 0 0 0 8px">
+          <option value="" disabled selected>— VLAN wählen —</option>
+        </select>
+      </div>
+      <br/>
+      <div>
         <label for="vid">VLAN ID:</label>
         <input type="number" min="1" max="4094" id="vid" name="vid">
         <button type="button" style="margin: 0 0 0 24px" onclick="fetchVLAN();">Get Configuration</button>
@@ -29,6 +36,22 @@
       <br/> <input style="width:40%;" class="action" id="vlan_sub" onclick="vlanSub();" type="button" value="Update / Create">
       <script src="/vlan_sub.js"></script>
     </form>
+    <h2>Configured VLANs</h2>
+    <table id="vlanTable" style="width:90%">
+      <thead>
+        <tr>
+          <th>VLAN</th>
+          <th>Name</th>
+          <th>Member Ports</th>
+          <th>Tagged Ports</th>
+          <th>Untagged Ports</th>
+          <th>PVID Ports</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody id="vlanTableBody">
+      </tbody>
+    </table>
     </div>
     <script src="/navigation.js"></script>
   </body>
