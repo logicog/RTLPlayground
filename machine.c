@@ -536,9 +536,9 @@ __code const struct machine machine = {
 
 void machine_custom_init(void) { }
 
-#elif defined MACHINE_HI_K0402WS
+#elif defined(MACHINE_PCB_K0402WS_V3) || defined(MACHINE_HI_K0402WS)  // Sold as a variety of devices, see doc/
 __code const struct machine machine = {
-	.machine_name = "HiSource HI-K0402WS",
+	.machine_name = "PCB-K0402WS-V3.0",
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
