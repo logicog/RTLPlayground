@@ -83,9 +83,129 @@ function fetchVLAN() {
   sendXHTTP(xhttp);
 }
 
+function portsToRange(mask, nPorts) {
+  var parts = [];
+  var start = -1, prev = -1;
+  for (var p = 1; p <= nPorts; p++) {
+    var bit = physToLogPort[p - 1];
+    if ((mask >> bit) & 1) {
+      if (start < 0) start = p;
+      prev = p;
+    } else {
+      if (start >= 0) {
+        parts.push(start === prev ? String(start) : start + '-' + prev);
+        start = -1; prev = -1;
+      }
+    }
+  }
+  if (start >= 0)
+    parts.push(start === prev ? String(start) : start + '-' + prev);
+  return parts.length ? parts.join(',') : '-';
+}
+
+async function loadVlanTable() {
+  var tbody = document.getElementById('vlanTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  var resp;
+  try { resp = await fetch('/vlanlist'); } catch(e) { return; }
+  if (!resp.ok) return;
+  var vlans = await resp.json();
+  for (var i = 0; i < vlans.length; i++) {
+    var v = vlans[i];
+    var vresp;
+    try { vresp = await fetch('/vlan.json?vid=' + v.id); } catch(e) { continue; }
+    if (!vresp.ok) continue;
+    var s = await vresp.json();
+    var m = parseInt(s.members, 16);
+    var members = m & 0x3FF;
+    var untag   = ((m >> 10) & 0x3FF) & members;
+    var tagged  = members & ~untag;
+    var pvid    = parseInt(s.pvid, 16) & 0x3FF;
+    var tr = document.createElement('tr');
+    var td, a, btn;
+    td = document.createElement('td');
+    a = document.createElement('a');
+    a.href = '#';
+    a.textContent = v.id;
+    (function(vid) {
+      a.onclick = function(e) {
+        e.preventDefault();
+        document.getElementById('vid').value = vid;
+        fetchVLAN();
+      };
+    })(v.id);
+    td.appendChild(a); tr.appendChild(td);
+    td = document.createElement('td');
+    td.textContent = v.name || ''; tr.appendChild(td);
+    td = document.createElement('td');
+    td.textContent = portsToRange(members, numPorts); tr.appendChild(td);
+    td = document.createElement('td');
+    td.textContent = portsToRange(tagged, numPorts); tr.appendChild(td);
+    td = document.createElement('td');
+    td.textContent = portsToRange(untag, numPorts); tr.appendChild(td);
+    td = document.createElement('td');
+    td.textContent = portsToRange(pvid, numPorts); tr.appendChild(td);
+    td = document.createElement('td');
+    if (v.id !== 1) {
+      btn = document.createElement('button');
+      btn.textContent = '✕';
+      (function(vid) {
+        btn.onclick = function() { deleteVlan(vid); };
+      })(v.id);
+      td.appendChild(btn);
+    }
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+}
+
+function deleteVlan(id) {
+  if (!confirm('Delete VLAN ' + id + '?')) return;
+  fetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' d' })
+    .then(function() { refreshVlanViews(); })
+    .catch(function(err) { console.error('Delete failed:', err); });
+}
+
+function refreshVlanViews() {
+  loadVlanList();
+  loadVlanTable();
+}
+
+function loadVlanList() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState !== 4) return;
+    var sel = document.getElementById('vlanSelect');
+    if (this.status !== 200) {
+      sel.style.display = 'none';
+      return;
+    }
+    var vlans = JSON.parse(this.responseText);
+    if (!vlans.length) {
+      sel.style.display = 'none';
+      return;
+    }
+    sel.options.length = 1;
+    for (var i = 0; i < vlans.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = vlans[i].id;
+      opt.text = vlans[i].name ? vlans[i].id + ' — ' + vlans[i].name : String(vlans[i].id);
+      sel.appendChild(opt);
+    }
+  };
+  xhttp.open('GET', '/vlanlist', true);
+  sendXHTTP(xhttp);
+}
+
 window.addEventListener("load", function() {
   update( () => {
     vlanForm();
+    refreshVlanViews();
+    document.getElementById('vlanSelect').onchange = function() {
+      document.getElementById('vid').value = this.value;
+      fetchVLAN();
+    };
     const interval = setInterval(update, 2000);
   });
 });
