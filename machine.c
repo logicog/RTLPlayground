@@ -779,9 +779,9 @@ void machine_custom_init(void)
 }
 
 
-#elif defined MACHINE_PCB_SWTG024AS_A_2_0_1_19650
+#elif defined MACHINE_PCB_SWTG024AS_A_2_0_1
 __code const struct machine machine = {
-    .machine_name = "PCB-SWTG024AS-A-2.0.1_19650",
+    .machine_name = "PCB-SWTG024AS-A-2.0.1",
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
