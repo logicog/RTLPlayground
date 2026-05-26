@@ -790,7 +790,7 @@ void parse_regset(void)
 {
 	uint16_t reg = 0;
 
-	if (cmd_words_len != 2) {
+	if (cmd_words_len != 3) {
 		goto err;
 	}
 
