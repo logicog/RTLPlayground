@@ -73,6 +73,7 @@
  */
 #define SDS_SGMII		0x02
 #define SDS_1000BX_FIBER	0x04
+#define SDS_100FX		0x05
 #define SDS_QXGMII		0x0d
 #define SDS_HISGMII		0x12
 #define SDS_HSG			0x16

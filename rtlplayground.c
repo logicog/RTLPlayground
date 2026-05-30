@@ -927,6 +927,10 @@ void sds_config(uint8_t sds, uint8_t mode)
 		v = 0x0200;
 		page = 0x2e;
 		break;
+	case SDS_100FX:
+		v = 0x0200;
+		page = 0x26;
+		break;
 	default:
 		print_string("Error in SDS Mode\n");
 		return;
@@ -1170,6 +1174,8 @@ void handle_tx(void)
 
 static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
 {
+	if (rate == 0x1 || rate == 0x2)
+		return SDS_100FX;
 	if (rate == 0xc || rate == 0xd)
 		return SDS_1000BX_FIBER;
 	if (rate >= 0x19 && rate <= 0x20)  // Ethernet 2.5 GBit
@@ -1235,7 +1241,9 @@ void handle_sfp(void)
 				// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
 				delay(100); // Delay, because some modules need time to wake up
 				uint8_t rate = sfp_read_reg(sfp, 12);
-				if (sfp_speed[sfp] == SFP_SPEED_1G)
+				if (sfp_speed[sfp] == SFP_SPEED_100M)
+					rate = 0x1;
+				else if (sfp_speed[sfp] == SFP_SPEED_1G)
 					rate = 0xc;
 				else if (sfp_speed[sfp] == SFP_SPEED_2G5)
 					rate = 0x19;

@@ -791,6 +791,9 @@ void parse_sfp(void)
 	} else if (cmd_compare(2, "1g")) {
 		print_string(" 1G\n");
 		sfp_speed[slot] = SFP_SPEED_1G;
+	} else if (cmd_compare(2, "100m")) {
+		print_string(" 100M\n");
+		sfp_speed[slot] = SFP_SPEED_100M;
 	} else if (cmd_compare(2, "auto")) {
 		print_string(" AUTO\n");
 		sfp_speed[slot] = SFP_SPEED_AUTO;
