@@ -94,6 +94,7 @@ struct vlan_tag {
 
 enum sfp_speeds {
 	SFP_SPEED_AUTO = 0,
+	SFP_SPEED_100M,
 	SFP_SPEED_1G,
 	SFP_SPEED_2G5,
 	SFP_SPEED_5G,
