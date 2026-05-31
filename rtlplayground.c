@@ -137,6 +137,7 @@ __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
+__xdata uint8_t sfp_speed[2];
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
 volatile __bit tx_buf_empty;
@@ -926,6 +927,10 @@ void sds_config(uint8_t sds, uint8_t mode)
 		v = 0x0200;
 		page = 0x2e;
 		break;
+	case SDS_100FX:
+		v = 0x0200;
+		page = 0x26;
+		break;
 	default:
 		print_string("Error in SDS Mode\n");
 		return;
@@ -1169,6 +1174,8 @@ void handle_tx(void)
 
 static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
 {
+	if (rate == 0x1 || rate == 0x2)
+		return SDS_100FX;
 	if (rate == 0xc || rate == 0xd)
 		return SDS_1000BX_FIBER;
 	if (rate >= 0x19 && rate <= 0x20)  // Ethernet 2.5 GBit
@@ -1234,6 +1241,14 @@ void handle_sfp(void)
 				// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
 				delay(100); // Delay, because some modules need time to wake up
 				uint8_t rate = sfp_read_reg(sfp, 12);
+				if (sfp_speed[sfp] == SFP_SPEED_100M)
+					rate = 0x1;
+				else if (sfp_speed[sfp] == SFP_SPEED_1G)
+					rate = 0xc;
+				else if (sfp_speed[sfp] == SFP_SPEED_2G5)
+					rate = 0x19;
+				else if (sfp_speed[sfp] == SFP_SPEED_10G)
+					rate = 0x69;
 				print_string("  Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
 				print_string("  Encoding: "); print_byte(sfp_read_reg(sfp, 11));
 				print_string("  Module: "); sfp_print_info(sfp);
@@ -1996,6 +2011,8 @@ void main(void)
 	// Print SW version
 	print_sw_version();
 
+	// Set AUTONEG for SFP ports
+	sfp_speed[0] = sfp_speed[1] = SFP_SPEED_AUTO;
 	// Reset NIC
 	reg_bit_set(RTL837X_REG_RESET, RESET_NIC_BIT);
 	do {
