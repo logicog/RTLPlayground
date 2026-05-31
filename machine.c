@@ -794,37 +794,39 @@ __code const struct machine machine = {
     .min_port = 3,
     .max_port = 8,
     .n_sfp = 2,
-    .log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
-    .phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
-    .is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
+    .log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
+    .phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
+    .is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
 
-    // Left SFP port
-    .sfp_port[1].pin_detect = GPIO38,
-    .sfp_port[1].pin_los = GPIO_NA,
-    .sfp_port[1].sds = 1,
-    .sfp_port[1].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
-
-    // Right SFP port
+    // SFP port on SDS0 / logical port 3
     .sfp_port[0].pin_detect = GPIO37,
     .sfp_port[0].pin_los = GPIO_NA,
+    .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 0,
     .sfp_port[0].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+
+    // SFP port on SDS1 / logical port 8
+    .sfp_port[1].pin_detect = GPIO38,
+    .sfp_port[1].pin_los = GPIO_NA,
+    .sfp_port[1].pin_tx_disable = GPIO_NA,
+    .sfp_port[1].sds = 1,
+    .sfp_port[1].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
     .led_sets = {
                     {
-                            LEDS_2G5 | LEDS_LINK | LEDS_10M | LEDS_ACT,
-                            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
-                            LEDS_1G | LEDS_LINK,
-                            0
+                            LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+                            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+                            LEDS_DUPLEX,
+                            LEDS_2G5 | LEDS_LINK | LEDS_ACT
                     },
                     {
-                            LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK,
-                            LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_ACT,
-                            0,
-                            0
+                            LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
+                            LEDS_10G | LEDS_LINK | LEDS_ACT,
+                            LEDS_2G5 | LEDS_LINK,
+                            LEDS_COL | LEDS_DUPLEX
                     },
      },
     .led_mux_custom = 1,
@@ -833,7 +835,13 @@ __code const struct machine machine = {
             },
     };
 
-void machine_custom_init(void) { }
+void machine_custom_init(void)
+{
+    reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
+    reg_bit_set(RTL837X_REG_LED_MODE, 17);
+    reg_bit_clear(RTL837X_REG_LED_MODE, 9);
+    reg_bit_clear(RTL837X_REG_LED_MODE, 7);
+}
 
 
 
