@@ -92,6 +92,15 @@ struct vlan_tag {
 #define CMD_HISTORY_SIZE 0x400
 #define CMD_HISTORY_MASK (CMD_HISTORY_SIZE - 1)
 
+enum sfp_speeds {
+	SFP_SPEED_AUTO = 0,
+	SFP_SPEED_100M,
+	SFP_SPEED_1G,
+	SFP_SPEED_2G5,
+	SFP_SPEED_5G,
+	SFP_SPEED_10G
+};
+
 /**
  * Representation of a 48-bit Ethernet address.
  */
@@ -160,4 +169,5 @@ void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
 void sds_config_mac(uint8_t sds, uint8_t mode);
 void sds_config(uint8_t sds, uint8_t mode);
+void handle_sfp(void);
 #endif
