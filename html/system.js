@@ -1,4 +1,5 @@
 var systemInterval = Number();
+var isSaving = false;
 const ips = ["ip", "netmask", "gw"];
 
 function checkIp(ip) {
@@ -43,35 +44,39 @@ async function cmdSub() {
 
 
 async function sendConfig(c) {
-    const form = new FormData();
+  if (isSaving) return;
+  isSaving = true;
+  clearInterval(systemInterval);
+  const form = new FormData();
   form.append("MAX_FILE_SIZE", "4096");
-  form.append("configuration", new Blob([c], {type: "application/octet-stream"}));
+  form.append("configuration", new Blob([c], {type: "application/octet-stream"}), "config.txt");
   try {
     const response = await fetch('/config', {
       method: 'POST',
       body: form
     });
     console.log('Completed!', response);
+    try {
+      await fetch('/cmd_log_clear', { method: 'GET' });
+    } catch(e) {}
   } catch(err) {
     console.error(`Error: ${err}`);
+  } finally {
+    isSaving = false;
+    systemInterval = setInterval(fetchIP, 1000);
   }
 }
 
 
 async function flashSave() {
-  fetchConfig().then((s) => {
-    parseConf(s);
-    fetchCmdLog().then((s) => {
-      parseConf(s);
-      var body = "";
-      for (const x of configuration) { body = body + x + "\n"; }
-      console.log("CONFIGURATION to save: ", body);
-      sendConfig(body);
-    });
-  });
-  setTimeout(() => {
-      fetchIP();
-  }, 500);
+  configuration = [];
+  const savedConfig = await fetchConfig();
+  const cmdLog = await fetchCmdLog();
+  if (savedConfig) parseConf(savedConfig);
+  if (cmdLog) parseConf(cmdLog);
+  const body = configuration.join('\n') + '\n';
+  console.log("CONFIGURATION to save: ", body);
+  await sendConfig(body);
 }
 
 async function flashStartupSave() {
