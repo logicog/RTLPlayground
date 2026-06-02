@@ -71,7 +71,7 @@ function parseConf(s){
         let m = line.match(x);
         let matchStr = m[0];
         configuration = configuration.filter(item =>
-          !(item === matchStr || item.startsWith(matchStr + " ")));
+          !(item === matchStr || (item.startsWith(matchStr + " ") && !item.endsWith(" mgmt"))));
         break;
       }
     }
