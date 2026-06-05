@@ -361,9 +361,6 @@ void installer(void)
 	setup_serial_timer1();
 	print_string("\nRTLPlayground installer starting...\n");
 
-	// Initialize flash functions with disable DIO because writing does not work otherwise
-	flash_init(0);
-
 	__xdata uint32_t dest = 0x0;
 	__xdata uint32_t source = UPDATE_CODE_LOC;
 	// A 512kByte = 4MBit Flash has 128 sectors, we copy only 120
