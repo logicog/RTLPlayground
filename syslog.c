@@ -30,16 +30,16 @@ void syslog_start(void) __banked
 		uip_ipaddr(server_ip, state.server_ip[0], state.server_ip[1], state.server_ip[2], state.server_ip[3]);
 		state.syslog_conn = uip_udp_new(&server_ip, HTONS(514));
 		if (state.syslog_conn == 0) {
-			print_string_no_syslog("Failed to create a new UDP client\n");
+			print_string_newline_no_syslog("Failed to create a new UDP client");
 			return;
 		}
-		print_string_no_syslog("Started syslog to IP ");
+		print_string_newline_no_syslog("Started syslog to IP ");
 		itoa(state.server_ip[0]); write_char('.'); itoa(state.server_ip[1]); write_char('.');
 		itoa(state.server_ip[2]); write_char('.'); itoa(state.server_ip[3]); write_char('\n');
 		state.enabled = 1;
 	}
 	else {
-		print_string_no_syslog("Syslog is already running\n");
+		print_string_newline_no_syslog("Syslog is already running");
 	}
 }
 
@@ -49,9 +49,9 @@ void syslog_stop(void) __banked
 	if (state.syslog_conn != 0) {
 		uip_udp_remove(state.syslog_conn);
 		state.syslog_conn = 0;
-		print_string_no_syslog("Stopped syslog\n");
+		print_string_newline_no_syslog("Stopped syslog");
 	} else {
-		print_string_no_syslog("Syslog is not running\n");
+		print_string_newline_no_syslog("Syslog is not running");
 	}
 }
 

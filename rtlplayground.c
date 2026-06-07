@@ -271,6 +271,12 @@ void print_string_no_syslog(__code char *p)
 		write_char_no_syslog(*p++);
 }
 
+void print_string_newline_no_syslog(__code char *p)
+{
+	write_char_no_syslog('\n');
+	print_string_no_syslog(p);
+}
+
 void print_string_x(__xdata char *p)
 {
 	while (*p)
