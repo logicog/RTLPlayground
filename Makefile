@@ -12,14 +12,14 @@ AFLAGS= -plosgff
 SUBDIRS := tools
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
-BUILDDIR = output
-VERSION_HEADER := version.h
-
 ifeq ($(MACHINE),)
 	MACHINE:= $(shell grep "^\s*#define MACHINE_" machine.h | sed "s/^\s*#define MACHINE_//")
 else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
+
+BUILDDIR = output/$(MACHINE)
+VERSION_HEADER := version.h
 
 GIT_VERSION := $(shell git rev-parse --short HEAD)
 ifeq ($(shell git status --porcelain --untracked-files=no),)
@@ -45,8 +45,8 @@ OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
 HTML := $(shell find $(html) -name '*.js' -or -name '*.html' -or -name '*.svg')
 
-html_data.c html_data.h: $(HTML) tools/$(BUILDDIR)/fileadder
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
+html_data.c html_data.h: $(HTML) tools/output/fileadder
+	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
 	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
@@ -83,12 +83,12 @@ $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 
 $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img
 	if [ -e $@ ]; then rm $@; fi
-	tools/$(BUILDDIR)/imagebuilder -i $^ $@
-	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data -b BANK1 $@
-	tools/$(BUILDDIR)/crc_calculator -u $@
-	ln -sf rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/rtlplayground.bin
+	tools/output/imagebuilder -i $^ $@
+	tools/output/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/output/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data -b BANK1 $@
+	tools/output/crc_calculator -u $@
+	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
 .PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
 
