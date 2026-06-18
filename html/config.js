@@ -14,6 +14,7 @@ const conf_cmds = [
   /^pvid\s+\d{1,2}\s+\d{1,4}$/,
   /^ingress(\s+\d{1,2}[tua])+$/,
   /^ingress\s+[tua]$/,
+  /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
   /^eee(\s+\d{1,2})?\s+(on|off)$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,
@@ -36,6 +37,7 @@ const conf_overwrite = [
   /^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
   /^ingress\b/,
+  /^port\s+\d{1,2}(?!\s+name\b)/,
   /^port\s+\d{1,2}\s+name\b/,
   /^eee\s+\d{1,2}\b/,
   /^eee\b/,
@@ -71,7 +73,7 @@ function parseConf(s){
         let m = line.match(x);
         let matchStr = m[0];
         configuration = configuration.filter(item =>
-          !(item === matchStr || (item.startsWith(matchStr + " ") && !item.endsWith(" mgmt"))));
+          !(item === matchStr || (item.startsWith(matchStr + " ") && !item.endsWith(" mgmt") && !item.startsWith(matchStr + " name "))));
         break;
       }
     }
