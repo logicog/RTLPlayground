@@ -77,6 +77,9 @@ function parseConf(s){
         break;
       }
     }
+    // Only one management VLAN can be active, so drop any previous mgmt entry
+    if (/^vlan\s+\d{1,4}\s+mgmt$/.test(line))
+      configuration = configuration.filter(item => !/^vlan\s+\d{1,4}\s+mgmt$/.test(item));
     configuration.push(line);
   }
   console.log("Configuration now:");
