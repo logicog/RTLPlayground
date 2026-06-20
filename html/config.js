@@ -59,8 +59,7 @@ function parseConf(s){
     const deleteMatch = line.match(/^vlan\s+(\d{1,4})\s+d$/);
     if (deleteMatch) {
       const prefix = "vlan " + deleteMatch[1] + " ";
-      configuration = configuration.filter(c =>
-        c !== "vlan " + deleteMatch[1] && !c.startsWith(prefix));
+      configuration = configuration.filter(c => !c.startsWith(prefix));
       continue;
     }
     console.log(l + ' --> ' + line);
