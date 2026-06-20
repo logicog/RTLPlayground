@@ -4,13 +4,13 @@ function createPortTable() {
   var tbl = document.getElementById('speedtable');
    if (tbl.rows.length <= 2 && numPorts) {
      const sSelect = '<select name="speed_sel" id="speed_sel">'
-      + '<option value="auto">Auto</option>'
-      + '<option value="2g5">2500MBit/Full</option>'
-      + '<option value="1g">1000MBit/Full</option>'
-      + '<option value="100m full">100MBit/Full</option>'
-      + '<option value="100m half">100MBit/Half</option>'
-      + '<option value="10m full">10MBit/Full</option>'
-      + '<option value="10m half">10MBit/Half</option>'
+      + '<option value="auto">自动</option>'
+      + '<option value="2g5">2500Mbit/全双工</option>'
+      + '<option value="1g">1000Mbit/全双工</option>'
+      + '<option value="100m full">100Mbit/全双工</option>'
+      + '<option value="100m half">100Mbit/半双工</option>'
+      + '<option value="10m full">10Mbit/全双工</option>'
+      + '<option value="10m half">10Mbit/半双工</option>'
       + '</select>';
       const dSwitch = '<input type="checkbox" id="disable_port" onchange="portOnOff();">'
      for (let i = 1; i <= numPorts; i++) {
@@ -18,14 +18,14 @@ function createPortTable() {
         continue;
       console.log("Table row: " + i + "pState: " + pState[i-2]);
       const tr = tbl.insertRow();
-      let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i}`));
+      let td = tr.insertCell(); td.appendChild(document.createTextNode(`端口 ${i}`));
       let portName = portNames[physToLogPort[i-1]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
       td = tr.insertCell(); td.innerHTML = linkS[pState[i] + 1];
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
       td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
 						  .replace("portOnOff()", "portOnOff(" + i + ")");
-      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="applySpeed(' + i + ');">Apply</button>';
+      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="applySpeed(' + i + ');">应用</button>';
       td = tr.insertCell();
       td.innerHTML = button;
     }
@@ -55,7 +55,7 @@ function createPortTable() {
       tr = tbl.insertRow();
       for (let i = 1; i <= numPorts; i++) {
         let td = tr.insertCell();
-        td.innerHTML = '<button type="button" style="margin: 0 0 0 24px" onclick="applyMTU(' + i + ');">Apply</button>';
+        td.innerHTML = '<button type="button" style="margin: 0 0 0 24px" onclick="applyMTU(' + i + ');">应用</button>';
       }
   }
 }

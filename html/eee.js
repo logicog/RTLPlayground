@@ -5,7 +5,7 @@ function createEEE() {
      for (let i = 2; i < 2 + numPorts; i++) {
       console.log("Table row: " + i + "pState: " + pState[i-2]);
       const tr = tbl.insertRow();
-      let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i-1}`));
+      let td = tr.insertCell(); td.appendChild(document.createTextNode(`端口 ${i-1}`));
       for (let j = 0; j < 7; j++) {
         td = tr.insertCell(); td.appendChild(document.createTextNode(" "));
       }
@@ -28,9 +28,9 @@ function getEEE() {
           let tr = tbl.rows[n+1];
           if (!p.isSFP) {
             let eee = parseInt(p.eee,2); let lp = parseInt(p.eee_lp,2);
-            tr.cells[1].innerHTML = `${eee&4?"ON":"OFF"}`; tr.cells[2].innerHTML = `${eee&2?"ON":"OFF"}`; tr.cells[3].innerHTML = `${eee&1?"ON":"OFF"}`;
-            tr.cells[4].innerHTML = `${lp&4?"ON":"OFF"}`; tr.cells[5].innerHTML = `${lp&2?"ON":"OFF"}`; tr.cells[6].innerHTML = `${lp&1?"ON":"OFF"}`;
-            tr.cells[7].innerHTML = `${p.active}`;
+            tr.cells[1].innerHTML = `${eee&4?"开":"关"}`; tr.cells[2].innerHTML = `${eee&2?"开":"关"}`; tr.cells[3].innerHTML = `${eee&1?"开":"关"}`;
+            tr.cells[4].innerHTML = `${lp&4?"开":"关"}`; tr.cells[5].innerHTML = `${lp&2?"开":"关"}`; tr.cells[6].innerHTML = `${lp&1?"开":"关"}`;
+            tr.cells[7].innerHTML = `${Number(p.active) ? "是" : "否"}`;
             tr.classList.toggle('disabled', pState[i-2] < 0); tr.classList.toggle('isNOK', !p.active); tr.classList.toggle('isOK', p.active);
           }
           tr.classList.toggle('isSFP', p.isSFP);

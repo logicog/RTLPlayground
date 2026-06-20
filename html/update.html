@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="style.css">
-    <title>Firmware update</title>
+    <title>固件升级</title>
   </head>
   <body>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;width:40%;">
-    <h1>Firmware Update</h1>
+    <h1>固件升级</h1>
     <form enctype="multipart/form-data" action="/upload" method="POST">
     <input type="hidden" name="MAX_FILE_SIZE" value="1000000" />
-      Choose a firmware update file to upload: <br/> <br/>
+      选择要上传的固件升级文件: <br/> <br/>
       <input name="uploadedfile" type="file" accept=".bin" /><br />
-    <input style="margin-top:3em" type="submit" value="Upload File" />
+    <input style="margin-top:3em" type="submit" value="上传文件" />
     </form>
     <script src="/navigation.js"></script>
   </body>

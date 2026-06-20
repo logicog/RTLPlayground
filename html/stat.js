@@ -1,108 +1,108 @@
 const mib_counters = [
-  "Interface in Octets", 8,
+  "接口入方向字节", 8,
   "", 0,
-  "Interface out Octets", 8,
+  "接口出方向字节", 8,
   "", 0,
-  "Interface in Unicast Pkts", 8,
+  "接口入方向单播包", 8,
   "", 0,
-  "Interface in Multicast Pkts", 8,
+  "接口入方向组播包", 8,
   "", 0,
-  "Interface in Broadcast Pkts", 8,
+  "接口入方向广播包", 8,
   "", 0,
-  "Interface out Unicast Pkts", 8, // 10
+  "接口出方向单播包", 8, // 10
   "", 0,
-  "Interface out Multicast Pkts", 8,
+  "接口出方向组播包", 8,
   "", 0,
-  "Interface out Broadcast Pkts", 8,
+  "接口出方向广播包", 8,
   "", 0,
-  "Interface out discards", 4,
-  "802.1d Tp Port in discards", 4,
-  "802.3 Single collision frames", 4,
-  "802.3 Multi collision frames", 4,
-  "802.3 Deferred transmissions", 4, // 20
-  "802.3 Late collisions", 4,
-  "802.3 Excessive collisions", 4,
-  "802.3 Symbol errors", 4,
-  "802.3 Control in unknown opcodes", 4,
-  "802.3 In Pause frames", 4,
-  "802.3 Out Pause frames", 4,
-  "Ether drop events", 4,
-  "TX Ether Broadcast Pkts", 4,
-  "TX Ether Multicast Pkts", 4,
-  "TX Ether CRC Align errors", 4, // 30
-  "RX Ether CRC Align errors", 4,
-  "TX Ether Undersized Pkts", 4,
-  "RX Ether Undersized Pkts", 4,
-  "TX Ether Oversized Pkts", 4,
-  "RX Ether Oversized Pkts", 4,
-  "TX Ether Fragments", 4,
-  "RX Ether fragments", 4,
-  "TX Ether Jabbers", 4,
-  "RX Ether Jabbers", 4,
-  "TX Ether Collisions", 4, // 40
-  "TX Ether Pkts 640 Octets", 4,
-  "RX Ether Pkts 640 Octets", 4,
-  "TX Ether 65-127 Octets", 4,
-  "RX Ether 65-127 Octets", 4,
-  "TX Ether Pkts 128-255 Octets", 4,
-  "RX Ether Pkts 128-255 Octets", 4,
-  "TX Ether Pkts 256-511 Octets", 4,
-  "RX Ether Pkts 256-511 Octets", 4,
-  "TX Ether Pkts 512-1023 Octets", 4,
-  "RX Ether Pkts 512-1023 Octets", 4, // 50
-  "TX Ether Pkts 1024-1518 Octets", 4,
-  "RX Ether Pkts 1024-1518 Octets", 4,
+  "接口出方向丢弃", 4,
+  "802.1D TP 端口入方向丢弃", 4,
+  "802.3 单次冲突帧", 4,
+  "802.3 多次冲突帧", 4,
+  "802.3 延迟发送", 4, // 20
+  "802.3 晚期冲突", 4,
+  "802.3 过多冲突", 4,
+  "802.3 符号错误", 4,
+  "802.3 未知控制操作码入方向", 4,
+  "802.3 入方向 Pause 帧", 4,
+  "802.3 出方向 Pause 帧", 4,
+  "以太网丢弃事件", 4,
+  "TX 以太网广播包", 4,
+  "TX 以太网组播包", 4,
+  "TX 以太网 CRC/对齐错误", 4, // 30
+  "RX 以太网 CRC/对齐错误", 4,
+  "TX 以太网过短包", 4,
+  "RX 以太网过短包", 4,
+  "TX 以太网超长包", 4,
+  "RX 以太网超长包", 4,
+  "TX 以太网碎片", 4,
+  "RX 以太网碎片", 4,
+  "TX 以太网 Jabber 帧", 4,
+  "RX 以太网 Jabber 帧", 4,
+  "TX 以太网冲突", 4, // 40
+  "TX 以太网 640 字节包", 4,
+  "RX 以太网 640 字节包", 4,
+  "TX 以太网 65-127 字节包", 4,
+  "RX 以太网 65-127 字节包", 4,
+  "TX 以太网 128-255 字节包", 4,
+  "RX 以太网 128-255 字节包", 4,
+  "TX 以太网 256-511 字节包", 4,
+  "RX 以太网 256-511 字节包", 4,
+  "TX 以太网 512-1023 字节包", 4,
+  "RX 以太网 512-1023 字节包", 4, // 50
+  "TX 以太网 1024-1518 字节包", 4,
+  "RX 以太网 1024-1518 字节包", 4,
   "", 4,
-  "RX Ether Undersized Drop Pkts", 4, // 54
-  "TX Ether Pkts >1518 Octets", 4,
-  "RX Ether Pkts >1518 Octets", 4,
-  "TX Ether Pkts too large", 4,
-  "RX Ether Pkts too large", 4,
-  "TX Ether Flexible Octets Set 1", 4,
-  "RX Ether Flexible Octets Set 1", 4,// 60
-  "TX Ether Flexible Octets CRC Set 1", 4,
-  "RX Ether Flexible Octets CRC Set 1", 4,
-  "TX Ether Flexible Octets Set 0", 4,
-  "RX Ether Flexible Octets Set 0", 4,
-  "TX Ether Flexible Octets CRC Set 0", 4,
-  "RX Ether Flexible Octets CRC Set 0", 4,
-  "Lenth Field Errors", 4,
-  "False Carriers", 4,
-  "Undersized Octets", 4,
-  "Framing Errors", 4, // 70
+  "RX 以太网过短丢弃包", 4, // 54
+  "TX 以太网 >1518 字节包", 4,
+  "RX 以太网 >1518 字节包", 4,
+  "TX 以太网过大包", 4,
+  "RX 以太网过大包", 4,
+  "TX 以太网灵活字节集合 1", 4,
+  "RX 以太网灵活字节集合 1", 4,// 60
+  "TX 以太网灵活字节 CRC 集合 1", 4,
+  "RX 以太网灵活字节 CRC 集合 1", 4,
+  "TX 以太网灵活字节集合 0", 4,
+  "RX 以太网灵活字节集合 0", 4,
+  "TX 以太网灵活字节 CRC 集合 0", 4,
+  "RX 以太网灵活字节 CRC 集合 0", 4,
+  "长度字段错误", 4,
+  "假载波", 4,
+  "过短字节", 4,
+  "成帧错误", 4, // 70
   "", 4,
-  "RX MAC Discards", 4, // 72
-  "RX MAC IPG Short Drop", 4,
+  "RX MAC 丢弃", 4, // 72
+  "RX MAC IPG 过短丢弃", 4,
   "", 4,
-  "802.1d TP Learned Entry Discards", 4, // 75
-  "Egress Queue 7 Dropped Pkts", 4,
-  "Egress Queue 6 Dropped Pkts", 4,
-  "Egress Queue 5 Dropped Pkts", 4,
-  "Egress Queue 4 Dropped Pkts", 4,
-  "Egress Queue 3 Dropped Pkts", 4, // 80
-  "Egress Queue 2 Dropped Pkts", 4,
-  "Egress Queue 1 Dropped Pkts", 4,
-  "Egress Queue 0 Dropped Pkts", 4,
-  "Egress Queue 7 Out Pkts", 4,
-  "Egress Queue 6 Out Pkts", 4,
-  "Egress Queue 5 Out Pkts", 4,
-  "Egress Queue 4 Out Pkts", 4,
-  "Egress Queue 3 Out Pkts", 4,
-  "Egress Queue 2 Out Pkts", 4,
-  "Egress Queue 1 Out Pkts", 4, // 90
-  "Egress Queue 0 Out Pkts", 4,
-  "TX Good Counter", 8,
+  "802.1D TP 已学习条目丢弃", 4, // 75
+  "出方向队列 7 丢弃包", 4,
+  "出方向队列 6 丢弃包", 4,
+  "出方向队列 5 丢弃包", 4,
+  "出方向队列 4 丢弃包", 4,
+  "出方向队列 3 丢弃包", 4, // 80
+  "出方向队列 2 丢弃包", 4,
+  "出方向队列 1 丢弃包", 4,
+  "出方向队列 0 丢弃包", 4,
+  "出方向队列 7 发出包", 4,
+  "出方向队列 6 发出包", 4,
+  "出方向队列 5 发出包", 4,
+  "出方向队列 4 发出包", 4,
+  "出方向队列 3 发出包", 4,
+  "出方向队列 2 发出包", 4,
+  "出方向队列 1 发出包", 4, // 90
+  "出方向队列 0 发出包", 4,
+  "TX 正常计数", 8,
   "", 0,
-  "RX Good Counter", 8,
+  "RX 正常计数", 8,
   "", 0,
-  "RX Error Counter", 4,
-  "TX Error Counter", 4,
-  "TX Good Counter PHY", 8,
+  "RX 错误计数", 4,
+  "TX 错误计数", 4,
+  "PHY TX 正常计数", 8,
   "", 0,
-  "RX Good Counter PHY", 8, // 100
+  "PHY RX 正常计数", 8, // 100
   "", 0,
-  "RX Error Counter PHY", 4,
-  "TX Error Counter PHY", 4
+  "PHY RX 错误计数", 4,
+  "PHY TX 错误计数", 4
 ];
 
 
@@ -114,7 +114,7 @@ function getCounters(port) {
       const s = JSON.parse(xhttp.responseText);
       console.log("Counters: ", JSON.stringify(s));
       const ptext = document.getElementById('popup_text');
-      var t = "<table style='width:100%'> <tr> <th>Counter</th> <th>Value</th> <th>Counter</th> <th>Value</th></tr> <tr>";
+      var t = "<table style='width:100%'> <tr> <th>计数器</th> <th>值</th> <th>计数器</th> <th>值</th></tr> <tr>";
       console.log("Counter 0: ", BigInt(s[0]).toString(), " length: ", s.length);
       var c = 0;
       for (i = 0; i < mib_counters.length; i += 4) {
@@ -163,24 +163,24 @@ function fillStats() {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table Update row: " + i + " state " + pState[i] + " is " + linkS[pState[i] +1]);
       tbl.rows[i+1].cells[2].innerHTML = `${linkS[pState[i]+1]}`;
-      tbl.rows[i+1].cells[3].innerHTML = `${txG[i]} pkts`;
-      tbl.rows[i+1].cells[4].innerHTML = `${txB[i]} pkts`;
-      tbl.rows[i+1].cells[5].innerHTML = `${rxG[i]} pkts`;
-      tbl.rows[i+1].cells[6].innerHTML = `${rxB[i]} pkts`;
+      tbl.rows[i+1].cells[3].innerHTML = `${txG[i]} 包`;
+      tbl.rows[i+1].cells[4].innerHTML = `${txB[i]} 包`;
+      tbl.rows[i+1].cells[5].innerHTML = `${rxG[i]} 包`;
+      tbl.rows[i+1].cells[6].innerHTML = `${rxB[i]} 包`;
     }
   } else {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table row: " + i);
       const tr = tbl.insertRow();
-      let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i+1}`));
+      let td = tr.insertCell(); td.appendChild(document.createTextNode(`端口 ${i+1}`));
       let portName = portNames[physToLogPort[i]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
       td = tr.insertCell(); td.appendChild(document.createTextNode(`${linkS[pState[i]+1]}`));
-      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]} pkts`));
-      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + i + ');">Show</button>';
+      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]} 包`));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]} 包`));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]} 包`));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]} 包`));
+      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + i + ');">查看</button>';
       td = tr.insertCell(); td.innerHTML = button;
     }
   }

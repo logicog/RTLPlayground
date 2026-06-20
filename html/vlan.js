@@ -76,7 +76,7 @@ function fetchVLAN() {
   };
   var v=document.getElementById('vid').value
   if (!v) {
-    alert("Set VLAN ID first");
+    alert("请先设置 VLAN ID");
     return;
   }
   xhttp.open("GET", `/vlan.json?vid=${v}`, true);
@@ -161,7 +161,7 @@ async function loadVlanTable() {
 }
 
 function deleteVlan(id) {
-  if (!confirm('Delete VLAN ' + id + '?')) return;
+  if (!confirm('确定删除 VLAN ' + id + ' 吗？')) return;
   fetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' d' })
     .then(function() { refreshVlanViews(); })
     .catch(function(err) { console.error('Delete failed:', err); });

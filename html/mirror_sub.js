@@ -2,7 +2,7 @@ async function mirrorSub() {
   var cmd = "mirror ";
   var mp=document.getElementById('mp').value
   if (!mp) {
-    alert("Set Mirroring Port first");
+    alert("请先设置镜像目标端口");
     return;
   }
   document.getElementById(mirrors[0]+mp).checked=false;document.getElementById(mirrors[1]+mp).checked=false;
@@ -16,7 +16,7 @@ async function mirrorSub() {
       cmd = cmd + ` ${i}r`;
   }
   if (cmd.length < 10) {
-    alert("Select Mirrored Ports");
+    alert("请选择被镜像端口");
     return;
   }
   try {

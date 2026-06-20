@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="style.css">
-    <title>System Settings</title>
+    <title>系统设置</title>
     <style>
       .tab-bar { display: flex; border-bottom: 2px solid #226; margin-bottom: 0; margin-left: 16%; padding: 1px 16px; padding-bottom: 0; }
       .tab-btn { padding: 10px 20px; background-color: #ddf; border: none; cursor: pointer; font-size: 1em; border-radius: 8px 8px 0 0; margin-right: 4px; }
@@ -14,56 +15,56 @@
   </head>
   <body>
     <div class="tab-bar">
-      <button class="tab-btn active" onclick="openTab(event, 'system-tab')">System</button>
-      <button class="tab-btn" onclick="openTab(event, 'advanced-tab')">Advanced</button>
-      <button class="tab-btn" onclick="openTab(event, 'console-tab')">Console</button>
+      <button class="tab-btn active" onclick="openTab(event, 'system-tab')">系统</button>
+      <button class="tab-btn" onclick="openTab(event, 'advanced-tab')">高级</button>
+      <button class="tab-btn" onclick="openTab(event, 'console-tab')">控制台</button>
     </div>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
 
     <div id="system-tab" class="tab-content active">
-      <h1>System Settings</h1>
+      <h1>系统设置</h1>
       <div class="row">
-        <div class="lcol"> <label for="ip">IP address:</label></div>
+        <div class="lcol"> <label for="ip">IP 地址:</label></div>
         <div class="rcol"> <input id="ip" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>
       <div class="row">
-        <div class="lcol"> <label for="netmask">Netmask:</label></div>
+        <div class="lcol"> <label for="netmask">子网掩码:</label></div>
         <div class="rcol"><input id="netmask" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>
       <div class="row">
-        <div class="lcol"> <label for="gw">Gateway:</label></div>
+        <div class="lcol"> <label for="gw">网关:</label></div>
         <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>
       <br/>
-      When updating the above settings, remember to point your browser to the new IP afterwards:<br/>
-      <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Update Settings"><br/>
+      更新以上设置后，请将浏览器访问地址切换到新的 IP 地址:<br/>
+      <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="更新设置"><br/>
       <br/>
-      Save all current settings to Flash:<br/>
-      <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
+      将当前所有设置保存到 Flash:<br/>
+      <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="保存设置到 Flash">
     </div>
 
     <div id="advanced-tab" class="tab-content">
-      <h1>Advanced Settings</h1>
-      <div class="lcol"> <label for="config_display">Startup configuration:</label></div>
+      <h1>高级设置</h1>
+      <div class="lcol"> <label for="config_display">启动配置:</label></div>
       <textarea id="config_display" rows="8" cols="60"></textarea>
       <br/><br/>
-       Be careful when saving the directly edited startup configuration, you can lock yourself out:<br/>
-      <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" value="Clear Startup Config">
+       直接编辑并保存启动配置需谨慎，错误配置可能导致无法访问设备:<br/>
+      <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" value="清空启动配置">
       <br/>
-      <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" value="Save Startup Settings to Flash">
+      <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" value="保存启动配置到 Flash">
       <br/>
-      <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" value="Reset Switch">
+      <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" value="重启交换机">
     </div>
 
     <div id="console-tab" class="tab-content">
-      <h1>Console Command</h1>
-      <label for="console_command">Enter command:</label>
+      <h1>控制台命令</h1>
+      <label for="console_command">输入命令:</label>
       <input type="text" id="console_cmd" name="console_cmd" style="width:40%;">
-      <input style="width:20%;" class="action" id="cmd_sub" onclick="cmdSub();" type="button" value="Send Command"><br/>
+      <input style="width:20%;" class="action" id="cmd_sub" onclick="cmdSub();" type="button" value="发送命令"><br/>
       <br/><br/> 
-      Be careful when entering console commands, you can lock yourself out!<br/>
+      输入控制台命令需谨慎，错误命令可能导致无法访问设备！<br/>
 
 
     </div>

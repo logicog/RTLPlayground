@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
-  <title>RTL Switch Login</title>
+  <head>
+  <meta charset="utf-8">
+  <title>RTL 交换机登录</title>
   <link rel="stylesheet" href="style.css">
   <script>
     function removeNote() {
@@ -8,21 +10,21 @@
     }
     window.addEventListener("load", function() {
       if (document.referrer.endsWith("login.html"))
-      document.getElementById("incorrect").innerHTML = "Wrong password!";
+      document.getElementById("incorrect").innerHTML = "密码错误！";
     });
     </script>
 </head>
 
 <body class="login_page">
   <div class = "center">
-  <h1> RTL Switch Login</h1>
+  <h1>RTL 交换机登录</h1>
   <form method="post" action="login">
   <div class="txt_field">
     <input name="pwd" type="password" onclick="removeNote()" required />
     <span></span>
-    <label>Password</label>
+    <label>密码</label>
   </div>
-  <input type="submit" value="Login"/>
+  <input type="submit" value="登录"/>
   <h3 id="incorrect" style="margin-top: 5em;"></h3>
   </form>
 </body>

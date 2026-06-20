@@ -3,7 +3,7 @@ async function vlanSub() {
   var cmd = "vlan ";
   var v=document.getElementById('vid').value
   if (!v) {
-    alert("Set VLAN ID first");
+    alert("请先设置 VLAN ID");
     return;
   }
   cmd = cmd + v;

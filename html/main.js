@@ -2,7 +2,7 @@ var txG = new BigInt64Array(10);
 var txB = new BigInt64Array(10);
 var rxG = new BigInt64Array(10);
 var rxB = new BigInt64Array(10);
-const linkS = ["Disabled", "Down", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
+const linkS = ["已禁用", "断开", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
 var pState = new Int8Array(10);
 var pIsSFP = new Int8Array(10);
 var pAdvertised = new Int8Array(10);
@@ -21,7 +21,7 @@ function drawPorts() {
     d.classList.add('tooltip');
     const s = document.createElement("span");
     s.classList.add("tooltiptext");
-    s.innerHTML = "Tooltip text";
+    s.innerHTML = "端口信息";
     s.id="tt_" + (i+1);
     const l = document.createElement("object");
     d.appendChild(l);
@@ -117,6 +117,10 @@ function convertPowerTodBm(val) {
   return 10 * Math.log10(val);
 }
 
+function boolText(val) {
+  return val ? "是" : "否";
+}
+
 function update(callback) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -152,13 +156,13 @@ function update(callback) {
           continue;
 	const portName = p.name || portNames[p.logPort] || '';
 	var iHTML = "<table border=\"0\" class=\"tt_table\">";
-	if (portName) iHTML += "<tr><td align=\"left\">Name</td><td>:</td><td>" + portName + "</td></tr>";
+	if (portName) iHTML += "<tr><td align=\"left\">名称</td><td>:</td><td>" + portName + "</td></tr>";
 	if (p.enabled == 0) {
 	  pState[n] = -1;
 	  bgs[0].style.fill = "red";
 	  leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	  psvg.style.opacity = 0.4;
-	  iHTML += "<tr><td align=\"left\">Status</td><td>:</td><td>Not enabled.</td></tr>";
+	  iHTML += "<tr><td align=\"left\">状态</td><td>:</td><td>未启用</td></tr>";
 	  iHTML += "</table>";
 	  tt.innerHTML = iHTML;
 	} else {
@@ -174,31 +178,31 @@ function update(callback) {
 	    leds[0].style.fill = "black"; leds[1].style.fill = "black";
 	    psvg.style.opacity = 0.4
 	  }
-	  iHTML += "<tr><td align=\"left\">Link speed</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
+	  iHTML += "<tr><td align=\"left\">链路速率</td><td>:</td><td>" + linkS[p.link + 1] + "</td></tr>";
 	  if (p.isSFP) {
 	    pAdvertised[n] = 0;
 	    const hasExtendedStatus = p.sfp_options & 0x40;
-	    iHTML += "<tr><td>Vendor</td><td>:</td><td>" + p.sfp_vendor + "</td></tr>";
-	    iHTML += "<tr><td>Model</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
-	    iHTML += "<tr><td>Serial</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
+	    iHTML += "<tr><td>厂商</td><td>:</td><td>" + p.sfp_vendor + "</td></tr>";
+	    iHTML += "<tr><td>型号</td><td>:</td><td>" + p.sfp_model + "</td></tr>";
+	    iHTML += "<tr><td>序列号</td><td>:</td><td>" + p.sfp_serial + "</td></tr>";
 	    if (hasExtendedStatus) {
 	      let txPower = decodeSfpTxPower(p.sfp_txpower, p.sfp_txpower_cal);
 	      let txPowerdBm = convertPowerTodBm(txPower);
 	      let rxPower = decodeSfpRxPower(p.sfp_rxpower, p.sfp_rxpower_cal);
 	      let rxPowerdBm = convertPowerTodBm(rxPower);
-	      iHTML += "<tr><td>Temp</td><td>:</td><td>" + decodeSfpTemp(p.sfp_temp, p.sfp_temp_cal).toFixed(2) + "&#8239;&#8451;</td></tr>";
-	      iHTML += "<tr><td>Vcc</td><td>:</td><td>" + decodeSfpVcc(p.sfp_vcc, p.sfp_vcc_cal).toFixed(2) + "&#8239;V</td></tr>";
-	      iHTML += "<tr><td>TX-Fault</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
-	      iHTML += "<tr><td>TX-Disabled</td><td>:</td><td>" + (Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
-	      iHTML += "<tr><td>TX-Bias</td><td>:</td><td>" + decodeSfpTxBias(p.sfp_txbias, p.sfp_txbias_cal).toFixed(1) + "&#8239;mA</td></tr>";
-	      iHTML += "<tr><td>TX-Power</td><td>:</td><td>" + txPower.toFixed(3) + "&#8239;mW / " + txPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
-	      iHTML += "<tr><td>RX-Power</td><td>:</td><td>" + rxPower.toFixed(3) + "&#8239;mW / " + rxPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
+	      iHTML += "<tr><td>温度</td><td>:</td><td>" + decodeSfpTemp(p.sfp_temp, p.sfp_temp_cal).toFixed(2) + "&#8239;&#8451;</td></tr>";
+	      iHTML += "<tr><td>电压</td><td>:</td><td>" + decodeSfpVcc(p.sfp_vcc, p.sfp_vcc_cal).toFixed(2) + "&#8239;V</td></tr>";
+	      iHTML += "<tr><td>TX 故障</td><td>:</td><td>" + boolText(Boolean(Number(p.sfp_state) & 0x4)) + "</td></tr>";
+	      iHTML += "<tr><td>TX 禁用</td><td>:</td><td>" + boolText(Boolean(Number(p.sfp_state) & 0x80)) + "</td></tr>";
+	      iHTML += "<tr><td>TX 偏置电流</td><td>:</td><td>" + decodeSfpTxBias(p.sfp_txbias, p.sfp_txbias_cal).toFixed(1) + "&#8239;mA</td></tr>";
+	      iHTML += "<tr><td>TX 光功率</td><td>:</td><td>" + txPower.toFixed(3) + "&#8239;mW / " + txPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
+	      iHTML += "<tr><td>RX 光功率</td><td>:</td><td>" + rxPower.toFixed(3) + "&#8239;mW / " + rxPowerdBm.toFixed(2) + "&#8239;dBm</td></tr>";
 	    }
 	    // Not all devices & modules have LOS pin...
 	    const rx_los_pin = p.sfp_los !== null ? Boolean(Number(p.sfp_los)) : null;
 	    const rx_los_module = hasExtendedStatus ? Boolean(Number(p.sfp_state) & 0x2) : null;
 	    if (rx_los_module !== null || rx_los_pin !== null) {
-	      iHTML += `<tr><td>RX-LOS</td><td>:</td><td>${rxLosHTML(rx_los_pin, rx_los_module)}</td></tr>`;
+	      iHTML += `<tr><td>RX 无光告警</td><td>:</td><td>${rxLosHTML(rx_los_pin, rx_los_module)}</td></tr>`;
 	    }
 	  } else {
 	    pAdvertised[n] = parseInt(p.adv, 2);
@@ -216,11 +220,11 @@ function update(callback) {
 
 function rxLosHTML(pinStatus, moduleStatus) {
   if (moduleStatus !== null && pinStatus !== null && moduleStatus !== pinStatus) {
-    return `pin=${pinStatus}<br/>mod=${moduleStatus}<br/>❗❗❗❗`;
+    return `引脚=${boolText(pinStatus)}<br/>模块=${boolText(moduleStatus)}<br/>状态不一致`;
   }
 
 	// Returns first non null value
-  return moduleStatus ?? pinStatus;
+  return boolText(moduleStatus ?? pinStatus);
 }
 
 function callbackXHTTP()

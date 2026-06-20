@@ -4,7 +4,7 @@ const ips = ["ip", "netmask", "gw"];
 
 function checkIp(ip) {
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
-  if (!ipv4.test(ip)) {alert(`Invalid ip:${ip}`); return false };
+  if (!ipv4.test(ip)) {alert(`无效的 IP 地址: ${ip}`); return false };
   return true;
 }
 
@@ -136,12 +136,12 @@ function fetchIP() {
 }
 
 function resetSwitch() {
-  if (!confirm('Are you sure you want to reset the switch?')) {
+  if (!confirm('确定要重启交换机吗？')) {
     return;
   }
   fetch('/reset', { method: 'GET' }).catch(() => {});
   setTimeout(() => {
-    alert('Switch is resetting. Please wait and refresh the page.');
+    alert('交换机正在重启，请稍候后刷新页面。');
   }, 3000);
 }
 

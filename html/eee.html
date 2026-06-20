@@ -1,21 +1,23 @@
 <!DOCTYPE html>
 <html>
+  <head>
+  <meta charset="utf-8">
   <script src="/main.js"></script>
   <link rel="stylesheet" href="style.css">
-  <title>EEE Configuration</title>
+  <title>EEE 配置</title>
   </head>
   <body>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
-    <h1>EEE Status</h1>
+    <h1>EEE 状态</h1>
     <table id="eeetable">
-      <tr> <th> </th> <th colspan="3"> Advertising </th> <th colspan="3">Link-Partner advertises</th>  <th></th></tr>
-      <tr> <th>Port</th> <th>2.5G</th> <th>1G</th> <th>100M</th> <th>2.5G</th> <th>1G</th> <th>100M</th>  <th>Active?</th></tr>
+      <tr> <th> </th> <th colspan="3">本端通告</th> <th colspan="3">对端通告</th>  <th></th></tr>
+      <tr> <th>端口</th> <th>2.5G</th> <th>1G</th> <th>100M</th> <th>2.5G</th> <th>1G</th> <th>100M</th>  <th>生效?</th></tr>
     </table>
     <div>
-      <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 1);" type="button" value="Enable EEE">
-      <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 0);" type="button" value="Disable EEE">
+      <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 1);" type="button" value="启用 EEE">
+      <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 0);" type="button" value="禁用 EEE">
     </div>
     <script src="/eee.js"></script>
     <script src="/eee_sub.js"></script>

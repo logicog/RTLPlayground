@@ -10,21 +10,21 @@ function fillStats() {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table Update row: " + i + " state " + pState[i] + " is " + linkS[pState[i] +1]);
       tbl.rows[i+1].cells[1].innerHTML = `${linkS[pState[i]+1]}`;
-      tbl.rows[i+1].cells[2].innerHTML = `${txG[i]} pkts`;
-      tbl.rows[i+1].cells[3].innerHTML = `${txB[i]} pkts`;
-      tbl.rows[i+1].cells[4].innerHTML = `${rxG[i]} pkts`;
-      tbl.rows[i+1].cells[5].innerHTML = `${rxB[i]} pkts`;
+      tbl.rows[i+1].cells[2].innerHTML = `${txG[i]} 包`;
+      tbl.rows[i+1].cells[3].innerHTML = `${txB[i]} 包`;
+      tbl.rows[i+1].cells[4].innerHTML = `${rxG[i]} 包`;
+      tbl.rows[i+1].cells[5].innerHTML = `${rxB[i]} 包`;
     }
   } else {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table row: " + i);
       const tr = tbl.insertRow();
-      let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i+1}`));
+      let td = tr.insertCell(); td.appendChild(document.createTextNode(`端口 ${i+1}`));
       td = tr.insertCell(); td.appendChild(document.createTextNode(`${linkS[pState[i]+1]}`));
-      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]} pkts`));
+      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]} 包`));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]} 包`));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]} 包`));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]} 包`));
     }
   }
 }
@@ -80,14 +80,14 @@ function fillL2(s)
       tbl.rows[i+1].cells[0].innerHTML = `${e.port}`;
       tbl.rows[i+1].cells[1].innerHTML = `${e.mac}`;
       tbl.rows[i+1].cells[2].innerHTML = `${e.vlan}`;
-      tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">Delete</button>';
+      tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">删除</button>';
     } else {
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.innerHTML = `${e.port}`;
       td = tr.insertCell(); td.innerHTML = `${e.mac}`;
       td = tr.insertCell(); td.innerHTML = `${e.vlan}`;
       td = tr.insertCell(); td.innerHTML = `${e.type}`;
-      td = tr.insertCell(); td.innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">Delete</button>';
+      td = tr.insertCell(); td.innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">删除</button>';
     }
   }
   for (let i = tbl.rows.length - 1; i > s.length; i--)
@@ -103,7 +103,7 @@ function getL2() {
       var s = s.map(function(e) { 
         e.vlan = parseInt(e.vlan, 16);
         e.idx = parseInt(e.idx, 16);
-        e.type = e.type == "s" ? "static" : "learned";
+        e.type = e.type == "s" ? "静态" : "动态学习";
         e.port = e.port == 9 ? 9 : logToPhysPort[e.port];
       return e;
     });

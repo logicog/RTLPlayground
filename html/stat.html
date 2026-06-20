@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
+  <head>
+  <meta charset="utf-8">
   <script src="/main.js"></script>
   <link rel="stylesheet" href="style.css">
-  <title>FreeSwitchOS Port Statistics</title>
+  <title>FreeSwitchOS 端口统计</title>
   <style>
     .popup {
       display: none;
@@ -31,14 +33,14 @@
     <div id="ports"></div>
     <div id="popup" class="popup">
         <div class="popup-content">
-            <h2>Detailed Port Statistics</h2>
+            <h2>端口详细统计</h2>
             <div id="popup_text"></div>
-            <button id="closePopup" class="action">Close</button>
+            <button id="closePopup" class="action">关闭</button>
         </div>
     </div>
-    <h1>Port Statistics</h1>
+    <h1>端口统计</h1>
     <table id="statstable">
-      <tr> <th>Port</th> <th>Name</th> <th>link</th> <th>TX Good</th> <th>TX Bad</th> <th>RX Good</th> <th>RX Bad</th> <th> All Counters </th></tr>
+      <tr> <th>端口</th> <th>名称</th> <th>链路</th> <th>TX 正常包</th> <th>TX 错误包</th> <th>RX 正常包</th> <th>RX 错误包</th> <th>全部计数器</th></tr>
       <script src="/stat.js"></script>
     </table>
     </div>

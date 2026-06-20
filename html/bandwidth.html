@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html>
+  <head>
+  <meta charset="utf-8">
   <script src="/main.js"></script>
   <link rel="stylesheet" href="style.css">
-  <title>Ingress and Egress Bandwidth</title>
+  <title>入站和出站带宽</title>
   </head>
   <body>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
-    <h1>Ingress and Egress Bandwidth</h1>
+    <h1>入站和出站带宽</h1>
     <table id="bwtable">
-      <tr> <th> </th> <th colspan="3"> Ingress </th> <th colspan="2">Egress</th>  <th></th></tr>
-      <tr> <th>Port</th> <th>Limit</th> <th>Bandwidth [kBit/s]</th> <th>Flow Control</th> <th>Limit</th> <th>Bandwidth [kBit/s]</th> <th>Apply</th></tr>
+      <tr> <th> </th> <th colspan="3">入站</th> <th colspan="2">出站</th>  <th></th></tr>
+      <tr> <th>端口</th> <th>限制</th> <th>带宽 [kbit/s]</th> <th>流控</th> <th>限制</th> <th>带宽 [kbit/s]</th> <th>应用</th></tr>
     </table>
     <script src="/bandwidth.js"></script>
     </div>
