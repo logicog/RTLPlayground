@@ -21,6 +21,7 @@
 
 #include "machine.h"
 #include "phy.h"
+#include "poe.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
@@ -1421,6 +1422,31 @@ void cmd_parser(void) __banked
 			parse_sfp();
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
+#ifdef POE_PRESENT
+		} else if (cmd_compare(0, "poe")) {
+			if (cmd_compare(1, "load")) {
+				// Re-run the full PoE bring-up (`poe load`) - the same bring-up the
+				// boot runs. The chip-specific sequence lives in the driver's poe_bringup().
+				poe_bringup();
+			} else if (cmd_compare(1, "port")) {
+				// Enable/disable PoE on a single port: `poe port <1-8> <on|off>`.
+				if (cmd_words_len >= 4 && !atoi_byte(&poe_port_num, cmd_words_b[2])
+				    && poe_port_num >= 1 && poe_port_num <= 8) {
+					poe_port_num--;		// 1-8 -> 0-7
+					poe_port_on = cmd_compare(3, "on") ? 1 : 0;
+					poe_port_set();
+				} else {
+					print_string("usage: poe port <1-8> <on|off>\n");
+				}
+			} else if (cmd_compare(1, "global")) {
+				// Enable/disable ALL ports at once: `poe global <on|off>`.
+				poe_global_on = cmd_compare(2, "on") ? 1 : 0;
+				poe_global_set();
+			} else {
+				// Status/telemetry is at GET /poe.json (driver-normalized per-port data).
+				print_string("usage: poe load|port <n> <on|off>|global <on|off>\nstatus: GET /poe.json\n");
+			}
+#endif /* POE_PRESENT */
 		} else if (cmd_compare(0, "flash") && cmd_words_len == 2) {
 			uint8_t c = cmd_buffer[cmd_words_b[1]];
 			if (c == 's') {
@@ -1664,6 +1690,10 @@ void execute_config(void) __banked
 				goto config_done;
 			}
 			c = flash_buf[cfg_idx++];
+			// Tolerate CRLF line endings (e.g. a Windows-edited config.txt): drop the \r
+			// so it never ends up appended to the last token (would break exact-match args).
+			if (c == '\r')
+				continue;
 			if (c == 0 || c == '\n') {
 				cmd_buffer[cmd_idx] = '\0';
 				if (cmd_idx) {
