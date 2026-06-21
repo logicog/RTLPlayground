@@ -10,13 +10,17 @@ The following devices have been tested and are fully working:
   AliExpress as keepLINK 5+1 port managed
 - TrendNet TEG-S562 (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+)
 - FNS-1200P (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+)
+- keepLINK KP-9000-9XHPML-X V3.1 (RTL8373 + 2x RTL8238B: 8x 2.5GBit PoE+ + 1x 10GBit SFP+) —
+  software-controlled PoE, see [PoE](poe.md) (RTL8238B [driver](poe-rtl8238b.md)) and [device notes](devices/KP-9000-9XHPML-X-V3.1.md)
 
 Other device based on RTL8272/3 that may work are described here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide]
 (https://github.com/up-n-atom/SWTG118AS)
 
-Many of the RTL8272/3 devices come in versions with PoE support. The RTLPlayground usually also
-works on these, however, no support for configuring PoE is provided, simply because these
-devices usually just provide PoE on all ports without further configuration possibilitites.
+Many of the RTL8272/3 devices come in versions with PoE support. RTLPlayground runs on these
+too. For boards whose PSE is a software-controllable **RTL8238B** on I2C (e.g. the KP-9000 V3.1
+PoE above), RTLPlayground brings PoE up at boot and provides per-port / global control plus
+live telemetry — see [PoE](poe-rtl8238b.md). Other boards simply provide PoE on all ports in hardware
+with no configuration possibility, and RTLPlayground leaves that untouched.
 
 The following forum also discusses this type of switches: [ServeTheHome](https://forums.servethehome.com/index.php?threads/horaco-2-5gbe-managed-switch-8-x-2-5gbe-1-10gb-sfp.41571/)
 

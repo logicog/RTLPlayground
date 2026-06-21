@@ -15,6 +15,8 @@ only the following features are provided:
   for particular devices
 - EEE (Energy Efficient Ethernet) can be configured per-port. Detailed information is
   provided for support offered by the link partner and the EEE status of a port.
+- Software-controlled PoE (PSE) on boards with an RTL8238B controller: automatic
+  bring-up at boot, per-port and global enable/disable, and live telemetry (power delivery state, class, voltage and current)
 - VLAN configuration
 - SFP information is displayed on the inserted modules, the current sensor values such as
   temperatures, RX and TX power are displayed in the CLI and as mouse-over on the web
@@ -308,6 +310,7 @@ The following documents give further documentation on specific features of the R
 - [L2 learning](doc/l2.md) 
 - [IGMP (IP-MC streaming)](doc/igmp.md)
 - [SFP+ ports](doc/sfp.md) 
+- [PoE (Power over Ethernet)](doc/poe.md)
 - [Trunking aka. port aggregation](doc/trunking.md)
 - [VLAN](doc/vlan.md)
 - [Modifications and Flash replacement](doc/mods.md)
