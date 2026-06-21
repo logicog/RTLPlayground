@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <script src="/main.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>PoE</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>PoE</h1>
+
+    <div id="poeNone" style="display:none;padding:10px 14px;margin:10px 0;background:#fee;border:1px solid #c88;border-radius:6px;">
+      No PoE controller on this device.
+    </div>
+
+    <fieldset>
+      <legend>PoE Consumption Power</legend>
+      <table>
+        <tr><td>Consumption (W)</td>
+            <td><input id="poeCons" type="text" readonly value="&#8212;" style="width:8em;"></td></tr>
+      </table>
+    </fieldset>
+
+    <div style="margin:10px 0;">
+      <input class="poe-act" type="button" value="Enable all ports" onclick="poeGlobal(1)">
+      <input class="poe-act" type="button" value="Disable all ports" onclick="poeGlobal(0)">
+    </div>
+
+    <h2>PoE Port Status</h2>
+    <table id="poeTable">
+      <tr><th>Port</th><th>State</th><th>Power</th><th>Class</th>
+          <th>Power (W)</th><th>Voltage (V)</th><th>Current (mA)</th><th>Action</th></tr>
+    </table>
+    <div>
+      <b>State</b> &#8211; whether the port is administratively enabled.<br>
+      <b>Power</b> &#8211; whether the port is actually delivering power to a PD.<br>
+      <b>Class / Voltage / Current / Power&#8201;(W)</b> are shown only while a port draws current
+      &#8212; idle and off ports show &#8220;&#8211;&#8221;.<br>
+      Re-run the bring-up from the console with <b>poe load</b>; the status is also at
+      <b>GET /poe.json</b>.
+    </div>
+
+    <script src="/poe.js"></script>
+    </div>
+    <script src="/navigation.js"></script>
+  </body>
+</html>
