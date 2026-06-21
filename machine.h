@@ -12,6 +12,7 @@
 // #define MACHINE_KP_9000_9XH_X_EU
 // #define MACHINE_KP_9000_9XHML_X_V2_2
 // #define MACHINE_KP_9000_9XHML_X_V3_1
+// #define MACHINE_KP_9000_9XHPML_X_V3_1   // same board as V3_1 + PoE (RTL8238B PSE)
 // #define MACHINE_SWGT024_V2_0_MANAGED
 // #define MACHINE_SWGT024_V2_0_UNMANAGED
 // #define MACHINE_TRENDNET_TEG_S562
@@ -28,9 +29,31 @@
 // #define MACHINE_FNS1200P
 // #define MACHINE_PCB_SWTG024AS_A_2_0_1
 
+/*
+ * PoE capability per machine. A board with a software-controllable PSE defines its chip-driver
+ * macro POE_CHIP_<chip>, which selects which driver source compiles (e.g. poe_rtl8238b.c) and
+ * implies POE_PRESENT. POE_PRESENT is the generic gate: it #ifdef-includes the `poe` console
+ * command, the /poe.json endpoint, the boot bring-up and the PSE-image embedding (Makefile).
+ * The chip-agnostic interface those consumers call lives in poe.h; the per-board parameters
+ * (chip, I2C addresses, port count) live in the machine descriptor's `poe` field below.
+ * Boards without a POE_CHIP_* macro compile no PoE code at all.
+ */
+/* The KP-9000-9XHPML-X V3.1 is the KP-9000-9XHML-X V3.1 board plus an RTL8238B PSE: selecting it
+ * reuses the base board's machine descriptor (in machine.c) and just adds the PoE driver, so
+ * there is only one config to maintain - no duplicated machine block. */
+#if defined(MACHINE_KP_9000_9XHPML_X_V3_1)
+#  define MACHINE_KP_9000_9XHML_X_V3_1	/* reuse the base board config */
+#  define POE_CHIP_RTL8238B		/* + the RTL8238B PSE driver */
+#endif
+
+/* Any chip-driver macro implies the generic PoE layer (interface + consumers) is present. */
+#if defined(POE_CHIP_RTL8238B)
+#  define POE_PRESENT
+#endif
+
 typedef struct {
 	// GPIO pins for SDA/SCL
-	uint8_t sda; 
+	uint8_t sda;
 	uint8_t scl;
 } i2c_bus_t;
 
@@ -56,8 +79,18 @@ struct sfp_port
 	i2c_bus_t i2c;
 };
 
+// PoE PSE chip type for struct machine.poe (POE_NONE = no software-controlled PoE)
+enum { POE_NONE = 0, POE_RTL8238B = 1 };
+
+struct poe_config {
+	uint8_t chip;        // POE_NONE / POE_RTL8238B
+	uint8_t addr0;       // first PSE controller I2C address (e.g. 0x20)
+	uint8_t addr1;       // second controller address (0x21), 0 = single controller
+	uint8_t n_ports;     // total number of PoE ports
+};
+
 typedef struct machine {
-	char machine_name[30];
+	char machine_name[32];	// max 31 chars + NUL; e.g. "keepLink KP-9000-9XHPML-X V3.1" is 30
 	uint8_t isRTL8373;
 	// Lowest logical port number
 	uint8_t min_port;
@@ -81,6 +114,8 @@ typedef struct machine {
 	uint32_t led_sets[4][4];
 	uint8_t led_mux_custom;
 	uint8_t led_mux[28];
+	// PoE PSE descriptor; chip = POE_NONE on boards without software-controlled PoE
+	struct poe_config poe;
 };
 
 typedef struct machine_runtime

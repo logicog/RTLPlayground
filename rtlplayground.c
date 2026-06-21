@@ -25,6 +25,7 @@
 #include "machine.h"
 #include "phy.h"
 #include "syslog.h"
+#include "poe.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -2059,6 +2060,16 @@ void main(void)
 	else
 		rtl8372_init();
 	delay(1000);
+
+#ifdef POE_PRESENT
+	// Bring up PoE after the full PHY init, mirroring the OEM order (PHY power-on first,
+	// then the PSE). Driven by the machine's PoE descriptor; afterwards the controller runs
+	// the loaded firmware and powers detected PDs autonomously a moment later.
+	if (machine.poe.chip != POE_NONE) {
+		print_string("PoE: bringing up controllers\n");
+		poe_bringup();
+	}
+#endif
 
 	check_and_flash_update_image();
 

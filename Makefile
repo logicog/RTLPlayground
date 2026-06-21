@@ -3,6 +3,12 @@ IMAGESIZE = 524288
 DEFAULT_CONFIG_LOCATION = 454656
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
+# RTL8238B PSE image: this chip needs a volatile firmware image uploaded at boot, embedded in
+# flash at RTL8238B_IMAGE_LOCATION (must match PSE_IMG_ADDR in poe_rtl8238b.c), only for the
+# RTL8238B machines below and only when tools/poe/pse_image.bin is present. A board with a
+# different PoE chip uses none of this. See doc/poe-rtl8238b.md.
+RTL8238B_IMAGE_LOCATION = 393216
+RTL8238B_MACHINES = KP_9000_9XHPML_X_V3_1
 
 CC = sdcc
 CC_FLAGS = -mmcs51 -I. -Ihttpd -Iuip
@@ -38,7 +44,7 @@ create_build_dir:
 	mkdir -p $(BUILDDIR)/httpd
 
 SRCS = rtlplayground.c rtl837x_flash.c rtl837x_leds.c rtl837x_phy.c rtl837x_port.c cmd_parser.c html_data.c rtl837x_igmp.c
-SRCS += rtl837x_stp.c rtl837x_pins.c dhcp.c machine.c cmd_editor.c rtl837x_bandwidth.c rtl837x_init.c syslog.c
+SRCS += rtl837x_stp.c rtl837x_pins.c dhcp.c machine.c cmd_editor.c rtl837x_bandwidth.c rtl837x_init.c syslog.c poe_rtl8238b.c
 SRCS += uip/timer.c uip/uip.c uip/uip_arp.c uip/uiplib.c uip/uip-fw.c uip/uip-neighbor.c uip/uip-split.c udp_apps.c
 SRCS += httpd/httpd.c httpd/page_impl.c
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
@@ -87,6 +93,9 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/output/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data -b BANK1 $@
+	@if echo " $(RTL8238B_MACHINES) " | grep -q " $(MACHINE) "; then \
+		if [ -f tools/poe/pse_image.bin ]; then tools/output/fileadder -a $(RTL8238B_IMAGE_LOCATION) -s $(IMAGESIZE) -d tools/poe/pse_image.bin $@; else echo "WARN: tools/poe/pse_image.bin missing - PoE image not embedded (run tools/poe/extract_rtl8238b_image.py)"; fi; \
+	fi
 	tools/output/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
