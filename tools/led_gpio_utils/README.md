@@ -1,6 +1,8 @@
 # LED GPIO Utilities
 
-This directory contains utility talking to RTL837x switch IC via I2C bus. These scripts are designed to help with monitoring, debugging GPIO, and identifying LED configurations.
+This directory contains utility talking to RTL837x switch IC via I2C bus.
+These scripts are designed to help with monitoring, debugging GPIO, and identifying LED configurations.
+(Only tested in Linux)
 
 ## Hardware requirements
 
