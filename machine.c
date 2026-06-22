@@ -896,9 +896,9 @@ void machine_custom_init(void)
     reg_bit_clear(RTL837X_REG_LED_MODE, 7);
 }
 
-#elif defined MACHINE_PCB_SWTG024AS_V2_0
+#elif defined MACHINE_SWTG024AS_V2_0
 __code const struct machine machine = {
-    .machine_name = "PCB-SWTG024AS-V2.0",
+    .machine_name = "SWTG024AS-V2.0",
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
