@@ -41,26 +41,26 @@ print(f"{' '.join(ledstr)}")
 print(f".led_mux = {{ 0x{', 0x'.join(ledstr)} }},")
 
 LED_TYPES = [
-	" 2G5",
-	" TWO_1G",
-	" 1G",
-	" 500M",
-	" 100M",
-	" 10M",
-	" LINK",
-	" LINK_FLASH",
-	" ACT",
-	" RX",
-	" TX",
-	" COL",
-	" DUPLEX",
-	" TRAINING",
-	" MASTER",
-	"",
-	" 10G",
-	" TWO_5G",
-	" 5G",
-	" TWO_2G5",
+	" 10G",             16,
+	" TWO_5G",          17,
+	" 5G",              18,
+	" TWO_2G5",         19,
+	" 2G5",             0,
+	" TWO_1G",          1,
+	" 1G",              2,
+	" 500M",            3,
+	" 100M",            4,
+	" 10M",             5,
+	" LINK",            6,
+	" LINK_FLASH",      7,
+	" ACT",             8,
+	" RX",              9,
+	" TX",              10,
+	" COL",             11,
+	" DUPLEX",          12,
+	" TRAINING",        13,
+	" MASTER",          14,
+	"",                 15,
 ]
 
 led_set = []
@@ -76,8 +76,8 @@ for i in range(4):
 		val += valhi
 		idval.append(val)
 		valstr = "("
-		for bit in range(20):
-			if val & (1<<bit):
+		for bit in range(0,len(LED_TYPES),2):
+			if val & (1<<(LED_TYPES[bit+1])):
 				valstr += LED_TYPES[bit]
 		valstr += ")"
 		idvalstr.append(valstr)

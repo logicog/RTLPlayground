@@ -9,10 +9,10 @@ from smbus2 import SMBus, i2c_msg
 I2C_BUS = 1
 DEVICE_ADDR = 0x5C  # Replace with your device address
 NUM_BYTES = 8       # Bytes to read
-SLEEP_INTERVAL = 2
+SLEEP_INTERVAL = 1
 
 # Handle command line arguments for ignored IOs
-IGNORED_IOS = [ 28, 31, 34, 44]
+IGNORED_IOS = [ ]
 
 # Setup argument parser
 parser = argparse.ArgumentParser(description='Read I2C data from RTL GPIO expander')
@@ -21,7 +21,7 @@ parser.add_argument('--i2c-bus', '-b', type=int, default=1,
 parser.add_argument('--sleep-interval', '-s', type=int, default=2,
                     help='Sleep interval in seconds (default: 2)')
 parser.add_argument('--ignored-ios', '-i', nargs='*', type=int, default=[28, 31, 34, 44],
-                    help='List of GPIO pins to ignore (default: [28, 31, 34, 44])')
+                    help='List of GPIO pins to ignore (default: [])')
 args = parser.parse_args()
 I2C_BUS = args.i2c_bus
 SLEEP_INTERVAL = args.sleep_interval
