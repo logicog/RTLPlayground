@@ -12,7 +12,8 @@ NUM_BYTES = 8       # Bytes to read
 SLEEP_INTERVAL = 1
 
 # Handle command line arguments for ignored IOs
-IGNORED_IOS = [ ]
+# default to ignore IOs related to SYS_LED, UART, SMI, SPI
+IGNORED_IOS = [28, 31, 32, 34, 35, 42, 43, 44, 45]
 
 # Setup argument parser
 parser = argparse.ArgumentParser(description='Read I2C data from RTL GPIO expander')
@@ -20,8 +21,8 @@ parser.add_argument('--i2c-bus', '-b', type=int, default=1,
                     help='I2C bus number (default: 1)')
 parser.add_argument('--sleep-interval', '-s', type=int, default=2,
                     help='Sleep interval in seconds (default: 2)')
-parser.add_argument('--ignored-ios', '-i', nargs='*', type=int, default=[28, 31, 34, 44],
-                    help='List of GPIO pins to ignore (default: [])')
+parser.add_argument('--ignored-ios', '-i', nargs='*', type=int, default=[28, 31, 32, 34, 35, 42, 43, 44, 45],
+                    help='List of GPIO pins to ignore (default: [28, 31, 32, 34, 35, 42, 43, 44, 45])')
 args = parser.parse_args()
 I2C_BUS = args.i2c_bus
 SLEEP_INTERVAL = args.sleep_interval
