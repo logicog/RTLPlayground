@@ -3,11 +3,11 @@ The following devices have been tested and are fully working:
 
 | Brand    | Type            | Managed | PCB               | Flash | Chip RTL     |
 |----------|-----------------|---------|-------------------|-------|--------------|
-| keepLINK | KP-9000-9XHML-X | Yes     | 2M-PCB23-V2.2     | 2M    | 8373 + 8224  |
-| keepLINK |	KP-9000-9XHML-X| Yes 	   | 2M-PCB23-V3.1     | 2M 	 | 8273N + 8224N|
-| FOXNEO   |  FNS-1200P      | No      | PCB-K0402W-U13-V2.0 | 2M  |  8372        |
-| Hisource | Hi-K0801WS      | No      | PCB-KO801W-V2.0   |       |              |
-| Davuaz   | Da-K6501W       |No       | PCB-K0501W-V2.0  |        |              |
+| keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V2_2.md)     | 2M    | 8373 + 8224  |
+| keepLINK |	KP-9000-9XHML-X| Yes 	   | [2M-PCB23-V3.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V3_1.md)     | 2M 	 | 8273N + 8224N|
+| FOXNEO   |  FNS-1200P      | No      | [PCB-K0402W-U13-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/FNS-1200P.md) | 2M  |  8372        |
+| Hisource | Hi-K0801WS      | No      | [PCB-KO801W-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/HI-K0801WS.md)   |       |              |
+| Davuaz   | Da-K6501W       |No       | [PCB-K0501W-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/K0501W_V2_0.md)  |        |              |
 - Horaco ZX_SG4T2
 - keepLINK kp-9000-6hx-x2 (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+)
 - keepLINK KP-9000-6XHML-X2, same as above, but Managed
