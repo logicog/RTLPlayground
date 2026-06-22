@@ -903,14 +903,11 @@ __code const struct machine machine = {
     .min_port = 3,
     .max_port = 8,
     .n_sfp = 1,
-    .n_10g = 0,
     .log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
     .phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
     .is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
-
-    // SFP port on SDS1 / logical port 8
-    .sfp_port[0].pin_detect = GPIO30_ACL_BIT3_EN,
-    .sfp_port[0].pin_los = GPIO37,
+	.sfp_port[0].pin_detect = GPIO38,
+    .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 1,
     .sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
@@ -918,6 +915,10 @@ __code const struct machine machine = {
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
+	/* Ports 1-5 RJ45 use set 0, port 9 SFP uses set 1 
+	 * Ports 1-5: Green: 2.5GBit, Amber: 10/100/1000MBit
+	 * SFP-port: Blue: 10GBit, Amber: 100MBit-2.5GBit
+	 */
     .led_sets = {
                     {
                             LEDS_2G5 | LEDS_LINK | LEDS_ACT,
