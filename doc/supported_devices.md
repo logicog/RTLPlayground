@@ -8,13 +8,13 @@ The following devices have been tested and are fully working:
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/FNS-1200P.md)               | 2M    |  8372        |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V3.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/PCB-K0402WS-V3.0.md)           |       |              |
 | Hisource | Hi-K0801WS      | No      | [PCB-KO801W-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/HI-K0801WS.md)                  |       |              |
+| Horaco   | SWTGW215AS      | Yes     | [SWTG018AS-A V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG018AS_A_V2_0.md)           |       |              |
 | Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XH.md) | 2M    | 8372 + 8261  |
 | Horaco   | ZX310S-4T2XT    | Yes     | [PCB-SL310S-4T2XT-V1.0.0-22273](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XT.md)  | 2M    | 8372 + 8261  |
 | Haraco 	 | ZX-SWTG124AS 	 | Yes 	   | [SWTG024AS-v2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	                  |       | 8272         |
-| Horaco   | SWTGW215AS      | Yes     | [SWTG018AS-A V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG018AS_A_V2_0.md)           |       |              |
+| Keeplink | KP-9000-6XH-X2  | No      | [2M-PCB43-V2.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/KP-9000-6XH-X2.md)                |       |              |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V2_2.md)                 | 2M    | 8373 + 8224  |
 | keepLINK | KP-9000-9XHML-X | Yes 	   | [2M-PCB23-V3.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V3_1.md)                 | 2M 	  | 8273N + 8224N|
-| Keeplink | KP-9000-6XH-X2  | No      | [2M-PCB43-V2.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/KP-9000-6XH-X2.md)                |       |              |
 | LIANGUO  | SWTG024AS 	     | No 	   | [SWTG024AS-v2.0-17452](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	            | 0.5M 	| 8272         |
 | Lianguo  | ZX-SWTGW215AS 	 | Yes 	   | [PCB-SWTG115AS-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW215AS.md) 	            | 2M    |	8272         |
 | Mokerlink| ZX-SWTGW218AS 	 | Yes 	   | [SWTG118AS-V2.0-16029](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW218AS.md)             |	2M 	  | 8273N + 8224N|
