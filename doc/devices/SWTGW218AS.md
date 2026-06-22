@@ -6,6 +6,7 @@
 | Mokerlink | ZX-SWTGW218AS | Yes|  SWTG118AS-V2.0-16029 | 2MB (FM25Q16A)| 8273N + 8224N |
 | Sodola | | | | | |
 | Horaco | | | | | |
+| XikeStor | SKS3200-8E1X | Yes | SWTG118AS-V2.1-17462 | 2MB (25Q16JVSIQ) | |
 
 
 ## Photos
