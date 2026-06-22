@@ -110,10 +110,15 @@ All scripts require:
   - Python 3
   - `smbus2` Python package
 
-Install with:
+(Depend upon Linux distribution) Install with:
+```bash
+pip3 install python3-smbus2
+```
+OR
 ```bash
 pip3 install smbus2
 ```
+
 
 ## Common Use Cases
 
