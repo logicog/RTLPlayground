@@ -8,7 +8,7 @@ The following devices have been tested and are fully working:
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/FNS-1200P.md)               | 2M    | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V3.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/PCB-K0402WS-V3.0.md)           |       | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-KO801W-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/HI-K0801WS.md)                  |       | 8 + 1 |
-| hongyavision | LG-SG5T1    | No      | [PCB-SWTG024AS-V2.0_16895](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS-V2.0.md)     | 0.5M  | 5 +1  |
+| hongyavision | LG-SG5T1    | No      | [PCB-SWTG024AS-V2.0_16895](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS-V2.0.md)     | 0.5M  | 5 + 1 |
 | Horaco   | HC-SWTGW218AS   | Yes     | [SWTG018AS-A V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG018AS_A_V2_0.md)           |       | 8 + 1 |
 | Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XH.md) | 2M    | 5 + 1 |
 | Horaco   | ZX310S-4T2XT    | Yes     | [PCB-SL310S-4T2XT-V1.0.0-22273](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XT.md)  | 2M    | 6     |
