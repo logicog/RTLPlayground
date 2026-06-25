@@ -1,4 +1,10 @@
 # SWTG018AS-A V2.0
+## Brands
+| Brand  | Type             |Managed| PCB              | Flash           | Chip RTL      |
+|--------|------------------|-------|------------------|-----------------|---------------|
+| Ampcom | SWTG018AS-A V2.0 | No    | SWTG018AS-A V2.0 | 2MB             | 8273N + 8224N |
+| Horaco | HC-SWTGW218AS-A  | Yes   | SWTG018AS-A V2.0 | 2MB(25Q16JVSIQ) | 8273N + 8224N |
+
 
 The following is a documentation for the unmanaged switch marked as `SWTG018AS-A V2.0`.
 It is e.g. sold under the Ampcom brand, but no branh-markings are found on the device.
