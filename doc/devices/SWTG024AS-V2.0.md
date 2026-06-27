@@ -17,8 +17,7 @@
 
 ### What works
 The device is fully supported:
-- Port 1-4 2.5GBASE-T RJ45 ports work at 10/100/1000/2500 Mbps
-- Port 5 2.5GBASE-T RJ45 ports through RTL8221B not work (Wait to fix)
+- ALL 2.5GBASE-T RJ45 ports work at 10/100/1000/2500 Mbps
 - The SFP+ port supports 1G, 2.5G and 10G modules 
 - LEDs work with the same indiciations as the OEM firmware
 - Online update does not work with 512KiB flash.
