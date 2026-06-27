@@ -76,6 +76,16 @@ void static sds_init(void)
 				sds_read(0, 0, 0);
 				pval = SFR_DATA_U16;
 				sds_write_v(0, 0, 0, pval | 0x200);
+#if defined MACHINE_SWTG024AS_V2_0
+				// OEM firmware also sets the companion SDS0 polarity bits.
+				sds_read(0, 0, 0);
+				pval = SFR_DATA_U16;
+				sds_write_v(0, 0, 0, pval | 0x100);
+
+				sds_read(0, 6, 2);
+				pval = SFR_DATA_U16;
+				sds_write_v(0, 6, 2, pval | 0x4000);
+#endif
 			}
 		} else if (machine.n_10g == 1) {
 			reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
