@@ -6,12 +6,19 @@
 /*
  * Select your machine type below
  */
+// Legacy KP-9000 4+2 targets. Prefer the PCB-revision-specific targets below.
 // #define MACHINE_KP_9000_6XHML_X2
-// #define MACHINE_KP_9000_6XHML_X2_V1_2
-// #define MACHINE_KP_9000_6XHML_X2_V2_1
-// #define MACHINE_KP_9000_6XH_X
 // #define MACHINE_KP_9000_6XH_X2
+
+// KP-9000 4+2 targets by PCB silkscreen revision.
+// #define MACHINE_KP_9000_6XH_X2_V1_1
+// #define MACHINE_KP_9000_6XHML_X2_V1_1
+// #define MACHINE_KP_9000_6XH_X2_V1_2
+// #define MACHINE_KP_9000_6XHML_X2_V1_2
 // #define MACHINE_KP_9000_6XH_X2_V2_1
+// #define MACHINE_KP_9000_6XHML_X2_V2_1
+
+// #define MACHINE_KP_9000_6XH_X
 // #define MACHINE_KP_9000_9XH_X_EU
 // #define MACHINE_KP_9000_9XHML_X_V2_2
 // #define MACHINE_KP_9000_9XHML_X_V3_1
