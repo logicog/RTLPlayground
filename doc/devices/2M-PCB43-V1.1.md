@@ -15,7 +15,7 @@ and sold by Mokerlink.
 The device is fully supported:
 - All 4 2.5GBASE-T RJ45 ports work at 10/100/1000/2500 Mbps
 - The SFP+ port supports 1G, 2.5G and 10G modules 
-- LEDs work with the same indiciations as the OEM firmware
+- LEDs work with the same indiciations as the OEM firmware (use KP_9000_6XHML_X2 in machine.h if building yourself or the corresponding pre-compiled binary)
 - untested due to missing Hardware: SFP+ ports equipped with 1G or 2.5G SFPs.
 
 ### Hardware overview
