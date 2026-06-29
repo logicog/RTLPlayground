@@ -1,8 +1,8 @@
 # Supported Hardware
 The following devices have been tested and are fully working:
 - Horaco ZX_SG4T2
-- keepLINK kp-9000-6hx-x2 (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+)
-- keepLINK KP-9000-6XHML-X2, same as above, but Managed
+- keepLINK KP-9000-6XH-X2 / KP-9000-6XHML-X2 (RTL8372: 4x 2.5GBit + 2x 10GBit SFP+);
+  select the machine target by PCB revision, see [KP-9000-6XH-X2](devices/KP-9000-6XH-X2.md)
 - keepLINK kp-9000-6hx-x (RTL8372 + RTL8221B 2.5GBit PHY: 5 x 2.5GBit + 1x 10GBit SFP+)
 - keepLINK kp-9000-9xh-x-eu (1 x RTL8373 + RTL8224: 8x 2.5GBit + 1x 10GBit SFP+)
 - Lianguo LG-SWTGW218AS (RTL8373 + RTL8224 PHY: 8x 2.5GBit + 1x 10GBit SFP+)
