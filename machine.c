@@ -5,9 +5,19 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 
-#if defined(MACHINE_KP_9000_6XHML_X2) || defined(MACHINE_KP_9000_6XHML_X2_V1_2)
+#if defined(MACHINE_KP_9000_6XHML_X2) || \
+	defined(MACHINE_KP_9000_6XH_X2_V1_1) || \
+	defined(MACHINE_KP_9000_6XHML_X2_V1_1) || \
+	defined(MACHINE_KP_9000_6XH_X2_V1_2) || \
+	defined(MACHINE_KP_9000_6XHML_X2_V1_2)
 __code const struct machine machine = {
-#if defined(MACHINE_KP_9000_6XHML_X2_V1_2)
+#if defined(MACHINE_KP_9000_6XH_X2_V1_1)
+	.machine_name = "keepLink KP-9000-6XH V1.1",
+#elif defined(MACHINE_KP_9000_6XHML_X2_V1_1)
+	.machine_name = "keepLink KP-9000-6XHML V1.1",
+#elif defined(MACHINE_KP_9000_6XH_X2_V1_2)
+	.machine_name = "keepLink KP-9000-6XH V1.2",
+#elif defined(MACHINE_KP_9000_6XHML_X2_V1_2)
 	.machine_name = "keepLink KP-9000-6XHML V1.2",
 #else
 	.machine_name = "keepLink KP-9000-6XHML-X2",
