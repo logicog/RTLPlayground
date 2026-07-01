@@ -1407,9 +1407,9 @@ void idle(void)
 			cpy_4(linkbits_last, sfr_data);
 			// Handle link change of the RTL8221 PHY, adjust SDS mode, RTL8261BE always uses SDS_QXGMII
 			if (!machine.n_10g && p5_last != p5) {
-				if (p5 == 0x5) // 2.5GBit Mode
+				if (p5 == 0x5)	// 2.5GBit Mode
 					sds_config(0, SDS_HISGMII);
-				else if (p5 == 0x2) // 1GBit
+				else		// 1GBit and 100Mbit
 					sds_config(0, SDS_SGMII);
 			}
 			if (machine.n_10g)

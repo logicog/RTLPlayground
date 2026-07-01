@@ -24,10 +24,12 @@
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
 // #define MACHINE_ZX310S_4T2XH
 // #define MACHINE_ZX310S_4T2XT
+// #define MACHINE_STEAMEMO_IG204_V1
 // #define MACHINE_DEFAULT_8C_1SFP
 // #define MACHINE_HI_K0801WS
 // #define MACHINE_FNS1200P
 // #define MACHINE_PCB_SWTG024AS_A_2_0_1
+// #define MACHINE_SWTG024AS_V2_0
 
 /*
  * PoE capability per machine. A board with a software-controllable PSE defines its chip-driver
