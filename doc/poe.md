@@ -47,11 +47,11 @@ A driver implements the small interface in [poe.h](../poe.h); the console, web p
 call **only** this and never touch the controller themselves:
 
 ```c
-void poe_bringup(void);                              // bring PoE up (boot + `poe load`)
-poe_port_num, poe_port_on;   void poe_port_set(void);   // enable/disable one port
-poe_global_on;               void poe_global_set(void); // enable/disable all ports
-// normalized per-port status — typed, chip-agnostic values:
-poe_st_admin, poe_st_on, poe_st_class, poe_st_volt, poe_st_ma;   void poe_get_port(void);
+void poe_bringup(void);                                   // bring PoE up (boot + `poe load`)
+void poe_port_set(uint8_t port_num, uint8_t port_on);     // enable/disable one port (0-based)
+void poe_global_set(uint8_t on);                          // enable/disable all ports
+// normalized per-port status — typed, chip-agnostic values: set poe_port_num, call, read back:
+poe_port_num;   poe_st_admin, poe_st_on, poe_st_class, poe_st_volt, poe_st_ma;   void poe_get_port(void);
 ```
 
 **How** a driver talks to its chip — direct register I/O, a 12-byte host-command MCU protocol,

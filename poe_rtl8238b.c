@@ -138,9 +138,7 @@ __xdata uint8_t poe_sent18;		// 1 = 0x18 prep block was sent
 __xdata uint8_t poe_cfg74ca;		// 1 = per-port pre-load config pass (clears reg 0x10/0x14 fields on 0x20/0x21) before arm
 __xdata uint16_t poe_postwait;		// quiet settle (5ms ticks) after the verdict, before the post-load reads (0 = none)
 __xdata uint8_t poe_cfg74ca_restore;	// 1 = after upload, run the per-port ENABLE pass (all ports) - powers the ports
-__xdata uint8_t poe_port_num;		// poe_port_set()/poe_get_port(): port 0-7
-__xdata uint8_t poe_port_on;		// poe_port_set(): 1 = enable, 0 = disable
-__xdata uint8_t poe_global_on;		// poe_global_set(): 1 = enable all ports, 0 = disable all
+__xdata uint8_t poe_port_num;		// poe_get_port() input: port 0-7 (poe.h interface global)
 
 // Normalized per-port status, filled by poe_get_port() (the interface in poe.h).
 __xdata uint8_t  poe_st_admin;
@@ -673,21 +671,21 @@ void poe_bb_upload(void) __banked
  * enabled port stays Power-On=0 / class=0 / 0V) - no MCU app required. Bit-banged; restores
  * the I2C-engine mux on exit. (`poe port <n> <on|off>`.)
  */
-void poe_port_set(void) __banked
+void poe_port_set(uint8_t port_num, uint8_t port_on) __banked
 {
 	bb_setup();
-	poe_rdslave = (poe_port_num < 4) ? machine.poe.addr0 : machine.poe.addr1;
-	poe_n = (poe_port_num < 4) ? (3 - poe_port_num) : (poe_port_num - 4);	// per-port field index
+	poe_rdslave = (port_num < 4) ? machine.poe.addr0 : machine.poe.addr1;
+	poe_n = (port_num < 4) ? (3 - port_num) : (port_num - 4);	// per-port field index
 
 	poe_reg = 0x10;	poe_rd_len = 4;	bb_read_reg();		// reg 0x10 block: 2-bit mode field (byte 2)
-	if (poe_port_on)
+	if (port_on)
 		poe_resp[2] |= (0x03 << (poe_n << 1));
 	else
 		poe_resp[2] &= ~(0x03 << (poe_n << 1));
 	poe_reg = 0x10;	bb_write_resp4();
 
 	poe_reg = 0x14;	poe_rd_len = 4;	bb_read_reg();		// reg 0x14 block: 1-bit field (byte 0)
-	if (poe_port_on)
+	if (port_on)
 		poe_resp[0] |= (0x01 << poe_n);
 	else
 		poe_resp[0] &= ~(0x01 << poe_n);
@@ -695,22 +693,20 @@ void poe_port_set(void) __banked
 
 	poe_bus0_setup();		// restore I2C-engine pin-mux
 	print_string("PoE: port ");
-	print_byte(poe_port_num + 1);	// report the 1-based port number
-	print_string(poe_port_on ? " enabled\n" : " disabled\n");
+	print_byte(port_num + 1);	// report the 1-based port number
+	print_string(port_on ? " enabled\n" : " disabled\n");
 }
 
 /*
- * Global PoE on/off: enable (poe_global_on=1) or disable (=0) every port, by applying the
- * per-port admin RMW (poe_port_set) to each in turn. Driven by `poe global <on|off>` and the
- * web UI's "All PoE" control. The port count comes from the machine descriptor.
+ * Global PoE on/off: enable (on=1) or disable (=0) every port, by applying the per-port admin
+ * RMW (poe_port_set) to each in turn. Driven by `poe global <on|off>` and the web UI's "All PoE"
+ * control. The port count comes from the machine descriptor.
  */
-void poe_global_set(void) __banked
+void poe_global_set(uint8_t on) __banked
 {
-	for (poe_port_num = 0; poe_port_num < machine.poe.n_ports; poe_port_num++) {
-		poe_port_on = poe_global_on;
-		poe_port_set();
-	}
-	print_string(poe_global_on ? "PoE: all ports enabled\n" : "PoE: all ports disabled\n");
+	for (poe_i = 0; poe_i < machine.poe.n_ports; poe_i++)
+		poe_port_set(poe_i, on);
+	print_string(on ? "PoE: all ports enabled\n" : "PoE: all ports disabled\n");
 }
 
 /*

@@ -1430,18 +1430,16 @@ void cmd_parser(void) __banked
 				poe_bringup();
 			} else if (cmd_compare(1, "port")) {
 				// Enable/disable PoE on a single port: `poe port <1-8> <on|off>`.
+				// poe_port_num (xdata, poe.h interface global) doubles as the parse scratch.
 				if (cmd_words_len >= 4 && !atoi_byte(&poe_port_num, cmd_words_b[2])
 				    && poe_port_num >= 1 && poe_port_num <= 8) {
-					poe_port_num--;		// 1-8 -> 0-7
-					poe_port_on = cmd_compare(3, "on") ? 1 : 0;
-					poe_port_set();
+					poe_port_set(poe_port_num - 1, cmd_compare(3, "on") ? 1 : 0);	// 1-8 -> 0-7
 				} else {
 					print_string("usage: poe port <1-8> <on|off>\n");
 				}
 			} else if (cmd_compare(1, "global")) {
 				// Enable/disable ALL ports at once: `poe global <on|off>`.
-				poe_global_on = cmd_compare(2, "on") ? 1 : 0;
-				poe_global_set();
+				poe_global_set(cmd_compare(2, "on") ? 1 : 0);
 			} else {
 				// Status/telemetry is at GET /poe.json (driver-normalized per-port data).
 				print_string("usage: poe load|port <n> <on|off>|global <on|off>\nstatus: GET /poe.json\n");
