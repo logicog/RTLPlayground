@@ -17,6 +17,7 @@
  */
 
 #include <stdint.h>
+#include <8051.h>		// standard 8051 SFRs: IE / EA (global interrupt enable)
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
@@ -36,10 +37,10 @@ extern __xdata uint8_t sfr_data[4];
 extern __xdata struct flash_region_t flash_region;
 extern __code struct machine machine;
 
-// Global interrupt-enable register (IE, SFR 0xA8); EA = bit 7. All interrupts are
-// disabled (CLR EA) for the entire image upload so no ISR can mis-time the
-// bit-banged I2C stream.
-__sfr __at(0xA8) POE_IE;
+// EA (bit 7 of the standard 8051 IE register, from <8051.h>) is the global interrupt
+// enable. It is cleared only around the bit-banged image upload (see poe_bb_upload), so no
+// ISR can stretch an inter-bit/inter-byte gap and make the chip's command parser miss the
+// download-arm. The HW-I2C telemetry path (poe_raw_read) runs with interrupts on.
 
 // RWOP bit in RTL837X_REG_I2C_CTRL: set for a write transaction (clear = read)
 #define I2C_RWOP_WRITE	0x04
@@ -81,7 +82,7 @@ static __xdata uint8_t poe_try;
  * Mirrors the bus-0 branches of setup_i2c(); needed because poe_init() runs
  * before setup_i2c() has configured the engine (poe_raw_read, for telemetry).
  */
-static void poe_bus0_setup(void) __banked
+static void poe_bus0_setup(void)
 {
 	REG_SET(RTL837X_REG_I2C_MST_IF_CTRL, 0);
 	REG_SET(RTL837X_REG_I2C_CTRL2, 0);
@@ -101,7 +102,7 @@ static void poe_bus0_setup(void) __banked
  * sent with the RWOP bit cleared (read); bytes arrive little-endian in the
  * contiguous data words from RTL837X_REG_I2C_OUT.
  */
-void poe_raw_read(void) __banked
+void poe_raw_read(void)
 {
 	poe_bus0_setup();
 
@@ -188,17 +189,21 @@ static __xdata uint8_t poe_j;
 #define BB_SDA_BIT	15		// GPIO47 % 32
 #define BB_PSE_DL_CMD	0xf4		// firmware-download data-port command byte
 
-static __xdata uint8_t poe_bbi;		// bit loop counter
-static __xdata uint8_t poe_bback;	// 1 = ACK (SDA low) sampled on the last write byte
-static __xdata uint16_t poe_bbk;	// per-byte delay spin counter
-static __xdata uint8_t poe_bbb;		// byte to shift out (bb_write_byte input)
-static __xdata uint8_t poe_bbv;		// byte shifted in (bb_read_byte output)
-static __xdata uint8_t poe_bbn;		// read loop counter
-static __xdata uint8_t poe_bb_ackout;	// 1 = master sends ACK after read byte (else NACK)
+// Bit-bang I2C byte/bit state machine (GPIO46/47). Grouped into one struct to keep the global
+// namespace uncluttered; every field is scratch used only inside the bb_* helpers.
+static __xdata struct poe_bb_state {
+	uint8_t  bit;		// bit loop counter
+	uint8_t  ack;		// 1 = ACK (SDA low) sampled on the last write byte
+	uint16_t spin;		// per-byte delay spin counter
+	uint8_t  out;		// byte to shift out (bb_write_byte input)
+	uint8_t  in;		// byte shifted in (bb_read_byte output)
+	uint8_t  n;		// read loop counter
+	uint8_t  ackout;	// 1 = master sends ACK after read byte (else NACK)
+} bbs;
 static __xdata uint8_t poe_rdslave = 0x20;	// slave address bb_read_reg() targets (0x20 / 0x21)
 
 // --- Bit-bang I2C on GPIO46 (SCL) / GPIO47 (SDA), push-pull drive ---
-static void bb_scl(uint8_t hi) __banked
+static void bb_scl(uint8_t hi)
 {
 	if (hi)
 		reg_bit_set(RTL837X_REG_GPIO_32_63_OUTPUT, BB_SCL_BIT);
@@ -206,7 +211,7 @@ static void bb_scl(uint8_t hi) __banked
 		reg_bit_clear(RTL837X_REG_GPIO_32_63_OUTPUT, BB_SCL_BIT);
 }
 
-static void bb_sda(uint8_t hi) __banked
+static void bb_sda(uint8_t hi)
 {
 	// Push-pull drive of both levels (in GPIO mode the pad pull-up may be off and there
 	// may be no strong external pull-up). SDA is released to input only for the ACK/read bit.
@@ -216,14 +221,14 @@ static void bb_sda(uint8_t hi) __banked
 		reg_bit_clear(RTL837X_REG_GPIO_32_63_OUTPUT, BB_SDA_BIT);
 }
 
-static uint8_t bb_sda_read(void) __banked
+static uint8_t bb_sda_read(void)
 {
 	reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
 	return (sfr_data[2] & 0x80) ? 1 : 0;	// GPIO47 = bit 15 = sfr_data[2] bit7
 }
 
 /* Route GPIO46/47 to plain GPIO; both lines push-pull, idle-high. */
-static void bb_setup(void) __banked
+static void bb_setup(void)
 {
 	reg_read_m(RTL837X_PIN_MUX_1);
 	sfr_mask_data(0, 0x80, 0x00);	// SCL bus0 function bits -> 0b00 = GPIO
@@ -237,7 +242,7 @@ static void bb_setup(void) __banked
 	reg_bit_set(RTL837X_REG_GPIO_32_63_DIRECTION, BB_SCL_BIT);	// SCL output
 }
 
-static void bb_start(void) __banked
+static void bb_start(void)
 {
 	bb_sda(1);
 	bb_scl(1);
@@ -245,46 +250,46 @@ static void bb_start(void) __banked
 	bb_scl(0);
 }
 
-static void bb_stop(void) __banked
+static void bb_stop(void)
 {
 	bb_sda(0);
 	bb_scl(1);
 	bb_sda(1);		// SDA rises while SCL high = STOP
 }
 
-/* Clock out poe_bbb MSB-first, then one ACK clock (sampling SDA into poe_bback).
+/* Clock out bbs.out MSB-first, then one ACK clock (sampling SDA into bbs.ack).
  * Parameterless (globals) to keep the 8051 overlay segment from overflowing. */
-static void bb_write_byte(void) __banked
+static void bb_write_byte(void)
 {
-	for (poe_bbi = 0; poe_bbi < 8; poe_bbi++) {
-		bb_sda(poe_bbb & 0x80);
+	for (bbs.bit = 0; bbs.bit < 8; bbs.bit++) {
+		bb_sda(bbs.out & 0x80);
 		bb_scl(1);
 		bb_scl(0);
-		poe_bbb <<= 1;
+		bbs.out <<= 1;
 	}
 	// 9th clock = ACK: release SDA to input so the target can pull it low.
 	bb_sda(1);							// drive latch high, then release
 	reg_bit_clear(RTL837X_REG_GPIO_32_63_DIRECTION, BB_SDA_BIT);	// INPUT to sample the ACK
 	bb_scl(1);
-	poe_bback = bb_sda_read() ? 0 : 1;
+	bbs.ack = bb_sda_read() ? 0 : 1;
 	bb_scl(0);
 	reg_bit_set(RTL837X_REG_GPIO_32_63_DIRECTION, BB_SDA_BIT);	// resume push-pull drive
 }
 
-/* Read one byte MSB-first into poe_bbv; master drives ACK if poe_bb_ackout else NACK. */
-static void bb_read_byte(void) __banked
+/* Read one byte MSB-first into bbs.in; master drives ACK if bbs.ackout else NACK. */
+static void bb_read_byte(void)
 {
 	reg_bit_clear(RTL837X_REG_GPIO_32_63_DIRECTION, BB_SDA_BIT);	// release SDA (input)
-	poe_bbv = 0;
-	for (poe_bbi = 0; poe_bbi < 8; poe_bbi++) {
+	bbs.in = 0;
+	for (bbs.bit = 0; bbs.bit < 8; bbs.bit++) {
 		bb_scl(1);
-		poe_bbv <<= 1;
+		bbs.in <<= 1;
 		if (bb_sda_read())
-			poe_bbv |= 1;
+			bbs.in |= 1;
 		bb_scl(0);
 	}
 	// master ACK/NACK on the 9th clock
-	bb_sda(poe_bb_ackout ? 0 : 1);
+	bb_sda(bbs.ackout ? 0 : 1);
 	reg_bit_set(RTL837X_REG_GPIO_32_63_DIRECTION, BB_SDA_BIT);	// resume push-pull drive
 	bb_scl(1);
 	bb_scl(0);
@@ -295,17 +300,17 @@ static void bb_read_byte(void) __banked
  * poe_resp:  START | 0x40 | reg | reSTART | 0x41 | read (ACK..ACK,NACK) | STOP.
  * Status read after each download command (write reg, repeated START, read N).
  */
-static void bb_read_reg(void) __banked
+static void bb_read_reg(void)
 {
 	bb_start();
-	poe_bbb = poe_rdslave << 1;	bb_write_byte();	// write address (poe_rdslave = 0x20/0x21)
-	poe_bbb = poe_reg;	bb_write_byte();
+	bbs.out = poe_rdslave << 1;	bb_write_byte();	// write address (poe_rdslave = 0x20/0x21)
+	bbs.out = poe_reg;	bb_write_byte();
 	bb_start();					// repeated START
-	poe_bbb = (poe_rdslave << 1) | 1; bb_write_byte();	// read address
-	for (poe_bbn = 0; poe_bbn < poe_rd_len; poe_bbn++) {
-		poe_bb_ackout = (poe_bbn < (poe_rd_len - 1)) ? 1 : 0;
+	bbs.out = (poe_rdslave << 1) | 1; bb_write_byte();	// read address
+	for (bbs.n = 0; bbs.n < poe_rd_len; bbs.n++) {
+		bbs.ackout = (bbs.n < (poe_rd_len - 1)) ? 1 : 0;
 		bb_read_byte();
-		poe_resp[poe_bbn] = poe_bbv;
+		poe_resp[bbs.n] = bbs.in;
 	}
 	bb_stop();
 }
@@ -318,24 +323,24 @@ static void bb_read_reg(void) __banked
  */
 static __xdata uint8_t poe_bbcmd;
 static __xdata uint8_t poe_ack_cmd;	// ACK of the command byte (0xec/0x18) in the last bb_cmd4
-static void bb_cmd4(void) __banked
+static void bb_cmd4(void)
 {
 	bb_start();
-	poe_bbb = 0x20 << 1;	bb_write_byte();	// slave 0x20, write
-	poe_bbb = poe_bbcmd;	bb_write_byte();
-	poe_ack_cmd = poe_bback;			// 1 = chip ACKed the command byte
+	bbs.out = 0x20 << 1;	bb_write_byte();	// slave 0x20, write
+	bbs.out = poe_bbcmd;	bb_write_byte();
+	poe_ack_cmd = bbs.ack;			// 1 = chip ACKed the command byte
 	// 4-byte payload: reg 0xec <- poe_arm1, reg 0x18 <- poe_arm2. poe_arm*[0] is clocked
 	// out first. bb_cmd4 is only ever called with 0xec or 0x18, so 0x18 is the implicit else.
 	if (poe_bbcmd == 0xec) {
-		poe_bbb = poe_arm1[0];	bb_write_byte();
-		poe_bbb = poe_arm1[1];	bb_write_byte();
-		poe_bbb = poe_arm1[2];	bb_write_byte();
-		poe_bbb = poe_arm1[3];	bb_write_byte();
+		bbs.out = poe_arm1[0];	bb_write_byte();
+		bbs.out = poe_arm1[1];	bb_write_byte();
+		bbs.out = poe_arm1[2];	bb_write_byte();
+		bbs.out = poe_arm1[3];	bb_write_byte();
 	} else {
-		poe_bbb = poe_arm2[0];	bb_write_byte();
-		poe_bbb = poe_arm2[1];	bb_write_byte();
-		poe_bbb = poe_arm2[2];	bb_write_byte();
-		poe_bbb = poe_arm2[3];	bb_write_byte();
+		bbs.out = poe_arm2[0];	bb_write_byte();
+		bbs.out = poe_arm2[1];	bb_write_byte();
+		bbs.out = poe_arm2[2];	bb_write_byte();
+		bbs.out = poe_arm2[3];	bb_write_byte();
 	}
 	bb_stop();
 }
@@ -346,10 +351,10 @@ static void bb_cmd4(void) __banked
  * times so the slave can finish/abandon its byte, then issue a clean STOP. Cheap
  * insurance against a wedged bus before the download transaction.
  */
-static void bb_busrecover(void) __banked
+static void bb_busrecover(void)
 {
 	reg_bit_clear(RTL837X_REG_GPIO_32_63_DIRECTION, BB_SDA_BIT);	// release SDA (input)
-	for (poe_bbi = 0; poe_bbi < 9; poe_bbi++) {
+	for (bbs.bit = 0; bbs.bit < 9; bbs.bit++) {
 		bb_scl(1);
 		bb_scl(0);
 	}
@@ -358,15 +363,15 @@ static void bb_busrecover(void) __banked
 }
 
 /* Write poe_resp[0..3] (4 bytes) back to register poe_reg of slave poe_rdslave. */
-static void bb_write_resp4(void) __banked
+static void bb_write_resp4(void)
 {
 	bb_start();
-	poe_bbb = poe_rdslave << 1;	bb_write_byte();
-	poe_bbb = poe_reg;		bb_write_byte();
-	poe_bbb = poe_resp[0];		bb_write_byte();
-	poe_bbb = poe_resp[1];		bb_write_byte();
-	poe_bbb = poe_resp[2];		bb_write_byte();
-	poe_bbb = poe_resp[3];		bb_write_byte();
+	bbs.out = poe_rdslave << 1;	bb_write_byte();
+	bbs.out = poe_reg;		bb_write_byte();
+	bbs.out = poe_resp[0];		bb_write_byte();
+	bbs.out = poe_resp[1];		bb_write_byte();
+	bbs.out = poe_resp[2];		bb_write_byte();
+	bbs.out = poe_resp[3];		bb_write_byte();
 	bb_stop();
 }
 
@@ -379,7 +384,7 @@ static void bb_write_resp4(void) __banked
  * poe_74ca_set selects the clear pass (run before the image, disables the fields) or the
  * set/enable pass (run after the image, powers the ports). Byte 0 = first I2C byte = LSB.
  */
-static void bb_74ca_prep(void) __banked
+static void bb_74ca_prep(void)
 {
 	for (poe_j = 0; poe_j < 8; poe_j++) {
 		poe_rdslave = (poe_j < 4) ? 0x20 : 0x21;	// ports 0-3 -> 0x20, 4-7 -> 0x21
@@ -403,7 +408,7 @@ static void bb_74ca_prep(void) __banked
 }
 
 /* Dump reg 0x10/0x14 (raw 4 bytes) from 0x20 and 0x21 (defined below; used here too). */
-static void pp_dump(void) __banked;
+static void pp_dump(void);
 
 /*
  * Put the controller into firmware-download mode (prep cmds 0xec, 0x18) then stream the
@@ -413,7 +418,7 @@ static void pp_dump(void) __banked;
  * Runs the whole-chip reset and port-disable first. Restores the I2C engine pin-mux on
  * exit so normal register access (/poe.json) keeps working.
  */
-void poe_bb_upload(void) __banked
+void poe_bb_upload(void)
 {
 	poe_addr = 0x20;
 	poe_rdslave = 0x20;	// bb_read_reg() targets 0x20 throughout the upload
@@ -450,9 +455,9 @@ void poe_bb_upload(void) __banked
 
 	// Step0 - whole-chip reset: write reg 0x1a = 0x20 (1 data byte), then STOP.
 	bb_start();
-	poe_bbb = 0x20 << 1;	bb_write_byte();	// addr + W
-	poe_bbb = 0x1a;		bb_write_byte();	// reg 0x1a
-	poe_bbb = 0x20;		bb_write_byte();	// = 0x20 (whole-chip reset bit), then STOP
+	bbs.out = 0x20 << 1;	bb_write_byte();	// addr + W
+	bbs.out = 0x1a;		bb_write_byte();	// reg 0x1a
+	bbs.out = 0x20;		bb_write_byte();	// = 0x20 (whole-chip reset bit), then STOP
 	bb_stop();
 	delay(100);		// ~0.5s for the chip to reset back into its bootloader
 
@@ -460,20 +465,20 @@ void poe_bb_upload(void) __banked
 	// transport so the whole sequence runs continuously on GPIO46/47 (no HW I2C engine,
 	// no pin-mux toggle).
 	bb_start();
-	poe_bbb = 0x20 << 1;	bb_write_byte();	// slave 0x20
-	poe_bbb = 0x10;		bb_write_byte();	// reg 0x10
-	poe_bbb = 0x00;		bb_write_byte();
-	poe_bbb = 0x00;		bb_write_byte();
-	poe_bbb = 0x00;		bb_write_byte();
-	poe_bbb = 0x00;		bb_write_byte();
+	bbs.out = 0x20 << 1;	bb_write_byte();	// slave 0x20
+	bbs.out = 0x10;		bb_write_byte();	// reg 0x10
+	bbs.out = 0x00;		bb_write_byte();
+	bbs.out = 0x00;		bb_write_byte();
+	bbs.out = 0x00;		bb_write_byte();
+	bbs.out = 0x00;		bb_write_byte();
 	bb_stop();
 	bb_start();
-	poe_bbb = 0x21 << 1;	bb_write_byte();	// slave 0x21
-	poe_bbb = 0x10;		bb_write_byte();
-	poe_bbb = 0x00;		bb_write_byte();
-	poe_bbb = 0x00;		bb_write_byte();
-	poe_bbb = 0x00;		bb_write_byte();
-	poe_bbb = 0x00;		bb_write_byte();
+	bbs.out = 0x21 << 1;	bb_write_byte();	// slave 0x21
+	bbs.out = 0x10;		bb_write_byte();
+	bbs.out = 0x00;		bb_write_byte();
+	bbs.out = 0x00;		bb_write_byte();
+	bbs.out = 0x00;		bb_write_byte();
+	bbs.out = 0x00;		bb_write_byte();
 	bb_stop();
 
 	// Per-port pre-load config (clear pass): read-modify-write that clears the per-port
@@ -490,7 +495,7 @@ void poe_bb_upload(void) __banked
 	// ACKed. So: CLR EA now, busy-loops only (NO delay() here - delay() needs the timer
 	// ISR and would hang), SETB EA after the image STOP.
 	if (poe_eaoff)
-		POE_IE &= ~0x80;	// CLR EA
+		EA = 0;	// CLR EA
 
 	// Prep handshake: arm with 0xec -> read status -> if the arm bit (bit2) is still
 	// clear, send the alternate arm 0x18 then re-arm 0xec -> then stream the image.
@@ -505,7 +510,7 @@ void poe_bb_upload(void) __banked
 	if (!(poe_resp[0] & 0x04)) {	// arm bit (bit2) not yet set -> send the alternate arm
 		poe_bbcmd = 0x18;	bb_cmd4();
 		poe_ack_18b = poe_ack_cmd;		// did the chip ACK the 0x18 (arm) command byte?
-		for (poe_bbk = 0; poe_bbk < 1000; poe_bbk++)	// busy-spin (EA is off)
+		for (bbs.spin = 0; bbs.spin < 1000; bbs.spin++)	// busy-spin (EA is off)
 			reg_read_m(RTL837X_REG_GPIO_32_63_INPUT);
 		poe_bbcmd = 0xec;	bb_cmd4();	// re-arm before the image
 		poe_sent18 = 1;
@@ -519,11 +524,11 @@ void poe_bb_upload(void) __banked
 
 	bb_start();
 
-	poe_bbb = 0x20 << 1;	bb_write_byte();	// slave 0x20, write
-	if (!poe_bback)
+	bbs.out = 0x20 << 1;	bb_write_byte();	// slave 0x20, write
+	if (!bbs.ack)
 		poe_load_nack = 1;		// chip did not ACK its address
-	poe_bbb = BB_PSE_DL_CMD;	bb_write_byte();	// firmware-download command 0xf4
-	poe_ack_f4b = poe_bback;			// did the chip ACK the 0xf4 command byte?
+	bbs.out = BB_PSE_DL_CMD;	bb_write_byte();	// firmware-download command 0xf4
+	poe_ack_f4b = bbs.ack;			// did the chip ACK the 0xf4 command byte?
 
 	for (poe_load_off = 0; poe_load_off < poe_ilen; poe_load_off += PSE_CHUNK) {
 		poe_n = (poe_ilen - poe_load_off > PSE_CHUNK)
@@ -532,7 +537,7 @@ void poe_bb_upload(void) __banked
 		flash_region.len = poe_n;
 		flash_read_bulk(poe_fbuf);
 		for (poe_j = 0; poe_j < poe_n; poe_j++) {
-			poe_bbb = poe_fbuf[poe_j];
+			bbs.out = poe_fbuf[poe_j];
 			bb_write_byte();
 		}
 	}
@@ -540,7 +545,7 @@ void poe_bb_upload(void) __banked
 	bb_stop();
 
 	if (poe_eaoff)
-		POE_IE |= 0x80;		// SETB EA - re-enable before any printing/delay
+		EA = 1;		// SETB EA - re-enable before any printing/delay
 
 	// Deferred prep log.
 	print_string("PoE: after 0xec status=0x");
@@ -565,9 +570,9 @@ void poe_bb_upload(void) __banked
 	// Each bit-bang read is bracketed interrupts-off for clean timing.
 	for (poe_try = 0; poe_try < 25; poe_try++) {
 		delay(8);			// ~40ms between polls (interrupts on)
-		POE_IE &= ~0x80;
+		EA = 0;
 		poe_reg = 0xec;	poe_rd_len = 4;	bb_read_reg();
-		POE_IE |= 0x80;
+		EA = 1;
 		if (poe_resp[0] & 0x20)		// bit5 = accepted
 			break;
 	}
@@ -583,12 +588,12 @@ void poe_bb_upload(void) __banked
 
 	// Result mailbox: 16-bit result word in reg 0x0B (lo) / 0x0C (hi). Read alongside
 	// 0xec - may carry a CRC/verify error code that the bit5 status flag doesn't expose.
-	POE_IE &= ~0x80;
+	EA = 0;
 	poe_reg = 0x0b;	poe_rd_len = 1;	bb_read_reg();
 	poe_res11 = poe_resp[0];
 	poe_reg = 0x0c;	poe_rd_len = 1;	bb_read_reg();
 	poe_res12 = poe_resp[0];
-	POE_IE |= 0x80;
+	EA = 1;
 	print_string("PoE: result mailbox reg11=0x");
 	print_byte(poe_res11);
 	print_string(" reg12=0x");
@@ -604,7 +609,7 @@ void poe_bb_upload(void) __banked
 	// Re-read identity/state regs after the upload. If the chip rebooted into a running
 	// app (download took effect), reg 0x1b / 0xe8 or the live-status zone 0x00-0x07 should
 	// differ from the pre-upload values (0x1b=0x39, 0xe8=0x02, 0x00-0x07 all zero).
-	POE_IE &= ~0x80;
+	EA = 0;
 	poe_reg = 0x1b;	poe_rd_len = 1;	bb_read_reg();	poe_post_1b = poe_resp[0];
 	poe_reg = 0xe8;	poe_rd_len = 1;	bb_read_reg();	poe_post_e8 = poe_resp[0];
 	poe_reg = 0x10;	poe_rd_len = 4;	bb_read_reg();
@@ -614,7 +619,7 @@ void poe_bb_upload(void) __banked
 	poe_reg = 0x00;	poe_rd_len = 8;	bb_read_reg();
 	for (poe_j = 0; poe_j < 8; poe_j++)
 		poe_post00[poe_j] = poe_resp[poe_j];
-	POE_IE |= 0x80;
+	EA = 1;
 	print_string("PoE: post-upload reg 0x1b=0x");
 	print_byte(poe_post_1b);
 	print_string(" 0xe8=0x");
@@ -773,7 +778,7 @@ void poe_bringup(void) __banked
  * Dump reg 0x10 and reg 0x14 (raw 4 bytes each) from BOTH controllers (0x20, 0x21).
  * Used by poe_bringup() to show the per-port mode / reg 0x14 state after the enable pass.
  */
-static void pp_dump(void) __banked
+static void pp_dump(void)
 {
 	for (poe_j = 0; poe_j < 2; poe_j++) {
 		poe_rdslave = poe_j ? 0x21 : 0x20;
