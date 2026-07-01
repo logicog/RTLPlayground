@@ -7,6 +7,7 @@
 #include "rtl837x_flash.h"
 #include "uip.h"
 #include "html_data.h"
+#include "machine.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -682,6 +683,10 @@ void httpd_appcall(void)
 				send_mtu();
 			} else if (is_word(q, "/lag.json")) {
 				send_lag();
+#ifdef POE_PRESENT
+			} else if (is_word(q, "/poe.json")) {
+				send_poe();
+#endif
 			} else if (is_word(q, "/vlanlist")) {
 				send_vlanlist();
 			} else if (is_word(q, "/config")) {

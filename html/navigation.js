@@ -10,3 +10,11 @@ document.getElementById('sidebar').innerHTML =
  + "<li><a href='bandwidth.html'>Bandwidth Limits</a></li>"
  + "<li><a href='system.html'>System Settings</a></li>"
  + "<li><a href='update.html'>Firmware Update</a></li></ul>";
+
+// poe.html ships in every build, but the PoE code (and /poe.json) is compiled in only on PoE
+// machines. Show the PoE menu entry only when the firmware has it - i.e. when /poe.json answers.
+fetch('/poe.json').then(function(r) {
+  if (!r.ok) return;
+  var sys = document.querySelector("#sidebar a[href='system.html']").parentNode;
+  sys.insertAdjacentHTML('beforebegin', "<li><a href='poe.html'>PoE</a></li>");
+}).catch(function() {});

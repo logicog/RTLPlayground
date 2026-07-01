@@ -49,6 +49,18 @@ button:hover { background-color: #226; color: white;}
 .action{padding: 8px 16px;margin-top: 2em;margin-right: 3em; background-color: #aaf;color: #000;border-radius: 15px; width: 100%;}
 .action:hover { background-color: #226; color: white;}
 
+/* PoE action button */
+.poe-act{
+  padding:3px 12px;
+  background-color:#aaf;
+  color:#000;
+  border:none;
+  border-radius:10px;
+  vertical-align:middle;
+  cursor:pointer;
+  font-size:90%
+}
+
 /* Port selection inputs */
 .psel {
   position: absolute;
