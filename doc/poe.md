@@ -59,6 +59,12 @@ etc. — is entirely the driver's business and never leaks past this interface. 
 its hardware into the normalized `poe_st_*` values (admin / delivering / class / volts / mA), so
 `/poe.json` and the web UI present PoE status with **no** knowledge of the controller.
 
+PoE presence is a compile-time property of the machine (`POE_PRESENT`, set in machine.h). On a
+board **without** PoE the answer is explicit rather than silent: the `poe` console command is still
+recognized and replies `PoE not supported on this machine`, and `GET /poe.json` is not registered so
+it returns a plain **HTTP 404** (the resource does not exist on this device). On a PoE board
+`/poe.json` returns **200** with the per-port JSON array above.
+
 ## Adding hardware
 
 **Another board with an already-supported chip:** add its `MACHINE_*` to that chip's

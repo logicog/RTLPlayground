@@ -1422,8 +1422,8 @@ void cmd_parser(void) __banked
 			parse_sfp();
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
-#ifdef POE_PRESENT
 		} else if (cmd_compare(0, "poe")) {
+#ifdef POE_PRESENT
 			if (cmd_compare(1, "load")) {
 				// Re-run the full PoE bring-up (`poe load`) - the same bring-up the
 				// boot runs. The chip-specific sequence lives in the driver's poe_bringup().
@@ -1444,6 +1444,10 @@ void cmd_parser(void) __banked
 				// Status/telemetry is at GET /poe.json (driver-normalized per-port data).
 				print_string("usage: poe load|port <n> <on|off>|global <on|off>\nstatus: GET /poe.json\n");
 			}
+#else
+			// The `poe` command is recognized on every machine so the answer is explicit
+			// (rather than a generic "unknown command") - this board just has no PoE.
+			print_string("PoE not supported on this machine\n");
 #endif /* POE_PRESENT */
 		} else if (cmd_compare(0, "flash") && cmd_words_len == 2) {
 			uint8_t c = cmd_buffer[cmd_words_b[1]];
