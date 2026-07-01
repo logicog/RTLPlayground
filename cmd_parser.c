@@ -50,6 +50,7 @@ __xdata char port_names[9][PORT_NAME_SIZE];
 extern __xdata uint16_t management_vlan;
 extern __xdata uint8_t sfp_speed[2];
 extern __xdata uint8_t sfp_pins_last;
+extern __xdata uint8_t sfp_options[2];
 __xdata uint8_t gpio_last_value[8] = { 0 };
 
 // Temporatly for str to hex convertion value.
@@ -741,7 +742,7 @@ void parse_mtu(void)
 void sfp_print_measurements(uint8_t sfp)
 {
 	print_string("Options: "); print_byte(sfp_read_reg(sfp, 92)); write_char('\n');
-	if (!(sfp_read_reg(sfp, 92) & 0x40))
+	if (!(sfp_options[sfp] & 0x40))
 		return;
 	print_string("Temp: "); print_byte(sfp_read_reg(sfp, 224)); print_byte(sfp_read_reg(sfp, 225)); write_char('\n');
 	print_string("Vcc: "); print_byte(sfp_read_reg(sfp, 226)); print_byte(sfp_read_reg(sfp, 227)); write_char('\n');

@@ -660,52 +660,53 @@ void send_status(void)
 		slen += strtox(outbuf + slen, "\"");
 
 		if (machine.is_sfp[i]) {
+			uint8_t sfp = machine.is_sfp[i] - 1;
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
-			if (!(sfp_pins_last & (0x1 << ((machine.is_sfp[i] - 1) << 2)))) {
+			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
 				bool_to_html(1);
 				slen += strtox(outbuf + slen,",\"sfp_options\":\"0x");
-				byte_to_html(sfp_options[machine.is_sfp[i]-1]);
-				if (sfp_options[machine.is_sfp[i]-1] & 0x40) {
+				byte_to_html(sfp_options[sfp]);
+				if (sfp_options[sfp] & 0x40) {
 					slen += strtox(outbuf + slen,"\",\"sfp_temp\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 224, 2);
+					sfp_send_data(sfp, 224, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_vcc\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 226, 2);
+					sfp_send_data(sfp, 226, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_txbias\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 228, 2);
+					sfp_send_data(sfp, 228, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_txpower\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 230, 2);
+					sfp_send_data(sfp, 230, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_rxpower\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 232, 2);
-					if (sfp_options[machine.is_sfp[i]-1] & 0x10) {
+					sfp_send_data(sfp, 232, 2);
+					if (sfp_options[sfp] & 0x10) {
 						slen += strtox(outbuf + slen,"\",\"sfp_temp_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 212, 4);
+						sfp_send_data(sfp, 212, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_vcc_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 216, 4);
+						sfp_send_data(sfp, 216, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_txbias_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 204, 4);
+						sfp_send_data(sfp, 204, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_txpower_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 208, 4);
+						sfp_send_data(sfp, 208, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_rxpower_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 184, 16);
-						sfp_send_data(machine.is_sfp[i] - 1, 200, 4);
+						sfp_send_data(sfp, 184, 16);
+						sfp_send_data(sfp, 200, 4);
 					}
 					slen += strtox(outbuf + slen,"\",\"sfp_state\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 238, 1);
+					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (register uint8_t s = 0; s < 16; s++)
-					outbuf[slen++] = sfp_module_vendor[machine.is_sfp[i]-1][s];
+				for (register uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
+					outbuf[slen++] = sfp_module_vendor[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (register uint8_t s = 0; s < 16; s++)
-					outbuf[slen++] = sfp_module_model[machine.is_sfp[i]-1][s];
+				for (register uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
+					outbuf[slen++] = sfp_module_model[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (register uint8_t s = 0; s < 16; s++)
-					outbuf[slen++] = sfp_module_serial[machine.is_sfp[i]-1][s];
+				for (register uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
+					outbuf[slen++] = sfp_module_serial[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
-				if (machine.sfp_port[machine.is_sfp[i]-1].pin_los == GPIO_NA) {
+				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");
 				} else {
-					bool_to_html(sfp_pins_last & (0x2 << (((machine.is_sfp[i]-1) << 2))));
+					bool_to_html(sfp_pins_last & (0x2 << (sfp << 2)));
 				}
 			} else {
 				bool_to_html(0);

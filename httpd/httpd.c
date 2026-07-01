@@ -101,21 +101,6 @@ uint8_t find_entry(__xdata uint8_t *e)
 }
 
 
-char strcmp(__xdata uint8_t *c, __code uint8_t * __xdata d)
-{
-	uint8_t i = 0;
-
-	while (d[i] && (d[i] == c[i]))
-		i++;
-
-	if (c[i] < d[i])
-		return -1;
-	else if (c[i] > d[i])
-		return 1;
-	return 0;
-}
-
-
 bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 {
 	uint8_t u, c;
