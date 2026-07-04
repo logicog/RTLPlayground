@@ -173,7 +173,6 @@ var LANG = {
     update_instruction: 'Choose a firmware update file to upload:',
     update_upload: 'Upload File',
 
-    lang_switch: 'Language:',
     common_port: 'Port ',
     common_pkts: ' pkts',
   },
@@ -352,7 +351,6 @@ var LANG = {
     update_instruction: 'アップロードするファームウェアファイルを選択:',
     update_upload: 'ファイルをアップロード',
 
-    lang_switch: '言語:',
     common_port: 'ポート ',
     common_pkts: ' pkts',
   }
@@ -376,8 +374,6 @@ function setLang(lang) {
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
       applyTranslation(el);
     });
-    var sel = document.getElementById('rtl-lang-select');
-    if (sel) sel.value = lang;
   }
 }
 

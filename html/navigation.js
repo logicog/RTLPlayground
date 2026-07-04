@@ -9,14 +9,9 @@ document.getElementById('sidebar').innerHTML =
  + "<li><a href='eee.html' data-i18n='nav_eee'>EEE</a></li>"
  + "<li><a href='bandwidth.html' data-i18n='nav_bandwidth'>Bandwidth Limits</a></li>"
  + "<li><a href='system.html' data-i18n='nav_system'>System Settings</a></li>"
- + "<li><a href='update.html' data-i18n='nav_fw_update'>Firmware Update</a></li></ul>"
- + "<hr/><div style='padding:8px'><label for='rtl-lang-select' data-i18n='lang_switch'>Language:</label><br/>"
- + "<select id='rtl-lang-select' onchange='setLang(this.value)' style='width:100%;margin-top:4px'>"
- + "<option value='en'>English</option><option value='ja'>日本語</option></select></div>";
+ + "<li><a href='update.html' data-i18n='nav_fw_update'>Firmware Update</a></li></ul>";
 
 document.addEventListener('DOMContentLoaded', function() {
-  var sel = document.getElementById('rtl-lang-select');
-  if (sel) sel.value = rtlLang;
   var links = document.querySelectorAll('#sidebar a[data-i18n]');
   links.forEach(function(el) {
     var key = el.getAttribute('data-i18n');
