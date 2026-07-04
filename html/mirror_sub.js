@@ -2,7 +2,7 @@ async function mirrorSub() {
   var cmd = "mirror ";
   var mp=document.getElementById('mp').value
   if (!mp) {
-    alert("Set Mirroring Port first");
+    alert(t('mirror_set_port_first'));
     return;
   }
   document.getElementById(mirrors[0]+mp).checked=false;document.getElementById(mirrors[1]+mp).checked=false;
@@ -16,7 +16,7 @@ async function mirrorSub() {
       cmd = cmd + ` ${i}r`;
   }
   if (cmd.length < 10) {
-    alert("Select Mirrored Ports");
+    alert(t('mirror_select_ports'));
     return;
   }
   try {

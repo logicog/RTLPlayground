@@ -1,30 +1,30 @@
 <!DOCTYPE html>
 <html>
-  <title>RTL Switch Login</title>
+  <title data-i18n="login_title">RTL Switch Login</title>
   <link rel="stylesheet" href="style.css">
+  <script src="/i18n.js"></script>
   <script>
     function removeNote() {
       document.getElementById("incorrect").innerHTML = "";
     }
     window.addEventListener("load", function() {
       if (document.referrer.endsWith("login.html"))
-      document.getElementById("incorrect").innerHTML = "Wrong password!";
+        document.getElementById("incorrect").innerHTML = t('login_wrong');
     });
-    </script>
+  </script>
 </head>
 
 <body class="login_page">
   <div class = "center">
-  <h1> RTL Switch Login</h1>
+  <h1 data-i18n="login_heading"> RTL Switch Login</h1>
   <form method="post" action="login">
   <div class="txt_field">
     <input name="pwd" type="password" onclick="removeNote()" required />
     <span></span>
-    <label>Password</label>
+    <label data-i18n="login_password">Password</label>
   </div>
-  <input type="submit" value="Login"/>
+  <input type="submit" data-i18n="login_login" value="Login"/>
   <h3 id="incorrect" style="margin-top: 5em;"></h3>
   </form>
 </body>
 </html>
-

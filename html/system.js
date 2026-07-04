@@ -4,7 +4,7 @@ const ips = ["ip", "netmask", "gw"];
 
 function checkIp(ip) {
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
-  if (!ipv4.test(ip)) {alert(`Invalid ip:${ip}`); return false };
+  if (!ipv4.test(ip)) {alert(t('sys_invalid_ip') + ip); return false };
   return true;
 }
 
@@ -136,12 +136,12 @@ function fetchIP() {
 }
 
 function resetSwitch() {
-  if (!confirm('Are you sure you want to reset the switch?')) {
+  if (!confirm(t('sys_reset_confirm'))) {
     return;
   }
   fetch('/reset', { method: 'GET' }).catch(() => {});
   setTimeout(() => {
-    alert('Switch is resetting. Please wait and refresh the page.');
+    alert(t('sys_resetting'));
   }, 3000);
 }
 
