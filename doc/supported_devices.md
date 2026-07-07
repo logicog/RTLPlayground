@@ -16,6 +16,7 @@ The following devices have been tested and are fully working:
 | Keeplink | KP-9000-6XH-X2  | No      | [2M-PCB43-V2.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/KP-9000-6XH-X2.md)                |       | 4 + 2 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V2_2.md)                 | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes 	   | [2M-PCB23-V3.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V3_1.md)                 | 2M 	  | 8 + 1 |
+| keepLINK | KP-9000-9XHPML-X| Yes     | [KP-9000-9XHPML-X V3.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/KP-9000-9XHPML-X-V3.1.md) | 2M    | 8 PoE+ + 1 |
 | LIANGUO  | SWTG024AS 	     | No 	   | [SWTG024AS-v2.0-17452](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	            | 0.5M 	| 4 + 2 |
 | Lianguo  | ZX-SWTGW215AS 	 | Yes 	   | [PCB-SWTG115AS-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW215AS.md) 	            | 2M    |	5 + 1 |
 | Mokerlink| ZX-SWTGW218AS 	 | Yes 	   | [SWTG118AS-V2.0-16029](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW218AS.md)             |	2M 	  | 8 + 1 |
@@ -28,9 +29,11 @@ The following devices have been tested and are fully working:
 
 Other device based on RTL8272/3 that may work are described here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide](https://github.com/up-n-atom/SWTG118AS)
 
-Many of the RTL8272/3 devices come in versions with PoE support. The RTLPlayground usually also
-works on these, however, no support for configuring PoE is provided, simply because these
-devices usually just provide PoE on all ports without further configuration possibilitites.
+Many of the RTL8272/3 devices come in versions with PoE support. RTLPlayground runs on these
+too. For boards whose PSE is a software-controllable **RTL8238B** on I2C (e.g. the KP-9000 V3.1
+PoE above), RTLPlayground brings PoE up at boot and provides per-port / global control plus
+live telemetry — see [PoE](poe-rtl8238b.md). Other boards simply provide PoE on all ports in hardware
+with no configuration possibility, and RTLPlayground leaves that untouched.
 
 The following forum also discusses this type of switches: [ServeTheHome](https://forums.servethehome.com/index.php?threads/horaco-2-5gbe-managed-switch-8-x-2-5gbe-1-10gb-sfp.41571/)
 
