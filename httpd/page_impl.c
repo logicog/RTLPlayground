@@ -14,6 +14,7 @@
 #include "machine.h"
 #include "page_impl.h"
 #include "syslog.h"
+#include "poe.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -525,6 +526,49 @@ void send_lag(void)
 	slen -=1; // remove comma
 	char_to_html(']');
 }
+
+
+#ifdef POE_PRESENT	/* /poe.json compiles only on PoE machines */
+/*
+ * GET /poe.json - read-only, driver-normalized per-port PoE status (no query parameters). The
+ * serialization lives HERE in the handler; the driver only returns typed, chip-agnostic values
+ * via poe_get_port() (see poe.h), so this endpoint knows nothing about the controller. One JSON
+ * object per port:
+ *   port  - 1-based port number          on    - 1 = actually delivering power to a PD
+ *   admin - 1 = administratively enabled  class - PD class 0..8, or 255 = none/unknown
+ *   v     - port voltage (volts)          ma    - port current (mA)
+ * Power (W) and total consumption are just v*ma, derived by the consumer.
+ */
+void send_poe(void)
+{
+	__xdata uint8_t c;	// xdata, not internal RAM, to stay out of the full overlay segment
+
+	dbg_string("send_poe called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	char_to_html('[');
+	for (c = 0; c < machine.poe.n_ports; c++) {
+		poe_port_num = c;
+		poe_get_port();
+		if (c)
+			char_to_html(',');
+		slen += strtox(outbuf + slen, "{\"port\":");
+		itoa_html(c + 1);
+		slen += strtox(outbuf + slen, ",\"admin\":");
+		char_to_html('0' + poe_st_admin);
+		slen += strtox(outbuf + slen, ",\"on\":");
+		char_to_html('0' + poe_st_on);
+		slen += strtox(outbuf + slen, ",\"class\":");
+		itoa_html(poe_st_class);
+		slen += strtox(outbuf + slen, ",\"v\":");
+		itoa_html(poe_st_volt);
+		slen += strtox(outbuf + slen, ",\"ma\":");
+		itoa16_html(poe_st_ma);
+		char_to_html('}');
+	}
+	char_to_html(']');
+}
+#endif /* POE_PRESENT */
 
 
 void send_eee(void)
