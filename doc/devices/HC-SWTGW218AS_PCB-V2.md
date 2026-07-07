@@ -22,6 +22,32 @@ with managed firmware by Horaco. The RTLPlayground machine definition
 > reset GPIO assignments. Using the wrong definition results in wrong LEDs and a
 > non-working SFP port.
 
+## Why a separate machine definition (problems with `MACHINE_SWTGW218AS`)
+
+Because this switch is also branded "SWTGW218AS", the obvious first attempt was to
+build the existing `MACHINE_SWTGW218AS` definition. **That does not work on this
+PCB** — it is written for the unrelated SWTG118AS board and the differences are not
+cosmetic:
+
+- **LEDs are offset by one position.** With `MACHINE_SWTGW218AS`, port 1 lights the
+  LED of port 2, port 2 lights port 3's LED, and so on. Root cause: that definition
+  does **not** set `led_mux_custom`, so the firmware assumes the chip's default LED
+  pad routing. This PCB wires the LED pads differently, so it needs the explicit
+  `led_mux_custom = 1` + `led_mux[]` remap array (inherited here from
+  `SWTG018AS_A_V2_0`).
+- **The SFP port does not come up.** The two definitions use different GPIOs:
+
+  | Setting            | `MACHINE_SWTGW218AS` (SWTG118AS) | This board (`..._19649`) |
+  |--------------------|----------------------------------|--------------------------|
+  | SFP `pin_detect`   | `GPIO30_ACL_BIT3_EN`             | `GPIO38`                 |
+  | SFP `pin_los`      | `GPIO37`                         | `GPIO_NA` (not wired)    |
+  | `reset_pin`        | `GPIO54_ACL_BIT2_EN`             | `GPIO48_I2C_SCL1`        |
+
+Switching to the `SWTG018AS-A V2.0` configuration (which this new definition copies)
+fixed both issues — correct per-port LEDs and a working SFP+ port. This is why the
+board gets its own `MACHINE_HC_SWTGW218AS_PCB_V2` definition rather than reusing the
+similarly-named one.
+
 ## Building for this device
 
 In `machine.h`, select:
