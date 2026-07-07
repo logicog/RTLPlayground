@@ -379,7 +379,7 @@ void machine_custom_init(void) { }
  * Note: this is a DIFFERENT board than MACHINE_SWTGW218AS (SWTG118AS PCB).
  */
 __code const struct machine machine = {
-	.machine_name = "HC-SWTGW218AS PCB-V2 (SWTG018AS-A V2.0)",
+	.machine_name = "HC-SWTGW218AS PCB-V2.0.1",
 	.isRTL8373 = 1,
 	.min_port = 0,
 	.max_port = 8,
