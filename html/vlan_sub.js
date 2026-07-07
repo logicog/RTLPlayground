@@ -3,7 +3,7 @@ async function vlanSub() {
   var cmd = "vlan ";
   var v=document.getElementById('vid').value
   if (!v) {
-    alert("Set VLAN ID first");
+    alert(t('vlan_set_id_first'));
     return;
   }
   cmd = cmd + v;

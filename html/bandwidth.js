@@ -6,18 +6,18 @@ function createBW() {
      console.log("CREATING TABLE ", tbl.rows.length);
      for (let i = 2; i < 2 + numPorts; i++) {
        const tr = tbl.insertRow();
-       let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i-1}`));
+        let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + (i-1)));
        td = tr.insertCell();
        td.innerHTML = limit.replaceAll("limit_port", "ilimit_port_" + i).replace("exec()", "iClicked(" + i + ")");
        td = tr.insertCell();
-       td.innerHTML = 'UNLIMITED';
-       td = tr.insertCell();
-       td.innerHTML = limit.replaceAll("limit_port", "fc_port_" + i).replace("exec()", "document.getElementById('bwapply_" + i + "').disabled=false;");
-       td = tr.insertCell();
-       td.innerHTML = limit.replaceAll("limit_port", "elimit_port_" + i).replace("exec()", "eClicked(" + i + ")");
-       td = tr.insertCell();
-       td.innerHTML = 'UNLIMITED';
-       var button = '<button type="button" id="bwapply_' + i + '" style="margin: 0 0 0 24px" onclick="applyBandwidth(' + i + ');">Apply</button>';
+        td.innerHTML = t('bw_unlimited');
+        td = tr.insertCell();
+        td.innerHTML = limit.replaceAll("limit_port", "fc_port_" + i).replace("exec()", "document.getElementById('bwapply_" + i + "').disabled=false;");
+        td = tr.insertCell();
+        td.innerHTML = limit.replaceAll("limit_port", "elimit_port_" + i).replace("exec()", "eClicked(" + i + ")");
+        td = tr.insertCell();
+        td.innerHTML = t('bw_unlimited');
+        var button = '<button type="button" id="bwapply_' + i + '" style="margin: 0 0 0 24px" onclick="applyBandwidth(' + i + ');">' + t('bw_col_apply') + '</button>';
        td = tr.insertCell();
        td.innerHTML = button;
        document.getElementById("bwapply_" + i).disabled = true;
@@ -31,7 +31,7 @@ function iClicked(i)
   var tbl = document.getElementById('bwtable');
   var tr = tbl.rows[i];
   if (!document.getElementById("ilimit_port_" + i).checked) {
-    tr.cells[2].innerHTML = "UNLIMITED";
+            tr.cells[2].innerHTML = t('bw_unlimited');
     document.getElementById("fc_port_" + i).disabled = true;
     document.getElementById("fc_port_" + i).checked = true;
   } else {
@@ -47,7 +47,7 @@ function eClicked(i)
   var tbl = document.getElementById('bwtable');
   var tr = tbl.rows[i];
   if (!document.getElementById("elimit_port_" + i).checked) {
-    tr.cells[5].innerHTML = "UNLIMITED";
+            tr.cells[5].innerHTML = t('bw_unlimited');
   } else {
     tr.cells[5].innerHTML = '<input id="ebw_' + i + iLayout + i + ')" value="0"/>';
   }
@@ -110,12 +110,12 @@ function getBW() {
           document.getElementById("ilimit_port_" + (n+1)).checked = p.iLimited;
           document.getElementById("elimit_port_" + (n+1)).checked = p.eLimited;
           if (!p.iLimited) {
-            tr.cells[2].innerHTML = "UNLIMITED";
+    tr.cells[2].innerHTML = t('bw_unlimited');
           } else {
             tr.cells[2].innerHTML = '<input id="ibw_' + (n+1) + iLayout + (n+1) + ')" value="' + iBW +'"/>';
           }
           if (!p.eLimited) {
-            tr.cells[5].innerHTML = "UNLIMITED";
+    tr.cells[5].innerHTML = t('bw_unlimited');
           } else {
             tr.cells[5].innerHTML = '<input id="ebw_' + (n+1) + iLayout + (n+1) + ')" value="' + eBW +'"/>';
           }

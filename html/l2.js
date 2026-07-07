@@ -9,22 +9,22 @@ function fillStats() {
   if (tbl.rows.length > 1) {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table Update row: " + i + " state " + pState[i] + " is " + linkS[pState[i] +1]);
-      tbl.rows[i+1].cells[1].innerHTML = `${linkS[pState[i]+1]}`;
-      tbl.rows[i+1].cells[2].innerHTML = `${txG[i]} pkts`;
-      tbl.rows[i+1].cells[3].innerHTML = `${txB[i]} pkts`;
-      tbl.rows[i+1].cells[4].innerHTML = `${rxG[i]} pkts`;
-      tbl.rows[i+1].cells[5].innerHTML = `${rxB[i]} pkts`;
+      tbl.rows[i+1].cells[1].innerHTML = linkText(pState[i]+1);
+      tbl.rows[i+1].cells[2].innerHTML = `${txG[i]}` + t('common_pkts');
+      tbl.rows[i+1].cells[3].innerHTML = `${txB[i]}` + t('common_pkts');
+      tbl.rows[i+1].cells[4].innerHTML = `${rxG[i]}` + t('common_pkts');
+      tbl.rows[i+1].cells[5].innerHTML = `${rxB[i]}` + t('common_pkts');
     }
   } else {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table row: " + i);
       const tr = tbl.insertRow();
-      let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i+1}`));
-      td = tr.insertCell(); td.appendChild(document.createTextNode(`${linkS[pState[i]+1]}`));
-      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]} pkts`));
+      let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + (i+1)));
+      td = tr.insertCell(); td.appendChild(document.createTextNode(linkText(pState[i]+1)));
+      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]}` + t('common_pkts')));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]}` + t('common_pkts')));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]}` + t('common_pkts')));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]}` + t('common_pkts')));
     }
   }
 }
@@ -71,7 +71,7 @@ function fillL2(s)
     return;
   s.sort(l2CMP);
   s = uniq(s);
-  var s = s.map(function(e) { e.port = e.port != 9 ? e.port : "CPU"; return e; });
+  var s = s.map(function(e) { e.port = e.port != 9 ? e.port : 'CPU'; return e; });
   console.log("L2: ", JSON.stringify(s));
   for (let i = 0; i < s.length; i++) {
     var e = s[i];
@@ -80,14 +80,14 @@ function fillL2(s)
       tbl.rows[i+1].cells[0].innerHTML = `${e.port}`;
       tbl.rows[i+1].cells[1].innerHTML = `${e.mac}`;
       tbl.rows[i+1].cells[2].innerHTML = `${e.vlan}`;
-      tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">Delete</button>';
+      tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
     } else {
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.innerHTML = `${e.port}`;
       td = tr.insertCell(); td.innerHTML = `${e.mac}`;
       td = tr.insertCell(); td.innerHTML = `${e.vlan}`;
       td = tr.insertCell(); td.innerHTML = `${e.type}`;
-      td = tr.insertCell(); td.innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">Delete</button>';
+      td = tr.insertCell(); td.innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
     }
   }
   for (let i = tbl.rows.length - 1; i > s.length; i--)
@@ -103,7 +103,7 @@ function getL2() {
       var s = s.map(function(e) { 
         e.vlan = parseInt(e.vlan, 16);
         e.idx = parseInt(e.idx, 16);
-        e.type = e.type == "s" ? "static" : "learned";
+        e.type = e.type == "s" ? t('l2_static') : t('l2_learned');
         e.port = e.port == 9 ? 9 : logToPhysPort[e.port];
       return e;
     });

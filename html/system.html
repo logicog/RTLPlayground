@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script src="/i18n.js"></script>
     <link rel="stylesheet" href="style.css">
-    <title>System Settings</title>
+    <title data-i18n="sys_title">System Settings</title>
     <style>
       .tab-bar { display: flex; border-bottom: 2px solid #226; margin-bottom: 0; margin-left: 16%; padding: 1px 16px; padding-bottom: 0; }
       .tab-btn { padding: 10px 20px; background-color: #ddf; border: none; cursor: pointer; font-size: 1em; border-radius: 8px 8px 0 0; margin-right: 4px; }
@@ -14,57 +15,56 @@
   </head>
   <body>
     <div class="tab-bar">
-      <button class="tab-btn active" onclick="openTab(event, 'system-tab')">System</button>
-      <button class="tab-btn" onclick="openTab(event, 'advanced-tab')">Advanced</button>
-      <button class="tab-btn" onclick="openTab(event, 'console-tab')">Console</button>
+      <button class="tab-btn active" onclick="openTab(event, 'system-tab')" data-i18n="sys_tab_system">System</button>
+      <button class="tab-btn" onclick="openTab(event, 'advanced-tab')" data-i18n="sys_tab_advanced">Advanced</button>
+      <button class="tab-btn" onclick="openTab(event, 'console-tab')" data-i18n="sys_tab_console">Console</button>
     </div>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
 
     <div id="system-tab" class="tab-content active">
-      <h1>System Settings</h1>
+      <h1 data-i18n="sys_heading">System Settings</h1>
       <div class="row">
-        <div class="lcol"> <label for="ip">IP address:</label></div>
+        <div class="lcol"> <label for="ip" data-i18n="sys_ip">IP address:</label></div>
         <div class="rcol"> <input id="ip" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>
       <div class="row">
-        <div class="lcol"> <label for="netmask">Netmask:</label></div>
+        <div class="lcol"> <label for="netmask" data-i18n="sys_netmask">Netmask:</label></div>
         <div class="rcol"><input id="netmask" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>
       <div class="row">
-        <div class="lcol"> <label for="gw">Gateway:</label></div>
+        <div class="lcol"> <label for="gw" data-i18n="sys_gateway">Gateway:</label></div>
         <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>
       <br/>
-      When updating the above settings, remember to point your browser to the new IP afterwards:<br/>
-      <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" value="Update Settings"><br/>
+      <span data-i18n="sys_ip_note">When updating the above settings, remember to point your browser to the new IP afterwards:</span><br/>
+      <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" data-i18n="sys_update" value="Update Settings"><br/>
       <br/>
-      Save all current settings to Flash:<br/>
-      <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" value="Save Settings to Flash">
+      <span data-i18n="sys_save_label">Save all current settings to Flash:</span><br/>
+      <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" data-i18n="sys_save" value="Save Settings to Flash">
     </div>
 
     <div id="advanced-tab" class="tab-content">
-      <h1>Advanced Settings</h1>
-      <div class="lcol"> <label for="config_display">Startup configuration:</label></div>
+      <h1 data-i18n="sys_advanced">Advanced Settings</h1>
+      <div class="lcol"> <label for="config_display" data-i18n="sys_startup_config">Startup configuration:</label></div>
       <textarea id="config_display" rows="8" cols="60"></textarea>
       <br/><br/>
-       Be careful when saving the directly edited startup configuration, you can lock yourself out:<br/>
-      <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" value="Clear Startup Config">
+      <span data-i18n="sys_startup_warn">Be careful when saving the directly edited startup configuration, you can lock yourself out:</span><br/>
+      <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" data-i18n="sys_clear_config" value="Clear Startup Config">
       <br/>
-      <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" value="Save Startup Settings to Flash">
+      <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" data-i18n="sys_save_startup" value="Save Startup Settings to Flash">
       <br/>
-      <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" value="Reset Switch">
+      <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" data-i18n="sys_reset" value="Reset Switch">
     </div>
 
     <div id="console-tab" class="tab-content">
-      <h1>Console Command</h1>
-      <label for="console_command">Enter command:</label>
+      <h1 data-i18n="sys_console">Console Command</h1>
+      <label for="console_command" data-i18n="sys_enter_cmd">Enter command:</label>
       <input type="text" id="console_cmd" name="console_cmd" style="width:40%;">
-      <input style="width:20%;" class="action" id="cmd_sub" onclick="cmdSub();" type="button" value="Send Command"><br/>
+      <input style="width:20%;" class="action" id="cmd_sub" onclick="cmdSub();" type="button" data-i18n="sys_send_cmd" value="Send Command"><br/>
       <br/><br/> 
-      Be careful when entering console commands, you can lock yourself out!<br/>
-
+      <span data-i18n="sys_console_warn">Be careful when entering console commands, you can lock yourself out!</span><br/>
 
     </div>
 

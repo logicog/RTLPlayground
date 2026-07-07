@@ -76,7 +76,7 @@ function fetchVLAN() {
   };
   var v=document.getElementById('vid').value
   if (!v) {
-    alert("Set VLAN ID first");
+    alert(t('vlan_set_id_first'));
     return;
   }
   xhttp.open("GET", `/vlan.json?vid=${v}`, true);
@@ -161,7 +161,7 @@ async function loadVlanTable() {
 }
 
 function deleteVlan(id) {
-  if (!confirm('Delete VLAN ' + id + '?')) return;
+  if (!confirm(t('vlan_delete_confirm') + id + '?')) return;
   fetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' d' })
     .then(function() { refreshVlanViews(); })
     .catch(function(err) { console.error('Delete failed:', err); });
