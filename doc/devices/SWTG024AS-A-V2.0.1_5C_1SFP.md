@@ -1,4 +1,4 @@
-### SWTG024AS-A-V2.0.1_5_RJ45
+### SWTG024AS-A-V2.0.1_5C_1SFP
 It is highly similar to SWTG024AS-V2.0, with the only difference being the GPIO configuration for the SFP port.
 
 ## Brands

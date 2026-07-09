@@ -896,9 +896,9 @@ void machine_custom_init(void)
     reg_bit_clear(RTL837X_REG_LED_MODE, 7);
 }
 
-#elif defined MACHINE_SWTG024AS_A_2_0_1_5_RJ45
+#elif defined MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
 __code const struct machine machine = {
-    .machine_name = "SWTG024AS-A-V2.0.1-5-RJ45",
+    .machine_name = "SWTG024AS-A-V2.0.1-5C-1SFP",
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
