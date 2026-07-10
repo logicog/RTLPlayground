@@ -114,7 +114,7 @@ function getCounters(port) {
       const s = JSON.parse(xhttp.responseText);
       console.log("Counters: ", JSON.stringify(s));
       const ptext = document.getElementById('popup_text');
-      var t = "<table style='width:100%'> <tr> <th>" + t('stat_counter') + "</th> <th>" + t('stat_value') + "</th> <th>" + t('stat_counter') + "</th> <th>" + t('stat_value') + "</th></tr> <tr>";
+      var tableHtml = "<table style='width:100%'> <tr> <th>" + t('stat_counter') + "</th> <th>" + t('stat_value') + "</th> <th>" + t('stat_counter') + "</th> <th>" + t('stat_value') + "</th></tr> <tr>";
       console.log("Counter 0: ", BigInt(s[0]).toString(), " length: ", s.length);
       var c = 0;
       for (i = 0; i < mib_counters.length; i += 4) {
@@ -125,28 +125,28 @@ function getCounters(port) {
         }
         var count = BigInt(s[i/4]);
         if (mib_counters[i+1] == 8) {
-          t += "<td>" + mib_counters[i] + "</td><td>" + count.toString() + "</td>";
+          tableHtml += "<td>" + mib_counters[i] + "</td><td>" + count.toString() + "</td>";
           c += 1;
         } else if (mib_counters[i+1] == 4) {
           if (mib_counters[i] != "") {
-            t += "<td>" + mib_counters[i] + "</td><td>" + (count >> 32n).toString() + "</td>";
+            tableHtml += "<td>" + mib_counters[i] + "</td><td>" + (count >> 32n).toString() + "</td>";
             c += 1;
           }
           if (c == 2) {
-            t += "</tr> <tr>";
+            tableHtml += "</tr> <tr>";
             c = 0;
           }
           if (mib_counters[i+2] != "") {
-            t += "<td>" + mib_counters[i+2] + "</td><td>" + (count & 4294967295n).toString() + "</td>";
+            tableHtml += "<td>" + mib_counters[i+2] + "</td><td>" + (count & 4294967295n).toString() + "</td>";
             c += 1;
           }
         }
         if (c == 2) {
-          t += "</tr> <tr>";
+          tableHtml += "</tr> <tr>";
           c = 0;
         }
       }
-      ptext.innerHTML = t + "</tr></table>";
+      ptext.innerHTML = tableHtml + "</tr></table>";
       popup.style.display = 'flex';
     }
   };
