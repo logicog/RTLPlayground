@@ -138,9 +138,24 @@ __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
 __xdata uint8_t sfp_speed[2];
+__xdata uint8_t sfp_quirks[2];
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
 volatile __bit tx_buf_empty;
+
+__code enum sfp_quirk {
+	SFP_QUIRK_DDM = (1 << 0),
+};
+
+struct sfp_quirk_entry {
+	__code char *vendor; // Set vendor or model to 0 to act as wildcard
+	__code char *model;
+	uint8_t quirks;
+};
+
+static __code struct sfp_quirk_entry sfp_quirk_table[] = {
+	{ "QSFPTEK", "QT-SFP+-T", SFP_QUIRK_DDM },
+};
 
 struct eth_in {
 	struct uip_eth_addr dst;
@@ -324,6 +339,21 @@ uint16_t strlen_x(register __xdata const char *s)
 	while (s[l])
 		l++;
 	return l;
+}
+
+
+char strcmp(register __xdata const uint8_t *a, register __code const uint8_t *b)
+{
+	uint8_t i = 0;
+
+	while (b[i] && (b[i] == a[i]))
+		i++;
+
+	if (a[i] < b[i])
+		return -1;
+	else if (a[i] > b[i])
+		return 1;
+	return 0;
 }
 
 
@@ -1199,18 +1229,46 @@ void sfp_print_info(uint8_t sfp)
 	print_string("\n");
 }
 
+// Normalize strings from EEPROM by removing any trailing spaces; this allows simpler comparisons
+void sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t length) __reentrant
+{
+	dst[length] = '\0';
+
+	for (uint8_t i = 0; i < length; i++)
+		dst[i] = sfp_read_reg(sfp, start + i);
+
+	while (length > 0 && dst[--length] == ' ')
+		dst[length] = '\0';
+}
 
 void sfp_get_info(uint8_t sfp)
 {
-	for (uint8_t i = 20; i < 36; i++)
-		sfp_module_vendor[sfp][i-20] = sfp_read_reg(sfp, i);
-	sfp_module_vendor[sfp][16] = '\0';
-	for (uint8_t i = 40; i < 56; i++)
-		sfp_module_model[sfp][i-40] = sfp_read_reg(sfp, i);
-	sfp_module_model[sfp][16] = '\0';
-	for (uint8_t i = 68; i < 84; i++)
-		sfp_module_serial[sfp][i-68] = sfp_read_reg(sfp, i);
-	sfp_module_serial[sfp][16] = '\0';
+	sfp_read_field(sfp_module_vendor[sfp], sfp, 20, 16);
+	sfp_read_field(sfp_module_model[sfp], sfp, 40, 16);
+	sfp_read_field(sfp_module_serial[sfp], sfp, 68, 16);
+}
+
+void sfp_apply_quirks(uint8_t sfp) __reentrant
+{
+	sfp_quirks[sfp] = 0;
+
+	for (uint8_t i = 0; i < sizeof(sfp_quirk_table) / sizeof(*sfp_quirk_table); i++) {
+		if (!sfp_quirk_table[i].vendor || !strcmp(sfp_module_vendor[sfp], sfp_quirk_table[i].vendor)) {
+			if (!sfp_quirk_table[i].model || !strcmp(sfp_module_model[sfp], sfp_quirk_table[i].model)) {
+				sfp_quirks[sfp] |= sfp_quirk_table[i].quirks;
+			}
+		}
+	}
+
+	if (sfp_quirks[sfp] & SFP_QUIRK_DDM) {
+		if (!(sfp_options[sfp] & 0x40)) {
+			// The module reports that DDM is not implemented, but try a dummy read to confirm
+			// 0xff would mean a failed I2C read or an impossible (per spec) voltage greater than 6.5V
+			if (sfp_read_reg(sfp, 226) != 0xff) {
+				sfp_options[sfp] |= 0x40;
+			}
+		}
+	}
 }
 
 
@@ -1255,6 +1313,7 @@ void handle_sfp(void)
 				print_string("\n");
 				sfp_options[sfp] = sfp_read_reg(sfp, 92);
 				sfp_get_info(sfp);
+				sfp_apply_quirks(sfp);
 				sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
 			}
 		} else {
