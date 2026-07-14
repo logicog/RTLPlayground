@@ -2,6 +2,11 @@ var systemInterval = Number();
 var isSaving = false;
 const ips = ["ip", "netmask", "gw"];
 
+function changeLang() {
+  var lang = document.getElementById('lang-select').value;
+  setLang(lang);
+}
+
 function checkIp(ip) {
   const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
   if (!ipv4.test(ip)) {alert(t('sys_invalid_ip') + ip); return false };
@@ -146,5 +151,7 @@ function resetSwitch() {
 }
 
 window.addEventListener("load", function() {
+  var langSel = document.getElementById('lang-select');
+  if (langSel) langSel.value = rtlLang;
   systemInterval = setInterval(fetchIP, 1000);
 });

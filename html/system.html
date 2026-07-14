@@ -37,6 +37,16 @@
         <div class="lcol"> <label for="gw" data-i18n="sys_gateway">Gateway:</label></div>
         <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>
+      <div class="row">
+        <div class="lcol"> <label data-i18n="sys_language">Language:</label></div>
+        <div class="rcol">
+          <select id="lang-select" onchange="changeLang()">
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+          </select>
+        </div>
+      </div>
       <br/>
       <span data-i18n="sys_ip_note">When updating the above settings, remember to point your browser to the new IP afterwards:</span><br/>
       <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" data-i18n="sys_update" value="Update Settings"><br/>
