@@ -2332,6 +2332,7 @@ void main(void)
 #endif
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
+	lacpEnabled = 0;
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();
