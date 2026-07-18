@@ -992,6 +992,8 @@ void httpd_appcall(void)
 				send_lag();
 			} else if (is_word(q, "/stp.json")) {
 				send_stp();
+			} else if (is_word(q, "/lacp.json")) {
+				send_lacp();
 			} else if (is_word(q, "/vlanlist")) {
 				send_vlanlist();
 			} else if (is_word(q, "/config")) {
