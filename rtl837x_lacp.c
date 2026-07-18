@@ -112,6 +112,73 @@ __xdata uint8_t lacp_clock;
  * registers on every timer tick when membership has not changed. */
 __xdata uint16_t lacp_members_last;
 
+/* Aggregator identity: partner system elected for the (single) active LAG.
+ * Ports whose partner differs stay unselected - the classic LACP protection
+ * against aggregating links that go to different switches (43.4.14). */
+__xdata uint8_t lacp_agg_sys[6];
+__xdata uint8_t lacp_agg_valid;
+
+/* Per-port RX LACPDU count - primarily a hardware bring-up diagnostic to
+ * verify slow-protocol frames actually reach the CPU port (see "lacp show") */
+__xdata uint16_t lacp_rx_count[10];
+
+
+void lacp_mux_update(void) __banked;	/* defined below, used from lacp_in */
+
+/* 6-byte system-ID compare (local, to avoid coupling to stp.c's cmpMAC) */
+static uint8_t lacp_sys_eq(__xdata uint8_t *a, __xdata uint8_t *b)
+{
+	for (uint8_t i = 0; i < 6; i++) {
+		if (a[i] != b[i])
+			return 0;
+	}
+	return 1;
+}
+
+
+/*
+ * Selection logic (simplified 43.4.14): a port may join the aggregator when
+ * we have fresh partner info, the partner considers the link aggregatable,
+ * and the partner is the same system the aggregator was elected for.
+ */
+static uint8_t lacp_port_selected(uint8_t port)
+{
+	if (lacp_rx_state[port] != LACP_RX_CURRENT)
+		return 0;
+	if (!(lacp_partner_state[port] & LACP_STATE_AGGREGATION))
+		return 0;
+	if (!lacp_agg_valid)
+		return 0;
+	return lacp_sys_eq(lacp_partner_sys[port], lacp_agg_sys);
+}
+
+
+/*
+ * Mux machine (simplified coupled control, 43.4.15): SYNC follows selection;
+ * COLLECTING+DISTRIBUTING additionally require the partner to be in sync.
+ * Returns 1 if the actor state changed (caller sets NTT).
+ */
+static uint8_t lacp_mux_machine(uint8_t port)
+{
+	uint8_t old = lacp_actor_state[port];
+	uint8_t new = old;
+
+	if (lacp_port_selected(port)) {
+		new |= LACP_STATE_SYNC;
+		if (lacp_partner_state[port] & LACP_STATE_SYNC)
+			new |= LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING;
+		else
+			new &= ~(LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING);
+	} else {
+		new &= ~(LACP_STATE_SYNC | LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING);
+	}
+
+	if (new == old)
+		return 0;
+	lacp_actor_state[port] = new;
+	return 1;
+}
+
 #define port_bit(p) (((uint8_t)1) << (p))
 
 
@@ -189,25 +256,36 @@ void lacp_in(void) __banked
 	print_string(" partner_state "); print_byte(LACP_I->actor.state); write_char('\n');
 #endif
 
+	lacp_rx_count[port]++;
+
 	/* Record partner = the remote's Actor block (802.3ad 43.4.9 recordPDU) */
 	memcpy(lacp_partner_sys[port], LACP_I->actor.sys, 6);
 	lacp_partner_key[port]   = HTONS(LACP_I->actor.key);
 	lacp_partner_port[port]  = HTONS(LACP_I->actor.port);
 	lacp_partner_state[port] = LACP_I->actor.state;
 
-	/* Receive machine -> CURRENT, (re)arm partner timeout. TODO(43.4.12) */
+	/* Receive machine -> CURRENT, (re)arm partner timeout (43.4.12) */
 	lacp_rx_state[port] = LACP_RX_CURRENT;
 	lacp_timeout[port] = (LACP_I->actor.state & LACP_STATE_TIMEOUT)
 	                   ? LACP_SHORT_TIMEOUT : LACP_LONG_TIMEOUT;
 
-	/*
-	 * TODO(43.4.9 update_Selected / 43.4.15 Mux):
-	 *  - if partner agrees on our Actor view (in_sync), set SYNC in actor_state
-	 *  - when both sides SYNC: set COLLECTING then DISTRIBUTING and add this
-	 *    port to the trunk (lacp_mux_update)
-	 *  - if partner's recorded Actor differs from what it echoes back, set NTT
-	 */
-	lacp_ntt[port] = 1;   /* provisional: respond so negotiation converges */
+	/* Elect the aggregator's partner system on first contact (43.4.14) */
+	if (!lacp_agg_valid) {
+		memcpy(lacp_agg_sys, LACP_I->actor.sys, 6);
+		lacp_agg_valid = 1;
+	}
+
+	/* Selection + Mux for this port; state change => Need-To-Transmit */
+	if (lacp_mux_machine(port))
+		lacp_ntt[port] = 1;
+
+	/* update_NTT (43.4.12): if the partner's view of us is stale (their
+	 * Partner block does not match our actor state/port), tell them again. */
+	if (LACP_I->partner.state != lacp_actor_state[port]
+	    || HTONS(LACP_I->partner.port) != (uint16_t)port + 1)
+		lacp_ntt[port] = 1;
+
+	lacp_mux_update();
 }
 
 
@@ -251,18 +329,32 @@ void lacp_timers(void) __banked
 			lacp_ntt[i] = 1;
 		}
 
-		/* Partner timeout -> DEFAULTED (802.3ad 43.4.12) */
+		/* Partner timeout -> DEFAULTED (802.3ad 43.4.12): the mux machine
+		 * then drops SYNC/COLLECTING/DISTRIBUTING and the port leaves the
+		 * trunk. TODO(43.4.12): churn detection is diagnostics-only, skipped. */
 		if (lacp_timeout[i]) {
 			if (!--lacp_timeout[i]) {
 				lacp_rx_state[i] = LACP_RX_DEFAULTED;
 				lacp_partner_state[i] = LACP_STATE_DEFAULTED;
-				lacp_actor_state[i] &= ~LACP_STATE_SYNC;
-				/* TODO(43.4.12): churn detection / restart */
+				if (lacp_mux_machine(i))
+					lacp_ntt[i] = 1;
 			}
 		}
 
 		if (lacp_ntt[i])
 			lacp_send(i);
+	}
+
+	/* Release the aggregator identity once no port has fresh partner info,
+	 * so a re-cabled setup can elect a new partner system (43.4.14). */
+	if (lacp_agg_valid) {
+		uint8_t any_current = 0;
+		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+			if (lacp_rx_state[i] == LACP_RX_CURRENT)
+				any_current = 1;
+		}
+		if (!any_current)
+			lacp_agg_valid = 0;
 	}
 
 	lacp_mux_update();
@@ -287,8 +379,10 @@ void lacp_setup(void) __banked
 		lacp_periodic[i] = LACP_FAST_PERIODIC;
 		lacp_timeout[i] = 0;
 		lacp_ntt[i] = 1;	/* announce ourselves immediately */
+		lacp_rx_count[i] = 0;
 	}
 
+	lacp_agg_valid = 0;
 	lacp_clock = LACP_TICK_DIVIDER;
 	/* Clear our trunk group (LACP_TRUNK_ID 0 is outside the 1..2 range the
 	 * "lag" command uses, so we do not collide with a user-set static LAG). */
@@ -296,11 +390,13 @@ void lacp_setup(void) __banked
 	port_lag_members_set(LACP_TRUNK_ID, 0);
 
 	/*
-	 * TODO(RMA): trap the Slow-Protocols group 01:80:C2:00:00:02 to the CPU
-	 * port. STP already receives 01:80:C2:00:00:00, so the Reserved-Multicast
-	 * mechanism (RTL837X_RMA0_CONF 0x4ecc / RTL837X_RMA_CONF 0x4f1c) covers the
-	 * 01:80:C2:00:00:0x range; set the per-address action for offset 0x02 to
-	 * "trap to CPU" (not drop/forward) here.
+	 * RMA note: stp_setup() receives its BPDUs (01:80:C2:00:00:00) without
+	 * touching the Reserved-Multicast config (RTL837X_RMA0_CONF 0x4ecc /
+	 * RTL837X_RMA_CONF 0x4f1c are only written by port_rldp_on(), with 0), so
+	 * the 01:80:C2:00:00:0x block most likely reaches the CPU port in this
+	 * firmware's default configuration. Verify on hardware with "lacp show"
+	 * (per-port RX counters); only if they stay 0 does the per-address RMA
+	 * action for offset 0x02 need to be set to trap-to-CPU here.
 	 */
 }
 
@@ -309,6 +405,7 @@ void lacp_off(void) __banked
 {
 	/* Release the hardware trunk we created and stop announcing. */
 	lacp_members_last = 0;
+	lacp_agg_valid = 0;
 	port_lag_members_set(LACP_TRUNK_ID, 0);
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		lacp_actor_state[i] = 0;
@@ -317,7 +414,36 @@ void lacp_off(void) __banked
 }
 
 
-/* "lacp on|off" command handler. Kept here (banked) so cmd_parser stays small. */
+/* "lacp show": per-port protocol state - the primary bring-up diagnostic.
+ * A stuck rx=0 counter means slow-protocol frames never reach the CPU port
+ * (see the RMA note in lacp_setup()). */
+void lacp_show(void) __banked
+{
+	print_string("LACP "); print_string(lacpEnabled ? "on" : "off");
+	print_string(", aggregator ");
+	if (lacp_agg_valid) {
+		for (uint8_t j = 0; j < 6; j++)
+			print_byte(lacp_agg_sys[j]);
+	} else {
+		print_string("(none)");
+	}
+	print_string(", members "); print_short(lacp_members_last); write_char('\n');
+
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		print_string("port "); print_byte(i);
+		print_string(" actor "); print_byte(lacp_actor_state[i]);
+		print_string(" partner "); print_byte(lacp_partner_state[i]);
+		print_string(" rxst "); print_byte(lacp_rx_state[i]);
+		print_string(" rx "); print_short(lacp_rx_count[i]);
+		print_string(" psys ");
+		for (uint8_t j = 0; j < 6; j++)
+			print_byte(lacp_partner_sys[i][j]);
+		write_char('\n');
+	}
+}
+
+
+/* "lacp on|off" command handler (kept in the module with the rest of LACP). */
 void lacp_cmd(uint8_t on) __banked
 {
 	if (on) {
