@@ -19,7 +19,8 @@ void lacp_in(void) __banked;
 void lacp_setup(void) __banked;
 void lacp_timers(void) __banked;
 void lacp_off(void) __banked;
-void lacp_cmd(uint8_t on) __banked;	/* "lacp on|off" handler (keeps cmd_parser home-bank small) */
+void lacp_cmd(uint8_t on) __banked;	/* "lacp on|off" handler */
+void lacp_show(void) __banked;		/* "lacp show" - per-port state + RX counters */
 
 /* Slow-Protocols / LACPDU identifiers (802.3ad 43.4) */
 #define SLOW_PROTO_ETHERTYPE	0x8809
