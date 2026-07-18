@@ -108,6 +108,10 @@ __xdata uint16_t lacp_actor_key;
 #define LACP_TICK_DIVIDER 3
 __xdata uint8_t lacp_clock;
 
+/* Last member mask written to the trunk group - avoids hammering the trunk
+ * registers on every timer tick when membership has not changed. */
+__xdata uint16_t lacp_members_last;
+
 #define port_bit(p) (((uint8_t)1) << (p))
 
 
@@ -173,6 +177,9 @@ void lacp_in(void) __banked
 	if (LACP_I->subtype != SLOW_PROTO_SUBTYPE_LACP)
 		return;
 
+	/* Per rtl837x_common.h, pmask carries a 4-bit port number on RX. NOTE:
+	 * unverified on hardware (STP never reads it; IGMP uses another path) -
+	 * confirm the nibble position with a real capture before relying on it. */
 	uint8_t port = ((uint8_t)HTONS(LACP_I->rtl_tag.pmask)) & 0x0f;
 	if (port < machine.min_port || port > machine.max_port)
 		return;
@@ -214,8 +221,12 @@ void lacp_mux_update(void) __banked
 		    && (lacp_partner_state[i] & LACP_STATE_SYNC))
 			members |= port_bit(i);
 	}
-	/* Program (or clear) the LACP-managed hardware trunk group. */
-	port_lag_members_set(LACP_TRUNK_ID, members);
+	/* Program the LACP-managed hardware trunk group only when membership
+	 * actually changed - this runs on every timer tick. */
+	if (members != lacp_members_last) {
+		lacp_members_last = members;
+		port_lag_members_set(LACP_TRUNK_ID, members);
+	}
 }
 
 
@@ -278,6 +289,12 @@ void lacp_setup(void) __banked
 		lacp_ntt[i] = 1;	/* announce ourselves immediately */
 	}
 
+	lacp_clock = LACP_TICK_DIVIDER;
+	/* Clear our trunk group (LACP_TRUNK_ID 0 is outside the 1..2 range the
+	 * "lag" command uses, so we do not collide with a user-set static LAG). */
+	lacp_members_last = 0;
+	port_lag_members_set(LACP_TRUNK_ID, 0);
+
 	/*
 	 * TODO(RMA): trap the Slow-Protocols group 01:80:C2:00:00:02 to the CPU
 	 * port. STP already receives 01:80:C2:00:00:00, so the Reserved-Multicast
@@ -291,6 +308,7 @@ void lacp_setup(void) __banked
 void lacp_off(void) __banked
 {
 	/* Release the hardware trunk we created and stop announcing. */
+	lacp_members_last = 0;
 	port_lag_members_set(LACP_TRUNK_ID, 0);
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		lacp_actor_state[i] = 0;
