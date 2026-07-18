@@ -2191,6 +2191,7 @@ void main(void)
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
 	stpEnabled = 0;
+	lacpEnabled = 0;
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();
