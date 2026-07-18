@@ -33,7 +33,7 @@ extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
-extern __xdata uint8_t lacpEnabled;	/* owned by rtlplayground.c */
+/* lacpEnabled: extern in rtl837x_lacp.h, owned by rtlplayground.c */
 
 /* 20-byte Actor/Partner information body (802.3ad 43.4.2.2), network byte order */
 struct lacp_info {
