@@ -390,19 +390,20 @@ void lacp_setup(void) __banked
 	port_lag_members_set(LACP_TRUNK_ID, 0);
 
 	/*
-	 * RMA note: stp_setup() receives its BPDUs (01:80:C2:00:00:00) without
-	 * touching the Reserved-Multicast config (RTL837X_RMA0_CONF 0x4ecc /
-	 * RTL837X_RMA_CONF 0x4f1c are only written by port_rldp_on(), with 0), so
-	 * the 01:80:C2:00:00:0x block most likely reaches the CPU port in this
-	 * firmware's default configuration. Verify on hardware with "lacp show"
-	 * (per-port RX counters); only if they stay 0 does the per-address RMA
-	 * action for offset 0x02 need to be set to trap-to-CPU here.
+	 * Trap the Slow-Protocols group (01:80:C2:00:00:02) to the CPU. The ASIC
+	 * default action for this address is "forward" (flood), not "trap", so
+	 * without this the CPU never sees LACPDUs and negotiation cannot start.
+	 * (Confirmed on hardware: RX counters stayed 0 until this was set.)
 	 */
+	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_TRAP_CPU);
 }
 
 
 void lacp_off(void) __banked
 {
+	/* Stop trapping slow-protocols back to the ASIC default (forward). */
+	REG_SET(RTL837X_RMA2_CONF, 0x00000000);
+
 	/* Release the hardware trunk we created and stop announcing. */
 	lacp_members_last = 0;
 	lacp_agg_valid = 0;
