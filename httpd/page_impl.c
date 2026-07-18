@@ -12,6 +12,7 @@
 #include "phy.h"
 #include "version.h"
 #include "machine.h"
+#include "rtl837x_lacp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -532,6 +533,46 @@ void send_lag(void)
 	}
 	slen -=1; // remove comma
 	char_to_html(']');
+}
+
+
+/* LACP protocol status for the LAG page ("/lacp.json"). State variables are
+ * exported read-only via rtl837x_lacp.h; hardware trunk membership itself is
+ * already visible through send_lag() (it reads the trunk registers). */
+void send_lacp(void)
+{
+	dbg_string("send_lacp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(lacpEnabled);
+	slen += strtox(outbuf + slen, ",\"aggValid\":");
+	bool_to_html(lacp_agg_valid);
+	slen += strtox(outbuf + slen, ",\"agg\":\"");
+	for (uint8_t j = 0; j < 6; j++)
+		byte_to_html(lacp_agg_sys[j]);
+	slen += strtox(outbuf + slen, "\",\"members\":\"");
+	byte_to_html(lacp_members_last >> 8);
+	byte_to_html(lacp_members_last);
+	slen += strtox(outbuf + slen, "\",\"ports\":[");
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"a\":\"");
+		byte_to_html(lacp_actor_state[i]);
+		slen += strtox(outbuf + slen, "\",\"pt\":\"");
+		byte_to_html(lacp_partner_state[i]);
+		slen += strtox(outbuf + slen, "\",\"rs\":");
+		itoa_html(lacp_rx_state[i]);
+		slen += strtox(outbuf + slen, ",\"rx\":");
+		itoa16_html(lacp_rx_count[i]);
+		slen += strtox(outbuf + slen, ",\"psys\":\"");
+		for (uint8_t j = 0; j < 6; j++)
+			byte_to_html(lacp_partner_sys[i][j]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
 }
 
 

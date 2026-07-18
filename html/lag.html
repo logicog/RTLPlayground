@@ -9,6 +9,12 @@
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
+    <h1 data-i18n="lacp_heading">LACP (802.3ad)</h1>
+    <h2><span data-i18n="lacp_status">Status</span>: <span id="lacpOn">?</span>
+      <input style="width:15%;margin-left: 3em;" class="action" id="lacpToggle" onclick="lacpToggle();" type="button" value="Enable"></h2>
+    <div id="lacpAgg"></div>
+    <div id="lacpPorts" style="font-family:monospace;white-space:pre;"></div>
+    <br />
     <h1 data-i18n="lag_heading">Link Aggregation Groups Configuration</h1>
     <h2>LAG 1 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
     <div id="mLAG0"></div>

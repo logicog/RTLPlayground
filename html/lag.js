@@ -73,9 +73,49 @@ async function lagSub(l) {
   }
 }
 
+var lacpOn = 0;
+
+function fetchLacp() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      const s = JSON.parse(xhttp.responseText);
+      lacpOn = s.on;
+      // textContent throughout: agg/psys carry bytes taken from received
+      // LACPDUs (remote-controlled), never render them as HTML
+      document.getElementById("lacpOn").textContent = s.on ? "enabled" : "disabled";
+      document.getElementById("lacpToggle").value = s.on ? "Disable" : "Enable";
+      document.getElementById("lacpAgg").textContent = s.on
+        ? ("Aggregator: " + (s.aggValid ? s.agg : "(none)") + " — trunk members: 0x" + s.members)
+        : "";
+      let t = "";
+      if (s.on) {
+        t = "port  actor  partner  rxstate  rx-count  partner-system\n";
+        for (const p of s.ports)
+          t += String(p.p).padEnd(6) + p.a.padEnd(7) + p.pt.padEnd(9)
+             + String(p.rs).padEnd(9) + String(p.rx).padEnd(10) + p.psys + "\n";
+      }
+      document.getElementById("lacpPorts").textContent = t;
+    }
+  };
+  xhttp.open("GET", `/lacp.json`, true);
+  sendXHTTP(xhttp);
+}
+
+async function lacpToggle() {
+  try {
+    await fetch('/cmd', { method: 'POST', body: lacpOn ? "lacp off" : "lacp on" });
+  } catch(err) {
+    console.error(`Error: ${err}`);
+  }
+  fetchLacp();
+}
+
 window.addEventListener("load", function() {
   update( () => {
     lagForm();
+    fetchLacp();
     const interval = setInterval(update, 2000);
+    const lacpInt = setInterval(fetchLacp, 2000);
   });
 });

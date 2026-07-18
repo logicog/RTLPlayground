@@ -22,6 +22,18 @@ void lacp_off(void) __banked;
 void lacp_cmd(uint8_t on) __banked;	/* "lacp on|off" handler */
 void lacp_show(void) __banked;		/* "lacp show" - per-port state + RX counters */
 
+/* Protocol state, exposed read-only for the web UI (page_impl.c send_lacp())
+ * and the serial console. Owned by rtl837x_lacp.c / rtlplayground.c. */
+extern __xdata uint8_t  lacpEnabled;
+extern __xdata uint8_t  lacp_actor_state[10];
+extern __xdata uint8_t  lacp_partner_state[10];
+extern __xdata uint8_t  lacp_rx_state[10];
+extern __xdata uint8_t  lacp_partner_sys[10][6];
+extern __xdata uint16_t lacp_rx_count[10];
+extern __xdata uint8_t  lacp_agg_sys[6];
+extern __xdata uint8_t  lacp_agg_valid;
+extern __xdata uint16_t lacp_members_last;
+
 /* Slow-Protocols / LACPDU identifiers (802.3ad 43.4) */
 #define SLOW_PROTO_ETHERTYPE	0x8809
 #define SLOW_PROTO_SUBTYPE_LACP	0x01
