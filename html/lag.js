@@ -93,7 +93,7 @@ function fetchLacp() {
         t = "port  actor  partner  rxstate  rx-count  partner-system\n";
         for (const p of s.ports)
           t += String(p.p).padEnd(6) + p.a.padEnd(7) + p.pt.padEnd(9)
-             + String(p.rs).padEnd(9) + String(p.rx).padEnd(10) + p.psys + "\n";
+             + String(p.rs).padEnd(9) + String(parseInt(p.rx, 16)).padEnd(10) + p.psys + "\n";
       }
       document.getElementById("lacpPorts").textContent = t;
     }
