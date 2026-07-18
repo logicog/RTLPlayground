@@ -384,10 +384,12 @@ void lacp_setup(void) __banked
 
 	lacp_agg_valid = 0;
 	lacp_clock = LACP_TICK_DIVIDER;
-	/* Clear our trunk group (LACP_TRUNK_ID 0 is outside the 1..2 range the
-	 * "lag" command uses, so we do not collide with a user-set static LAG). */
+	/* Do NOT touch the trunk group here. A static "lag 0 ..." from the saved
+	 * configuration may already cover these ports, and clearing a group on
+	 * live member ports was observed to leave them in a broken ingress state
+	 * (dead LAN) until the next config replay. LACP only writes the trunk
+	 * once a partner actually negotiates (see lacp_mux_update). */
 	lacp_members_last = 0;
-	port_lag_members_set(LACP_TRUNK_ID, 0);
 
 	/*
 	 * Trap the Slow-Protocols group (01:80:C2:00:00:02) to the CPU. The ASIC
@@ -404,10 +406,13 @@ void lacp_off(void) __banked
 	/* Stop trapping slow-protocols back to the ASIC default (forward). */
 	REG_SET(RTL837X_RMA2_CONF, 0x00000000);
 
-	/* Release the hardware trunk we created and stop announcing. */
-	lacp_members_last = 0;
+	/* Release the trunk ONLY if LACP actually programmed it - never wipe a
+	 * user-configured static "lag 0 ..." that we did not create. */
+	if (lacp_members_last) {
+		lacp_members_last = 0;
+		port_lag_members_set(LACP_TRUNK_ID, 0);
+	}
 	lacp_agg_valid = 0;
-	port_lag_members_set(LACP_TRUNK_ID, 0);
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		lacp_actor_state[i] = 0;
 		lacp_ntt[i] = 0;
