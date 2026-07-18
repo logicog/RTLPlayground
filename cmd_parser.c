@@ -12,6 +12,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "dhcp.h"
@@ -27,6 +28,7 @@
 
 extern __code struct machine machine;
 extern __xdata uint8_t stpEnabled;
+extern __xdata uint8_t lacpEnabled;
 extern __code uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
@@ -1579,6 +1581,8 @@ void cmd_parser(void) __banked
 				stp_off();
 				stpEnabled = 0;
 			}
+		} else if (cmd_compare(0, "lacp")) {
+			lacp_cmd(cmd_compare(1, "on"));
 		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
 			__xdata uint16_t pvid;
 			if (cmd_buffer[cmd_words_b[1]] >= '1'
