@@ -392,19 +392,20 @@ void lacp_setup(void) __banked
 	lacp_members_last = 0;
 
 	/*
-	 * Trap the Slow-Protocols group (01:80:C2:00:00:02) to the CPU. The ASIC
-	 * default action for this address is "forward" (flood), not "trap", so
-	 * without this the CPU never sees LACPDUs and negotiation cannot start.
-	 * (Confirmed on hardware: RX counters stayed 0 until this was set.)
+	 * Deliver the Slow-Protocols group (01:80:C2:00:00:02) to the CPU so we
+	 * can see incoming LACPDUs. The ASIC default for this address is "drop";
+	 * we set "forward" - on this firmware the CPU port is in the forwarding
+	 * domain, so forward reaches the CPU-RX ring (trap does not - confirmed
+	 * on hardware, rx stayed 0 with trap, started counting with forward).
 	 */
-	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_TRAP_CPU);
+	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_FORWARD);
 }
 
 
 void lacp_off(void) __banked
 {
-	/* Stop trapping slow-protocols back to the ASIC default (forward). */
-	REG_SET(RTL837X_RMA2_CONF, 0x00000000);
+	/* Stop delivering slow-protocols to the CPU (back to drop). */
+	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_DROP);
 
 	/* Release the trunk ONLY if LACP actually programmed it - never wipe a
 	 * user-configured static "lag 0 ..." that we did not create. */
