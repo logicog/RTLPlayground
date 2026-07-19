@@ -561,7 +561,7 @@ char *scan_header(char *p)
 		else if (is_word(p, "\nCookie:")) {
 			session = p + 9;
 			while (*session == ' ') session++;
-			char *s = strstr(session, "session=");
+			const char *s = strstr(session, "session=");
 			if (s) session = s + 8;
 		}
 	}
