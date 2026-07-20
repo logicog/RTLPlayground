@@ -24,7 +24,10 @@ uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 uint16_t uip_len;
 struct uip_eth_addr uip_ethaddr = { .addr = {0x02,0x11,0x22,0x33,0x44,0x55} };
 struct machine machine = { .min_port = 0, .max_port = 7 };
+struct machine_runtime machine_detected = { .isRTL8373 = 1 };
 uint8_t lacpEnabled;
+unsigned char sfr_data[4];	/* mocked register read buffer */
+uint16_t management_vlan;	/* mocked; slow-protocol path zeroes it per-frame */
 
 static int verbose = 0;
 void print_string(char *s) { if (verbose) fputs(s, stdout); }
@@ -40,6 +43,14 @@ void port_lag_members_set(uint8_t lag, uint16_t members)
 	(void)lag;
 	hw_members = members;
 	hw_set_calls++;
+}
+
+/* Port-isolation mock: record the last mask written per port */
+static uint16_t hw_isolation[10];
+void port_isolate(uint8_t port, uint16_t pmask)
+{
+	if (port < 10)
+		hw_isolation[port] = pmask;
 }
 
 /* ---------- on-wire mirrors (independent re-statement of the layout) ---------- */
@@ -130,6 +141,7 @@ static void partner_frame(uint8_t port, const uint8_t sys[6], uint8_t pstate, in
 	in.actor.sys_prio = HTONS(0x8000);
 	memcpy(in.actor.sys, sys, 6);
 	in.actor.key = HTONS(0x0011);
+	in.actor.port_prio = HTONS(0x00ff);
 	in.actor.port = HTONS((uint16_t)port + 101);
 	in.actor.state = pstate;
 
@@ -201,11 +213,30 @@ int main(int argc, char **argv)
 	      && (lacp_actor_state[1] & (P_SYNC|P_COL|P_DIST)) == (P_SYNC|P_COL|P_DIST),
 	      "T3 convergence: both ports collecting/distributing, trunk 0x0003");
 
+	/* T3b: partner-block echo must be VERBATIM. A Linux 802.3ad partner accepts
+	 * our SYNC only if our Partner TLV mirrors its actor identity exactly; a
+	 * hardcoded sys_prio/port_prio (instead of the recorded value) makes Linux
+	 * clear partner-SYNC and the bond never distributes. Verify we echo the
+	 * partner's own priorities back, not a constant. */
+	CHECK(HTONS(last_tx[0].partner.sys_prio) == 0x8000
+	      && HTONS(last_tx[0].partner.port_prio) == 0x00ff
+	      && HTONS(last_tx[0].partner.key) == 0x0011
+	      && HTONS(last_tx[0].partner.port) == (uint16_t)0 + 101,
+	      "T3b partner echo: recorded partner priorities/key/port echoed verbatim");
+
 	/* T4: mis-cabling - port 2 sees a DIFFERENT system: must stay out */
 	partner_frame(2, SYS_B, P_ACT|P_AGG|P_TO|P_SYNC, 1);
 	ticks(8);
 	CHECK(hw_members == 0x0003 && !(lacp_actor_state[2] & P_SYNC),
 	      "T4 mis-cabling: port with different partner system stays out");
+
+	/* T4b: sibling isolation - the two bond ports (same partner SYS_A) must be
+	 * isolated from EACH OTHER so a forwarded LACPDU does not loop back, while
+	 * the odd port (SYS_B) keeps default isolation. base = CPU|all = 0x3ff. */
+	CHECK(hw_isolation[0] == (0x3ff & ~(1u << 1))    /* port0: everyone but port1 */
+	      && hw_isolation[1] == (0x3ff & ~(1u << 0)) /* port1: everyone but port0 */
+	      && hw_isolation[2] == 0x3ff,               /* port2: different partner, untouched */
+	      "T4b sibling isolation: bond ports isolated from each other, odd port default");
 
 	/* T5: register-write economy: stable state must not rewrite the trunk */
 	int calls_before = hw_set_calls;

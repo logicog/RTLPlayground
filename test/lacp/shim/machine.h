@@ -4,4 +4,6 @@
 #include <stdint.h>
 struct machine { uint8_t min_port; uint8_t max_port; };
 extern struct machine machine;
+struct machine_runtime { uint8_t isRTL8373; };
+extern struct machine_runtime machine_detected;
 #endif
