@@ -117,15 +117,27 @@ __xdata uint16_t lacp_actor_key;
 #define LACP_TICK_DIVIDER 3
 __xdata uint8_t lacp_clock;
 
-/* Last member mask written to the trunk group - avoids hammering the trunk
- * registers on every timer tick when membership has not changed. */
-__xdata uint16_t lacp_members_last;
+/* Per-LAG state (LACP_NUM_LAGS hardware trunk groups run LACP independently).
+ * lacp_lag_ports[l] = admin candidate-port mask (0 => LAG l is not LACP-managed).
+ * lacp_port_lag[p]  = which LAG a port runs LACP on, or LACP_LAG_NONE (fast hot-
+ *                     path lookup, kept in sync with lacp_lag_ports).
+ * lacp_agg_sys/valid = partner System elected per LAG - ports whose partner
+ *                     differs stay unselected (43.4.14 mis-cabling protection).
+ * lacp_members_last  = last member mask programmed per trunk (avoids hammering
+ *                     the trunk registers when membership has not changed). */
+__xdata uint16_t lacp_lag_ports[LACP_NUM_LAGS];
+__xdata uint8_t  lacp_port_lag[10];
+__xdata uint8_t  lacp_agg_sys[LACP_NUM_LAGS][6];
+__xdata uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
+__xdata uint16_t lacp_members_last[LACP_NUM_LAGS];
 
-/* Aggregator identity: partner system elected for the (single) active LAG.
- * Ports whose partner differs stay unselected - the classic LACP protection
- * against aggregating links that go to different switches (43.4.14). */
-__xdata uint8_t lacp_agg_sys[6];
-__xdata uint8_t lacp_agg_valid;
+/* Scratch for lacp_mux_update()/lacp_lag_set() worker loops. Kept in xdata:
+ * as plain locals SDCC overlays them in internal RAM (OSEG), which is already
+ * near-full on this firmware - adding them tipped it over ("Could not get 8
+ * consecutive bytes in internal RAM for area OSEG"). Same pattern as
+ * lacp_iso_base/lacp_iso_tx below. Safe: never live across a yield. */
+__xdata uint16_t lacp_scratch_mask;
+__xdata uint8_t  lacp_scratch_flag;
 
 /* Per-port RX LACPDU count - primarily a hardware bring-up diagnostic to
  * verify slow-protocol frames actually reach the CPU port (see "lacp show") */
@@ -171,13 +183,16 @@ static uint8_t lacp_sys_nonzero(__xdata uint8_t *a)
  */
 static uint8_t lacp_port_selected(uint8_t port)
 {
+	uint8_t lag = lacp_port_lag[port];
+	if (lag == LACP_LAG_NONE)		/* port not in any LACP LAG */
+		return 0;
 	if (lacp_rx_state[port] != LACP_RX_CURRENT)
 		return 0;
 	if (!(lacp_partner_state[port] & LACP_STATE_AGGREGATION))
 		return 0;
-	if (!lacp_agg_valid)
+	if (!lacp_agg_valid[lag])
 		return 0;
-	return lacp_sys_eq(lacp_partner_sys[port], lacp_agg_sys);
+	return lacp_sys_eq(lacp_partner_sys[port], lacp_agg_sys[lag]);
 }
 
 
@@ -243,7 +258,9 @@ void lacp_send(uint8_t port) __banked
 	LACP_O->actor_len = 0x14;
 	LACP_O->actor.sys_prio = HTONS(lacp_sys_prio);
 	memcpy(LACP_O->actor.sys, uip_ethaddr.addr, 6);
-	LACP_O->actor.key = HTONS(lacp_actor_key);
+	/* Per-LAG Actor Key so a partner never merges ports of our different LAGs
+	 * into one aggregate (only ever called for ports in a LACP LAG). */
+	LACP_O->actor.key = HTONS((uint16_t)(lacp_port_lag[port] + 1));
 	LACP_O->actor.port_prio = HTONS(0x00ff);
 	LACP_O->actor.port = HTONS((uint16_t)port + 1);	/* 1-based port id */
 	LACP_O->actor.state = lacp_actor_state[port];
@@ -306,6 +323,11 @@ void lacp_in(void) __banked
 	if (port < machine.min_port || port > machine.max_port)
 		return;
 
+	/* Only ports assigned to a LACP-mode LAG participate in the protocol. */
+	uint8_t lag = lacp_port_lag[port];
+	if (lag == LACP_LAG_NONE)
+		return;
+
 
 #ifdef DEBUG
 	print_string("LACP in, port "); print_byte(port);
@@ -327,10 +349,10 @@ void lacp_in(void) __banked
 	lacp_timeout[port] = (LACP_I->actor.state & LACP_STATE_TIMEOUT)
 	                   ? LACP_SHORT_TIMEOUT : LACP_LONG_TIMEOUT;
 
-	/* Elect the aggregator's partner system on first contact (43.4.14) */
-	if (!lacp_agg_valid) {
-		memcpy(lacp_agg_sys, LACP_I->actor.sys, 6);
-		lacp_agg_valid = 1;
+	/* Elect this LAG's aggregator partner system on first contact (43.4.14) */
+	if (!lacp_agg_valid[lag]) {
+		memcpy(lacp_agg_sys[lag], LACP_I->actor.sys, 6);
+		lacp_agg_valid[lag] = 1;
 	}
 
 	/* Selection + Mux for this port; state change => Need-To-Transmit */
@@ -356,31 +378,27 @@ void lacp_in(void) __banked
  * port egresses on its sibling. A Linux 802.3ad bond then sees its own Actor
  * System on the sibling link and logs "illegal loopback", flapping the whole
  * aggregate. There is no reserved-mc-specific flood portmask on this chip, so
- * we suppress the sibling flood with per-port isolation instead: two ports
- * reporting the *same partner System ID* are the same bond, and are isolated
- * from one another (they never carry legitimate port-to-port traffic anyway).
- * The isolation follows the partner, so it is generic to any bond and needs no
- * static "lag" configuration. NOTE: while LACP is on this manages the isolation
- * masks of participating ports; a user-set "isolate" on such a port is
- * overridden until its partner ages out.
+ * we suppress the sibling flood with per-port isolation instead: two ports of
+ * the *same LACP LAG* that remember the *same partner System ID* are one bond,
+ * and are isolated from one another (they never carry legitimate port-to-port
+ * traffic anyway). Keying on the remembered partner (not the live rx_state)
+ * keeps the isolation static across transient flaps - keying on rx_state made
+ * it flicker, reopening the flood window -> loopback -> churn. The same-LAG
+ * condition scopes siblinghood: with `lacp on` (all ports candidates of LAG 0)
+ * it is a no-op and the behaviour is exactly the hardware-verified original,
+ * while explicitly-configured LAGs never cross-isolate. NOTE: while a port is
+ * in a LACP LAG this manages its isolation mask; a user-set "isolate" on such a
+ * port is overridden until its partner ages out or it leaves the LAG.
  */
 void lacp_isolation_update(void) __banked
 {
 	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		lacp_iso_tx = lacp_iso_base;
-		/* Key the isolation on the *remembered* partner System ID, not the live
-		 * rx_state. Once a port has seen a partner, lacp_partner_sys[] holds that
-		 * ID until LACP is turned off (lacp_setup clears it); it survives link
-		 * flaps, EXPIRED and DEFAULTED. Keying on rx_state instead made the
-		 * isolation flicker off on every transient flap, reopening the flood
-		 * window -> loopback -> another flap: the ports churned and never
-		 * aggregated. A remembered partner keeps the isolation static (as the
-		 * working manual PoC was), so two ports that have both seen the same
-		 * partner stay isolated from each other for the whole session. */
-		if (lacp_sys_nonzero(lacp_partner_sys[i])) {
+		uint8_t lag = lacp_port_lag[i];
+		if (lag != LACP_LAG_NONE && lacp_sys_nonzero(lacp_partner_sys[i])) {
 			for (uint8_t j = machine.min_port; j <= machine.max_port; j++) {
-				if (i != j
+				if (i != j && lacp_port_lag[j] == lag
 				    && lacp_sys_eq(lacp_partner_sys[i], lacp_partner_sys[j]))
 					lacp_iso_tx &= ~port_bit(j);
 			}
@@ -393,21 +411,29 @@ void lacp_isolation_update(void) __banked
 }
 
 
-/* Add/remove this port from the hardware trunk once fully in sync. TODO(43.4.15) */
+/* Recompute each LACP LAG's hardware trunk membership: a port joins its LAG's
+ * trunk once it is fully in sync (SYNC+COLLECTING+DISTRIBUTING and the partner
+ * in SYNC). Each LACP-mode LAG is programmed independently. TODO(43.4.15) */
 void lacp_mux_update(void) __banked
 {
-	uint16_t members = 0;
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		uint8_t need = LACP_STATE_SYNC | LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING;
-		if ((lacp_actor_state[i] & need) == need
-		    && (lacp_partner_state[i] & LACP_STATE_SYNC))
-			members |= port_bit(i);
-	}
-	/* Program the LACP-managed hardware trunk group only when membership
-	 * actually changed - this runs on every timer tick. */
-	if (members != lacp_members_last) {
-		lacp_members_last = members;
-		port_lag_members_set(LACP_TRUNK_ID, members);
+	for (uint8_t lag = 0; lag < LACP_NUM_LAGS; lag++) {
+		if (!lacp_lag_ports[lag])	/* LAG not under LACP management */
+			continue;
+		lacp_scratch_mask = 0;
+		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+			if (lacp_port_lag[i] != lag)
+				continue;
+			uint8_t need = LACP_STATE_SYNC | LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING;
+			if ((lacp_actor_state[i] & need) == need
+			    && (lacp_partner_state[i] & LACP_STATE_SYNC))
+				lacp_scratch_mask |= port_bit(i);
+		}
+		/* Program the trunk only when this LAG's membership actually changed
+		 * - this runs on every timer tick. */
+		if (lacp_scratch_mask != lacp_members_last[lag]) {
+			lacp_members_last[lag] = lacp_scratch_mask;
+			port_lag_members_set(lag, lacp_scratch_mask);
+		}
 	}
 
 	/* Keep bond siblings isolated so forwarded LACPDUs do not loop back. */
@@ -424,7 +450,7 @@ void lacp_timers(void) __banked
 	lacp_clock = LACP_TICK_DIVIDER;
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		if (!(lacp_actor_state[i] & LACP_STATE_AGGREGATION))
+		if (lacp_port_lag[i] == LACP_LAG_NONE)	/* not in a LACP LAG */
 			continue;
 
 		/* Periodic transmit machine (802.3ad 43.4.13) */
@@ -452,88 +478,168 @@ void lacp_timers(void) __banked
 			lacp_send(i);
 	}
 
-	/* Release the aggregator identity once no port has fresh partner info,
-	 * so a re-cabled setup can elect a new partner system (43.4.14). */
-	if (lacp_agg_valid) {
+	/* Release each LAG's aggregator identity once none of its ports has fresh
+	 * partner info, so a re-cabled setup can elect a new partner (43.4.14). */
+	for (uint8_t lag = 0; lag < LACP_NUM_LAGS; lag++) {
+		if (!lacp_agg_valid[lag])
+			continue;
 		uint8_t any_current = 0;
 		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-			if (lacp_rx_state[i] == LACP_RX_CURRENT)
+			if (lacp_port_lag[i] == lag && lacp_rx_state[i] == LACP_RX_CURRENT)
 				any_current = 1;
 		}
 		if (!any_current)
-			lacp_agg_valid = 0;
+			lacp_agg_valid[lag] = 0;
 	}
 
 	lacp_mux_update();
 }
 
 
-void lacp_setup(void) __banked
+/* Bring one port up as an active-fast LACP participant (43.4.12 init). */
+static void lacp_port_init(uint8_t port)
 {
-	print_string("Enabling LACP\n");
+	lacp_actor_state[port] = LACP_STATE_ACTIVITY | LACP_STATE_AGGREGATION
+	                       | LACP_STATE_TIMEOUT;	/* active + fast */
+	lacp_rx_state[port] = LACP_RX_INITIALIZE;
+	lacp_partner_state[port] = LACP_STATE_DEFAULTED;
+	memset(lacp_partner_sys[port], 0, 6);
+	lacp_partner_key[port] = 0;
+	lacp_partner_port[port] = 0;
+	lacp_periodic[port] = LACP_FAST_PERIODIC;
+	lacp_timeout[port] = 0;
+	lacp_ntt[port] = 1;	/* announce ourselves immediately */
+	lacp_rx_count[port] = 0;
+}
 
+/* Return a port to non-LACP state and restore its default isolation. */
+static void lacp_port_release(uint8_t port)
+{
+	lacp_actor_state[port] = 0;
+	lacp_ntt[port] = 0;
+	lacp_iso_last[port] = lacp_iso_base;
+	port_isolate(port, lacp_iso_base);
+}
+
+/* True while any LAG is under LACP management (drives the global RMA trap). */
+static uint8_t lacp_any_lag(void)
+{
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++)
+		if (lacp_lag_ports[l])
+			return 1;
+	return 0;
+}
+
+/*
+ * Turn the LACP engine on: deliver the Slow-Protocols group
+ * (01:80:C2:00:00:02) to the CPU so we can see incoming LACPDUs. The ASIC
+ * default for this address is "drop"; we set "forward" - on this firmware the
+ * CPU port is in the forwarding domain, so forward reaches the CPU-RX ring
+ * (trap does not - confirmed on hardware: rx stayed 0 with trap-to-CPU; it only
+ * counted with forward). Because forward also floods the frame across the VLAN,
+ * sibling ports would see each other's LACPDUs; lacp_isolation_update()
+ * suppresses that with per-LAG port isolation.
+ */
+static void lacp_engine_on(void)
+{
 	lacp_sys_prio = 0xffff;
-	lacp_actor_key = 0x0001;	/* one LAG; refine per speed/duplex later */
-
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		lacp_actor_state[i] = LACP_STATE_ACTIVITY | LACP_STATE_AGGREGATION
-		                    | LACP_STATE_TIMEOUT;	/* active + fast */
-		lacp_rx_state[i] = LACP_RX_INITIALIZE;
-		lacp_partner_state[i] = LACP_STATE_DEFAULTED;
-		memset(lacp_partner_sys[i], 0, 6);
-		lacp_partner_key[i] = 0;
-		lacp_partner_port[i] = 0;
-		lacp_periodic[i] = LACP_FAST_PERIODIC;
-		lacp_timeout[i] = 0;
-		lacp_ntt[i] = 1;	/* announce ourselves immediately */
-		lacp_rx_count[i] = 0;
-	}
-
-	lacp_agg_valid = 0;
+	lacp_actor_key = 0x0001;	/* base key; per-LAG key = lag+1 in lacp_send() */
+	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
 	lacp_clock = LACP_TICK_DIVIDER;
-	/* Do NOT touch the trunk group here. A static "lag 0 ..." from the saved
-	 * configuration may already cover these ports, and clearing a group on
-	 * live member ports was observed to leave them in a broken ingress state
-	 * (dead LAN) until the next config replay. LACP only writes the trunk
-	 * once a partner actually negotiates (see lacp_mux_update). */
-	lacp_members_last = 0;
-
-	/*
-	 * Deliver the Slow-Protocols group (01:80:C2:00:00:02) to the CPU so we
-	 * can see incoming LACPDUs. The ASIC default for this address is "drop";
-	 * we set "forward" - on this firmware the CPU port is in the forwarding
-	 * domain, so forward reaches the CPU-RX ring (trap does not - confirmed
-	 * on hardware: rx stayed 0 with trap-to-CPU even with the RMA trap
-	 * descriptor 0x4f1c programmed like IGMP; it only counted with forward).
-	 * Because forward also floods the frame across the VLAN, sibling bond
-	 * ports would see each other's LACPDUs; lacp_isolation_update() suppresses
-	 * that with per-partner port isolation once LACPDUs start arriving.
-	 */
+	lacpEnabled = 1;
 	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_FORWARD);
 }
 
-
-void lacp_off(void) __banked
+/* Turn the LACP engine off: stop delivering slow-protocols to the CPU. */
+static void lacp_engine_off(void)
 {
-	/* Stop delivering slow-protocols to the CPU (back to drop). */
 	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_DROP);
+	lacpEnabled = 0;
+}
 
-	/* Release the trunk ONLY if LACP actually programmed it - never wipe a
-	 * user-configured static "lag 0 ..." that we did not create. */
-	if (lacp_members_last) {
-		lacp_members_last = 0;
-		port_lag_members_set(LACP_TRUNK_ID, 0);
-	}
-	lacp_agg_valid = 0;
-	/* Restore default port isolation (all ports may talk to each other + CPU),
-	 * undoing any sibling-isolation lacp_isolation_update() applied. */
+/* One-time boot init: no LAG runs LACP yet, so every port maps to LACP_LAG_NONE.
+ * MUST run before any "lag ... lacp" config replay - xdata is not zeroed to the
+ * 0xff sentinel, and a stray 0 would make a port look like it belongs to LAG 0. */
+void lacp_init(void) __banked
+{
 	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+	for (uint8_t i = 0; i < 10; i++) {
+		lacp_port_lag[i] = LACP_LAG_NONE;
 		lacp_actor_state[i] = 0;
 		lacp_ntt[i] = 0;
 		lacp_iso_last[i] = lacp_iso_base;
-		port_isolate(i, lacp_iso_base);
 	}
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
+		lacp_lag_ports[l] = 0;
+		lacp_agg_valid[l] = 0;
+		lacp_members_last[l] = 0;
+	}
+	lacpEnabled = 0;
+}
+
+/*
+ * Assign a candidate-port mask to LACP-mode LAG `lag` (`lag <n> lacp <ports>`).
+ * ports == 0 removes the LAG from LACP management. Ports leaving the LAG are
+ * returned to normal switching; ports joining start the protocol immediately.
+ * The engine's RMA trap is enabled on the first LACP LAG and torn down with the
+ * last. Never wipes a static "lag" the user configured on a different group.
+ */
+void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
+{
+	if (lag >= LACP_NUM_LAGS)
+		return;
+	lacp_scratch_flag = lacp_any_lag();
+
+	/* Drop ports that were in this LAG but are not in the new mask. */
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		if (lacp_port_lag[i] == lag && !(ports & port_bit(i))) {
+			lacp_port_lag[i] = LACP_LAG_NONE;
+			lacp_port_release(i);
+		}
+	}
+	/* Release this LAG's trunk if LACP had programmed it (leave static LAGs). */
+	if (lacp_members_last[lag]) {
+		lacp_members_last[lag] = 0;
+		port_lag_members_set(lag, 0);
+	}
+	lacp_agg_valid[lag] = 0;
+	lacp_lag_ports[lag] = ports;
+
+	if (ports && !lacp_scratch_flag)	/* first LACP LAG: bring the engine up first */
+		lacp_engine_on();
+
+	/* Adopt the new member ports (engine must be up so iso_base is set). */
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		if (ports & port_bit(i)) {
+			lacp_port_lag[i] = lag;
+			lacp_port_init(i);
+		}
+	}
+
+	if (!lacp_any_lag() && lacp_scratch_flag)	/* removed the last LACP LAG */
+		lacp_engine_off();
+
+	lacp_isolation_update();	/* refresh sibling isolation for the new topology */
+}
+
+
+/* Legacy "lacp on": one aggregator on LAG 0 spanning every port (the pre-
+ * per-LAG behaviour). Explicit "lag <n> lacp <ports>" is the per-LAG path. */
+void lacp_setup(void) __banked
+{
+	lacp_scratch_mask = 0;
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
+		lacp_scratch_mask |= port_bit(i);
+	lacp_lag_set(0, lacp_scratch_mask);
+}
+
+
+/* "lacp off": remove every LACP LAG (releases their trunks, stops the engine). */
+void lacp_off(void) __banked
+{
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++)
+		if (lacp_lag_ports[l])
+			lacp_lag_set(l, 0);
 }
 
 
@@ -545,15 +651,21 @@ void lacp_show(void) __banked
 	/* TEMPORARY bring-up probe: the CPU tag as the ASIC wrote it on the last RX.
 	 * Shows which tag fields the silicon itself populates, so the TX path can
 	 * mirror them (raw = on-wire byte order, no HTONS applied). */
-	print_string("LACP "); print_string(lacpEnabled ? "on" : "off");
-	print_string(", aggregator ");
-	if (lacp_agg_valid) {
-		for (uint8_t j = 0; j < 6; j++)
-			print_byte(lacp_agg_sys[j]);
-	} else {
-		print_string("(none)");
+	print_string("LACP "); print_string(lacpEnabled ? "on" : "off"); write_char('\n');
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
+		if (!lacp_lag_ports[l])
+			continue;
+		print_string("lag "); print_byte(l);
+		print_string(" ports "); print_short(lacp_lag_ports[l]);
+		print_string(" aggregator ");
+		if (lacp_agg_valid[l]) {
+			for (uint8_t j = 0; j < 6; j++)
+				print_byte(lacp_agg_sys[l][j]);
+		} else {
+			print_string("(none)");
+		}
+		print_string(" members "); print_short(lacp_members_last[l]); write_char('\n');
 	}
-	print_string(", members "); print_short(lacp_members_last); write_char('\n');
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		print_string("port "); print_byte(i);
