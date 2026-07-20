@@ -2192,6 +2192,7 @@ void main(void)
 #endif
 	stpEnabled = 0;
 	lacpEnabled = 0;
+	lacp_init();		/* clear per-LAG state (port->LAG map = NONE) before any config replay */
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();

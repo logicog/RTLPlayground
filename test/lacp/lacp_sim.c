@@ -35,13 +35,15 @@ void print_byte(uint8_t b) { if (verbose) printf("%02x", b); }
 void print_short(uint16_t v) { if (verbose) printf("%04x", v); }
 void write_char(char c) { if (verbose) putchar(c); }
 
-/* Trunk programming mock: record last mask + call count */
-static uint16_t hw_members;
+/* Trunk programming mock: record last mask per LAG + call count.
+ * hw_members mirrors LAG 0 so the single-aggregator scenarios read naturally. */
+static uint16_t hw_members_lag[4];
 static int hw_set_calls;
+#define hw_members hw_members_lag[0]
 void port_lag_members_set(uint8_t lag, uint16_t members)
 {
-	(void)lag;
-	hw_members = members;
+	if (lag < 4)
+		hw_members_lag[lag] = members;
 	hw_set_calls++;
 }
 
@@ -183,6 +185,15 @@ int main(int argc, char **argv)
 {
 	verbose = (argc > 1 && !strcmp(argv[1], "-v"));
 
+	/* Boot init first: on host, zeroed globals would otherwise read as "every
+	 * port belongs to LAG 0" (the firmware calls this from main() the same way) */
+	lacp_init();
+	/* Mirror the hardware's boot default in the isolation mock: all ports may
+	 * talk to each other + CPU. lacp_init() records this as already-programmed
+	 * (iso_last = base) so the firmware never redundantly rewrites it. */
+	for (int i = 0; i < 10; i++)
+		hw_isolation[i] = 0x3ff;
+
 	/* T1: enable announces on every port with sane field contents */
 	lacp_cmd(1);
 	ticks(8);
@@ -255,7 +266,7 @@ int main(int argc, char **argv)
 	/* T7: expiry - partner silent past the short timeout: trunk drains,
 	 * aggregator identity is released */
 	ticks(4 * 0x0300 + 64);		/* > LACP_SHORT_TIMEOUT work-ticks */
-	CHECK(hw_members == 0 && lacp_agg_valid == 0,
+	CHECK(hw_members == 0 && lacp_agg_valid[0] == 0,
 	      "T7 expiry: members drop to 0 and aggregator is released");
 
 	/* T8: re-convergence with a NEW partner system after release */
@@ -270,6 +281,48 @@ int main(int argc, char **argv)
 	/* T9: lacp off clears the trunk */
 	lacp_cmd(0);
 	CHECK(hw_members == 0 && lacpEnabled == 0, "T9 disable: trunk cleared");
+
+	/* ---- per-LAG scenarios: two independent aggregators ---- */
+
+	/* T10: lag 1 lacp {0,1} + lag 2 lacp {2,3}, both to the SAME partner
+	 * system (worst case for sibling scoping): each converges into its own
+	 * hardware trunk, and the engine reports enabled. */
+	lacp_lag_set(1, 0x0003);	/* ports 0,1 */
+	lacp_lag_set(2, 0x000c);	/* ports 2,3 */
+	ticks(8);			/* announce */
+	for (int r = 0; r < 2; r++) {	/* two rounds so echoes carry fresh state */
+		for (int p = 0; p < 4; p++)
+			partner_frame(p, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		ticks(8);
+	}
+	CHECK(lacpEnabled == 1
+	      && hw_members_lag[1] == 0x0003 && hw_members_lag[2] == 0x000c,
+	      "T10 two LAGs: independent aggregates converge on their own trunks");
+
+	/* T10b: sibling isolation is scoped to the LAG - ports of LAG 1 are
+	 * isolated from each other but NOT from LAG 2's ports (same partner!). */
+	CHECK(hw_isolation[0] == (0x3ff & ~(1u << 1))
+	      && hw_isolation[2] == (0x3ff & ~(1u << 3)),
+	      "T10b isolation scoped per LAG despite identical partner system");
+
+	/* T11: removing one LAG releases only its trunk; the other keeps running */
+	lacp_lag_set(1, 0);
+	CHECK(hw_members_lag[1] == 0 && hw_members_lag[2] == 0x000c
+	      && lacpEnabled == 1,
+	      "T11 remove one LAG: its trunk drains, the other LAG unaffected");
+
+	/* T12: a port in no LACP LAG ignores LACPDUs entirely */
+	int rx5_before = tx_count[5];
+	partner_frame(5, SYS_B, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+	ticks(8);
+	CHECK(!(lacp_actor_state[5] & P_SYNC) && hw_members_lag[2] == 0x000c,
+	      "T12 unassigned port: LACPDU ignored, no state change");
+	(void)rx5_before;
+
+	/* T13: removing the last LACP LAG shuts the engine down */
+	lacp_lag_set(2, 0);
+	CHECK(lacpEnabled == 0 && hw_members_lag[2] == 0,
+	      "T13 last LAG removed: engine off, trunk drained");
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");

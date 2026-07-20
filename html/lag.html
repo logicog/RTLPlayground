@@ -10,22 +10,27 @@
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
     <h1 data-i18n="lacp_heading">LACP (802.3ad)</h1>
-    <h2><span data-i18n="lacp_status">Status</span>: <span id="lacpOn">?</span>
-      <input style="width:15%;margin-left: 3em;" class="action" id="lacpToggle" onclick="lacpToggle();" type="button" value="Enable"></h2>
-    <div id="lacpAgg"></div>
     <div id="lacpPorts" style="font-family:monospace;white-space:pre;"></div>
     <br />
     <h1 data-i18n="lag_heading">Link Aggregation Groups Configuration</h1>
-    <h2>LAG 1 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 1 <label class="lacpmode"><input type="checkbox" id="lacp_m0">LACP</label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat0" style="font-family:monospace;"></div>
     <div id="mLAG0"></div>
     <br />
-    <h2>LAG 2 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub1" onclick="lagSub(1);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 2 <label class="lacpmode"><input type="checkbox" id="lacp_m1">LACP</label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub1" onclick="lagSub(1);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat1" style="font-family:monospace;"></div>
     <div id="mLAG1"></div>
     <br />
-    <h2>LAG 3 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub2" onclick="lagSub(2);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 3 <label class="lacpmode"><input type="checkbox" id="lacp_m2">LACP</label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub2" onclick="lagSub(2);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat2" style="font-family:monospace;"></div>
     <div id="mLAG2"></div>
     <br />
-    <h2>LAG 4 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub3" onclick="lagSub(3);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 4 <label class="lacpmode"><input type="checkbox" id="lacp_m3">LACP</label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub3" onclick="lagSub(3);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat3" style="font-family:monospace;"></div>
     <div id="mLAG3"></div>
     <script src="/lag.js"></script>
     </div>

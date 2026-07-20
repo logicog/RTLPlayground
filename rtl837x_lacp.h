@@ -15,12 +15,28 @@
 
 #include <stdint.h>
 
+void lacp_init(void) __banked;		/* boot init: clear per-LAG state */
 void lacp_in(void) __banked;
 void lacp_setup(void) __banked;
 void lacp_timers(void) __banked;
 void lacp_off(void) __banked;
-void lacp_cmd(uint8_t on) __banked;	/* "lacp on|off" handler */
+void lacp_cmd(uint8_t on) __banked;	/* "lacp on|off" master engine handler */
 void lacp_show(void) __banked;		/* "lacp show" - per-port state + RX counters */
+/* Assign a candidate-port mask to a LACP-mode LAG (`lag <n> lacp <ports>`).
+ * ports == 0 removes the LAG from LACP management. Enables the engine on first
+ * LACP LAG and tears it down when the last one goes away. */
+void lacp_lag_set(uint8_t lag, uint16_t ports) __banked;
+
+/*
+ * Per-LAG LACP: each of the 4 hardware trunk groups (0-3) can independently run
+ * LACP on an admin-assigned set of candidate ports, forming its own aggregator
+ * (its own elected partner System). A port participates in LACP only if it has
+ * been assigned to a LACP-mode LAG (lacp_port_lag[port] != LACP_LAG_NONE).
+ * Ports of the same LAG that converge with a consistent partner join that LAG's
+ * hardware trunk. This is the port-channel model: `lag <n> lacp <ports>`.
+ */
+#define LACP_NUM_LAGS		4
+#define LACP_LAG_NONE		0xff	/* port not assigned to any LACP LAG */
 
 /* Protocol state, exposed read-only for the web UI (page_impl.c send_lacp())
  * and the serial console. Owned by rtl837x_lacp.c / rtlplayground.c. */
@@ -30,9 +46,11 @@ extern __xdata uint8_t  lacp_partner_state[10];
 extern __xdata uint8_t  lacp_rx_state[10];
 extern __xdata uint8_t  lacp_partner_sys[10][6];
 extern __xdata uint16_t lacp_rx_count[10];
-extern __xdata uint8_t  lacp_agg_sys[6];
-extern __xdata uint8_t  lacp_agg_valid;
-extern __xdata uint16_t lacp_members_last;
+extern __xdata uint8_t  lacp_port_lag[10];		/* LAG (0-3) a port runs LACP on, or LACP_LAG_NONE */
+extern __xdata uint16_t lacp_lag_ports[LACP_NUM_LAGS];	/* admin candidate-port mask per LACP LAG (0 = LAG not LACP) */
+extern __xdata uint8_t  lacp_agg_sys[LACP_NUM_LAGS][6];	/* elected partner System per LAG */
+extern __xdata uint8_t  lacp_agg_valid[LACP_NUM_LAGS];	/* aggregator elected for this LAG */
+extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];/* trunk members we last programmed per LAG */
 
 /* Slow-Protocols / LACPDU identifiers (802.3ad 43.4) */
 #define SLOW_PROTO_ETHERTYPE	0x8809

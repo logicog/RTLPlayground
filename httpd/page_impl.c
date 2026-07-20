@@ -546,18 +546,30 @@ void send_lacp(void)
 
 	slen += strtox(outbuf + slen, "{\"on\":");
 	bool_to_html(lacpEnabled);
-	slen += strtox(outbuf + slen, ",\"aggValid\":");
-	bool_to_html(lacp_agg_valid);
-	slen += strtox(outbuf + slen, ",\"agg\":\"");
-	for (uint8_t j = 0; j < 6; j++)
-		byte_to_html(lacp_agg_sys[j]);
-	slen += strtox(outbuf + slen, "\",\"members\":\"");
-	byte_to_html(lacp_members_last >> 8);
-	byte_to_html(lacp_members_last);
-	slen += strtox(outbuf + slen, "\",\"ports\":[");
+	/* Per-LAG section: candidate ports, elected aggregator, trunk members. */
+	slen += strtox(outbuf + slen, ",\"lags\":[");
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
+		slen += strtox(outbuf + slen, "{\"cfg\":\"");
+		byte_to_html(lacp_lag_ports[l] >> 8);
+		byte_to_html(lacp_lag_ports[l]);
+		slen += strtox(outbuf + slen, "\",\"aggValid\":");
+		bool_to_html(lacp_agg_valid[l]);
+		slen += strtox(outbuf + slen, ",\"agg\":\"");
+		for (uint8_t j = 0; j < 6; j++)
+			byte_to_html(lacp_agg_sys[l][j]);
+		slen += strtox(outbuf + slen, "\",\"members\":\"");
+		byte_to_html(lacp_members_last[l] >> 8);
+		byte_to_html(lacp_members_last[l]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "],\"ports\":[");
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"p\":");
 		itoa_html(machine.log_to_phys_port[i]);
+		/* Which LACP LAG this port belongs to; 255 = none */
+		slen += strtox(outbuf + slen, ",\"lag\":");
+		itoa_html(lacp_port_lag[i]);
 		slen += strtox(outbuf + slen, ",\"a\":\"");
 		byte_to_html(lacp_actor_state[i]);
 		slen += strtox(outbuf + slen, "\",\"pt\":\"");
