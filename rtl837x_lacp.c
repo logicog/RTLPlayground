@@ -30,7 +30,9 @@
 #include "machine.h"
 
 extern __code struct machine machine;
+extern __xdata struct machine_runtime machine_detected;	/* runtime chip detection, owned by rtl837x_port.c */
 extern __xdata uint8_t sfr_data[4];
+extern __xdata uint16_t management_vlan;	/* owned by rtlplayground.c; suppressed per-frame for slow protocols */
 extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 /* lacpEnabled: extern in rtl837x_lacp.h, owned by rtlplayground.c */
@@ -96,6 +98,13 @@ __xdata uint8_t  lacp_partner_state[10];	/* last Partner_State we saw     */
 __xdata uint8_t  lacp_partner_sys[10][6];	/* partner System ID             */
 __xdata uint16_t lacp_partner_key[10];		/* partner Key                   */
 __xdata uint16_t lacp_partner_port[10];		/* partner Port number           */
+/* Partner priorities must be echoed back verbatim: a Linux 802.3ad partner's
+ * __record_pdu() accepts our SYNC bit only if our Partner block mirrors *its*
+ * actor identity exactly (system+priority, key, port+priority, aggregation).
+ * Hardcoding these (sys_prio=0) mismatched Linux's default 0xffff, so it cleared
+ * partner-SYNC (0x3f->0x37) and the bond never reached COLLECTING/DISTRIBUTING. */
+__xdata uint16_t lacp_partner_sys_prio[10];	/* partner System priority       */
+__xdata uint16_t lacp_partner_port_prio[10];	/* partner Port priority         */
 __xdata uint16_t lacp_periodic[10];		/* down-counter to next TX       */
 __xdata uint16_t lacp_timeout[10];		/* down-counter to partner expiry*/
 __xdata uint8_t  lacp_ntt[10];			/* Need-To-Transmit flag         */
@@ -122,8 +131,21 @@ __xdata uint8_t lacp_agg_valid;
  * verify slow-protocol frames actually reach the CPU port (see "lacp show") */
 __xdata uint16_t lacp_rx_count[10];
 
+/* Cache of the last port-isolation mask we wrote per port, so lacp_isolation_update()
+ * only touches the ASIC when a port's isolation actually changes (it is called on
+ * every LACPDU RX and timer tick). */
+__xdata uint16_t lacp_iso_last[10];
+
+/* Scratch for lacp_isolation_update()/lacp_off() port-isolation masks. Kept in
+ * xdata because the 8051 has very little internal RAM and locals here would
+ * overflow the function overlay area (OSEG). */
+__xdata uint16_t lacp_iso_base;
+__xdata uint16_t lacp_iso_tx;
+
+
 
 void lacp_mux_update(void) __banked;	/* defined below, used from lacp_in */
+void lacp_isolation_update(void) __banked;	/* defined below, used from lacp_mux_update */
 
 /* 6-byte system-ID compare (local, to avoid coupling to stp.c's cmpMAC) */
 static uint8_t lacp_sys_eq(__xdata uint8_t *a, __xdata uint8_t *b)
@@ -133,6 +155,12 @@ static uint8_t lacp_sys_eq(__xdata uint8_t *a, __xdata uint8_t *b)
 			return 0;
 	}
 	return 1;
+}
+
+/* True if a system-ID is not all-zero, i.e. a partner has actually been seen. */
+static uint8_t lacp_sys_nonzero(__xdata uint8_t *a)
+{
+	return a[0] | a[1] | a[2] | a[3] | a[4] | a[5];
 }
 
 
@@ -192,8 +220,19 @@ void lacp_send(uint8_t port) __banked
 	LACP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	LACP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	LACP_O->rtl_tag.reason = 0x00;
-	LACP_O->rtl_tag.flags = 0x0020;			/* disable L2 learning (as STP) */
-	LACP_O->rtl_tag.pmask = HTONS(port_bit(port));	/* egress this port only         */
+	/* Must go through HTONS like every other tag field: writing 0x0020 raw put
+	 * the bits in the wrong byte (on the wire 0x2000 = EFID, not LEARN_DIS), so
+	 * the ASIC could not parse the tag and forwarded the frame with the 0x8899
+	 * header still attached - the partner then saw ethertype 0x8899 instead of
+	 * 0x8809 and ignored the LACPDU. KEEP additionally stops the switch from
+	 * rewriting the 802.1Q tag format of a CPU-injected frame (as mainline). */
+	LACP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS | RTL_TAG_KEEP);
+	/* ALLOW cleared => this word is the *forwarding* port mask, i.e. directed
+	 * egress to exactly this port (what mainline does). Setting ALLOW instead
+	 * makes it an allowance/permission mask on top of a normal lookup, which
+	 * for a one-hot mask resolves to an empty egress set and the frame is
+	 * silently dropped - verified on hardware. */
+	LACP_O->rtl_tag.pmask = HTONS(port_bit(port));	/* egress this port only */
 
 	LACP_O->ethertype = HTONS(SLOW_PROTO_ETHERTYPE);
 	LACP_O->subtype = SLOW_PROTO_SUBTYPE_LACP;
@@ -209,13 +248,18 @@ void lacp_send(uint8_t port) __banked
 	LACP_O->actor.port = HTONS((uint16_t)port + 1);	/* 1-based port id */
 	LACP_O->actor.state = lacp_actor_state[port];
 
-	/* Partner TLV: echo the last partner info we recorded */
+	/* Partner TLV: echo the last partner info we recorded, VERBATIM. A Linux
+	 * 802.3ad partner (__record_pdu) only accepts the SYNC bit we set above if
+	 * this block mirrors its own actor identity exactly - system+priority, key,
+	 * port+priority. Priorities must be echoed, not hardcoded: Linux defaults to
+	 * system priority 0xffff, so a hardcoded 0 here cleared its partner-SYNC
+	 * (0x3f->0x37) and the aggregate never collected/distributed. */
 	LACP_O->tlv_partner = 0x02;
 	LACP_O->partner_len = 0x14;
-	LACP_O->partner.sys_prio = 0;
+	LACP_O->partner.sys_prio = HTONS(lacp_partner_sys_prio[port]);
 	memcpy(LACP_O->partner.sys, lacp_partner_sys[port], 6);
 	LACP_O->partner.key = HTONS(lacp_partner_key[port]);
-	LACP_O->partner.port_prio = HTONS(0x00ff);
+	LACP_O->partner.port_prio = HTONS(lacp_partner_port_prio[port]);
 	LACP_O->partner.port = HTONS(lacp_partner_port[port]);
 	LACP_O->partner.state = lacp_partner_state[port];
 
@@ -227,8 +271,19 @@ void lacp_send(uint8_t port) __banked
 	LACP_O->terminator_len = 0x00;
 
 	lacp_ntt[port] = 0;
+	/* Slow-protocol frames are link-local and must egress untagged. With a
+	 * management VLAN set, tcpip_output() splices an 802.1Q tag after the SA,
+	 * shifting our in-frame rtl_tag out of the position the ASIC expects - so it
+	 * fails to parse/strip the CPU tag and the 0x8899 header leaks onto the wire
+	 * (the partner then ignores the LACPDU). Suppress the VLAN insert for this
+	 * frame only; management traffic keeps its tag. Verified on HW: with the
+	 * insert suppressed the LACPDU egresses as clean 0x8809 and the bond
+	 * partner converges (partner MAC becomes the switch, both links aggregate). */
+	uint16_t saved_mgmt_vlan = management_vlan;
+	management_vlan = 0;
 	uip_len = sizeof(struct lacpdu);
 	tcpip_output();
+	management_vlan = saved_mgmt_vlan;
 }
 
 
@@ -251,6 +306,7 @@ void lacp_in(void) __banked
 	if (port < machine.min_port || port > machine.max_port)
 		return;
 
+
 #ifdef DEBUG
 	print_string("LACP in, port "); print_byte(port);
 	print_string(" partner_state "); print_byte(LACP_I->actor.state); write_char('\n');
@@ -260,9 +316,11 @@ void lacp_in(void) __banked
 
 	/* Record partner = the remote's Actor block (802.3ad 43.4.9 recordPDU) */
 	memcpy(lacp_partner_sys[port], LACP_I->actor.sys, 6);
-	lacp_partner_key[port]   = HTONS(LACP_I->actor.key);
-	lacp_partner_port[port]  = HTONS(LACP_I->actor.port);
-	lacp_partner_state[port] = LACP_I->actor.state;
+	lacp_partner_key[port]       = HTONS(LACP_I->actor.key);
+	lacp_partner_port[port]      = HTONS(LACP_I->actor.port);
+	lacp_partner_sys_prio[port]  = HTONS(LACP_I->actor.sys_prio);
+	lacp_partner_port_prio[port] = HTONS(LACP_I->actor.port_prio);
+	lacp_partner_state[port]     = LACP_I->actor.state;
 
 	/* Receive machine -> CURRENT, (re)arm partner timeout (43.4.12) */
 	lacp_rx_state[port] = LACP_RX_CURRENT;
@@ -289,6 +347,52 @@ void lacp_in(void) __banked
 }
 
 
+/*
+ * Keep sibling ports of the same aggregation isolated from each other.
+ *
+ * LACPDUs must be forwarded to reach the CPU (the ASIC "trap" action does not
+ * reach the 8051 RX ring on this firmware - only "forward" does). But forward
+ * also floods the frame across the VLAN, so a LACPDU ingressing on one bond
+ * port egresses on its sibling. A Linux 802.3ad bond then sees its own Actor
+ * System on the sibling link and logs "illegal loopback", flapping the whole
+ * aggregate. There is no reserved-mc-specific flood portmask on this chip, so
+ * we suppress the sibling flood with per-port isolation instead: two ports
+ * reporting the *same partner System ID* are the same bond, and are isolated
+ * from one another (they never carry legitimate port-to-port traffic anyway).
+ * The isolation follows the partner, so it is generic to any bond and needs no
+ * static "lag" configuration. NOTE: while LACP is on this manages the isolation
+ * masks of participating ports; a user-set "isolate" on such a port is
+ * overridden until its partner ages out.
+ */
+void lacp_isolation_update(void) __banked
+{
+	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		lacp_iso_tx = lacp_iso_base;
+		/* Key the isolation on the *remembered* partner System ID, not the live
+		 * rx_state. Once a port has seen a partner, lacp_partner_sys[] holds that
+		 * ID until LACP is turned off (lacp_setup clears it); it survives link
+		 * flaps, EXPIRED and DEFAULTED. Keying on rx_state instead made the
+		 * isolation flicker off on every transient flap, reopening the flood
+		 * window -> loopback -> another flap: the ports churned and never
+		 * aggregated. A remembered partner keeps the isolation static (as the
+		 * working manual PoC was), so two ports that have both seen the same
+		 * partner stay isolated from each other for the whole session. */
+		if (lacp_sys_nonzero(lacp_partner_sys[i])) {
+			for (uint8_t j = machine.min_port; j <= machine.max_port; j++) {
+				if (i != j
+				    && lacp_sys_eq(lacp_partner_sys[i], lacp_partner_sys[j]))
+					lacp_iso_tx &= ~port_bit(j);
+			}
+		}
+		if (lacp_iso_tx != lacp_iso_last[i]) {
+			lacp_iso_last[i] = lacp_iso_tx;
+			port_isolate(i, lacp_iso_tx);
+		}
+	}
+}
+
+
 /* Add/remove this port from the hardware trunk once fully in sync. TODO(43.4.15) */
 void lacp_mux_update(void) __banked
 {
@@ -305,6 +409,9 @@ void lacp_mux_update(void) __banked
 		lacp_members_last = members;
 		port_lag_members_set(LACP_TRUNK_ID, members);
 	}
+
+	/* Keep bond siblings isolated so forwarded LACPDUs do not loop back. */
+	lacp_isolation_update();
 }
 
 
@@ -396,7 +503,11 @@ void lacp_setup(void) __banked
 	 * can see incoming LACPDUs. The ASIC default for this address is "drop";
 	 * we set "forward" - on this firmware the CPU port is in the forwarding
 	 * domain, so forward reaches the CPU-RX ring (trap does not - confirmed
-	 * on hardware, rx stayed 0 with trap, started counting with forward).
+	 * on hardware: rx stayed 0 with trap-to-CPU even with the RMA trap
+	 * descriptor 0x4f1c programmed like IGMP; it only counted with forward).
+	 * Because forward also floods the frame across the VLAN, sibling bond
+	 * ports would see each other's LACPDUs; lacp_isolation_update() suppresses
+	 * that with per-partner port isolation once LACPDUs start arriving.
 	 */
 	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_FORWARD);
 }
@@ -414,9 +525,14 @@ void lacp_off(void) __banked
 		port_lag_members_set(LACP_TRUNK_ID, 0);
 	}
 	lacp_agg_valid = 0;
+	/* Restore default port isolation (all ports may talk to each other + CPU),
+	 * undoing any sibling-isolation lacp_isolation_update() applied. */
+	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		lacp_actor_state[i] = 0;
 		lacp_ntt[i] = 0;
+		lacp_iso_last[i] = lacp_iso_base;
+		port_isolate(i, lacp_iso_base);
 	}
 }
 
@@ -426,6 +542,9 @@ void lacp_off(void) __banked
  * (see the RMA note in lacp_setup()). */
 void lacp_show(void) __banked
 {
+	/* TEMPORARY bring-up probe: the CPU tag as the ASIC wrote it on the last RX.
+	 * Shows which tag fields the silicon itself populates, so the TX path can
+	 * mirror them (raw = on-wire byte order, no HTONS applied). */
 	print_string("LACP "); print_string(lacpEnabled ? "on" : "off");
 	print_string(", aggregator ");
 	if (lacp_agg_valid) {

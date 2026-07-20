@@ -38,3 +38,22 @@ void print_short(uint16_t v);
 void write_char(char c);
 
 #endif
+
+/* Host-build shim: port masks used by lacp_isolation_update() */
+#ifndef PMASK_CPU
+#define CPU_PORT   9
+#define PMASK_9    0x1ff
+#define PMASK_6    0x1f8
+#define PMASK_CPU  0x200
+#endif
+
+/* Host-build shim: directed-egress/strip-tag bit (bit15 of TX pmask word) */
+#ifndef RTL_TAG_ALLOW
+#define RTL_TAG_ALLOW 0x8000
+#endif
+
+/* Host-build shim: tag flags word bits (tag_rtl8_4) */
+#ifndef RTL_TAG_LEARN_DIS
+#define RTL_TAG_LEARN_DIS 0x0020
+#define RTL_TAG_KEEP      0x0080
+#endif
