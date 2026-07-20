@@ -1,5 +1,12 @@
 var lagInterval = Number();
 
+// Trunk load-balancing hash components (bit values match LAG_HASH_* in
+// rtl837x_regs.h and the "laghash" CLI keywords). Order = display order.
+const HASH_BITS = [
+  ["spa",   0x01], ["smac",  0x02], ["dmac",  0x04],
+  ["sip",   0x08], ["dip",   0x10], ["sport", 0x20], ["dport", 0x40]
+];
+
 function lagForm() {
   if (!numPorts)
     return;
@@ -25,6 +32,17 @@ function lagForm() {
       l.appendChild(inp); l.appendChild(o);
       d.appendChild(l)
       m.appendChild(d);
+    }
+    // Per-LAG hash-component checkboxes (id: h_<lag>_<name>)
+    const h = document.getElementById("hLAG" + j);
+    for (const [name, bit] of HASH_BITS) {
+      const l = document.createElement("label");
+      l.classList.add("hashcb");
+      const inp = document.createElement("input");
+      inp.type = "checkbox"; inp.id = "h_" + j + "_" + name;
+      l.appendChild(inp);
+      l.appendChild(document.createTextNode(name));
+      h.appendChild(l);
     }
   }
   fetchLag();
@@ -56,6 +74,9 @@ function fetchLag() {
             p = physToLogPort[p];
           setL("p_mLAG"+l+"_"+i, members & (1<<p));
         }
+        // reflect the trunk's current load-balancing hash components
+        for (const [name, bit] of HASH_BITS)
+          document.getElementById("h_"+l+"_"+name).checked = !!(hash & bit);
       }
     }
   };
@@ -75,12 +96,15 @@ async function lagSub(l) {
     if (document.getElementById("p_mLAG"+l+"_"+i).checked)
       cmd = cmd + ` ${i}`;
   }
+  // Build the load-balancing hash command from the checked components.
+  let hcmd = "laghash " + l;
+  for (const [name, bit] of HASH_BITS)
+    if (document.getElementById("h_"+l+"_"+name).checked)
+      hcmd = hcmd + " " + name;
   try {
-    const response = await fetch('/cmd', {
-      method: 'POST',
-      body: cmd
-    });
-    console.log('Completed!', response);
+    await fetch('/cmd', { method: 'POST', body: cmd });
+    await fetch('/cmd', { method: 'POST', body: hcmd });
+    console.log('Completed!', cmd, '/', hcmd);
   } catch(err) {
     console.error(`Error: ${err}`);
   }
