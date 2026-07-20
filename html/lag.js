@@ -1,10 +1,16 @@
 var lagInterval = Number();
 
-// Trunk load-balancing hash components (bit values match LAG_HASH_* in
-// rtl837x_regs.h and the "laghash" CLI keywords). Order = display order.
-const HASH_BITS = [
-  ["spa",   0x01], ["smac",  0x02], ["dmac",  0x04],
-  ["sip",   0x08], ["dip",   0x10], ["sport", 0x20], ["dport", 0x40]
+// Trunk load-balancing hash presets. `bits` matches the LAG_HASH_* register
+// value (see rtl837x_regs.h); `kw` are the "laghash" CLI keywords. A hardware
+// value not matching any preset is shown as a read-only "Custom" entry.
+const HASH_PRESETS = [
+  { label: "L2+L3+L4  (MAC + IP + Port)", bits: 0x7e, kw: "smac dmac sip dip sport dport" },
+  { label: "L2  (Src+Dst MAC)",           bits: 0x06, kw: "smac dmac" },
+  { label: "L3  (Src+Dst IP)",            bits: 0x18, kw: "sip dip" },
+  { label: "L4  (Src+Dst TCP/UDP port)",  bits: 0x60, kw: "sport dport" },
+  { label: "L2+L3  (MAC + IP)",           bits: 0x1e, kw: "smac dmac sip dip" },
+  { label: "L3+L4  (IP + Port)",          bits: 0x78, kw: "sip dip sport dport" },
+  { label: "Ingress port number",         bits: 0x01, kw: "spa" },
 ];
 
 function lagForm() {
@@ -33,16 +39,12 @@ function lagForm() {
       d.appendChild(l)
       m.appendChild(d);
     }
-    // Per-LAG hash-component checkboxes (id: h_<lag>_<name>)
-    const h = document.getElementById("hLAG" + j);
-    for (const [name, bit] of HASH_BITS) {
-      const l = document.createElement("label");
-      l.classList.add("hashcb");
-      const inp = document.createElement("input");
-      inp.type = "checkbox"; inp.id = "h_" + j + "_" + name;
-      l.appendChild(inp);
-      l.appendChild(document.createTextNode(name));
-      h.appendChild(l);
+    // Per-LAG hash preset dropdown (id: hsel<lag>)
+    const sel = document.getElementById("hsel" + j);
+    for (let k = 0; k < HASH_PRESETS.length; k++) {
+      const o = document.createElement("option");
+      o.value = k; o.textContent = HASH_PRESETS[k].label;
+      sel.appendChild(o);
     }
   }
   fetchLag();
@@ -74,9 +76,21 @@ function fetchLag() {
             p = physToLogPort[p];
           setL("p_mLAG"+l+"_"+i, members & (1<<p));
         }
-        // reflect the trunk's current load-balancing hash components
-        for (const [name, bit] of HASH_BITS)
-          document.getElementById("h_"+l+"_"+name).checked = !!(hash & bit);
+        // reflect the trunk's current load-balancing hash as a preset
+        const sel = document.getElementById("hsel" + l);
+        let idx = HASH_PRESETS.findIndex(p => p.bits === hash);
+        // drop any stale "Custom" option from a previous refresh
+        const custom = sel.querySelector('option[data-custom]');
+        if (custom) sel.removeChild(custom);
+        if (idx < 0) {                       // hardware value has no named preset
+          const o = document.createElement("option");
+          o.value = "c"; o.textContent = "Custom (0x" + hash.toString(16) + ")";
+          o.setAttribute("data-custom", "1");
+          sel.appendChild(o);
+          o.selected = true;
+        } else {
+          sel.value = idx;
+        }
       }
     }
   };
@@ -85,26 +99,30 @@ function fetchLag() {
 }
 async function lagSub(l) {
   var cmd = "lag " + l;
-  if (document.getElementById("lacp_m" + l).checked)
+  const lacpMode = document.getElementById("mode" + l).value === "lacp";
+  if (lacpMode)
     cmd = cmd + " lacp";
   else if (lacpCfg[l])
-    // LACP unchecked on a LACP-managed LAG: release it from LACP first;
-    // the static member set (possibly empty) is programmed right after.
+    // switched from LACP to Static: release it from LACP first; the static
+    // member set (possibly empty) is programmed right after.
     await fetch('/cmd', { method: 'POST', body: "lag " + l + " lacp off" })
       .catch(err => console.error(`Error: ${err}`));
   for (let i = 1; i <= numPorts; i++) {
     if (document.getElementById("p_mLAG"+l+"_"+i).checked)
       cmd = cmd + ` ${i}`;
   }
-  // Build the load-balancing hash command from the checked components.
-  let hcmd = "laghash " + l;
-  for (const [name, bit] of HASH_BITS)
-    if (document.getElementById("h_"+l+"_"+name).checked)
-      hcmd = hcmd + " " + name;
   try {
     await fetch('/cmd', { method: 'POST', body: cmd });
-    await fetch('/cmd', { method: 'POST', body: hcmd });
-    console.log('Completed!', cmd, '/', hcmd);
+    // Apply the load-balancing hash from the dropdown (skip a "Custom" entry -
+    // it just reflects an out-of-band value and has no keywords to send).
+    const sel = document.getElementById("hsel" + l);
+    if (sel.value !== "c") {
+      const hcmd = "laghash " + l + " " + HASH_PRESETS[Number(sel.value)].kw;
+      await fetch('/cmd', { method: 'POST', body: hcmd });
+      console.log('Completed!', cmd, '/', hcmd);
+    } else {
+      console.log('Completed!', cmd, '(hash unchanged)');
+    }
   } catch(err) {
     console.error(`Error: ${err}`);
   }
@@ -121,7 +139,7 @@ function fetchLacp() {
       for (let l = 0; l < 4; l++) {
         const lg = s.lags[l];
         lacpCfg[l] = parseInt(lg.cfg, 16);
-        document.getElementById("lacp_m" + l).checked = !!lacpCfg[l];
+        document.getElementById("mode" + l).value = lacpCfg[l] ? "lacp" : "static";
         document.getElementById("lagStat" + l).textContent = lacpCfg[l]
           ? ("LACP: aggregator " + (lg.aggValid ? lg.agg : "(negotiating)")
              + " — active members: 0x" + lg.members)
