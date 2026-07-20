@@ -13,6 +13,24 @@ const HASH_PRESETS = [
   { label: "Ingress port number",         bits: 0x01, kw: "spa" },
 ];
 
+// Per-LAG "user is editing" flag. While set, the periodic refresh must NOT
+// overwrite this LAG's controls (mode dropdown, port checkboxes, hash, status)
+// - otherwise a mode change or port selection is silently reverted within 2 s.
+// Cleared by Update (lagSub), after which the refresh shows the switch truth.
+var lagDirty = [false, false, false, false];
+
+// The LAG section reacts to the mode dropdown IMMEDIATELY (not only after
+// Update): in Static mode nothing LACP-related is shown for this LAG, in LACP
+// mode the status line explains what will happen on Update.
+function modeChanged(l) {
+  lagDirty[l] = true;
+  const stat = document.getElementById("lagStat" + l);
+  if (document.getElementById("mode" + l).value === "lacp")
+    stat.textContent = "LACP: select candidate ports and press Update to start negotiation";
+  else
+    stat.textContent = "";
+}
+
 function lagForm() {
   if (!numPorts)
     return;
@@ -29,6 +47,7 @@ function lagForm() {
       const inp = document.createElement("input");
       inp.type = "checkbox"; inp.setAttribute("class","psel");
       inp.id = "p_" + lag + "_" + i;
+      inp.addEventListener("change", () => { lagDirty[j] = true; });
       const o = document.createElement("img");
       if (pIsSFP[i - 1]) {
         o.src = "sfp.svg"; o.width ="60"; o.height ="60";
@@ -46,6 +65,9 @@ function lagForm() {
       o.value = k; o.textContent = HASH_PRESETS[k].label;
       sel.appendChild(o);
     }
+    sel.addEventListener("change", () => { lagDirty[j] = true; });
+    document.getElementById("mode" + j)
+      .addEventListener("change", () => modeChanged(j));
   }
   fetchLag();
 }
@@ -67,6 +89,8 @@ function fetchLag() {
       const s = JSON.parse(xhttp.responseText);
       console.log("LAG: ", JSON.stringify(s));
       for (let l = 0; l < 4; l++) {
+        if (lagDirty[l])          // user is editing this LAG - do not revert
+          continue;
         // LACP-managed LAG: checkboxes reflect lacpCfg (set by fetchLacp)
         let members = lacpCfg[l] ? lacpCfg[l] : parseInt(s[l].members, 2);
         let hash = parseInt(s[l].hash, 16);
@@ -126,6 +150,8 @@ async function lagSub(l) {
   } catch(err) {
     console.error(`Error: ${err}`);
   }
+  // Editing is done - let the periodic refresh show the switch's truth again.
+  lagDirty[l] = false;
   fetchLacp();
 }
 
@@ -139,6 +165,8 @@ function fetchLacp() {
       for (let l = 0; l < 4; l++) {
         const lg = s.lags[l];
         lacpCfg[l] = parseInt(lg.cfg, 16);
+        if (lagDirty[l])          // user is editing this LAG - do not revert
+          continue;
         document.getElementById("mode" + l).value = lacpCfg[l] ? "lacp" : "static";
         document.getElementById("lagStat" + l).textContent = lacpCfg[l]
           ? ("LACP: aggregator " + (lg.aggValid ? lg.agg : "(negotiating)")
