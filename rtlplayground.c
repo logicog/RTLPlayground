@@ -2333,6 +2333,7 @@ void main(void)
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	lacpEnabled = 0;
+	lacp_init();		/* clear per-LAG state (port->LAG map = NONE) before any config replay */
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();
