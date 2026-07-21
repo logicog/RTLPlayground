@@ -20,6 +20,9 @@
 #pragma constseg BANK1
 
 extern volatile __xdata uint8_t sfr_data[4];
+extern volatile __xdata uint32_t ticks;
+/* 200 Hz free-running tick, owned by rtlplayground.c */
+volatile __xdata uint8_t mgmt_alive;	/* consumed by the STP management failsafe */
 extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
@@ -547,6 +550,8 @@ void httpd_appcall(void)
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
 	dbg_char('P');
+	if (uip_newdata())
+		mgmt_alive = 1;	/* any HTTP activity proves management still works (STP failsafe) */
 #ifdef DEBUG
 	if (uip_newdata())
 		write_char('N');

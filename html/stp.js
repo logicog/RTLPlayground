@@ -83,7 +83,9 @@ function fetchStp() {
       // (remote-controlled), never render it as HTML
       if (!stpRows)
         buildPortsTable(s.ports);
-      document.getElementById("stpStat").textContent = s.on
+      document.getElementById("stpStat").textContent = s.fsT
+        ? "\u26a0 STP was disabled by the management failsafe (ports were blocked while management was unreachable). Review the topology before re-enabling."
+        : s.on
         ? (s.weRoot
             ? "This switch is the root bridge (priority 0x" + s.rootPrio + ") — topology changes: " + parseInt(s.tc, 16)
             : "Root bridge: 0x" + s.rootPrio + " / " + s.rootMac
@@ -107,6 +109,7 @@ function fetchStp() {
       document.getElementById("bMaxage").value = s.maxage;
       document.getElementById("bFwd").value = s.fwd;
       document.getElementById("bTxhold").value = s.txhold;
+      document.getElementById("bFailsafe").value = s.fs;
       for (const p of s.ports) {
         document.getElementById("en_" + p.p).value = (p.f & PF_ENABLED) ? "on" : "off";
         document.getElementById("edge_" + p.p).value =
@@ -147,6 +150,8 @@ window.addEventListener("load", function() {
     .addEventListener("change", e => stpCmd("stp fwd " + e.target.value));
   document.getElementById("bTxhold")
     .addEventListener("change", e => stpCmd("stp txhold " + e.target.value));
+  document.getElementById("bFailsafe")
+    .addEventListener("change", e => stpCmd("stp failsafe " + e.target.value));
   document.getElementById("stpMode")
     .addEventListener("change", () => { stpDirty = true; });
 

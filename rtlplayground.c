@@ -621,7 +621,11 @@ void nic_rx_header(uint16_t ring_ptr)
 	SFR_NIC_DATA_U16LE = buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
 	SFR_NIC_CTRL = 1;
-	do { } while (SFR_NIC_CTRL != 0);
+	/* Bounded, cf. nic_tx_packet: a stuck NIC DMA must not freeze the loop */
+	{
+	uint16_t rx_guard = 0;
+	do { } while (SFR_NIC_CTRL != 0 && ++rx_guard != 0);
+	}
 }
 
 
@@ -644,7 +648,11 @@ void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 	print_short(len);
 #endif
 	SFR_NIC_CTRL = len;
-	do { } while (SFR_NIC_CTRL != 0);
+	/* Bounded, cf. nic_tx_packet: a stuck NIC DMA must not freeze the loop */
+	{
+	uint16_t rx_guard = 0;
+	do { } while (SFR_NIC_CTRL != 0 && ++rx_guard != 0);
+	}
 }
 
 
@@ -688,7 +696,16 @@ void nic_tx_packet(uint16_t ring_ptr)
 	len += 0xf;
 	len >>= 3;
 	SFR_NIC_CTRL = len;
-	do { } while (SFR_NIC_CTRL != 0);
+	/* Bounded wait: normally the NIC consumes the frame in microseconds, but
+	 * when the egress port is held in an MSTP non-forwarding state the ASIC
+	 * has been observed to never complete the TX - an unbounded spin here
+	 * then freezes the entire main loop (no STP/LACP timers, no HTTP, no
+	 * ARP) until a power cycle. Give up after ~65k polls and drop the frame:
+	 * losing one packet is recoverable, a frozen switch is not. */
+	{
+	uint16_t tx_guard = 0;
+	do { } while (SFR_NIC_CTRL != 0 && ++tx_guard != 0);
+	}
 }
 
 
