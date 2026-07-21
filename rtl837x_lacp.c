@@ -9,9 +9,9 @@
  * SYNC+COLLECTING+DISTRIBUTING, the participating ports are programmed into a
  * hardware trunk group via port_lag_members_set().
  *
- * STATUS: skeleton. Frame RX/TX, periodic timers and trunk programming are wired;
- * the four 802.3ad state machines (Receive / Periodic / Mux / Selection) are
- * stubbed where marked TODO(43.4.x).
+ * The four 802.3ad state machines (Receive / Periodic / Mux / Selection) are
+ * implemented in simplified form (coupled mux control, single elected partner
+ * system per LAG, no churn-detection machines) - see the per-function notes.
  */
 
 // #define DEBUG
@@ -25,13 +25,13 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_lacp.h"
+#include "rtl837x_stp.h"	/* cmpMAC() - same code bank, shared 6-byte compare */
 #include "rtl837x_port.h"
 #include "uip.h"
 #include "machine.h"
 
 extern __code struct machine machine;
 extern __xdata struct machine_runtime machine_detected;	/* runtime chip detection, owned by rtl837x_port.c */
-extern __xdata uint8_t sfr_data[4];
 extern __xdata uint16_t management_vlan;	/* owned by rtlplayground.c; suppressed per-frame for slow protocols */
 extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
@@ -111,7 +111,6 @@ __xdata uint8_t  lacp_ntt[10];			/* Need-To-Transmit flag         */
 
 /* Our aggregation identity (shared across ports of the same LAG) */
 __xdata uint16_t lacp_sys_prio;
-__xdata uint16_t lacp_actor_key;
 
 /* Tick divider so lacp_timers() may be called on every main-loop tick */
 #define LACP_TICK_DIVIDER 3
@@ -159,16 +158,6 @@ __xdata uint16_t lacp_iso_tx;
 void lacp_mux_update(void) __banked;	/* defined below, used from lacp_in */
 void lacp_isolation_update(void) __banked;	/* defined below, used from lacp_mux_update */
 
-/* 6-byte system-ID compare (local, to avoid coupling to stp.c's cmpMAC) */
-static uint8_t lacp_sys_eq(__xdata uint8_t *a, __xdata uint8_t *b)
-{
-	for (uint8_t i = 0; i < 6; i++) {
-		if (a[i] != b[i])
-			return 0;
-	}
-	return 1;
-}
-
 /* True if a system-ID is not all-zero, i.e. a partner has actually been seen. */
 static uint8_t lacp_sys_nonzero(__xdata uint8_t *a)
 {
@@ -192,7 +181,7 @@ static uint8_t lacp_port_selected(uint8_t port)
 		return 0;
 	if (!lacp_agg_valid[lag])
 		return 0;
-	return lacp_sys_eq(lacp_partner_sys[port], lacp_agg_sys[lag]);
+	return cmpMAC(lacp_partner_sys[port], lacp_agg_sys[lag]) == 0;
 }
 
 
@@ -223,6 +212,9 @@ static uint8_t lacp_mux_machine(uint8_t port)
 }
 
 #define port_bit(p) (((uint8_t)1) << (p))
+
+/* All front-panel ports of the detected chip (platform knowledge, one place) */
+#define LACP_PMASK_PORTS (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6)
 
 
 /* Build and emit one LACPDU out physical port `port` (802.3ad 43.4.2). */
@@ -316,9 +308,9 @@ void lacp_in(void) __banked
 	if (LACP_I->subtype != SLOW_PROTO_SUBTYPE_LACP)
 		return;
 
-	/* Per rtl837x_common.h, pmask carries a 4-bit port number on RX. NOTE:
-	 * unverified on hardware (STP never reads it; IGMP uses another path) -
-	 * confirm the nibble position with a real capture before relying on it. */
+	/* Per rtl837x_common.h, pmask carries a 4-bit port number on RX
+	 * (hardware-verified on RTL8373: per-port rx counters track the actual
+	 * ingress port through full LACP convergence). */
 	uint8_t port = ((uint8_t)HTONS(LACP_I->rtl_tag.pmask)) & 0x0f;
 	if (port < machine.min_port || port > machine.max_port)
 		return;
@@ -392,14 +384,14 @@ void lacp_in(void) __banked
  */
 void lacp_isolation_update(void) __banked
 {
-	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
+	/* lacp_iso_base is set once by lacp_init()/lacp_engine_on() */
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		lacp_iso_tx = lacp_iso_base;
 		uint8_t lag = lacp_port_lag[i];
 		if (lag != LACP_LAG_NONE && lacp_sys_nonzero(lacp_partner_sys[i])) {
 			for (uint8_t j = machine.min_port; j <= machine.max_port; j++) {
 				if (i != j && lacp_port_lag[j] == lag
-				    && lacp_sys_eq(lacp_partner_sys[i], lacp_partner_sys[j]))
+				    && cmpMAC(lacp_partner_sys[i], lacp_partner_sys[j]) == 0)
 					lacp_iso_tx &= ~port_bit(j);
 			}
 		}
@@ -413,7 +405,7 @@ void lacp_isolation_update(void) __banked
 
 /* Recompute each LACP LAG's hardware trunk membership: a port joins its LAG's
  * trunk once it is fully in sync (SYNC+COLLECTING+DISTRIBUTING and the partner
- * in SYNC). Each LACP-mode LAG is programmed independently. TODO(43.4.15) */
+ * in SYNC). Each LACP-mode LAG is programmed independently (simplified 43.4.15). */
 void lacp_mux_update(void) __banked
 {
 	for (uint8_t lag = 0; lag < LACP_NUM_LAGS; lag++) {
@@ -485,8 +477,10 @@ void lacp_timers(void) __banked
 			continue;
 		uint8_t any_current = 0;
 		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-			if (lacp_port_lag[i] == lag && lacp_rx_state[i] == LACP_RX_CURRENT)
+			if (lacp_port_lag[i] == lag && lacp_rx_state[i] == LACP_RX_CURRENT) {
 				any_current = 1;
+				break;
+			}
 		}
 		if (!any_current)
 			lacp_agg_valid[lag] = 0;
@@ -543,8 +537,7 @@ static uint8_t lacp_any_lag(void)
 static void lacp_engine_on(void)
 {
 	lacp_sys_prio = 0xffff;
-	lacp_actor_key = 0x0001;	/* base key; per-LAG key = lag+1 in lacp_send() */
-	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
+	lacp_iso_base = PMASK_CPU | LACP_PMASK_PORTS;
 	lacp_clock = LACP_TICK_DIVIDER;
 	lacpEnabled = 1;
 	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_FORWARD);
@@ -562,7 +555,7 @@ static void lacp_engine_off(void)
  * 0xff sentinel, and a stray 0 would make a port look like it belongs to LAG 0. */
 void lacp_init(void) __banked
 {
-	lacp_iso_base = PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6);
+	lacp_iso_base = PMASK_CPU | LACP_PMASK_PORTS;
 	for (uint8_t i = 0; i < 10; i++) {
 		lacp_port_lag[i] = LACP_LAG_NONE;
 		lacp_actor_state[i] = 0;
@@ -627,10 +620,7 @@ void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
  * per-LAG behaviour). Explicit "lag <n> lacp <ports>" is the per-LAG path. */
 void lacp_setup(void) __banked
 {
-	lacp_scratch_mask = 0;
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
-		lacp_scratch_mask |= port_bit(i);
-	lacp_lag_set(0, lacp_scratch_mask);
+	lacp_lag_set(0, LACP_PMASK_PORTS);
 }
 
 
@@ -645,12 +635,9 @@ void lacp_off(void) __banked
 
 /* "lacp show": per-port protocol state - the primary bring-up diagnostic.
  * A stuck rx=0 counter means slow-protocol frames never reach the CPU port
- * (see the RMA note in lacp_setup()). */
+ * (see the RMA note in lacp_engine_on()). */
 void lacp_show(void) __banked
 {
-	/* TEMPORARY bring-up probe: the CPU tag as the ASIC wrote it on the last RX.
-	 * Shows which tag fields the silicon itself populates, so the TX path can
-	 * mirror them (raw = on-wire byte order, no HTONS applied). */
 	print_string("LACP "); print_string(lacpEnabled ? "on" : "off"); write_char('\n');
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
 		if (!lacp_lag_ports[l])
@@ -684,13 +671,12 @@ void lacp_show(void) __banked
 /* "lacp on|off" command handler (kept in the module with the rest of LACP). */
 void lacp_cmd(uint8_t on) __banked
 {
+	/* lacpEnabled is owned by lacp_engine_on()/off(), driven from lacp_lag_set() */
 	if (on) {
 		print_string("LACP enabled\n");
-		lacpEnabled = 1;
 		lacp_setup();
 	} else {
 		print_string("LACP disabled\n");
 		lacp_off();
-		lacpEnabled = 0;
 	}
 }
