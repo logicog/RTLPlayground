@@ -198,6 +198,22 @@ void stp_timers(void) __banked
 			print_byte(i); write_char('\n');
 			stp_cnf_send(i);
 		}
+		/* Promote a port out of the initial blocking state once its listen
+		 * period expires. stp_setup() puts every port into blocking with
+		 * port_timers = 10 s, but nothing ever counted that down - so on a
+		 * network with no other RSTP bridge (nobody sends us BPDUs) every
+		 * port stayed blocking FOREVER and "stp on" killed the whole
+		 * network. If no better root was heard during the listen period we
+		 * are the designated bridge on that port: go to forwarding. */
+		if (port_timers[i]) {
+			if (!--port_timers[i]) {
+				reg_read_m(RTL837X_MSTP_STATES);
+				sfr_data[3 - (i >> 2)] |= (uint8_t)(0b11 << ((i << 1) & 0x7));
+				reg_write_m(RTL837X_MSTP_STATES);
+				print_string("STP: port forwarding ");
+				print_byte(i); write_char('\n');
+			}
+		}
 	}
 }
 
@@ -212,7 +228,7 @@ void stp_setup(void) __banked
 		uint8_t bit_mask = 0b01 << ( (i << 1) & 0x7);
 		sfr_data[3 - (i >> 2)] |= bit_mask;
 		port_hello[i] = TIME_HELLO;
-		port_timers[i] = 0xa00;	// 10 sec in blocking state
+		port_timers[i] = 0x280;	// 10 s listen period (stp_timers runs at ~64 Hz: main loop ~256 Hz / (STP_TICK_DIVIDER+1))
 	}
 	sfr_data[1] |= 0x0f; // Do not block CPU-Port
 	reg_write_m(RTL837X_MSTP_STATES); // R5310-000d555f 
