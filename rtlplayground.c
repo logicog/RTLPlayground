@@ -2141,6 +2141,7 @@ void main(void)
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
 	stpEnabled = 0;
+	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();

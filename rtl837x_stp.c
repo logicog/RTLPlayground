@@ -1,6 +1,17 @@
 /*
  * This is a driver implementation for the Spanning Tree Protocol features for the RTL837x platform
  * This code is in the Public Domain
+ *
+ * Configurable per 802.1D-2004/802.1w: bridge priority, hello time, max age,
+ * forward delay, force-version (RSTP/STP), tx hold count; per port: enable,
+ * admin/auto edge, path cost, port priority, BPDU guard, root guard, BPDU
+ * filter. CLI: "stp ..." (see stp_parse), status: /stp.json (send_stp).
+ *
+ * The engine itself stays deliberately simple (no proposal/agreement
+ * handshake, no full port-role machine): we elect a root from received BPDUs,
+ * promote ports to forwarding after the listen period (or immediately for
+ * edge ports), age the root out via max age, and block ports on which we see
+ * our own BPDU (loop!) or - with root guard - a better root.
  */
 
 // #define REGDBG
@@ -34,14 +45,48 @@ extern __xdata struct uip_eth_addr uip_ethaddr;
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 
-/* struct bridge now lives in rtl837x_stp.h (shared with the web UI). */
+/* CLI tokenizer state + helpers (owned by cmd_parser.c, HOME bank) */
+extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
+extern __xdata uint8_t cmd_words_len;
+extern __xdata uint8_t cmd_words_b[15];
+uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd);
+uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx);
+
+/* ---- Configuration ---- */
+__xdata uint8_t  stp_prio;	/* bridge priority high byte (0x80 = 32768) */
+__xdata uint8_t  stp_hello_s;
+__xdata uint8_t  stp_maxage_s;
+__xdata uint8_t  stp_fwddelay_s;
+__xdata uint8_t  stp_rstp;
+__xdata uint8_t  stp_txhold;
+
+__xdata uint8_t  stp_pflags[10];
+__xdata uint32_t stp_pcost[10];
+__xdata uint8_t  stp_pprio[10];
+
+/* ---- Status / runtime ---- */
 __xdata struct bridge root_bridge;
-__xdata uint32_t root_bridge_cost;
+__xdata uint32_t root_bridge_cost;	/* our cost to the root (rx cost + root port cost) */
+__xdata uint8_t  stp_root_port;		/* 0xff = we are the root */
+__xdata uint16_t stp_tc_count;
 
-__xdata uint8_t port_types[10];
-__xdata uint16_t port_timers[10];
-__xdata uint16_t port_hello[10];
+__xdata uint16_t port_timers[10];	/* listen-period countdown (0 = not listening) */
+__xdata uint16_t port_hello[10];	/* hello TX countdown */
+__xdata uint16_t stp_bpdu_age[10];	/* ticks since last BPDU seen on port (saturating) */
+__xdata uint8_t  stp_tx_budget[10];	/* tx hold: BPDUs left in the current second */
+__xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 
+/* Scratch (8051: locals would overflow the internal-RAM overlay area) */
+__xdata uint8_t  stp_scratch;
+__xdata uint8_t  stp_i;		/* shared loop iterator (DSEG relief) */
+__xdata uint32_t stp_cost_scratch;
+
+/* stp_timers() runs at ~64 Hz (main loop ~256 Hz / (STP_TICK_DIVIDER+1)) */
+#define STP_HZ		64
+#define STP_EDGE_DELAY	(3 * STP_HZ)	/* auto-edge: forward after 3 s without BPDU */
+
+#define AUTO_COST	20000UL		/* path cost used when stp_pcost == 0 (1G default) */
+#define PCOST(i)	(stp_pcost[i] ? stp_pcost[i] : AUTO_COST)
 
 struct stp_pkt {
 	uint8_t stp_addr[6];
@@ -93,11 +138,7 @@ struct stp_pkt_in {
 #define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 #define STP_I ((__xdata struct stp_pkt_in *)&uip_buf[0])
 
-#define FLAG_PROPOSAL 0x02
-#define P_DESIGNATED ((STP_I->flags & 0x0c) == 0x0c)
-#define P_PROPOSAL (STP_I->flags & FLAG_PROPOSAL)
-
-signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2)
+signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2) __reentrant
 {
 	for (uint8_t i = 0; i < 6; i++) {
 		if (m1[i] == m2[i])
@@ -110,50 +151,37 @@ signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2)
 }
 
 
-void stp_in(void) __banked
+/* Write one port's 2-bit state into the ASIC's MSTP register.
+ * 00 disable, 01 blocking, 10 learning, 11 forwarding. */
+static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 {
-	// By default we do not send anything out
-	uip_len = 0;
-	// MSTPSTP_I_STATES 0x5310
-	// reg_read_m(RTL837X_MSTP_STATES);
-
-	print_string("Check BPDU... \n");
-	for (uint8_t i = 0; i < 80; i++) {
-		print_byte(uip_buf[i]);
-		write_char(' ');
-	}
-	write_char('\n');
-	print_byte(STP_I->dsap);
-	print_byte(STP_I->ssap);
-	print_byte(STP_I->ctrl);
-	
-	write_char('\n');
-	// Make sure this is the type of RSTP packet we are interested in:
-	if (!(STP_I->dsap == 0x42 && STP_I->ssap == 0x42 && STP_I->ctrl == 0x03))
-		return;
-	print_string("Checking RSTP\n");
-	if (STP_I->proto)
-		return;
-//	write_char('A'); print_byte(STP_I->version); write_char('\n');
-	if (STP_I->version != 2)
-		return;
-//	write_char('B'); print_byte(STP_I->bpdu_type); write_char('\n');
-	if (STP_I->bpdu_type != 2)
-		return;
-//	write_char('\n');
-//	print_string("Flags: "); print_byte(STP_I->flags); write_char('\n');
-	print_string("Check new Root\n");
-	if (STP_I->root.prio < root_bridge.prio
-		|| ((STP_I->root.prio == root_bridge.prio) && cmpMAC(STP_I->root.mac, root_bridge.mac) < 0)) {
-		print_string("Updating Root bridge\n");
-			root_bridge.prio = STP_I->root.prio;
-			memcpy(root_bridge.mac, STP_I->root.mac, 6);
-	}
+	reg_read_m(RTL837X_MSTP_STATES);
+	stp_scratch = 3 - (port >> 2);
+	sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((port << 1) & 0x7));
+	sfr_data[stp_scratch] |= (uint8_t)(state << ((port << 1) & 0x7));
+	reg_write_m(RTL837X_MSTP_STATES);
 }
 
 
-void stp_cnf_send(uint8_t port)
+/* Take the bridge back as root of its own tree (initial state / root aged out) */
+static void stp_claim_root(void)
 {
+	root_bridge.prio = stp_prio;
+	root_bridge.ext = 0x00;
+	memcpy(root_bridge.mac, uip_ethaddr.addr, 6);
+	root_bridge_cost = 0;
+	stp_root_port = 0xff;
+}
+
+
+void stp_cnf_send(uint8_t port) __reentrant
+{
+	if (!(stp_pflags[port] & STP_PF_ENABLED) || (stp_pflags[port] & (STP_PF_FILTER | STP_PF_TRIPPED)))
+		return;
+	if (!stp_tx_budget[port])	/* tx hold count exhausted for this second */
+		return;
+	stp_tx_budget[port]--;
+
 	STP_O->stp_addr[0] = 0x01; STP_O->stp_addr[1] = 0x80; STP_O->stp_addr[2] = 0xc2;
 	STP_O->stp_addr[3] = STP_O->stp_addr[4] = STP_O->stp_addr[5] = 0x00;
 
@@ -168,61 +196,211 @@ void stp_cnf_send(uint8_t port)
 	STP_O->ssap = 0x42;
 	STP_O->ctrl = 0x03;
 	STP_O->proto = 0x0000;
-	STP_O->version = 0x02;		// RSTP
-	STP_O->bpdu_type = 0x00;	// Config
-	STP_O->flags = 0x81;
+	if (stp_rstp) {
+		STP_O->version = 0x02;		/* RSTP */
+		STP_O->bpdu_type = 0x02;	/* Rapid Spanning Tree BPDU */
+		/* flags: role designated (0b11 << 2) + learning + forwarding */
+		STP_O->flags = 0x3c;
+	} else {
+		STP_O->version = 0x00;		/* legacy STP */
+		STP_O->bpdu_type = 0x00;	/* Config BPDU */
+		STP_O->flags = 0x00;
+	}
 
 	memcpy(STP_O->src_addr, uip_ethaddr.addr, 6);
 	memcpy(STP_O->root.mac, root_bridge.mac, 6);
 	memcpy(STP_O->bridge.mac, uip_ethaddr.addr, 6);
 
 	STP_O->root.prio = root_bridge.prio;
-	STP_O->root.ext = 0x00;
-	STP_O->root_path_cost = 0x00000000;
+	STP_O->root.ext = root_bridge.ext;
+	/* Our root path cost, big-endian (0 while we are the root ourselves) */
+	STP_O->root_path_cost = ((root_bridge_cost & 0xff) << 24)
+	                      | ((root_bridge_cost & 0xff00) << 8)
+	                      | ((root_bridge_cost >> 8) & 0xff00)
+	                      | (root_bridge_cost >> 24);
 
-	STP_O->bridge.prio = 0x80;
+	STP_O->bridge.prio = stp_prio;
 	STP_O->bridge.ext = 0x00;
 
-	STP_O->port_prio = 0x80;
-	STP_O->port_id = port;
+	STP_O->port_prio = stp_pprio[port];
+	STP_O->port_id = port + 1;
 	STP_O->age = 0x00;  // FIXME: This only works because we do not use HTONS and the values are in 1/256 seconds
-	STP_O->age_max = 20;
-	STP_O->hello = 2;
-	STP_O->fwd_delay = 0x0f;
+	STP_O->age_max = stp_maxage_s;
+	STP_O->hello = stp_hello_s;
+	STP_O->fwd_delay = stp_fwddelay_s;
 
-//	uip_len = 0x27 + sizeof(struct rtl_tag);
 	uip_len = sizeof(struct stp_pkt);
 	tcpip_output();
 }
 
 
+void stp_in(void) __banked
+{
+	// By default we do not send anything out
+	uip_len = 0;
+
+	/* Ingress port: low nibble of the CPU tag's pmask on RX */
+	stp_scratch = ((uint8_t)HTONS(STP_I->rtl_tag.pmask)) & 0x0f;
+	if (stp_scratch < machine.min_port || stp_scratch > machine.max_port)
+		return;
+	{
+	__xdata static uint8_t port_l;	/* NOT stp_scratch: stp_state_set() clobbers it */
+	uint8_t port = (port_l = stp_scratch);
+	(void)port_l;
+
+	// Make sure this is the type of (R)STP packet we are interested in:
+	if (!(STP_I->dsap == 0x42 && STP_I->ssap == 0x42 && STP_I->ctrl == 0x03))
+		return;
+	if (STP_I->proto)
+		return;
+	/* Accept RSTP BPDUs (v2 type 2) and legacy Config BPDUs (v0 type 0) */
+	if (!((STP_I->version == 2 && STP_I->bpdu_type == 2)
+	      || (STP_I->version == 0 && STP_I->bpdu_type == 0)))
+		return;
+
+	if (!(stp_pflags[port] & STP_PF_ENABLED) || (stp_pflags[port] & STP_PF_FILTER))
+		return;
+
+	/* BPDU guard: an edge-facing port must never see a BPDU - shut it down. */
+	if (stp_pflags[port] & STP_PF_BPDUGUARD) {
+		print_string("STP: BPDU guard tripped, disabling port ");
+		print_byte(port); write_char('\n');
+		stp_pflags[port] |= STP_PF_TRIPPED;
+		stp_state_set(port, 0b00);
+		stp_tc_count++;
+		return;
+	}
+
+	stp_bpdu_age[port] = 0;
+
+	/* Our own BPDU coming back at us = a loop in the network. Block the port
+	 * for a listen period; if the loop persists the BPDUs keep arriving and
+	 * the port stays blocked. */
+	if (cmpMAC(STP_I->bridge.mac, uip_ethaddr.addr) == 0) {
+		if (port_timers[port] == 0 && !(stp_pflags[port] & STP_PF_TRIPPED)) {
+			print_string("STP: loop detected on port ");
+			print_byte(port); write_char('\n');
+			stp_state_set(port, 0b01);
+			port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
+			stp_pflags[port] &= ~STP_PF_OPEREDGE;
+			stp_tc_count++;
+		}
+		return;
+	}
+
+	/* Better root than the one we know? */
+	if (STP_I->root.prio < root_bridge.prio
+		|| ((STP_I->root.prio == root_bridge.prio) && cmpMAC(STP_I->root.mac, root_bridge.mac) < 0)) {
+		/* Root guard: this port must never become our path to the root. */
+		if (stp_pflags[port] & STP_PF_ROOTGUARD) {
+			print_string("STP: root guard blocking port ");
+			print_byte(port); write_char('\n');
+			stp_state_set(port, 0b01);
+			port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
+			stp_pflags[port] &= ~STP_PF_OPEREDGE;
+			return;
+		}
+		print_string("Updating Root bridge\n");
+		root_bridge.prio = STP_I->root.prio;
+		root_bridge.ext = STP_I->root.ext;
+		memcpy(root_bridge.mac, STP_I->root.mac, 6);
+		stp_root_port = port;
+		stp_tc_count++;
+	}
+
+	/* Refresh our cost to the root when the update comes in on the root port */
+	if (port == stp_root_port) {
+		stp_cost_scratch = STP_I->root_path_cost;
+		/* big-endian on the wire */
+		root_bridge_cost = ((stp_cost_scratch & 0xff) << 24)
+		                 | ((stp_cost_scratch & 0xff00) << 8)
+		                 | ((stp_cost_scratch >> 8) & 0xff00)
+		                 | (stp_cost_scratch >> 24);
+		root_bridge_cost += PCOST(port);
+	}
+	}
+}
+
+
 void stp_timers(void) __banked
 {
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		port_hello[i]--;
-		if (!port_hello[i]) {
-			port_hello[i] = TIME_HELLO;
-			print_string("STP_HELLO port ");
-			print_byte(i); write_char('\n');
-			stp_cnf_send(i);
+	/* Refill the per-port tx budgets once per second (tx hold count) */
+	if (++stp_sec_tick >= STP_HZ) {
+		stp_sec_tick = 0;
+		for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+			stp_tx_budget[stp_i] = stp_txhold;
+	}
+
+	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+		if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
+			continue;
+
+		if (stp_bpdu_age[stp_i] < 0xffff)
+			stp_bpdu_age[stp_i]++;
+
+		/* Periodic hello */
+		if (port_hello[stp_i])
+			port_hello[stp_i]--;
+		if (!port_hello[stp_i]) {
+			port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
+			stp_cnf_send(stp_i);
 		}
-		/* Promote a port out of the initial blocking state once its listen
-		 * period expires. stp_setup() puts every port into blocking with
-		 * port_timers = 10 s, but nothing ever counted that down - so on a
-		 * network with no other RSTP bridge (nobody sends us BPDUs) every
-		 * port stayed blocking FOREVER and "stp on" killed the whole
-		 * network. If no better root was heard during the listen period we
-		 * are the designated bridge on that port: go to forwarding. */
-		if (port_timers[i]) {
-			if (!--port_timers[i]) {
-				reg_read_m(RTL837X_MSTP_STATES);
-				sfr_data[3 - (i >> 2)] |= (uint8_t)(0b11 << ((i << 1) & 0x7));
-				reg_write_m(RTL837X_MSTP_STATES);
+
+		/* Promote a port out of blocking once its listen period expires
+		 * with no reason to stay blocked (no better root heard: we are
+		 * the designated bridge on that port). */
+		if (port_timers[stp_i]) {
+			if (!--port_timers[stp_i]) {
+				stp_state_set(stp_i, 0b11);
 				print_string("STP: port forwarding ");
-				print_byte(i); write_char('\n');
+				print_byte(stp_i); write_char('\n');
+				stp_tc_count++;
+			} else if ((stp_pflags[stp_i] & STP_PF_AUTOEDGE)
+			           && stp_bpdu_age[stp_i] > STP_EDGE_DELAY) {
+				/* Auto edge: nothing talks (R)STP on this port - it is
+				 * host-facing, go to forwarding without the full wait. */
+				port_timers[stp_i] = 0;
+				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
+				stp_state_set(stp_i, 0b11);
+				print_string("STP: edge port forwarding ");
+				print_byte(stp_i); write_char('\n');
 			}
 		}
 	}
+
+	/* Age out a root that went silent: reclaim the tree. */
+	if (stp_root_port != 0xff
+	    && stp_bpdu_age[stp_root_port] > (uint16_t)stp_maxage_s * STP_HZ) {
+		print_string("STP: root aged out, claiming root\n");
+		stp_claim_root();
+		stp_tc_count++;
+	}
+}
+
+
+/* Reset all configuration to the 802.1D/802.1w defaults. Called once at boot
+ * (before the startup config replays "stp ..." commands over it). */
+void stp_defaults(void) __banked
+{
+	stp_prio = 0x80;	/* 32768 */
+	stp_hello_s = 2;
+	stp_maxage_s = 20;
+	stp_fwddelay_s = 15;
+	stp_rstp = 1;
+	stp_txhold = 6;
+	for (stp_i = 0; stp_i < 10; stp_i++) {
+		/* enabled, auto-edge on: host-facing ports go forwarding after
+		 * 3 s of BPDU silence instead of the full forward delay */
+		stp_pflags[stp_i] = STP_PF_ENABLED | STP_PF_AUTOEDGE;
+		stp_pcost[stp_i] = 0;	/* auto */
+		stp_pprio[stp_i] = 0x80;
+		stp_bpdu_age[stp_i] = 0;
+		port_timers[stp_i] = 0;
+		port_hello[stp_i] = 0;
+		stp_tx_budget[stp_i] = 6;
+	}
+	stp_tc_count = 0;
+	stp_claim_root();
 }
 
 
@@ -263,22 +441,29 @@ void stp_setup(void) __banked
 {
 	print_string("Enabling STP: ");
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		// Set STP port state to blocking
-		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
-		uint8_t bit_mask = 0b01 << ( (i << 1) & 0x7);
-		sfr_data[3 - (i >> 2)] |= bit_mask;
-		port_hello[i] = TIME_HELLO;
-		port_timers[i] = 0x280;	// 10 s in blocking state (at the ~64 Hz stp_timers rate)
+	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
+		stp_bpdu_age[stp_i] = 0;
+		stp_tx_budget[stp_i] = stp_txhold;
+		if (!(stp_pflags[stp_i] & STP_PF_ENABLED) || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
+			/* not participating, or admin edge: forwarding immediately */
+			if (stp_pflags[stp_i] & STP_PF_ADMEDGE)
+				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
+			sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
+			port_timers[stp_i] = 0;
+		} else {
+			/* listen first: blocking until the forward-delay expires */
+			sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b01 << ((stp_i << 1) & 0x7));
+			port_timers[stp_i] = (uint16_t)stp_fwddelay_s * STP_HZ;
+		}
+		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
 	}
 	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
 	reg_write_m(RTL837X_MSTP_STATES);
 
 	print_reg(RTL837X_MSTP_STATES); write_char('\n');
 
-	root_bridge.prio = 0x80; // This corresponds to 32768
-	root_bridge.ext	= 0x00;
-	memcpy(root_bridge.mac, uip_ethaddr.addr, 6);
+	stp_claim_root();
 
 	/* Take BPDUs to the CPU only - we are a participating bridge now. */
 	stp_fdb_update(PMASK_CPU);
@@ -288,15 +473,144 @@ void stp_setup(void) __banked
 void stp_off(void) __banked
 {
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
 		// Set STP port state to forwarding
 		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
-		uint8_t bit_mask = 0b11 << ( (i << 1) & 0x7);
-		sfr_data[3 - (i >> 2)] |= bit_mask;
+		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
+		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
+		port_timers[stp_i] = 0;
 	}
 	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
 	reg_write_m(RTL837X_MSTP_STATES);
 
 	/* Restore BPDU transparency: flood them again like an unmanaged switch. */
 	stp_fdb_update(PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
+}
+
+
+/* ---- "stp ..." CLI ----
+ *   stp on|off
+ *   stp prio <0-15>            (bridge priority = n * 4096)
+ *   stp hello <1-10> | stp maxage <6-40> | stp fwd <4-30> | stp txhold <1-10>
+ *   stp version rstp|stp
+ *   stp port <1-9> on|off
+ *   stp port <1-9> edge on|off|auto
+ *   stp port <1-9> cost <0-255>   (x1000; 0 = auto/20000)
+ *   stp port <1-9> prio <0-240>
+ *   stp port <1-9> guard none|bpdu|root
+ *   stp port <1-9> filter on|off
+ */
+void stp_parse(void) __banked __reentrant
+{
+	if (cmd_compare(1, "on")) {
+		print_string("STP enabled\n");
+		stpEnabled = 1;
+		stp_setup();
+		return;
+	}
+	if (cmd_compare(1, "off")) {
+		print_string("STP disabled\n");
+		stp_off();
+		stpEnabled = 0;
+		return;
+	}
+	if (cmd_words_len < 3)
+		goto err;
+
+	if (cmd_compare(1, "port")) {
+		if (cmd_words_len < 4)
+			goto err;
+		if (atoi_byte(&stp_scratch, cmd_words_b[2]) || stp_scratch < 1 || stp_scratch > 9)
+			goto err;
+		{
+		uint8_t port = machine.phys_to_log_port[stp_scratch - 1];
+		if (cmd_compare(3, "on")) {
+			stp_pflags[port] |= STP_PF_ENABLED;
+			stp_pflags[port] &= ~STP_PF_TRIPPED;
+			if (stpEnabled) {	/* (re)join: listen first */
+				stp_state_set(port, 0b01);
+				port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
+			}
+		} else if (cmd_compare(3, "off")) {
+			stp_pflags[port] &= ~STP_PF_ENABLED;
+			if (stpEnabled)
+				stp_state_set(port, 0b11);	/* plain forwarding */
+		} else if (cmd_compare(3, "edge")) {
+			stp_pflags[port] &= ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE);
+			if (cmd_compare(4, "on"))
+				stp_pflags[port] |= STP_PF_ADMEDGE;
+			else if (cmd_compare(4, "auto"))
+				stp_pflags[port] |= STP_PF_AUTOEDGE;
+			else if (!cmd_compare(4, "off"))
+				goto err;
+		} else if (cmd_compare(3, "cost")) {
+			if (atoi_byte(&stp_scratch, cmd_words_b[4]))
+				goto err;
+			stp_pcost[port] = (uint32_t)stp_scratch * 1000;
+		} else if (cmd_compare(3, "prio")) {
+			if (atoi_byte(&stp_scratch, cmd_words_b[4]))
+				goto err;
+			stp_pprio[port] = stp_scratch & 0xf0;
+		} else if (cmd_compare(3, "guard")) {
+			stp_pflags[port] &= ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD);
+			if (cmd_compare(4, "bpdu"))
+				stp_pflags[port] |= STP_PF_BPDUGUARD;
+			else if (cmd_compare(4, "root"))
+				stp_pflags[port] |= STP_PF_ROOTGUARD;
+			else if (!cmd_compare(4, "none"))
+				goto err;
+		} else if (cmd_compare(3, "filter")) {
+			if (cmd_compare(4, "on"))
+				stp_pflags[port] |= STP_PF_FILTER;
+			else if (cmd_compare(4, "off"))
+				stp_pflags[port] &= ~STP_PF_FILTER;
+			else
+				goto err;
+		} else {
+			goto err;
+		}
+		}
+		return;
+	}
+
+	if (atoi_byte(&stp_scratch, cmd_words_b[2])) {
+		if (cmd_compare(1, "version")) {
+			if (cmd_compare(2, "rstp"))
+				stp_rstp = 1;
+			else if (cmd_compare(2, "stp"))
+				stp_rstp = 0;
+			else
+				goto err;
+			return;
+		}
+		goto err;
+	}
+	if (cmd_compare(1, "prio")) {
+		if (stp_scratch > 15)
+			goto err;
+		stp_prio = stp_scratch << 4;	/* n * 4096, as the BPDU's high byte */
+		if (stp_root_port == 0xff)
+			stp_claim_root();	/* re-announce with the new priority */
+	} else if (cmd_compare(1, "hello")) {
+		if (stp_scratch < 1 || stp_scratch > 10)
+			goto err;
+		stp_hello_s = stp_scratch;
+	} else if (cmd_compare(1, "maxage")) {
+		if (stp_scratch < 6 || stp_scratch > 40)
+			goto err;
+		stp_maxage_s = stp_scratch;
+	} else if (cmd_compare(1, "fwd")) {
+		if (stp_scratch < 4 || stp_scratch > 30)
+			goto err;
+		stp_fwddelay_s = stp_scratch;
+	} else if (cmd_compare(1, "txhold")) {
+		if (stp_scratch < 1 || stp_scratch > 10)
+			goto err;
+		stp_txhold = stp_scratch;
+	} else {
+		goto err;
+	}
+	return;
+err:
+	print_string("Error: stp on|off | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9> on|off|edge|cost|prio|guard|filter ...\n");
 }

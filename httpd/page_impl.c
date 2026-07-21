@@ -528,14 +528,14 @@ void send_lag(void)
 }
 
 
-/* STP status for the L2 page ("/stp.json"): enable state, the elected root
- * bridge (priority+MAC) and our path cost to it, whether we are the root, and
- * the live per-port STP state read from the ASIC's MSTP register (2 bits per
- * port: 0 disable, 1 blocking, 2 learning, 3 forwarding - same encoding
- * stp_setup() writes). Ports are reported by their physical number. */
-/* Scratch for send_stp(): a plain local would land in the near-full 8051
- * internal-RAM overlay (OSEG). */
+/* STP status + configuration for the Spanning Tree page ("/stp.json").
+ * Bridge config (prio index 0-15, hello/maxage/fwd seconds, rstp flag, tx
+ * hold), elected root (priority byte + MAC), our path cost, root port, TC
+ * counter, and per port: physical number, live ASIC state (2-bit MSTP field:
+ * 0 Dis 1 Blk 2 Lrn 3 Fwd), an approximated role, and the per-port config
+ * (enabled, edge admin/auto/oper, cost/1000, prio, guard, filter, tripped). */
 __xdata uint8_t stp_we_root;
+__xdata uint8_t pi_i, pi_j;	/* shared loop iterators (DSEG relief) */
 
 void send_stp(void)
 {
@@ -544,33 +544,61 @@ void send_stp(void)
 
 	slen += strtox(outbuf + slen, "{\"on\":");
 	bool_to_html(stpEnabled);
+	slen += strtox(outbuf + slen, ",\"rstp\":");
+	bool_to_html(stp_rstp);
+	slen += strtox(outbuf + slen, ",\"prio\":");
+	itoa_html(stp_prio >> 4);
+	slen += strtox(outbuf + slen, ",\"hello\":");
+	itoa_html(stp_hello_s);
+	slen += strtox(outbuf + slen, ",\"maxage\":");
+	itoa_html(stp_maxage_s);
+	slen += strtox(outbuf + slen, ",\"fwd\":");
+	itoa_html(stp_fwddelay_s);
+	slen += strtox(outbuf + slen, ",\"txhold\":");
+	itoa_html(stp_txhold);
 	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
 	byte_to_html(root_bridge.prio);
 	byte_to_html(root_bridge.ext);
 	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
-	for (uint8_t j = 0; j < 6; j++)
-		byte_to_html(root_bridge.mac[j]);
+	for (pi_j = 0; pi_j < 6; pi_j++)
+		byte_to_html(root_bridge.mac[pi_j]);
 	slen += strtox(outbuf + slen, "\",\"cost\":\"");
 	byte_to_html(root_bridge_cost >> 24);
 	byte_to_html(root_bridge_cost >> 16);
 	byte_to_html(root_bridge_cost >> 8);
 	byte_to_html(root_bridge_cost);
-	/* are we the elected root? (our MAC == root MAC) */
-	stp_we_root = 1;
-	for (uint8_t j = 0; j < 6; j++) {
-		if (root_bridge.mac[j] != uip_ethaddr.addr[j])
-			stp_we_root = 0;
-	}
+	stp_we_root = (stp_root_port == 0xff) ? 1 : 0;
 	slen += strtox(outbuf + slen, "\",\"weRoot\":");
 	bool_to_html(stp_we_root);
-	slen += strtox(outbuf + slen, ",\"ports\":[");
+	slen += strtox(outbuf + slen, ",\"rootPort\":");
+	itoa_html(stp_root_port == 0xff ? 0 : machine.log_to_phys_port[stp_root_port]);
+	slen += strtox(outbuf + slen, ",\"tc\":\"");
+	byte_to_html(stp_tc_count >> 8);
+	byte_to_html(stp_tc_count);
+	slen += strtox(outbuf + slen, "\",\"ports\":[");
 	reg_read_m(RTL837X_MSTP_STATES);
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+	for (pi_i = machine.min_port; pi_i <= machine.max_port; pi_i++) {
 		slen += strtox(outbuf + slen, "{\"p\":");
-		itoa_html(machine.log_to_phys_port[i]);
+		itoa_html(machine.log_to_phys_port[pi_i]);
 		slen += strtox(outbuf + slen, ",\"st\":");
-		/* 2-bit field per logical port, packed from byte 3 up (cf. stp_setup) */
-		itoa_html((sfr_data[3 - (i >> 2)] >> ((i << 1) & 0x7)) & 0x3);
+		stp_we_root = (sfr_data[3 - (pi_i >> 2)] >> ((pi_i << 1) & 0x7)) & 0x3;
+		itoa_html(stp_we_root);
+		/* role (approximated): 0 none/disabled, 1 root, 2 designated, 3 alternate(blocked) */
+		slen += strtox(outbuf + slen, ",\"role\":");
+		if (!(stp_pflags[pi_i] & STP_PF_ENABLED) || (stp_pflags[pi_i] & STP_PF_TRIPPED))
+			itoa_html(0);
+		else if (pi_i == stp_root_port)
+			itoa_html(1);
+		else if (stp_we_root == 3)
+			itoa_html(2);
+		else
+			itoa_html(3);
+		slen += strtox(outbuf + slen, ",\"f\":");
+		itoa_html(stp_pflags[pi_i]);
+		slen += strtox(outbuf + slen, ",\"cost\":");
+		itoa_html(stp_pcost[pi_i] / 1000);
+		slen += strtox(outbuf + slen, ",\"prio\":");
+		itoa_html(stp_pprio[pi_i]);
 		slen += strtox(outbuf + slen, "},");
 	}
 	slen -= 1; // remove comma

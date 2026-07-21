@@ -1525,15 +1525,7 @@ void cmd_parser(void) __banked
 			else
 				igmp_setup();  // Reverts to default with IP-MC being flooded
 		} else if (cmd_compare(0, "stp")) {
-			if (cmd_compare(1, "on")) {
-				print_string("STP enabled\n");
-				stpEnabled = 1;
-				stp_setup();
-			} else {
-				print_string("STP disabled\n");
-				stp_off();
-				stpEnabled = 0;
-			}
+			stp_parse();
 		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
 			__xdata uint16_t pvid;
 			uint8_t port;
