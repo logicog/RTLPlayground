@@ -3,12 +3,13 @@
 
 /*
  * LACP (IEEE 802.3ad Clause 43) for the RTL837x platform.
- * Skeleton - mirrors the structure of rtl837x_stp.c (a link-layer control
+ * Mirrors the structure of rtl837x_stp.c (a link-layer control
  * protocol trapped to CPU via the Reserved-Multicast-Address mechanism).
  *
  * Entry points (see rtlplayground.c dispatch / timer loop, gated by lacpEnabled):
  *   lacp_in()      called when a slow-protocols frame (01:80:C2:00:00:02) arrives
- *   lacp_setup()   enable: trap slow-protocols to CPU, init actor state
+ *   lacp_setup()   legacy "lacp on": one aggregator on LAG 0, all ports
+ *                  (slow-protocols delivered via RMA *forward*, not trap)
  *   lacp_timers()  periodic tick: per-port periodic TX + partner timeout + mux
  *   lacp_off()     disable + tear down any active LAG we created
  */
@@ -66,24 +67,24 @@ extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];/* trunk members we las
 #define LACP_STATE_COLLECTING	0x10
 #define LACP_STATE_DISTRIBUTING	0x20
 #define LACP_STATE_DEFAULTED	0x40	/* partner info is administrative default*/
-#define LACP_STATE_EXPIRED	0x80
+#define LACP_STATE_EXPIRED	0x80	/* wire-format doc; unused by the simplified RX machine */
 
 /*
- * Timer units follow rtl837x_stp.c convention (TIME_HELLO 0x200 == 2 sec,
- * i.e. 0x100 tick-units ~= 1 sec, decremented once per lacp_timers() call).
- */
-#define LACP_FAST_PERIODIC	0x0100	/*  1 s  - fast periodic TX             */
-#define LACP_SLOW_PERIODIC	0x1e00	/* 30 s  - slow periodic TX             */
-#define LACP_SHORT_TIMEOUT	0x0300	/*  3 s  - 3 x fast, partner considered dead */
-#define LACP_LONG_TIMEOUT	0x5a00	/* 90 s  - 3 x slow                     */
-
-/* Which hardware trunk group (0-3) LACP manages; port_lag_members_set() target */
-#define LACP_TRUNK_ID		0
+ * Timer units: one decrement per active lacp_timers() call (~64 Hz: the main
+ * loop runs ~256 Hz and LACP_TICK_DIVIDER skips 3 of 4 calls). The values
+ * below are the HARDWARE-VERIFIED ones the aggregate converged with; their
+ * wall-clock equivalents are ~4x the nominal 802.3ad figures, which only
+ * makes us more patient with the partner (and the partner sets the pace of
+ * our fast/slow TX via its TIMEOUT bit). Do not "fix" the scale blindly. */
+#define LACP_FAST_PERIODIC	0x0100	/* fast periodic TX   (~4 s wall clock)  */
+#define LACP_SLOW_PERIODIC	0x1e00	/* slow periodic TX  (~120 s wall clock) */
+#define LACP_SHORT_TIMEOUT	0x0300	/* partner dead after (~12 s wall clock) */
+#define LACP_LONG_TIMEOUT	0x5a00	/* partner dead after (~360 s wall clock)*/
 
 /* Per-port LACP receive-machine state (802.3ad 43.4.12) */
 #define LACP_RX_INITIALIZE	0
-#define LACP_RX_PORT_DISABLED	1
-#define LACP_RX_EXPIRED		2
+#define LACP_RX_PORT_DISABLED	1	/* numbering reserved (exported via /lacp.json "rs") */
+#define LACP_RX_EXPIRED		2	/* numbering reserved (exported via /lacp.json "rs") */
 #define LACP_RX_DEFAULTED	3
 #define LACP_RX_CURRENT		4
 
