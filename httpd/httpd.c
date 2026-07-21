@@ -174,7 +174,10 @@ bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 		c = *rhs_str_p++;
 
 		if (c == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+			/* ';' terminates a cookie value when it is not the last cookie
+			 * in the header ("session=X; other=y") - accept it as a word
+			 * boundary so such a session cookie still authenticates. */
+			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
 				return false;
 			return true;
 		}
@@ -252,8 +255,28 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 			break;
 		if (is_word(p, "\nContent-Type:"))
 			content_type = p + 15;
-		else if (is_word(p, "\nCookie:"))
-			session = p + 17;
+		else if (is_word(p, "\nCookie:")) {
+			/* The Cookie header may carry SEVERAL cookies ("a=1; session=X"),
+			 * and browsers keep stale cookies for years - e.g. an "admin"
+			 * cookie left over from this switch's vendor firmware. The old
+			 * fixed-offset parse (p + 17) assumed "session=" was the first
+			 * and only cookie, so with any other cookie present it pointed
+			 * into the wrong value, authentication silently failed and the
+			 * UI bounced back to the login page although the password had
+			 * been accepted (worked from curl, which sends only session=).
+			 * Scan the header for the actual "session=" key instead. */
+			/* Match "session" (not "session="): is_word() demands a separator
+			 * after the pattern, and '=' is on its separator list while the
+			 * first byte of the value is not. */
+			__xdata uint8_t *c = p + 8;	/* past "\nCookie:" */
+			while (*c && *c != '\r' && *c != '\n') {
+				if (is_word(c, "session")) {
+					session = c + 8;	/* past "session=" */
+					break;
+				}
+				c++;
+			}
+		}
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
 		dbg_string("\nFound multipart\n");
