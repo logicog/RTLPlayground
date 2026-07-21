@@ -204,28 +204,28 @@ uint8_t parse_short(__xdata uint8_t *p)
 
 void send_not_found(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n" \
+	slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n" \
 			      "<!DOCTYPE HTML PUBLIC>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n");
 }
 
 
 void send_bad_request(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\n\r\n" \
+	slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n" \
 			      "<!DOCTYPE HTML PUBLIC>\n<title>400 Bad Request</title>\n<h1>Bad Request</h1>\n");
 }
 
 
 void send_to_login(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 302 Found\r\n" \
+	slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\n" \
 			      "Location: login.html\r\n\r\n");
 }
 
 
 void send_unauthorized(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\n\r\n");
+	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
 }
 
 
@@ -469,14 +469,14 @@ void handle_post(void)
 			read_reg_timer(&last_session_use);
 			gen_random_bytes(session_id, SESSION_ID_LENGTH);
 			session_id[SESSION_ID_LENGTH] = '\0';
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: index.html\r\n" \
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");
 			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
 				outbuf[slen++] = session_id[i];
 			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 		} else {
 			dbg_string("Password invalid!\n");
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: login.html\r\n\r\n");
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: login.html\r\n\r\n");
 		}
 		return;
 	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
@@ -521,7 +521,7 @@ void handle_post(void)
 		send_not_found();
 		return;
 	}
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\n\r\n");
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
 	return;
 bad_request:
 	send_bad_request();
@@ -706,7 +706,16 @@ void httpd_appcall(void)
 			 * explicit, complete policy stops privacy shields (Brave/NoScript)
 			 * from injecting their own restrictive report-only probes that made
 			 * the console noisy and could break the JS-driven pages. */
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
+			/* Connection: close is REQUIRED: this httpd serves exactly one
+			 * request per TCP connection (it uip_close()s after the response),
+			 * but without advertising it a browser keeps the socket in its
+			 * keep-alive pool and reuses it for the next request. The reused
+			 * request (e.g. the login POST after the GET of login.html) then
+			 * hits the already-closed connection and is dropped - and browsers
+			 * do NOT retry a non-idempotent POST, so the login silently fails
+			 * while curl (fresh connection per request) works. Advertising
+			 * close makes the browser open a fresh connection every time. */
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
