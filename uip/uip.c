@@ -171,6 +171,11 @@ __xdata struct uip_udp_conn * __xdata uip_udp_conn;
 __xdata struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
 #endif /* UIP_UDP */
 
+#if UIP_IDLE_TIMEOUT
+__xdata static u8_t uip_idle_prescale;
+__xdata static u8_t uip_idle_age;
+#endif /* UIP_IDLE_TIMEOUT */
+
 __xdata static u16_t ipid;           /* Ths ipid variable is an increasing
 				number that is used for the IP ID
 				field. */
@@ -702,6 +707,15 @@ uip_process(u8_t flag) __banked
     /* Check if we were invoked because of the perodic timer fireing. */
   } else if(flag == UIP_TIMER) {
 //  print_string("T1\n");
+#if UIP_IDLE_TIMEOUT
+    if(uip_connr == uip_conns) {
+      uip_idle_age = 0;
+      if(++uip_idle_prescale >= UIP_IDLE_PERIODS) {
+	uip_idle_prescale = 0;
+	uip_idle_age = 1;
+      }
+    }
+#endif /* UIP_IDLE_TIMEOUT */
 #if UIP_REASSEMBLY
     if(uip_reasstmr != 0) {
       --uip_reasstmr;
@@ -733,6 +747,21 @@ uip_process(u8_t flag) __banked
       /* If the connection has outstanding data, we increase the
 	 connection's timer and see if it has reached the RTO value
 	 in which case we retransmit. */
+#if UIP_IDLE_TIMEOUT
+      if(!uip_outstanding(uip_connr)) {
+	/* The retransmission timer is unused while nothing is in flight,
+	   so idle time is counted in it instead. */
+	if(uip_idle_age &&
+	   (uip_connr->tcpstateflags & UIP_TS_MASK) == UIP_ESTABLISHED &&
+	   ++(uip_connr->timer) >= UIP_IDLE_TIMEOUT) {
+	  uip_connr->tcpstateflags = UIP_CLOSED;
+	  uip_flags = UIP_TIMEDOUT;
+	  UIP_APPCALL();
+	  BUF->flags = TCP_RST | TCP_ACK;
+	  goto tcp_send_nodata;
+	}
+      }
+#endif /* UIP_IDLE_TIMEOUT */
       if(uip_outstanding(uip_connr)) {
 	if(uip_connr->timer-- == 0) {
 	  if(uip_connr->nrtx == UIP_MAXRTX ||
@@ -1550,6 +1579,11 @@ uip_process(u8_t flag) __banked
 #endif /* UIP_ACTIVE_OPEN */
     
   case UIP_ESTABLISHED:
+#if UIP_IDLE_TIMEOUT
+    if(!uip_outstanding(uip_connr)) {
+      uip_connr->timer = 0;
+    }
+#endif /* UIP_IDLE_TIMEOUT */
     /* In the ESTABLISHED state, we call upon the application to feed
     data into the uip_buf. If the UIP_ACKDATA flag is set, the
     application should put new data into the buffer, otherwise we are
@@ -1576,6 +1610,9 @@ uip_process(u8_t flag) __banked
       uip_connr->len = 1;
       uip_connr->tcpstateflags = UIP_LAST_ACK;
       uip_connr->nrtx = 0;
+#if UIP_IDLE_TIMEOUT
+      uip_connr->timer = uip_connr->rto;
+#endif /* UIP_IDLE_TIMEOUT */
     tcp_send_finack:
       BUF->flags = TCP_FIN | TCP_ACK;
       goto tcp_send_nodata;
@@ -1665,6 +1702,9 @@ uip_process(u8_t flag) __banked
 	uip_connr->len = 1;
 	uip_connr->tcpstateflags = UIP_FIN_WAIT_1;
 	uip_connr->nrtx = 0;
+#if UIP_IDLE_TIMEOUT
+	uip_connr->timer = uip_connr->rto;
+#endif /* UIP_IDLE_TIMEOUT */
 	BUF->flags = TCP_FIN | TCP_ACK;
 	goto tcp_send_nodata;
       }
@@ -1693,6 +1733,9 @@ uip_process(u8_t flag) __banked
 	  /* Remember how much data we send out now so that we know
 	     when everything has been acknowledged. */
 	  uip_connr->len = uip_slen;
+#if UIP_IDLE_TIMEOUT
+	  uip_connr->timer = uip_connr->rto;
+#endif /* UIP_IDLE_TIMEOUT */
 	} else {
 
 	  /* If the application already had unacknowledged data, we

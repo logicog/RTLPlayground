@@ -324,6 +324,35 @@
  */
 #define UIP_TIME_WAIT_TIMEOUT 120
 
+/**
+ * The number of UIP_TIMER sweeps that make one idle-aging period,
+ * i.e. how many times uip_periodic() runs per second in this project.
+ * Counted in an 8-bit variable, so 255 is the maximum.
+ *
+ * \hideinitializer
+ */
+#ifndef UIP_CONF_IDLE_PERIODS
+#define UIP_IDLE_PERIODS 2
+#else /* UIP_CONF_IDLE_PERIODS */
+#define UIP_IDLE_PERIODS UIP_CONF_IDLE_PERIODS
+#endif /* UIP_CONF_IDLE_PERIODS */
+
+/**
+ * The number of idle-aging periods after which an ESTABLISHED
+ * connection with a silent peer is aborted, or 0 to keep such
+ * connections forever (the classic uIP behaviour). TCP itself has no
+ * idle timeout, so a peer that vanished without FIN or RST would
+ * otherwise occupy its connection slot until a reboot. Counted in the
+ * connection's 8-bit retransmission timer, so 255 is the maximum.
+ *
+ * \hideinitializer
+ */
+#ifndef UIP_CONF_IDLE_TIMEOUT
+#define UIP_IDLE_TIMEOUT 0
+#else /* UIP_CONF_IDLE_TIMEOUT */
+#define UIP_IDLE_TIMEOUT UIP_CONF_IDLE_TIMEOUT
+#endif /* UIP_CONF_IDLE_TIMEOUT */
+
 
 /** @} */
 /*------------------------------------------------------------------------------*/

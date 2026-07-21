@@ -97,6 +97,16 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_MAX_CONNECTIONS 1
 
 /**
+ * uip_periodic() runs from idle() roughly once per system tick
+ * (SYS_TICK_HZ, 200 Hz; interrupt wake-ups add sweeps, so the timeout
+ * can only fire early, never late). A silent ESTABLISHED peer is
+ * dropped after about 30 s: with a single connection slot it would
+ * otherwise wedge the web UI until a power cycle.
+ */
+#define UIP_CONF_IDLE_PERIODS 200
+#define UIP_CONF_IDLE_TIMEOUT 30
+
+/**
  * Maximum number of listening TCP ports. TODO: increase this!
  *
  * \hideinitializer
