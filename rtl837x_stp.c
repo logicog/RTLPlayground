@@ -524,6 +524,11 @@ void stp_parse(void) __banked __reentrant
 			goto err;
 		{
 		uint8_t port = machine.phys_to_log_port[stp_scratch - 1];
+		/* every sub-command except on/off carries one more argument; without
+		 * this check cmd_compare(4,..) would read a stale word from the
+		 * PREVIOUS command line (cmd_words_b is not cleared between commands) */
+		if (cmd_words_len < 5 && !cmd_compare(3, "on") && !cmd_compare(3, "off"))
+			goto err;
 		if (cmd_compare(3, "on")) {
 			stp_pflags[port] |= STP_PF_ENABLED;
 			stp_pflags[port] &= ~STP_PF_TRIPPED;
