@@ -47,6 +47,15 @@ void port_lag_members_set(uint8_t lag, uint16_t members)
 	hw_set_calls++;
 }
 
+/* 6-byte compare shared with the STP module on target */
+signed char cmpMAC(uint8_t *m1, uint8_t *m2)
+{
+	for (int i = 0; i < 6; i++) {
+		if (m1[i] != m2[i]) return m1[i] < m2[i] ? -1 : 1;
+	}
+	return 0;
+}
+
 /* Port-isolation mock: record the last mask written per port */
 static uint16_t hw_isolation[10];
 void port_isolate(uint8_t port, uint16_t pmask)
