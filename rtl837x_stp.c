@@ -44,6 +44,7 @@ __xdata uint8_t  stp_fdb_i;
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
+extern __xdata uint16_t management_vlan;	/* owned by rtlplayground.c; suppressed per-frame for BPDUs */
 
 /* CLI tokenizer state + helpers (owned by cmd_parser.c, HOME bank) */
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
@@ -188,7 +189,13 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	STP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	STP_O->rtl_tag.reason = 0x00;
-	STP_O->rtl_tag.flags = 0x0020; // Disable L2 learning
+	/* Through HTONS like every tag field: raw 0x0020 lands on the wire as
+	 * 0x2000 (EFID), the ASIC fails to parse the tag and floods the frame
+	 * with the 0x8899 header still on it (same bug class as LACP had).
+	 * NOTE: no RTL_TAG_KEEP here - hardware-verified that KEEP on an
+	 * LLC/802.3 (length-field) frame makes the ASIC drop it entirely,
+	 * while the same flag works fine on ethertype frames (LACP). */
+	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
 
 	STP_O->msg_len = HTONS(0x27);
@@ -229,8 +236,18 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->hello = stp_hello_s;
 	STP_O->fwd_delay = stp_fwddelay_s;
 
+	/* BPDUs are link-local and must egress untagged: with a management VLAN
+	 * set, tcpip_output() splices an 802.1Q tag after the SA, shifting the
+	 * in-frame rtl_tag out of the position the ASIC parses - the CPU tag then
+	 * leaks onto the wire as 0x8899 and the BPDU is flooded, not sent.
+	 * Hardware-verified fix, same as lacp_send(). */
+	{
+	uint16_t saved_mgmt_vlan = management_vlan;
+	management_vlan = 0;
 	uip_len = sizeof(struct stp_pkt);
 	tcpip_output();
+	management_vlan = saved_mgmt_vlan;
+	}
 }
 
 
