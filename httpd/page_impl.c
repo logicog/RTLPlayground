@@ -562,6 +562,10 @@ void send_stp(void)
 	itoa_html(stp_fwddelay_s);
 	slen += strtox(outbuf + slen, ",\"txhold\":");
 	itoa_html(stp_txhold);
+	slen += strtox(outbuf + slen, ",\"fs\":");
+	itoa_html(stp_failsafe_s);
+	slen += strtox(outbuf + slen, ",\"fsT\":");
+	itoa_html(stp_failsafe_tripped);
 	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
 	byte_to_html(root_bridge.prio);
 	byte_to_html(root_bridge.ext);

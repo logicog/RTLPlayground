@@ -61,6 +61,16 @@ __xdata uint8_t  stp_fwddelay_s;
 __xdata uint8_t  stp_rstp;
 __xdata uint8_t  stp_txhold;
 
+/* Management failsafe: if any port is held out of Forwarding while no HTTP
+ * request has been seen for stp_failsafe_s seconds, assume STP just cut off
+ * in-band management (mgmt VLAN rides a blockable front port!) and disable
+ * itself, restoring forwarding. Commit-confirm pattern; hardware lockout of
+ * 2026-07-20 is the motivating incident. 0 disables the watchdog. */
+__xdata uint8_t  stp_failsafe_s;
+__xdata uint8_t  stp_failsafe_cnt;	/* seconds left before the trip */
+__xdata uint8_t  stp_failsafe_tripped;
+extern volatile __xdata uint8_t mgmt_alive;	/* set by httpd on any request */
+
 __xdata uint8_t  stp_pflags[10];
 __xdata uint32_t stp_pcost[10];
 __xdata uint8_t  stp_pprio[10];
@@ -346,6 +356,26 @@ void stp_timers(void) __banked
 		stp_sec_tick = 0;
 		for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
 			stp_tx_budget[stp_i] = stp_txhold;
+
+		/* Management failsafe: plain commit-confirm. While STP is on, ANY
+		 * HTTP request re-arms the countdown (the web UI polls /stp.json
+		 * every 2 s, so an open browser keeps it alive); stp_failsafe_s
+		 * seconds of management silence disable STP and restore the
+		 * pre-STP state. Deliberately NOT conditioned on our own MSTP
+		 * states: hardware incident 2026-07-21 showed a NEIGHBOR (TP-Link
+		 * Easy Smart loop prevention) cutting our uplink in reaction to
+		 * our BPDUs while our ASIC was all-forwarding - only going fully
+		 * quiet (no BPDU TX) lets such a neighbor recover. */
+		if (mgmt_alive) {
+			mgmt_alive = 0;
+			stp_failsafe_cnt = stp_failsafe_s;
+		} else if (stp_failsafe_s && stp_failsafe_cnt && --stp_failsafe_cnt == 0) {
+			print_string("STP failsafe: no management activity - disabling STP\n");
+			stp_off();
+			stpEnabled = 0;
+			stp_failsafe_tripped = 1;
+			return;
+		}
 	}
 
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
@@ -405,6 +435,8 @@ void stp_defaults(void) __banked
 	stp_fwddelay_s = 15;
 	stp_rstp = 1;
 	stp_txhold = 6;
+	stp_failsafe_s = 180;
+	stp_failsafe_tripped = 0;
 	for (stp_i = 0; stp_i < 10; stp_i++) {
 		/* enabled, auto-edge on: host-facing ports go forwarding after
 		 * 3 s of BPDU silence instead of the full forward delay */
@@ -521,6 +553,8 @@ void stp_parse(void) __banked __reentrant
 {
 	if (cmd_compare(1, "on")) {
 		print_string("STP enabled\n");
+		stp_failsafe_tripped = 0;
+		stp_failsafe_cnt = stp_failsafe_s;
 		stpEnabled = 1;
 		stp_setup();
 		return;
@@ -629,6 +663,10 @@ void stp_parse(void) __banked __reentrant
 		if (stp_scratch < 1 || stp_scratch > 10)
 			goto err;
 		stp_txhold = stp_scratch;
+	} else if (cmd_compare(1, "failsafe")) {
+		/* 0 disables the management watchdog; otherwise seconds to trip */
+		stp_failsafe_s = stp_scratch;
+		stp_failsafe_cnt = stp_scratch;
 	} else {
 		goto err;
 	}

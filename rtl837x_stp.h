@@ -23,7 +23,9 @@ extern __xdata uint8_t  stp_hello_s;	/* hello time, 1-10 s (default 2)   */
 extern __xdata uint8_t  stp_maxage_s;	/* max age, 6-40 s (default 20)     */
 extern __xdata uint8_t  stp_fwddelay_s;	/* forward delay, 4-30 s (default 15); our listen period */
 extern __xdata uint8_t  stp_rstp;	/* 1 = RSTP BPDUs (v2), 0 = STP-compatible Config BPDUs (v0) */
-extern __xdata uint8_t  stp_txhold;	/* max BPDUs per port per second (default 6) */
+extern __xdata uint8_t  stp_txhold;
+extern __xdata uint8_t  stp_failsafe_s;	/* mgmt watchdog, seconds (0 = off) */
+extern __xdata uint8_t  stp_failsafe_tripped;	/* max BPDUs per port per second (default 6) */
 
 /* Per-port config/status flags (stp_pflags[]) */
 #define STP_PF_ENABLED	0x01	/* port participates in STP (default on)     */
