@@ -699,7 +699,14 @@ void httpd_appcall(void)
 
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: style-src 'self' 'unsafe-inline'\r\n\r\n");
+			/* Complete, first-party CSP: everything the UI needs is same-origin
+			 * (scripts, styles, the SVG port icons, the /*.json fetches and the
+			 * login/cmd form POSTs). 'unsafe-inline' for script covers the inline
+			 * onclick handlers and the small inline <script> on login.html. An
+			 * explicit, complete policy stops privacy shields (Brave/NoScript)
+			 * from injecting their own restrictive report-only probes that made
+			 * the console noisy and could break the JS-driven pages. */
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
