@@ -541,7 +541,31 @@ void send_lag(void)
  * 0 Dis 1 Blk 2 Lrn 3 Fwd), an approximated role, and the per-port config
  * (enabled, edge admin/auto/oper, cost/1000, prio, guard, filter, tripped). */
 __xdata uint8_t stp_we_root;
-__xdata uint8_t pi_i, pi_j;	/* shared loop iterators (DSEG relief) */
+__xdata uint8_t pi_i, pi_j, pi_j2;	/* shared loop iterators (DSEG relief) */
+
+/* Parameter relays in xdata: keeps these helpers off the IRAM overlay */
+static __xdata uint32_t pi_u32;
+static __xdata uint8_t pi_prio, pi_ext;
+static __xdata uint8_t * __xdata pi_mac;
+
+static void u32hex_html(void)
+{
+	/* byte access instead of uint32 shifts: sdcc/mcs51 expands each
+	 * 32-bit shift into a large helper sequence. Little-endian layout. */
+	__xdata uint8_t *b = (__xdata uint8_t *)&pi_u32;
+	byte_to_html(b[3]);
+	byte_to_html(b[2]);
+	byte_to_html(b[1]);
+	byte_to_html(b[0]);
+}
+
+static void bridge_to_html(void)
+{
+	byte_to_html(pi_prio);
+	byte_to_html(pi_ext);
+	for (pi_j2 = 0; pi_j2 < 6; pi_j2++)
+		byte_to_html(pi_mac[pi_j2]);
+}
 
 void send_stp(void)
 {
@@ -572,6 +596,9 @@ void send_stp(void)
 	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
 	for (pi_j = 0; pi_j < 6; pi_j++)
 		byte_to_html(root_bridge.mac[pi_j]);
+	slen += strtox(outbuf + slen, "\",\"myMac\":\"");
+	for (pi_j = 0; pi_j < 6; pi_j++)
+		byte_to_html(uip_ethaddr.addr[pi_j]);
 	slen += strtox(outbuf + slen, "\",\"cost\":\"");
 	byte_to_html(root_bridge_cost >> 24);
 	byte_to_html(root_bridge_cost >> 16);
@@ -605,11 +632,31 @@ void send_stp(void)
 			itoa_html(3);
 		slen += strtox(outbuf + slen, ",\"f\":");
 		itoa_html(stp_pflags[pi_i]);
-		slen += strtox(outbuf + slen, ",\"cost\":");
-		itoa_html(stp_pcost[pi_i] / 1000);
-		slen += strtox(outbuf + slen, ",\"prio\":");
+		/* path cost (raw hex, full 0..200M range), priority, p2p */
+		slen += strtox(outbuf + slen, ",\"pc\":\"");
+		pi_u32 = stp_pcost[pi_i]; u32hex_html();
+		slen += strtox(outbuf + slen, "\",\"prio\":");
 		itoa_html(stp_pprio[pi_i]);
-		slen += strtox(outbuf + slen, "},");
+		slen += strtox(outbuf + slen, ",\"p2\":");
+		itoa_html(stp_pp2p[pi_i]);
+		/* designated info: a freshly heard BPDU wins, else we are the
+		 * segment's designated bridge and report our own values */
+		stp_we_root = stp_dbridge[pi_i].mac[5] && stp_bpdu_age[pi_i] < (uint16_t)stp_maxage_s * 64;
+		slen += strtox(outbuf + slen, ",\"db\":\"");
+		if (stp_we_root) {
+			pi_prio = stp_dbridge[pi_i].prio; pi_ext = stp_dbridge[pi_i].ext;
+			pi_mac = stp_dbridge[pi_i].mac;
+		} else {
+			pi_prio = stp_prio; pi_ext = 0;
+			pi_mac = uip_ethaddr.addr;
+		}
+		bridge_to_html();
+		slen += strtox(outbuf + slen, "\",\"dp\":\"");
+		byte_to_html(stp_we_root ? (stp_dpid[pi_i] >> 8) : stp_pprio[pi_i]);
+		byte_to_html(stp_we_root ? stp_dpid[pi_i] : (pi_i + 1));
+		slen += strtox(outbuf + slen, "\",\"dc\":\"");
+		pi_u32 = stp_we_root ? stp_dcost[pi_i] : root_bridge_cost; u32hex_html();
+		slen += strtox(outbuf + slen, "\"},");
 	}
 	slen -= 1; // remove comma
 	slen += strtox(outbuf + slen, "]}");

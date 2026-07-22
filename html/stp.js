@@ -1,16 +1,7 @@
-/* Spanning Tree page: full RSTP configuration + live status.
- *
- * Every control applies IMMEDIATELY on change (POST /cmd "stp ...") - there is
- * no per-row Apply. The refresh (2 s) repopulates controls from /stp.json;
- * a global dirty flag suppresses that between a change and its confirmation
- * so the refresh never reverts an edit in flight (same lesson as the LAG page).
- */
 
-// STP port states as encoded in the ASIC's MSTP register (2 bits per port)
 const STP_STATES = ["Disabled", "Blocking", "Learning", "Forwarding"];
 const STP_ROLES  = ["-", "Root", "Designated", "Alternate"];
 
-// stp_pflags bits (keep in sync with rtl837x_stp.h)
 const PF_ENABLED = 1, PF_ADMEDGE = 2, PF_AUTOEDGE = 4, PF_BPDUGUARD = 8,
       PF_ROOTGUARD = 16, PF_FILTER = 32, PF_OPEREDGE = 64, PF_TRIPPED = 128;
 
@@ -49,29 +40,52 @@ function num(id, min, max, onch) {
 
 function buildPortsTable(ports) {
   const tbl = document.getElementById("stpPortsTbl");
+  const stat = document.getElementById("stpStatTbl");
   for (const p of ports) {
     const tr = tbl.insertRow();
     tr.insertCell().textContent = p.p;                     // Port
-    tr.insertCell().id = "st_" + p.p;                      // State
-    tr.insertCell().id = "role_" + p.p;                    // Role
     tr.insertCell().appendChild(sel("en_" + p.p,
-      [["on","on"],["off","off"]],
+      [["on","Enable"],["off","Disable"]],
       e => stpCmd("stp port " + p.p + " " + e.target.value)));
+    const pc = num("cost_" + p.p, 0, 200000000,
+      e => stpCmd("stp port " + p.p + " cost " + e.target.value));
+    pc.style.width = "7em";
+    pc.title = "0 - 200000000 (0 = Auto)";
+    tr.insertCell().appendChild(pc);
+    const pr = sel("prio_" + p.p, [], 
+      e => stpCmd("stp port " + p.p + " prio " + e.target.value));
+    for (let v = 0; v <= 240; v += 16) {
+      const o = document.createElement("option");
+      o.value = v; o.textContent = v + (v === 128 ? " (default)" : "");
+      pr.appendChild(o);
+    }
+    tr.insertCell().appendChild(pr);
     tr.insertCell().appendChild(sel("edge_" + p.p,
-      [["auto","auto"],["on","edge"],["off","off"]],
+      [["auto","Auto"],["on","Enable"],["off","Disable"]],
       e => stpCmd("stp port " + p.p + " edge " + e.target.value)));
-    tr.insertCell().appendChild(num("cost_" + p.p, 0, 255,
-      e => stpCmd("stp port " + p.p + " cost " + e.target.value)));
-    tr.insertCell().appendChild(num("prio_" + p.p, 0, 240,
-      e => stpCmd("stp port " + p.p + " prio " + e.target.value)));
-    tr.insertCell().appendChild(sel("guard_" + p.p,
-      [["none","none"],["bpdu","BPDU"],["root","Root"]],
-      e => stpCmd("stp port " + p.p + " guard " + e.target.value)));
     tr.insertCell().appendChild(sel("filt_" + p.p,
-      [["off","off"],["on","on"]],
+      [["off","Disable"],["on","Enable"]],
       e => stpCmd("stp port " + p.p + " filter " + e.target.value)));
+    tr.insertCell().appendChild(sel("guard_" + p.p,
+      [["none","None"],["bpdu","BPDU"],["root","Root"]],
+      e => stpCmd("stp port " + p.p + " guard " + e.target.value)));
+    tr.insertCell().appendChild(sel("p2p_" + p.p,
+      [["auto","Auto"],["on","Enable"],["off","Disable"]],
+      e => stpCmd("stp port " + p.p + " p2p " + e.target.value)));
+
+    const sr = stat.insertRow();
+    sr.insertCell().textContent = p.p;
+    for (const id of ["st","role","db","dp","dc","oe","op"])
+      sr.insertCell().id = id + "_" + p.p;
   }
   stpRows = ports.length;
+}
+
+function fmtBridgeId(h) {
+  if (!h || h.length < 16) return "";
+  const prio = parseInt(h.slice(0, 4), 16);
+  const mac = h.slice(4).replace(/(..)(?=.)/g, "$1:");
+  return prio + "-" + mac.toUpperCase();
 }
 
 function fetchStp() {
@@ -79,8 +93,6 @@ function fetchStp() {
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
       const s = JSON.parse(xhttp.responseText);
-      // textContent throughout: rootMac comes from received BPDUs
-      // (remote-controlled), never render it as HTML
       if (!stpRows)
         buildPortsTable(s.ports);
       document.getElementById("stpStat").textContent = s.fsT
@@ -92,13 +104,19 @@ function fetchStp() {
               + " via port " + s.rootPort + " — path cost: 0x" + s.cost
               + " — topology changes: " + parseInt(s.tc, 16))
         : "";
-      // live status columns always refresh
       for (const p of s.ports) {
         const trip = (p.f & PF_TRIPPED) ? " (guard!)" : "";
         document.getElementById("st_" + p.p).textContent =
           s.on ? STP_STATES[p.st] + trip : "-";
         document.getElementById("role_" + p.p).textContent =
-          s.on ? STP_ROLES[p.role] + ((p.f & PF_OPEREDGE) ? " edge" : "") : "-";
+          s.on ? STP_ROLES[p.role] : "-";
+        document.getElementById("db_" + p.p).textContent = s.on ? fmtBridgeId(p.db) : "-";
+        document.getElementById("dp_" + p.p).textContent =
+          s.on ? (parseInt(p.dp.slice(0, 2), 16) + "-" + parseInt(p.dp.slice(2), 16)) : "-";
+        document.getElementById("dc_" + p.p).textContent = s.on ? parseInt(p.dc, 16) : "-";
+        document.getElementById("oe_" + p.p).textContent =
+          s.on ? ((p.f & PF_OPEREDGE) ? "True" : "False") : "-";
+        document.getElementById("op_" + p.p).textContent = s.on ? (p.p2 == 2 ? "False" : "True") : "-";
       }
       if (stpDirty)          // an edit is in flight - do not revert controls
         return;
@@ -114,8 +132,9 @@ function fetchStp() {
         document.getElementById("en_" + p.p).value = (p.f & PF_ENABLED) ? "on" : "off";
         document.getElementById("edge_" + p.p).value =
           (p.f & PF_ADMEDGE) ? "on" : ((p.f & PF_AUTOEDGE) ? "auto" : "off");
-        document.getElementById("cost_" + p.p).value = p.cost;
+        document.getElementById("cost_" + p.p).value = parseInt(p.pc, 16);
         document.getElementById("prio_" + p.p).value = p.prio;
+        document.getElementById("p2p_" + p.p).value = ["auto","on","off"][p.p2];
         document.getElementById("guard_" + p.p).value =
           (p.f & PF_BPDUGUARD) ? "bpdu" : ((p.f & PF_ROOTGUARD) ? "root" : "none");
         document.getElementById("filt_" + p.p).value = (p.f & PF_FILTER) ? "on" : "off";
@@ -132,7 +151,6 @@ async function stpSub() {
 }
 
 window.addEventListener("load", function() {
-  // bridge priority: 0-15 (x4096)
   const bp = document.getElementById("bPrio");
   for (let i = 0; i < 16; i++) {
     const o = document.createElement("option");
