@@ -29,10 +29,16 @@
       </tr>
     </table>
     <p style="font-size:small">Changes apply immediately. Edge ports skip the listen period; guard/filter act on received BPDUs.</p>
-    <h2>Ports</h2>
+    <h2>Port configuration</h2>
     <table id="stpPortsTbl">
       <tr>
-        <th>Port</th><th>State</th><th>Role</th><th>STP</th><th>Edge</th><th>Cost [k]</th><th>Priority</th><th>Guard</th><th>Filter</th>
+        <th>Port</th><th>State</th><th>Path Cost<br><span style="font-weight:normal;font-size:small">(0 = Auto)</span></th><th>Priority</th><th>Edge Port</th><th>BPDU Filter</th><th>Guard</th><th>Point-to-Point</th>
+      </tr>
+    </table>
+    <h2>Port status</h2>
+    <table id="stpStatTbl">
+      <tr>
+        <th>Port</th><th>Port State</th><th>Role</th><th>Designated Bridge</th><th>Designated Port ID</th><th>Designated Cost</th><th>Oper. Edge</th><th>Oper. P2P</th>
       </tr>
     </table>
     <script src="/stp.js"></script>

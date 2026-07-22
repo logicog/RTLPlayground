@@ -39,7 +39,15 @@ extern __xdata uint8_t  stp_failsafe_tripped;	/* max BPDUs per port per second (
 
 extern __xdata uint8_t  stp_pflags[10];
 extern __xdata uint32_t stp_pcost[10];	/* path cost; 0 = auto (20000)      */
-extern __xdata uint8_t  stp_pprio[10];	/* port priority (default 0x80)     */
+extern __xdata uint8_t  stp_pprio[10];
+extern __xdata uint8_t  stp_pp2p[10];	/* admin point-to-point: 0 auto, 1 on, 2 off */
+
+/* Last-heard designated info per port (from received BPDUs); consult
+ * stp_bpdu_age to decide whether it is still current. */
+extern __xdata struct bridge stp_dbridge[10];
+extern __xdata uint16_t stp_dpid[10];
+extern __xdata uint32_t stp_dcost[10];
+extern __xdata uint16_t stp_bpdu_age[10];	/* ticks since a BPDU was heard */	/* port priority (default 0x80)     */
 
 /* ---- Status, exposed read-only for the web UI (send_stp) ---- */
 extern __xdata struct bridge root_bridge;

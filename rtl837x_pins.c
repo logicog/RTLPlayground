@@ -2,8 +2,6 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 
-#pragma codeseg BANK2
-#pragma constseg BANK2
 
 uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin) __banked {
 	switch (sda_pin) {

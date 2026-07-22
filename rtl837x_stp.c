@@ -74,6 +74,11 @@ extern volatile __xdata uint8_t mgmt_alive;	/* set by httpd on any request */
 __xdata uint8_t  stp_pflags[10];
 __xdata uint32_t stp_pcost[10];
 __xdata uint8_t  stp_pprio[10];
+__xdata uint8_t  stp_pp2p[10];
+
+__xdata struct bridge stp_dbridge[10];
+__xdata uint16_t stp_dpid[10];
+__xdata uint32_t stp_dcost[10];
 
 /* ---- Status / runtime ---- */
 __xdata struct bridge root_bridge;
@@ -600,9 +605,29 @@ void stp_parse(void) __banked __reentrant
 			else if (!cmd_compare(4, "off"))
 				goto err;
 		} else if (cmd_compare(3, "cost")) {
-			if (atoi_byte(&stp_scratch, cmd_words_b[4]))
+			/* raw 802.1D value, 0..200000000; 0 = auto (speed-based) */
+			stp_cost_scratch = 0;
+			{
+			__xdata uint8_t *cp = &cmd_buffer[cmd_words_b[4]];
+			if (*cp < '0' || *cp > '9')
 				goto err;
-			stp_pcost[port] = (uint32_t)stp_scratch * 1000;
+			while (*cp >= '0' && *cp <= '9') {
+				stp_cost_scratch = stp_cost_scratch * 10 + (*cp - '0');
+				cp++;
+			}
+			}
+			if (stp_cost_scratch > 200000000UL)
+				goto err;
+			stp_pcost[port] = stp_cost_scratch;
+		} else if (cmd_compare(3, "p2p")) {
+			if (cmd_compare(4, "auto"))
+				stp_pp2p[port] = 0;
+			else if (cmd_compare(4, "on"))
+				stp_pp2p[port] = 1;
+			else if (cmd_compare(4, "off"))
+				stp_pp2p[port] = 2;
+			else
+				goto err;
 		} else if (cmd_compare(3, "prio")) {
 			if (atoi_byte(&stp_scratch, cmd_words_b[4]))
 				goto err;
