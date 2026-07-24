@@ -63,6 +63,17 @@ sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 <details>
 <summary>If using Docker (click to expand)</summary>
 
+### Prerequisites
+
+Install Docker for your platform:
+
+- **Linux (Debian/Ubuntu)**: `sudo apt install docker.io` then `sudo usermod -aG docker $USER` (log out and back in)
+- **Linux (other distros)**: Follow the [Docker Engine install guide](https://docs.docker.com/engine/install/)
+- **Windows**: Install [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
+- **macOS**: Install [Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
+
+### Usage
+
 A Dockerfile is provided for a reproducible build environment:
 
 ```
