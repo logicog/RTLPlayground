@@ -174,7 +174,8 @@ bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 		c = *rhs_str_p++;
 
 		if (c == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+			/* ';' separates cookies in a Cookie header, so it ends a value too. */
+			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
 				return false;
 			return true;
 		}
@@ -204,28 +205,28 @@ uint8_t parse_short(__xdata uint8_t *p)
 
 void send_not_found(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n" \
+	slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n" \
 			      "<!DOCTYPE HTML PUBLIC>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n");
 }
 
 
 void send_bad_request(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\n\r\n" \
+	slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n" \
 			      "<!DOCTYPE HTML PUBLIC>\n<title>400 Bad Request</title>\n<h1>Bad Request</h1>\n");
 }
 
 
 void send_to_login(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 302 Found\r\n" \
+	slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\n" \
 			      "Location: login.html\r\n\r\n");
 }
 
 
 void send_unauthorized(void)
 {
-	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\n\r\n");
+	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
 }
 
 
@@ -252,8 +253,20 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 			break;
 		if (is_word(p, "\nContent-Type:"))
 			content_type = p + 15;
-		else if (is_word(p, "\nCookie:"))
-			session = p + 17;
+		else if (is_word(p, "\nCookie:")) {
+			/* Scan for the "session" key: the header may hold several
+			 * cookies in any order. Match "session" not "session=" -
+			 * is_word() requires a separator after the match and '=' is
+			 * one, so this also rejects a longer key like "sessionx". */
+			__xdata uint8_t *c = p + 8;	/* past "\nCookie:" */
+			while (*c && *c != '\r' && *c != '\n') {
+				if (is_word(c, "session")) {
+					session = c + 8;	/* past "session=" */
+					break;
+				}
+				c++;
+			}
+		}
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
 		dbg_string("\nFound multipart\n");
@@ -469,14 +482,14 @@ void handle_post(void)
 			read_reg_timer(&last_session_use);
 			gen_random_bytes(session_id, SESSION_ID_LENGTH);
 			session_id[SESSION_ID_LENGTH] = '\0';
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: index.html\r\n" \
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");
 			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
 				outbuf[slen++] = session_id[i];
 			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 		} else {
 			dbg_string("Password invalid!\n");
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nLocation: login.html\r\n\r\n");
+			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: login.html\r\n\r\n");
 		}
 		return;
 	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
@@ -521,7 +534,7 @@ void handle_post(void)
 		send_not_found();
 		return;
 	}
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\n\r\n");
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
 	return;
 bad_request:
 	send_bad_request();
@@ -699,7 +712,13 @@ void httpd_appcall(void)
 
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: style-src 'self' 'unsafe-inline'\r\n\r\n");
+			/* 'unsafe-inline' is needed for the inline onclick handlers
+			 * and the inline <script> on login.html. Connection: close is
+			 * required because this httpd closes the connection after every
+			 * response; without advertising it a browser reuses the socket
+			 * from its keep-alive pool and the next request hits the already
+			 * closed connection (a POST is then dropped without a retry). */
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
