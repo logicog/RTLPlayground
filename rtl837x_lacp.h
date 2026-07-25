@@ -6,12 +6,16 @@
  * Mirrors the structure of rtl837x_stp.c (a link-layer control
  * protocol trapped to CPU via the Reserved-Multicast-Address mechanism).
  *
- * Entry points (see rtlplayground.c dispatch / timer loop, gated by lacpEnabled):
- *   lacp_in()      called when a slow-protocols frame (01:80:C2:00:00:02) arrives
- *   lacp_setup()   legacy "lacp on": one aggregator on LAG 0, all ports
- *                  (slow-protocols delivered via RMA *forward*, not trap)
+ * External entry points (rtlplayground.c boot/dispatch/timer loop and the
+ * cmd_parser "lacp"/"lag ... lacp" handlers, gated by lacpEnabled):
+ *   lacp_init()    boot: clear per-LAG state before config replay
+ *   lacp_in()      a slow-protocols frame (01:80:C2:00:00:02) arrived
  *   lacp_timers()  periodic tick: per-port periodic TX + partner timeout + mux
- *   lacp_off()     disable + tear down any active LAG we created
+ *   lacp_cmd()     "lacp on|off" master engine handler
+ *   lacp_show()    "lacp show" per-port diagnostics
+ *   lacp_lag_set() assign candidate ports to a LACP LAG ("lag <n> lacp <ports>")
+ * lacp_setup()/lacp_off() are internal helpers of lacp_cmd() (the legacy
+ * single-LAG on/off path), delivering slow-protocols via RMA *forward*, not trap.
  */
 
 #include <stdint.h>
@@ -59,6 +63,19 @@ extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];/* trunk members we las
 #define LACP_VERSION		0x01
 #define LACP_DST5		0x02	/* 01:80:C2:00:00:02 last octet */
 
+/* LACPDU TLV framing (802.3ad 43.4.2): type bytes + fixed TLV lengths. */
+#define LACP_TLV_ACTOR		0x01
+#define LACP_TLV_PARTNER	0x02
+#define LACP_TLV_COLLECTOR	0x03
+#define LACP_TLV_TERMINATOR	0x00
+#define LACP_TLV_LEN_INFO	0x14	/* Actor/Partner Information TLV length */
+#define LACP_TLV_LEN_COLLECTOR	0x10	/* Collector TLV length */
+
+/* Our aggregation identity: System priority is a constant (Linux 802.3ad
+ * defaults to the same 0xffff); the default Actor port priority likewise. */
+#define LACP_SYS_PRIO		0xffff
+#define LACP_DEF_PORT_PRIO	0x00ff
+
 /* Actor_State / Partner_State flag bits (802.3ad 43.4.2) */
 #define LACP_STATE_ACTIVITY	0x01	/* 1 = Active LACP (send periodically)  */
 #define LACP_STATE_TIMEOUT	0x02	/* 1 = Short (fast) timeout             */
@@ -68,6 +85,9 @@ extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];/* trunk members we las
 #define LACP_STATE_DISTRIBUTING	0x20
 #define LACP_STATE_DEFAULTED	0x40	/* partner info is administrative default*/
 #define LACP_STATE_EXPIRED	0x80	/* wire-format doc; unused by the simplified RX machine */
+
+/* Fully-participating actor: in sync AND collecting AND distributing. */
+#define LACP_STATE_FULL		(LACP_STATE_SYNC | LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING)
 
 /*
  * Timer units: one decrement per active lacp_timers() call (~64 Hz: the main
