@@ -195,6 +195,6 @@ window.addEventListener("load", function() {
     lagForm();
     fetchLacp();
     const interval = setInterval(update, 2000);
-    const lacpInt = setInterval(fetchLacp, 2000);
+    setInterval(fetchLacp, 2000);
   });
 });

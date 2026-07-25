@@ -109,9 +109,6 @@ __xdata uint16_t lacp_periodic[10];		/* down-counter to next TX       */
 __xdata uint16_t lacp_timeout[10];		/* down-counter to partner expiry*/
 __xdata uint8_t  lacp_ntt[10];			/* Need-To-Transmit flag         */
 
-/* Our aggregation identity (shared across ports of the same LAG) */
-__xdata uint16_t lacp_sys_prio;
-
 /* Tick divider so lacp_timers() may be called on every main-loop tick */
 #define LACP_TICK_DIVIDER 3
 __xdata uint8_t lacp_clock;
@@ -246,14 +243,14 @@ void lacp_send(uint8_t port) __banked
 	LACP_O->version = LACP_VERSION;
 
 	/* Actor TLV */
-	LACP_O->tlv_actor = 0x01;
-	LACP_O->actor_len = 0x14;
-	LACP_O->actor.sys_prio = HTONS(lacp_sys_prio);
+	LACP_O->tlv_actor = LACP_TLV_ACTOR;
+	LACP_O->actor_len = LACP_TLV_LEN_INFO;
+	LACP_O->actor.sys_prio = HTONS(LACP_SYS_PRIO);
 	memcpy(LACP_O->actor.sys, uip_ethaddr.addr, 6);
 	/* Per-LAG Actor Key so a partner never merges ports of our different LAGs
 	 * into one aggregate (only ever called for ports in a LACP LAG). */
 	LACP_O->actor.key = HTONS((uint16_t)(lacp_port_lag[port] + 1));
-	LACP_O->actor.port_prio = HTONS(0x00ff);
+	LACP_O->actor.port_prio = HTONS(LACP_DEF_PORT_PRIO);
 	LACP_O->actor.port = HTONS((uint16_t)port + 1);	/* 1-based port id */
 	LACP_O->actor.state = lacp_actor_state[port];
 
@@ -263,8 +260,8 @@ void lacp_send(uint8_t port) __banked
 	 * port+priority. Priorities must be echoed, not hardcoded: Linux defaults to
 	 * system priority 0xffff, so a hardcoded 0 here cleared its partner-SYNC
 	 * (0x3f->0x37) and the aggregate never collected/distributed. */
-	LACP_O->tlv_partner = 0x02;
-	LACP_O->partner_len = 0x14;
+	LACP_O->tlv_partner = LACP_TLV_PARTNER;
+	LACP_O->partner_len = LACP_TLV_LEN_INFO;
 	LACP_O->partner.sys_prio = HTONS(lacp_partner_sys_prio[port]);
 	memcpy(LACP_O->partner.sys, lacp_partner_sys[port], 6);
 	LACP_O->partner.key = HTONS(lacp_partner_key[port]);
@@ -273,10 +270,10 @@ void lacp_send(uint8_t port) __banked
 	LACP_O->partner.state = lacp_partner_state[port];
 
 	/* Collector TLV + Terminator */
-	LACP_O->tlv_collector = 0x03;
-	LACP_O->collector_len = 0x10;
+	LACP_O->tlv_collector = LACP_TLV_COLLECTOR;
+	LACP_O->collector_len = LACP_TLV_LEN_COLLECTOR;
 	LACP_O->collector_max_delay = 0;
-	LACP_O->tlv_terminator = 0x00;
+	LACP_O->tlv_terminator = LACP_TLV_TERMINATOR;
 	LACP_O->terminator_len = 0x00;
 
 	lacp_ntt[port] = 0;
@@ -415,8 +412,7 @@ void lacp_mux_update(void) __banked
 		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 			if (lacp_port_lag[i] != lag)
 				continue;
-			uint8_t need = LACP_STATE_SYNC | LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING;
-			if ((lacp_actor_state[i] & need) == need
+			if ((lacp_actor_state[i] & LACP_STATE_FULL) == LACP_STATE_FULL
 			    && (lacp_partner_state[i] & LACP_STATE_SYNC))
 				lacp_scratch_mask |= port_bit(i);
 		}
@@ -536,7 +532,6 @@ static uint8_t lacp_any_lag(void)
  */
 static void lacp_engine_on(void)
 {
-	lacp_sys_prio = 0xffff;
 	lacp_iso_base = PMASK_CPU | LACP_PMASK_PORTS;
 	lacp_clock = LACP_TICK_DIVIDER;
 	lacpEnabled = 1;
