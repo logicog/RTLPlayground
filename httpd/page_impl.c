@@ -252,6 +252,12 @@ void send_basic_info(void)
 	byte_to_html(uip_ethaddr.addr[3]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[4]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[5]);
+	slen += strtox(outbuf + slen, "\",\"hostname\":\"");
+	{
+		__xdata char *hp = hostname;	/* sanitized on ingest, emit verbatim */
+		while (*hp)
+			char_to_html(*hp++);
+	}
 	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
 	slen += strtox(outbuf + slen, VERSION_SW);
 	slen += strtox(outbuf + slen, "\",\"build_date\":\"");

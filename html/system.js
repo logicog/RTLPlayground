@@ -48,6 +48,14 @@ async function cmdSub() {
 }
 
 
+async function hostSub() {
+  const h = document.getElementById("hostname").value;
+  try { await fetch('/cmd', { method: 'POST', body: "hostname " + h }); }
+  catch(err) { console.error(`Error: ${err}`); }
+  fetchIP();
+}
+
+
 async function sendConfig(c) {
   if (isSaving) return;
   isSaving = true;
@@ -123,6 +131,7 @@ function fetchIP() {
       document.getElementById("ip").value=s.ip_address;
       document.getElementById("netmask").value=s.ip_netmask;
       document.getElementById("gw").value=s.ip_gateway;
+      if (document.getElementById("hostname")) document.getElementById("hostname").value = s.hostname || "";
       clearInterval(systemInterval);
       // Fetch and populate the config textbox
       fetchConfig().then((configText) => {

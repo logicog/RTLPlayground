@@ -120,6 +120,7 @@ __xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t stpEnabled;
+__xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
@@ -2145,6 +2146,7 @@ void main(void)
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
+	strcpy((__xdata uint8_t *)hostname, "RTLPlayground");	/* default until "hostname ..." replay */
 	bandwidth_setup();
 	uip_init();
 	uip_arp_init();

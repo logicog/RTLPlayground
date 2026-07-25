@@ -26,6 +26,11 @@
     <div id="system-tab" class="tab-content active">
       <h1 data-i18n="sys_heading">System Settings</h1>
       <div class="row">
+        <div class="lcol"> <label for="hostname" data-i18n="sys_hostname">Hostname:</label></div>
+        <div class="rcol"> <input id="hostname" type="text" maxlength="23" size="20"/>
+          <button onclick="hostSub()" data-i18n="sys_apply">Apply</button></div>
+      </div>
+      <div class="row">
         <div class="lcol"> <label for="ip" data-i18n="sys_ip">IP address:</label></div>
         <div class="rcol"> <input id="ip" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
       </div>

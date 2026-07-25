@@ -1524,6 +1524,18 @@ void cmd_parser(void) __banked
 				igmp_show();
 			else
 				igmp_setup();  // Reverts to default with IP-MC being flooded
+		} else if (cmd_compare(0, "hostname")) {
+			/* hostname <text>: rest of the line, sanitized to JSON-safe
+			 * printable ASCII (<=23 chars), stored in the shared hostname. */
+			__xdata uint8_t *hp = &cmd_buffer[cmd_words_b[1]];
+			uint8_t hn = 0;
+			if (cmd_words_len >= 2)
+				while (hn < 23 && hp[hn] && hp[hn] != '\r' && hp[hn] != '\n') {
+					hostname[hn] = (hp[hn] < 0x20 || hp[hn] > 0x7e
+						|| hp[hn] == '"' || hp[hn] == '\\') ? '.' : hp[hn];
+					hn++;
+				}
+			hostname[hn] = 0;
 		} else if (cmd_compare(0, "stp")) {
 			if (cmd_compare(1, "on")) {
 				print_string("STP enabled\n");
