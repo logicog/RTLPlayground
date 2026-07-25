@@ -132,6 +132,7 @@ function fetchIP() {
       document.getElementById("netmask").value=s.ip_netmask;
       document.getElementById("gw").value=s.ip_gateway;
       if (document.getElementById("hostname")) document.getElementById("hostname").value = s.hostname || "";
+      if (document.getElementById("model")) document.getElementById("model").textContent = s.hw_ver || "";
       clearInterval(systemInterval);
       // Fetch and populate the config textbox
       fetchConfig().then((configText) => {
