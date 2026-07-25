@@ -174,9 +174,7 @@ bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 		c = *rhs_str_p++;
 
 		if (c == '\0') {
-			/* ';' terminates a cookie value when it is not the last cookie
-			 * in the header ("session=X; other=y") - accept it as a word
-			 * boundary so such a session cookie still authenticates. */
+			/* ';' separates cookies in a Cookie header, so it ends a value too. */
 			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
 				return false;
 			return true;
@@ -256,18 +254,10 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 		if (is_word(p, "\nContent-Type:"))
 			content_type = p + 15;
 		else if (is_word(p, "\nCookie:")) {
-			/* The Cookie header may carry SEVERAL cookies ("a=1; session=X"),
-			 * and browsers keep stale cookies for years - e.g. an "admin"
-			 * cookie left over from this switch's vendor firmware. The old
-			 * fixed-offset parse (p + 17) assumed "session=" was the first
-			 * and only cookie, so with any other cookie present it pointed
-			 * into the wrong value, authentication silently failed and the
-			 * UI bounced back to the login page although the password had
-			 * been accepted (worked from curl, which sends only session=).
-			 * Scan the header for the actual "session=" key instead. */
-			/* Match "session" (not "session="): is_word() demands a separator
-			 * after the pattern, and '=' is on its separator list while the
-			 * first byte of the value is not. */
+			/* Scan for the "session" key: the header may hold several
+			 * cookies in any order. Match "session" not "session=" -
+			 * is_word() requires a separator after the match and '=' is
+			 * one, so this also rejects a longer key like "sessionx". */
 			__xdata uint8_t *c = p + 8;	/* past "\nCookie:" */
 			while (*c && *c != '\r' && *c != '\n') {
 				if (is_word(c, "session")) {
@@ -722,22 +712,12 @@ void httpd_appcall(void)
 
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
-			/* Complete, first-party CSP: everything the UI needs is same-origin
-			 * (scripts, styles, the SVG port icons, the /*.json fetches and the
-			 * login/cmd form POSTs). 'unsafe-inline' for script covers the inline
-			 * onclick handlers and the small inline <script> on login.html. An
-			 * explicit, complete policy stops privacy shields (Brave/NoScript)
-			 * from injecting their own restrictive report-only probes that made
-			 * the console noisy and could break the JS-driven pages. */
-			/* Connection: close is REQUIRED: this httpd serves exactly one
-			 * request per TCP connection (it uip_close()s after the response),
-			 * but without advertising it a browser keeps the socket in its
-			 * keep-alive pool and reuses it for the next request. The reused
-			 * request (e.g. the login POST after the GET of login.html) then
-			 * hits the already-closed connection and is dropped - and browsers
-			 * do NOT retry a non-idempotent POST, so the login silently fails
-			 * while curl (fresh connection per request) works. Advertising
-			 * close makes the browser open a fresh connection every time. */
+			/* 'unsafe-inline' is needed for the inline onclick handlers
+			 * and the inline <script> on login.html. Connection: close is
+			 * required because this httpd closes the connection after every
+			 * response; without advertising it a browser reuses the socket
+			 * from its keep-alive pool and the next request hits the already
+			 * closed connection (a POST is then dropped without a retry). */
 			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
