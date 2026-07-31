@@ -2,10 +2,16 @@ document.addEventListener("DOMContentLoaded", function () {
     fetch('/information.json')
         .then(response => response.json())
         .then(data => {
+            // Refresh the PoE capability flag cached for navigation.js (see there).
+            localStorage.setItem('cap_poe', data.poe ? '1' : '0');
+
             const tableBody = document.getElementById('infoTable').querySelector('tbody');
 
             // Create table rows
             for (const [key, value] of Object.entries(data)) {
+                if (key === 'poe')
+                    continue; // capability flag, not a display field
+
                 const row = document.createElement('tr');
                 const cellKey = document.createElement('td');
                 const cellValue = document.createElement('td');

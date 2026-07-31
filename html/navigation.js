@@ -19,10 +19,22 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// poe.html ships in every build, but the PoE code (and /poe.json) is compiled in only on PoE
-// machines. Show the PoE menu entry only when the firmware has it - i.e. when /poe.json answers.
-fetch('/poe.json').then(function(r) {
-  if (!r.ok) return;
+// Add PoE menu item if the device supports it. The capability flag is cached in localStorage
+// by main_info.js.
+function addPoeMenu() {
+  if (document.querySelector("#sidebar a[href='poe.html']")) return; // already present
   var sys = document.querySelector("#sidebar a[href='system.html']").parentNode;
   sys.insertAdjacentHTML('beforebegin', "<li><a href='poe.html'>PoE</a></li>");
-}).catch(function() {});
+}
+
+var poeCap = localStorage.getItem('cap_poe');
+if (poeCap === null) {
+  // Not cached yet (fresh browser, or a tab opened before the Overview page ran):
+  // wait for main_info.js in another tab to write it.
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'cap_poe' && e.newValue === '1')
+      addPoeMenu();
+  }, { once: true });
+} else if (poeCap === '1') {
+  addPoeMenu();
+}

@@ -272,6 +272,12 @@ void send_basic_info(void)
 	}
 	char_to_html('"');
 
+#ifdef POE_PRESENT
+	slen += strtox(outbuf + slen, ",\"poe\":true");
+#else
+	slen += strtox(outbuf + slen, ",\"poe\":false");
+#endif
+
 	char_to_html('}');
 }
 
