@@ -4,6 +4,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
+#include "poe.h"
 
 #ifdef MACHINE_KP_9000_6XHML_X2
 __code const struct machine machine = {
@@ -208,7 +209,11 @@ void machine_custom_init(void) { }
 
 #elif defined MACHINE_KP_9000_9XHML_X_V3_1
 __code const struct machine machine = {
+#ifdef POE_PRESENT
+	.machine_name = "keepLink KP-9000-9XHPML-X V3.1",	// same board + PoE
+#else
 	.machine_name = "keepLink KP-9000-9XHML-X V3.1",
+#endif
 	.isRTL8373 = 1,
 	.min_port = 0,
 	.max_port = 8,
@@ -239,6 +244,11 @@ __code const struct machine machine = {
 	.led_mux = {0x00, 0x01, 0x04, 0x05, 0x08, 0x09, 0x0c, 0x09, 0x0d, 0x10,
 				0x11, 0x0e, 0x14, 0x11, 0x12, 0x15, 0x15, 0x16, 0x18, 0x19,
 				0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21},
+#ifdef POE_PRESENT
+	/* The PoE variant (KP-9000-9XHPML-X) adds an RTL8238B PSE on I2C bus 0 (GPIO46/47):
+	 * 0x20 = ports 1-4, 0x21 = ports 5-8. */
+	.poe = { .chip = POE_RTL8238B, .addr0 = 0x20, .addr1 = 0x21, .n_ports = 8 },
+#endif
 };
 
 void machine_custom_init(void) { }

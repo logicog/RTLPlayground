@@ -18,3 +18,23 @@ document.addEventListener('DOMContentLoaded', function() {
     if (key) el.textContent = t(key);
   });
 });
+
+// Add PoE menu item if the device supports it. The capability flag is cached in localStorage
+// by main_info.js.
+function addPoeMenu() {
+  if (document.querySelector("#sidebar a[href='poe.html']")) return; // already present
+  var sys = document.querySelector("#sidebar a[href='system.html']").parentNode;
+  sys.insertAdjacentHTML('beforebegin', "<li><a href='poe.html'>PoE</a></li>");
+}
+
+var poeCap = localStorage.getItem('cap_poe');
+if (poeCap === null) {
+  // Not cached yet (fresh browser, or a tab opened before the Overview page ran):
+  // wait for main_info.js in another tab to write it.
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'cap_poe' && e.newValue === '1')
+      addPoeMenu();
+  }, { once: true });
+} else if (poeCap === '1') {
+  addPoeMenu();
+}
