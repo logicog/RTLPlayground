@@ -15,7 +15,9 @@
  *   lacp_show()    "lacp show" per-port diagnostics
  *   lacp_lag_set() assign candidate ports to a LACP LAG ("lag <n> lacp <ports>")
  * lacp_setup()/lacp_off() are internal helpers of lacp_cmd() (the legacy
- * single-LAG on/off path), delivering slow-protocols via RMA *forward*, not trap.
+ * single-LAG on/off path). Slow-protocols are delivered via RMA *forward*
+ * (trap does not reach the NIC RX ring) constrained by a static CPU-only L2
+ * multicast entry, so nothing is flooded to other ports.
  */
 
 #include <stdint.h>

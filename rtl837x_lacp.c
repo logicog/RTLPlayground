@@ -2,8 +2,9 @@
  * LACP (IEEE 802.3ad Clause 43) driver for the RTL837x platform.
  * This code is in the Public Domain.
  *
- * Structure mirrors rtl837x_stp.c: a slow-protocol control frame is trapped to
- * the CPU port via the Reserved-Multicast mechanism, parsed via a struct overlaid
+ * Structure mirrors rtl837x_stp.c: a slow-protocol control frame is steered to
+ * the CPU port (Reserved-Multicast forward action + a static CPU-only L2
+ * multicast entry, see lacp_fdb_set()), parsed via a struct overlaid
  * on uip_buf, and periodic LACPDUs are emitted per port using the RTL frame tag
  * (rtl_tag.pmask selects the egress port). Once the actor/partner reach
  * SYNC+COLLECTING+DISTRIBUTING, the participating ports are programmed into a
@@ -35,6 +36,7 @@ extern __xdata struct machine_runtime machine_detected;	/* runtime chip detectio
 extern __xdata uint16_t management_vlan;	/* owned by rtlplayground.c; suppressed per-frame for slow protocols */
 extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
+extern __xdata uint8_t sfr_data[4];	/* register-access scratch (cf. rtl837x_igmp.c) */
 /* lacpEnabled: extern in rtl837x_lacp.h, owned by rtlplayground.c */
 
 /* 20-byte Actor/Partner information body (802.3ad 43.4.2.2), network byte order */
@@ -131,7 +133,7 @@ __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];
  * as plain locals SDCC overlays them in internal RAM (OSEG), which is already
  * near-full on this firmware - adding them tipped it over ("Could not get 8
  * consecutive bytes in internal RAM for area OSEG"). Same pattern as
- * lacp_iso_base/lacp_iso_tx below. Safe: never live across a yield. */
+ * lacp_fdb_vid below. Safe: never live across a yield. */
 __xdata uint16_t lacp_scratch_mask;
 __xdata uint8_t  lacp_scratch_flag;
 
@@ -139,28 +141,14 @@ __xdata uint8_t  lacp_scratch_flag;
  * verify slow-protocol frames actually reach the CPU port (see "lacp show") */
 __xdata uint16_t lacp_rx_count[10];
 
-/* Cache of the last port-isolation mask we wrote per port, so lacp_isolation_update()
- * only touches the ASIC when a port's isolation actually changes (it is called on
- * every LACPDU RX and timer tick). */
-__xdata uint16_t lacp_iso_last[10];
-
-/* Scratch for lacp_isolation_update()/lacp_off() port-isolation masks. Kept in
- * xdata because the 8051 has very little internal RAM and locals here would
- * overflow the function overlay area (OSEG). */
-__xdata uint16_t lacp_iso_base;
-__xdata uint16_t lacp_iso_tx;
+/* Scratch for lacp_fdb_update()/lacp_fdb_set(), in xdata for the same OSEG
+ * reason (their plain locals tipped the internal-RAM overlay over). */
+__xdata uint16_t lacp_fdb_vid;
+__xdata uint8_t  lacp_fdb_i, lacp_fdb_j, lacp_fdb_guard;
 
 
 
 void lacp_mux_update(void) __banked;	/* defined below, used from lacp_in */
-void lacp_isolation_update(void) __banked;	/* defined below, used from lacp_mux_update */
-
-/* True if a system-ID is not all-zero, i.e. a partner has actually been seen. */
-static uint8_t lacp_sys_nonzero(__xdata uint8_t *a)
-{
-	return a[0] | a[1] | a[2] | a[3] | a[4] | a[5];
-}
-
 
 /*
  * Selection logic (simplified 43.4.14): a port may join the aggregator when
@@ -359,43 +347,73 @@ void lacp_in(void) __banked
 
 
 /*
- * Keep sibling ports of the same aggregation isolated from each other.
+ * Steer the Slow-Protocols group (01:80:C2:00:00:02) to the CPU port only.
  *
- * LACPDUs must be forwarded to reach the CPU (the ASIC "trap" action does not
- * reach the 8051 RX ring on this firmware - only "forward" does). But forward
- * also floods the frame across the VLAN, so a LACPDU ingressing on one bond
- * port egresses on its sibling. A Linux 802.3ad bond then sees its own Actor
- * System on the sibling link and logs "illegal loopback", flapping the whole
- * aggregate. There is no reserved-mc-specific flood portmask on this chip, so
- * we suppress the sibling flood with per-port isolation instead: two ports of
- * the *same LACP LAG* that remember the *same partner System ID* are one bond,
- * and are isolated from one another (they never carry legitimate port-to-port
- * traffic anyway). Keying on the remembered partner (not the live rx_state)
- * keeps the isolation static across transient flaps - keying on rx_state made
- * it flicker, reopening the flood window -> loopback -> churn. The same-LAG
- * condition scopes siblinghood: with `lacp on` (all ports candidates of LAG 0)
- * it is a no-op and the behaviour is exactly the hardware-verified original,
- * while explicitly-configured LAGs never cross-isolate. NOTE: while a port is
- * in a LACP LAG this manages its isolation mask; a user-set "isolate" on such a
- * port is overridden until its partner ages out or it leaves the LAG.
+ * The RMA "trap" action does not reach the 8051 NIC RX ring on this firmware
+ * (hardware-verified: the rx counters stay frozen with trap), so LACPDUs are
+ * delivered with the RMA action "forward". Plain forward floods the frame
+ * across the ingress VLAN, which leaks LACPDUs to unrelated ports: a bond's
+ * ports see each other's PDUs ("illegal loopback" flaps on Linux), a second
+ * bond on the same switch is poisoned, and the flood escapes via uplinks.
+ * Reserved link-local groups must never be forwarded at all (802.1D).
+ *
+ * The fix is a *static L2 multicast entry* for 01:80:C2:00:00:02 with a
+ * CPU-only member mask: the forward lookup hits that entry and uses its
+ * portmask instead of the VLAN flood mask, so the PDU reaches the CPU and
+ * nothing else (hardware-verified both ways: a mask without the CPU bit
+ * freezes the rx counters, a CPU-only mask delivers with no port egress).
+ * This replaces the previous sibling-port-isolation workaround entirely and
+ * restores correct link-local containment on every port.
+ *
+ * L2 lookups are IVL on this chip (a VID-0/SVL entry is not matched), so one
+ * entry is needed per PVID of the LACP candidate ports - untagged LACPDUs
+ * classify into the ingress port's PVID. Entries for stale VIDs are left
+ * behind (they only steer slow-protocol frames to the CPU, which is correct
+ * anyway) and the LUT is volatile, so a reboot clears them. NOTE: changing a
+ * port's PVID after LACP is configured needs `lacp off`/`on` to refresh.
  */
-void lacp_isolation_update(void) __banked
+
+/* Write the static Slow-Protocols L2 MC entry for VID `lacp_fdb_vid` with a
+ * CPU-only member mask. SMI layout per the vendor SDK's L2-multicast variant:
+ *   DATA_IN_A = MAC bytes 5..2                            -> c2 00 00 02
+ *   DATA_IN_B = MAC[1..0] | vid<<16 | IVL<<29 | pmask[1:0]<<30
+ *   DATA_IN_C = pmask[9:2]
+ * With pmask = PMASK_CPU (0x200) its low bits are 0, so DATA_IN_B carries
+ * only MAC/VID/IVL and DATA_IN_C is a constant 0x80. The write command
+ * (table 4 covers the whole L2 LUT, not just unicast) hashes MAC+VID and
+ * picks the bucket slot itself; TBL_EXECUTE self-clears on completion. */
+static void lacp_fdb_set(void)
 {
-	/* lacp_iso_base is set once by lacp_init()/lacp_engine_on() */
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		lacp_iso_tx = lacp_iso_base;
-		uint8_t lag = lacp_port_lag[i];
-		if (lag != LACP_LAG_NONE && lacp_sys_nonzero(lacp_partner_sys[i])) {
-			for (uint8_t j = machine.min_port; j <= machine.max_port; j++) {
-				if (i != j && lacp_port_lag[j] == lag
-				    && cmpMAC(lacp_partner_sys[i], lacp_partner_sys[j]) == 0)
-					lacp_iso_tx &= ~port_bit(j);
-			}
+	lacp_fdb_guard = 0;
+	do {	/* wait out any previous table op (bounded, cf. the IGMP guards) */
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while ((sfr_data[3] & TBL_EXECUTE) && ++lacp_fdb_guard);
+
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0xc2, 0x00, 0x00, 0x02);
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | (lacp_fdb_vid >> 8), lacp_fdb_vid, 0x01, 0x80);
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0, 0, 0, PMASK_CPU >> 2);
+	REG_WRITE(RTL837X_TBL_CTRL, 0, 0, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	lacp_fdb_guard = 0;
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while ((sfr_data[3] & TBL_EXECUTE) && ++lacp_fdb_guard);
+}
+
+/* Refresh the CPU-steering entries after a LACP topology change: one entry
+ * per distinct PVID over all LACP candidate ports. Config-time only. */
+static void lacp_fdb_update(void)
+{
+	for (lacp_fdb_i = machine.min_port; lacp_fdb_i <= machine.max_port; lacp_fdb_i++) {
+		if (lacp_port_lag[lacp_fdb_i] == LACP_LAG_NONE)
+			continue;
+		lacp_fdb_vid = port_pvid_get(lacp_fdb_i);
+		for (lacp_fdb_j = machine.min_port; lacp_fdb_j < lacp_fdb_i; lacp_fdb_j++) {
+			if (lacp_port_lag[lacp_fdb_j] != LACP_LAG_NONE
+			    && port_pvid_get(lacp_fdb_j) == lacp_fdb_vid)
+				goto next_port;		/* this PVID is already written */
 		}
-		if (lacp_iso_tx != lacp_iso_last[i]) {
-			lacp_iso_last[i] = lacp_iso_tx;
-			port_isolate(i, lacp_iso_tx);
-		}
+		lacp_fdb_set();
+next_port:	;
 	}
 }
 
@@ -423,9 +441,6 @@ void lacp_mux_update(void) __banked
 			port_lag_members_set(lag, lacp_scratch_mask);
 		}
 	}
-
-	/* Keep bond siblings isolated so forwarded LACPDUs do not loop back. */
-	lacp_isolation_update();
 }
 
 
@@ -502,13 +517,12 @@ static void lacp_port_init(uint8_t port)
 	lacp_rx_count[port] = 0;
 }
 
-/* Return a port to non-LACP state and restore its default isolation. */
+/* Return a port to non-LACP state. (Port isolation is no longer touched -
+ * the CPU-steering FDB entry replaced the sibling-isolation workaround.) */
 static void lacp_port_release(uint8_t port)
 {
 	lacp_actor_state[port] = 0;
 	lacp_ntt[port] = 0;
-	lacp_iso_last[port] = lacp_iso_base;
-	port_isolate(port, lacp_iso_base);
 }
 
 /* True while any LAG is under LACP management (drives the global RMA trap). */
@@ -523,22 +537,21 @@ static uint8_t lacp_any_lag(void)
 /*
  * Turn the LACP engine on: deliver the Slow-Protocols group
  * (01:80:C2:00:00:02) to the CPU so we can see incoming LACPDUs. The ASIC
- * default for this address is "drop"; we set "forward" - on this firmware the
- * CPU port is in the forwarding domain, so forward reaches the CPU-RX ring
- * (trap does not - confirmed on hardware: rx stayed 0 with trap-to-CPU; it only
- * counted with forward). Because forward also floods the frame across the VLAN,
- * sibling ports would see each other's LACPDUs; lacp_isolation_update()
- * suppresses that with per-LAG port isolation.
+ * default for this address is "drop"; trap-to-CPU does not reach the NIC RX
+ * ring on this firmware (confirmed on hardware: rx stayed 0 with trap), so
+ * the action is "forward", constrained to a CPU-only egress by the static
+ * FDB entries lacp_fdb_update() maintains - see lacp_fdb_set() above.
  */
 static void lacp_engine_on(void)
 {
-	lacp_iso_base = PMASK_CPU | LACP_PMASK_PORTS;
 	lacp_clock = LACP_TICK_DIVIDER;
 	lacpEnabled = 1;
 	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_FORWARD);
 }
 
-/* Turn the LACP engine off: stop delivering slow-protocols to the CPU. */
+/* Turn the LACP engine off: stop delivering slow-protocols to the CPU. DROP
+ * acts before the L2 lookup, so the static FDB entries can stay behind - they
+ * are inert under DROP and the volatile LUT is cleared on reboot anyway. */
 static void lacp_engine_off(void)
 {
 	REG_SET(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_DROP);
@@ -550,12 +563,10 @@ static void lacp_engine_off(void)
  * 0xff sentinel, and a stray 0 would make a port look like it belongs to LAG 0. */
 void lacp_init(void) __banked
 {
-	lacp_iso_base = PMASK_CPU | LACP_PMASK_PORTS;
 	for (uint8_t i = 0; i < 10; i++) {
 		lacp_port_lag[i] = LACP_LAG_NONE;
 		lacp_actor_state[i] = 0;
 		lacp_ntt[i] = 0;
-		lacp_iso_last[i] = lacp_iso_base;
 	}
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
 		lacp_lag_ports[l] = 0;
@@ -596,7 +607,7 @@ void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
 	if (ports && !lacp_scratch_flag)	/* first LACP LAG: bring the engine up first */
 		lacp_engine_on();
 
-	/* Adopt the new member ports (engine must be up so iso_base is set). */
+	/* Adopt the new member ports (with the engine already up). */
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		if (ports & port_bit(i)) {
 			lacp_port_lag[i] = lag;
@@ -607,7 +618,7 @@ void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
 	if (!lacp_any_lag() && lacp_scratch_flag)	/* removed the last LACP LAG */
 		lacp_engine_off();
 
-	lacp_isolation_update();	/* refresh sibling isolation for the new topology */
+	lacp_fdb_update();	/* (re)write the CPU-steering entries for the new topology */
 }
 
 
