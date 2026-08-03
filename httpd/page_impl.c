@@ -357,13 +357,18 @@ void send_l2(uint16_t idx)
 	 */
 	__xdata uint16_t entry = idx & 0xfff;
 	__xdata uint16_t first_entry = 0xffff; // An illegal entry index
+	__xdata uint16_t mbr;
 	__bit first = true;
 	char_to_html('[');
 	while (1) {
 		entries_left--;
 		uint8_t port = 0;
+		uint8_t mc = 0;
 		reg_read_m(RTL837x_TBL_DATA_0);
-		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
+		// Iterate with "next address" (method 2) so static multicast entries -
+		// e.g. the LACP slow-protocols CPU-steering entry - are listed too,
+		// not only learned/static unicast ones.
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_ADDRESS << 6), sfr_data[3]);
 
 		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, TBL_EXECUTE);
 		do {
@@ -371,7 +376,7 @@ void send_l2(uint16_t idx)
 		} while (sfr_data[3] & TBL_EXECUTE);
 
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
-		__bit valid = (sfr_data[0] & 0x20) != 0;
+		__bit valid = (sfr_data[0] & 0x20) && !(sfr_data[0] & 0x10);
 		if (valid) {
 			/* separator + 74-byte worst-case entry + closing "]" */
 			if (slen + 76 > TCP_OUTBUF_SIZE)
@@ -379,6 +384,8 @@ void send_l2(uint16_t idx)
 			if (!first)
 				char_to_html(',');
 			first = false;
+
+			mc = sfr_data[2] & 0x01;	// multicast MAC: member mask, no SPA/age
 
 			// VLAN, taken from the read above instead of reading the register twice
 			slen += strtox(outbuf + slen, "{\"vlan\":\"");
@@ -398,12 +405,23 @@ void send_l2(uint16_t idx)
 
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
-			if (sfr_data[1] & 0x1)
+			if (mc || (sfr_data[1] & 0x1))
 				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
 			else
 				slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
 
-			port |= (sfr_data[3] & 0x3) << 2;
+			if (mc) {
+				// Report the lowest member of the mask (the CPU-steering
+				// entry has only the CPU port, rendered as "CPU" by the UI)
+				mbr = port | ((uint16_t)sfr_data[3] << 2);
+				port = 0;
+				while (mbr && !(mbr & 1)) {
+					mbr >>= 1;
+					port++;
+				}
+			} else {
+				port |= (sfr_data[3] & 0x3) << 2;
+			}
 			itoa_html(port);
 		}
 
