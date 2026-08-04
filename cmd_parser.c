@@ -188,15 +188,17 @@ uint8_t atoi_hex(uint8_t idx)
 uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 {
 	uint8_t err = 1;
-	uint8_t num = 0;
+	uint16_t num = 0;	/* wider than the result: catch the overflow */
 
 	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
 		num = (num * 10) + cmd_buffer[idx] - '0';
+		if (num > 255)	/* would silently wrap, e.g. 300 -> 44 */
+			return 1;
 		idx++;
 	}
 
-	*out = num;
+	*out = (uint8_t)num;
 	return err;
 }
 
