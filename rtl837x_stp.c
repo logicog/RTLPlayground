@@ -675,9 +675,13 @@ void stp_parse(void) __banked __reentrant
 			if (stpEnabled)
 				stp_state_set(port, 0b11);	/* plain forwarding */
 		} else if (cmd_compare(3, "edge")) {
-			stp_pflags[port] &= ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE);
+			/* Also drop the *operational* edge flag: it is what exempts the
+			 * port from topology changes and lets it skip the listen period,
+			 * so leaving it set would keep the old behaviour until the next
+			 * "stp off"/"stp on". An admin edge is operational immediately. */
+			stp_pflags[port] &= ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE | STP_PF_OPEREDGE);
 			if (cmd_compare(4, "on"))
-				stp_pflags[port] |= STP_PF_ADMEDGE;
+				stp_pflags[port] |= STP_PF_ADMEDGE | STP_PF_OPEREDGE;
 			else if (cmd_compare(4, "auto"))
 				stp_pflags[port] |= STP_PF_AUTOEDGE;
 			else if (!cmd_compare(4, "off"))
