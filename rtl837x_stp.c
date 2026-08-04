@@ -96,6 +96,7 @@ __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 __xdata uint8_t  stp_scratch;
 __xdata uint8_t  stp_tx_flags_extra;	/* one-shot flags OR-ed into the next BPDU (TCA) */
 __xdata uint16_t stp_rxlen;		/* received frame length, saved before uip_len is consumed */
+__xdata uint8_t  stp_msg_age;		/* message age of the root info we hold, seconds */
 __xdata uint8_t  stp_i;		/* shared loop iterator (DSEG relief) */
 __xdata uint32_t stp_cost_scratch;
 
@@ -191,6 +192,7 @@ static void stp_claim_root(void)
 	memcpy(root_bridge.mac, uip_ethaddr.addr, 6);
 	root_bridge_cost = 0;
 	stp_root_port = 0xff;
+	stp_msg_age = 0;
 }
 
 
@@ -255,7 +257,11 @@ void stp_cnf_send(uint8_t port) __reentrant
 
 	STP_O->port_prio = stp_pprio[port];
 	STP_O->port_id = port + 1;
-	STP_O->age = 0x00;  // FIXME: This only works because we do not use HTONS and the values are in 1/256 seconds
+	/* Message age, incremented by one second per bridge we relay through.
+	 * The timer fields are in 1/256 s on the wire, and sdcc stores uint16
+	 * little-endian, so assigning the plain second count lands the value in
+	 * the high (seconds) octet - see age_max/hello/fwd_delay below. */
+	STP_O->age = (stp_root_port == 0xff) ? 0 : (uint16_t)(stp_msg_age + 1);
 	STP_O->age_max = stp_maxage_s;
 	STP_O->hello = stp_hello_s;
 	STP_O->fwd_delay = stp_fwddelay_s;
@@ -380,6 +386,9 @@ void stp_in(void) __banked
 
 	/* Refresh our cost to the root when the update comes in on the root port */
 	if (port == stp_root_port) {
+		/* Age of the information we now hold (see the TX note on the wire
+		 * format); saturate rather than wrap on absurd input. */
+		stp_msg_age = (STP_I->age > 254) ? 254 : (uint8_t)STP_I->age;
 		stp_cost_scratch = STP_I->root_path_cost;
 		/* big-endian on the wire */
 		root_bridge_cost = ((stp_cost_scratch & 0xff) << 24)
@@ -433,7 +442,12 @@ void stp_timers(void) __banked
 			port_hello[stp_i]--;
 		if (!port_hello[stp_i]) {
 			port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
-			stp_cnf_send(stp_i);
+			/* Only designated ports announce periodically: the root port is
+			 * where our own root information comes FROM, and echoing it back
+			 * there just feeds the upstream bridge its own data (and looks
+			 * like a competing designated bridge on that segment). */
+			if (stp_i != stp_root_port)
+				stp_cnf_send(stp_i);
 		}
 
 		/* Promote a port out of blocking once its listen period expires
