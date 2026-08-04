@@ -271,8 +271,8 @@ void stp_setup(void) __banked
 		port_hello[i] = TIME_HELLO;
 		port_timers[i] = 0x280;	// 10 s in blocking state (at the ~64 Hz stp_timers rate)
 	}
-	sfr_data[1] |= 0x0f; // Do not block CPU-Port
-	reg_write_m(RTL837X_MSTP_STATES); // R5310-000d555f 
+	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
+	reg_write_m(RTL837X_MSTP_STATES);
 
 	print_reg(RTL837X_MSTP_STATES); write_char('\n');
 
@@ -294,7 +294,7 @@ void stp_off(void) __banked
 		uint8_t bit_mask = 0b11 << ( (i << 1) & 0x7);
 		sfr_data[3 - (i >> 2)] |= bit_mask;
 	}
-	sfr_data[1] |= 0x0f; // Do not block CPU-Port
+	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
 	reg_write_m(RTL837X_MSTP_STATES);
 
 	/* Restore BPDU transparency: flood them again like an unmanaged switch. */
