@@ -11,11 +11,18 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_port.h"	/* port_pvid_get(), port_l2mc_set() */
 #include "uip.h"
 #include "machine.h"
 
 extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
+extern __xdata struct machine_runtime machine_detected;	/* owned by rtl837x_port.c */
+
+/* Scratch for stp_fdb_update(), in xdata: plain locals would overflow the
+ * near-full internal-RAM overlay (OSEG), cf. rtl837x_lacp.c. */
+__xdata uint16_t stp_fdb_vid;
+__xdata uint8_t  stp_fdb_i;
 
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
@@ -202,6 +209,39 @@ void stp_timers(void) __banked
 }
 
 
+/*
+ * Steer BPDUs (01:80:C2:00:00:00) while STP runs: one static CPU-only L2
+ * multicast entry per PVID in use, so BPDUs reach the CPU without being
+ * flooded to other ports (a bridge running STP must consume BPDUs, not
+ * relay them - relaying poisons the neighbours' view of the topology).
+ *
+ * With STP off the same entries are retargeted to all ports + CPU, which
+ * restores the previous flood behaviour ("BPDU transparency"): the
+ * surrounding spanning tree can keep spanning *through* this switch, which
+ * unmanaged setups rely on. Same per-PVID/IVL rules as the LACP steering -
+ * see port_l2mc_set() and rtl837x_lacp.c. NOTE: changing a port's PVID
+ * while STP runs needs `stp off`/`on` to refresh the entries.
+ */
+static void stp_fdb_update(__xdata uint16_t pmask)
+{
+	/* Unlike LACPDUs (always untagged, so per-PVID entries suffice), BPDUs
+	 * can arrive VLAN-tagged and then classify into the tag's VID - cover
+	 * every VLAN that exists in the VLAN table, plus every port's PVID for
+	 * the untagged case. A duplicate VID just overwrites the same slot. */
+	for (stp_fdb_vid = 1; stp_fdb_vid < 4095; stp_fdb_vid++) {
+		if (vlan_get(stp_fdb_vid) < 0)
+			continue;
+		if (!(sfr_data[0] & 0x02))	/* bit 1: VLAN table entry valid */
+			continue;
+		port_l2mc_set(0x00, stp_fdb_vid, pmask);
+	}
+	for (stp_fdb_i = machine.min_port; stp_fdb_i <= machine.max_port; stp_fdb_i++) {
+		stp_fdb_vid = port_pvid_get(stp_fdb_i);
+		port_l2mc_set(0x00, stp_fdb_vid, pmask);
+	}
+}
+
+
 void stp_setup(void) __banked
 {
 	print_string("Enabling STP: ");
@@ -222,6 +262,9 @@ void stp_setup(void) __banked
 	root_bridge.prio = 0x80; // This corresponds to 32768
 	root_bridge.ext	= 0x00;
 	memcpy(root_bridge.mac, uip_ethaddr.addr, 6);
+
+	/* Take BPDUs to the CPU only - we are a participating bridge now. */
+	stp_fdb_update(PMASK_CPU);
 }
 
 
@@ -236,4 +279,7 @@ void stp_off(void) __banked
 	}
 	sfr_data[1] |= 0x0f; // Do not block CPU-Port
 	reg_write_m(RTL837X_MSTP_STATES);
+
+	/* Restore BPDU transparency: flood them again like an unmanaged switch. */
+	stp_fdb_update(PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
 }
