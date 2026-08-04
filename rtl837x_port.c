@@ -403,6 +403,48 @@ void port_l2_learned(void) __banked
 
 
 /*
+ * Static L2 multicast entry for the link-local group 01:80:C2:00:00:<mac_last>
+ * in VLAN `vid`, with member portmask `pmask` (bit 9 = CPU port).
+ *
+ * Slow-protocol frames (LACP, STP BPDUs) must reach the CPU without being
+ * flooded to other ports. The RMA "trap" action cannot deliver to the
+ * internal NIC on this hardware (its destination is an external CPU on a
+ * physical port), so the protocol modules keep the RMA action at "forward"
+ * and constrain the egress with this entry instead: the lookup hits the
+ * entry's portmask rather than the VLAN flood mask (hardware-verified with
+ * both the CPU bit cleared - delivery stops - and CPU-only - no egress).
+ *
+ * SMI layout (vendor SDK, L2-multicast entry variant):
+ *   DATA_IN_A = MAC bytes 5..2         -> c2 00 00 <mac_last>
+ *   DATA_IN_B = MAC[1..0] | vid<<16 | IVL<<29 | pmask[1:0]<<30
+ *   DATA_IN_C = pmask[9:2]
+ * Lookups are IVL (a VID-0 entry is not matched), so callers add one entry
+ * per PVID in use. The write command (table 4 = the whole L2 LUT) hashes
+ * MAC+VID and picks the bucket slot itself; TBL_EXECUTE self-clears.
+ * Overwriting the same MAC+VID replaces the entry, so a caller can retarget
+ * the mask at will (e.g. back to all ports to restore flooding).
+ */
+__xdata uint8_t l2mc_guard;	/* xdata: the internal-RAM overlay (OSEG) is full */
+
+void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
+{
+	l2mc_guard = 0;
+	do {	/* wait out any previous table op (bounded, cf. the IGMP guards) */
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while ((sfr_data[3] & TBL_EXECUTE) && ++l2mc_guard);
+
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0xc2, 0x00, 0x00, mac_last);
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | (vid >> 8) | ((pmask & 0x3) << 6), vid, 0x01, 0x80);
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0, 0, 0, pmask >> 2);
+	REG_WRITE(RTL837X_TBL_CTRL, 0, 0, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	l2mc_guard = 0;
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while ((sfr_data[3] & TBL_EXECUTE) && ++l2mc_guard);
+}
+
+
+/*
  * Basic L2 configuration such as time to forget an entry
  */
 void port_l2_setup(void) __banked
