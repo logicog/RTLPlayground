@@ -94,6 +94,8 @@ __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 
 /* Scratch (8051: locals would overflow the internal-RAM overlay area) */
 __xdata uint8_t  stp_scratch;
+__xdata uint8_t  stp_tx_flags_extra;	/* one-shot flags OR-ed into the next BPDU (TCA) */
+__xdata uint16_t stp_rxlen;		/* received frame length, saved before uip_len is consumed */
 __xdata uint8_t  stp_i;		/* shared loop iterator (DSEG relief) */
 __xdata uint32_t stp_cost_scratch;
 
@@ -233,6 +235,8 @@ void stp_cnf_send(uint8_t port) __reentrant
 		STP_O->bpdu_type = 0x00;	/* Config BPDU */
 		STP_O->flags = 0x00;
 	}
+	STP_O->flags |= stp_tx_flags_extra;	/* e.g. TCA in reply to a TCN */
+	stp_tx_flags_extra = 0;
 
 	memcpy(STP_O->src_addr, uip_ethaddr.addr, 6);
 	memcpy(STP_O->root.mac, root_bridge.mac, 6);
@@ -276,7 +280,16 @@ void stp_cnf_send(uint8_t port) __reentrant
 
 void stp_in(void) __banked
 {
-	// By default we do not send anything out
+	/* Robustness: never read fields past the received frame. 33 covers the
+	 * header through bpdu_type; the full Config/RST body is re-checked below.
+	 * (uip_len is consumed and zeroed at the end - keep a local view.) */
+	if (uip_len < 33) {
+		uip_len = 0;
+		return;
+	}
+	stp_rxlen = uip_len;
+
+	// By default we do not send anything out (handle_rx would TX otherwise)
 	uip_len = 0;
 
 	/* Ingress port: low nibble of the CPU tag's pmask on RX */
@@ -293,9 +306,11 @@ void stp_in(void) __banked
 		return;
 	if (STP_I->proto)
 		return;
-	/* Accept RSTP BPDUs (v2 type 2) and legacy Config BPDUs (v0 type 0) */
+	/* Accept RSTP BPDUs (v2 type 2), legacy Config BPDUs (v0 type 0) and
+	 * legacy TCN BPDUs (v0 type 0x80, 4-byte body) */
 	if (!((STP_I->version == 2 && STP_I->bpdu_type == 2)
-	      || (STP_I->version == 0 && STP_I->bpdu_type == 0)))
+	      || (STP_I->version == 0
+	          && (STP_I->bpdu_type == 0 || STP_I->bpdu_type == 0x80))))
 		return;
 
 	if (!(stp_pflags[port] & STP_PF_ENABLED) || (stp_pflags[port] & STP_PF_FILTER))
@@ -312,6 +327,21 @@ void stp_in(void) __banked
 	}
 
 	stp_bpdu_age[port] = 0;
+
+	if (STP_I->bpdu_type == 0x80) {
+		/* TCN: a downstream bridge reports a topology change. Acknowledge it
+		 * on this port so the sender stops repeating; the change itself is
+		 * counted (and, once implemented, propagated rootward). */
+		stp_tx_flags_extra = 0x80;	/* Topology Change Acknowledgment */
+		stp_cnf_send(port);		/* transmits internally */
+		uip_len = 0;			/* ...so handle_rx must not TX again */
+		stp_tc_count++;
+		return;
+	}
+
+	/* Everything below reads the full Config/RST body. */
+	if (stp_rxlen < 64)
+		return;
 
 	/* Our own BPDU coming back at us = a loop in the network. Block the port
 	 * for a listen period; if the loop persists the BPDUs keep arriving and
