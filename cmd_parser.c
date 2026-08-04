@@ -1525,17 +1525,28 @@ void cmd_parser(void) __banked
 			else
 				igmp_setup();  // Reverts to default with IP-MC being flooded
 		} else if (cmd_compare(0, "hostname")) {
-			/* hostname <text>: rest of the line, sanitized to JSON-safe
-			 * printable ASCII (<=23 chars), stored in the shared hostname. */
-			__xdata uint8_t *hp = &cmd_buffer[cmd_words_b[1]];
-			uint8_t hn = 0;
-			if (cmd_words_len >= 2)
-				while (hn < 23 && hp[hn] && hp[hn] != '\r' && hp[hn] != '\n') {
-					hostname[hn] = (hp[hn] < 0x20 || hp[hn] > 0x7e
-						|| hp[hn] == '"' || hp[hn] == '\\') ? '.' : hp[hn];
-					hn++;
+			/* "hostname" alone reports the current name; "hostname <text>"
+			 * sets it, sanitized to JSON-safe printable ASCII. A name with
+			 * spaces would tokenize into several words - reject it instead
+			 * of silently keeping the first one. */
+			if (cmd_words_len == 1) {
+				print_string_x(hostname);
+				write_char('\n');
+			} else if (cmd_words_len == 2) {
+				__xdata uint8_t *hp = &cmd_buffer[cmd_words_b[1]];
+				__xdata char *dst = hostname;
+				for (uint8_t hn = 0; hn < sizeof(hostname) - 1; hn++) {
+					uint8_t c = *hp++;
+					if (c == '\0' || c == '\r' || c == '\n')
+						break;
+					if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
+						c = '.';
+					*dst++ = c;
 				}
-			hostname[hn] = 0;
+				*dst = '\0';
+			} else {
+				print_string("Error: hostname [name] - the name must not contain spaces\n");
+			}
 		} else if (cmd_compare(0, "stp")) {
 			if (cmd_compare(1, "on")) {
 				print_string("STP enabled\n");
