@@ -6,6 +6,12 @@
 // #define REGDBG
 // #define DEBUG
 
+/* Place this module's code and constants in code bank 2 (cf. rtl837x_igmp.c):
+ * the always-mapped common area is nearly full, and the full state machine
+ * does not fit there. */
+#pragma codeseg BANK2
+#pragma constseg BANK2
+
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
