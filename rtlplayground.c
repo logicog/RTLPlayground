@@ -2146,7 +2146,19 @@ void main(void)
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
-	strcpy((__xdata uint8_t *)hostname, "RTLPlayground");	/* default until "hostname ..." replay */
+	/* Default name carries the tail of the MAC, so several switches on one
+	 * network are distinguishable out of the box (suggested in review).
+	 * Overridden by a "hostname ..." line in the startup config. */
+	strcpy((__xdata uint8_t *)hostname, "RTLPlayground-");
+	/* Spelled out rather than looped: locals here land in the 8051's
+	 * internal-RAM overlay, which is full on a build with every feature on. */
+	hostname[14] = hex[uip_ethaddr.addr[3] >> 4];
+	hostname[15] = hex[uip_ethaddr.addr[3] & 0xf];
+	hostname[16] = hex[uip_ethaddr.addr[4] >> 4];
+	hostname[17] = hex[uip_ethaddr.addr[4] & 0xf];
+	hostname[18] = hex[uip_ethaddr.addr[5] >> 4];
+	hostname[19] = hex[uip_ethaddr.addr[5] & 0xf];
+	hostname[20] = '\0';
 	bandwidth_setup();
 	uip_init();
 	uip_arp_init();
