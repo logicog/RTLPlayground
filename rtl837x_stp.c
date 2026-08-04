@@ -125,6 +125,7 @@ struct stp_pkt {
 	uint16_t age_max;
 	uint16_t hello;
 	uint16_t fwd_delay;
+	uint8_t version1_length;	/* RST BPDU only: length of the (empty) v1 part */
 };
 
 struct stp_pkt_in {
@@ -149,6 +150,7 @@ struct stp_pkt_in {
 	uint16_t age_max;
 	uint16_t hello;
 	uint16_t fwd_delay;
+	uint8_t version1_length;	/* RST BPDU only: length of the (empty) v1 part */
 };
 
 #define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
@@ -213,17 +215,20 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
 
-	STP_O->msg_len = HTONS(0x27);
 	STP_O->dsap = 0x42;
 	STP_O->ssap = 0x42;
 	STP_O->ctrl = 0x03;
 	STP_O->proto = 0x0000;
 	if (stp_rstp) {
+		/* 802.3 length = LLC (3) + RST BPDU body (36, incl. version1_length) */
+		STP_O->msg_len = HTONS(0x27);
 		STP_O->version = 0x02;		/* RSTP */
 		STP_O->bpdu_type = 0x02;	/* Rapid Spanning Tree BPDU */
 		/* flags: role designated (0b11 << 2) + learning + forwarding */
 		STP_O->flags = 0x3c;
 	} else {
+		/* 802.3 length = LLC (3) + Config BPDU body (35) */
+		STP_O->msg_len = HTONS(0x26);
 		STP_O->version = 0x00;		/* legacy STP */
 		STP_O->bpdu_type = 0x00;	/* Config BPDU */
 		STP_O->flags = 0x00;
@@ -250,6 +255,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->age_max = stp_maxage_s;
 	STP_O->hello = stp_hello_s;
 	STP_O->fwd_delay = stp_fwddelay_s;
+	STP_O->version1_length = 0;	/* RST BPDU: no version-1 information */
 
 	/* BPDUs are link-local and must egress untagged: with a management VLAN
 	 * set, tcpip_output() splices an 802.1Q tag after the SA, shifting the
@@ -259,7 +265,9 @@ void stp_cnf_send(uint8_t port) __reentrant
 	{
 	uint16_t saved_mgmt_vlan = management_vlan;
 	management_vlan = 0;
-	uip_len = sizeof(struct stp_pkt);
+	/* A legacy Config BPDU body is 35 bytes - without the trailing
+	 * version-1 length byte that only the RST BPDU (36 bytes) carries. */
+	uip_len = stp_rstp ? sizeof(struct stp_pkt) : sizeof(struct stp_pkt) - 1;
 	tcpip_output();
 	management_vlan = saved_mgmt_vlan;
 	}
