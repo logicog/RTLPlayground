@@ -4,9 +4,9 @@ DEFAULT_CONFIG_LOCATION = 454656
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
 
-CC = sdcc
+CC ?= sdcc
 CC_FLAGS = -mmcs51 -I. -Ihttpd -Iuip
-ASM = sdas8051
+ASM ?= sdas8051
 AFLAGS= -plosgff
 
 SUBDIRS := tools
