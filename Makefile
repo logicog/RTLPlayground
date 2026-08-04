@@ -33,9 +33,9 @@ FILENAME_EXTENSION = $(VERSION_EXTENSION)-$(MACHINE)
 all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
 create_build_dir:
-	mkdir -p $(BUILDDIR)
-	mkdir -p $(BUILDDIR)/uip
-	mkdir -p $(BUILDDIR)/httpd
+	mkdir -p "$(BUILDDIR)"
+	mkdir -p "$(BUILDDIR)/uip"
+	mkdir -p "$(BUILDDIR)/httpd"
 
 # Keep machine.c in first position to fail immediately on invalid $MACHINE value
 SRCS = \
