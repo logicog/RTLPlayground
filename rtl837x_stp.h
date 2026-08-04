@@ -9,6 +9,13 @@ void stp_off(void) __banked;
 void stp_parse(void) __banked __reentrant;	/* "stp ..." CLI handler (cmd_parser delegates here) */
 void stp_defaults(void) __banked;	/* boot init: 802.1D/w default configuration */
 
+/* Tick rate of stp_timers(): the main loop idles on the 200 Hz system tick
+ * and rtlplayground.c calls us every (STP_TICK_DIVIDER + 1) = 4th pass.
+ * Measured on hardware: hello 2 s produced BPDUs exactly 2.560 s apart with
+ * the previous value of 64, i.e. 20 ms per tick - every configured timer ran
+ * 28 % long. Shared with the web UI, which ages the same counters. */
+#define STP_HZ 50
+
 /* Bridge identifier as carried in a BPDU (priority, extension, MAC). */
 struct bridge {
 	uint8_t prio;
