@@ -101,8 +101,6 @@ __xdata uint16_t stp_tc_while;		/* ticks left to set the TC flag in our BPDUs */
 __xdata uint8_t  stp_i;		/* shared loop iterator (DSEG relief) */
 __xdata uint32_t stp_cost_scratch;
 
-/* stp_timers() runs at ~64 Hz (main loop ~256 Hz / (STP_TICK_DIVIDER+1)) */
-#define STP_HZ		64
 #define STP_EDGE_DELAY	(3 * STP_HZ)	/* auto-edge: forward after 3 s without BPDU */
 
 #define AUTO_COST	20000UL		/* path cost used when stp_pcost == 0 (1G default) */
