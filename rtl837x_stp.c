@@ -97,6 +97,7 @@ __xdata uint8_t  stp_scratch;
 __xdata uint8_t  stp_tx_flags_extra;	/* one-shot flags OR-ed into the next BPDU (TCA) */
 __xdata uint16_t stp_rxlen;		/* received frame length, saved before uip_len is consumed */
 __xdata uint8_t  stp_msg_age;		/* message age of the root info we hold, seconds */
+__xdata uint16_t stp_tc_while;		/* ticks left to set the TC flag in our BPDUs */
 __xdata uint8_t  stp_i;		/* shared loop iterator (DSEG relief) */
 __xdata uint32_t stp_cost_scratch;
 
@@ -184,6 +185,21 @@ static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 }
 
 
+/* Signal a topology change: flush the stale forwarding entries of the port
+ * that changed, count it, and set the TC flag in our BPDUs for one
+ * max-age+forward-delay period (802.1D 8.6.14) so the neighbours age their
+ * own tables out too. Edge ports are exempt: a host appearing or leaving is
+ * not a topology change. */
+static void stp_topology_change(uint8_t port) __reentrant
+{
+	if (stp_pflags[port] & STP_PF_OPEREDGE)
+		return;
+	stp_tc_count++;
+	stp_tc_while = ((uint16_t)stp_maxage_s + stp_fwddelay_s) * STP_HZ;
+	port_l2_forget_port(port);
+}
+
+
 /* Take the bridge back as root of its own tree (initial state / root aged out) */
 static void stp_claim_root(void)
 {
@@ -237,6 +253,8 @@ void stp_cnf_send(uint8_t port) __reentrant
 		STP_O->bpdu_type = 0x00;	/* Config BPDU */
 		STP_O->flags = 0x00;
 	}
+	if (stp_tc_while)
+		STP_O->flags |= 0x01;		/* Topology Change */
 	STP_O->flags |= stp_tx_flags_extra;	/* e.g. TCA in reply to a TCN */
 	stp_tx_flags_extra = 0;
 
@@ -359,7 +377,7 @@ void stp_in(void) __banked
 			stp_state_set(port, 0b01);
 			port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
 			stp_pflags[port] &= ~STP_PF_OPEREDGE;
-			stp_tc_count++;
+			stp_topology_change(port);
 		}
 		return;
 	}
@@ -458,7 +476,7 @@ void stp_timers(void) __banked
 				stp_state_set(stp_i, 0b11);
 				print_string("STP: port forwarding ");
 				print_byte(stp_i); write_char('\n');
-				stp_tc_count++;
+				stp_topology_change(stp_i);
 			} else if ((stp_pflags[stp_i] & STP_PF_AUTOEDGE)
 			           && stp_bpdu_age[stp_i] > STP_EDGE_DELAY) {
 				/* Auto edge: nothing talks (R)STP on this port - it is
@@ -471,6 +489,9 @@ void stp_timers(void) __banked
 			}
 		}
 	}
+
+	if (stp_tc_while)
+		stp_tc_while--;
 
 	/* Age out a root that went silent: reclaim the tree. */
 	if (stp_root_port != 0xff
@@ -506,6 +527,7 @@ void stp_defaults(void) __banked
 		stp_tx_budget[stp_i] = 6;
 	}
 	stp_tc_count = 0;
+	stp_tc_while = 0;
 	stp_claim_root();
 }
 
