@@ -214,10 +214,16 @@ static void stp_claim_root(void)
 
 void stp_cnf_send(uint8_t port) __reentrant
 {
-	if (!(stp_pflags[port] & STP_PF_ENABLED) || (stp_pflags[port] & (STP_PF_FILTER | STP_PF_TRIPPED)))
+	/* A one-shot flag (TCA) belongs to the BPDU we were asked to send: drop
+	 * it with the frame, or it would surface on an unrelated port later. */
+	if (!(stp_pflags[port] & STP_PF_ENABLED) || (stp_pflags[port] & (STP_PF_FILTER | STP_PF_TRIPPED))) {
+		stp_tx_flags_extra = 0;
 		return;
-	if (!stp_tx_budget[port])	/* tx hold count exhausted for this second */
+	}
+	if (!stp_tx_budget[port]) {	/* tx hold count exhausted for this second */
+		stp_tx_flags_extra = 0;
 		return;
+	}
 	stp_tx_budget[port]--;
 
 	STP_O->stp_addr[0] = 0x01; STP_O->stp_addr[1] = 0x80; STP_O->stp_addr[2] = 0xc2;
