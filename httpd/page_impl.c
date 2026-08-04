@@ -12,6 +12,7 @@
 #include "phy.h"
 #include "version.h"
 #include "machine.h"
+#include "rtl837x_stp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -530,6 +531,56 @@ void send_lag(void)
 	}
 	slen -=1; // remove comma
 	char_to_html(']');
+}
+
+
+/* STP status for the L2 page ("/stp.json"): enable state, the elected root
+ * bridge (priority+MAC) and our path cost to it, whether we are the root, and
+ * the live per-port STP state read from the ASIC's MSTP register (2 bits per
+ * port: 0 disable, 1 blocking, 2 learning, 3 forwarding - same encoding
+ * stp_setup() writes). Ports are reported by their physical number. */
+/* Scratch for send_stp(): a plain local would land in the near-full 8051
+ * internal-RAM overlay (OSEG). */
+__xdata uint8_t stp_we_root;
+
+void send_stp(void)
+{
+	dbg_string("send_stp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(stpEnabled);
+	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
+	byte_to_html(root_bridge.prio);
+	byte_to_html(root_bridge.ext);
+	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
+	for (uint8_t j = 0; j < 6; j++)
+		byte_to_html(root_bridge.mac[j]);
+	slen += strtox(outbuf + slen, "\",\"cost\":\"");
+	byte_to_html(root_bridge_cost >> 24);
+	byte_to_html(root_bridge_cost >> 16);
+	byte_to_html(root_bridge_cost >> 8);
+	byte_to_html(root_bridge_cost);
+	/* are we the elected root? (our MAC == root MAC) */
+	stp_we_root = 1;
+	for (uint8_t j = 0; j < 6; j++) {
+		if (root_bridge.mac[j] != uip_ethaddr.addr[j])
+			stp_we_root = 0;
+	}
+	slen += strtox(outbuf + slen, "\",\"weRoot\":");
+	bool_to_html(stp_we_root);
+	slen += strtox(outbuf + slen, ",\"ports\":[");
+	reg_read_m(RTL837X_MSTP_STATES);
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"st\":");
+		/* 2-bit field per logical port, packed from byte 3 up (cf. stp_setup) */
+		itoa_html((sfr_data[3 - (i >> 2)] >> ((i << 1) & 0x7)) & 0x3);
+		slen += strtox(outbuf + slen, "},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
 }
 
 

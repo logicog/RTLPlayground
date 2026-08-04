@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <script src="/main.js"></script>
+  <script src="/i18n.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>FreeSwitchOS Spanning Tree</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>Spanning Tree (RSTP)</h1>
+    <h2>Mode: <select id="stpMode"><option value="off">Disabled</option><option value="on">Enabled</option></select>
+      <input style="width:15%;margin-left: 3em;" class="action" id="stp_sub" onclick="stpSub();" type="button" value="Apply"></h2>
+    <div id="stpStat" style="font-family:monospace;"></div>
+    <div id="stpPorts" style="font-family:monospace;white-space:pre;"></div>
+    <script src="/stp.js"></script>
+    </div>
+  </body>
+  <script src="/navigation.js"></script>
+</html>
