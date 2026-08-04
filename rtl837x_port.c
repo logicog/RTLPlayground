@@ -28,6 +28,10 @@ extern __xdata struct machine_runtime machine_detected;
 
 __xdata	uint32_t l2_head;
 
+/* Bounded-wait counter for the L2 table helpers; xdata because the 8051
+ * internal-RAM overlay (OSEG) is full. */
+__xdata uint8_t l2mc_guard;
+
 __xdata struct vlan_settings vlan_settings;
 
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
@@ -307,6 +311,26 @@ void vlan_setup(void) __banked
 
 
 /*
+ * Forget the dynamic L2 entries learned on one port.
+ *
+ * Same flush engine as port_l2_forget(), but with a single-port mask so a
+ * topology change only ages out the affected port instead of the whole
+ * table. Bounded wait (cf. port_l2mc_set): this runs from the STP tick, and
+ * an unbounded poll on a stuck engine would freeze the main loop.
+ */
+void port_l2_forget_port(uint8_t port) __banked
+{
+	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);	/* port-based, dynamic entries */
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (((uint16_t)1) << port));
+
+	l2mc_guard = 0;
+	do {
+		reg_read_m(RTL837x_L2_TBL_FLUSH_CTRL);
+	} while (sfr_data[1] && ++l2mc_guard);
+}
+
+
+/*
  * Forget all dynamic L2 learned entries
  */
 uint8_t port_l2_forget(void) __banked
@@ -416,7 +440,6 @@ void port_l2_learned(void) __banked
  * Overwriting the same MAC+VID replaces the entry, so a caller can retarget
  * the mask at will (e.g. back to all ports to restore flooding).
  */
-__xdata uint8_t l2mc_guard;	/* xdata: the internal-RAM overlay (OSEG) is full */
 
 void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
 {
