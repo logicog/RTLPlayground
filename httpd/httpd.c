@@ -300,10 +300,12 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 	return p;
 }
 
-
-void gen_random_bytes(__xdata uint8_t *b, register uint8_t bytes)
+/* 
+ * Generate random HEX-chars at the buffer location.
+*/
+void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 {
-	__xdata uint8_t i = 0;
+	uint8_t i = 0;
 	while (bytes) {
 		if (!i)
 			get_random_32();
@@ -481,7 +483,7 @@ void handle_post(void)
 		if (is_url_word_x(p, passwd)) {
 			dbg_string("Password accepted!\n");
 			read_reg_timer(&last_session_use);
-			gen_random_bytes(session_id, SESSION_ID_LENGTH);
+			gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
 			session_id[SESSION_ID_LENGTH] = '\0';
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");
