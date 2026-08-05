@@ -4,10 +4,6 @@ Following is documentation for unmanaged switch marked as `FG-4GT-2SX_V2.0`.
 
 Original software is running UART on 9600 baud rate.
 
-The signal quality of UART is bad. Therefore, electrical isolation is needed for the TTL wires in some cases. A simple way to isolate them is to pinch them by fingers.
-
-<img src="photos/FG-4GT-2SX_V2.0/electrical_isolation.png" width="300" />
-
 ## Brands
 
 * Ruiying RY-4GT-2SX
