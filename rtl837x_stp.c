@@ -337,8 +337,13 @@ void stp_in(void) __banked
 	if (STP_I->proto)
 		return;
 	/* Accept RSTP BPDUs (v2 type 2), legacy Config BPDUs (v0 type 0) and
-	 * legacy TCN BPDUs (v0 type 0x80, 4-byte body) */
-	if (!((STP_I->version == 2 && STP_I->bpdu_type == 2)
+	 * legacy TCN BPDUs (v0 type 0x80, 4-byte body).
+	 * Version 2 *or greater*: 802.1D-2004 14.4 requires an RSTP bridge to
+	 * accept a higher Protocol Version and treat it as RST, ignoring what
+	 * it does not understand. MSTP (802.1s) sends version 3 type 2 with a
+	 * prefix deliberately identical to an RST BPDU for exactly this reason;
+	 * insisting on == 2 makes us blind to every MST bridge on the segment. */
+	if (!((STP_I->version >= 2 && STP_I->bpdu_type == 2)
 	      || (STP_I->version == 0
 	          && (STP_I->bpdu_type == 0 || STP_I->bpdu_type == 0x80))))
 		return;
