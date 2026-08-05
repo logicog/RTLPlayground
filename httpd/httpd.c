@@ -165,7 +165,7 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 }
 
 
-bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
+bool is_word_x(__xdata uint8_t * lhs_str_p, __xdata uint8_t * rhs_str_p)
 {
 	uint8_t u, c;
 
@@ -241,7 +241,7 @@ __xdata uint8_t *skip_boundary(__xdata uint8_t *p)
 }
 
 
-__xdata uint8_t *scan_header(__xdata uint8_t *p)
+__xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 {
 	content_type = 0;
 	session = 0;
