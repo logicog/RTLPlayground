@@ -62,19 +62,19 @@ void syslog_callback(uint16_t lport) __banked
 
 	if ((state.readptr != state.writeptr) && state.line_available)
 	{
-		int16_t log_size = state.writeptr - state.readptr;
+		__xdata int16_t log_size = state.writeptr - state.readptr;
 		if (log_size < 0)
 			log_size += LOGBUF_SIZE;
 		
 		// Skipping linefeeds at the start of the log line
-		uint16_t log_start = state.readptr;
+		__xdata uint16_t log_start = state.readptr;
 		while (log_size > 0 && logbuf[log_start] == '\n') {
 			log_start = (log_start + 1) & (LOGBUF_SIZE - 1);
 			log_size--;
 		}
 
 		// Skipping linefeeds and whitespaces at the end of the log line
-		uint16_t log_end = state.writeptr;
+		__xdata uint16_t log_end = state.writeptr;
 		while ( (log_size > 0) && 
 				((logbuf[(log_end-1) & (LOGBUF_SIZE - 1)] == '\n') ||
 				 (logbuf[(log_end-1) & (LOGBUF_SIZE - 1)] == ' ')))
@@ -95,7 +95,7 @@ void syslog_callback(uint16_t lport) __banked
 			memcpy(SYSLOG_P + 4, logbuf + log_start, LOGBUF_SIZE - log_start);
 			memcpy(SYSLOG_P + 4 + LOGBUF_SIZE - log_start, logbuf, log_end);
 		} else {
-			 memcpy(SYSLOG_P + 4, logbuf + log_start, log_end - log_start);
+			memcpy(SYSLOG_P + 4, logbuf + log_start, log_end - log_start);
 		}
 
 		uip_udp_send(log_size+4);
