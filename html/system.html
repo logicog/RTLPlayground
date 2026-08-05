@@ -32,7 +32,7 @@
       </div>
       <div class="row">
         <div class="lcol"> <label data-i18n="sys_model">Model:</label></div>
-        <div class="rcol"><span id="model"></span></div>
+        <div class="rcol"><span id="model" class="rotext"></span></div>
       </div>
       <div class="row">
         <div class="lcol"> <label for="ip" data-i18n="sys_ip">IP address:</label></div>
@@ -45,6 +45,10 @@
       <div class="row">
         <div class="lcol"> <label for="gw" data-i18n="sys_gateway">Gateway:</label></div>
         <div class="rcol"><input id="gw" class="ip" type="text" minlength="7" maxlength="15" size="15"/></div>
+      </div>
+      <div class="row">
+        <div class="lcol"> <label for="mgmtvlan" data-i18n="sys_mgmt_vlan">Management VLAN:</label></div>
+        <div class="rcol"><select id="mgmtvlan" class="ip" onchange="mgmtVlanChanged()"></select></div>
       </div>
       <div class="row">
         <div class="lcol"> <label data-i18n="sys_language">Language:</label></div>

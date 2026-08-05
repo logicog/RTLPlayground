@@ -26,6 +26,7 @@
 extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
+extern __xdata uint16_t management_vlan;
 extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
@@ -264,7 +265,10 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, BUILD_DATE);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
-	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
+	/* VLAN carrying switch management, 0 = untagged. */
+	slen += strtox(outbuf + slen, "\",\"mgmt_vlan\":");
+	itoa16_html(management_vlan);
+	slen += strtox(outbuf + slen, ",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
 
 	if (machine.n_sfp) {

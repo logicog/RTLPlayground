@@ -133,6 +133,7 @@ function fetchIP() {
       document.getElementById("gw").value=s.ip_gateway;
       document.getElementById("hostname").value=s.hostname;
       document.getElementById("model").textContent=s.hw_ver;
+      loadMgmtVlan(parseInt(s.mgmt_vlan, 10) || 0);
       clearInterval(systemInterval);
       // Fetch and populate the config textbox
       fetchConfig().then((configText) => {
@@ -165,3 +166,44 @@ window.addEventListener("load", function() {
   if (langSel) langSel.value = rtlLang;
   systemInterval = setInterval(fetchIP, 1000);
 });
+
+
+var mgmtVlanCurrent = 0;
+
+/* Populate the management-VLAN picker from the configured VLANs. If management
+ * is untagged there is no VLAN to select, so show that as a disabled entry
+ * rather than inventing an id the switch would reject. */
+function loadMgmtVlan(cur) {
+  var sel = document.getElementById('mgmtvlan');
+  if (!sel) return;
+  mgmtVlanCurrent = cur;
+  fetch('/vlanlist').then(function(r) { return r.json(); }).then(function(list) {
+    sel.innerHTML = '';
+    if (!cur) {
+      var none = document.createElement('option');
+      none.value = 0; none.disabled = true;
+      none.textContent = t('sys_mgmt_untagged');
+      sel.appendChild(none);
+    }
+    for (var i = 0; i < list.length; i++) {
+      var o = document.createElement('option');
+      o.value = list[i].id;
+      o.textContent = list[i].name ? (list[i].id + ' (' + list[i].name + ')') : list[i].id;
+      sel.appendChild(o);
+    }
+    sel.value = cur;
+  }).catch(function(err) { console.error('VLAN list failed:', err); });
+}
+
+function mgmtVlanChanged() {
+  var sel = document.getElementById('mgmtvlan');
+  var id = parseInt(sel.value, 10);
+  if (!id || id === mgmtVlanCurrent) return;
+  if (!confirm(t('sys_mgmt_confirm') + id + '.\n\n' + t('sys_mgmt_warn'))) {
+    sel.value = mgmtVlanCurrent;
+    return;
+  }
+  fetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' mgmt' })
+    .then(function() { mgmtVlanCurrent = id; })
+    .catch(function(err) { console.error('Set management VLAN failed:', err); sel.value = mgmtVlanCurrent; });
+}
