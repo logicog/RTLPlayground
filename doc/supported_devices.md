@@ -19,6 +19,7 @@ The following devices have been tested and are fully working:
 | LIANGUO  | SWTG024AS 	     | No 	   | [SWTG024AS-v2.0-17452](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	            | 0.5M 	| 4 + 2 |
 | Lianguo  | ZX-SWTGW215AS 	 | Yes 	   | [PCB-SWTG115AS-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW215AS.md) 	            | 2M    |	5 + 1 |
 | Mokerlink| ZX-SWTGW218AS 	 | Yes 	   | [SWTG118AS-V2.0-16029](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW218AS.md)             |	2M 	  | 8 + 1 |
+| Ruiying | RY-4GT-2SX | No | [FG-4GT-2SX_V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/FG-4GT-2SX_V2.0.md) |	4M | 4 + 2 |
 | Sodola 	 | SL-SWTG124AS-D  | Yes 	   | [SWTG024AS-v2.0-17452](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	            |	2M 	  | 4 + 2 |
 | Steamemo | IG204-V1        | No      | [PB-2131](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/STEAMEMO_IG204_V1.md)                   |       | 4 + 2 |
 | TrendNet | TEG-S562        | No      | [TEG-S563/EU H/W: V1.0R](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/TEG-S562.md)             | 2M    | 4 + 2 |
