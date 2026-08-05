@@ -100,6 +100,10 @@ function renderL2() {
     var x = l2Key(a, l2SortCol), y = l2Key(b, l2SortCol);
     return (x < y ? -1 : x > y ? 1 : 0) * l2SortDir;
   });
+  ['port', 'mac', 'vlan', 'type'].forEach(function(c) {
+    var a = document.getElementById('l2a_' + c);
+    if (a) a.textContent = (c === l2SortCol) ? (l2SortDir > 0 ? ' \u25b2' : ' \u25bc') : ' \u21c5';
+  });
   paintL2(tbl, rows);
   var cnt = document.getElementById('l2count');
   if (cnt) cnt.textContent = rows.length + ' / ' + l2All.length;

@@ -168,4 +168,5 @@ option { direction: rtl; font-family: sans-serif}
 /* L2 table: sortable headers and per-column filters */
 .l2sort{cursor:pointer;user-select:none}
 .l2sort:hover{text-decoration:underline}
+.l2arrow{opacity:0.55;font-size:0.85em}
 .l2filter{width:100%;box-sizing:border-box;font-weight:normal;font-size:0.9em}

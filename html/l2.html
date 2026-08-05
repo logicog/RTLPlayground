@@ -13,13 +13,13 @@
     <p><span data-i18n="l2_shown">Shown:</span> <span id="l2count">-</span></p>
     <table id="l2table">
       <tr>
-        <th><span class="l2sort" onclick="l2SortBy('port')" data-i18n="l2_col_port">Port</span><br>
+        <th><span class="l2sort" onclick="l2SortBy('port')"><span data-i18n="l2_col_port">Port</span><span id="l2a_port" class="l2arrow"></span></span><br>
             <input id="l2f_port" class="l2filter" oninput="l2FilterChanged()" size="5"></th>
-        <th><span class="l2sort" onclick="l2SortBy('mac')">MAC</span><br>
+        <th><span class="l2sort" onclick="l2SortBy('mac')">MAC<span id="l2a_mac" class="l2arrow"></span></span><br>
             <input id="l2f_mac" class="l2filter" oninput="l2FilterChanged()" size="14"></th>
-        <th><span class="l2sort" onclick="l2SortBy('vlan')">VLAN</span><br>
+        <th><span class="l2sort" onclick="l2SortBy('vlan')">VLAN<span id="l2a_vlan" class="l2arrow"></span></span><br>
             <input id="l2f_vlan" class="l2filter" oninput="l2FilterChanged()" size="5"></th>
-        <th><span class="l2sort" onclick="l2SortBy('type')" data-i18n="l2_col_type">Type</span><br>
+        <th><span class="l2sort" onclick="l2SortBy('type')"><span data-i18n="l2_col_type">Type</span><span id="l2a_type" class="l2arrow"></span></span><br>
             <input id="l2f_type" class="l2filter" oninput="l2FilterChanged()" size="8"></th>
         <th data-i18n="l2_col_remove">Remove Entry</th></tr>
       <script src="/l2.js"></script>
