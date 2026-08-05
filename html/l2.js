@@ -131,6 +131,7 @@ function paintL2(tbl, s)
       tbl.rows[i+1].cells[0].innerHTML = `${e.port}`;
       tbl.rows[i+1].cells[1].innerHTML = `${e.mac}`;
       tbl.rows[i+1].cells[2].innerHTML = `${e.vlan}`;
+      tbl.rows[i+1].cells[3].innerHTML = `${e.type}`;
       tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
     } else {
       const tr = tbl.insertRow();
