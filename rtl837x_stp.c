@@ -91,6 +91,8 @@ __xdata uint16_t port_hello[10];	/* hello TX countdown */
 __xdata uint16_t stp_bpdu_age[10];	/* ticks since last BPDU seen on port (saturating) */
 __xdata uint8_t  stp_tx_budget[10];	/* tx hold: BPDUs left in the current second */
 __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
+__xdata uint16_t stp_link_prev;		/* carrier bitmap as of the last check */
+__xdata uint16_t stp_link_now;
 
 /* Scratch (8051: locals would overflow the internal-RAM overlay area) */
 __xdata uint8_t  stp_scratch;
@@ -450,6 +452,39 @@ void stp_timers(void) __banked
 			stp_failsafe_tripped = 1;
 			return;
 		}
+
+		/* Link supervision. Without this the state machine never learns
+		 * that a port lost carrier: it keeps the port in forwarding, keeps
+		 * announcing on it, and never flushes what was learned behind it -
+		 * yet losing a link is the most ordinary topology change there is.
+		 * Once per second is soon enough, and it keeps register reads out
+		 * of the 50 Hz tick. */
+		reg_read_m(RTL837X_REG_LINKS_STS);
+		stp_link_now = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
+		if (stp_link_now != stp_link_prev) {
+			for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+				if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
+					continue;
+				if (!((stp_link_now ^ stp_link_prev) >> stp_i & 1))
+					continue;
+				/* Either way the port must stop forwarding first. */
+				stp_state_set(stp_i, 0b01);
+				if ((stp_link_now >> stp_i) & 1) {
+					/* Carrier back: re-run the listen period rather than
+					 * forwarding straight away - the segment may have been
+					 * rewired while we were down. Auto edge still applies. */
+					port_timers[stp_i] = (uint16_t)stp_fwddelay_s * STP_HZ;
+					stp_pflags[stp_i] &= ~STP_PF_OPEREDGE;
+					stp_bpdu_age[stp_i] = 0;
+				} else {
+					port_timers[stp_i] = 0;
+					print_string("STP: link down, port blocking ");
+					print_byte(stp_i); write_char('\n');
+					stp_topology_change(stp_i);
+				}
+			}
+			stp_link_prev = stp_link_now;
+		}
 	}
 
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
@@ -594,6 +629,11 @@ void stp_setup(void) __banked
 	reg_write_m(RTL837X_MSTP_STATES);
 
 	print_reg(RTL837X_MSTP_STATES); write_char('\n');
+
+	/* Seed the carrier bitmap, so turning STP on does not report every
+	 * port that was already down as a fresh topology change. */
+	reg_read_m(RTL837X_REG_LINKS_STS);
+	stp_link_prev = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
 
 	stp_claim_root();
 
