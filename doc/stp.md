@@ -38,10 +38,23 @@ stp on
 
 BPDUs are addressed to `01:80:C2:00:00:00`, a reserved link-local group. The
 ASIC's Reserved-Multicast action for that address decides what happens to the
-frame. The "trap to CPU" action does **not** reach the internal 8051 on this
-hardware — its trap destination is an external CPU attached to a physical port
-(`cpuTag_externalCpuPort_set` in the vendor SDK), which these boards do not
-have. Delivery therefore uses the *forward* action, constrained to the CPU port
+frame.
+
+Forwarding to the CPU port works normally — the 8051 sits behind an ordinary
+port of the internal switch and is an ordinary member of a forwarding mask.
+What does not work is the *trap* action, which is a separate mechanism: its
+destination is an external CPU attached to a physical port
+(`cpuTag_externalCpuPort_set`, `EXT_CPU_CTRL` in the vendor SDK), which these
+boards do not populate. Measured on a SWTGW218AS: with the RMA action set to
+trap, zero frames arrive at the 8051, including with `CPU_PMSK` widened and the
+external-CPU destination pointed at both `0xF` and `9`; with the *forward*
+action plus the L2 entry below, they arrive. The ACL trap behaves the same way,
+measured on the neighbouring reserved group `01:80:C2:00:00:02`: a rule matching
+it intercepts the frames — the LACP receive counters stop advancing while the
+rule is enabled and resume the moment it is disabled — but they never reach the
+8051, with `FWD_INT_TRAP` and with `REDIRECT` aimed at the CPU port alike.
+
+Delivery therefore uses the *forward* action, constrained to the CPU port
 by a static L2 multicast entry (`port_l2mc_set()`), one per VLAN in use:
 
 * while STP runs, the entry's member mask is the CPU port only — BPDUs reach
