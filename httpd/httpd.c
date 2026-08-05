@@ -50,8 +50,8 @@ __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
 __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
 __xdata uint8_t cfg_bl;
-__xdata uint8_t *content_type = 0;
-__xdata uint8_t *session = 0;
+__xdata uint8_t * __xdata content_type = 0;
+__xdata uint8_t * __xdata session = 0;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
@@ -63,7 +63,7 @@ __xdata char passwd[21];
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
-__xdata uint8_t *timeptr;
+__xdata uint8_t * __xdata timeptr;
 __xdata uint32_t last_session_use;
 
 #define TSTATE_NONE		0
@@ -311,7 +311,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 }
 
 
-void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
+void gen_random_bytes(__xdata uint8_t *b, register uint8_t bytes)
 {
 	__xdata uint8_t i = 0;
 	while (bytes) {
