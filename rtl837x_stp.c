@@ -10,8 +10,9 @@
  * The engine itself stays deliberately simple (no proposal/agreement
  * handshake, no full port-role machine): we elect a root from received BPDUs,
  * promote ports to forwarding after the listen period (or immediately for
- * edge ports), age the root out via max age, and block ports on which we see
- * our own BPDU (loop!) or - with root guard - a better root.
+ * edge ports), age the root out via max age, and block on a loop (our own
+ * BPDU comes back: the worse Port ID of the pair stops forwarding and stays
+ * blocked while it keeps coming back) or - with root guard - a better root.
  */
 
 // #define REGDBG
@@ -102,6 +103,7 @@ __xdata uint8_t  stp_msg_age;		/* message age of the root info we hold, seconds 
 __xdata uint16_t stp_tc_while;		/* ticks left to set the TC flag in our BPDUs */
 __xdata uint8_t  stp_i;		/* shared loop iterator (DSEG relief) */
 __xdata uint32_t stp_cost_scratch;
+__xdata uint8_t  stp_loop_peer;		/* the other own port seen on a looped segment */
 
 #define STP_EDGE_DELAY	(3 * STP_HZ)	/* auto-edge: forward after 3 s without BPDU */
 
@@ -197,6 +199,43 @@ static void stp_topology_change(uint8_t port) __reentrant
 	stp_tc_count++;
 	stp_tc_while = ((uint16_t)stp_maxage_s + stp_fwddelay_s) * STP_HZ;
 	port_l2_forget_port(port);
+}
+
+
+/* Hold one port out of forwarding because a loop was seen on it, and keep
+ * holding it for as long as the caller keeps saying so. The caller is the
+ * port that won the Port ID compare (see stp_in) - a different port than
+ * the one held, except when the frame came back on the port it left.
+ *
+ * Reentrant on purpose, like the two above: parameters and locals then live
+ * on the stack instead of taking internal RAM of their own. Inlined into
+ * stp_in - which is __banked, so its temporaries cannot be overlaid - the
+ * same code costs two more bytes of DSEG, and that is enough to stop the
+ * image with LACP from linking at all. */
+static void stp_loop_hold_peer(uint8_t port) __reentrant
+{
+	/* The port number arrives in a BPDU, so it is somebody else's data,
+	 * and our own bridge MAC is public in every BPDU we send - a forged
+	 * frame can name any port it likes. Bound it to the ports this module
+	 * actually manages, like every other loop here does. Out of that
+	 * range nothing would ever release the block either: stp_timers()
+	 * walks min_port..max_port and skips ports that are not STP-enabled,
+	 * so their port_timers[] never counts down. Naming the CPU port would
+	 * otherwise cost us our own management path. */
+	if (port < machine.min_port || port > machine.max_port)
+		return;
+	if (!(stp_pflags[port] & STP_PF_ENABLED))
+		return;
+	if (stp_pflags[port] & STP_PF_TRIPPED)
+		return;
+	if (!port_timers[port]) {		/* not held down yet */
+		print_string("STP: loop detected, blocking port ");
+		print_byte(port); write_char('\n');
+		stp_state_set(port, 0b01);
+		stp_pflags[port] &= ~STP_PF_OPEREDGE;
+		stp_topology_change(port);
+	}
+	port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
 }
 
 
@@ -378,18 +417,52 @@ void stp_in(void) __banked
 	if (stp_rxlen < 64)
 		return;
 
-	/* Our own BPDU coming back at us = a loop in the network. Block the port
-	 * for a listen period; if the loop persists the BPDUs keep arriving and
-	 * the port stays blocked. */
+	/* Our own BPDU coming back at us: two of our ports sit on one segment.
+	 * Only the one with the worse Port ID has to stop forwarding - 802.1D
+	 * calls it a backup port. Blocking both, as we used to, kills a segment
+	 * that can still carry traffic, and worse, leaves nobody forwarding to
+	 * hear the loop: both then time out of blocking together and the pair
+	 * oscillates for as long as the cable is in (measured: a topology change
+	 * every ~4 s).
+	 *
+	 * The port with the better Port ID decides for both and is the only one
+	 * that touches state - the other just drops the frame. One writer is
+	 * what makes this safe: while both were still deciding for themselves,
+	 * the winner's re-arm landed in the loser's port_timers[] first, the
+	 * loser then read it as "already blocked" and skipped its own
+	 * stp_state_set(), and the loop stayed open. Whether that happened came
+	 * down to which frame the switch handed us first.
+	 *
+	 * The winner is forwarding by construction (nothing here ever blocks
+	 * it), so it goes on hearing the loop and re-arms the loser's timer on
+	 * every BPDU - that is what makes the block a latch rather than a
+	 * forward-delay pulse, and it needs no assumption about a blocked port
+	 * still receiving. Pull the cable and the re-arming stops, so the loser
+	 * comes back on its own after a forward delay - and the link
+	 * supervision above gets there first anyway. */
 	if (cmpMAC(STP_I->bridge.mac, uip_ethaddr.addr) == 0) {
-		if (port_timers[port] == 0 && !(stp_pflags[port] & STP_PF_TRIPPED)) {
-			print_string("STP: loop detected on port ");
-			print_byte(port); write_char('\n');
-			stp_state_set(port, 0b01);
-			port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
-			stp_pflags[port] &= ~STP_PF_OPEREDGE;
-			stp_topology_change(port);
+		/* Equal means the frame came back on the port it left: a loop
+		 * further out, behind an unmanaged switch. There is no pair to
+		 * pick from, so that port holds itself down - and since it can
+		 * only re-arm while it is receiving, that case degrades to the
+		 * forward-delay pulse we had before rather than a real latch.
+		 * The peer's number is validated by the callee, not here. */
+		stp_loop_peer = STP_I->port_id;		/* 1-based, as we send it */
+		if (!stp_loop_peer)
+			return;
+		stp_loop_peer--;
+		/* A Port ID is (priority, number) and priority is compared
+		 * first - stp_cnf_send() puts stp_pprio[] on the wire next to
+		 * the number, so "stp port N prio" has to be able to decide
+		 * which end of a looped pair keeps forwarding. Comparing the
+		 * number alone would quietly ignore it. */
+		if (STP_I->port_prio != stp_pprio[port]) {
+			if (STP_I->port_prio < stp_pprio[port])
+				return;			/* peer is better: it decides */
+		} else if (stp_loop_peer < port) {
+			return;
 		}
+		stp_loop_hold_peer(stp_loop_peer);
 		return;
 	}
 
