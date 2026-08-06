@@ -4,7 +4,7 @@ It is highly similar to SWTG024AS-V2.0, with the only difference being the GPIO 
 ## Brands
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
-| horaco | HC-SWTGW215AS |  | PCB-SWTG024AS-A-V2.0.1_19650 | W25Q16JV | 8272N |
+| Horaco | HC-SWTGW215AS |  | PCB-SWTG024AS-A-V2.0.1_19650 | W25Q16JV | 8272N |
 
 ### Label specifications
 
