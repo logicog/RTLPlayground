@@ -9,17 +9,18 @@ The following devices have been tested and are fully working:
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V3.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/PCB-K0402WS-V3.0.md)           |       | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-KO801W-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/HI-K0801WS.md)                  |       | 8 + 1 |
 | hongyavision | LG-SG5T1    | No      | [PCB-SWTG024AS-V2.0_16895](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS-V2.0.md)     | 0.5M  | 5 + 1 |
+| Horaco   | HC-SWTGW215AS   | Yes     | [SWTG024AS-A-V2.0.1_19650 5C 1SFP](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS-A-V2.0.1_5C_1SFP.md) | ? | 5 + 1|
 | Horaco   | HC-SWTGW218AS   | Yes     | [SWTG018AS-A V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG018AS_A_V2_0.md)           |       | 8 + 1 |
 | Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XH.md) | 2M    | 5 + 1 |
 | Horaco   | ZX310S-4T2XT    | Yes     | [PCB-SL310S-4T2XT-V1.0.0-22273](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XT.md)  | 2M    | 6     |
-| Horaco 	 | ZX-SWTG124AS 	 | Yes 	   | [SWTG024AS-v2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	                  |       | 4 + 2 |
+| Horaco   | ZX-SWTG124AS 	 | Yes 	   | [SWTG024AS-v2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	                  |       | 4 + 2 |
 | Keeplink | KP-9000-6XH-X2  | No      | [2M-PCB43-V2.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/KP-9000-6XH-X2.md)                |       | 4 + 2 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V2_2.md)                 | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes 	   | [2M-PCB23-V3.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V3_1.md)                 | 2M 	  | 8 + 1 |
 | LIANGUO  | SWTG024AS 	     | No 	   | [SWTG024AS-v2.0-17452](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	            | 0.5M 	| 4 + 2 |
 | Lianguo  | ZX-SWTGW215AS 	 | Yes 	   | [PCB-SWTG115AS-V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW215AS.md) 	            | 2M    |	5 + 1 |
 | Mokerlink| ZX-SWTGW218AS 	 | Yes 	   | [SWTG118AS-V2.0-16029](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTGW218AS.md)             |	2M 	  | 8 + 1 |
-| Ruiying | RY-4GT-2SX | No | [FG-4GT-2SX_V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/FG-4GT-2SX_V2.0.md) |	4M | 4 + 2 |
+| Ruiying  | RY-4GT-2SX | No | [FG-4GT-2SX_V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/FG-4GT-2SX_V2.0.md) |	4M | 4 + 2 |
 | Sodola 	 | SL-SWTG124AS-D  | Yes 	   | [SWTG024AS-v2.0-17452](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	            |	2M 	  | 4 + 2 |
 | Steamemo | IG204-V1        | No      | [PB-2131](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/STEAMEMO_IG204_V1.md)                   |       | 4 + 2 |
 | TrendNet | TEG-S562        | No      | [TEG-S563/EU H/W: V1.0R](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/TEG-S562.md)             | 2M    | 4 + 2 |
