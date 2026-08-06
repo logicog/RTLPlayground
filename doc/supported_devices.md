@@ -13,6 +13,7 @@ The following devices have been tested and are fully working:
 | Horaco   | HC-SWTGW218AS   | Yes     | [SWTG018AS-A V2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG018AS_A_V2_0.md)           |       | 8 + 1 |
 | Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XH.md) | 2M    | 5 + 1 |
 | Horaco   | ZX310S-4T2XT    | Yes     | [PCB-SL310S-4T2XT-V1.0.0-22273](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/ZX310S-4T2XT.md)  | 2M    | 6     |
+| Horaco   | ZX-SG4T2        | No      | [SWTG024AS-A-V2.0.1_19650_4C_2SFP](devices/SWTG024AS-A-V2.0.1_4C_2SFP.md)| 0.5M | 4 + 2|
 | Horaco   | ZX-SWTG124AS 	 | Yes 	   | [SWTG024AS-v2.0](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/SWTG024AS.md) 	                  |       | 4 + 2 |
 | Keeplink | KP-9000-6XH-X2  | No      | [2M-PCB43-V2.1](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/KP-9000-6XH-X2.md)                |       | 4 + 2 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](https://github.com/logicog/RTLPlayground/blob/main/doc/devices/2M-PCB23-V2_2.md)                 | 2M    | 8 + 1 |
