@@ -25,6 +25,7 @@
 #include "machine.h"
 #include "phy.h"
 #include "syslog.h"
+#include "httpd/page_impl.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -120,6 +121,7 @@ __xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t stpEnabled;
+__xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
@@ -2004,6 +2006,34 @@ void check_and_flash_update_image(void)
 	}
 }
 
+/* Give the switch a name carrying the tail of its MAC, so several of them on
+ * one network are distinguishable out of the box. Called after the startup
+ * config has been replayed and returns at once if that config already set a
+ * name, so a configured switch does no work for it (suggested in review).
+ *
+ * Written without a loop on purpose. Locals - counters and pointers alike -
+ * land in the 8051's internal-RAM overlay, and on an image with LACP and STP
+ * both enabled that overlay is exhausted: a loop here makes the linker fail
+ * with "Could not get 8 consecutive bytes in internal RAM for area OSEG".
+ * Moving the code into its own function does not help; the overlay is shared
+ * across the whole image. Hoisting the locals to xdata does not help either,
+ * because itohex() is inline and brings its own frame. */
+void set_hostname_default(void)
+{
+	if (hostname[0] != '\0')
+		return;
+
+	strcpy((__xdata uint8_t *)hostname, "RTLPlayground-");
+	hostname[14] = hex[uip_ethaddr.addr[3] >> 4];
+	hostname[15] = hex[uip_ethaddr.addr[3] & 0xf];
+	hostname[16] = hex[uip_ethaddr.addr[4] >> 4];
+	hostname[17] = hex[uip_ethaddr.addr[4] & 0xf];
+	hostname[18] = hex[uip_ethaddr.addr[5] >> 4];
+	hostname[19] = hex[uip_ethaddr.addr[5] & 0xf];
+	hostname[20] = '\0';
+}
+
+
 void main(void)
 {
 	ticks = 0;
@@ -2168,6 +2198,8 @@ void main(void)
 	early_boot_handle_button();
 
 	execute_config();
+	/* After the config: a name from it wins, otherwise derive one. */
+	set_hostname_default();
 	print_cmd_prompt();
 	idle_ready = 1;
 
