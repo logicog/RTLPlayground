@@ -5,9 +5,23 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 
-#ifdef MACHINE_KP_9000_6XHML_X2
+#if defined(MACHINE_KP_9000_6XHML_X2) || \
+	defined(MACHINE_KP_9000_6XH_X2_V1_1) || \
+	defined(MACHINE_KP_9000_6XHML_X2_V1_1) || \
+	defined(MACHINE_KP_9000_6XH_X2_V1_2) || \
+	defined(MACHINE_KP_9000_6XHML_X2_V1_2)
 __code const struct machine machine = {
+#if defined(MACHINE_KP_9000_6XH_X2_V1_1)
+	.machine_name = "keepLink KP-9000-6XH V1.1",
+#elif defined(MACHINE_KP_9000_6XHML_X2_V1_1)
+	.machine_name = "keepLink KP-9000-6XHML V1.1",
+#elif defined(MACHINE_KP_9000_6XH_X2_V1_2)
+	.machine_name = "keepLink KP-9000-6XH V1.2",
+#elif defined(MACHINE_KP_9000_6XHML_X2_V1_2)
+	.machine_name = "keepLink KP-9000-6XHML V1.2",
+#else
 	.machine_name = "keepLink KP-9000-6XHML-X2",
+#endif
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
@@ -74,9 +88,15 @@ __code const struct machine machine = {
 
 void machine_custom_init(void) { }
 
-#elif defined MACHINE_KP_9000_6XH_X2
+#elif defined(MACHINE_KP_9000_6XH_X2) || defined(MACHINE_KP_9000_6XH_X2_V2_1) || defined(MACHINE_KP_9000_6XHML_X2_V2_1)
 __code const struct machine machine = {
+#if defined(MACHINE_KP_9000_6XHML_X2_V2_1)
+	.machine_name = "keepLink KP-9000-6XHML V2.1",
+#elif defined(MACHINE_KP_9000_6XH_X2_V2_1)
+	.machine_name = "keepLink KP-9000-6XH-X2 V2.1",
+#else
 	.machine_name = "keepLink KP-9000-6XH-X2",
+#endif
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
