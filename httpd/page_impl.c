@@ -46,6 +46,18 @@ extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
 
+static __xdata uint16_t hw_guard;
+
+static uint8_t page_tbl_idle(void)
+{
+	hw_guard = 0;
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while ((sfr_data[3] & TBL_EXECUTE) && ++hw_guard);
+
+	return !(sfr_data[3] & TBL_EXECUTE);
+}
+
 __code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
 __code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 
@@ -210,9 +222,12 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 	reg_bit_set(RTL837X_REG_I2C_CTRL, 0);
 
 	// Wait for execution to finish
+	hw_guard = 0;
 	do {
 		reg_read_m(RTL837X_REG_I2C_CTRL);
-	} while (sfr_data[3] & 0x1);
+	} while ((sfr_data[3] & 0x1) && ++hw_guard);
+	if (sfr_data[3] & 0x1)
+		return;
 
 	for (uint8_t i = 0; i < len; i++) {
 		if (!(i & 0x3))
@@ -338,9 +353,11 @@ void send_l2(uint16_t idx)
 	dbg_short(idx);
 	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
 
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+	if (!page_tbl_idle()) {
+		char_to_html('[');
+		char_to_html(']');
+		return;
+	}
 
 	/* The L2 table in the ASIC can hold up to 4096 (0x1000) entries, which
 	 * are accessed using an index. The index is the hash of the MAC address
@@ -364,9 +381,12 @@ void send_l2(uint16_t idx)
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
 
 		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, TBL_EXECUTE);
-		do {
-			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & TBL_EXECUTE);
+		if (!page_tbl_idle()) {
+			if (first_entry != 0xffff)
+				slen--;
+			char_to_html(']');
+			break;
+		}
 
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
 		if ((sfr_data[0] & 0x20)) {	// Check entry is valid
@@ -432,18 +452,21 @@ void l2_delete(uint16_t idx)
 	dbg_short(idx);
 	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
 
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+	if (!page_tbl_idle()) {
+		slen += strtox(outbuf + slen, "{\"result\":0}");
+		return;
+	}
 	slen += strtox(outbuf + slen, "{\"result\":");
 	// First, search for the entry based on the index
 	reg_read_m(RTL837x_TBL_DATA_0);
 	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
 
 	REG_WRITE(RTL837X_TBL_CTRL, (idx >> 8) & 0xf, idx, TBL_L2_UNICAST, TBL_EXECUTE);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x1);
+	if (!page_tbl_idle()) {
+		char_to_html('0');
+		char_to_html('}');
+		return;
+	}
 	reg_read_m(RTL837x_L2_DATA_OUT_B);
 	if (!(sfr_data[0] & 0x20)) {
 		char_to_html('0');
@@ -464,11 +487,7 @@ void l2_delete(uint16_t idx)
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], TBL_L2_UNICAST, sfr_data[3]);
 
 		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
-		do {
-			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & TBL_EXECUTE);
-
-		char_to_html('1');
+		char_to_html(page_tbl_idle() ? '1' : '0');
 	}
 	char_to_html('}');
 }
