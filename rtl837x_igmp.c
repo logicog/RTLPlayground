@@ -28,6 +28,7 @@ extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 
 __xdata uint16_t idx;
+static __xdata uint16_t igmp_guard;
 
 #ifdef IPMC_USES_L3MC
 struct ipmc_table_entry {
@@ -197,6 +198,16 @@ void entry_to_l2mc(void)
 #endif
 
 
+static uint8_t igmp_tbl_idle(void)
+{
+	igmp_guard = 0;
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while ((sfr_data[3] & TBL_EXECUTE) && ++igmp_guard);
+	return !(sfr_data[3] & TBL_EXECUTE);
+}
+
+
 void igmp_packet_handler(void) __banked
 {
 	// By default we do not send anything out
@@ -242,9 +253,8 @@ void igmp_packet_handler(void) __banked
 	entry_to_ipmc();
 #endif
 	// Wait for any pending Table operations to end
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 1);
+	if (!igmp_tbl_idle())
+		return;
 
 	reg_read_m(RTL837x_TBL_DATA_0);
 #ifdef DEBUG
@@ -259,9 +269,8 @@ void igmp_packet_handler(void) __banked
 #endif
 	// First try to find entry to see whether it needs to be updated
 	REG_WRITE(RTL837X_TBL_CTRL, 0x00, 0x00, TBL_L2_UNICAST, TBL_EXECUTE);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x1);
+	if (!igmp_tbl_idle())
+		return;
 #ifdef DEBUG
 	print_string("\nsearch done\n");
 	print_string("Table data searched:\n");
@@ -323,9 +332,8 @@ void igmp_packet_handler(void) __banked
 			sfr_data[1] |= 0x04;	// Clear entry
 			reg_write_m(RTL837x_TBL_DATA_0);
 			REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx & 0xff, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
-			do {
-				reg_read_m(RTL837X_TBL_CTRL);
-			} while (sfr_data[3] & 0x1);
+			if (!igmp_tbl_idle())
+				return;
 			print_string("IGMP Entry deleted\n");
 			return;
 		}
@@ -355,9 +363,8 @@ void igmp_packet_handler(void) __banked
 #endif
 	reg_read_m(RTL837X_TBL_CTRL);
 	REG_WRITE(RTL837X_TBL_CTRL, sfr_data[0], sfr_data[1], TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x1);
+	if (!igmp_tbl_idle())
+		return;
 #ifdef DEBUG
 	print_string("\nupdate done\n");
 	print_string("Table data written:\n");
