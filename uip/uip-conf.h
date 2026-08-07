@@ -106,9 +106,25 @@ typedef unsigned short uip_stats_t;
 /**
  * uIP buffer size.
  *
+ * Sized to the largest frame the CPU port accepts on ingress. The NIC drops
+ * anything above that in hardware, so a larger buffer only costs XDATA, while
+ * a smaller one would be overrun by the receive DMA.
+ *
+ * Measured on a SWTGW218AS with ICMP, which bypasses MSS and so probes the
+ * hardware directly: a 1502-byte payload is answered and 1503 is not, putting
+ * the largest frame we are handed at UIP_LLH_LEN + 20 + 8 + 1502 = 1556 bytes
+ * of uip_buf.
+ *
+ * UIP_TCP_MSS derives from this as 1490, which is also the largest TCP payload
+ * that gets through, so the switch advertises exactly what it can receive.
+ *
+ * The limit belongs to the NIC rather than to an ingress port: RX_CTRL sits in
+ * the NIC register block and the CPU tag is inserted for every trapped frame,
+ * so how the frame was tagged on the wire does not change the figure.
+ *
  * \hideinitializer
  */
-#define UIP_CONF_BUFFER_SIZE     2200
+#define UIP_CONF_BUFFER_SIZE     1556
 
 /**
  * CPU byte order.
