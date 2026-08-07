@@ -28,6 +28,18 @@ extern __xdata struct machine_runtime machine_detected;
 
 __xdata	uint32_t l2_head;
 
+static __xdata uint16_t tbl_guard;
+
+static uint8_t port_tbl_idle(void)
+{
+	tbl_guard = 0;
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while ((sfr_data[3] & TBL_EXECUTE) && ++tbl_guard);
+
+	return !(sfr_data[3] & TBL_EXECUTE);
+}
+
 __xdata struct vlan_settings vlan_settings;
 
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
@@ -168,9 +180,8 @@ int8_t vlan_get(register uint16_t vlan) __banked
 		return -1;
 
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_EXECUTE);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+	if (!port_tbl_idle())
+		return -1;
 	reg_read_m(RTL837x_L2_DATA_OUT_A);
 
 	return 0;
@@ -224,9 +235,8 @@ void vlan_create(void) __banked
 	// Initialize VLAN table with VLAN 1
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0x02, (a >> 6) & 0x0f, (a << 2) | (vlan_settings.members >> 8), vlan_settings.members);
 	REG_WRITE(RTL837X_TBL_CTRL, vlan_settings.vlan >> 8, vlan_settings.vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+	if (!port_tbl_idle())
+		return;
 	print_string("vlan_create done \n");
 }
 
@@ -328,9 +338,12 @@ uint8_t port_l2_forget(void) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
 
 	// Wait for flush completed
+	tbl_guard = 0;
 	do {
 		reg_read_m(RTL837x_L2_TBL_FLUSH_CTRL);
-	} while (sfr_data[1]);
+	} while (sfr_data[1] && ++tbl_guard);
+	if (sfr_data[1])
+		return 0;
 
 	print_string("port_l2_forget done\n");
 	return 0;
@@ -340,9 +353,8 @@ uint8_t port_l2_forget(void) __banked
 void port_l2_learned(void) __banked
 {
 	// Whait for any table action to be finished
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x01);
+	if (!port_tbl_idle())
+		return;
 	print_string("\n\tMAC\t\tVLAN\ttype\tport\n");
 	__xdata uint16_t entry = 0x0000;
 	__xdata uint16_t first_entry = 0xffff; // Table does not have that many entries
@@ -353,9 +365,8 @@ void port_l2_learned(void) __banked
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
 
 		REG_WRITE(RTL837X_TBL_CTRL, (entry >> 8) & 0xf, entry, TBL_L2_UNICAST, TBL_EXECUTE);
-		do {
-			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & TBL_EXECUTE);
+		if (!port_tbl_idle())
+			break;
 
 		reg_read_m(RTL837x_TBL_DATA_0);
 		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
