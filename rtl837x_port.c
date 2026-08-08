@@ -115,6 +115,9 @@ uint16_t port_pvid_get(uint8_t port) __banked
 
 void vlan_delete(uint16_t vlan) __banked
 {
+	if (!vlan || vlan >= 0xfff)
+		return;
+
 	print_string("\nvlan_delete called \n"); print_short(vlan);
 	vlan_name_remove(vlan);
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0, 0, 0, 0);
@@ -197,6 +200,11 @@ __xdata uint16_t vlan_name(register uint16_t vlan) __banked
  */
 void vlan_create(void) __banked
 {
+	if (!vlan_settings.vlan || vlan_settings.vlan >= 0xfff) {
+		print_string("\nInvalid VLAN: "); print_short(vlan_settings.vlan); write_char('\n');
+		return;
+	}
+
 	// For now, the CPU-port is always a tagged member:
 	vlan_settings.members |= 0x0200; // Set 10th bit
 	vlan_settings.tagged |= 0x0200;

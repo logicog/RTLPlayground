@@ -354,6 +354,8 @@ void parse_vlan(void)
 				print_string("Management VLAN set to "); print_short(management_vlan); write_char('\n');
 			return;
 		}
+		if (!vlan_settings.vlan || vlan_settings.vlan > 4094)
+			goto err;
 		uint8_t w = 2;
 		if (cmd_words_len > w && isletter(cmd_buffer[cmd_words_b[w]])) {
 			register uint8_t i = 0;
