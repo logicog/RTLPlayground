@@ -38,45 +38,56 @@ function num(id, min, max, onch) {
   return n;
 }
 
+function members(mask) {
+  const a = [];
+  for (let i = 0; i < 10; i++)
+    if (mask & (1 << i)) a.push(i + 1);
+  return a.join(",");
+}
+
 function buildPortsTable(ports) {
   const tbl = document.getElementById("stpPortsTbl");
   const stat = document.getElementById("stpStatTbl");
   for (const p of [...ports].sort((a, b) => a.p - b.p)) {
     const tr = tbl.insertRow();
-    tr.insertCell().textContent = p.p;                     // Port
-    tr.insertCell().appendChild(sel("en_" + p.p,
+    p.n = p.trk ? "trk " + p.trk : "port " + p.p;
+    p.k = p.trk ? "T" + p.trk : p.p;
+    tr.insertCell().textContent = p.trk
+      ? "Trk" + p.trk + " (" + members(p.mbr) + ")"
+      : p.p;
+    tr.insertCell().appendChild(sel("en_" + p.k,
       [["on","Enable"],["off","Disable"]],
-      e => stpCmd("stp port " + p.p + " " + e.target.value)));
-    const pc = num("cost_" + p.p, 0, 200000000,
-      e => stpCmd("stp port " + p.p + " cost " + e.target.value));
+      e => stpCmd("stp " + p.n + " " + e.target.value)));
+    const pc = num("cost_" + p.k, 0, 200000000,
+      e => stpCmd("stp " + p.n + " cost " + e.target.value));
     pc.style.width = "7em";
     pc.title = "0 - 200000000 (0 = Auto)";
     tr.insertCell().appendChild(pc);
-    const pr = sel("prio_" + p.p, [], 
-      e => stpCmd("stp port " + p.p + " prio " + e.target.value));
+    const pr = sel("prio_" + p.k, [], 
+      e => stpCmd("stp " + p.n + " prio " + e.target.value));
     for (let v = 0; v <= 240; v += 16) {
       const o = document.createElement("option");
       o.value = v; o.textContent = v + (v === 128 ? " (default)" : "");
       pr.appendChild(o);
     }
     tr.insertCell().appendChild(pr);
-    tr.insertCell().appendChild(sel("edge_" + p.p,
+    tr.insertCell().appendChild(sel("edge_" + p.k,
       [["auto","Auto"],["on","Enable"],["off","Disable"]],
-      e => stpCmd("stp port " + p.p + " edge " + e.target.value)));
-    tr.insertCell().appendChild(sel("filt_" + p.p,
+      e => stpCmd("stp " + p.n + " edge " + e.target.value)));
+    tr.insertCell().appendChild(sel("filt_" + p.k,
       [["off","Disable"],["on","Enable"]],
-      e => stpCmd("stp port " + p.p + " filter " + e.target.value)));
-    tr.insertCell().appendChild(sel("guard_" + p.p,
+      e => stpCmd("stp " + p.n + " filter " + e.target.value)));
+    tr.insertCell().appendChild(sel("guard_" + p.k,
       [["none","None"],["bpdu","BPDU"],["root","Root"]],
-      e => stpCmd("stp port " + p.p + " guard " + e.target.value)));
-    tr.insertCell().appendChild(sel("p2p_" + p.p,
+      e => stpCmd("stp " + p.n + " guard " + e.target.value)));
+    tr.insertCell().appendChild(sel("p2p_" + p.k,
       [["auto","Auto"],["on","Enable"],["off","Disable"]],
-      e => stpCmd("stp port " + p.p + " p2p " + e.target.value)));
+      e => stpCmd("stp " + p.n + " p2p " + e.target.value)));
 
     const sr = stat.insertRow();
     sr.insertCell().textContent = p.p;
     for (const id of ["st","role","db","dp","dc","oe","op"])
-      sr.insertCell().id = id + "_" + p.p;
+      sr.insertCell().id = id + "_" + p.k;
   }
   stpRows = ports.length;
 }

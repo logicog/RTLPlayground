@@ -47,14 +47,17 @@ __xdata uint8_t  stp_rstp;
 __xdata uint8_t  stp_txhold;
 
 
-__xdata uint8_t  stp_pflags[10];
-__xdata uint32_t stp_pcost[10];
-__xdata uint8_t  stp_pprio[10];
-__xdata uint8_t  stp_pp2p[10];
+__xdata uint8_t  stp_ent_of[10];
+__xdata uint16_t stp_trk_mask[STP_TRK_COUNT];
+__xdata uint8_t  stp_ss_i;
+__xdata uint8_t  stp_pflags[STP_ENTITIES];
+__xdata uint32_t stp_pcost[STP_ENTITIES];
+__xdata uint8_t  stp_pprio[STP_ENTITIES];
+__xdata uint8_t  stp_pp2p[STP_ENTITIES];
 
-__xdata struct bridge stp_dbridge[10];
-__xdata uint16_t stp_dpid[10];
-__xdata uint32_t stp_dcost[10];
+__xdata struct bridge stp_dbridge[STP_ENTITIES];
+__xdata uint16_t stp_dpid[STP_ENTITIES];
+__xdata uint32_t stp_dcost[STP_ENTITIES];
 
 /* ---- Status / runtime ---- */
 __xdata struct bridge root_bridge;
@@ -63,11 +66,11 @@ __xdata uint8_t  stp_root_port;		/* 0xff = we are the root */
 __xdata uint16_t stp_tc_count;
 __xdata uint16_t stp_scratch16;	/* scratch for status printing only */
 
-__xdata uint16_t port_timers[10];	/* listen-period countdown (0 = not listening) */
-__xdata uint16_t port_hello[10];	/* hello TX countdown */
-__xdata uint16_t stp_bpdu_age[10];	/* ticks since last BPDU seen on port (saturating) */
-__xdata uint8_t  stp_tx_budget[10];	/* tx hold: BPDUs left in the current second */
-__xdata uint8_t  stp_tx_count[10];	/* BPDUs actually put on the wire, wraps at 256 */
+__xdata uint16_t port_timers[STP_ENTITIES];	/* listen-period countdown (0 = not listening) */
+__xdata uint16_t port_hello[STP_ENTITIES];	/* hello TX countdown */
+__xdata uint16_t stp_bpdu_age[STP_ENTITIES];	/* ticks since last BPDU seen on port (saturating) */
+__xdata uint8_t  stp_tx_budget[STP_ENTITIES];	/* tx hold: BPDUs left in the current second */
+__xdata uint8_t  stp_tx_count[STP_ENTITIES];	/* BPDUs actually put on the wire, wraps at 256 */
 __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 __xdata uint16_t stp_link_prev;		/* carrier bitmap as of the last check */
 __xdata uint16_t stp_link_now;
@@ -260,12 +263,42 @@ signed char cmpBytes(__xdata uint8_t *m1, __xdata uint8_t *m2, uint8_t n) __reen
 
 /* Write one port's 2-bit state into the ASIC's MSTP register.
  * 00 disable, 01 blocking, 10 learning, 11 forwarding. */
+static void stp_lag_map(void)
+{
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+		stp_ent_of[stp_ss_i] = stp_ss_i;
+	for (stp_scratch = 0; stp_scratch < STP_TRK_COUNT; stp_scratch++) {
+		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (stp_scratch << 2));
+		stp_trk_mask[stp_scratch] = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+			if ((stp_trk_mask[stp_scratch] >> stp_ss_i) & 1)
+				stp_ent_of[stp_ss_i] = STP_TRK_BASE + stp_scratch;
+	}
+}
+
+
+static void stp_state_bits(uint8_t port, uint8_t state) __reentrant
+{
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++) {
+		if (port < STP_TRK_BASE ? (stp_ss_i != port)
+		                        : !((stp_trk_mask[port - STP_TRK_BASE] >> stp_ss_i) & 1))
+			continue;
+		sfr_data[3 - (stp_ss_i >> 2)] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
+	}
+}
+
+
 static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 {
 	reg_read_m(RTL837X_MSTP_STATES);
-	stp_scratch = 3 - (port >> 2);
-	sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((port << 1) & 0x7));
-	sfr_data[stp_scratch] |= (uint8_t)(state << ((port << 1) & 0x7));
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++) {
+		if (port < STP_TRK_BASE ? (stp_ss_i != port)
+		                        : !((stp_trk_mask[port - STP_TRK_BASE] >> stp_ss_i) & 1))
+			continue;
+		stp_scratch = 3 - (stp_ss_i >> 2);
+		sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((stp_ss_i << 1) & 0x7));
+		sfr_data[stp_scratch] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
+	}
 	reg_write_m(RTL837X_MSTP_STATES);
 }
 
@@ -353,7 +386,18 @@ void stp_cnf_send(uint8_t port) __reentrant
 	 * LLC/802.3 (length-field) frame makes the ASIC drop it entirely,
 	 * while the same flag works fine on ethertype frames (LACP). */
 	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
-	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
+	if (port >= STP_TRK_BASE) {
+		stp_scratch = 0;
+		while (stp_scratch < 10 && !((stp_trk_mask[port - STP_TRK_BASE] >> stp_scratch) & 1))
+			stp_scratch++;
+		if (stp_scratch >= 10) {
+			stp_tx_flags_extra = 0;
+			return;
+		}
+		STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << stp_scratch);
+	} else {
+		STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
+	}
 
 	STP_O->dsap = 0x42;
 	STP_O->ssap = 0x42;
@@ -454,7 +498,7 @@ void stp_in(void) __banked
 		return;
 	{
 	__xdata static uint8_t port_l;	/* NOT stp_scratch: stp_state_set() clobbers it */
-	uint8_t port = (port_l = stp_scratch);
+	uint8_t port = (port_l = stp_ent_of[stp_scratch]);
 	(void)port_l;
 
 	// Make sure this is the type of (R)STP packet we are interested in:
@@ -628,6 +672,8 @@ void stp_timers(void) __banked
 		for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
 			stp_tx_budget[stp_i] = stp_txhold;
 
+		stp_lag_map();
+
 		/* Link supervision. Without this the state machine never learns
 		 * that a port lost carrier: it keeps the port in forwarding, keeps
 		 * announcing on it, and never flushes what was learned behind it -
@@ -636,8 +682,20 @@ void stp_timers(void) __banked
 		 * of the 50 Hz tick. */
 		reg_read_m(RTL837X_REG_LINKS_STS);
 		stp_link_now = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
+		{
+			__xdata static uint16_t eff;
+			eff = 0;
+			for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+				if ((stp_link_now >> stp_i) & 1)
+					eff |= (uint16_t)1 << stp_ent_of[stp_i];
+			stp_link_now = eff;
+		}
 		if (stp_link_now != stp_link_prev) {
-			for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+			for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
+				if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
+					continue;
+				if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
+					continue;
 				if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
 					continue;
 				if (!((stp_link_now ^ stp_link_prev) >> stp_i & 1))
@@ -662,7 +720,13 @@ void stp_timers(void) __banked
 		}
 	}
 
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
+		if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
+			continue;
+		if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
+			continue;
+		if (stp_i >= STP_TRK_BASE && !stp_trk_mask[stp_i - STP_TRK_BASE])
+			continue;
 		if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
 			continue;
 
@@ -727,7 +791,11 @@ void stp_defaults(void) __banked
 	stp_fwddelay_s = 15;
 	stp_rstp = 1;
 	stp_txhold = 6;
-	for (stp_i = 0; stp_i < 10; stp_i++) {
+	for (stp_i = 0; stp_i < 10; stp_i++)
+		stp_ent_of[stp_i] = stp_i;
+	for (stp_i = 0; stp_i < STP_TRK_COUNT; stp_i++)
+		stp_trk_mask[stp_i] = 0;
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		/* enabled, auto-edge on: host-facing ports go forwarding after
 		 * 3 s of BPDU silence instead of the full forward delay */
 		stp_pflags[stp_i] = STP_PF_ENABLED | STP_PF_AUTOEDGE;
@@ -771,24 +839,32 @@ static void stp_fdb_update(__xdata uint16_t pmask)
 void stp_setup(void) __banked
 {
 	print_string("Enabling STP: ");
+	stp_lag_map();
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
+		if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
+			continue;
+		if (stp_i >= STP_TRK_BASE && !stp_trk_mask[stp_i - STP_TRK_BASE])
+			continue;
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
 		stp_bpdu_age[stp_i] = 0;
 		stp_tx_budget[stp_i] = stp_txhold;
 		stp_tx_count[stp_i] = 0;
-		if (!(stp_pflags[stp_i] & STP_PF_ENABLED) || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
+		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
+		if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
+			continue;	/* trunk member: the trunk entity decides */
+		if (!(stp_pflags[stp_i] & STP_PF_ENABLED)
+		    || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
 			/* not participating, or admin edge: forwarding immediately */
 			if (stp_pflags[stp_i] & STP_PF_ADMEDGE)
 				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
-			sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
+			stp_state_bits(stp_i, 0b11);
 			port_timers[stp_i] = 0;
 		} else {
 			/* listen first: blocking until the forward-delay expires */
-			sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b01 << ((stp_i << 1) & 0x7));
+			stp_state_bits(stp_i, 0b01);
 			port_timers[stp_i] = (uint16_t)stp_fwddelay_s * STP_HZ;
 		}
-		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
 	}
 	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
 	reg_write_m(RTL837X_MSTP_STATES);
@@ -856,13 +932,28 @@ void stp_parse(void) __banked __reentrant
 	if (cmd_words_len < 3)
 		goto err;
 
-	if (cmd_compare(1, "port")) {
+	if (cmd_compare(1, "port") || cmd_compare(1, "trk")) {
 		if (cmd_words_len < 4)
 			goto err;
-		if (atoi_byte(&stp_scratch, cmd_words_b[2]) || stp_scratch < 1 || stp_scratch > 9)
+		if (atoi_byte(&stp_scratch, cmd_words_b[2]) || !stp_scratch)
 			goto err;
 		{
-		uint8_t port = machine.phys_to_log_port[stp_scratch - 1];
+		uint8_t port;
+		if (cmd_compare(1, "trk")) {
+			if (stp_scratch > STP_TRK_COUNT)
+				goto err;
+			port = STP_TRK_BASE + stp_scratch - 1;
+		} else {
+			if (stp_scratch > 9)
+				goto err;
+			port = machine.phys_to_log_port[stp_scratch - 1];
+			if (stp_ent_of[port] != port) {
+				print_string("Port belongs to a trunk, configure it as trk ");
+				print_byte(stp_ent_of[port] - STP_TRK_BASE + 1);
+				write_char('\n');
+				return;
+			}
+		}
 		/* every sub-command except on/off carries one more argument; without
 		 * this check cmd_compare(4,..) would read a stale word from the
 		 * PREVIOUS command line (cmd_words_b is not cleared between commands) */
@@ -980,5 +1071,5 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
-	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9> on|off|edge|cost|prio|guard|filter ...\n");
+	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|trk <1-4> on|off|edge|cost|prio|guard|filter ...\n");
 }
