@@ -62,13 +62,15 @@ __xdata uint8_t  stp_fwddelay_s;
 __xdata uint8_t  stp_rstp;
 __xdata uint8_t  stp_txhold;
 
-/* Management failsafe: if any port is held out of Forwarding while no HTTP
- * request has been seen for stp_failsafe_s seconds, assume STP just cut off
- * in-band management (mgmt VLAN rides a blockable front port!) and disable
- * itself, restoring forwarding. Commit-confirm pattern; hardware lockout of
- * 2026-07-20 is the motivating incident. 0 disables the watchdog. */
+/* Management failsafe, commit-confirm: enabling STP arms a one-shot window of
+ * stp_failsafe_s seconds. One HTTP request inside the window confirms that
+ * management survived the new tree and disarms it until the next enable; a
+ * window with no management activity disables STP and restores forwarding
+ * (mgmt VLAN rides a blockable front port; lockout of 2026-07-20 is the
+ * motivating incident). 0 never arms. Headless installs should set 0. */
 __xdata uint8_t  stp_failsafe_s;
-__xdata uint8_t  stp_failsafe_cnt;	/* seconds left before the trip */
+__xdata uint8_t  stp_failsafe_cnt;	/* seconds left of the armed window */
+__xdata uint8_t  stp_failsafe_armed;
 __xdata uint8_t  stp_failsafe_tripped;
 extern volatile __xdata uint8_t mgmt_alive;	/* set by httpd on any request */
 
@@ -232,6 +234,10 @@ static void stp_loop_hold_peer(uint8_t port) __reentrant
 		print_string("STP: loop detected, blocking port ");
 		print_byte(port); write_char('\n');
 		stp_state_set(port, 0b01);
+		if (stp_failsafe_s && !stp_failsafe_armed) {
+			stp_failsafe_armed = 1;
+			stp_failsafe_cnt = stp_failsafe_s;
+		}
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		stp_topology_change(port);
 	}
@@ -486,6 +492,10 @@ void stp_in(void) __banked
 			print_string("STP: root guard blocking port ");
 			print_byte(port); write_char('\n');
 			stp_state_set(port, 0b01);
+			if (stp_failsafe_s && !stp_failsafe_armed) {
+				stp_failsafe_armed = 1;
+				stp_failsafe_cnt = stp_failsafe_s;
+			}
 			port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
 			stp_pflags[port] &= ~STP_PF_OPEREDGE;
 			return;
@@ -523,25 +533,28 @@ void stp_timers(void) __banked
 		for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
 			stp_tx_budget[stp_i] = stp_txhold;
 
-		/* Management failsafe: plain commit-confirm. While STP is on, ANY
-		 * HTTP request re-arms the countdown (the web UI polls /stp.json
-		 * every 2 s, so an open browser keeps it alive); stp_failsafe_s
-		 * seconds of management silence disable STP and restore the
-		 * pre-STP state. Deliberately NOT conditioned on our own MSTP
-		 * states: hardware incident 2026-07-21 showed a NEIGHBOR (TP-Link
-		 * Easy Smart loop prevention) cutting our uplink in reaction to
-		 * our BPDUs while our ASIC was all-forwarding - only going fully
+		/* Management failsafe: armed as a one-shot window by "stp on".
+		 * The first HTTP request inside the window proves management
+		 * survived the new tree and disarms it; a silent window disables
+		 * STP. Deliberately NOT conditioned on our own MSTP states:
+		 * hardware incident 2026-07-21 showed a NEIGHBOR (TP-Link Easy
+		 * Smart loop prevention) cutting our uplink in reaction to our
+		 * BPDUs while our ASIC was all-forwarding - only going fully
 		 * quiet (no BPDU TX) lets such a neighbor recover. */
-		if (mgmt_alive) {
-			mgmt_alive = 0;
-			stp_failsafe_cnt = stp_failsafe_s;
-		} else if (stp_failsafe_s && stp_failsafe_cnt && --stp_failsafe_cnt == 0) {
-			print_string("STP failsafe: no management activity - disabling STP\n");
-			stp_off();
-			stpEnabled = 0;
-			stp_failsafe_tripped = 1;
-			return;
+		if (stp_failsafe_armed) {
+			if (mgmt_alive) {
+				stp_failsafe_armed = 0;
+				print_string("STP failsafe: management confirmed - disarmed\n");
+			} else if (--stp_failsafe_cnt == 0) {
+				print_string("STP failsafe: no management activity - disabling STP\n");
+				stp_failsafe_armed = 0;
+				stp_off();
+				stpEnabled = 0;
+				stp_failsafe_tripped = 1;
+				return;
+			}
 		}
+		mgmt_alive = 0;
 
 		/* Link supervision. Without this the state machine never learns
 		 * that a port lost carrier: it keeps the port in forwarding, keeps
@@ -778,6 +791,8 @@ void stp_parse(void) __banked __reentrant
 		print_string("STP enabled\n");
 		stp_failsafe_tripped = 0;
 		stp_failsafe_cnt = stp_failsafe_s;
+		stp_failsafe_armed = stp_failsafe_s ? 1 : 0;
+		mgmt_alive = 0;
 		stpEnabled = 1;
 		stp_setup();
 		return;
@@ -786,6 +801,7 @@ void stp_parse(void) __banked __reentrant
 		print_string("STP disabled\n");
 		stp_off();
 		stpEnabled = 0;
+		stp_failsafe_armed = 0;
 		return;
 	}
 	if (cmd_words_len < 3)
@@ -809,6 +825,11 @@ void stp_parse(void) __banked __reentrant
 			if (stpEnabled) {	/* (re)join: listen first */
 				stp_state_set(port, 0b01);
 				port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
+				if (stp_failsafe_s) {
+					stp_failsafe_armed = 1;
+					stp_failsafe_cnt = stp_failsafe_s;
+					mgmt_alive = 0;
+				}
 			}
 		} else if (cmd_compare(3, "off")) {
 			stp_pflags[port] &= ~STP_PF_ENABLED;
@@ -911,9 +932,11 @@ void stp_parse(void) __banked __reentrant
 			goto err;
 		stp_txhold = stp_scratch;
 	} else if (cmd_compare(1, "failsafe")) {
-		/* 0 disables the management watchdog; otherwise seconds to trip */
+		/* 0 never arms; otherwise the length of the armed window */
 		stp_failsafe_s = stp_scratch;
 		stp_failsafe_cnt = stp_scratch;
+		stp_failsafe_armed = (stp_scratch && stpEnabled) ? 1 : 0;
+		mgmt_alive = 0;
 	} else {
 		goto err;
 	}
