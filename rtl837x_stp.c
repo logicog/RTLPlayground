@@ -289,8 +289,20 @@ void stp_cnf_send(uint8_t port) __reentrant
 		STP_O->msg_len = HTONS(0x27);
 		STP_O->version = 0x02;		/* RSTP */
 		STP_O->bpdu_type = 0x02;	/* Rapid Spanning Tree BPDU */
-		/* flags: role designated (0b11 << 2) + learning + forwarding */
-		STP_O->flags = 0x3c;
+		/* Flags describe this port, so derive them instead of announcing
+		 * designated+learning+forwarding unconditionally: a blocked port
+		 * claiming to forward, or the root port claiming designated, is a
+		 * lie on the wire even when nothing downstream acts on it (yet).
+		 * Role is root on the root port and designated everywhere else -
+		 * there is no alternate/backup role computation, so a port blocked
+		 * by loop detection still transmits as designated, just with the
+		 * learning and forwarding bits clear. Those two mirror the ASIC
+		 * state (0b11 = forwarding); a listening or blocked port sends
+		 * neither. */
+		reg_read_m(RTL837X_MSTP_STATES);
+		STP_O->flags = (uint8_t)((port == stp_root_port ? 0b10 : 0b11) << 2);
+		if (((sfr_data[3 - (port >> 2)] >> ((port << 1) & 0x7)) & 0b11) == 0b11)
+			STP_O->flags |= 0x30;	/* learning + forwarding */
 	} else {
 		/* 802.3 length = LLC (3) + Config BPDU body (35) */
 		STP_O->msg_len = HTONS(0x26);
