@@ -82,6 +82,7 @@ object, img {
 .isNOK{ color: #900;}
 .isOK{ color: #090;}
 .ip{padding:8px 16px;margin-bottom: 1em;margin-left: 1em}
+.rotext{display:inline-block;padding:8px 16px;margin-bottom: 1em;margin-left: 1em}
 .row {display: flex;}
 .rcol {flex: 90%;}
 .lcol {flex: 10%;}

@@ -26,6 +26,7 @@
 extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
+extern __xdata uint16_t management_vlan;
 extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
@@ -857,7 +858,9 @@ void send_vlanlist(void)
 	uint8_t first = 1;
 
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	char_to_html('[');
+	slen += strtox(outbuf + slen, "{\"mgmt\":");
+	itoa16_html(management_vlan);
+	slen += strtox(outbuf + slen, ",\"vlan\":[");
 
 	for (i = 1; i < 4095; i++) {
 		if (vlan_get(i) < 0)
@@ -865,7 +868,7 @@ void send_vlanlist(void)
 		if (!(sfr_data[0] & 0x02)) /* bit 1: VLAN table entry valid */
 			continue;
 
-		if (slen + 139 > TCP_OUTBUF_SIZE) /* 138 bytes worst-case entry + 1 byte for closing ']' */
+		if (slen + 141 > TCP_OUTBUF_SIZE) /* comma + 138-byte worst-case entry + closing "]}" */
 			break;
 
 		if (!first)
@@ -887,4 +890,5 @@ void send_vlanlist(void)
 	}
 
 	char_to_html(']');
+	char_to_html('}');
 }
