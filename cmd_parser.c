@@ -736,8 +736,7 @@ void parse_mtu(void)
 		print_string("mtu [port] [size]\n");
 		return;
 	}
-	atoi_short(&mtu, cmd_words_b[2]);
-	if (mtu < 64 || mtu > 0x3fff) {
+	if (atoi_short(&mtu, cmd_words_b[2]) || mtu < 64 || mtu > 0x3fff) {
 		print_string("MTU must be 64..16383\n");
 		return;
 	}
