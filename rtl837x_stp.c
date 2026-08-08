@@ -720,6 +720,16 @@ void stp_setup(void) __banked
 
 	print_reg(RTL837X_MSTP_STATES); write_char('\n');
 
+	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+		if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
+			continue;
+		if (port_ingress_filter_get(stp_i) != VLAN_TAGGED)
+			continue;
+		print_string("STP: port ");
+		write_char('0' + machine.log_to_phys_port[stp_i]);
+		print_string(" admits tagged frames only - BPDUs are untagged and will not arrive\n");
+	}
+
 	/* Seed the carrier bitmap, so turning STP on does not report every
 	 * port that was already down as a fresh topology change. */
 	reg_read_m(RTL837X_REG_LINKS_STS);

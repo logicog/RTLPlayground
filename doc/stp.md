@@ -64,6 +64,17 @@ by a static L2 multicast entry (`port_l2mc_set()`), one per VLAN in use:
   transparency an unmanaged switch is expected to have, so a surrounding
   spanning tree can span *through* this device.
 
+Because delivery rides the forward action, a BPDU is an ordinary frame to the
+ingress pipeline and is subject to the port's acceptable-frame-type setting.
+BPDUs are untagged by definition, so a port configured to admit tagged frames
+only (`ingress <port>t`) will never deliver one: a port left on the default
+auto edge turns edge after three seconds of silence, one with edge switched off
+sits out the full forward delay instead, and either way the bridge elects
+itself root no matter what the neighbour sends. `stp_setup()` prints a warning for every
+STP-enabled port in that state. On a normal bridge this cannot happen, since
+BPDUs are consumed before any VLAN classification; here it is a direct
+consequence of the delivery path above.
+
 Port states live in `RTL837X_MSTP_STATES (0x5310)`, two bits per port:
 `00` disabled, `01` blocking, `10` learning, `11` forwarding. Note that a port
 held in blocking also drops frames the CPU injects into it, so a blocked port
