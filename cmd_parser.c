@@ -737,8 +737,8 @@ void parse_mtu(void)
 		return;
 	}
 	atoi_short(&mtu, cmd_words_b[2]);
-	if (mtu > 0x3fff) {
-		print_string("Maximum MTU is 16383\n");
+	if (mtu < 64 || mtu > 0x3fff) {
+		print_string("MTU must be 64..16383\n");
 		return;
 	}
 	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (mtu >> 10) & 0xf, (mtu >> 2) & 0xff,
