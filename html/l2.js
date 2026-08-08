@@ -64,6 +64,51 @@ function delL2(idx) {
   xhttp.timeout = 1500; xhttp.send();
 }
 
+var l2All = [];
+const l2Cols = ['port', 'mac', 'vlan', 'type'];
+var l2SortCol = 'port';
+var l2SortDir = 1;
+
+function l2Key(e, col) {
+  if (col === 'port') return e.port === 'CPU' ? Number.MAX_SAFE_INTEGER : Number(e.port);
+  if (col === 'vlan') return Number(e.vlan);
+  return String(e[col]).toLowerCase();
+}
+
+function l2SortBy(col) {
+  l2SortDir = (col === l2SortCol) ? -l2SortDir : 1;
+  l2SortCol = col;
+  renderL2();
+}
+
+function l2FilterChanged() { renderL2(); }
+
+function renderL2() {
+  var tbl = document.getElementById('l2table');
+  if (!tbl) return;
+  var f = {};
+  l2Cols.forEach(function(c) {
+    var el = document.getElementById('l2f_' + c);
+    f[c] = el ? el.value.trim().toLowerCase() : '';
+  });
+  var rows = l2All.filter(function(e) {
+    return l2Cols.every(function(c) {
+      return !f[c] || String(e[c]).toLowerCase().indexOf(f[c]) !== -1;
+    });
+  });
+  rows.sort(function(a, b) {
+    var x = l2Key(a, l2SortCol), y = l2Key(b, l2SortCol);
+    return (x < y ? -1 : x > y ? 1 : 0) * l2SortDir;
+  });
+  l2Cols.forEach(function(c) {
+    var a = document.getElementById('l2a_' + c);
+    if (a) a.textContent = (c === l2SortCol) ? (l2SortDir > 0 ? ' \u25b2' : ' \u25bc') : ' \u21c5';
+  });
+  paintL2(tbl, rows);
+  var cnt = document.getElementById('l2count');
+  if (cnt) cnt.textContent = rows.length + ' / ' + l2All.length;
+}
+
 function fillL2(s)
 {
   var tbl = document.getElementById('l2table');
@@ -71,7 +116,13 @@ function fillL2(s)
     return;
   s.sort(l2CMP);
   s = uniq(s);
-  var s = s.map(function(e) { e.port = e.port != 9 ? e.port : 'CPU'; return e; });
+  l2All = s;
+  renderL2();
+  l2Entries = [];
+}
+
+function paintL2(tbl, s)
+{
   console.log("L2: ", JSON.stringify(s));
   for (let i = 0; i < s.length; i++) {
     var e = s[i];
@@ -80,6 +131,7 @@ function fillL2(s)
       tbl.rows[i+1].cells[0].innerHTML = `${e.port}`;
       tbl.rows[i+1].cells[1].innerHTML = `${e.mac}`;
       tbl.rows[i+1].cells[2].innerHTML = `${e.vlan}`;
+      tbl.rows[i+1].cells[3].innerHTML = `${e.type}`;
       tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
     } else {
       const tr = tbl.insertRow();
@@ -92,7 +144,6 @@ function fillL2(s)
   }
   for (let i = tbl.rows.length - 1; i > s.length; i--)
     tbl.deleteRow(i);
-  l2Entries = [];
 }
 
 function getL2() {
@@ -104,7 +155,7 @@ function getL2() {
         e.vlan = parseInt(e.vlan, 16);
         e.idx = parseInt(e.idx, 16);
         e.type = e.type == "s" ? t('l2_static') : t('l2_learned');
-        e.port = e.port == 9 ? 9 : logToPhysPort[e.port];
+        e.port = e.port == 9 ? 'CPU' : logToPhysPort[e.port];
       return e;
     });
       l2Entries.push(...s);
