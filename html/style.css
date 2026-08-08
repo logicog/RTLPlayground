@@ -165,7 +165,6 @@ select { text-align-last: right; font-family: monospace}
 option { direction: rtl; font-family: sans-serif}
 #vlanTable td { text-align: left; }
 
-/* L2 table: sortable headers and per-column filters */
 .l2sort{cursor:pointer;user-select:none}
 .l2sort:hover{text-decoration:underline}
 .l2arrow{opacity:0.55;font-size:0.85em}

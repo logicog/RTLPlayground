@@ -65,10 +65,10 @@ function delL2(idx) {
 }
 
 var l2All = [];
+const l2Cols = ['port', 'mac', 'vlan', 'type'];
 var l2SortCol = 'port';
 var l2SortDir = 1;
 
-/* Sort keys: ports are numbers except the CPU, which must not compare as one. */
 function l2Key(e, col) {
   if (col === 'port') return e.port === 'CPU' ? Number.MAX_SAFE_INTEGER : Number(e.port);
   if (col === 'vlan') return Number(e.vlan);
@@ -87,12 +87,12 @@ function renderL2() {
   var tbl = document.getElementById('l2table');
   if (!tbl) return;
   var f = {};
-  ['port', 'mac', 'vlan', 'type'].forEach(function(c) {
+  l2Cols.forEach(function(c) {
     var el = document.getElementById('l2f_' + c);
     f[c] = el ? el.value.trim().toLowerCase() : '';
   });
   var rows = l2All.filter(function(e) {
-    return ['port', 'mac', 'vlan', 'type'].every(function(c) {
+    return l2Cols.every(function(c) {
       return !f[c] || String(e[c]).toLowerCase().indexOf(f[c]) !== -1;
     });
   });
@@ -100,7 +100,7 @@ function renderL2() {
     var x = l2Key(a, l2SortCol), y = l2Key(b, l2SortCol);
     return (x < y ? -1 : x > y ? 1 : 0) * l2SortDir;
   });
-  ['port', 'mac', 'vlan', 'type'].forEach(function(c) {
+  l2Cols.forEach(function(c) {
     var a = document.getElementById('l2a_' + c);
     if (a) a.textContent = (c === l2SortCol) ? (l2SortDir > 0 ? ' \u25b2' : ' \u25bc') : ' \u21c5';
   });
@@ -155,9 +155,6 @@ function getL2() {
         e.vlan = parseInt(e.vlan, 16);
         e.idx = parseInt(e.idx, 16);
         e.type = e.type == "s" ? t('l2_static') : t('l2_learned');
-        /* Label the CPU port before mapping to physical numbering: the
-         * SFP port maps to physical 9 as well, and tagging afterwards
-         * relabelled every SFP entry as CPU. */
         e.port = e.port == 9 ? 'CPU' : logToPhysPort[e.port];
       return e;
     });
