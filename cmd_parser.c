@@ -191,8 +191,11 @@ uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 	uint8_t num = 0;
 
 	while (isnumber(cmd_buffer[idx])) {
+		uint8_t val = cmd_buffer[idx] - '0';
 		err = 0;
-		num = (num * 10) + cmd_buffer[idx] - '0';
+		if (num > 25 || (num == 25 && val > 5))
+			return 1;
+		num = (num * 10) + val;
 		idx++;
 	}
 
@@ -209,6 +212,8 @@ uint8_t atoi_short(__xdata uint16_t *vlan, uint8_t idx)
 	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
 		uint8_t val = cmd_buffer[idx] - '0';
+		if (*vlan > 6553 || (*vlan == 6553 && val > 5))
+			return 1;
 		*vlan = (*vlan * 10) + val;
 		idx++;
 	}
