@@ -110,7 +110,7 @@ async function loadVlanTable() {
   var resp;
   try { resp = await fetch('/vlanlist'); } catch(e) { return; }
   if (!resp.ok) return;
-  var vlans = await resp.json();
+  var vlans = (await resp.json()).vlan || [];
   for (var i = 0; i < vlans.length; i++) {
     var v = vlans[i];
     var vresp;
@@ -181,7 +181,7 @@ function loadVlanList() {
       sel.style.display = 'none';
       return;
     }
-    var vlans = JSON.parse(this.responseText);
+    var vlans = JSON.parse(this.responseText).vlan || [];
     if (!vlans.length) {
       sel.style.display = 'none';
       return;

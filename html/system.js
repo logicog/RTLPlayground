@@ -133,7 +133,7 @@ function fetchIP() {
       document.getElementById("gw").value=s.ip_gateway;
       document.getElementById("hostname").value=s.hostname;
       document.getElementById("model").textContent=s.hw_ver;
-      loadMgmtVlan(parseInt(s.mgmt_vlan, 10) || 0);
+      loadMgmtVlan();
       clearInterval(systemInterval);
       // Fetch and populate the config textbox
       fetchConfig().then((configText) => {
@@ -170,14 +170,13 @@ window.addEventListener("load", function() {
 
 var mgmtVlanCurrent = 0;
 
-/* Populate the management-VLAN picker from the configured VLANs. If management
- * is untagged there is no VLAN to select, so show that as a disabled entry
- * rather than inventing an id the switch would reject. */
-function loadMgmtVlan(cur) {
+function loadMgmtVlan() {
   var sel = document.getElementById('mgmtvlan');
   if (!sel) return;
-  mgmtVlanCurrent = cur;
-  fetch('/vlanlist').then(function(r) { return r.json(); }).then(function(list) {
+  fetch('/vlanlist').then(function(r) { return r.json(); }).then(function(d) {
+    var cur = d.mgmt || 0;
+    var list = d.vlan || [];
+    mgmtVlanCurrent = cur;
     sel.innerHTML = '';
     if (!cur) {
       var none = document.createElement('option');
