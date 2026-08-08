@@ -347,6 +347,8 @@ void parse_vlan(void)
 			return;
 		}
 		if (cmd_compare(2, "mgmt")) {
+			if (vlan_settings.vlan > 4094)
+				goto err;
 			management_vlan = vlan_settings.vlan;
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
