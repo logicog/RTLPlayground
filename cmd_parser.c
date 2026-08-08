@@ -1568,8 +1568,10 @@ void cmd_parser(void) __banked
 			uint8_t port;
 			port = cmd_buffer[cmd_words_b[1]] - '1';
 			port = machine.phys_to_log_port[port];
-			if (!atoi_short(&pvid, cmd_words_b[2]))
+			if (!atoi_short(&pvid, cmd_words_b[2]) && pvid && pvid <= 4094)
 				port_pvid_set(port, pvid);
+			else
+				print_string("Error: pvid <port> <1-4094>\n");
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
 		} else if (cmd_compare(0, "isolate")) {
