@@ -142,15 +142,31 @@ Enabling STP on a switch you administer over the network is a genuine risk: the
 management VLAN rides a port that STP may put into blocking, and once that
 happens the way back is a power cycle.
 
-The firmware therefore runs a commit-confirm watchdog. While STP is enabled,
-any HTTP request re-arms a countdown; if management stays silent for
-`stp failsafe <seconds>` (default 180, 0 disables it), STP disables itself and
-restores forwarding. Keeping the web UI open on the Spanning Tree page is
-enough to hold it off, since the page polls for status.
+The firmware therefore runs a commit-confirm watchdog. Enabling STP, by hand or
+from the startup config, arms a one-shot window of `stp failsafe <seconds>`
+(default 180). One HTTP request inside the window confirms that management
+survived the new tree and disarms the watchdog until the next enable; a window
+with no management activity disables STP and restores forwarding. After the
+confirmation STP runs unsupervised, so a quiet network no longer loses its
+tree to three minutes of nobody looking at the web UI.
 
 ```
-stp failsafe 180        # seconds of silence before STP gives up (0 = never)
+stp failsafe 180        # length of the armed window after enabling (0 = never armed)
 ```
+
+Any later event that newly takes a port out of forwarding arms the window
+again: a port rejoining via `stp port <n> on`, root guard firing, the loop
+latch. If management traffic keeps flowing past the new block, the very next
+request confirms and disarms; if the block cut it, the silent window restores
+forwarding as above. A stable network with nothing newly blocked never re-arms.
+
+A command executed on the serial console also confirms, on the grounds that an
+operator with out-of-band access does not need the automatic restore; the
+command that enabled STP does not count, only activity after it.
+
+A headless switch that nobody confirms over HTTP should set `stp failsafe 0`,
+otherwise a reboot with STP in the startup config disables it again three
+minutes later. Setting a new value while STP runs arms a fresh window.
 
 The status page shows whether the failsafe has tripped since STP was last
 enabled.

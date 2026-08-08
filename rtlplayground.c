@@ -122,6 +122,8 @@ __xdata uint8_t tx_seq;
 
 __xdata uint8_t stpEnabled;
 __xdata uint8_t igmpEnabled;
+extern __xdata uint8_t stp_failsafe_armed;
+__xdata uint8_t fs_was_armed;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
 __code uint16_t bit_mask[16] = {
@@ -1518,9 +1520,14 @@ void idle(void)
 	// Check whether a command is waiting in the cmd_buffer and execute
 	if (cmd_available) {
 		cmd_available = 0;
+		fs_was_armed = stp_failsafe_armed;
 		cmd_tokenize();
 		if (err_status == ERR_OK)
 			cmd_parser();
+		if (fs_was_armed && stp_failsafe_armed) {
+			stp_failsafe_armed = 0;
+			print_string("STP failsafe: console activity - disarmed\n");
+		}
 		print_cmd_prompt();
 	}
 }
