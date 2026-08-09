@@ -681,7 +681,7 @@ void stp_timers(void) __banked
 	/* Refill the per-port tx budgets once per second (tx hold count) */
 	if (++stp_sec_tick >= STP_HZ) {
 		stp_sec_tick = 0;
-		for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+		for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++)
 			stp_tx_budget[stp_i] = stp_txhold;
 
 		stp_lag_map();
