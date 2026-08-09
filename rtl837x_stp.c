@@ -277,14 +277,27 @@ static void stp_lag_map(void)
 }
 
 
+static uint8_t stp_ent_active(uint8_t e) __reentrant
+{
+	if (e >= STP_TRK_BASE)
+		return stp_trk_mask[e - STP_TRK_BASE] != 0;
+	return e >= machine.min_port && e <= machine.max_port && stp_ent_of[e] == e;
+}
+
+
+static uint8_t stp_ent_has(uint8_t ent, uint8_t p) __reentrant
+{
+	if (ent < STP_TRK_BASE)
+		return ent == p;
+	return (stp_trk_mask[ent - STP_TRK_BASE] >> p) & 1;
+}
+
+
 static void stp_state_bits(uint8_t port, uint8_t state) __reentrant
 {
-	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++) {
-		if (port < STP_TRK_BASE ? (stp_ss_i != port)
-		                        : !((stp_trk_mask[port - STP_TRK_BASE] >> stp_ss_i) & 1))
-			continue;
-		sfr_data[3 - (stp_ss_i >> 2)] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
-	}
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+		if (stp_ent_has(port, stp_ss_i))
+			sfr_data[3 - (stp_ss_i >> 2)] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
 }
 
 
@@ -292,8 +305,7 @@ static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 {
 	reg_read_m(RTL837X_MSTP_STATES);
 	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++) {
-		if (port < STP_TRK_BASE ? (stp_ss_i != port)
-		                        : !((stp_trk_mask[port - STP_TRK_BASE] >> stp_ss_i) & 1))
+		if (!stp_ent_has(port, stp_ss_i))
 			continue;
 		stp_scratch = 3 - (stp_ss_i >> 2);
 		sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((stp_ss_i << 1) & 0x7));
@@ -388,7 +400,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 	if (port >= STP_TRK_BASE) {
 		stp_scratch = 0;
-		while (stp_scratch < 10 && !((stp_trk_mask[port - STP_TRK_BASE] >> stp_scratch) & 1))
+		while (stp_scratch < 10 && !stp_ent_has(port, stp_scratch))
 			stp_scratch++;
 		if (stp_scratch >= 10) {
 			stp_tx_flags_extra = 0;
@@ -721,13 +733,7 @@ void stp_timers(void) __banked
 	}
 
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
-		if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
-			continue;
-		if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
-			continue;
-		if (stp_i >= STP_TRK_BASE && !stp_trk_mask[stp_i - STP_TRK_BASE])
-			continue;
-		if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
+		if (!stp_ent_active(stp_i) || !(stp_pflags[stp_i] & STP_PF_ENABLED))
 			continue;
 
 		if (stp_bpdu_age[stp_i] < 0xffff)
