@@ -559,6 +559,8 @@ static void bridge_to_html(void)
 		byte_to_html(pi_mac[pi_j2]);
 }
 
+static __xdata uint8_t pi_st_of;
+
 void send_stp(void)
 {
 	dbg_string("send_stp called\n");
@@ -614,7 +616,15 @@ void send_stp(void)
 		slen += strtox(outbuf + slen, ",\"mbr\":");
 		itoa_html(pi_i < 10 ? 0 : stp_trk_mask[pi_i - STP_TRK_BASE]);
 		slen += strtox(outbuf + slen, ",\"st\":");
-		stp_we_root = (sfr_data[3 - (pi_i >> 2)] >> ((pi_i << 1) & 0x7)) & 0x3;
+		pi_st_of = pi_i;
+		if (pi_i >= STP_TRK_BASE) {
+			pi_st_of = 0;
+			while (pi_st_of < 10 && !((stp_trk_mask[pi_i - STP_TRK_BASE] >> pi_st_of) & 1))
+				pi_st_of++;
+			if (pi_st_of >= 10)
+				pi_st_of = 0;
+		}
+		stp_we_root = (sfr_data[3 - (pi_st_of >> 2)] >> ((pi_st_of << 1) & 0x7)) & 0x3;
 		itoa_html(stp_we_root);
 		/* role (approximated): 0 none/disabled, 1 root, 2 designated, 3 alternate(blocked) */
 		slen += strtox(outbuf + slen, ",\"role\":");
