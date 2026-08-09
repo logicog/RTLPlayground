@@ -607,6 +607,8 @@ void send_stp(void)
 	for (pi_i = 0; pi_i < STP_ENTITIES; pi_i++) {
 		if (pi_i < 10 && (pi_i < machine.min_port || pi_i > machine.max_port))
 			continue;
+		if (pi_i < 10 && stp_ent_of[pi_i] != pi_i)
+			continue;
 		if (pi_i >= STP_TRK_BASE && !stp_trk_mask[pi_i - STP_TRK_BASE])
 			continue;
 		slen += strtox(outbuf + slen, "{\"p\":");
