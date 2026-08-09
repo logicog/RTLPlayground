@@ -50,6 +50,7 @@ __xdata uint8_t  stp_txhold;
 __xdata uint8_t  stp_ent_of[10];
 __xdata uint16_t stp_trk_mask[STP_TRK_COUNT];
 __xdata uint8_t  stp_ss_i;
+__xdata uint8_t  stp_map_dirty;
 __xdata uint8_t  stp_pflags[STP_ENTITIES];
 __xdata uint32_t stp_pcost[STP_ENTITIES];
 __xdata uint8_t  stp_pprio[STP_ENTITIES];
@@ -269,6 +270,8 @@ static void stp_lag_map(void)
 		stp_ent_of[stp_ss_i] = stp_ss_i;
 	for (stp_scratch = 0; stp_scratch < STP_TRK_COUNT; stp_scratch++) {
 		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (stp_scratch << 2));
+		if (stp_trk_mask[stp_scratch] != (((uint16_t)sfr_data[2] << 8) | sfr_data[3]))
+			stp_map_dirty = 1;
 		stp_trk_mask[stp_scratch] = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
 		for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
 			if ((stp_trk_mask[stp_scratch] >> stp_ss_i) & 1)
@@ -697,6 +700,12 @@ void stp_timers(void) __banked
 			stp_tx_budget[stp_i] = stp_txhold;
 
 		stp_lag_map();
+		if (stp_map_dirty) {
+			stp_map_dirty = 0;
+			for (stp_i = STP_TRK_BASE; stp_i < STP_ENTITIES; stp_i++)
+				if (stp_trk_mask[stp_i - STP_TRK_BASE])
+					stp_state_set(stp_i, port_timers[stp_i] ? 0b01 : 0b11);
+		}
 
 		/* Link supervision. Without this the state machine never learns
 		 * that a port lost carrier: it keeps the port in forwarding, keeps
