@@ -293,6 +293,17 @@ static uint8_t stp_ent_has(uint8_t ent, uint8_t p) __reentrant
 }
 
 
+static uint8_t stp_state_port(uint8_t e) __reentrant
+{
+	if (e < STP_TRK_BASE)
+		return e;
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+		if ((stp_trk_mask[e - STP_TRK_BASE] >> stp_ss_i) & 1)
+			return stp_ss_i;
+	return 0;
+}
+
+
 static void stp_state_bits(uint8_t port, uint8_t state) __reentrant
 {
 	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
@@ -431,8 +442,9 @@ void stp_cnf_send(uint8_t port) __reentrant
 		 * state (0b11 = forwarding); a listening or blocked port sends
 		 * neither. */
 		reg_read_m(RTL837X_MSTP_STATES);
+		stp_scratch = stp_state_port(port);
 		STP_O->flags = (uint8_t)((port == stp_root_port ? 0b10 : 0b11) << 2);
-		if (((sfr_data[3 - (port >> 2)] >> ((port << 1) & 0x7)) & 0b11) == 0b11)
+		if (((sfr_data[3 - (stp_scratch >> 2)] >> ((stp_scratch << 1) & 0x7)) & 0b11) == 0b11)
 			STP_O->flags |= 0x30;	/* learning + forwarding */
 	} else {
 		/* 802.3 length = LLC (3) + Config BPDU body (35) */
