@@ -17,7 +17,12 @@ html/  --(minify.py)-->  output/html_min/  --(fileadder -z)-->  flash image
   for development; the minified copy in `output/` is a pure build
   artifact.  Comments and indentation are pure overhead for the served
   bytes, so minification alone already reduces the transfer size from
-  113,015 to 101,498 bytes, independent of gzip.
+  111,280 to 99,715 bytes, independent of gzip.
+- The per-page scripts are consolidated into a single `html/main.js`
+  bundle (i18n, shared helpers, navigation and the page scripts).  Every
+  page loads only this one script, so the browser fetches it once and
+  gzip can compress across all of it.  The page-specific initialisation
+  runs only when the matching page elements are present.
 - `fileadder -z` gzip-compresses every file (zlib, gzip format,
   `Z_BEST_COMPRESSION`) when it generates the file table
   (`html_data.c`/`html_data.h`) and when it embeds the files into the
@@ -36,21 +41,27 @@ Build on any machine (the Web UI is machine-independent):
 
 | | bytes |
 |---|---:|
-| raw sources | 113,015 |
-| minified (comments and indentation removed) | 101,498 |
-| gzip (flash + wire) | 34,784 (30.8 %) |
+| raw sources | 111,280 |
+| minified (comments and indentation removed) | 99,715 |
+| gzip (flash + wire) | 28,200 (25.3 %) |
 
 The minified assets are also what the browser receives when gzip support
 is missing or disabled, so the transfer size drops in both stages:
-113,015 → 101,498 bytes from minification, then → 34,784 bytes from gzip.
+111,280 → 99,715 bytes from minification, then → 28,200 bytes from gzip.
 
 The embedded data block ends at `0x5b977` without compression and at
-`0x487e0` with it, freeing ~78 KB of the 512 KB image.
+`0x46e28` with it, freeing ~83 KB of the 512 KB image.
+
+Merging the JS files into one bundle is worth more than the minifier and
+gzip combined: served per file, the 17 scripts gzip to 23,302 bytes; as
+one `main.js` bundle they gzip to 16,948 bytes, because the gzip
+dictionary spans all scripts and every page fetches the bundle only
+once.
 
 ## Notes
 
 - The files stay well below the `uint16_t` size limit of the file table
-  (largest gzip output: 5.4 KB for `i18n.js`).
+  (largest gzip output: 16.9 KB for the merged `main.js`).
 - `fileadder` terminates the embedded files with a NUL directly after the
   content (previously at `data_read + 1`), so the `strlen()`-based size
   computation no longer depends on uninitialised buffer content.
