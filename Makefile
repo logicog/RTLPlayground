@@ -32,6 +32,17 @@ endif
 VERSION_EXTENSION = v$(VERSION)-$(GIT_VERSION)
 FILENAME_EXTENSION = $(VERSION_EXTENSION)-$(MACHINE)
 
+# Deterministic build date: honor SOURCE_DATE_EPOCH, else the HEAD commit date,
+# else wall-clock (no-git fallback). Keeps same-commit builds byte-identical
+# (BUILD_DATE is baked into the image and covered by the trailing CRC).
+SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD 2>/dev/null)
+ifeq ($(SOURCE_DATE_EPOCH),)
+BUILD_DATE := $(shell date +"%Y-%m-%d %H:%M:%S")
+else
+BUILD_DATE := $(shell date -u -d @$(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
+	|| date -u -r $(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S")
+endif
+
 all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
 create_build_dir:
@@ -84,7 +95,7 @@ $(VERSION_HEADER):
 	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
 	@echo "#define VERSION_H" >> $(VERSION_HEADER)
 	@echo "#define VERSION_SW \"$(VERSION_EXTENSION)\"" >> $(VERSION_HEADER)
-	@echo "#define BUILD_DATE \"$(shell date +"%Y-%m-%d %H:%M:%S")\"" >> $(VERSION_HEADER)
+	@echo "#define BUILD_DATE \"$(BUILD_DATE)\"" >> $(VERSION_HEADER)
 	@echo "#endif" >> $(VERSION_HEADER)
 
 httpd: html_data.h
