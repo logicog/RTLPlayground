@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Safe minifier for the WebUI sources (HTML/JS).
 
-Removes comments and line-leading whitespace without touching string
-literals, so the output is functionally identical to the input.  Used
-by the firmware Makefile before the files are embedded in the flash;
-the raw sources in html/ stay untouched for development.
+Removes comments and line-leading whitespace without touching string or
+regex literals, so the output is functionally identical to the input.
+Used by the firmware Makefile before the files are embedded in the
+flash; the raw sources in html/ stay untouched for development.
 
 Binary files (.ico) are copied through unchanged.
 
@@ -19,6 +19,10 @@ def js_min(s):
     out = []
     i = 0
     n = len(s)
+    prev = '\n'
+    # Characters after which a '/' starts a regex literal rather than a
+    # division:  operator / delimiter / statement-start contexts.
+    regex_start = set('([{=,:;!&|?+-*%^~<>')
     while i < n:
         c = s[i]
         if c == '"' or c == "'":
@@ -29,6 +33,28 @@ def js_min(s):
                 j += 1
             out.append(s[i:j + 1])
             i = j + 1
+            prev = c
+        elif c == '/' and (i + 1 >= n or s[i + 1] not in '/=*') and \
+                (prev in regex_start or prev == '\n'):
+            # Regex literal (e.g. /^#\// or /https?:\/\/x/g): copy through
+            # the closing '/', honouring escapes and character classes.
+            j = i + 1
+            in_class = False
+            while j < n:
+                ch = s[j]
+                if ch == '\\':
+                    j += 2
+                    continue
+                if ch == '[':
+                    in_class = True
+                elif ch == ']':
+                    in_class = False
+                elif ch == '/' and not in_class:
+                    break
+                j += 1
+            out.append(s[i:j + 1])
+            i = j + 1
+            prev = '/'
         elif c == '/' and i + 1 < n and s[i + 1] == '/':
             j = s.find('\n', i)
             i = j if j >= 0 else n
@@ -38,6 +64,8 @@ def js_min(s):
         else:
             out.append(c)
             i += 1
+            if c not in ' \t':
+                prev = c
     lines = [l.strip() for l in ''.join(out).split('\n')]
     return '\n'.join(l for l in lines if l) + '\n'
 

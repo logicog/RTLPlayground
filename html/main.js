@@ -899,17 +899,17 @@ document.addEventListener('DOMContentLoaded', function() {
   var sidebarEl = document.getElementById('sidebar');
   if (sidebarEl)
     sidebarEl.innerHTML =
-   "<ul><li><a href='index.html' data-i18n='nav_overview'>Overview</a></li>"
-   + "<li><a href='ports.html' data-i18n='nav_port_config'>Port Configuration</a></li>"
-   + "<li><a href='stat.html' data-i18n='nav_port_stat'>Port Statistics</a></li>"
-   + "<li><a href='vlan.html' >VLAN</a></li>"
-   + "<li><a href='l2.html' data-i18n='nav_l2'>L2 Configuration</a></li>"
-   + "<li><a href='mirror.html' data-i18n='nav_mirror'>Mirroring</a></li>"
-   + "<li><a href='lag.html' data-i18n='nav_lag'>Link Aggregation</a></li>"
-   + "<li><a href='eee.html' data-i18n='nav_eee'>EEE</a></li>"
-   + "<li><a href='bandwidth.html' data-i18n='nav_bandwidth'>Bandwidth Limits</a></li>"
-   + "<li><a href='system.html' data-i18n='nav_system'>System Settings</a></li>"
-   + "<li><a href='update.html' data-i18n='nav_fw_update'>Firmware Update</a></li></ul>";
+   "<ul><li><a href='#/overview' data-i18n='nav_overview'>Overview</a></li>"
+   + "<li><a href='#/ports' data-i18n='nav_port_config'>Port Configuration</a></li>"
+   + "<li><a href='#/stat' data-i18n='nav_port_stat'>Port Statistics</a></li>"
+   + "<li><a href='#/vlan' >VLAN</a></li>"
+   + "<li><a href='#/l2' data-i18n='nav_l2'>L2 Configuration</a></li>"
+   + "<li><a href='#/mirror' data-i18n='nav_mirror'>Mirroring</a></li>"
+   + "<li><a href='#/lag' data-i18n='nav_lag'>Link Aggregation</a></li>"
+   + "<li><a href='#/eee' data-i18n='nav_eee'>EEE</a></li>"
+   + "<li><a href='#/bandwidth' data-i18n='nav_bandwidth'>Bandwidth Limits</a></li>"
+   + "<li><a href='#/system' data-i18n='nav_system'>System Settings</a></li>"
+   + "<li><a href='#/update' data-i18n='nav_fw_update'>Firmware Update</a></li></ul>";
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -919,6 +919,54 @@ document.addEventListener('DOMContentLoaded', function() {
     if (key) el.textContent = t(key);
   });
 });
+
+/* Single-page navigation: the sidebar links set the URL hash
+ * ("#/ports" and friends) and the matching section in index.html is
+ * shown.  Each section initialises on first display, and its polling
+ * intervals run only while the section is visible. */
+var sectionIntervals = [];
+var sectionInits = {};
+
+function setSectionInterval(fn, ms) {
+  sectionIntervals.push(setInterval(fn, ms));
+}
+
+function clearSectionIntervals() {
+  sectionIntervals.forEach(function(t) { clearInterval(t); });
+  sectionIntervals = [];
+}
+
+function showSection(name) {
+  document.querySelectorAll('.page').forEach(function(el) { el.style.display = 'none'; });
+  var sec = document.getElementById('page-' + name);
+  if (sec) sec.style.display = 'block';
+  clearSectionIntervals();
+  if (sectionInits[name])
+    sectionInits[name]();
+}
+
+window.addEventListener('hashchange', function() {
+  showSection((location.hash || '#/overview').replace(/^#\//, ''));
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  showSection((location.hash || '#/overview').replace(/^#\//, ''));
+});
+
+sectionInits.overview = function() {
+  update( () => {
+    setSectionInterval(update, 2000);
+  });
+};
+
+/* System page tabs (system.html section of index.html) */
+function openTab(evt, tabId) {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  evt.currentTarget.classList.add('active');
+}
+
 
 var configInterval = Number();
 var configuration = [];
@@ -1195,12 +1243,11 @@ function resetSwitch() {
   }, 3000);
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('ip')) return;
+sectionInits.system = function() {
   var langSel = document.getElementById('lang-select');
   if (langSel) langSel.value = rtlLang;
-  systemInterval = setInterval(fetchIP, 1000);
-});
+  systemInterval = setSectionInterval(fetchIP, 1000);
+};
 
 
 var mgmtVlanCurrent = 0;
@@ -1382,16 +1429,15 @@ function getMTUs() {
   xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('speedtable')) return;
+sectionInits.ports = function() {
   update( () => {
     createPortTable();
     updatePortTable();
     getMTUs()
-    const interval = setInterval(update, 2000);
-    const updatePortTableInterval = setInterval(updatePortTable, 1000);
+    setSectionInterval(update, 2000);
+    setSectionInterval(updatePortTable, 1000);
   });
-});
+};
 
 const mib_counters = [
   "Interface in Octets", 8,
@@ -1595,15 +1641,14 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('statstable')) return;
+sectionInits.stat = function() {
   update( () => {
     update();
     fillStats();
-    const stat = setInterval(fillStats, 1000);
-    const interval = setInterval(update, 2000);
+    setSectionInterval(fillStats, 1000);
+    setSectionInterval(update, 2000);
   });
-});
+};
 
 var l2GetInterval;
 var l2Entries = [];
@@ -1765,20 +1810,23 @@ function getL2() {
   xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('l2table')) return;
+sectionInits.l2 = function() {
+  l2Entries = [];
+  l2CurrentEntry = 0;
   update( () => {
     getL2();
-    const interval = setInterval(update, 2000);
-    l2GetInterval = setInterval(getL2, 1000);
-  });;
-});
+    setSectionInterval(update, 2000);
+    l2GetInterval = setSectionInterval(getL2, 1000);
+  });
+};
 
 var vlanInterval = Number();
 
 function vlanForm() {
   if (!numPorts)
     return;
+  document.querySelectorAll('#tPorts .cbgroup, #uPorts .cbgroup, #pPorts .cbgroup')
+    .forEach(function(el) { el.remove(); });
   var t = document.getElementById('tPorts');
   var u = document.getElementById('uPorts');
   var p = document.getElementById('pPorts');
@@ -1974,8 +2022,7 @@ function loadVlanList() {
   sendXHTTP(xhttp);
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('vlanSelect')) return;
+sectionInits.vlan = function() {
   update( () => {
     vlanForm();
     refreshVlanViews();
@@ -1983,9 +2030,9 @@ window.addEventListener("load", function() {
       document.getElementById('vid').value = this.value;
       fetchVLAN();
     };
-    const interval = setInterval(update, 2000);
+    setSectionInterval(update, 2000);
   });
-});
+};
 
 async function vlanSub() {
   var commands = [];
@@ -2028,6 +2075,8 @@ var lagInterval = Number();
 function lagForm() {
   if (!numPorts)
     return;
+  for (let j = 0; j < 4; j++)
+    document.getElementById("mLAG" + j).innerHTML = '';
   for (let j=0; j < 4; j++) {
     var lag = "mLAG" + j
     console.log("Adding LAG " + lag)
@@ -2098,13 +2147,12 @@ async function lagSub(l) {
   }
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('mLAG0')) return;
+sectionInits.lag = function() {
   update( () => {
     lagForm();
-    const interval = setInterval(update, 2000);
+    setSectionInterval(update, 2000);
   });
-});
+};
 
 var mirrorInterval = Number();
 const mirrors = ["mPortsTX", "mPortsRX"];
@@ -2112,6 +2160,7 @@ const mirrors = ["mPortsTX", "mPortsRX"];
 function mirrorForm() {
   if (!numPorts)
     return;
+  mirrors.forEach(function(m) { document.getElementById(m).innerHTML = ''; });
   for (let j=0; j < mirrors.length; j++) {
     console.log("Adding Mirror " + j)
     var m = document.getElementById(mirrors[j]);
@@ -2164,13 +2213,12 @@ function fetchMirror() {
   sendXHTTP(xhttp);
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('mPortsTX')) return;
+sectionInits.mirror = function() {
   update( () => {
     mirrorForm();
-    const interval = setInterval(update, 2000);
+    setSectionInterval(update, 2000);
   });
-});
+};
 
 async function mirrorSub() {
   var cmd = "mirror ";
@@ -2260,15 +2308,14 @@ function getEEE() {
   xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('eeetable')) return;
+sectionInits.eee = function() {
   update( () => {
     createEEE();
     getEEE();
-    const interval = setInterval(update, 2000);
-    const iCount = setInterval(getEEE, 2000);
+    setSectionInterval(update, 2000);
+    setSectionInterval(getEEE, 2000);
   });
-});
+};
 
 async function eeeSub(port, enable) {
   var cmd = "eee ";
@@ -2419,14 +2466,13 @@ function getBW() {
   xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
-window.addEventListener("load", function() {
-  if (!document.getElementById('bwtable')) return;
+sectionInits.bandwidth = function() {
   update( () => {
     createBW();
     getBW();
-    const interval = setInterval(update, 2000);
+    setSectionInterval(update, 2000);
   });
-});
+};
 
 document.addEventListener("DOMContentLoaded", function () {
     if (!document.getElementById('infoTable')) return;
