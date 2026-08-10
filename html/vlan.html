@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
   <script src="/main.js"></script>
-  <script src="/i18n.js"></script>
   <link rel="stylesheet" href="style.css">
   <title data-i18n="vlan_title">FreeSwitchOS VLAN Configuration</title>
   </head>
@@ -33,9 +32,7 @@
       <div id="uPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="utClicked(false);" data-i18n="vlan_select_all">Select all</button> </div>
       <h2 data-i18n="vlan_pvid">Use as default VLAN for incoming traffic (PVID)</h2>
       <div id="pPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="pvClicked(true);" data-i18n="vlan_select_all">Select all</button> </div>
-      <script src="/vlan.js"></script>
       <br/> <input style="width:40%;" class="action" id="vlan_sub" onclick="vlanSub();" type="button" data-i18n="vlan_update" value="Update / Create">
-      <script src="/vlan_sub.js"></script>
     </form>
     <h2 data-i18n="vlan_configured">Configured VLANs</h2>
     <table id="vlanTable" style="width:90%">
@@ -54,6 +51,5 @@
       </tbody>
     </table>
     </div>
-    <script src="/navigation.js"></script>
   </body>
 </html>
