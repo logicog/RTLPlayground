@@ -6,10 +6,8 @@ implementation elects a root bridge from the BPDUs it receives, promotes ports
 to forwarding once their listen period expires, ages the root out when it goes
 silent, and blocks a port on which it sees its own BPDU.
 
-It is deliberately simple: there is no proposal/agreement handshake and no full
-port-role machine. What it does do reliably is stop a cabling loop from melting
-the network, and interoperate with neighbouring bridges as a well-behaved
-(if unexciting) participant.
+STP can be enabled and controlled via the web interface or the command line,
+as follows:
 
 > **Before you enable it on a switch you reach over the network**: read the
 > [management failsafe](#management-failsafe) section. The management VLAN
@@ -22,7 +20,8 @@ stp on                  # start participating
 stp off                 # stop, all ports back to forwarding
 ```
 
-Live status is on the Spanning Tree page of the web UI (or `/stp.json`).
+Live status is on the Spanning Tree page of the web UI (or `/stp.json`),
+and on the serial console via `stp status`.
 
 With no other bridge around, the switch elects itself root and every port ends
 up forwarding — you can leave it on safely. Put the settings in the startup
@@ -40,19 +39,12 @@ BPDUs are addressed to `01:80:C2:00:00:00`, a reserved link-local group. The
 ASIC's Reserved-Multicast action for that address decides what happens to the
 frame.
 
-Forwarding to the CPU port works normally — the 8051 sits behind an ordinary
+Forwarding to the CPU port works normally: the 8051 sits behind an ordinary
 port of the internal switch and is an ordinary member of a forwarding mask.
-What does not work is the *trap* action, which is a separate mechanism: its
-destination is an external CPU attached to a physical port
-(`cpuTag_externalCpuPort_set`, `EXT_CPU_CTRL` in the vendor SDK), which these
-boards do not populate. Measured on a SWTGW218AS: with the RMA action set to
-trap, zero frames arrive at the 8051, including with `CPU_PMSK` widened and the
-external-CPU destination pointed at both `0xF` and `9`; with the *forward*
-action plus the L2 entry below, they arrive. The ACL trap behaves the same way,
-measured on the neighbouring reserved group `01:80:C2:00:00:02`: a rule matching
-it intercepts the frames — the LACP receive counters stop advancing while the
-rule is enabled and resume the moment it is disabled — but they never reach the
-8051, with `FWD_INT_TRAP` and with `REDIRECT` aimed at the CPU port alike.
+The *trap* action does not deliver to it. Its destination is an external CPU
+attached to a physical port (`cpuTag_externalCpuPort_set`, `EXT_CPU_CTRL` in
+the vendor SDK), which these boards do not populate. The ACL trap and
+redirect actions do not deliver to the 8051 either.
 
 Delivery therefore uses the *forward* action, constrained to the CPU port
 by a static L2 multicast entry (`port_l2mc_set()`), one per VLAN in use:
@@ -64,21 +56,16 @@ by a static L2 multicast entry (`port_l2mc_set()`), one per VLAN in use:
   transparency an unmanaged switch is expected to have, so a surrounding
   spanning tree can span *through* this device.
 
-Because delivery rides the forward action, a BPDU is an ordinary frame to the
-ingress pipeline and is subject to the port's acceptable-frame-type setting.
-BPDUs are untagged by definition, so a port configured to admit tagged frames
-only (`ingress <port>t`) will never deliver one: a port left on the default
-auto edge turns edge after three seconds of silence, one with edge switched off
-sits out the full forward delay instead, and either way the bridge elects
-itself root no matter what the neighbour sends. `stp_setup()` prints a warning for every
-STP-enabled port in that state. On a normal bridge this cannot happen, since
-BPDUs are consumed before any VLAN classification; here it is a direct
-consequence of the delivery path above.
+A BPDU delivered this way is an ordinary frame to the port's ingress logic
+and passes through its acceptable-frame-type filter. BPDUs are untagged, so a
+port set to admit tagged frames only (`ingress <port>t`) never delivers one
+to the CPU. `stp_setup()` prints a warning for every STP-enabled port in that
+state.
 
 Port states live in `RTL837X_MSTP_STATES (0x5310)`, two bits per port:
-`00` disabled, `01` blocking, `10` learning, `11` forwarding. Note that a port
-held in blocking also drops frames the CPU injects into it, so a blocked port
-cannot transmit BPDUs of its own.
+`00` disabled, `01` blocking, `10` learning, `11` forwarding. In the blocking
+state a port forwards nothing except frames sent by the CPU, and nothing it
+receives reaches the CPU.
 
 ## Timers
 
@@ -122,9 +109,9 @@ stp port <1-9> filter on|off       # neither send nor accept BPDUs
 stp port <1-9> p2p auto|on|off
 ```
 
-**edge** — an edge port goes forwarding immediately and does not trigger a
-topology change when it comes and goes; `auto` promotes a port to edge after
-three seconds without a BPDU, and demotes it as soon as one arrives. Use
+**edge** — an edge port forwards immediately and does not trigger a
+topology change when its link comes and goes; `auto` promotes a port to edge
+after three seconds without a BPDU, and demotes it as soon as one arrives. Use
 `edge on` for ports where only hosts are attached.
 
 **guard** — `bpdu` disables a port as soon as a BPDU arrives on it (a host port
@@ -182,6 +169,8 @@ available as JSON:
 GET /stp.json
 ```
 
+The `stp status` command prints the same view on the serial console.
+
 ## Limitations
 
 * One spanning-tree instance; no MSTP, no per-VLAN trees.
@@ -189,6 +178,3 @@ GET /stp.json
   converge, but through the timers rather than the fast transition.
 * Port roles are approximated: the root port and designated ports are
   distinguished, alternate/backup are not.
-* A port in blocking cannot transmit, so a blocked port stops announcing
-  itself; recovery relies on the listen timer rather than on a neighbour's
-  agreement.
