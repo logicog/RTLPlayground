@@ -299,16 +299,10 @@
 /**
  * The TCP maximum segment size.
  *
- * Deliberately below the buffer-derived ceiling of
- * UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN, not at it. Advertising the
- * exact ceiling makes a full segment fill uip_buf to its last byte, and a
- * sender that takes us at our word then corrupts every large upload: the
- * firmware image arrives fully acknowledged, no retransmissions on the wire,
- * yet the CRC over the streamed body never matches. Measured with nothing but
- * the segment size changing: 1490-byte segments fail four times out of four,
- * 1460-byte segments succeed. Only macOS ever sends the full advertised size -
- * Linux halves its segments against a window this small - which is why the
- * failure hides so well.
+ * Deliberately a step below the buffer-derived ceiling, not at it: a segment
+ * that fills uip_buf to its last byte corrupts large uploads. Measured with
+ * nothing but the segment size changing, 1490 fails four times out of four and
+ * 1460 succeeds.
  */
 #define UIP_TCP_MSS     1460
 
