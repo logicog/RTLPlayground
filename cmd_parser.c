@@ -283,33 +283,43 @@ __bit cmd_is_space(uint8_t idx) {
 	return cmd_buffer[idx] == ' ';
 }
 
-
-int8_t parse_ip(uint8_t idx)
+// returns 0 when on parser error or invalid value or no space.
+// return non-zero number of bytes consumed including the space.
+// Stops at a space or NULL.
+uint8_t parse_ip(uint8_t idx)
 {
 	uint8_t b = 0;
 	uint8_t ret;
+	uint8_t idx_start = idx;
 
 	while(1) {
 		ret = atoi_byte(idx);
-		if (ret == 0) {
+		if (ret == 0)
 			goto err;
-		}
+
 		idx += ret;
 		ip[b++] = atoi_results_u8;
 
+		ret = cmd_buffer[idx];
 		if (b == 4) {
-			break;
-		}
-
-		if (cmd_buffer[idx++] != '.') {
+			if (ret == ' ') {
+				idx++;
+				break;
+			}
+			if (ret == '\0')
+				break;
 			goto err;
 		}
+		idx++;
+
+		if (ret != '.')
+			goto err;
 	}
-	return 0;
+	return idx - idx_start;
 
 err:
 	print_string("Error in IP format\n");
-	return -1;
+	return 0;
 }
 
 
@@ -1377,7 +1387,7 @@ void parse_syslog(void)
 			itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
 			itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
 			return;
-		} else if (!parse_ip(cmd_words_b[2])) {
+		} else if (parse_ip(cmd_words_b[2]) != 0) {
 			uint8_t was_enabled = syslog_state.enabled;
 			if (was_enabled)
 				syslog_stop();
@@ -1557,46 +1567,48 @@ void cmd_parser(void) __banked
 			} else {
 				if (dhcp_state.state)
 					dhcp_stop();
-				if (!parse_ip(cmd_words_b[1])) {
+				if (parse_ip(cmd_words_b[1]) != 0) {
 					uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
 					print_string("Setting ip: ");
 					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
 					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
 				} else {
-					print_string("Invalid IP address\n");
-					print_string("Error: ip [<ip-address>|dhcp]\n");
-					print_string("  The dhcp option enables the dhcp client, calling ip without options prints the current IP\n");
-					print_string("  Calling with a valid IP address will stop any ongoing dhcp client and set the IP address\n");
+					print_string("Invalid IP address\n" \
+								 "Error: ip [<ip-address>|dhcp]\n" \
+								 "  The dhcp option enables the dhcp client, calling ip without options prints the current IP\n" \
+								 "  Calling with a valid IP address will stop any ongoing dhcp client and set the IP address\n");
 				}
 			}
 		} else if (cmd_compare(0, "gw")) {
 			if (cmd_words_len == 1) {
 				print_string("Current gw: ");
 				itoa(uip_draddr[0]); write_char('.'); itoa(uip_draddr[0] >> 8); write_char('.');
-				itoa(uip_draddr[1]); write_char('.'); itoa(uip_draddr[1] >> 8);
+				itoa(uip_draddr[1]); write_char('.'); itoa(uip_draddr[1] >> 8); write_char('\n');
 			} else {
-				if (!parse_ip(cmd_words_b[1]))
+				if (parse_ip(cmd_words_b[1]) != 0) {
 					uip_ipaddr(&uip_draddr, ip[0], ip[1], ip[2], ip[3]);
-				else
-					print_string("Invalid IP address\n");
-				print_string("Setting gw: ");
-				itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
-				itoa(ip[2]); write_char('.'); itoa(ip[3]);
+					print_string("Setting gw: ");
+					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
+					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
+				} else {
+					print_string("Invalid IP address\n" \
+								 "Error: gw <ip-address>\n");
+				}
 			}
-			write_char('\n');
 		} else if (cmd_compare(0, "netmask")) {
 			if (cmd_words_len == 1) {
 				print_string("Current netmask: ");
 				itoa(uip_netmask[0]); write_char('.'); itoa(uip_netmask[0] >> 8); write_char('.');
 				itoa(uip_netmask[1]); write_char('.'); itoa(uip_netmask[1] >> 8);
 			} else {
-				if (!parse_ip(cmd_words_b[1]))
+				if (parse_ip(cmd_words_b[1]) != 0) {
 					uip_ipaddr(&uip_netmask, ip[0], ip[1], ip[2], ip[3]);
-				else
+					print_string("Setting netmask: ");
+					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
+					itoa(ip[2]); write_char('.'); itoa(ip[3]);
+				} else {
 					print_string("Invalid IP address\n");
-				print_string("Setting netmask: ");
-				itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
-				itoa(ip[2]); write_char('.'); itoa(ip[3]);
+				}
 			}
 			write_char('\n');
 		} else if (cmd_compare(0, "l2")) {
