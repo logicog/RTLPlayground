@@ -3,21 +3,7 @@
 
 /*
  * LACP (IEEE 802.3ad Clause 43) for the RTL837x platform.
- * Mirrors the structure of rtl837x_stp.c (a link-layer control
- * protocol trapped to CPU via the Reserved-Multicast-Address mechanism).
- *
- * External entry points (rtlplayground.c boot/dispatch/timer loop and the
- * cmd_parser "lacp"/"lag ... lacp" handlers, gated by lacpEnabled):
- *   lacp_init()    boot: clear per-LAG state before config replay
- *   lacp_in()      a slow-protocols frame (01:80:C2:00:00:02) arrived
- *   lacp_timers()  periodic tick: per-port periodic TX + partner timeout + mux
- *   lacp_cmd()     "lacp on|off" master engine handler
- *   lacp_show()    "lacp show" per-port diagnostics
- *   lacp_lag_set() assign candidate ports to a LACP LAG ("lag <n> lacp <ports>")
- * lacp_setup()/lacp_off() are internal helpers of lacp_cmd() (the legacy
- * single-LAG on/off path). Slow-protocols are delivered via RMA *forward*
- * (trap does not reach the NIC RX ring) constrained by a static CPU-only L2
- * multicast entry, so nothing is flooded to other ports.
+ * This code is in the Public Domain.
  */
 
 #include <stdint.h>
