@@ -71,20 +71,10 @@ struct vlan_tag {
 #define VLAN_TAG_SIZE		(sizeof (struct vlan_tag))
 #define RTL_FRAME_TAG_ID	0x8899
 #define RTL_FRAME_TAG_VERSION	0x04
-/* Bits of the tag's `flags` word (word2), per Linux DSA tag_rtl8_4:
- *   bit15 EFID_EN | 14:12 EFID | 11 PRI_EN | 10:8 PRI |
- *   bit7  KEEP    | 6 VSEL     | 5 LEARN_DIS | 4:0 VIDX
- * NOTE: this word must be written through HTONS like every other tag field -
- * writing the constant raw puts the bits in the wrong byte (0x0020 raw lands on
- * the wire as 0x2000 = EFID, not LEARN_DIS), the ASIC then fails to parse the
- * tag and forwards the frame with the 0x8899 header still on it. */
+/* Bits of the tag's `flags` word, see doc/CpuPort.md. */
 #define RTL_TAG_LEARN_DIS	0x0020	/* do not learn the CPU's SA on the egress port */
 #define RTL_TAG_KEEP		0x0080	/* keep the frame's 802.1Q tag format as injected */
-/* The `pmask` word (word3): bit15 ALLOW selects how 14:0 is interpreted.
- * ALLOW=0 -> forwarding port mask (directed egress: frame goes exactly to the
- * ports set). ALLOW=1 -> allowance mask (permission filter on a normal lookup),
- * which for a one-hot mask yields an empty egress set - the frame disappears.
- * Directed egress therefore requires ALLOW cleared, as mainline does. */
+/* The `pmask` word, see doc/CpuPort.md. */
 
 // For TX, an 8 byte (plus 4 byte padding when when VLAN is enabled)
 // header describing the frame to be moved to the Asic is used
