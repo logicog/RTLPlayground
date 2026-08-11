@@ -235,22 +235,32 @@ uint8_t atoi_short(uint8_t idx)
 }
 
 
-uint8_t parse_ip(uint8_t idx)
+int8_t parse_ip(uint8_t idx)
 {
-	__xdata uint8_t b;
+	uint8_t b = 0;
+	uint8_t ret;
 
-	for (b = 0; b < 4; b++) {
-		ip[b] = 0;
-		while (isnumber(cmd_buffer[idx])) {
-			ip[b] = (ip[b] * 10) + cmd_buffer[idx] - '0';
-			idx++;
+	while(1) {
+		ret = atoi_byte(idx);
+		if (ret == 0) {
+			goto err;
 		}
-		if (b < 3 && cmd_buffer[idx++] != '.') {
-			print_string("Error in IP format, expecting '.'\n");
-			return -1;
+		idx += ret;
+		ip[b++] = atoi_results_u8;
+
+		if (b == 4) {
+			break;
+		}
+
+		if (cmd_buffer[idx++] != '.') {
+			goto err;
 		}
 	}
 	return 0;
+
+err:
+	print_string("Error in IP format\n");
+	return -1;
 }
 
 
@@ -258,6 +268,7 @@ void parse_lag(void)
 {
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
+	uint8_t ret;
 
 	if (cmd_compare(1, "show")) {
 		print_string("LAG status:\n");
@@ -284,30 +295,35 @@ void parse_lag(void)
 		return;
 	}
 
-	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]]))
+	if (cmd_words_len < 2)
 		goto err;
-	group = cmd_buffer[cmd_words_b[1]] - '1';
+
+	// Parse group, expect only one number 0-9.
+	ret = atoi_byte(cmd_words_b[1]);
+	if (ret != 1) {
+		goto err;
+	}
+	group = atoi_results_u8 - 1;
+	
 	if (group > 3)		/* '0' wraps well past three, so one test does both ends */
 		goto err;
+
 
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
 //		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
-		uint8_t port;
-		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
-			port = cmd_buffer[cmd_words_b[w]] - '1';
-			if (isnumber(cmd_buffer[cmd_words_b[w] + 1]))
-				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-			if (port > 8)	/* phys_to_log_port holds nine entries */
-				goto err;
-			port = machine.phys_to_log_port[port];
-		} else {
+
+		// Parse port.
+		ret = atoi_byte(cmd_words_b[w++]);
+		if (ret != 1)
 			goto err;
-		}
+
+		uint8_t	port = atoi_results_u8;
+		port = machine.phys_to_log_port[port];
+
 		if (port > machine.max_port)
 			goto err;
 		members |= ((uint16_t)1) << port;
-		w++;
 	}
 	port_lag_members_set(group, members);
 	return;
@@ -817,11 +833,14 @@ void parse_sfp(void)
 		}
 		return;
 	}
-	if (cmd_buffer[cmd_words_b[1]] < '1' || cmd_buffer[cmd_words_b[1]] > '2' || cmd_buffer[cmd_words_b[1] + 1] != ' ' ) {
+	uint8_t idx = cmd_words_b[1];
+	uint8_t ret = atoi_byte(idx);
+	idx += ret;
+	slot = atoi_results_u8 - 1;
+	if (ret == 0 || cmd_buffer[idx] != ' ' || slot > 1) {
 		print_string("Illegal SFP slot number\n");
 		return;
 	}
-	slot = cmd_buffer[cmd_words_b[1]] - '1';
 	if (slot >= machine.n_sfp) {
 		print_string("SFP slot not present\n");
 		return;
@@ -944,9 +963,10 @@ void parse_sdsget(void)
 		goto err;
 	}
 
-	if (atoi_byte(&sds_id, cmd_words_b[1])) {
+	if (!atoi_byte(cmd_words_b[1])) {
 		goto err;
 	}
+	sds_id = atoi_results_u8;
 
 	hex_size = atoi_hex(cmd_words_b[2]);
 	if (hex_size != 1) {
@@ -988,9 +1008,10 @@ void parse_sdsset(void)
 		goto err;
 	}
 
-	if (atoi_byte(&sds_id, cmd_words_b[1])) {
+	if (!atoi_byte(cmd_words_b[1])) {
 		goto err;
 	}
+	sds_id = atoi_results_u8;
 
 	hex_size = atoi_hex(cmd_words_b[2]);
 	if (hex_size != 1) {
@@ -1043,13 +1064,16 @@ void parse_phyget(void)
 		goto err;
 	}
 
-	if (atoi_byte(&phy_id, cmd_words_b[1])) {
+	if (!atoi_byte(cmd_words_b[1])) {
 		goto err;
 	}
+	phy_id = atoi_results_u8;
 
-	if (atoi_byte(&dev_id, cmd_words_b[2])) {
+
+	if (!atoi_byte(cmd_words_b[2])) {
 		goto err;
 	}
+	dev_id = atoi_results_u8;
 
 	hex_size = atoi_hex(cmd_words_b[3]);
 	if (hex_size == 0 || hex_size > 2) {
@@ -1089,13 +1113,16 @@ void parse_physet(void)
 		goto err;
 	}
 
-	if (atoi_byte(&phy_id, cmd_words_b[1])) {
+	if (!atoi_byte(cmd_words_b[1])) {
 		goto err;
 	}
+	phy_id = atoi_results_u8;
 
-	if (atoi_byte(&dev_id, cmd_words_b[2])) {
+
+	if (!atoi_byte(cmd_words_b[2])) {
 		goto err;
 	}
+	dev_id = atoi_results_u8;
 
 	hex_size = atoi_hex(cmd_words_b[3]);
 	if (hex_size == 0 || hex_size > 2) {
