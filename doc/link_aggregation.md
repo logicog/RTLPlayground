@@ -225,3 +225,57 @@ iperf Done.
 ```
 As you can see, the total throughput was 4.71 GBit/sec which is close to the
 maximum possible with a single 5GBit link.
+
+## LACP: how the PDUs reach the CPU
+
+Slow-protocol frames go to the reserved group `01:80:C2:00:00:02`, and the
+ASIC's default action for it is *drop*. The *trap* action is no help either: on
+this firmware it never reaches the 8051 receive ring, verified on hardware by
+watching the receive counters stay frozen while the partner kept sending.
+
+Delivery therefore uses the *forward* action, which on its own would flood the
+frame across the ingress VLAN. That leaks LACPDUs to unrelated ports, and the
+damage is real: a bond's own ports see each other's PDUs and Linux reports an
+illegal loopback, a second bond on the same switch is poisoned, and the flood
+escapes through uplinks. A reserved link-local group must never be forwarded at
+all.
+
+What contains it is a static L2 multicast entry for that address with a CPU only
+member mask. The forward lookup hits the entry and uses its port mask instead of
+the VLAN flood mask, so the PDU reaches the CPU and nothing else. Verified both
+ways: a mask without the CPU bit freezes the receive counters, a CPU only mask
+delivers with no egress on any port.
+
+Lookups are IVL on this chip, so an entry made for VID 0 is never matched and one
+entry is needed per PVID among the candidate ports, since untagged LACPDUs
+classify into the ingress port's PVID. Entries for stale VIDs are left behind,
+which is harmless because they only steer slow-protocol frames to the CPU, and
+the lookup table is volatile so a reboot clears them. Changing a port's PVID
+after LACP is configured needs `lacp off` then `lacp on` to refresh them.
+
+The entry itself is written through the same SMI layout as any L2 multicast
+entry:
+
+```
+DATA_IN_A = MAC bytes 5..2                            -> c2 00 00 02
+DATA_IN_B = MAC[1..0] | vid<<16 | IVL<<29 | pmask[1:0]<<30
+DATA_IN_C = pmask[9:2]
+```
+
+With the mask set to the CPU port alone its low bits are zero, so DATA_IN_B
+carries only the address, the VID and the IVL flag, and DATA_IN_C is a constant
+0x80.
+
+## LACP: what the implementation leaves out
+
+The four state machines of Clause 43 are present in simplified form. Mux control
+is coupled rather than independent, one partner system is elected per LAG, and
+there are no churn detection machines.
+
+One interoperability rule is worth stating because getting it wrong is silent.
+The Partner block of an outgoing PDU has to echo the peer's own actor identity
+verbatim, meaning system and priority, key, port and port priority, and the
+aggregation flag. A Linux partner's `__record_pdu()` accepts our SYNC bit only
+when that block mirrors what it sent. Hardcoding the priorities to zero
+mismatches Linux's default of 0xffff, which clears partner SYNC, moves the state
+byte from 0x3f to 0x37, and the bond never reaches collecting and distributing.

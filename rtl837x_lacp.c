@@ -1,18 +1,6 @@
 /*
  * LACP (IEEE 802.3ad Clause 43) driver for the RTL837x platform.
  * This code is in the Public Domain.
- *
- * Structure mirrors rtl837x_stp.c: a slow-protocol control frame is steered to
- * the CPU port (Reserved-Multicast forward action + a static CPU-only L2
- * multicast entry, see lacp_fdb_set()), parsed via a struct overlaid
- * on uip_buf, and periodic LACPDUs are emitted per port using the RTL frame tag
- * (rtl_tag.pmask selects the egress port). Once the actor/partner reach
- * SYNC+COLLECTING+DISTRIBUTING, the participating ports are programmed into a
- * hardware trunk group via port_lag_members_set().
- *
- * The four 802.3ad state machines (Receive / Periodic / Mux / Selection) are
- * implemented in simplified form (coupled mux control, single elected partner
- * system per LAG, no churn-detection machines) - see the per-function notes.
  */
 
 // #define DEBUG
@@ -100,11 +88,8 @@ __xdata uint8_t  lacp_partner_state[10];	/* last Partner_State we saw     */
 __xdata uint8_t  lacp_partner_sys[10][6];	/* partner System ID             */
 __xdata uint16_t lacp_partner_key[10];		/* partner Key                   */
 __xdata uint16_t lacp_partner_port[10];		/* partner Port number           */
-/* Partner priorities must be echoed back verbatim: a Linux 802.3ad partner's
- * __record_pdu() accepts our SYNC bit only if our Partner block mirrors *its*
- * actor identity exactly (system+priority, key, port+priority, aggregation).
- * Hardcoding these (sys_prio=0) mismatched Linux's default 0xffff, so it cleared
- * partner-SYNC (0x3f->0x37) and the bond never reached COLLECTING/DISTRIBUTING. */
+/* The Partner block echoes the peer's actor identity verbatim, see
+ * doc/link_aggregation.md. */
 __xdata uint16_t lacp_partner_sys_prio[10];	/* partner System priority       */
 __xdata uint16_t lacp_partner_port_prio[10];	/* partner Port priority         */
 __xdata uint16_t lacp_periodic[10];		/* down-counter to next TX       */
@@ -115,25 +100,13 @@ __xdata uint8_t  lacp_ntt[10];			/* Need-To-Transmit flag         */
 #define LACP_TICK_DIVIDER 3
 __xdata uint8_t lacp_clock;
 
-/* Per-LAG state (LACP_NUM_LAGS hardware trunk groups run LACP independently).
- * lacp_lag_ports[l] = admin candidate-port mask (0 => LAG l is not LACP-managed).
- * lacp_port_lag[p]  = which LAG a port runs LACP on, or LACP_LAG_NONE (fast hot-
- *                     path lookup, kept in sync with lacp_lag_ports).
- * lacp_agg_sys/valid = partner System elected per LAG - ports whose partner
- *                     differs stay unselected (43.4.14 mis-cabling protection).
- * lacp_members_last  = last member mask programmed per trunk (avoids hammering
- *                     the trunk registers when membership has not changed). */
+/* Per-LAG state: the hardware trunk groups run LACP independently. */
 __xdata uint16_t lacp_lag_ports[LACP_NUM_LAGS];
 __xdata uint8_t  lacp_port_lag[10];
 __xdata uint8_t  lacp_agg_sys[LACP_NUM_LAGS][6];
 __xdata uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
 __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];
 
-/* Scratch for lacp_mux_update()/lacp_lag_set() worker loops. Kept in xdata:
- * as plain locals SDCC overlays them in internal RAM (OSEG), which is already
- * near-full on this firmware - adding them tipped it over ("Could not get 8
- * consecutive bytes in internal RAM for area OSEG"). Same pattern as
- * lacp_fdb_vid below. Safe: never live across a yield. */
 __xdata uint16_t lacp_scratch_mask;
 __xdata uint8_t  lacp_scratch_flag;
 
@@ -141,8 +114,6 @@ __xdata uint8_t  lacp_scratch_flag;
  * verify slow-protocol frames actually reach the CPU port (see "lacp show") */
 __xdata uint16_t lacp_rx_count[10];
 
-/* Scratch for lacp_fdb_update()/lacp_fdb_set(), in xdata for the same OSEG
- * reason (their plain locals tipped the internal-RAM overlay over). */
 __xdata uint16_t lacp_fdb_vid;
 __xdata uint8_t  lacp_fdb_i, lacp_fdb_j, lacp_fdb_guard;
 
@@ -348,40 +319,11 @@ void lacp_in(void) __banked
 
 /*
  * Steer the Slow-Protocols group (01:80:C2:00:00:02) to the CPU port only.
- *
- * The RMA "trap" action does not reach the 8051 NIC RX ring on this firmware
- * (hardware-verified: the rx counters stay frozen with trap), so LACPDUs are
- * delivered with the RMA action "forward". Plain forward floods the frame
- * across the ingress VLAN, which leaks LACPDUs to unrelated ports: a bond's
- * ports see each other's PDUs ("illegal loopback" flaps on Linux), a second
- * bond on the same switch is poisoned, and the flood escapes via uplinks.
- * Reserved link-local groups must never be forwarded at all (802.1D).
- *
- * The fix is a *static L2 multicast entry* for 01:80:C2:00:00:02 with a
- * CPU-only member mask: the forward lookup hits that entry and uses its
- * portmask instead of the VLAN flood mask, so the PDU reaches the CPU and
- * nothing else (hardware-verified both ways: a mask without the CPU bit
- * freezes the rx counters, a CPU-only mask delivers with no port egress).
- * This replaces the previous sibling-port-isolation workaround entirely and
- * restores correct link-local containment on every port.
- *
- * L2 lookups are IVL on this chip (a VID-0/SVL entry is not matched), so one
- * entry is needed per PVID of the LACP candidate ports - untagged LACPDUs
- * classify into the ingress port's PVID. Entries for stale VIDs are left
- * behind (they only steer slow-protocol frames to the CPU, which is correct
- * anyway) and the LUT is volatile, so a reboot clears them. NOTE: changing a
- * port's PVID after LACP is configured needs `lacp off`/`on` to refresh.
+ * How and why, see doc/link_aggregation.md.
  */
 
 /* Write the static Slow-Protocols L2 MC entry for VID `lacp_fdb_vid` with a
- * CPU-only member mask. SMI layout per the vendor SDK's L2-multicast variant:
- *   DATA_IN_A = MAC bytes 5..2                            -> c2 00 00 02
- *   DATA_IN_B = MAC[1..0] | vid<<16 | IVL<<29 | pmask[1:0]<<30
- *   DATA_IN_C = pmask[9:2]
- * With pmask = PMASK_CPU (0x200) its low bits are 0, so DATA_IN_B carries
- * only MAC/VID/IVL and DATA_IN_C is a constant 0x80. The write command
- * (table 4 covers the whole L2 LUT, not just unicast) hashes MAC+VID and
- * picks the bucket slot itself; TBL_EXECUTE self-clears on completion. */
+ * CPU-only member mask. */
 static void lacp_fdb_set(void)
 {
 	lacp_fdb_guard = 0;
@@ -535,12 +477,7 @@ static uint8_t lacp_any_lag(void)
 }
 
 /*
- * Turn the LACP engine on: deliver the Slow-Protocols group
- * (01:80:C2:00:00:02) to the CPU so we can see incoming LACPDUs. The ASIC
- * default for this address is "drop"; trap-to-CPU does not reach the NIC RX
- * ring on this firmware (confirmed on hardware: rx stayed 0 with trap), so
- * the action is "forward", constrained to a CPU-only egress by the static
- * FDB entries lacp_fdb_update() maintains - see lacp_fdb_set() above.
+ * Turn the LACP engine on: deliver the Slow-Protocols group to the CPU.
  */
 static void lacp_engine_on(void)
 {
