@@ -234,6 +234,55 @@ uint8_t atoi_short(uint8_t idx)
 	return cnt;
 }
 
+/* Parse, validate and translate phys_to_log_port port argument
+ * cpu_is_valid tells the parser that port 10 is valid input.
+ * returns 0 when on parser error or invalid value.
+ * return non-zero number of bytes consumed.
+ * Store the value in atoi_results_u8.
+ */
+uint8_t cmd_parse_port(uint8_t idx, __bit cpu_is_valid) {
+	uint8_t ret = atoi_byte(idx);
+	uint8_t port = 0;
+	if (ret != 0) {
+		port = atoi_results_u8 - 1;
+
+		if (cpu_is_valid && port == 9) {
+			// CPU port is valid
+		} else if (port < 9) {
+			port = machine.phys_to_log_port[port];
+			if (port < machine.min_port || port > machine.max_port) {
+				ret = 0;
+			}
+		} else {
+			ret = 0;
+		}
+	}
+
+	atoi_results_u8 = port;
+	return ret;
+}
+
+
+// Same as cmd_parse_port() addition to check the trailing space.
+// returns 0 when on parser error or invalid value or no space.
+// return non-zero number of bytes consumed including the space.
+uint8_t cmd_parse_port_space(uint8_t idx, __bit cpu_is_valid) {
+	uint8_t ret = cmd_parse_port(idx, cpu_is_valid);
+	if (ret != 0) {
+		idx += ret;
+		ret++;
+		if (cmd_buffer[idx] != ' ')
+			ret = 0;
+	}
+	return ret;
+}
+
+
+// check if the cmd_buffer[idx] is a space.
+__bit cmd_is_space(uint8_t idx) {
+	return cmd_buffer[idx] == ' ';
+}
+
 
 int8_t parse_ip(uint8_t idx)
 {
