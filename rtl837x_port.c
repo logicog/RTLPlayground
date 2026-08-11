@@ -28,8 +28,6 @@ extern __xdata struct machine_runtime machine_detected;
 
 __xdata	uint32_t l2_head;
 
-/* Bounded-wait counter for the L2 table helpers; xdata because the 8051
- * internal-RAM overlay (OSEG) is full. */
 __xdata uint8_t l2mc_guard;
 
 __xdata struct vlan_settings vlan_settings;
@@ -320,11 +318,6 @@ void vlan_setup(void) __banked
 
 /*
  * Forget the dynamic L2 entries learned on one port.
- *
- * Same flush engine as port_l2_forget(), but with a single-port mask so a
- * topology change only ages out the affected port instead of the whole
- * table. Bounded wait (cf. port_l2mc_set): this runs from the STP tick, and
- * an unbounded poll on a stuck engine would freeze the main loop.
  */
 void port_l2_forget_port(uint8_t port) __banked
 {
@@ -429,30 +422,12 @@ void port_l2_learned(void) __banked
 /*
  * Static L2 multicast entry for the link-local group 01:80:C2:00:00:<mac_last>
  * in VLAN `vid`, with member portmask `pmask` (bit 9 = CPU port).
- *
- * Slow-protocol frames (LACP, STP BPDUs) must reach the CPU without being
- * flooded to other ports. The RMA "trap" action cannot deliver to the
- * internal NIC on this hardware (its destination is an external CPU on a
- * physical port), so the protocol modules keep the RMA action at "forward"
- * and constrain the egress with this entry instead: the lookup hits the
- * entry's portmask rather than the VLAN flood mask (hardware-verified with
- * both the CPU bit cleared - delivery stops - and CPU-only - no egress).
- *
- * SMI layout (vendor SDK, L2-multicast entry variant):
- *   DATA_IN_A = MAC bytes 5..2         -> c2 00 00 <mac_last>
- *   DATA_IN_B = MAC[1..0] | vid<<16 | IVL<<29 | pmask[1:0]<<30
- *   DATA_IN_C = pmask[9:2]
- * Lookups are IVL (a VID-0 entry is not matched), so callers add one entry
- * per PVID in use. The write command (table 4 = the whole L2 LUT) hashes
- * MAC+VID and picks the bucket slot itself; TBL_EXECUTE self-clears.
- * Overwriting the same MAC+VID replaces the entry, so a caller can retarget
- * the mask at will (e.g. back to all ports to restore flooding).
  */
 
 void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
 {
 	l2mc_guard = 0;
-	do {	/* wait out any previous table op (bounded, cf. the IGMP guards) */
+	do {
 		reg_read_m(RTL837X_TBL_CTRL);
 	} while ((sfr_data[3] & TBL_EXECUTE) && ++l2mc_guard);
 
