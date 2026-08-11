@@ -534,16 +534,10 @@ void send_lag(void)
 }
 
 
-/* STP status + configuration for the Spanning Tree page ("/stp.json").
- * Bridge config (prio index 0-15, hello/maxage/fwd seconds, rstp flag, tx
- * hold), elected root (priority byte + MAC), our path cost, root port, TC
- * counter, and per port: physical number, live ASIC state (2-bit MSTP field:
- * 0 Dis 1 Blk 2 Lrn 3 Fwd), an approximated role, and the per-port config
- * (enabled, edge admin/auto/oper, cost/1000, prio, guard, filter, tripped). */
+/* STP status and configuration for the Spanning Tree page ("/stp.json"). */
 __xdata uint8_t stp_we_root;
-__xdata uint8_t pi_i, pi_j, pi_j2;	/* shared loop iterators (DSEG relief) */
+__xdata uint8_t pi_i, pi_j, pi_j2;
 
-/* Parameter relays in xdata: keeps these helpers off the IRAM overlay */
 static __xdata uint32_t pi_u32;
 static __xdata uint8_t pi_prio, pi_ext;
 static __xdata uint8_t * __xdata pi_mac;

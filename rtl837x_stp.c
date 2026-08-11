@@ -1,26 +1,11 @@
 /*
  * This is a driver implementation for the Spanning Tree Protocol features for the RTL837x platform
  * This code is in the Public Domain
- *
- * Configurable per 802.1D-2004/802.1w: bridge priority, hello time, max age,
- * forward delay, force-version (RSTP/STP), tx hold count; per port: enable,
- * admin/auto edge, path cost, port priority, BPDU guard, root guard, BPDU
- * filter. CLI: "stp ..." (see stp_parse), status: /stp.json (send_stp).
- *
- * The engine itself stays deliberately simple (no proposal/agreement
- * handshake, no full port-role machine): we elect a root from received BPDUs,
- * promote ports to forwarding after the listen period (or immediately for
- * edge ports), age the root out via max age, and block on a loop (our own
- * BPDU comes back: the worse Port ID of the pair stops forwarding and stays
- * blocked while it keeps coming back) or - with root guard - a better root.
  */
 
 // #define REGDBG
 // #define DEBUG
 
-/* Place this module's code and constants in code bank 2 (cf. rtl837x_igmp.c):
- * the always-mapped common area is nearly full, and the full state machine
- * does not fit there. */
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
@@ -37,8 +22,6 @@ extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata struct machine_runtime machine_detected;	/* owned by rtl837x_port.c */
 
-/* Scratch for stp_fdb_update(), in xdata: plain locals would overflow the
- * near-full internal-RAM overlay (OSEG), cf. rtl837x_lacp.c. */
 __xdata uint16_t stp_fdb_vid;
 __xdata uint8_t  stp_fdb_i;
 
@@ -62,12 +45,6 @@ __xdata uint8_t  stp_fwddelay_s;
 __xdata uint8_t  stp_rstp;
 __xdata uint8_t  stp_txhold;
 
-/* Management failsafe, commit-confirm: enabling STP arms a one-shot window of
- * stp_failsafe_s seconds. One HTTP request inside the window confirms that
- * management survived the new tree and disarms it until the next enable; a
- * window with no management activity disables STP and restores forwarding
- * (mgmt VLAN rides a blockable front port; lockout of 2026-07-20 is the
- * motivating incident). 0 never arms. Headless installs should set 0. */
 __xdata uint8_t  stp_failsafe_s;
 __xdata uint8_t  stp_failsafe_cnt;	/* seconds left of the armed window */
 __xdata uint8_t  stp_failsafe_armed;
@@ -97,13 +74,12 @@ __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 __xdata uint16_t stp_link_prev;		/* carrier bitmap as of the last check */
 __xdata uint16_t stp_link_now;
 
-/* Scratch (8051: locals would overflow the internal-RAM overlay area) */
 __xdata uint8_t  stp_scratch;
 __xdata uint8_t  stp_tx_flags_extra;	/* one-shot flags OR-ed into the next BPDU (TCA) */
 __xdata uint16_t stp_rxlen;		/* received frame length, saved before uip_len is consumed */
 __xdata uint8_t  stp_msg_age;		/* message age of the root info we hold, seconds */
 __xdata uint16_t stp_tc_while;		/* ticks left to set the TC flag in our BPDUs */
-__xdata uint8_t  stp_i;		/* shared loop iterator (DSEG relief) */
+__xdata uint8_t  stp_i;
 __xdata uint32_t stp_cost_scratch;
 __xdata uint8_t  stp_loop_peer;		/* the other own port seen on a looped segment */
 
@@ -189,11 +165,7 @@ static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 }
 
 
-/* Signal a topology change: flush the stale forwarding entries of the port
- * that changed, count it, and set the TC flag in our BPDUs for one
- * max-age+forward-delay period (802.1D 8.6.14) so the neighbours age their
- * own tables out too. Edge ports are exempt: a host appearing or leaving is
- * not a topology change. */
+/* Signal a topology change. Edge ports are exempt. */
 static void stp_topology_change(uint8_t port) __reentrant
 {
 	if (stp_pflags[port] & STP_PF_OPEREDGE)
@@ -208,12 +180,7 @@ static void stp_topology_change(uint8_t port) __reentrant
  * holding it for as long as the caller keeps saying so. The caller is the
  * port that won the Port ID compare (see stp_in) - a different port than
  * the one held, except when the frame came back on the port it left.
- *
- * Reentrant on purpose, like the two above: parameters and locals then live
- * on the stack instead of taking internal RAM of their own. Inlined into
- * stp_in - which is __banked, so its temporaries cannot be overlaid - the
- * same code costs two more bytes of DSEG, and that is enough to stop the
- * image with LACP from linking at all. */
+ */
 static void stp_loop_hold_peer(uint8_t port) __reentrant
 {
 	/* The port number arrives in a BPDU, so it is somebody else's data,
@@ -675,17 +642,8 @@ void stp_defaults(void) __banked
 
 
 /*
- * Steer BPDUs (01:80:C2:00:00:00) while STP runs: one static CPU-only L2
- * multicast entry per PVID in use, so BPDUs reach the CPU without being
- * flooded to other ports (a bridge running STP must consume BPDUs, not
- * relay them - relaying poisons the neighbours' view of the topology).
- *
- * With STP off the same entries are retargeted to all ports + CPU, which
- * restores the previous flood behaviour ("BPDU transparency"): the
- * surrounding spanning tree can keep spanning *through* this switch, which
- * unmanaged setups rely on. Same per-PVID/IVL rules as the LACP steering -
- * see port_l2mc_set() and rtl837x_lacp.c. NOTE: changing a port's PVID
- * while STP runs needs `stp off`/`on` to refresh the entries.
+ * Steer BPDUs while STP runs, and restore flooding when it stops.
+ * Changing a port's PVID while STP runs needs "stp off" then "stp on".
  */
 static void stp_fdb_update(__xdata uint16_t pmask)
 {
@@ -773,18 +731,6 @@ void stp_off(void) __banked
 }
 
 
-/* ---- "stp ..." CLI ----
- *   stp on|off
- *   stp prio <0-15>            (bridge priority = n * 4096)
- *   stp hello <1-10> | stp maxage <6-40> | stp fwd <4-30> | stp txhold <1-10>
- *   stp version rstp|stp
- *   stp port <1-9> on|off
- *   stp port <1-9> edge on|off|auto
- *   stp port <1-9> cost <0-255>   (x1000; 0 = auto/20000)
- *   stp port <1-9> prio <0-240>
- *   stp port <1-9> guard none|bpdu|root
- *   stp port <1-9> filter on|off
- */
 void stp_parse(void) __banked __reentrant
 {
 	if (cmd_compare(1, "on")) {
