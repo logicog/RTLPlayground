@@ -223,7 +223,7 @@ void igmp_packet_handler(void) __banked
 #endif
 
 #ifdef IPMC_USES_L3MC
-	memset(&entry, 0, sizeof(struct ipmc_table_entry));
+	memset((__xdata uint8_t *)&entry, 0, sizeof(struct ipmc_table_entry));
 	// For IPv4 MC, the Source-IP is 0.0.0.0
 	entry.sip[0] = 0x00; entry.sip[1] = 0x00; entry.sip[2] = 0x00; entry.sip[3] = 0x00;
 	// For IPv4 MC, the Destination-IP is the IPv4 MC address
@@ -235,7 +235,7 @@ void igmp_packet_handler(void) __banked
 	 * yy = MC_IP[2]
 	 * zz = MC_IP[3]
 	 */
-	memset(&entry, 0, sizeof(struct l2mc_table_entry));
+	memset((__xdata uint8_t *)&entry, 0, sizeof(struct l2mc_table_entry));
 	entry.mac[0] = 0x01; entry.mac[1] = 0x00; entry.mac[2] = 0x5e;
 	entry.mac[3] = IGMP_I->mc_ip[1] & 0x7f; entry.mac[4] = IGMP_I->mc_ip[2]; entry.mac[5] = IGMP_I->mc_ip[3];
 	entry.vlan = 1; //TODO: Get this out of the packet and compare with VLAN table!
