@@ -81,6 +81,7 @@ __xdata uint16_t cmd_history_ptr;
 __xdata uint8_t err_status;
 
 __xdata uint16_t atoi_results_short;
+__xdata uint8_t atoi_results_u8;
 
 inline uint8_t isletter(uint8_t l)
 {
@@ -187,23 +188,29 @@ uint8_t atoi_hex(uint8_t idx)
 }
 
 
-uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
+// return 0 on error or non-zero number of number-byte taken for the conversion.
+// Stops at any non-digit '0'-'9' char or bytes is more then 3.
+uint8_t atoi_byte(uint8_t idx)
 {
-	uint8_t err = 1;
+	uint8_t cnt = 0;
 	uint8_t num = 0;
 
-	while (isnumber(cmd_buffer[idx])) {
-		uint8_t val = cmd_buffer[idx] - '0';
-		err = 0;
-		if (num > 25 || (num == 25 && val > 5))
-			return 1;
+	uint8_t * ptr = &cmd_buffer[idx];
+
+	while (1) {
+		uint8_t val = *ptr++ - '0';
+		if (val > 9)
+			break;
+		if (num > 25 || (num == 25 && val > 5) || cnt >= 3)
+			return 0;
 		num = (num * 10) + val;
-		idx++;
+		cnt++;
 	}
 
-	*out = num;
-	return err;
+	atoi_results_u8 = num;
+	return cnt;
 }
+
 
 // return 0 on error or non-zero number of number-byte taken for the conversion.
 // Stops at any non-digit '0'-'9' char or bytes is more then 5.
