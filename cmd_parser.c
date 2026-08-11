@@ -322,6 +322,22 @@ err:
 	return 0;
 }
 
+// Print a IPv4 adress.
+void print_ip(__xdata uint8_t * ptr)
+{
+	uint8_t idx = 0;
+	uint8_t num;
+
+	while(1) {
+		num = *ptr++;
+		itoa(num);
+		if (++idx == 4)
+			break;
+
+		write_char('.');
+	}
+}
+
 
 void parse_lag(void)
 {
@@ -1368,8 +1384,7 @@ void parse_syslog(void)
 		print_string("Current syslog status: ");
 		if (syslog_state.enabled) {
 			print_string("enabled, sending to ");
-			itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
-			itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+			print_ip(syslog_state.server_ip);
 			write_char('\n');
 		} else {
 			print_string("disabled\n");
@@ -1384,8 +1399,7 @@ void parse_syslog(void)
 	} else if (cmd_compare(1, "ip")) {
 		if (cmd_words_len < 3) { // no additional arguemnt -> print current ip
 			print_string("Current syslog IP: ");
-			itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
-			itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+			print_ip(syslog_state.server_ip);
 			return;
 		} else if (parse_ip(cmd_words_b[2]) != 0) {
 			uint8_t was_enabled = syslog_state.enabled;
@@ -1554,8 +1568,7 @@ void cmd_parser(void) __banked
 				dhcp_start();
 			} else if (cmd_words_len == 1) {
 				print_string("Current IP: ");
-				itoa(uip_hostaddr[0]); write_char('.'); itoa(uip_hostaddr[0] >> 8); write_char('.');
-				itoa(uip_hostaddr[1]); write_char('.'); itoa(uip_hostaddr[1] >> 8);
+				print_ip(uip_hostaddr);
 				if (dhcp_state.state == DHCP_LEASING) {
 					print_string(" (dhcp, renewal in sec: ");
 					print_short(dhcp_state.dhcp_timer);
@@ -1570,8 +1583,7 @@ void cmd_parser(void) __banked
 				if (parse_ip(cmd_words_b[1]) != 0) {
 					uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
 					print_string("Setting ip: ");
-					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
-					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
+					print_ip(ip); write_char('\n');
 				} else {
 					print_string("Invalid IP address\n" \
 								 "Error: ip [<ip-address>|dhcp]\n" \
@@ -1582,14 +1594,12 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "gw")) {
 			if (cmd_words_len == 1) {
 				print_string("Current gw: ");
-				itoa(uip_draddr[0]); write_char('.'); itoa(uip_draddr[0] >> 8); write_char('.');
-				itoa(uip_draddr[1]); write_char('.'); itoa(uip_draddr[1] >> 8); write_char('\n');
+				print_ip(uip_draddr); write_char('\n');
 			} else {
 				if (parse_ip(cmd_words_b[1]) != 0) {
 					uip_ipaddr(&uip_draddr, ip[0], ip[1], ip[2], ip[3]);
 					print_string("Setting gw: ");
-					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
-					itoa(ip[2]); write_char('.'); itoa(ip[3]); write_char('\n');
+					print_ip(ip); write_char('\n');
 				} else {
 					print_string("Invalid IP address\n" \
 								 "Error: gw <ip-address>\n");
@@ -1598,14 +1608,12 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "netmask")) {
 			if (cmd_words_len == 1) {
 				print_string("Current netmask: ");
-				itoa(uip_netmask[0]); write_char('.'); itoa(uip_netmask[0] >> 8); write_char('.');
-				itoa(uip_netmask[1]); write_char('.'); itoa(uip_netmask[1] >> 8);
+				print_ip(uip_netmask); write_char('\n');
 			} else {
 				if (parse_ip(cmd_words_b[1]) != 0) {
 					uip_ipaddr(&uip_netmask, ip[0], ip[1], ip[2], ip[3]);
 					print_string("Setting netmask: ");
-					itoa(ip[0]); write_char('.'); itoa(ip[1]); write_char('.');
-					itoa(ip[2]); write_char('.'); itoa(ip[3]);
+					print_ip(ip); write_char('\n');
 				} else {
 					print_string("Invalid IP address\n");
 				}
