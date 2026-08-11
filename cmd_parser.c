@@ -349,30 +349,22 @@ void parse_lag(void)
 
 	// Parse group, expect only one number 0-9.
 	ret = atoi_byte(cmd_words_b[1]);
-	if (ret != 1) {
-		goto err;
-	}
-	group = atoi_results_u8 - 1;
-	
-	if (group > 3)		/* '0' wraps well past three, so one test does both ends */
+	if (ret != 1)
 		goto err;
 
+	group = atoi_results_u8 - 1;
+	if (group > 3)		/* '0' wraps well past three, so one test does both ends */
+		goto err;
 
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
 //		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
 
 		// Parse port.
-		ret = atoi_byte(cmd_words_b[w++]);
-		if (ret != 1)
+		if (cmd_parse_port(cmd_words_b[w++], false) == 0)
 			goto err;
 
-		uint8_t	port = atoi_results_u8;
-		port = machine.phys_to_log_port[port];
-
-		if (port > machine.max_port)
-			goto err;
-		members |= ((uint16_t)1) << port;
+		members |= ((uint16_t)1) << atoi_results_u8;
 	}
 	port_lag_members_set(group, members);
 	return;
@@ -431,17 +423,13 @@ void parse_vlan(void)
 	if (cmd_words_len < 2)
 		goto err;
 
-	uint8_t ret = atoi_short(cmd_words_b[1]);
-	if (ret) {
-		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
-			if (atoi_results_short > 4094)
-				goto err;
-			vlan_delete(atoi_results_short);
-			return;
-		}
+	// Parse the VLAN number
+	if (atoi_short(cmd_words_b[1]) != 0) {
+		if (atoi_results_short > 4094)
+			goto err;
+		vlan_settings.vlan = atoi_results_short;
+
 		if (cmd_compare(2, "mgmt")) {
-			if (vlan_settings.vlan > 4094)
-				goto err;
 			management_vlan = vlan_settings.vlan;
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
@@ -449,8 +437,16 @@ void parse_vlan(void)
 				print_string("Management VLAN set to "); print_short(management_vlan); write_char('\n');
 			return;
 		}
-		if (!vlan_settings.vlan || vlan_settings.vlan > 4094)
+
+		// Other commands vlan 0 is invalid
+		if (!vlan_settings.vlan)
 			goto err;
+
+		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
+			vlan_delete(vlan_settings.vlan);
+			return;
+		}
+
 		uint8_t w = 2;
 		if (cmd_words_len > w && isletter(cmd_buffer[cmd_words_b[w]])) {
 			uint8_t i = 0;
@@ -466,24 +462,21 @@ void parse_vlan(void)
 			w++;
 			print_string("<\n");
 		}
+
+		uint8_t ret;
+		uint8_t idx;
 		while (cmd_words_len > w) {
-			__xdata uint8_t port;
-			if (isnumber(cmd_buffer[cmd_words_b[w]])) {
-				port = cmd_buffer[cmd_words_b[w]] - '1';
-				if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
-					port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-					if (cmd_buffer[cmd_words_b[w] + 2] == 't')
-						vlan_settings.tagged |= ((uint16_t)1) << port;
-				} else {
-						port = machine.phys_to_log_port[port];
-					if (cmd_buffer[cmd_words_b[w] + 1] == 't')
-						vlan_settings.tagged |= ((uint16_t)1) << port;
-				}
-				if (port > machine.max_port)
-					goto err;
-				vlan_settings.members |= ((uint16_t)1) << port;
-			}
-			w++;
+			idx = cmd_words_b[w++];
+			ret = cmd_parse_port(idx, false);
+			if (ret == 0)
+				goto err;
+
+			idx += ret;
+			uint16_t pmask = ((uint16_t)1) << atoi_results_u8;
+			vlan_settings.members |= pmask;
+
+			if (cmd_buffer[idx] == 't')
+				vlan_settings.tagged |= pmask;
 		}
 		vlan_create();
 	} else if (cmd_compare(1, "show")) {
@@ -511,12 +504,9 @@ void parse_isolate(void)
 
 	print_string("\nISOLATE ");
 
-	if (!isnumber(cmd_buffer[cmd_words_b[1]]) || cmd_buffer[cmd_words_b[1]] == '0'
-	    || isnumber(cmd_buffer[cmd_words_b[1] + 1]))
+	if (cmd_parse_port_space(cmd_words_b[1], false) == 0)
 		goto err;
-	__xdata uint8_t port_configured = machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'];
-	if (port_configured < machine.min_port || port_configured > machine.max_port)
-		goto err;
+	uint8_t port_configured = atoi_results_u8;
 
 	print_byte(port_configured); write_char('\n');
 
@@ -545,22 +535,12 @@ void parse_isolate(void)
 
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
-		__xdata uint8_t port;
-		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
-			port = cmd_buffer[cmd_words_b[w]] - '1';
-			if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
-				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1'; // logical port
-				if (port != 9) // CPU port is logical port 9
-					goto err;
-			} else {
-				port = machine.phys_to_log_port[port];
-				if (port < machine.min_port || port > machine.max_port)
-					goto err;
-			}
-			members |= ((uint16_t)1) << port;
-		}
-		w++;
+		if (cmd_parse_port(cmd_words_b[w++], false) == 0)
+			goto err;
+		uint8_t port = atoi_results_u8;
+		members |= ((uint16_t)1) << port;
 	}
+
 	port_isolate(port_configured, members);
 	return;
 
@@ -605,19 +585,19 @@ void parse_ingress(void)
 			print_string("All ports ingress filter set to: ");
 			print_port_ingress_filter_mode(mode); write_char('\n');
 		}
-		return;
 	} else {
 		for(uint8_t w = 1; w < cmd_words_len; w++) {
-			uint8_t p = cmd_buffer[cmd_words_b[w]];
-			if (!isnumber(p)) {
+			uint8_t idx = cmd_words_b[w];
+			char p = cmd_buffer[idx];
+			uint8_t ret = cmd_parse_port_space(idx, false);
+			if (ret == 0) {
+				print_string("Invalid physical port number\n");
 				continue;
 			}
-			if (p < '1') {
-				print_string("Invalid physical port number: "); write_char(p); write_char('\n');
-				continue;
-			}
-			log_port = machine.phys_to_log_port[p - '1'];
-			if (!vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[w] + 1], &mode)) {
+			log_port = atoi_results_u8;
+			idx += ret;
+
+			if (!vlan_ingress_mode_parse(cmd_buffer[idx], &mode)) {
 				print_string("Invalid ingress mode for port "); write_char(p); print_string(" in ingress command\n");
 				goto err;
 			}
@@ -629,15 +609,15 @@ void parse_ingress(void)
 			print_string(" ingress filter set to: ");
 			print_port_ingress_filter_mode(mode); write_char('\n');
 		}
-		return;	
 	}
+	return;
 err:
 	print_string("Error: ingress [p]<u/t/a>... \n");
 }
 
 void parse_mirror(void)
 {
-	__xdata uint8_t mirroring_port;
+	__xdata uint8_t mirroring_port = 0;
 	__xdata uint16_t rx_pmask = 0;
 	__xdata uint16_t tx_pmask = 0;
 
@@ -667,48 +647,38 @@ void parse_mirror(void)
 		return;
 	}
 
-	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]])) {
-		print_string("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
-		return;
-	}
-
-	mirroring_port = cmd_buffer[cmd_words_b[1]] - '1';
-	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))
-		mirroring_port = (mirroring_port + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
-	mirroring_port = machine.phys_to_log_port[mirroring_port];
-	
+	if (cmd_words_len < 2)
+		goto err;
 
 	uint8_t w = 2;
+	uint8_t port;
+	uint8_t ret;
 	while (w < cmd_words_len) {
-		uint8_t port;
-		if (isnumber(cmd_buffer[cmd_words_b[w]])) {
-			port = cmd_buffer[cmd_words_b[w]] - '1';
-			if (isnumber(cmd_buffer[cmd_words_b[w] + 1])) {
-				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-				port = machine.phys_to_log_port[port];
-				if (cmd_buffer[cmd_words_b[w] + 2] == 'r')
-					rx_pmask |= ((uint16_t)1) << port;
-				else if (cmd_buffer[cmd_words_b[w] + 2] == 't')
-					tx_pmask |= ((uint16_t)1) << port;
-				else {
-					rx_pmask |= ((uint16_t)1) << port;
-					tx_pmask |= ((uint16_t)1) << port;
-				}
-			} else {
-				port = machine.phys_to_log_port[port];
-				if (cmd_buffer[cmd_words_b[w] + 1] == 'r')
-					rx_pmask |= ((uint16_t)1) << port;
-				else if (cmd_buffer[cmd_words_b[w] + 1] == 't')
-					tx_pmask |= ((uint16_t)1) << port;
-				else {
-					rx_pmask |= ((uint16_t)1) << port;
-					tx_pmask |= ((uint16_t)1) << port;
-				}
-			}
-		}
-		w++;
+		uint8_t idx = cmd_words_b[w++];
+		ret = cmd_parse_port(idx, false);
+		if (ret == 0)
+			goto err;
+
+		idx += ret;
+		port = atoi_results_u8;
+
+		// Use the first port argument as mirroring_port
+		if (w == 2)
+			mirroring_port = port;
+
+		ret = cmd_buffer[idx];
+		uint16_t pmask = ((uint16_t)1) << port;
+		if (ret != 't')
+			rx_pmask |= pmask;
+		if (ret != 'r')
+			tx_pmask |= pmask;
 	}
 	port_mirror_set(mirroring_port, rx_pmask, tx_pmask);
+	return;
+
+err:
+	print_string("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
+	return;
 }
 
 
@@ -722,16 +692,11 @@ void parse_port(void)
 		return;
 	}
 
-	if (cmd_buffer[cmd_words_b[1]] < '1' || cmd_buffer[cmd_words_b[1]] > '9' || cmd_buffer[cmd_words_b[1] + 1] != ' ' ) {
-		print_string("Illegal port number\n");
+	if (cmd_parse_port_space(cmd_words_b[1], false) == 0) {
+		print_string("Invalid port number\n");
 		return;
 	}
-	phy_settings.port = cmd_buffer[cmd_words_b[1]] - '1';
-	phy_settings.port = machine.phys_to_log_port[phy_settings.port];
-	if (phy_settings.port > machine.max_port || phy_settings.port < machine.min_port) {
-		print_string("This machine has no port with the specified number\n");
-		return;
-	}
+	phy_settings.port = atoi_results_u8;
 
 	print_string("Logical Port: "); print_byte(phy_settings.port); write_char('\n');
 	phy_settings.duplex = PHY_DUPLEX_BOTH;
@@ -813,25 +778,24 @@ void parse_port(void)
 
 void parse_mtu(void)
 {
-	__xdata uint16_t mtu;
 	uint8_t p, ret;
 
 	if (cmd_compare(1, "show")) {
 		for (p = machine.min_port; p <= machine.max_port; p++) {
 			reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8));
-			mtu = SFR_DATA_U16 & 0x3fff;
+			uint16_t mtu = SFR_DATA_U16 & 0x3fff;
 			print_string("Port "); print_byte(machine.log_to_phys_port[p]);
 			write_char(' '); print_short(mtu); write_char('\n');
 		}
 		return;
 	}
-	if (cmd_words_len != 3 || cmd_buffer[cmd_words_b[1]] < '1'
-	    || cmd_buffer[cmd_words_b[1]] > '9'
-	    || cmd_buffer[cmd_words_b[1] + 1] > ' ') {
-		print_string("mtu [port] [size]\n");
-		return;
-	}
-	p = machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'];
+	if (cmd_words_len != 3)
+		goto err;
+
+	if (cmd_parse_port_space(cmd_words_b[1], false) == 0)
+		goto err;
+
+	p = atoi_results_u8;
 	print_byte(p);
 
 	ret = atoi_short(cmd_words_b[2]);
@@ -843,6 +807,11 @@ void parse_mtu(void)
 	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (atoi_results_short >> 10) & 0xf, (atoi_results_short >> 2) & 0xff,
 		  ((atoi_results_short & 0x3) << 6) | ((atoi_results_short >> 8) & 0x3f), atoi_results_short & 0xff);
 	write_char('\n');
+	return;
+
+err:
+	print_string("mtu [port] [size]\n");
+	return;
 }
 
 void sfp_print_measurements(uint8_t sfp)
@@ -886,7 +855,7 @@ void parse_sfp(void)
 	uint8_t ret = atoi_byte(idx);
 	idx += ret;
 	slot = atoi_results_u8 - 1;
-	if (ret == 0 || cmd_buffer[idx] != ' ' || slot > 1) {
+	if (ret == 0 || !cmd_is_space(idx) || slot > 1) {
 		print_string("Illegal SFP slot number\n");
 		return;
 	}
@@ -1266,8 +1235,11 @@ void parse_eee(void)
 			speed_word = 2;
 		} else if (cmd_buffer[idx] == ' ' || cmd_buffer[idx] == '\0') {
 			// Word 2 is a port number
-			port = cmd_buffer[cmd_words_b[2]] - '1';
-			port = machine.phys_to_log_port[port];
+			if (cmd_parse_port_space(idx, false) == 0) {
+				print_string("Speed word invalid, use: [100m|1g|2g5]\n");
+				return;
+			}
+			port = atoi_results_u8;
 			// Check if word 3 is a speed
 			if (cmd_words_len >= 4)
 				speed_word = 3;
@@ -1310,17 +1282,15 @@ void parse_eee(void)
 
 void parse_bw(void)
 {
-	__xdata uint8_t port;
+	uint8_t port;
 	__xdata uint32_t bw = 0;
 
 	if (cmd_words_len < 2) // Check for at least 2 arguments
 		goto err;
 
-	port = cmd_buffer[cmd_words_b[2]] - '1';
-	if (port > 9)
+	if (cmd_parse_port_space(cmd_words_b[2], false) == 0)
 		goto err;
-
-	port = machine.phys_to_log_port[port];
+	port = atoi_results_u8;
 
 	if (cmd_compare(1, "status")) {
 		bandwidth_status(port);
@@ -1677,12 +1647,9 @@ void cmd_parser(void) __banked
 				stpEnabled = 0;
 			}
 		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
-			uint8_t ret;
-			if (cmd_buffer[cmd_words_b[1]] >= '1'
-			    && cmd_buffer[cmd_words_b[1]] <= '9'
-			    && cmd_buffer[cmd_words_b[1] + 1] <= ' '
+			if (cmd_parse_port_space(cmd_words_b[1], false) != 0 && atoi_results_u8
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
-				port_pvid_set(machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'], atoi_results_short);
+				port_pvid_set(atoi_results_u8, atoi_results_short);
 			else
 				print_string("Error: pvid <port> <1-4094>\n");
 		} else if (cmd_compare(0, "vlan")) {
