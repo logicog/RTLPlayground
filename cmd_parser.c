@@ -355,11 +355,16 @@ void parse_vlan(void)
 	vlan_settings.vlan = 0;
 	vlan_settings.members = 0;
 	vlan_settings.tagged = 0;
+
 	if (cmd_words_len < 2)
 		goto err;
-	if (!atoi_short(&vlan_settings.vlan, cmd_words_b[1])) {
+
+	uint8_t ret = atoi_short(cmd_words_b[1]);
+	if (ret) {
 		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
-			vlan_delete(vlan_settings.vlan);
+			if (atoi_results_short > 4094)
+				goto err;
+			vlan_delete(atoi_results_short);
 			return;
 		}
 		if (cmd_compare(2, "mgmt")) {
@@ -376,7 +381,7 @@ void parse_vlan(void)
 			goto err;
 		uint8_t w = 2;
 		if (cmd_words_len > w && isletter(cmd_buffer[cmd_words_b[w]])) {
-			register uint8_t i = 0;
+			uint8_t i = 0;
 			vlan_name_remove(vlan_settings.vlan);
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 8) & 0xf];
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 4) & 0xf] ;
@@ -737,7 +742,7 @@ void parse_port(void)
 void parse_mtu(void)
 {
 	__xdata uint16_t mtu;
-	uint8_t p;
+	uint8_t p, ret;
 
 	if (cmd_compare(1, "show")) {
 		for (p = machine.min_port; p <= machine.max_port; p++) {
@@ -756,12 +761,15 @@ void parse_mtu(void)
 	}
 	p = machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'];
 	print_byte(p);
-	if (atoi_short(&mtu, cmd_words_b[2]) || mtu < 64 || mtu > 0x3fff) {
+
+	ret = atoi_short(cmd_words_b[2]);
+
+	if (!ret || atoi_results_short < 64 || atoi_results_short > 0x3fff) {
 		print_string("MTU must be 64..16383\n");
 		return;
 	}
-	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (mtu >> 10) & 0xf, (mtu >> 2) & 0xff,
-		  ((mtu & 0x3) << 6) | ((mtu >> 8) & 0x3f), mtu & 0xff);
+	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (atoi_results_short >> 10) & 0xf, (atoi_results_short >> 2) & 0xff,
+		  ((atoi_results_short & 0x3) << 6) | ((atoi_results_short >> 8) & 0x3f), atoi_results_short & 0xff);
 	write_char('\n');
 }
 
@@ -1586,12 +1594,12 @@ void cmd_parser(void) __banked
 				stpEnabled = 0;
 			}
 		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
-			__xdata uint16_t pvid;
+			uint8_t ret;
 			if (cmd_buffer[cmd_words_b[1]] >= '1'
 			    && cmd_buffer[cmd_words_b[1]] <= '9'
 			    && cmd_buffer[cmd_words_b[1] + 1] <= ' '
-			    && !atoi_short(&pvid, cmd_words_b[2]) && pvid && pvid <= 4094)
-				port_pvid_set(machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'], pvid);
+			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
+				port_pvid_set(machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'], atoi_results_short);
 			else
 				print_string("Error: pvid <port> <1-4094>\n");
 		} else if (cmd_compare(0, "vlan")) {
