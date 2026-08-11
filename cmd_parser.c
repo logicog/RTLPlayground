@@ -80,6 +80,8 @@ __xdata uint16_t cmd_history_ptr;
 // Error set by commands
 __xdata uint8_t err_status;
 
+__xdata uint16_t atoi_results_short;
+
 inline uint8_t isletter(uint8_t l)
 {
 	// return (l >= 'a' && l <= 'z') || (l >= 'A' && l <= 'Z');
@@ -203,22 +205,26 @@ uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 	return err;
 }
 
-
-uint8_t atoi_short(__xdata uint16_t *vlan, uint8_t idx)
+// return 0 on error or non-zero number of number-byte taken for the conversion.
+// Stops at any non-digit '0'-'9' char or bytes is more then 5.
+uint8_t atoi_short(uint8_t idx)
 {
-	uint8_t err = 1;
-	*vlan = 0;
+	uint8_t cnt = 0;
+	atoi_results_short = 0;
 
-	while (isnumber(cmd_buffer[idx])) {
-		err = 0;
-		uint8_t val = cmd_buffer[idx] - '0';
-		if (*vlan > 6553 || (*vlan == 6553 && val > 5))
-			return 1;
-		*vlan = (*vlan * 10) + val;
-		idx++;
+	uint8_t *ptr = &cmd_buffer[idx];
+
+	while (1) {
+		uint8_t val = *ptr++ - '0';
+		if (val > 9)
+			break;
+		if (atoi_results_short > 6553 || (atoi_results_short == 6553 && val > 5) || cnt >= 5)
+			return 0;
+		atoi_results_short = (atoi_results_short * 10) + val;
+		cnt++;
 	}
 
-	return err;
+	return cnt;
 }
 
 
