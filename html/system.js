@@ -35,14 +35,19 @@ async function ipSub() {
 }
 
 async function cmdSub() {
-  var cmd = document.getElementById('console_cmd').value;
+  const input = document.getElementById('console_cmd');
+  const out = document.getElementById('console_out');
+  const cmd = input.value;
   try {
     const response = await fetch('/cmd', {
       method: 'POST',
       body: cmd
     });
-    console.log('Completed!', response);
+    out.textContent += "> " + cmd + "\n" + await response.text();
+    out.scrollTop = out.scrollHeight;
+    input.value = "";
   } catch(err) {
+      out.textContent += "> " + cmd + "\n" + err + "\n";
       console.error(`Error: ${err}`);
   }
 }
