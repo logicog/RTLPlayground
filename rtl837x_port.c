@@ -28,8 +28,6 @@ extern __xdata struct machine_runtime machine_detected;
 
 __xdata	uint32_t l2_head;
 
-__xdata uint8_t l2mc_guard;
-
 __xdata struct vlan_settings vlan_settings;
 
 void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
@@ -324,10 +322,9 @@ void port_l2_forget_port(uint8_t port) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);	/* port-based, dynamic entries */
 	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (((uint16_t)1) << port));
 
-	l2mc_guard = 0;
 	do {
 		reg_read_m(RTL837x_L2_TBL_FLUSH_CTRL);
-	} while (sfr_data[1] && ++l2mc_guard);
+	} while (sfr_data[1]);
 }
 
 
@@ -426,19 +423,17 @@ void port_l2_learned(void) __banked
 
 void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
 {
-	l2mc_guard = 0;
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
-	} while ((sfr_data[3] & TBL_EXECUTE) && ++l2mc_guard);
+	} while (sfr_data[3] & TBL_EXECUTE);
 
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0xc2, 0x00, 0x00, mac_last);
 	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | (vid >> 8) | ((pmask & 0x3) << 6), vid, 0x01, 0x80);
 	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0, 0, 0, pmask >> 2);
 	REG_WRITE(RTL837X_TBL_CTRL, 0, 0, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
-	l2mc_guard = 0;
 	do {
 		reg_read_m(RTL837X_TBL_CTRL);
-	} while ((sfr_data[3] & TBL_EXECUTE) && ++l2mc_guard);
+	} while (sfr_data[3] & TBL_EXECUTE);
 }
 
 
