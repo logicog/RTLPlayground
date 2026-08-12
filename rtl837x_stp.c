@@ -34,6 +34,7 @@ extern __xdata uint16_t management_vlan;	/* owned by rtlplayground.c; suppressed
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_words_len;
 extern __xdata uint8_t cmd_words_b[15];
+extern __xdata char save_cmd;		/* 0 while execute_config() replays the saved config */
 uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd);
 uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx);
 
@@ -741,7 +742,7 @@ void stp_parse(void) __banked __reentrant
 		print_string("STP enabled\n");
 		stp_failsafe_tripped = 0;
 		stp_failsafe_cnt = stp_failsafe_s;
-		stp_failsafe_armed = stp_failsafe_s ? 1 : 0;
+		stp_failsafe_armed = (stp_failsafe_s && save_cmd) ? 1 : 0;
 		mgmt_alive = 0;
 		stpEnabled = 1;
 		stp_setup();
@@ -775,7 +776,7 @@ void stp_parse(void) __banked __reentrant
 			if (stpEnabled) {	/* (re)join: listen first */
 				stp_state_set(port, 0b01);
 				port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
-				if (stp_failsafe_s) {
+				if (stp_failsafe_s && save_cmd) {
 					stp_failsafe_armed = 1;
 					stp_failsafe_cnt = stp_failsafe_s;
 					mgmt_alive = 0;
@@ -885,7 +886,7 @@ void stp_parse(void) __banked __reentrant
 		/* 0 never arms; otherwise the length of the armed window */
 		stp_failsafe_s = stp_scratch;
 		stp_failsafe_cnt = stp_scratch;
-		stp_failsafe_armed = (stp_scratch && stpEnabled) ? 1 : 0;
+		stp_failsafe_armed = (stp_scratch && stpEnabled && save_cmd) ? 1 : 0;
 		mgmt_alive = 0;
 	} else {
 		goto err;
