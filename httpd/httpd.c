@@ -21,6 +21,7 @@
 
 extern volatile __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
+extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char() */
 extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
@@ -625,12 +626,15 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 
 static void run_cmd_body(__xdata uint8_t *body)
 {
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n" \
+			      "Content-Type: text/plain\r\n\r\n");
+	cmd_capture = 1;
 	execute_commands(body);
+	cmd_capture = 0;
 	if (err_status != ERR_OK) {
 		send_bad_request();
 		return;
 	}
-	send_ok();
 }
 
 
