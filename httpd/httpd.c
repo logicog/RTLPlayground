@@ -640,7 +640,7 @@ void httpd_appcall(void)
 		p += 4;
 		scan_header(p);
 		__xdata uint8_t *q = p;
-		while (!is_separator(*p))
+		while (*p && !is_separator(*p))
 			p++;
 		*p = '\0';
 		dbg_string_x(q);
