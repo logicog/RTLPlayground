@@ -41,7 +41,7 @@ function num(id, min, max, onch) {
 function buildPortsTable(ports) {
   const tbl = document.getElementById("stpPortsTbl");
   const stat = document.getElementById("stpStatTbl");
-  for (const p of ports) {
+  for (const p of [...ports].sort((a, b) => a.p - b.p)) {
     const tr = tbl.insertRow();
     tr.insertCell().textContent = p.p;                     // Port
     tr.insertCell().appendChild(sel("en_" + p.p,
@@ -81,6 +81,10 @@ function buildPortsTable(ports) {
   stpRows = ports.length;
 }
 
+function bridgeSelf(s) {
+  return fmtBridgeId((s.prio * 4096).toString(16).padStart(4, "0") + s.myMac);
+}
+
 function fmtBridgeId(h) {
   if (!h || h.length < 16) return "";
   const prio = parseInt(h.slice(0, 4), 16);
@@ -99,9 +103,11 @@ function fetchStp() {
         ? "\u26a0 STP was disabled by the management failsafe (ports were blocked while management was unreachable). Review the topology before re-enabling."
         : s.on
         ? (s.weRoot
-            ? "This switch is the root bridge (priority 0x" + s.rootPrio + ") — topology changes: " + parseInt(s.tc, 16)
-            : "Root bridge: 0x" + s.rootPrio + " / " + s.rootMac
-              + " via port " + s.rootPort + " — path cost: 0x" + s.cost
+            ? "This switch (" + bridgeSelf(s) + ") is the root bridge — topology changes: "
+              + parseInt(s.tc, 16)
+            : "This switch: " + bridgeSelf(s)
+              + " — root bridge: " + fmtBridgeId(s.rootPrio + s.rootMac)
+              + " via port " + s.rootPort + " — path cost: " + parseInt(s.cost, 16)
               + " — topology changes: " + parseInt(s.tc, 16))
         : "";
       for (const p of s.ports) {
@@ -147,6 +153,11 @@ function fetchStp() {
 
 async function stpSub() {
   const on = document.getElementById("stpMode").value === "on";
+  document.getElementById("stpStat").textContent = on
+    ? "Enabling STP. The ports start blocked and take up to "
+      + (2 * document.getElementById("bFwd").value)
+      + " s to reach forwarding, and this page can stay silent until they do."
+    : "Disabling STP.";
   await stpCmd(on ? "stp on" : "stp off");
 }
 
