@@ -234,6 +234,12 @@ void isr_serial(void) __interrupt(4)
 }
 
 
+/* Set by the httpd while it runs a command that arrived over the network, so
+ * that everything the command prints lands in the response as well. */
+__xdata uint8_t cmd_capture;
+extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
+extern __xdata uint16_t slen;
+
 void write_char_no_syslog(char c)
 {
 	do {
@@ -250,6 +256,9 @@ void write_char_no_syslog(char c)
 
 void write_char(char c)
 {
+	if (cmd_capture && slen < TCP_OUTBUF_SIZE - 1)
+		outbuf[slen++] = c;
+
 	write_char_no_syslog(c);
 
 	if (syslog_state.enabled) {
