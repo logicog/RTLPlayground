@@ -635,7 +635,7 @@ void send_stp(void)
 		itoa_html(stp_pp2p[pi_i]);
 		/* designated info: a freshly heard BPDU wins, else we are the
 		 * segment's designated bridge and report our own values */
-		stp_we_root = stp_dbridge[pi_i].mac[5] && stp_bpdu_age[pi_i] < (uint16_t)stp_maxage_s * STP_HZ;
+		stp_we_root = stp_dpid[pi_i] && stp_bpdu_age[pi_i] < (uint16_t)stp_maxage_s * STP_HZ;
 		slen += strtox(outbuf + slen, ",\"db\":\"");
 		if (stp_we_root) {
 			pi_prio = stp_dbridge[pi_i].prio; pi_ext = stp_dbridge[pi_i].ext;

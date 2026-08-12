@@ -451,6 +451,16 @@ void stp_in(void) __banked
 		return;
 	}
 
+	stp_dbridge[port].prio = STP_I->bridge.prio;
+	stp_dbridge[port].ext = STP_I->bridge.ext;
+	memcpy(stp_dbridge[port].mac, STP_I->bridge.mac, 6);
+	stp_dpid[port] = ((uint16_t)STP_I->port_prio << 8) | STP_I->port_id;
+	stp_cost_scratch = STP_I->root_path_cost;
+	stp_dcost[port] = ((stp_cost_scratch & 0xff) << 24)
+			| ((stp_cost_scratch & 0xff00) << 8)
+			| ((stp_cost_scratch >> 8) & 0xff00)
+			| (stp_cost_scratch >> 24);
+
 	/* Better root than the one we know? */
 	if (STP_I->root.prio < root_bridge.prio
 		|| ((STP_I->root.prio == root_bridge.prio) && cmpMAC(STP_I->root.mac, root_bridge.mac) < 0)) {
@@ -480,13 +490,7 @@ void stp_in(void) __banked
 		/* Age of the information we now hold (see the TX note on the wire
 		 * format); saturate rather than wrap on absurd input. */
 		stp_msg_age = (STP_I->age > 254) ? 254 : (uint8_t)STP_I->age;
-		stp_cost_scratch = STP_I->root_path_cost;
-		/* big-endian on the wire */
-		root_bridge_cost = ((stp_cost_scratch & 0xff) << 24)
-		                 | ((stp_cost_scratch & 0xff00) << 8)
-		                 | ((stp_cost_scratch >> 8) & 0xff00)
-		                 | (stp_cost_scratch >> 24);
-		root_bridge_cost += PCOST(port);
+		root_bridge_cost = stp_dcost[port] + PCOST(port);
 	}
 	}
 }
