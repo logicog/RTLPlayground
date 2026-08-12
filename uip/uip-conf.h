@@ -118,6 +118,13 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_BUFFER_SIZE     1556
 
 /**
+ * Bytes of the buffer kept out of the advertised MSS.
+ *
+ * \hideinitializer
+ */
+#define UIP_CONF_BUFFER_EXTRA    30
+
+/**
  * CPU byte order.
  *
  * \hideinitializer

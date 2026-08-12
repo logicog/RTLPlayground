@@ -298,13 +298,8 @@
 
 /**
  * The TCP maximum segment size.
- *
- * Deliberately a step below the buffer-derived ceiling, not at it: a segment
- * that fills uip_buf to its last byte corrupts large uploads. Measured with
- * nothing but the segment size changing, 1490 fails four times out of four and
- * 1460 succeeds.
  */
-#define UIP_TCP_MSS     1460
+#define UIP_TCP_MSS     (UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN - UIP_BUFFER_EXTRA)
 
 /**
  * The size of the advertised receiver's window.
@@ -382,6 +377,17 @@
 #else /* UIP_CONF_BUFFER_SIZE */
 #define UIP_BUFSIZE UIP_CONF_BUFFER_SIZE
 #endif /* UIP_CONF_BUFFER_SIZE */
+
+/**
+ * Bytes of uip_buf kept out of the advertised MSS.
+ *
+ * \hideinitializer
+ */
+#ifndef UIP_CONF_BUFFER_EXTRA
+#define UIP_BUFFER_EXTRA 0
+#else /* UIP_CONF_BUFFER_EXTRA */
+#define UIP_BUFFER_EXTRA UIP_CONF_BUFFER_EXTRA
+#endif /* UIP_CONF_BUFFER_EXTRA */
 
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
