@@ -40,21 +40,24 @@ void cmd_edit(void) __banked
 {
 	while (l != sbuf_ptr) {
 		if (sbuf[l] >= ' ' && sbuf[l] < 127) { // A printable character, copy to command line
-			if (cmd_line_len >= CMD_BUF_SIZE)
-				continue;
-			write_char(sbuf[l]);
-			// Shift buffer to right
-			for (uint8_t i = cmd_line_len; i > cursor; i--)
-				cmd_buffer[i] = cmd_buffer[i-1];
-			// Insert char in comand buffer
-			cmd_buffer[cursor++] = sbuf[l];
-			cmd_line_len++;
-			// Print rest of line
-			for (uint8_t i = cursor; i < cmd_line_len; i++)
-				write_char(cmd_buffer[i]);
-			// Move backwards
-			for (uint8_t i = cursor; i < cmd_line_len; i++)
-				write_char('\010'); // BS works like cursor-left
+			// Reserve one byte for the terminating NUL written on Enter. When the
+			// line is full, drop the character but still fall through to advance the
+			// serial-ring read pointer below; a 'continue' here would spin forever.
+			if (cmd_line_len < CMD_BUF_SIZE - 1) {
+				write_char(sbuf[l]);
+				// Shift buffer to right
+				for (uint8_t i = cmd_line_len; i > cursor; i--)
+					cmd_buffer[i] = cmd_buffer[i-1];
+				// Insert char in comand buffer
+				cmd_buffer[cursor++] = sbuf[l];
+				cmd_line_len++;
+				// Print rest of line
+				for (uint8_t i = cursor; i < cmd_line_len; i++)
+					write_char(cmd_buffer[i]);
+				// Move backwards
+				for (uint8_t i = cursor; i < cmd_line_len; i++)
+					write_char('\010'); // BS works like cursor-left
+			}
 		} else if (sbuf[l] == '\033') { // ESC-Sequence
 			// Wait until we have at least 3 characters including the ESC character in the serial buffer
 			if (((sbuf_ptr + SBUF_SIZE - l) & SBUF_MASK) < 3)
