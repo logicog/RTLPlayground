@@ -444,6 +444,87 @@ __code const struct machine machine = {
 };
 
 void machine_custom_init(void) { }
+
+#elif defined MACHINE_PCB_SWTG018AS_V2_1_0 // Sold as Sodola SL902 / Horaco "SWTGW218AS"; the SWTGW218AS label also covers other PCBs with different SFP and LED wiring (see MACHINE_SWTGW218AS)
+
+__code const struct machine machine = {
+	.machine_name = "SWTGW218AS (SWTG018AS-V2.1.0)",
+	.isRTL8373 = 1,
+	.mac_flash_offset = 0x1FC000,
+	.min_port = 0,
+	.max_port = 8,
+	.n_sfp = 1,
+	.log_to_phys_port = {1, 2, 3, 4, 5, 6, 7, 8, 9},
+	.phys_to_log_port = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.sfp_port[0].pin_detect = GPIO38,   // pulled low on module insert
+	.sfp_port[0].pin_los = GPIO_NA,     // no LOS pin wired
+	.sfp_port[0].pin_tx_disable = GPIO_NA,
+	.sfp_port[0].sds = 1,
+	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO54_ACL_BIT2_EN,
+	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
+	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
+	// LED wiring matches the SWTG018AS-A V2.0 (same PCB family)
+	.led_sets = {
+		{   /* RJ45: First LED, yellow, second LED: green */
+			LEDS_2G5 | LEDS_LINK,
+			LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+			0,
+			0,
+		}, { /* SFP set (superseded by the raw register override in machine_custom_init) */
+			LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
+			0,
+			0,
+			0,
+		}},
+	.led_mux_custom = 1,
+	.led_mux = { 0x00, 0x01, 0x04, 0x05, 0x08, // 65e0
+		     0x09, 0x0c, 0x09, 0x0d, 0x10, // 65e4
+		     0x11, 0x0e, 0x14, 0x11, 0x12, // 65e8
+		     0x15, 0x15, 0x16, 0x18, 0x19, // 65ec
+		     0x1a, 0x19, 0x1d, 0x1e, 0x1c, // 65f0
+		     0x1d, 0x20, 0x21 },
+};
+
+// The LED-set encoding cannot express this board's bi-color SFP LED (green <= 2.5G,
+// blue at 10G), so program the LED register block with the values the stock firmware
+// uses. Runs after leds_setup() and overrides the values computed there.
+// The final entry routes the blue-LED pin to the LED controller via PIN_MUX_0;
+// as a GPIO (the default) no LED register can light it. PIN_MUX_1/2 stay
+// untouched so SFP detect (GPIO38) and i2c remain GPIOs.
+static __code const struct { uint16_t reg; uint32_t val; } custom_init_regs[] = {
+	{ 0x6520, 0x0023e430UL },   // LED_MODE
+	{ 0x6524, 0xff001400UL },   // LED3_0_SET3
+	{ 0x6528, 0x00100000UL },   // LED3_0_SET1
+	{ 0x652c, 0x007f013fUL },   // LED3_2_SET3
+	{ 0x6530, 0x02000400UL },   // LED1_0_SET3
+	{ 0x6534, 0x01400141UL },   // LED3_2_SET2
+	{ 0x6538, 0x01440170UL },   // LED1_0_SET2
+	{ 0x653c, 0x18000041UL },   // LED3_2_SET1
+	{ 0x6540, 0x01400155UL },   // LED1_0_SET1
+	{ 0x6544, 0x01411000UL },   // LED3_2_SET0
+	{ 0x6548, 0x01740141UL },   // LED1_0_SET0
+	{ 0x654c, 0x00010000UL },   // LED_PORT_SET_SEL
+	{ 0x65d8, 0x3ffb6dffUL },   // LED_GLB_ACTIVE
+	{ 0x65dc, 0x7f24977fUL },   // LED_GLB_IO_EN
+	{ 0x65e0, 0x08144040UL },   // LED_GLB_MUX_1
+	{ 0x65e4, 0x10349309UL },   // LED_GLB_MUX_2
+	{ 0x65e8, 0x12454391UL },   // LED_GLB_MUX_3
+	{ 0x65ec, 0x19616555UL },   // LED_GLB_MUX_4
+	{ 0x65f0, 0x1c79d65aUL },   // LED_GLB_MUX_5
+	{ 0x65f4, 0x0002181dUL },   // LED_GLB_MUX_6
+	{ 0x7f8c, 0x20db6880UL },   // PIN_MUX_0
+};
+
+void machine_custom_init(void) {
+	uint8_t i;
+	// REG_SET is a multi-statement macro without a do-while wrapper: braces required
+	for (i = 0; i < sizeof(custom_init_regs) / sizeof(custom_init_regs[0]); i++) {
+		REG_SET(custom_init_regs[i].reg, custom_init_regs[i].val);
+	}
+}
+
 #elif defined MACHINE_LIANGUO_ZX_SWTGW215AS // Has PCB branded PCB-SWTG115AS-V2.0 but is labeled and reports as a ZX-SWTGW215AS, seems to be identical to the "real" ZX-SWTGW215AS except for the LEDs
 __code const struct machine machine = {
 	.machine_name = "Lianguo ZX-SWTGW215AS",
