@@ -22,6 +22,7 @@ function createPortTable() {
       let portName = portNames[physToLogPort[i-1]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
       td = tr.insertCell(); td.innerHTML = linkText(pState[i] + 1);
+      tr.insertCell(); // filled by devRender()
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
       td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
 						  .replace("portOnOff()", "portOnOff(" + i + ")");
@@ -117,6 +118,46 @@ async function applyMTU(port) {
   }
 }
 
+function devRender(entries) {
+  var tbl = document.getElementById('speedtable');
+  if (tbl.rows.length <= 2 || !numPorts)
+    return;
+  var perPort = {};
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i];
+    if (e.port == 'CPU')
+      continue;
+    if (!perPort[e.port])
+      perPort[e.port] = [];
+    if (perPort[e.port].indexOf(e.mac) < 0)
+      perPort[e.port].push(e.mac);
+  }
+  for (let i = 1; i <= numPorts; i++) {
+    if (pIsSFP[i-1])
+      continue;
+    var cell = tbl.rows[i].cells[3];
+    var macs = perPort[i] || [];
+    if (macs.length == 1) {
+      cell.textContent = macs[0];
+      cell.title = '';
+    } else if (macs.length > 1) {
+      cell.textContent = macs.length + ' ' + t('port_devices');
+      cell.title = macs.join('\n');
+    } else {
+      cell.textContent = '';
+      cell.title = '';
+    }
+  }
+}
+
+function devWalk() {
+  walkL2(function(entries, ok) {
+    if (ok)
+      devRender(entries);
+    setTimeout(devWalk, 15000);
+  });
+}
+
 function getMTUs() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -143,6 +184,7 @@ window.addEventListener("load", function() {
     createPortTable();
     updatePortTable();
     getMTUs()
+    setTimeout(devWalk, 3000);
     const interval = setInterval(update, 2000);
     const updatePortTableInterval = setInterval(updatePortTable, 1000);
   });
