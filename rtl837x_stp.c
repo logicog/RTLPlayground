@@ -276,10 +276,6 @@ static void stp_loop_hold_peer(uint8_t port) __reentrant
 		print_string("STP: loop detected, blocking port ");
 		print_port_nl(port);
 		stp_state_set(port, 0b01);
-		if (stp_failsafe_s && !stp_failsafe_armed) {
-			stp_failsafe_armed = 1;
-			stp_failsafe_cnt = stp_failsafe_s;
-		}
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		stp_topology_change(port);
 	}
@@ -536,10 +532,6 @@ void stp_in(void) __banked
 			print_string("STP: root guard blocking port ");
 			print_port_nl(port);
 			stp_state_set(port, 0b01);
-			if (stp_failsafe_s && !stp_failsafe_armed) {
-				stp_failsafe_armed = 1;
-				stp_failsafe_cnt = stp_failsafe_s;
-			}
 			port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
 			stp_pflags[port] &= ~STP_PF_OPEREDGE;
 			return;
