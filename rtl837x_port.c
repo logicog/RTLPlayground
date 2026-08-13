@@ -757,11 +757,14 @@ void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banke
 {
 	print_string("port_lag_members_set, lag: "); print_byte(lag); print_string(", members: "); print_short(members);
 	write_char('\n');
-	if (lag > 3)
+	if (lag > 3) {
 		print_string("Link aggregation group must be 0-3!\n");
+		return;
+	}
 	reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2));
-	if (!(sfr_data[0] | sfr_data [1] | sfr_data [2] | sfr_data [3]))
-		REG_SET(RTL837X_TRK_HASH_CTRL_BASE, LAG_HASH_DEFAULT);
+	if (!(sfr_data[0] | sfr_data[1] | sfr_data[2])
+	    && (sfr_data[3] == LAG_HASH_RESET || sfr_data[3] == 0))
+		REG_SET(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2), LAG_HASH_DEFAULT);
 	REG_WRITE(RTL837X_TRK_MBR_CTRL_BASE + (lag << 2), 0, 0, members >> 8, members & 0xff);
 }
 
