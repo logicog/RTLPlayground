@@ -242,6 +242,17 @@ extern __xdata uint16_t slen;
 
 void write_char_no_syslog(char c)
 {
+	/* Capturing sits here rather than in write_char() so that the messages
+	 * printed through print_string_no_syslog() are captured too: those are
+	 * the replies of the syslog commands, which must not generate a syslog
+	 * packet but do belong in the answer to a command sent over HTTP. */
+	if (cmd_capture) {
+		if (slen < TCP_OUTBUF_SIZE - sizeof(CMD_TRUNCATED))
+			outbuf[slen++] = c;
+		else
+			cmd_capture = 2;	/* out of room, httpd says so */
+	}
+
 	do {
 	} while (tx_buf_empty == 0);
 	if (c =='\n') {
@@ -256,9 +267,6 @@ void write_char_no_syslog(char c)
 
 void write_char(char c)
 {
-	if (cmd_capture && slen < TCP_OUTBUF_SIZE - 1)
-		outbuf[slen++] = c;
-
 	write_char_no_syslog(c);
 
 	if (syslog_state.enabled) {
