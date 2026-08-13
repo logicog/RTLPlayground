@@ -92,11 +92,10 @@ html_data.c html_data.h: $(HTML) tools/output/fileadder
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
-	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
-	@echo "#define VERSION_H" >> $(VERSION_HEADER)
-	@echo "#define VERSION_SW \"$(VERSION_EXTENSION)\"" >> $(VERSION_HEADER)
-	@echo "#define BUILD_DATE \"$(BUILD_DATE)\"" >> $(VERSION_HEADER)
-	@echo "#endif" >> $(VERSION_HEADER)
+	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
+		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
+		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
+		"#endif" > $(VERSION_HEADER)
 
 httpd: html_data.h
 
