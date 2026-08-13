@@ -96,11 +96,6 @@ void igmp_setup(void) __banked
 	// Enable lookup of IPv4 MC addresses in table
 	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
 
-	// Configure per-port IGMP configuration, bits 0-10 enable MC protocol snooping,
-	// bits 16-24 configure max MC group used by that port. For now all protocols are flooded (01)
-	for (i = machine.min_port; i <= machine.max_port; i++)
-		REG_SET(RTL837X_IGMP_PORT_CFG + (i << 2), 0x00ff7c15); 
-
 	/* Configure per-port IGMP operations when protocol messages are received
 	 * bits 0-9 enable MC protocol snooping
 	 * bit 10: Enable dynamic router port learning
