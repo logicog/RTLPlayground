@@ -43,7 +43,16 @@ async function cmdSub() {
       method: 'POST',
       body: cmd
     });
-    out.textContent += "> " + cmd + "\n" + await response.text();
+    if (response.status == 401) {
+      window.location.href = 'login.html';
+      return;
+    }
+    let text = await response.text();
+    if (text != "" && !text.endsWith("\n"))
+      text += "\n";
+    if (out.textContent.length > 20000)
+      out.textContent = out.textContent.slice(-16000);
+    out.textContent += "> " + cmd + "\n" + text;
     out.scrollTop = out.scrollHeight;
     input.value = "";
   } catch(err) {
