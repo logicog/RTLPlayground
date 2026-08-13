@@ -16,6 +16,7 @@
 #include "machine.h"
 
 extern __code struct machine machine;
+extern __xdata uint8_t igmpEnabled;
 
 #include "uip.h"
 
@@ -85,6 +86,7 @@ void igmp_setup(void) __banked
 {
 	uint8_t i;
 	print_string("igmp_setup called\n");
+	igmpEnabled = 0;
 	// For now, forward all unkown IP-MC pkts (2 bits per port. 00: flood via floodmask, 01: drop, 10: trap, 11: to rport)
 	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
 	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
@@ -130,6 +132,7 @@ void igmp_setup(void) __banked
 void igmp_enable(void) __banked
 {
 	print_string("igmp_enable called\n");
+	igmpEnabled = 1;
 	// Configure trapping of unhandled IGMP protocol packets to CPU
 	REG_SET(RTL837X_IGMP_TRAP_CFG, IGMP_CPU_PORT | IGMP_TRAP_PRIORITY);
 

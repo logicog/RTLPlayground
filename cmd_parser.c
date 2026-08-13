@@ -1529,10 +1529,12 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "igmp")) {
 			if (cmd_compare(1, "on"))
 				igmp_enable();
+			else if (cmd_compare(1, "off"))
+				igmp_setup();
 			else if (cmd_compare(1, "show"))
 				igmp_show();
 			else
-				igmp_setup();  // Reverts to default with IP-MC being flooded
+				print_string("Error: igmp on|off|show\n");
 		} else if (cmd_compare(0, "hostname")) {
 			/* "hostname" alone reports the current name; "hostname <text>"
 			 * sets it, sanitized to JSON-safe printable ASCII. A name with
