@@ -141,6 +141,22 @@ struct stp_pkt_in {
 #define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 #define STP_I ((__xdata struct stp_pkt_in *)&uip_buf[0])
 
+/* __reentrant so the temporaries land on the stack: stp_in() is __banked and
+ * its locals get exclusive internal RAM, which is what runs out first here. */
+static void stp_record_designated(uint8_t port) __reentrant
+{
+	stp_dbridge[port].prio = STP_I->bridge.prio;
+	stp_dbridge[port].ext = STP_I->bridge.ext;
+	memcpy(stp_dbridge[port].mac, STP_I->bridge.mac, 6);
+	stp_dpid[port] = ((uint16_t)STP_I->port_prio << 8) | STP_I->port_id;
+	stp_cost_scratch = STP_I->root_path_cost;
+	stp_dcost[port] = ((stp_cost_scratch & 0xff) << 24)
+			| ((stp_cost_scratch & 0xff00) << 8)
+			| ((stp_cost_scratch >> 8) & 0xff00)
+			| (stp_cost_scratch >> 24);
+}
+
+
 signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2) __reentrant
 {
 	for (uint8_t i = 0; i < 6; i++) {
@@ -452,15 +468,7 @@ void stp_in(void) __banked
 		return;
 	}
 
-	stp_dbridge[port].prio = STP_I->bridge.prio;
-	stp_dbridge[port].ext = STP_I->bridge.ext;
-	memcpy(stp_dbridge[port].mac, STP_I->bridge.mac, 6);
-	stp_dpid[port] = ((uint16_t)STP_I->port_prio << 8) | STP_I->port_id;
-	stp_cost_scratch = STP_I->root_path_cost;
-	stp_dcost[port] = ((stp_cost_scratch & 0xff) << 24)
-			| ((stp_cost_scratch & 0xff00) << 8)
-			| ((stp_cost_scratch >> 8) & 0xff00)
-			| (stp_cost_scratch >> 24);
+	stp_record_designated(port);
 
 	/* Better root than the one we know? */
 	if (STP_I->root.prio < root_bridge.prio
