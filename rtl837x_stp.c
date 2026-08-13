@@ -141,6 +141,64 @@ struct stp_pkt_in {
 #define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 #define STP_I ((__xdata struct stp_pkt_in *)&uip_buf[0])
 
+/* Console messages name the port on the front panel, not the internal index. */
+static void print_port_nl(uint8_t port) __reentrant
+{
+	print_byte(machine.log_to_phys_port[port]);
+	write_char('\n');
+}
+
+
+static void print_bridge_id(uint8_t prio, uint8_t ext, __xdata uint8_t *mac) __reentrant
+{
+	print_byte(prio); print_byte(ext); write_char('/');
+	for (stp_i = 0; stp_i < 6; stp_i++)
+		print_byte(mac[stp_i]);
+}
+
+
+/* Where you look when the tree is not what you expected. */
+static void stp_status(void)
+{
+	if (!stpEnabled) {
+		print_string("STP off\n");
+		return;
+	}
+	print_string(stp_rstp ? "STP on, RSTP\n" : "STP on, STP\n");
+	print_string("bridge  ");
+	print_bridge_id(stp_prio, 0, uip_ethaddr.addr);
+	print_string("\nroot    ");
+	print_bridge_id(root_bridge.prio, root_bridge.ext, root_bridge.mac);
+	if (stp_root_port == 0xff) {
+		print_string(" (this switch)\n");
+	} else {
+		print_string(" port ");
+		print_byte(machine.log_to_phys_port[stp_root_port]);
+		print_string(" cost ");
+		print_long(root_bridge_cost);
+		write_char('\n');
+	}
+	print_string("changes ");
+	print_short(stp_tc_count);
+	print_string("  failsafe ");
+	itoa(stp_failsafe_s);
+	print_string(stp_failsafe_tripped ? "s TRIPPED\n" : "s\n");
+	print_string("port state role edge\n");
+	reg_read_m(RTL837X_MSTP_STATES);
+	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+		write_char(' ');
+		print_byte(machine.log_to_phys_port[stp_i]);
+		print_string("    ");
+		print_byte((sfr_data[3 - (stp_i >> 2)] >> ((stp_i << 1) & 0x7)) & 0x3);
+		print_string("    ");
+		print_byte(stp_i == stp_root_port ? 1 : 2);
+		print_string("    ");
+		print_byte(stp_pflags[stp_i] & STP_PF_OPEREDGE ? 1 : 0);
+		write_char('\n');
+	}
+}
+
+
 /* __reentrant so the temporaries land on the stack: stp_in() is __banked and
  * its locals get exclusive internal RAM, which is what runs out first here. */
 static void stp_record_designated(uint8_t port) __reentrant
@@ -216,7 +274,7 @@ static void stp_loop_hold_peer(uint8_t port) __reentrant
 		return;
 	if (!port_timers[port]) {		/* not held down yet */
 		print_string("STP: loop detected, blocking port ");
-		print_byte(port); write_char('\n');
+		print_port_nl(port);
 		stp_state_set(port, 0b01);
 		if (stp_failsafe_s && !stp_failsafe_armed) {
 			stp_failsafe_armed = 1;
@@ -395,7 +453,7 @@ void stp_in(void) __banked
 	/* BPDU guard: an edge-facing port must never see a BPDU - shut it down. */
 	if (stp_pflags[port] & STP_PF_BPDUGUARD) {
 		print_string("STP: BPDU guard tripped, disabling port ");
-		print_byte(port); write_char('\n');
+		print_port_nl(port);
 		stp_pflags[port] |= STP_PF_TRIPPED;
 		stp_state_set(port, 0b00);
 		stp_tc_count++;
@@ -476,7 +534,7 @@ void stp_in(void) __banked
 		/* Root guard: this port must never become our path to the root. */
 		if (stp_pflags[port] & STP_PF_ROOTGUARD) {
 			print_string("STP: root guard blocking port ");
-			print_byte(port); write_char('\n');
+			print_port_nl(port);
 			stp_state_set(port, 0b01);
 			if (stp_failsafe_s && !stp_failsafe_armed) {
 				stp_failsafe_armed = 1;
@@ -562,7 +620,7 @@ void stp_timers(void) __banked
 				} else {
 					port_timers[stp_i] = 0;
 					print_string("STP: link down, port blocking ");
-					print_byte(stp_i); write_char('\n');
+					print_port_nl(stp_i);
 					stp_topology_change(stp_i);
 				}
 			}
@@ -597,7 +655,7 @@ void stp_timers(void) __banked
 			if (!--port_timers[stp_i]) {
 				stp_state_set(stp_i, 0b11);
 				print_string("STP: port forwarding ");
-				print_byte(stp_i); write_char('\n');
+				print_port_nl(stp_i);
 				stp_topology_change(stp_i);
 			} else if ((stp_pflags[stp_i] & STP_PF_AUTOEDGE)
 			           && stp_bpdu_age[stp_i] > STP_EDGE_DELAY) {
@@ -607,7 +665,7 @@ void stp_timers(void) __banked
 				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
 				stp_state_set(stp_i, 0b11);
 				print_string("STP: edge port forwarding ");
-				print_byte(stp_i); write_char('\n');
+				print_port_nl(stp_i);
 			}
 		}
 	}
@@ -761,6 +819,10 @@ void stp_parse(void) __banked __reentrant
 		stp_off();
 		stpEnabled = 0;
 		stp_failsafe_armed = 0;
+		return;
+	}
+	if (cmd_compare(1, "status")) {
+		stp_status();
 		return;
 	}
 	if (cmd_words_len < 3)
