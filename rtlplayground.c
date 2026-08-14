@@ -1056,9 +1056,16 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 	// Execute I2C Read
 	reg_bit_set(RTL837X_REG_I2C_CTRL, 0);
 
-	// Wait for execution to finish
+	/* Bound the wait. The bus runs to a module the switch does not control,
+	 * and this is reached from the main loop, so a module holding the clock
+	 * line stops packet handling, STP and the web interface with it. 0xff is
+	 * what the callers already treat as a failed transfer.
+	 */
+	uint16_t tries = 0;
 	do {
 		reg_read_m(RTL837X_REG_I2C_CTRL);
+		if (!++tries)
+			return 0xff;
 	} while (sfr_data[3] & 0x1);
 
 	reg_read_m(RTL837X_REG_I2C_OUT);
