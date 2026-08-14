@@ -529,7 +529,7 @@ err:
 
 void parse_isolate(void)
 {
-	__xdata uint16_t members = 0;
+	uint16_t members = 0;
 
 	if (cmd_words_len < 3)
 		goto err;
@@ -555,7 +555,7 @@ void parse_isolate(void)
 			members >>= 1;
 		}
 		return;
-        }
+    }
 
 	if (cmd_compare(2, "off")) {
 		for (uint8_t i = machine.min_port; i < machine.max_port; i++)
@@ -567,7 +567,10 @@ void parse_isolate(void)
 
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
-		if (cmd_parse_port(cmd_words_b[w++], false) == 0)
+		uint8_t idx = cmd_words_b[w++];
+		uint8_t ret = cmd_parse_port(idx, false);
+		idx += ret;
+		if (ret == 0 || !cmd_is_space_or_null(idx))
 			goto err;
 		uint8_t port = atoi_results_u8;
 		members |= ((uint16_t)1) << port;
