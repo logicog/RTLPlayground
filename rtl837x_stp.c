@@ -46,11 +46,6 @@ __xdata uint8_t  stp_fwddelay_s;
 __xdata uint8_t  stp_rstp;
 __xdata uint8_t  stp_txhold;
 
-__xdata uint8_t  stp_failsafe_s;
-__xdata uint8_t  stp_failsafe_cnt;	/* seconds left of the armed window */
-__xdata uint8_t  stp_failsafe_armed;
-__xdata uint8_t  stp_failsafe_tripped;
-extern volatile __xdata uint8_t mgmt_alive;	/* set by httpd on any request */
 
 __xdata uint8_t  stp_pflags[10];
 __xdata uint32_t stp_pcost[10];
@@ -180,9 +175,7 @@ static void stp_status(void)
 	}
 	print_string("changes ");
 	print_short(stp_tc_count);
-	print_string("  failsafe ");
-	itoa(stp_failsafe_s);
-	print_string(stp_failsafe_tripped ? "s TRIPPED\n" : "s\n");
+	write_char('\n');
 	print_string("port state role edge\n");
 	reg_read_m(RTL837X_MSTP_STATES);
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
@@ -563,29 +556,6 @@ void stp_timers(void) __banked
 		for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
 			stp_tx_budget[stp_i] = stp_txhold;
 
-		/* Management failsafe: armed as a one-shot window by "stp on".
-		 * The first HTTP request inside the window proves management
-		 * survived the new tree and disarms it; a silent window disables
-		 * STP. Deliberately NOT conditioned on our own MSTP states:
-		 * hardware incident 2026-07-21 showed a NEIGHBOR (TP-Link Easy
-		 * Smart loop prevention) cutting our uplink in reaction to our
-		 * BPDUs while our ASIC was all-forwarding - only going fully
-		 * quiet (no BPDU TX) lets such a neighbor recover. */
-		if (stp_failsafe_armed) {
-			if (mgmt_alive) {
-				stp_failsafe_armed = 0;
-				print_string("STP failsafe: management confirmed - disarmed\n");
-			} else if (--stp_failsafe_cnt == 0) {
-				print_string("STP failsafe: no management activity - disabling STP\n");
-				stp_failsafe_armed = 0;
-				stp_off();
-				stpEnabled = 0;
-				stp_failsafe_tripped = 1;
-				return;
-			}
-		}
-		mgmt_alive = 0;
-
 		/* Link supervision. Without this the state machine never learns
 		 * that a port lost carrier: it keeps the port in forwarding, keeps
 		 * announcing on it, and never flushes what was learned behind it -
@@ -685,8 +655,6 @@ void stp_defaults(void) __banked
 	stp_fwddelay_s = 15;
 	stp_rstp = 1;
 	stp_txhold = 6;
-	stp_failsafe_s = 180;
-	stp_failsafe_tripped = 0;
 	for (stp_i = 0; stp_i < 10; stp_i++) {
 		/* enabled, auto-edge on: host-facing ports go forwarding after
 		 * 3 s of BPDU silence instead of the full forward delay */
@@ -798,10 +766,6 @@ void stp_parse(void) __banked __reentrant
 {
 	if (cmd_compare(1, "on")) {
 		print_string("STP enabled\n");
-		stp_failsafe_tripped = 0;
-		stp_failsafe_cnt = stp_failsafe_s;
-		stp_failsafe_armed = (stp_failsafe_s && save_cmd) ? 1 : 0;
-		mgmt_alive = 0;
 		stpEnabled = 1;
 		stp_setup();
 		return;
@@ -810,7 +774,6 @@ void stp_parse(void) __banked __reentrant
 		print_string("STP disabled\n");
 		stp_off();
 		stpEnabled = 0;
-		stp_failsafe_armed = 0;
 		return;
 	}
 	if (cmd_compare(1, "status")) {
@@ -838,11 +801,6 @@ void stp_parse(void) __banked __reentrant
 			if (stpEnabled) {	/* (re)join: listen first */
 				stp_state_set(port, 0b01);
 				port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
-				if (stp_failsafe_s && save_cmd) {
-					stp_failsafe_armed = 1;
-					stp_failsafe_cnt = stp_failsafe_s;
-					mgmt_alive = 0;
-				}
 			}
 		} else if (cmd_compare(3, "off")) {
 			stp_pflags[port] &= ~STP_PF_ENABLED;
@@ -944,12 +902,6 @@ void stp_parse(void) __banked __reentrant
 		if (stp_scratch < 1 || stp_scratch > 10)
 			goto err;
 		stp_txhold = stp_scratch;
-	} else if (cmd_compare(1, "failsafe")) {
-		/* 0 never arms; otherwise the length of the armed window */
-		stp_failsafe_s = stp_scratch;
-		stp_failsafe_cnt = stp_scratch;
-		stp_failsafe_armed = (stp_scratch && stpEnabled && save_cmd) ? 1 : 0;
-		mgmt_alive = 0;
 	} else {
 		goto err;
 	}
