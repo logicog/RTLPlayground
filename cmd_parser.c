@@ -283,6 +283,12 @@ __bit cmd_is_space(uint8_t idx) {
 	return cmd_buffer[idx] == ' ';
 }
 
+// check if the cmd_buffer[idx] is a space or null.
+__bit cmd_is_space_or_null(uint8_t idx) {
+	uint8_t c = cmd_buffer[idx];
+	return c == ' ' || c == '\0';
+}
+
 // returns 0 when on parser error or invalid value or no space.
 // return non-zero number of bytes consumed including the space.
 // Stops at a space or NULL.
@@ -598,10 +604,13 @@ void parse_ingress(void)
 	if (cmd_words_len < 2) {
 		goto err;
 	}
-	__xdata uint8_t log_port = 0;
+	uint8_t log_port = 0;
 	__xdata vlan_ingress_mode_t mode = VLAN_INVALID;
+	uint8_t idx = cmd_words_b[1];
 
-	if (vlan_ingress_mode_parse(cmd_buffer[cmd_words_b[1]], &mode)) {
+	if (vlan_ingress_mode_parse(cmd_buffer[idx++], &mode)) {
+		if (!cmd_is_space_or_null(idx))
+			goto err;
 		// Setting mode for all ports at once
 		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
 			if (!port_ingress_filter(log_port, mode)) {
@@ -613,17 +622,17 @@ void parse_ingress(void)
 		}
 	} else {
 		for(uint8_t w = 1; w < cmd_words_len; w++) {
-			uint8_t idx = cmd_words_b[w];
+			idx = cmd_words_b[w];
 			char p = cmd_buffer[idx];
-			uint8_t ret = cmd_parse_port_space(idx, false);
-			if (ret == 0) {
+			uint8_t ret = cmd_parse_port(idx, false);
+			if (ret != 1) {
 				print_string("Invalid physical port number\n");
 				continue;
 			}
 			log_port = atoi_results_u8;
 			idx += ret;
 
-			if (!vlan_ingress_mode_parse(cmd_buffer[idx], &mode)) {
+			if (!vlan_ingress_mode_parse(cmd_buffer[idx++], &mode) || !cmd_is_space_or_null(idx)) {
 				print_string("Invalid ingress mode for port "); write_char(p); print_string(" in ingress command\n");
 				goto err;
 			}
@@ -638,7 +647,7 @@ void parse_ingress(void)
 	}
 	return;
 err:
-	print_string("Error: ingress [p]<u/t/a>... \n");
+	print_string("Error: ingress [p]<u/t/a>...\n");
 }
 
 void parse_mirror(void)
