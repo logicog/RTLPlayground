@@ -12,6 +12,11 @@ __xdata char logbuf[LOGBUF_SIZE];
 __xdata struct syslog_state syslog_state;
 __xdata uip_ipaddr_t server_ip;
 
+/* Header length, in xdata rather than on the stack: syslog_callback() is
+ * __banked, so a local here takes a byte of internal RAM nobody can overlay,
+ * and the two it costs are enough to stop the image from linking. */
+__xdata uint16_t syslog_hdr;
+
 #define state syslog_state 
 
 void syslog_init(void) __banked
@@ -91,14 +96,31 @@ void syslog_callback(uint16_t lport) __banked
 
 		memcpyc(SYSLOG_P, "<14>", 4); // Syslog priority prefix
 
-		if (log_end < log_start) {
-			memcpy(SYSLOG_P + 4, logbuf + log_start, LOGBUF_SIZE - log_start);
-			memcpy(SYSLOG_P + 4 + LOGBUF_SIZE - log_start, logbuf, log_end);
+		/* RFC 3164 puts a hostname between the priority and the text, and
+		 * we were leaving that slot empty. A receiver still has to fill
+		 * the field, so it takes the first word of the message instead:
+		 * every line arrives attributed to "STP:" or "REGGET:" or
+		 * whatever the log happens to start with, and the sender cannot
+		 * be selected on at all. Send our own name and the field means
+		 * something. Skipped when the name is empty, so we never emit a
+		 * lone separator. */
+		syslog_hdr = strlen_x(hostname);
+		if (syslog_hdr) {
+			memcpy(SYSLOG_P + 4, hostname, syslog_hdr);
+			SYSLOG_P[4 + syslog_hdr] = ' ';
+			syslog_hdr += 5;
 		} else {
-			 memcpy(SYSLOG_P + 4, logbuf + log_start, log_end - log_start);
+			syslog_hdr = 4;
 		}
 
-		uip_udp_send(log_size+4);
+		if (log_end < log_start) {
+			memcpy(SYSLOG_P + syslog_hdr, logbuf + log_start, LOGBUF_SIZE - log_start);
+			memcpy(SYSLOG_P + syslog_hdr + LOGBUF_SIZE - log_start, logbuf, log_end);
+		} else {
+			 memcpy(SYSLOG_P + syslog_hdr, logbuf + log_start, log_end - log_start);
+		}
+
+		uip_udp_send(log_size + syslog_hdr);
 		state.readptr = state.writeptr;
 		state.line_available = 0;
 	}
