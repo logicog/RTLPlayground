@@ -16,7 +16,7 @@
     <h2>Bridge settings</h2>
     <table id="stpBridge">
       <tr>
-        <th>Priority</th><th>Version</th><th>Hello [s]</th><th>Max age [s]</th><th>Fwd delay [s]</th><th>Tx hold</th><th>Mgmt failsafe [s]</th>
+        <th>Priority</th><th>Version</th><th>Hello [s]</th><th>Max age [s]</th><th>Fwd delay [s]</th><th>Tx hold</th>
       </tr>
       <tr>
         <td><select id="bPrio"></select></td>
@@ -25,7 +25,6 @@
         <td><input id="bMaxage" type="number" min="6" max="40" style="width:4em"></td>
         <td><input id="bFwd" type="number" min="4" max="30" style="width:4em"></td>
         <td><input id="bTxhold" type="number" min="1" max="10" style="width:4em"></td>
-        <td><input id="bFailsafe" type="number" min="0" max="255" style="width:4em" title="Auto-disable STP if ports stay blocked while management is silent; 0 = off"></td>
       </tr>
     </table>
     <p style="font-size:small">Changes apply immediately. Edge ports skip the listen period; guard/filter act on received BPDUs.</p>
