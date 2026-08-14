@@ -1332,27 +1332,14 @@ void parse_syslog(void)
 		syslog_port_scratch = 0;
 		syslog_port_idx = cmd_words_b[2];
 		for (;;) {
-			/* Plain comparisons instead of isnumber() in the loop
-			 * condition, and nested ifs instead of || and &&: either form
-			 * makes SDCC park a boolean in the bit area, and an image
-			 * carrying LACP and STP as well is one bit short of needing a
-			 * third byte of it - which would push everything up and stop
-			 * the link. */
 			syslog_port_digit = cmd_buffer[syslog_port_idx];
-			if (syslog_port_digit < '0')
-				break;
-			if (syslog_port_digit > '9')
+			if (syslog_port_digit < '0' || syslog_port_digit > '9')
 				break;
 			syslog_port_digit -= '0';
-			if (syslog_port_scratch > 6553) {
+			if (syslog_port_scratch > 6553
+			    || (syslog_port_scratch == 6553 && syslog_port_digit > 5)) {
 				syslog_port_scratch = 0;	/* too large - reject below */
 				break;
-			}
-			if (syslog_port_scratch == 6553) {
-				if (syslog_port_digit > 5) {
-					syslog_port_scratch = 0;
-					break;
-				}
 			}
 			syslog_port_scratch = syslog_port_scratch * 10 + syslog_port_digit;
 			syslog_port_idx++;
