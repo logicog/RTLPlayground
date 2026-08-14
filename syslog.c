@@ -27,20 +27,22 @@ void syslog_init(void) __banked
 	state.readptr = 0;
 	state.line_available = 0;
 	state.server_ip[0] = 0; state.server_ip[1] = 0; state.server_ip[2] = 0; state.server_ip[3] = 0;// Default to 0.0.0.0
+	state.server_port = SYSLOG_PORT_DEFAULT;
 }
 
 void syslog_start(void) __banked
 {
 	if (state.syslog_conn == 0) {
 		uip_ipaddr(server_ip, state.server_ip[0], state.server_ip[1], state.server_ip[2], state.server_ip[3]);
-		state.syslog_conn = uip_udp_new(&server_ip, HTONS(514));
+		state.syslog_conn = uip_udp_new(&server_ip, HTONS(state.server_port));
 		if (state.syslog_conn == 0) {
 			print_string_no_syslog("Failed to create a new UDP client\n");
 			return;
 		}
 		print_string_no_syslog("Started syslog to IP ");
 		itoa(state.server_ip[0]); write_char('.'); itoa(state.server_ip[1]); write_char('.');
-		itoa(state.server_ip[2]); write_char('.'); itoa(state.server_ip[3]); write_char('\n');
+		itoa(state.server_ip[2]); write_char('.'); itoa(state.server_ip[3]);
+		write_char(':'); itoa_short(state.server_port); write_char('\n');
 		state.enabled = 1;
 	}
 	else {
