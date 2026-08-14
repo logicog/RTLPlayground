@@ -28,13 +28,21 @@ const conf_cmds = [
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^hostname\s+.{1,23}$/,
 ];
+/* Commands that come in an on/off pair replace each other, which the list
+ * below cannot express: it drops lines starting with the text it matched, and
+ * "syslog off" does not start with "syslog on". Naming the stem separately
+ * keeps the pair collapsed without widening the match to the whole family. */
+const conf_toggle = [
+  /^(syslog)\s+(?:on|off)$/,
+];
+
 const conf_overwrite = [
   /^ip\b/,
   /^gw\b/,
   /^netmask\b/,
   /^syslog\s+ip\b/,
   /^syslog\s+port\b/,
-  /^syslog\b/,
+  /^syslog\s+(on|off)$/,
   /^passwd\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
@@ -71,6 +79,13 @@ function parseConf(s){
     for (const x of conf_cmds)
       if (x.test(line)) { ignore = false; break; }
     if (ignore) continue;
+    for (const x of conf_toggle) {
+      const t = line.match(x);
+      if (t) {
+        configuration = configuration.filter(item => item !== t[1] + " on" && item !== t[1] + " off");
+        break;
+      }
+    }
     for (const x of conf_overwrite) {
       if (x.test(line)) {
         let m = line.match(x);
