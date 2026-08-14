@@ -208,9 +208,12 @@ static void stp_record_designated(uint8_t port) __reentrant
 }
 
 
-signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2) __reentrant
+/* Lexicographic compare of n bytes. A MAC is 6 of them; a Bridge Identifier
+ * is 8, the two priority octets ahead of the MAC, compared as one unsigned
+ * number per 802.1D. */
+signed char cmpBytes(__xdata uint8_t *m1, __xdata uint8_t *m2, uint8_t n) __reentrant
 {
-	for (uint8_t i = 0; i < 6; i++) {
+	for (uint8_t i = 0; i < n; i++) {
 		if (m1[i] == m2[i])
 			continue;
 		if (m1[i] < m2[i])
@@ -499,7 +502,7 @@ void stp_in(void) __banked
 	 * still receiving. Pull the cable and the re-arming stops, so the loser
 	 * comes back on its own after a forward delay - and the link
 	 * supervision above gets there first anyway. */
-	if (cmpMAC(STP_I->bridge.mac, uip_ethaddr.addr) == 0) {
+	if (cmpBytes(STP_I->bridge.mac, uip_ethaddr.addr, 6) == 0) {
 		/* Equal means the frame came back on the port it left: a loop
 		 * further out, behind an unmanaged switch. There is no pair to
 		 * pick from, so that port holds itself down - and since it can
@@ -527,9 +530,11 @@ void stp_in(void) __banked
 
 	stp_record_designated(port);
 
-	/* Better root than the one we know? */
-	if (STP_I->root.prio < root_bridge.prio
-		|| ((STP_I->root.prio == root_bridge.prio) && cmpMAC(STP_I->root.mac, root_bridge.mac) < 0)) {
+	/* Better root than the one we know? The identifier is priority, system
+	 * ID extension and MAC in that order: comparing the priority byte and
+	 * then jumping to the MAC skipped the twelve bits in between, so two
+	 * bridges differing only in the extension were ranked by MAC. */
+	if (cmpBytes((__xdata uint8_t *)&STP_I->root, (__xdata uint8_t *)&root_bridge, 8) < 0) {
 		/* Root guard: this port must never become our path to the root. */
 		if (stp_pflags[port] & STP_PF_ROOTGUARD) {
 			print_string("STP: root guard blocking port ");
