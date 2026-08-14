@@ -88,7 +88,7 @@ OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
 HTML := $(shell find html -name '*.js' -or -name '*.html' -or -name '*.svg')
 
-html_data.c html_data.h: $(HTML) | tools
+html_data.c html_data.h &: $(HTML) | tools
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
