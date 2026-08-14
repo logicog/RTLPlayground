@@ -5,12 +5,15 @@
 
 #define LOGBUF_SIZE 512
 
+#define SYSLOG_PORT_DEFAULT 514
+
 struct syslog_state {
     uint8_t enabled;
     uint8_t line_available;
     uint16_t writeptr ;
     uint16_t readptr;
     uint8_t server_ip[4];
+    uint16_t server_port;
 
     struct uip_udp_conn *syslog_conn;
 };
