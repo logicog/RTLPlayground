@@ -61,6 +61,7 @@ __xdata struct bridge root_bridge;
 __xdata uint32_t root_bridge_cost;	/* our cost to the root (rx cost + root port cost) */
 __xdata uint8_t  stp_root_port;		/* 0xff = we are the root */
 __xdata uint16_t stp_tc_count;
+__xdata uint16_t stp_scratch16;	/* scratch for status printing only */
 
 __xdata uint16_t port_timers[10];	/* listen-period countdown (0 = not listening) */
 __xdata uint16_t port_hello[10];	/* hello TX countdown */
@@ -176,7 +177,7 @@ static void stp_status(void)
 	print_string("changes ");
 	print_short(stp_tc_count);
 	write_char('\n');
-	print_string("port state role edge\n");
+	print_string("port state role edge bpdu\n");
 	reg_read_m(RTL837X_MSTP_STATES);
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
 		write_char(' ');
@@ -187,6 +188,13 @@ static void stp_status(void)
 		print_byte(stp_i == stp_root_port ? 1 : 2);
 		print_string("    ");
 		print_byte(stp_pflags[stp_i] & STP_PF_OPEREDGE ? 1 : 0);
+		/* Seconds since the last BPDU on this port, capped at 255. Without
+		 * it nothing in the output separates "nobody is speaking (R)STP
+		 * out there" from "we are dropping what arrives", and stp_in()
+		 * leaves on eight different conditions without saying so. */
+		print_string("    ");
+		stp_scratch16 = stp_bpdu_age[stp_i] / STP_HZ;
+		itoa(stp_scratch16 > 255 ? 255 : (uint8_t)stp_scratch16);
 		write_char('\n');
 	}
 }
