@@ -106,9 +106,23 @@ typedef unsigned short uip_stats_t;
 /**
  * uIP buffer size.
  *
+ * Sized to the largest frame the CPU port accepts on ingress: anything above
+ * that the NIC drops in hardware, so a larger buffer only costs XDATA. Measured
+ * with ICMP, which bypasses MSS and so probes the hardware directly: a 1502-byte
+ * payload is answered and 1503 is not, which puts the frame at 1556 bytes of
+ * uip_buf. The limit is the NIC's rather than a port's, so how the frame was
+ * tagged on the wire does not change it.
+ *
  * \hideinitializer
  */
-#define UIP_CONF_BUFFER_SIZE     2200
+#define UIP_CONF_BUFFER_SIZE     1556
+
+/**
+ * Bytes of the buffer kept out of the advertised MSS.
+ *
+ * \hideinitializer
+ */
+#define UIP_CONF_BUFFER_EXTRA    30
 
 /**
  * CPU byte order.
