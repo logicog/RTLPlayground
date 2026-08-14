@@ -2206,6 +2206,8 @@ void main(void)
 	early_boot_handle_button();
 
 	execute_config();
+	// After the config so the entry lands in the final management VLAN
+	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
 	/* After the config: a name from it wins, otherwise derive one. */
 	set_hostname_default();
 	print_cmd_prompt();

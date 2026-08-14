@@ -839,3 +839,55 @@ bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked
 
 	return reg_bit_test(RTL837X_VLAN_PORT_IGR_FLTR, port);
 }
+
+// C1 bit 0: static (no aging); age at C3[4:2] must be non-zero or the
+// entry is invisible to lookup
+static void l2_mgmt_entry_fill(__xdata uint8_t *mac, __xdata uint16_t vlan)
+{
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, mac[2], mac[3], mac[4], mac[5]);
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | ((CPU_PORT & 0x3) << 6) | (vlan >> 8),
+		  vlan & 0xff, mac[0], mac[1]);
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0x00, 0x01, 0x00, (7 << 2) | (CPU_PORT >> 2));
+}
+
+static void l2_mgmt_tbl_prepare(void)
+{
+	reg_read_m(RTL837x_TBL_DATA_0);
+	sfr_data[2] &= 0x3f;
+	sfr_data[1] &= 0xf8;
+	reg_write_m(RTL837x_TBL_DATA_0);
+}
+
+static void wait_table_ready(void)
+{
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & TBL_EXECUTE);
+}
+
+/** Pin the management MAC to the CPU port; remove_entry deletes it */
+void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked
+{
+	wait_table_ready();
+
+	if (!vlan)
+		vlan = 1;
+	l2_mgmt_entry_fill(mac, vlan);
+	l2_mgmt_tbl_prepare();
+	if (remove_entry) {
+		// a search miss returns index 0, not a slot
+		REG_WRITE(RTL837X_TBL_CTRL, 0x00, 0x00, TBL_L2_UNICAST, TBL_EXECUTE);
+		wait_table_ready();
+		reg_read_m(RTL837x_TBL_DATA_0);
+		if (!(sfr_data[2] & 0x10))
+			return;
+		sfr_data[1] |= 0x04; // CLEAR-entry
+		reg_write_m(RTL837x_TBL_DATA_0);
+		__xdata uint16_t idx = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx & 0xff, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	} else {
+		// method-0 write: the hardware hashes the key and places the entry
+		REG_WRITE(RTL837X_TBL_CTRL, 0x00, 0x00, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	}
+	wait_table_ready();
+}
