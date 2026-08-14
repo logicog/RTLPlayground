@@ -451,6 +451,16 @@ void stp_in(void) __banked
 
 	stp_bpdu_age[port] = 0;
 
+	/* A port that hears a BPDU is not an edge port, whatever it decided
+	 * during the silence after the link came up. Only the flag is dropped:
+	 * the port keeps whatever forwarding state the rules below give it,
+	 * rather than being pushed back through the listen period, which would
+	 * black-hole a working link for a forward delay on the first BPDU. The
+	 * flag matters beyond the status page, since stp_topology_change()
+	 * exempts edge ports and so would go on skipping the counter and the
+	 * L2 flush for a port that has a bridge behind it. */
+	stp_pflags[port] &= ~STP_PF_OPEREDGE;
+
 	if (STP_I->bpdu_type == 0x80) {
 		/* TCN: a downstream bridge reports a topology change. Acknowledge it
 		 * on this port so the sender stops repeating; the change itself is
