@@ -907,5 +907,5 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
-	print_string("Error: stp on|off | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9> on|off|edge|cost|prio|guard|filter ...\n");
+	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9> on|off|edge|cost|prio|guard|filter ...\n");
 }
