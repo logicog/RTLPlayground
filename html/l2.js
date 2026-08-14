@@ -159,10 +159,15 @@ function getL2() {
       return e;
     });
       l2Entries.push(...s);
-      if (l2Entries >= 4096) {
+      if (l2Entries.length >= 4096) {
         l2Entries = [];
         l2CurrentEntry = 0;
         clearInterval(l2GetInterval);
+        return;
+      }
+      if (!s.length) {
+        l2CurrentEntry = 0;
+        fillL2(l2Entries);
         return;
       }
       var w = 0;
