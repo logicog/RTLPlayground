@@ -250,8 +250,7 @@ void parse_lag(void)
 		print_string("LAG status:\n");
 		for (uint8_t i = 0; i < 4; i++) {
 			write_char(' '); write_char('1' + i);
-			reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (i << 2));
-			members = ((uint16_t)sfr_data[2]) << 8 | sfr_data[3]; 
+			members = port_lag_members_get(i);
 			if (!members) {
 				print_string(" disabled\n");
 				continue;

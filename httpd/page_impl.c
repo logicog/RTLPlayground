@@ -518,8 +518,7 @@ void send_lag(void)
 		slen += strtox(outbuf + slen, "{\"lagNum\":");
 		itoa_html(l);
 		slen += strtox(outbuf + slen, ",\"members\":\"");
-		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (l << 2));
-		uint16_t ports = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		uint16_t ports = port_lag_members_get(l);
 		for (uint8_t i = 0; i < 16; i++) {
 			bool_to_html(!!(ports & 0x8000));
 			ports <<= 1;
