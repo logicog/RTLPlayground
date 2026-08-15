@@ -361,7 +361,7 @@ void send_l2(uint16_t idx)
 		entries_left--;
 		uint8_t port = 0;
 		reg_read_m(RTL837x_TBL_DATA_0);
-		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3] & 0xfc);
 
 		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, TBL_EXECUTE);
 		do {
@@ -438,7 +438,7 @@ void l2_delete(uint16_t idx)
 	slen += strtox(outbuf + slen, "{\"result\":");
 	// First, search for the entry based on the index
 	reg_read_m(RTL837x_TBL_DATA_0);
-	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
+	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3] & 0xfc);
 
 	REG_WRITE(RTL837X_TBL_CTRL, (idx >> 8) & 0xf, idx, TBL_L2_UNICAST, TBL_EXECUTE);
 	do {
