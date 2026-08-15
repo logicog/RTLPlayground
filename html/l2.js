@@ -1,7 +1,3 @@
-var l2GetInterval;
-var l2Entries = [];
-var l2CurrentEntry = 0;
-
 function fillStats() {
   var tbl = document.getElementById('statstable');
   if (!numPorts)
@@ -118,7 +114,6 @@ function fillL2(s)
   s = uniq(s);
   l2All = s;
   renderL2();
-  l2Entries = [];
 }
 
 function paintL2(tbl, s)
@@ -147,53 +142,20 @@ function paintL2(tbl, s)
 }
 
 function getL2() {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      var s = JSON.parse(xhttp.responseText);
-      var s = s.map(function(e) { 
-        e.vlan = parseInt(e.vlan, 16);
-        e.idx = parseInt(e.idx, 16);
-        e.type = e.type == "s" ? t('l2_static') : t('l2_learned');
-        e.port = e.port == 9 ? 'CPU' : logToPhysPort[e.port];
-      return e;
-    });
-      l2Entries.push(...s);
-      if (l2Entries.length >= 4096) {
-        l2Entries = [];
-        l2CurrentEntry = 0;
-        clearInterval(l2GetInterval);
-        return;
-      }
-      if (!s.length) {
-        l2CurrentEntry = 0;
-        fillL2(l2Entries);
-        return;
-      }
-      var w = 0;
-      for (var i = l2Entries.length-1; i > 0; i--) {
-        if (l2Entries[0].idx == l2Entries[i].idx) {
-          w = 1;
-          break;
-        }
-      }
-      if (w) {
-        l2CurrentEntry = 0; 
-        fillL2(l2Entries);
-      } else {
-        l2CurrentEntry = s[s.length-1].idx + 1;
-      }
+  walkL2(function(entries, ok) {
+    if (ok) {
+      for (var i = 0; i < entries.length; i++)
+        entries[i].type = entries[i].type == "s" ? t('l2_static') : t('l2_learned');
+      fillL2(entries);
     }
-  };
-  xhttp.open("GET", "/l2.json?idx=" + l2CurrentEntry, true);
-  xhttp.timeout = 1500; sendXHTTP(xhttp);
+    setTimeout(getL2, 1000);
+  });
 }
 
 window.addEventListener("load", function() {
   update( () => {
     getL2();
     const interval = setInterval(update, 2000);
-    l2GetInterval = setInterval(getL2, 1000);
   });;
 });
 
