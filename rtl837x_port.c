@@ -758,7 +758,7 @@ void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banke
 	print_string("port_lag_members_set, lag: "); print_byte(lag); print_string(", members: "); print_short(members);
 	write_char('\n');
 	if (lag > 3) {
-		print_string("Link aggregation group must be 0-3!\n");
+		print_string("Link aggregation group out of range\n");
 		return;
 	}
 	reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2));
@@ -777,8 +777,10 @@ void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash_bits) __banked
 {
 	print_string("port_lag_hash_set, lag: "); print_byte(lag); print_string(", hash: "); print_byte(hash_bits);
 	write_char('\n');
-	if (lag > 3)
-		print_string("Link aggregation group must be 0-3!\n");
+	if (lag > 3) {
+		print_string("Link aggregation group out of range\n");
+		return;
+	}
 	REG_WRITE(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2), 0, 0, 0, hash_bits);
 }
 
