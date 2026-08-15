@@ -153,6 +153,21 @@ static void print_bridge_id(uint8_t prio, uint8_t ext, __xdata uint8_t *mac) __r
 }
 
 
+/* Fixed width columns so the rows line up under the header without a
+ * formatter. The state indices are the ASIC's own two bits, in the order
+ * stp_state_set() writes them. */
+static __code const char stp_state_txt[] = "off  blocklearnfwd  ";
+static __code const char stp_role_txt[]  = "desgroot";
+static __code const char stp_edge_txt[]  = "no  yes ";
+
+static void print_field(__code const char *txt, uint8_t idx, uint8_t width) __reentrant
+{
+	txt += idx * width;
+	while (width--)
+		write_char(*txt++);
+}
+
+
 /* Where you look when the tree is not what you expected. */
 static void stp_status(void)
 {
@@ -182,12 +197,15 @@ static void stp_status(void)
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
 		write_char(' ');
 		print_byte(machine.log_to_phys_port[stp_i]);
-		print_string("    ");
-		print_byte((sfr_data[3 - (stp_i >> 2)] >> ((stp_i << 1) & 0x7)) & 0x3);
-		print_string("    ");
-		print_byte(stp_i == stp_root_port ? 1 : 2);
-		print_string("    ");
-		print_byte(stp_pflags[stp_i] & STP_PF_OPEREDGE ? 1 : 0);
+		print_string("  ");
+		print_field(stp_state_txt, (sfr_data[3 - (stp_i >> 2)] >> ((stp_i << 1) & 0x7)) & 0x3, 5);
+		write_char(' ');
+		/* Only the root port is named. Everything else reads as designated
+		 * because that is all the state machine tracks today; an alternate
+		 * port is a designated one that happens to sit in blocking. */
+		print_field(stp_role_txt, stp_i == stp_root_port ? 1 : 0, 4);
+		write_char(' ');
+		print_field(stp_edge_txt, stp_pflags[stp_i] & STP_PF_OPEREDGE ? 1 : 0, 4);
 		/* Seconds since the last BPDU on this port, capped at 255. Without
 		 * it nothing in the output separates "nobody is speaking (R)STP
 		 * out there" from "we are dropping what arrives", and stp_in()
