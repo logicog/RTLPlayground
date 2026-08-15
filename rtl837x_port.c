@@ -734,6 +734,19 @@ void port_rldp_on(__xdata uint16_t p_ms)
 
 
 /*
+ * Reads the member port bitmask of a Link Aggregation Group.
+ * The groups have numbers 0-3; bit n is set when logical port n is a member.
+ * The bitmask reflects what the hardware holds, so it covers groups set up
+ * statically and groups a protocol brought up, without either having to say so.
+ */
+uint16_t port_lag_members_get(uint8_t lag) __banked
+{
+	reg_read(RTL837X_TRK_MBR_CTRL_BASE + (lag << 2));
+	return ((uint16_t)SFR_DATA_8 << 8) | SFR_DATA_0;
+}
+
+
+/*
  * Configure LAGs
  * Sets the members via port bitmask of a given Link Aggregation Group
  * The groups have numbers 0-3
