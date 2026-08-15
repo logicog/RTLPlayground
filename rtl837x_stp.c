@@ -67,6 +67,7 @@ __xdata uint16_t port_timers[10];	/* listen-period countdown (0 = not listening)
 __xdata uint16_t port_hello[10];	/* hello TX countdown */
 __xdata uint16_t stp_bpdu_age[10];	/* ticks since last BPDU seen on port (saturating) */
 __xdata uint8_t  stp_tx_budget[10];	/* tx hold: BPDUs left in the current second */
+__xdata uint8_t  stp_tx_count[10];	/* BPDUs actually put on the wire, wraps at 256 */
 __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 __xdata uint16_t stp_link_prev;		/* carrier bitmap as of the last check */
 __xdata uint16_t stp_link_now;
@@ -192,7 +193,7 @@ static void stp_status(void)
 	print_string("changes ");
 	print_short(stp_tc_count);
 	write_char('\n');
-	print_string("port state role edge bpdu\n");
+	print_string("port state role edge tx bpdu\n");
 	reg_read_m(RTL837X_MSTP_STATES);
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
 		write_char(' ');
@@ -206,11 +207,18 @@ static void stp_status(void)
 		print_field(stp_role_txt, stp_i == stp_root_port ? 1 : 0, 4);
 		write_char(' ');
 		print_field(stp_edge_txt, stp_pflags[stp_i] & STP_PF_OPEREDGE ? 1 : 0, 4);
+		/* BPDUs we put on the wire here. A designated port must show this
+		 * climbing once per hello; the root port never does, because we do
+		 * not announce back towards the root. Without it the only way to
+		 * tell "we are silent" from "the neighbour is not listening" is a
+		 * capture on the far side. */
+		write_char(' ');
+		print_byte(stp_tx_count[stp_i]);
 		/* Seconds since the last BPDU on this port, capped at 255. Without
 		 * it nothing in the output separates "nobody is speaking (R)STP
 		 * out there" from "we are dropping what arrives", and stp_in()
 		 * leaves on eight different conditions without saying so. */
-		print_string("    ");
+		write_char(' ');
 		stp_scratch16 = stp_bpdu_age[stp_i] / STP_HZ;
 		itoa(stp_scratch16 > 255 ? 255 : (uint8_t)stp_scratch16);
 		write_char('\n');
@@ -330,6 +338,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 		return;
 	}
 	stp_tx_budget[port]--;
+	stp_tx_count[port]++;
 
 	STP_O->stp_addr[0] = 0x01; STP_O->stp_addr[1] = 0x80; STP_O->stp_addr[2] = 0xc2;
 	STP_O->stp_addr[3] = STP_O->stp_addr[4] = STP_O->stp_addr[5] = 0x00;
@@ -745,6 +754,7 @@ void stp_setup(void) __banked
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
 		stp_bpdu_age[stp_i] = 0;
 		stp_tx_budget[stp_i] = stp_txhold;
+		stp_tx_count[stp_i] = 0;
 		if (!(stp_pflags[stp_i] & STP_PF_ENABLED) || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
 			/* not participating, or admin edge: forwarding immediately */
 			if (stp_pflags[stp_i] & STP_PF_ADMEDGE)
