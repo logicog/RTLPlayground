@@ -356,7 +356,7 @@ void send_l2(uint16_t idx)
 	 */
 	__xdata uint16_t entry = idx & 0xfff;
 	__xdata uint16_t first_entry = 0xffff; // An illegal entry index
-	bool first = true;
+	__bit first = true;
 	char_to_html('[');
 	while (1) {
 		entries_left--;
@@ -370,7 +370,7 @@ void send_l2(uint16_t idx)
 		} while (sfr_data[3] & TBL_EXECUTE);
 
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
-		bool valid = (sfr_data[0] & 0x20) != 0;
+		__bit valid = (sfr_data[0] & 0x20) != 0;
 		if (valid) {
 			/* separator + 74-byte worst-case entry + closing "]" */
 			if (slen + 76 > TCP_OUTBUF_SIZE)
