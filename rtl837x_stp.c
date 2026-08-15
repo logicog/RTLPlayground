@@ -66,6 +66,7 @@ __xdata uint32_t root_bridge_cost;	/* our cost to the root (rx cost + root port 
 __xdata uint8_t  stp_root_port;		/* 0xff = we are the root */
 __xdata uint16_t stp_tc_count;
 __xdata uint16_t stp_scratch16;	/* scratch for status printing only */
+__xdata uint8_t  stp_st_of;	/* which port's state a status row shows */
 
 __xdata uint16_t port_timers[STP_ENTITIES];	/* listen-period countdown (0 = not listening) */
 __xdata uint16_t port_hello[STP_ENTITIES];	/* hello TX countdown */
@@ -165,6 +166,8 @@ static __code const char stp_state_txt[] = "off  blocklearnfwd  ";
 static __code const char stp_role_txt[]  = "desgroot";
 static __code const char stp_edge_txt[]  = "no  yes ";
 
+static uint8_t stp_ent_active(uint8_t e) __reentrant;
+
 static void print_field(__code const char *txt, uint8_t idx, uint8_t width) __reentrant
 {
 	txt += idx * width;
@@ -199,11 +202,29 @@ static void stp_status(void)
 	write_char('\n');
 	print_string("port state role edge tx bpdu\n");
 	reg_read_m(RTL837X_MSTP_STATES);
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
+		if (!stp_ent_active(stp_i))
+			continue;	/* a trunk member is spoken for by its trunk */
 		write_char(' ');
-		print_byte(machine.log_to_phys_port[stp_i]);
+		if (stp_i >= STP_TRK_BASE) {
+			write_char('t');
+			write_char('1' + stp_i - STP_TRK_BASE);
+		} else {
+			print_byte(machine.log_to_phys_port[stp_i]);
+		}
 		print_string("  ");
-		print_field(stp_state_txt, (sfr_data[3 - (stp_i >> 2)] >> ((stp_i << 1) & 0x7)) & 0x3, 5);
+		/* The ASIC holds no state for a trunk, so show a member's, the
+		 * same one the JSON reports. They are kept in step by
+		 * stp_state_set(), which writes every member together. */
+		stp_st_of = stp_i;
+		if (stp_i >= STP_TRK_BASE) {
+			stp_st_of = 0;
+			while (stp_st_of < 10 && !((stp_trk_mask[stp_i - STP_TRK_BASE] >> stp_st_of) & 1))
+				stp_st_of++;
+			if (stp_st_of >= 10)
+				stp_st_of = 0;
+		}
+		print_field(stp_state_txt, (sfr_data[3 - (stp_st_of >> 2)] >> ((stp_st_of << 1) & 0x7)) & 0x3, 5);
 		write_char(' ');
 		/* Only the root port is named. Everything else reads as designated
 		 * because that is all the state machine tracks today; an alternate
