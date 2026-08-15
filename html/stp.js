@@ -50,10 +50,10 @@ function buildPortsTable(ports) {
   const stat = document.getElementById("stpStatTbl");
   for (const p of [...ports].sort((a, b) => a.p - b.p)) {
     const tr = tbl.insertRow();
-    p.n = p.trk ? "trk " + p.trk : "port " + p.p;
-    p.k = p.trk ? "T" + p.trk : p.p;
-    tr.insertCell().textContent = p.trk
-      ? "Trk" + p.trk + " (" + members(p.mbr) + ")"
+    p.n = p.lag ? "lag " + p.lag : "port " + p.p;
+    p.k = p.lag ? "L" + p.lag : p.p;
+    tr.insertCell().textContent = p.lag
+      ? "Trk" + p.lag + " (" + members(p.mbr) + ")"
       : p.p;
     tr.insertCell().appendChild(sel("en_" + p.k,
       [["on","Enable"],["off","Disable"]],

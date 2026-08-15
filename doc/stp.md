@@ -60,24 +60,24 @@ state.
 
 ## Link aggregation
 
-A trunk is a port to the protocol, the way the vendor firmware presents it as
+A LAG is a port to the protocol, the way the vendor firmware presents it as
 Trk1 to Trk4. The four groups are entities alongside the nine physical ports:
 they carry their own path cost, priority, edge and guard settings, they hold
 their own timers, and they appear as their own rows on the Spanning Tree page.
 
 ```
-stp trk 1 cost 10000    # the trunk decides, not its members
-stp trk 1 edge off
+stp lag 1 cost 10000    # the group decides, not its members
+stp lag 1 edge off
 ```
 
-Membership comes from the trunk registers the `lag` command writes, re-read
+Membership comes from the aggregation registers the `lag` command writes, re-read
 once a second, so a group changing under LACP is picked up without any
 coordination between the two. A member port is not an STP port of its own:
-`stp port <n>` on a member says which trunk to configure instead. State
+`stp port <n>` on a member says which group to configure instead. State
 changes are written to every member in one register write, since the hardware
-has no per-trunk state, and BPDUs are transmitted through the lowest live
-member while carrying the trunk's own port id. Losing one member of a live
-trunk is not a topology change; the logical port only goes down with its last
+has no per-group state, and BPDUs are transmitted through the lowest live
+member while carrying the group's own port id. Losing one member of a live
+LAG is not a topology change; the logical port only goes down with its last
 link.
 
 Port states live in `RTL837X_MSTP_STATES (0x5310)`, two bits per port:

@@ -12,9 +12,9 @@ void stp_defaults(void) __banked;	/* boot init: 802.1D/w default configuration *
 /* Tick rate of stp_timers(), also used by the web UI. */
 #define STP_HZ 50
 
-#define STP_TRK_BASE	10
-#define STP_TRK_COUNT	4
-#define STP_ENTITIES	(STP_TRK_BASE + STP_TRK_COUNT)
+#define STP_LAG_BASE	10
+#define STP_LAG_COUNT	4
+#define STP_ENTITIES	(STP_LAG_BASE + STP_LAG_COUNT)
 
 /* Bridge identifier as carried in a BPDU (priority, extension, MAC). */
 struct bridge {
@@ -47,7 +47,7 @@ extern __xdata uint32_t stp_pcost[STP_ENTITIES];	/* path cost; 0 = auto (20000) 
 extern __xdata uint8_t  stp_pprio[STP_ENTITIES];
 extern __xdata uint8_t  stp_pp2p[STP_ENTITIES];
 extern __xdata uint8_t  stp_ent_of[10];
-extern __xdata uint16_t stp_trk_mask[STP_TRK_COUNT];	/* admin point-to-point: 0 auto, 1 on, 2 off */
+extern __xdata uint16_t stp_lag_mask[STP_LAG_COUNT];	/* admin point-to-point: 0 auto, 1 on, 2 off */
 
 /* Last-heard designated info per port (from received BPDUs); consult
  * stp_bpdu_age to decide whether it is still current. */

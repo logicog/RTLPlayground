@@ -609,19 +609,19 @@ void send_stp(void)
 			continue;
 		if (pi_i < 10 && stp_ent_of[pi_i] != pi_i)
 			continue;
-		if (pi_i >= STP_TRK_BASE && !stp_trk_mask[pi_i - STP_TRK_BASE])
+		if (pi_i >= STP_LAG_BASE && !stp_lag_mask[pi_i - STP_LAG_BASE])
 			continue;
 		slen += strtox(outbuf + slen, "{\"p\":");
 		itoa_html(pi_i < 10 ? machine.log_to_phys_port[pi_i] : 0);
-		slen += strtox(outbuf + slen, ",\"trk\":");
-		itoa_html(pi_i < 10 ? 0 : pi_i - STP_TRK_BASE + 1);
+		slen += strtox(outbuf + slen, ",\"lag\":");
+		itoa_html(pi_i < 10 ? 0 : pi_i - STP_LAG_BASE + 1);
 		slen += strtox(outbuf + slen, ",\"mbr\":");
-		itoa_html(pi_i < 10 ? 0 : stp_trk_mask[pi_i - STP_TRK_BASE]);
+		itoa_html(pi_i < 10 ? 0 : stp_lag_mask[pi_i - STP_LAG_BASE]);
 		slen += strtox(outbuf + slen, ",\"st\":");
 		pi_st_of = pi_i;
-		if (pi_i >= STP_TRK_BASE) {
+		if (pi_i >= STP_LAG_BASE) {
 			pi_st_of = 0;
-			while (pi_st_of < 10 && !((stp_trk_mask[pi_i - STP_TRK_BASE] >> pi_st_of) & 1))
+			while (pi_st_of < 10 && !((stp_lag_mask[pi_i - STP_LAG_BASE] >> pi_st_of) & 1))
 				pi_st_of++;
 			if (pi_st_of >= 10)
 				pi_st_of = 0;

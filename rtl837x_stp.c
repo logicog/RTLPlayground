@@ -48,7 +48,7 @@ __xdata uint8_t  stp_txhold;
 
 
 __xdata uint8_t  stp_ent_of[10];
-__xdata uint16_t stp_trk_mask[STP_TRK_COUNT];
+__xdata uint16_t stp_lag_mask[STP_LAG_COUNT];
 __xdata uint8_t  stp_ss_i;
 __xdata uint8_t  stp_map_dirty;
 __xdata uint8_t  stp_pflags[STP_ENTITIES];
@@ -204,22 +204,22 @@ static void stp_status(void)
 	reg_read_m(RTL837X_MSTP_STATES);
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		if (!stp_ent_active(stp_i))
-			continue;	/* a trunk member is spoken for by its trunk */
+			continue;	/* a member is spoken for by its LAG */
 		write_char(' ');
-		if (stp_i >= STP_TRK_BASE) {
-			write_char('t');
-			write_char('1' + stp_i - STP_TRK_BASE);
+		if (stp_i >= STP_LAG_BASE) {
+			write_char('L');
+			write_char('1' + stp_i - STP_LAG_BASE);
 		} else {
 			print_byte(machine.log_to_phys_port[stp_i]);
 		}
 		print_string("  ");
-		/* The ASIC holds no state for a trunk, so show a member's, the
+		/* The ASIC holds no state for a LAG, so show a member's, the
 		 * same one the JSON reports. They are kept in step by
 		 * stp_state_set(), which writes every member together. */
 		stp_st_of = stp_i;
-		if (stp_i >= STP_TRK_BASE) {
+		if (stp_i >= STP_LAG_BASE) {
 			stp_st_of = 0;
-			while (stp_st_of < 10 && !((stp_trk_mask[stp_i - STP_TRK_BASE] >> stp_st_of) & 1))
+			while (stp_st_of < 10 && !((stp_lag_mask[stp_i - STP_LAG_BASE] >> stp_st_of) & 1))
 				stp_st_of++;
 			if (stp_st_of >= 10)
 				stp_st_of = 0;
@@ -289,40 +289,40 @@ static void stp_lag_map(void)
 {
 	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
 		stp_ent_of[stp_ss_i] = stp_ss_i;
-	for (stp_scratch = 0; stp_scratch < STP_TRK_COUNT; stp_scratch++) {
+	for (stp_scratch = 0; stp_scratch < STP_LAG_COUNT; stp_scratch++) {
 		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (stp_scratch << 2));
-		if (stp_trk_mask[stp_scratch] != (((uint16_t)sfr_data[2] << 8) | sfr_data[3]))
+		if (stp_lag_mask[stp_scratch] != (((uint16_t)sfr_data[2] << 8) | sfr_data[3]))
 			stp_map_dirty = 1;
-		stp_trk_mask[stp_scratch] = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		stp_lag_mask[stp_scratch] = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
 		for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
-			if ((stp_trk_mask[stp_scratch] >> stp_ss_i) & 1)
-				stp_ent_of[stp_ss_i] = STP_TRK_BASE + stp_scratch;
+			if ((stp_lag_mask[stp_scratch] >> stp_ss_i) & 1)
+				stp_ent_of[stp_ss_i] = STP_LAG_BASE + stp_scratch;
 	}
 }
 
 
 static uint8_t stp_ent_active(uint8_t e) __reentrant
 {
-	if (e >= STP_TRK_BASE)
-		return stp_trk_mask[e - STP_TRK_BASE] != 0;
+	if (e >= STP_LAG_BASE)
+		return stp_lag_mask[e - STP_LAG_BASE] != 0;
 	return e >= machine.min_port && e <= machine.max_port && stp_ent_of[e] == e;
 }
 
 
 static uint8_t stp_ent_has(uint8_t ent, uint8_t p) __reentrant
 {
-	if (ent < STP_TRK_BASE)
+	if (ent < STP_LAG_BASE)
 		return ent == p;
-	return (stp_trk_mask[ent - STP_TRK_BASE] >> p) & 1;
+	return (stp_lag_mask[ent - STP_LAG_BASE] >> p) & 1;
 }
 
 
 static uint8_t stp_state_port(uint8_t e) __reentrant
 {
-	if (e < STP_TRK_BASE)
+	if (e < STP_LAG_BASE)
 		return e;
 	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
-		if ((stp_trk_mask[e - STP_TRK_BASE] >> stp_ss_i) & 1)
+		if ((stp_lag_mask[e - STP_LAG_BASE] >> stp_ss_i) & 1)
 			return stp_ss_i;
 	return 0;
 }
@@ -433,7 +433,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 	 * LLC/802.3 (length-field) frame makes the ASIC drop it entirely,
 	 * while the same flag works fine on ethertype frames (LACP). */
 	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
-	if (port >= STP_TRK_BASE) {
+	if (port >= STP_LAG_BASE) {
 		stp_scratch = 0;
 		while (stp_scratch < 10 && !stp_ent_has(port, stp_scratch))
 			stp_scratch++;
@@ -723,8 +723,8 @@ void stp_timers(void) __banked
 		stp_lag_map();
 		if (stp_map_dirty) {
 			stp_map_dirty = 0;
-			for (stp_i = STP_TRK_BASE; stp_i < STP_ENTITIES; stp_i++)
-				if (stp_trk_mask[stp_i - STP_TRK_BASE])
+			for (stp_i = STP_LAG_BASE; stp_i < STP_ENTITIES; stp_i++)
+				if (stp_lag_mask[stp_i - STP_LAG_BASE])
 					stp_state_set(stp_i, port_timers[stp_i] ? 0b01 : 0b11);
 		}
 
@@ -841,8 +841,8 @@ void stp_defaults(void) __banked
 	stp_txhold = 6;
 	for (stp_i = 0; stp_i < 10; stp_i++)
 		stp_ent_of[stp_i] = stp_i;
-	for (stp_i = 0; stp_i < STP_TRK_COUNT; stp_i++)
-		stp_trk_mask[stp_i] = 0;
+	for (stp_i = 0; stp_i < STP_LAG_COUNT; stp_i++)
+		stp_lag_mask[stp_i] = 0;
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		/* enabled, auto-edge on: host-facing ports go forwarding after
 		 * 3 s of BPDU silence instead of the full forward delay */
@@ -892,7 +892,7 @@ void stp_setup(void) __banked
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
 			continue;
-		if (stp_i >= STP_TRK_BASE && !stp_trk_mask[stp_i - STP_TRK_BASE])
+		if (stp_i >= STP_LAG_BASE && !stp_lag_mask[stp_i - STP_LAG_BASE])
 			continue;
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
 		stp_bpdu_age[stp_i] = 0;
@@ -900,7 +900,7 @@ void stp_setup(void) __banked
 		stp_tx_count[stp_i] = 0;
 		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
 		if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
-			continue;	/* trunk member: the trunk entity decides */
+			continue;	/* member: the LAG entity decides */
 		if (!(stp_pflags[stp_i] & STP_PF_ENABLED)
 		    || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
 			/* not participating, or admin edge: forwarding immediately */
@@ -980,24 +980,24 @@ void stp_parse(void) __banked __reentrant
 	if (cmd_words_len < 3)
 		goto err;
 
-	if (cmd_compare(1, "port") || cmd_compare(1, "trk")) {
+	if (cmd_compare(1, "port") || cmd_compare(1, "lag")) {
 		if (cmd_words_len < 4)
 			goto err;
 		if (atoi_byte(&stp_scratch, cmd_words_b[2]) || !stp_scratch)
 			goto err;
 		{
 		uint8_t port;
-		if (cmd_compare(1, "trk")) {
-			if (stp_scratch > STP_TRK_COUNT)
+		if (cmd_compare(1, "lag")) {
+			if (stp_scratch > STP_LAG_COUNT)
 				goto err;
-			port = STP_TRK_BASE + stp_scratch - 1;
+			port = STP_LAG_BASE + stp_scratch - 1;
 		} else {
 			if (stp_scratch > 9)
 				goto err;
 			port = machine.phys_to_log_port[stp_scratch - 1];
 			if (stp_ent_of[port] != port) {
-				print_string("Port belongs to a trunk, configure it as trk ");
-				print_byte(stp_ent_of[port] - STP_TRK_BASE + 1);
+				print_string("Port belongs to a LAG, configure it as lag ");
+				print_byte(stp_ent_of[port] - STP_LAG_BASE + 1);
 				write_char('\n');
 				return;
 			}
@@ -1119,5 +1119,5 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
-	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|trk <1-4> on|off|edge|cost|prio|guard|filter ...\n");
+	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
 }
