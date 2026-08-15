@@ -285,3 +285,66 @@ function sendXHTTP(x)
   currentRequests.push(x);
 }
 
+
+function walkL2(onDone)
+{
+  var entries = [];
+  var idx = 0;
+  var tries = 0;
+
+  function retry() {
+    if (++tries < 3) {
+      setTimeout(page, 1000);
+      return;
+    }
+    onDone(entries, false);
+  }
+
+  function page() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (this.readyState != 4)
+        return;
+      if (this.status != 200) {
+        retry();
+        return;
+      }
+      var s;
+      try {
+        s = JSON.parse(xhttp.responseText);
+      } catch (err) {
+        retry();
+        return;
+      }
+      tries = 0;
+      s = s.map(function(e) {
+        e.vlan = parseInt(e.vlan, 16);
+        e.idx = parseInt(e.idx, 16);
+        e.port = e.port == 9 ? 'CPU' : logToPhysPort[e.port];
+        return e;
+      });
+      if (!s.length) {
+        onDone(entries, true);
+        return;
+      }
+      entries.push(...s);
+      for (var i = entries.length - 1; i > 0; i--) {
+        if (entries[0].idx == entries[i].idx) {
+          onDone(entries, true);
+          return;
+        }
+      }
+      if (entries.length >= 4096) {
+        onDone(entries, true);
+        return;
+      }
+      idx = s[s.length - 1].idx + 1;
+      setTimeout(page, 1000);
+    };
+    xhttp.open("GET", "/l2.json?idx=" + idx, true);
+    xhttp.timeout = 1500;
+    sendXHTTP(xhttp);
+  }
+
+  page();
+}
