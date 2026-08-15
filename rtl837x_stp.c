@@ -65,7 +65,7 @@ __xdata struct bridge root_bridge;
 __xdata uint32_t root_bridge_cost;	/* our cost to the root (rx cost + root port cost) */
 __xdata uint8_t  stp_root_port;		/* 0xff = we are the root */
 __xdata uint16_t stp_tc_count;
-__xdata uint16_t stp_scratch16;	/* scratch for status printing only */
+__xdata uint16_t stp_scratch16;	/* scratch for status printing and the lag map */
 __xdata uint8_t  stp_st_of;	/* which port's state a status row shows */
 
 __xdata uint16_t port_timers[STP_ENTITIES];	/* listen-period countdown (0 = not listening) */
@@ -290,10 +290,10 @@ static void stp_lag_map(void)
 	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
 		stp_ent_of[stp_ss_i] = stp_ss_i;
 	for (stp_scratch = 0; stp_scratch < STP_LAG_COUNT; stp_scratch++) {
-		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (stp_scratch << 2));
-		if (stp_lag_mask[stp_scratch] != (((uint16_t)sfr_data[2] << 8) | sfr_data[3]))
+		stp_scratch16 = port_lag_members_get(stp_scratch);
+		if (stp_lag_mask[stp_scratch] != stp_scratch16)
 			stp_map_dirty = 1;
-		stp_lag_mask[stp_scratch] = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		stp_lag_mask[stp_scratch] = stp_scratch16;
 		for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
 			if ((stp_lag_mask[stp_scratch] >> stp_ss_i) & 1)
 				stp_ent_of[stp_ss_i] = STP_LAG_BASE + stp_scratch;
