@@ -544,8 +544,6 @@ static __xdata uint8_t * __xdata pi_mac;
 
 static void u32hex_html(void)
 {
-	/* byte access instead of uint32 shifts: sdcc/mcs51 expands each
-	 * 32-bit shift into a large helper sequence. Little-endian layout. */
 	__xdata uint8_t *b = (__xdata uint8_t *)&pi_u32;
 	byte_to_html(b[3]);
 	byte_to_html(b[2]);
