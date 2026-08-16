@@ -92,7 +92,7 @@ The following shows the network configuration
 On _both_ switches create a LAG with ports 1 and 2 inside and the default hash algorithm which takes
 source and destination ports into account, e.g. just use the default:
 ```
-> lag 0 1 2
+> lag 1 1 2
 ```
 
 
