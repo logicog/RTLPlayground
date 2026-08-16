@@ -585,7 +585,7 @@ void lacp_show(void) __banked
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
 		if (!lacp_lag_ports[l])
 			continue;
-		print_string("lag "); print_byte(l);
+		print_string("lag "); print_byte(l + 1);
 		print_string(" ports "); print_short(lacp_lag_ports[l]);
 		print_string(" aggregator ");
 		if (lacp_agg_valid[l]) {
@@ -598,7 +598,7 @@ void lacp_show(void) __banked
 	}
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		print_string("port "); print_byte(i);
+		print_string("port "); print_byte(machine.log_to_phys_port[i]);
 		print_string(" actor "); print_byte(lacp_actor_state[i]);
 		print_string(" partner "); print_byte(lacp_partner_state[i]);
 		print_string(" rxst "); print_byte(lacp_rx_state[i]);
