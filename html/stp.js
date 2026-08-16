@@ -85,7 +85,9 @@ function buildPortsTable(ports) {
       e => stpCmd("stp " + p.n + " p2p " + e.target.value)));
 
     const sr = stat.insertRow();
-    sr.insertCell().textContent = p.p;
+    sr.insertCell().textContent = p.lag
+      ? "Trk" + p.lag + " (" + members(p.mbr) + ")"
+      : p.p;
     for (const id of ["st","role","db","dp","dc","oe","op"])
       sr.insertCell().id = id + "_" + p.k;
   }
@@ -120,18 +122,19 @@ function fetchStp() {
               + " — topology changes: " + parseInt(s.tc, 16))
         : "";
       for (const p of s.ports) {
+        const k = p.lag ? "L" + p.lag : p.p;
         const trip = (p.f & PF_TRIPPED) ? " (guard!)" : "";
-        document.getElementById("st_" + p.p).textContent =
+        document.getElementById("st_" + k).textContent =
           s.on ? STP_STATES[p.st] + trip : "-";
-        document.getElementById("role_" + p.p).textContent =
+        document.getElementById("role_" + k).textContent =
           s.on ? STP_ROLES[p.role] : "-";
-        document.getElementById("db_" + p.p).textContent = s.on ? fmtBridgeId(p.db) : "-";
-        document.getElementById("dp_" + p.p).textContent =
+        document.getElementById("db_" + k).textContent = s.on ? fmtBridgeId(p.db) : "-";
+        document.getElementById("dp_" + k).textContent =
           s.on ? (parseInt(p.dp.slice(0, 2), 16) + "-" + parseInt(p.dp.slice(2), 16)) : "-";
-        document.getElementById("dc_" + p.p).textContent = s.on ? parseInt(p.dc, 16) : "-";
-        document.getElementById("oe_" + p.p).textContent =
+        document.getElementById("dc_" + k).textContent = s.on ? parseInt(p.dc, 16) : "-";
+        document.getElementById("oe_" + k).textContent =
           s.on ? ((p.f & PF_OPEREDGE) ? "True" : "False") : "-";
-        document.getElementById("op_" + p.p).textContent = s.on ? (p.p2 == 2 ? "False" : "True") : "-";
+        document.getElementById("op_" + k).textContent = s.on ? (p.p2 == 2 ? "False" : "True") : "-";
       }
       if (stpDirty)          // an edit is in flight - do not revert controls
         return;
