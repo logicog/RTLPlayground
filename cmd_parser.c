@@ -5,6 +5,8 @@
 // #define DEBUG
 // #define REGDBG 1
 
+#include <8051.h>
+#include "cmd_parser.h"
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
@@ -49,6 +51,8 @@ __xdata char port_names[9][PORT_NAME_SIZE];
 
 extern __xdata uint16_t management_vlan;
 extern __xdata struct uip_eth_addr uip_ethaddr;
+extern __xdata uint16_t len_left;
+extern __xdata uint8_t entry;
 extern __xdata uint8_t sfp_speed[2];
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata uint8_t sfp_options[2];
@@ -1716,6 +1720,8 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "stp")) {
 			stp_parse();
+		} else if (cmd_compare(0, "health")) {
+			health_show();
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
@@ -1907,4 +1913,159 @@ void execute_commands(__xdata uint8_t *p) __banked {
 		}
 		p++;
 	};
+}
+
+/*
+ * Health instrumentation. The counters live in xdata and are fed from the
+ * main loop through the banked entry points below; the "health" command
+ * prints everything in one go. All figures are raw hex, diffing two dumps
+ * gives the rates. Phase times are in system ticks (SYS_TICK_HZ = 200,
+ * 5 ms each); a phase counts as slow when it spans 2 or more ticks.
+ */
+extern __xdata uint16_t len_left;	/* httpd: bytes still to send of the current file */
+extern __xdata uint8_t entry;		/* httpd: index of the file being sent */
+
+static __xdata uint32_t health_loops;
+__xdata uint16_t health_rx_frames;
+
+static __xdata uint16_t ph_last_t;
+static __xdata uint8_t  ph_max[HEALTH_PHASES];
+static __xdata uint16_t ph_slow[HEALTH_PHASES];
+
+/* The ISR increments ticks between the two byte reads of a 16-bit load, so
+ * read until two loads agree. */
+static uint16_t ticks_lo(void)
+{
+	uint16_t a, b;
+	a = (uint16_t)ticks;
+	do {
+		b = a;
+		a = (uint16_t)ticks;
+	} while (a != b);
+	return a;
+}
+
+
+void health_loop_start(void) __banked
+{
+	health_loops++;
+	ph_last_t = ticks_lo();
+}
+
+
+void health_phase(uint8_t id) __banked
+{
+	__xdata uint16_t now = ticks_lo();
+	__xdata uint16_t d = now - ph_last_t;
+	ph_last_t = now;
+	if (d > 0xff)
+		d = 0xff;
+	if ((uint8_t)d > ph_max[id])
+		ph_max[id] = d;
+	if (d >= 2)
+		ph_slow[id]++;
+}
+
+
+/* Fill the stack area above the current frame with a pattern; the dump scans
+ * for how much of it survived. The 8051 stack grows upward, so everything
+ * above SP is free at this point. Interrupts are held off so an ISR does not
+ * push into the area mid-paint. */
+void health_stack_paint(void) __banked
+{
+	__xdata uint8_t from = SP + 4;
+	__xdata uint8_t ea = EA;
+	EA = 0;
+	for (uint8_t i = 0xff; i >= from; i--)
+		*(__idata uint8_t *)i = 0xa5;
+	EA = ea;
+}
+
+
+static void ph_line(__code char *name, uint8_t id)
+{
+	print_string(name);
+	print_string(" max ");
+	print_byte(ph_max[id]);
+	print_string(" slow ");
+	print_short(ph_slow[id]);
+	write_char('\n');
+}
+
+
+void health_show(void) __banked
+{
+	__xdata uint8_t i;
+
+	print_string("up ");
+	reg_read_m(RTL837X_REG_SEC_COUNTER);
+	print_byte(sfr_data[0]); print_byte(sfr_data[1]);
+	print_byte(sfr_data[2]); print_byte(sfr_data[3]);
+	print_string(" ticks ");
+	print_long(ticks);
+	print_string(" loops ");
+	print_long(health_loops);
+	print_string(" rx ");
+	print_short(health_rx_frames);
+	write_char('\n');
+
+	/* Phase timing: max duration seen (ticks of 5 ms) and slow-pass count */
+	ph_line("link", HEALTH_PH_LINK);
+	ph_line("sfp ", HEALTH_PH_SFP);
+	ph_line("rx  ", HEALTH_PH_RX);
+	ph_line("tx  ", HEALTH_PH_TX);
+	ph_line("stp ", HEALTH_PH_STP);
+	ph_line("cmd ", HEALTH_PH_CMD);
+
+	/* Stack: current depth plus how much of the painted area is untouched */
+	print_string("sp ");
+	print_byte(SP);
+	print_string(" untouched ");
+	i = 0;
+	while (*(__idata uint8_t *)(0xff - i) == 0xa5 && i < 0x86)
+		i++;
+	print_byte(i);
+	write_char('\n');
+
+	/* The TCP connection slots (a single one on this configuration) */
+	for (i = 0; i < UIP_CONNS; i++) {
+		print_string("tcp ");
+		if (UIP_CONNS > 1) {
+			print_byte(i);
+			write_char(' ');
+		}
+		print_string("st ");
+		print_byte(uip_conns[i].tcpstateflags);
+		print_string(" tmr ");
+		print_byte(uip_conns[i].timer);
+		print_string(" rtx ");
+		print_byte(uip_conns[i].nrtx);
+		print_string(" rto ");
+		print_byte(uip_conns[i].rto);
+		print_string(" len ");
+		print_short(uip_conns[i].len);
+		print_string(" mss ");
+		print_short(uip_conns[i].mss);
+		write_char('\n');
+		print_string("  lport ");
+		print_short(HTONS(uip_conns[i].lport));
+		print_string(" rport ");
+		print_short(HTONS(uip_conns[i].rport));
+		print_string(" rip ");
+		print_short(HTONS(uip_conns[i].ripaddr[0]));
+		write_char(' ');
+		print_short(HTONS(uip_conns[i].ripaddr[1]));
+		write_char('\n');
+	}
+
+	/* httpd transfer state and the protocol flags */
+	print_string("httpd left ");
+	print_short(len_left);
+	print_string(" entry ");
+	print_byte(entry);
+	print_string(" stp ");
+	print_byte(stp_enabled);
+	print_string(" mvlan ");
+	print_short(management_vlan);
+	write_char('\n');
 }
