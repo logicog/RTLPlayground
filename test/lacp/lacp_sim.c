@@ -16,6 +16,7 @@
 #include "rtl837x_common.h"
 #include "machine.h"
 #include "uip.h"
+#include "rtl837x_regs.h"
 #include "rtl837x_lacp.h"
 
 /* ---------- platform mocks ---------- */
@@ -62,6 +63,43 @@ void port_isolate(uint8_t port, uint16_t pmask)
 {
 	if (port < 10)
 		hw_isolation[port] = pmask;
+}
+
+/* PVID mock: ports carry distinct PVIDs unless a test says otherwise, so
+ * lacp_fdb_update's "this PVID is already written" skip is exercised. */
+static uint16_t hw_pvid[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+uint16_t port_pvid_get(uint8_t port)
+{
+	return port < 10 ? hw_pvid[port] : 1;
+}
+
+/* Register-write mock: record the last value per register plus how many
+ * table operations were triggered, which is what the FDB entry test reads. */
+static struct {
+	uint16_t reg;
+	uint8_t v[4];
+} hw_last_write[8];
+static int hw_writes, hw_tbl_ops;
+
+void hw_reg_write(uint16_t reg, uint8_t v24, uint8_t v16, uint8_t v8, uint8_t v0)
+{
+	if (hw_writes < (int)(sizeof hw_last_write / sizeof hw_last_write[0])) {
+		hw_last_write[hw_writes].reg = reg;
+		hw_last_write[hw_writes].v[0] = v24;
+		hw_last_write[hw_writes].v[1] = v16;
+		hw_last_write[hw_writes].v[2] = v8;
+		hw_last_write[hw_writes].v[3] = v0;
+	}
+	hw_writes++;
+	if (reg == RTL837X_TBL_CTRL && (v0 & TBL_EXECUTE))
+		hw_tbl_ops++;
+}
+
+static void hw_writes_reset(void)
+{
+	hw_writes = 0;
+	hw_tbl_ops = 0;
+	memset(hw_last_write, 0, sizeof hw_last_write);
 }
 
 /* ---------- on-wire mirrors (independent re-statement of the layout) ---------- */
@@ -250,14 +288,6 @@ int main(int argc, char **argv)
 	CHECK(hw_members == 0x0003 && !(lacp_actor_state[2] & P_SYNC),
 	      "T4 mis-cabling: port with different partner system stays out");
 
-	/* T4b: sibling isolation - the two bond ports (same partner SYS_A) must be
-	 * isolated from EACH OTHER so a forwarded LACPDU does not loop back, while
-	 * the odd port (SYS_B) keeps default isolation. base = CPU|all = 0x3ff. */
-	CHECK(hw_isolation[0] == (0x3ff & ~(1u << 1))    /* port0: everyone but port1 */
-	      && hw_isolation[1] == (0x3ff & ~(1u << 0)) /* port1: everyone but port0 */
-	      && hw_isolation[2] == 0x3ff,               /* port2: different partner, untouched */
-	      "T4b sibling isolation: bond ports isolated from each other, odd port default");
-
 	/* T5: register-write economy: stable state must not rewrite the trunk */
 	int calls_before = hw_set_calls;
 	partner_frame(0, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
@@ -308,12 +338,6 @@ int main(int argc, char **argv)
 	      && hw_members_lag[1] == 0x0003 && hw_members_lag[2] == 0x000c,
 	      "T10 two LAGs: independent aggregates converge on their own trunks");
 
-	/* T10b: sibling isolation is scoped to the LAG - ports of LAG 1 are
-	 * isolated from each other but NOT from LAG 2's ports (same partner!). */
-	CHECK(hw_isolation[0] == (0x3ff & ~(1u << 1))
-	      && hw_isolation[2] == (0x3ff & ~(1u << 3)),
-	      "T10b isolation scoped per LAG despite identical partner system");
-
 	/* T11: removing one LAG releases only its trunk; the other keeps running */
 	lacp_lag_set(1, 0);
 	CHECK(hw_members_lag[1] == 0 && hw_members_lag[2] == 0x000c
@@ -332,6 +356,36 @@ int main(int argc, char **argv)
 	lacp_lag_set(2, 0);
 	CHECK(lacpEnabled == 0 && hw_members_lag[2] == 0,
 	      "T13 last LAG removed: engine off, trunk drained");
+
+	/* T14: LACPDUs are kept off the trunk by a static L2 entry steering the
+	 * slow-protocols address 01:80:c2:00:00:02 to the CPU alone, written when
+	 * a LAG is configured. Both member ports share a PVID here, so the entry
+	 * is written once: the address is per-VLAN, not per-port. */
+	hw_writes_reset();
+	hw_pvid[0] = hw_pvid[1] = 2;
+	lacp_lag_set(0, 0x0003);
+	CHECK(hw_tbl_ops == 1
+	      && hw_writes >= 4
+	      && hw_last_write[0].reg == RTL837x_TBL_DATA_IN_A
+	      && hw_last_write[0].v[0] == 0xc2 && hw_last_write[0].v[3] == 0x02
+	      && hw_last_write[1].reg == RTL837x_TBL_DATA_IN_B
+	      && hw_last_write[1].v[1] == 2		/* the shared PVID */
+	      && hw_last_write[1].v[2] == 0x01 && hw_last_write[1].v[3] == 0x80
+	      && hw_last_write[2].reg == RTL837x_TBL_DATA_IN_C
+	      && hw_last_write[2].v[3] == (PMASK_CPU >> 2)
+	      && hw_last_write[3].reg == RTL837X_TBL_CTRL
+	      && hw_last_write[3].v[2] == TBL_L2_UNICAST
+	      && hw_last_write[3].v[3] == (TBL_WRITE | TBL_EXECUTE),
+	      "T14 LACPDU containment: one CPU-only entry for 01:80:c2:00:00:02");
+
+	/* T15: the entry is per-VLAN, so members on different PVIDs need one
+	 * each. Without this the second VLAN would flood LACPDUs to the trunk. */
+	lacp_lag_set(0, 0);
+	hw_writes_reset();
+	hw_pvid[0] = 2;
+	hw_pvid[1] = 20;
+	lacp_lag_set(0, 0x0003);
+	CHECK(hw_tbl_ops == 2, "T15 two PVIDs among members: one entry per VLAN");
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
