@@ -24,7 +24,8 @@
 uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 uint16_t uip_len;
 struct uip_eth_addr uip_ethaddr = { .addr = {0x02,0x11,0x22,0x33,0x44,0x55} };
-struct machine machine = { .min_port = 0, .max_port = 7 };
+struct machine machine = { .min_port = 0, .max_port = 7,
+			   .log_to_phys_port = {5, 1, 2, 3, 4, 6, 7, 8, 9} };
 struct machine_runtime machine_detected = { .isRTL8373 = 1 };
 uint8_t lacpEnabled;
 unsigned char sfr_data[4];	/* mocked register read buffer */
