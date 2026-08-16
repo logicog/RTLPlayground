@@ -146,15 +146,16 @@ function fetchStp() {
       document.getElementById("bFwd").value = s.fwd;
       document.getElementById("bTxhold").value = s.txhold;
       for (const p of s.ports) {
-        document.getElementById("en_" + p.p).value = (p.f & PF_ENABLED) ? "on" : "off";
-        document.getElementById("edge_" + p.p).value =
+        const k = p.lag ? "L" + p.lag : p.p;
+        document.getElementById("en_" + k).value = (p.f & PF_ENABLED) ? "on" : "off";
+        document.getElementById("edge_" + k).value =
           (p.f & PF_ADMEDGE) ? "on" : ((p.f & PF_AUTOEDGE) ? "auto" : "off");
-        document.getElementById("cost_" + p.p).value = parseInt(p.pc, 16);
-        document.getElementById("prio_" + p.p).value = p.prio;
-        document.getElementById("p2p_" + p.p).value = ["auto","on","off"][p.p2];
-        document.getElementById("guard_" + p.p).value =
+        document.getElementById("cost_" + k).value = parseInt(p.pc, 16);
+        document.getElementById("prio_" + k).value = p.prio;
+        document.getElementById("p2p_" + k).value = ["auto","on","off"][p.p2];
+        document.getElementById("guard_" + k).value =
           (p.f & PF_BPDUGUARD) ? "bpdu" : ((p.f & PF_ROOTGUARD) ? "root" : "none");
-        document.getElementById("filt_" + p.p).value = (p.f & PF_FILTER) ? "on" : "off";
+        document.getElementById("filt_" + k).value = (p.f & PF_FILTER) ? "on" : "off";
       }
     }
   };
