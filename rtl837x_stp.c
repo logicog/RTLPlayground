@@ -501,12 +501,14 @@ void stp_in(void) __banked
 
 	if (STP_I->bpdu_type == 0x80) {
 		/* TCN: a downstream bridge reports a topology change. Acknowledge it
-		 * on this port so the sender stops repeating; the change itself is
-		 * counted (and, once implemented, propagated rootward). */
+		 * on this port so the sender stops repeating, then treat it like a
+		 * change of our own: flush the port and carry the TC flag on the
+		 * designated ports for the full window. No TCN goes towards the
+		 * root, so a legacy root further up keeps its normal aging. */
 		stp_tx_flags_extra = 0x80;	/* Topology Change Acknowledgment */
 		stp_cnf_send(port);		/* transmits internally */
 		uip_len = 0;			/* ...so handle_rx must not TX again */
-		stp_tc_count++;
+		stp_topology_change(port);
 		return;
 	}
 
@@ -561,6 +563,26 @@ void stp_in(void) __banked
 		}
 		stp_loop_hold_peer(stp_loop_peer);
 		return;
+	}
+
+	/* Topology Change in transit. The flag arms a short window that our
+	 * own BPDUs copy downstream (the TX side already sends TC while
+	 * stp_tc_while runs) and that each further flagged BPDU refreshes, so
+	 * it expires one hello after the neighbour stops - without shortening
+	 * the long window a local change may have armed. The flush runs once,
+	 * on the arming edge: everything learned on the other non-edge ports
+	 * may sit behind the moved link and must be relearned. */
+	if (STP_I->flags & 0x01) {
+		if (!stp_tc_while) {
+			uint8_t i;
+			stp_tc_count++;
+			for (i = machine.min_port; i <= machine.max_port; i++)
+				if (i != port && (stp_pflags[i] & STP_PF_ENABLED)
+				    && !(stp_pflags[i] & STP_PF_OPEREDGE))
+					port_l2_forget_port(i);
+		}
+		if (stp_tc_while < ((uint16_t)stp_hello_s + 1) * STP_HZ)
+			stp_tc_while = ((uint16_t)stp_hello_s + 1) * STP_HZ;
 	}
 
 	stp_record_designated(port);

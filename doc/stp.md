@@ -80,6 +80,16 @@ A port entering the tree spends `fwd` seconds in blocking before it forwards
 (an edge port skips the wait). Root information is discarded after `maxage`
 seconds without a BPDU, and the switch then reclaims the root role.
 
+## Topology changes
+
+A change on a local non-edge port (the link coming or going, a port promoted
+to forwarding) flushes the addresses learned on it and sets the TC flag in
+our BPDUs for `maxage + fwd` seconds. A TC flag received in a BPDU is passed
+on: the switch flushes the other non-edge ports once and keeps the flag in
+its own BPDUs until one hello after the last flagged frame, so the
+notification crosses the switch instead of dying at it. A legacy TCN is
+acknowledged with TCA and then treated like a local change.
+
 ## Bridge settings
 
 ```
@@ -139,3 +149,6 @@ The `stp status` command prints the same view on the serial console.
   converge, but through the timers rather than the fast transition.
 * Port roles are approximated: the root port and designated ports are
   distinguished, alternate/backup are not.
+* Topology changes propagate away from the root only: nothing is announced
+  on the root port (no TCN and no BPDUs at all), so bridges upstream rely on
+  their own detection.
