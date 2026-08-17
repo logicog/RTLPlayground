@@ -186,22 +186,24 @@ void send_sfp_info(uint8_t sfp)
 	}
 }
 
+__xdata uint8_t sfp;
+__xdata uint8_t sfp_len;
 
-void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
+void sfp_send_data(uint8_t reg)
 {
 	// maximum supported transfer size is 16 bytes
-	if (len > 16)
+	if (sfp_len > 16)
 		return;
 
 	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
 		reg &= 0x7f;
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (len - 1) & 0xf,  0x51 >> 5, (0x51 << 3) & 0xff);
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (sfp_len - 1) & 0xf,  0x51 >> 5, (0x51 << 3) & 0xff);
 	} else {
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (len - 1) & 0xf,  0x50 >> 5, (0x50 << 3) & 0xff);
+		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | (sfp_len - 1) & 0xf,  0x50 >> 5, (0x50 << 3) & 0xff);
 	}
 
 	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
+	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[sfp].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[sfp].i2c.sda) << 2);
 	reg_write_m(RTL837X_REG_I2C_CTRL);
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
@@ -214,7 +216,7 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 		reg_read_m(RTL837X_REG_I2C_CTRL);
 	} while (sfr_data[3] & 0x1);
 
-	for (uint8_t i = 0; i < len; i++) {
+	for (uint8_t i = 0; i < sfp_len; i++) {
 		if (!(i & 0x3))
 			reg_read_m(RTL837X_REG_I2C_OUT + i);
 		byte_to_html(sfr_data[3 - (i & 0x3)]);
@@ -291,19 +293,25 @@ void send_vlan(uint16_t vlan)
 	vlan_get(vlan);
 	sfr_data_to_html();
 	slen += strtox(outbuf + slen, "\",\"name\":\"");
-	__xdata uint16_t n = vlan_name(vlan);
-	if (n== 0xffff) {
+	uint16_t n = vlan_name(vlan);
+	if (n == 0xffff) {
 		dbg_string("VLAN has no name\n");
 	} else {
-		while(vlan_names[n] && vlan_names[n] != ' ')
-			char_to_html(vlan_names[n++]);
+		uint8_t * vn = &vlan_names[n];
+		while(1) {
+			uint8_t c = *vn++;
+			if (c == '\0' || c == ' ') {
+				break;
+			}
+			char_to_html(c);
+		}
 	}
 	slen += strtox(outbuf + slen, "\",\"pvid\":\"0x");
-	uint16_t pvid_mask = 0;
+	__xdata uint16_t pvid_mask = 0;
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		if (port_pvid_get(i) == vlan)
 			pvid_mask |= (1 << i);
-}
+	}
 	byte_to_html(pvid_mask >> 8);
 	byte_to_html(pvid_mask);
 	slen += strtox(outbuf + slen, "\"}");
@@ -668,48 +676,49 @@ void send_status(void)
 		slen += strtox(outbuf + slen, "\"");
 
 		if (machine.is_sfp[i]) {
-			uint8_t sfp = machine.is_sfp[i] - 1;
+			sfp = machine.is_sfp[i] - 1;
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
-				bool_to_html(1);
-				slen += strtox(outbuf + slen,",\"sfp_options\":\"0x");
+				slen += strtox(outbuf + slen,"1,\"sfp_options\":\"0x");
 				byte_to_html(sfp_options[sfp]);
 				if (sfp_options[sfp] & 0x40) {
+					sfp_len = 2;
 					slen += strtox(outbuf + slen,"\",\"sfp_temp\":\"0x");
-					sfp_send_data(sfp, 224, 2);
+					sfp_send_data(224);
 					slen += strtox(outbuf + slen,"\",\"sfp_vcc\":\"0x");
-					sfp_send_data(sfp, 226, 2);
+					sfp_send_data(226);
 					slen += strtox(outbuf + slen,"\",\"sfp_txbias\":\"0x");
-					sfp_send_data(sfp, 228, 2);
+					sfp_send_data(228);
 					slen += strtox(outbuf + slen,"\",\"sfp_txpower\":\"0x");
-					sfp_send_data(sfp, 230, 2);
+					sfp_send_data(230);
 					slen += strtox(outbuf + slen,"\",\"sfp_rxpower\":\"0x");
-					sfp_send_data(sfp, 232, 2);
+					sfp_send_data(232);
 					if (sfp_options[sfp] & 0x10) {
+						sfp_len = 4;
 						slen += strtox(outbuf + slen,"\",\"sfp_temp_cal\":\"0x");
-						sfp_send_data(sfp, 212, 4);
+						sfp_send_data(212);
 						slen += strtox(outbuf + slen,"\",\"sfp_vcc_cal\":\"0x");
-						sfp_send_data(sfp, 216, 4);
+						sfp_send_data(216);
 						slen += strtox(outbuf + slen,"\",\"sfp_txbias_cal\":\"0x");
-						sfp_send_data(sfp, 204, 4);
+						sfp_send_data(204);
 						slen += strtox(outbuf + slen,"\",\"sfp_txpower_cal\":\"0x");
-						sfp_send_data(sfp, 208, 4);
+						sfp_send_data(208);
 						slen += strtox(outbuf + slen,"\",\"sfp_rxpower_cal\":\"0x");
-						sfp_send_data(sfp, 184, 16);
-						sfp_send_data(sfp, 200, 4);
+						sfp_len = 16;
+						sfp_send_data(184);
+						sfp_len = 4;
+						sfp_send_data(200);
 					}
 					slen += strtox(outbuf + slen,"\",\"sfp_state\":\"0x");
-					sfp_send_data(sfp, 238, 1);
+					sfp_len = 1;
+					sfp_send_data(238);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_vendor[sfp][s];
+				slen += xstrtox(outbuf + slen, &sfp_module_vendor[sfp], 16);
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_model[sfp][s];
+				slen += xstrtox(outbuf + slen, &sfp_module_model[sfp], 16);
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_serial[sfp][s];
+				slen += xstrtox(outbuf + slen, &sfp_module_serial[sfp], 16);
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");

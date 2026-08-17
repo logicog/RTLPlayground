@@ -41,8 +41,8 @@ __xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
-__xdata uint8_t *content_type = 0;
-__xdata uint8_t *session = 0;
+__xdata uint8_t * __xdata content_type;
+__xdata uint8_t * __xdata session;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
@@ -54,7 +54,7 @@ __xdata char passwd[21];
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
-__xdata uint8_t *timeptr;
+__xdata uint8_t * __xdata timeptr;
 __xdata uint32_t last_session_use;
 
 #define TSTATE_NONE		0
@@ -69,7 +69,7 @@ __xdata uint16_t crc_final;
 void crc16(__xdata uint8_t *v) __naked;
 
 
-inline uint8_t is_separator(uint8_t c)
+inline bool is_separator(uint8_t c)
 {
 	return c == ' ' || c == '\t' || c == '?' || c == '=';
 }
@@ -165,7 +165,7 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 }
 
 
-bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
+bool is_word_x(__xdata uint8_t * lhs_str_p, __xdata uint8_t * rhs_str_p)
 {
 	uint8_t u, c;
 
@@ -241,7 +241,7 @@ __xdata uint8_t *skip_boundary(__xdata uint8_t *p)
 }
 
 
-__xdata uint8_t *scan_header(__xdata uint8_t *p)
+__xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 {
 	content_type = 0;
 	session = 0;
@@ -300,10 +300,12 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 	return p;
 }
 
-
-void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
+/* 
+ * Generate random HEX-chars at the buffer location.
+*/
+void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 {
-	__xdata uint8_t i = 0;
+	uint8_t i = 0;
 	while (bytes) {
 		if (!i)
 			get_random_32();
@@ -481,7 +483,7 @@ void handle_post(void)
 		if (is_url_word_x(p, passwd)) {
 			dbg_string("Password accepted!\n");
 			read_reg_timer(&last_session_use);
-			gen_random_bytes(session_id, SESSION_ID_LENGTH);
+			gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
 			session_id[SESSION_ID_LENGTH] = '\0';
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");

@@ -85,7 +85,7 @@ uip_neighbor_periodic(void)
 }
 /*---------------------------------------------------------------------------*/
 void
-uip_neighbor_add(__xdata uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr *addr)
+uip_neighbor_add(__xdata uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr * __xdata addr)
 {
   uint16_t i, oldest;
   u8_t oldest_time;

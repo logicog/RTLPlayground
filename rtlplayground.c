@@ -309,6 +309,21 @@ void memcpyc(register __xdata uint8_t *dst, register __code uint8_t *src, regist
 		*dst++ = *src++;
 }
 
+bool memcmp(__xdata uint8_t *dst, __xdata uint8_t *src, uint8_t len)
+{
+	uint8_t ret = 0;
+	while (len--)
+		ret |= *dst++ ^ *src++;
+	return ret == 0;
+}
+
+bool is_mem_zero(__xdata uint8_t *src, uint8_t len) {
+	uint8_t ret = 0;
+    for (uint8_t c = 0; c < len; c++) {
+        ret |= *src++;
+    }
+	return ret == 0;
+}
 
 void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register uint8_t len)
 {
@@ -316,13 +331,27 @@ void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register 
 		*dst++ = v;
 }
 
-uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
+uint16_t strtox(__xdata uint8_t *dst, __code const char *s)
 {
-	__xdata uint8_t *b = dst;
+	__xdata uint8_t * __xdata b = dst;
 	while (*s)
 		*dst++ = *s++;
 	*dst = 0;
 	return dst - b;
+}
+
+uint8_t xstrtox(__xdata uint8_t *dst, __xdata const char *s, uint8_t len)
+{
+	uint8_t i;
+	for (i = 0; i < len; i++) {
+		uint8_t c = *s++;
+		if (c == '\0') {
+			break;
+		}
+		*dst++ = c;
+	}
+	*dst = 0;
+	return i;
 }
 
 

@@ -286,14 +286,11 @@ time_exceeded(void)
 static void
 fwcache_register(void)
 {
-  __xdata struct fwcache_entry *fw;
-  __xdata uint16_t i, oldest;
+  __xdata struct fwcache_entry * __xdata fw = NULL;
+  __xdata uint16_t oldest = FW_TIME;
 
-  oldest = FW_TIME;
-  fw = NULL;
-  
   /* Find the oldest entry in the cache. */
-  for(i = 0; i < FWCACHE_SIZE; ++i) {
+  for(__xdata uint16_t i = 0; i < FWCACHE_SIZE; ++i) {
     if(fwcache[i].timer == 0) {
       fw = &fwcache[i];
       break;
@@ -410,7 +407,7 @@ uip_fw_output(void)
 u8_t
 uip_fw_forward(void)
 {
-  __xdata struct fwcache_entry *fw;
+  __xdata struct fwcache_entry * __xdata fw;
 
   /* First check if the packet is destined for ourselves and return 0
      to indicate that the packet should be processed locally. */
@@ -432,7 +429,9 @@ uip_fw_forward(void)
   /* Check if the packet is in the forwarding cache already, and if so
      we drop it. */
 
-  for(fw = fwcache; fw < &fwcache[FWCACHE_SIZE]; ++fw) {
+  for(uint8_t i = 0; i < FWCACHE_SIZE; i++) {
+    fw = &fwcache[i];
+
     if(fw->timer != 0 &&
 #if UIP_REASSEMBLY > 0
        fw->len == BUF->len &&

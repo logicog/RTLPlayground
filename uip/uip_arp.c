@@ -175,18 +175,18 @@ uip_arp_timer(void) __banked
 }
 /*-----------------------------------------------------------------------------------*/
 static void
-uip_arp_update(__xdata u16_t *ipaddr, __xdata struct uip_eth_addr *ethaddr)
+uip_arp_update(__xdata u16_t * __xdata ipaddr, __xdata struct uip_eth_addr * __xdata ethaddr)
 {
-  uint8_t i;
+  __xdata uint8_t i;
   /* Walk through the ARP mapping table and try to find an entry to
      update. If none is found, the IP -> MAC address mapping is
      inserted in the ARP table. */
   for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
     /* Only check those entries that are actually in use. */
-    if(arp_table[i].ipaddr[0] != 0 && arp_table[i].ipaddr[1] != 0) {
+    if(!is_mem_zero(arp_table[i].ipaddr, 4)) {
       /* Check if the source IP address of the incoming packet matches
          the IP address in this ARP table entry. */
-      if(ipaddr[0] == arp_table[i].ipaddr[0] && ipaddr[1] == arp_table[i].ipaddr[1]) {
+      if(memcmp(arp_table[i].ipaddr, ipaddr, 4)) {
 	/* An old entry found, update this and return. */
 	memcpy(arp_table[i].ethaddr.addr, ethaddr->addr, 6);
 	arp_table[i].time = arptime;
@@ -201,7 +201,7 @@ uip_arp_update(__xdata u16_t *ipaddr, __xdata struct uip_eth_addr *ethaddr)
 
   /* First, we try to find an unused entry in the ARP table. */
   for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
-    if(arp_table[i].ipaddr[0] == 0 && arp_table[i].ipaddr[1] == 0)
+    if(is_mem_zero(arp_table[i].ipaddr, 4))
       break;
   }
 

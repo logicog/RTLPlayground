@@ -54,7 +54,7 @@ struct uip_neighbor_addr {
 };
 
 void uip_neighbor_init(void);
-void uip_neighbor_add(__xdata uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr *addr);
+void uip_neighbor_add(__xdata uip_ipaddr_t ipaddr, __xdata struct uip_neighbor_addr * __xdata addr);
 void uip_neighbor_update(__xdata uip_ipaddr_t ipaddr);
 __xdata struct uip_neighbor_addr *uip_neighbor_lookup(__xdata uip_ipaddr_t ipaddr);
 void uip_neighbor_periodic(void);
