@@ -529,7 +529,7 @@ void parse_ingress(void)
 			if (!isnumber(p)) {
 				continue;
 			}
-			if (p - '1' > 9) {
+			if (p < '1') {
 				print_string("Invalid physical port number: "); write_char(p); write_char('\n');
 				continue;
 			}
