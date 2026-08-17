@@ -59,9 +59,10 @@ to the CPU. `stp_setup()` prints a warning for every STP-enabled port in that
 state.
 
 Port states live in `RTL837X_MSTP_STATES (0x5310)`, two bits per port:
-`00` disabled, `01` blocking, `10` learning, `11` forwarding. In the blocking
-state a port forwards nothing except frames sent by the CPU, and nothing it
-receives reaches the CPU.
+`00` disabled, `01` blocking, `10` learning, `11` forwarding. A port in
+blocking forwards nothing between ports, but it still sends what the CPU
+hands it and still passes a received BPDU up to the CPU, which is what lets
+loop detection go on working on a port it has already blocked.
 
 ## Timers
 
