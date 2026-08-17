@@ -20,7 +20,7 @@
 
 extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
-extern __xdata struct machine_runtime machine_detected;	/* owned by rtl837x_port.c */
+extern __xdata struct machine_runtime machine_detected;
 
 __xdata uint16_t stp_fdb_vid;
 __xdata uint8_t  stp_fdb_i;
@@ -30,7 +30,6 @@ extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 extern __xdata uint16_t management_vlan;	/* owned by rtlplayground.c; suppressed per-frame for BPDUs */
 
-/* CLI tokenizer state + helpers (owned by cmd_parser.c, HOME bank) */
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_words_len;
 extern __xdata uint8_t cmd_words_b[15];
