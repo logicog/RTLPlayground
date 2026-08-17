@@ -21,7 +21,6 @@
 
 extern volatile __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
-/* 200 Hz free-running tick, owned by rtlplayground.c */
 extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
