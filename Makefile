@@ -86,17 +86,16 @@ SRCS += \
 
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
-HTML := $(shell find $(html) -name '*.js' -or -name '*.html' -or -name '*.svg')
+HTML := $(shell find html -name '*.js' -or -name '*.html' -or -name '*.svg')
 
-html_data.c html_data.h: $(HTML) tools/output/fileadder
+html_data.c html_data.h &: $(HTML) | tools
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
-	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
-	@echo "#define VERSION_H" >> $(VERSION_HEADER)
-	@echo "#define VERSION_SW \"$(VERSION_EXTENSION)\"" >> $(VERSION_HEADER)
-	@echo "#define BUILD_DATE \"$(BUILD_DATE)\"" >> $(VERSION_HEADER)
-	@echo "#endif" >> $(VERSION_HEADER)
+	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
+		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
+		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
+		"#endif" > $(VERSION_HEADER)
 
 httpd: html_data.h
 
@@ -111,10 +110,10 @@ distclean:
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-rm -rf $(BUILDDIR)
 
-$(BUILDDIR)/%.rel: %.c
+$(BUILDDIR)/%.rel: %.c | create_build_dir html_data.h
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
-$(BUILDDIR)/%.rel: %.asm
+$(BUILDDIR)/%.rel: %.asm | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
@@ -124,7 +123,7 @@ $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img
+$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img | tools
 	if [ -e $@ ]; then rm $@; fi
 	tools/output/imagebuilder -i $^ $@
 	tools/output/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
@@ -133,7 +132,7 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
-.PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
+.PHONY: clean all $(SUBDIRS) $(VERSION_HEADER) create_build_dir
 
 .PHONY:
 machine_check:
