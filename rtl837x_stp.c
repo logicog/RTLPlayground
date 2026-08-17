@@ -287,21 +287,13 @@ static void stp_topology_change(uint8_t port) __reentrant
  */
 static void stp_loop_hold_peer(uint8_t port) __reentrant
 {
-	/* The port number arrives in a BPDU, so it is somebody else's data,
-	 * and our own bridge MAC is public in every BPDU we send - a forged
-	 * frame can name any port it likes. Bound it to the ports this module
-	 * actually manages, like every other loop here does. Out of that
-	 * range nothing would ever release the block either: stp_timers()
-	 * walks min_port..max_port and skips ports that are not STP-enabled,
-	 * so their port_timers[] never counts down. Naming the CPU port would
-	 * otherwise cost us our own management path. */
 	if (port < machine.min_port || port > machine.max_port)
 		return;
 	if (!(stp_pflags[port] & STP_PF_ENABLED))
 		return;
 	if (stp_pflags[port] & STP_PF_TRIPPED)
 		return;
-	if (!port_timers[port]) {		/* not held down yet */
+	if (!port_timers[port]) {
 		print_string("STP: loop detected, blocking port ");
 		print_port_nl(port);
 		stp_state_set(port, 0b01);
