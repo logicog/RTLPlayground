@@ -734,6 +734,19 @@ void port_rldp_on(__xdata uint16_t p_ms)
 
 
 /*
+ * Reads the member port bitmask of a Link Aggregation Group.
+ * The groups have numbers 0-3; bit n is set when logical port n is a member.
+ * The bitmask reflects what the hardware holds, so it covers groups set up
+ * statically and groups a protocol brought up, without either having to say so.
+ */
+uint16_t port_lag_members_get(uint8_t lag) __banked
+{
+	reg_read(RTL837X_TRK_MBR_CTRL_BASE + (lag << 2));
+	return ((uint16_t)SFR_DATA_8 << 8) | SFR_DATA_0;
+}
+
+
+/*
  * Configure LAGs
  * Sets the members via port bitmask of a given Link Aggregation Group
  * The groups have numbers 0-3
@@ -744,11 +757,14 @@ void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banke
 {
 	print_string("port_lag_members_set, lag: "); print_byte(lag); print_string(", members: "); print_short(members);
 	write_char('\n');
-	if (lag > 3)
-		print_string("Link aggregation group must be 0-3!\n");
+	if (lag > 3) {
+		print_string("Link aggregation group out of range\n");
+		return;
+	}
 	reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2));
-	if (!(sfr_data[0] | sfr_data [1] | sfr_data [2] | sfr_data [3]))
-		REG_SET(RTL837X_TRK_HASH_CTRL_BASE, LAG_HASH_DEFAULT);
+	if (!(sfr_data[0] | sfr_data[1] | sfr_data[2])
+	    && (sfr_data[3] == LAG_HASH_RESET || sfr_data[3] == 0))
+		REG_SET(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2), LAG_HASH_DEFAULT);
 	REG_WRITE(RTL837X_TRK_MBR_CTRL_BASE + (lag << 2), 0, 0, members >> 8, members & 0xff);
 }
 
@@ -761,8 +777,10 @@ void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash_bits) __banked
 {
 	print_string("port_lag_hash_set, lag: "); print_byte(lag); print_string(", hash: "); print_byte(hash_bits);
 	write_char('\n');
-	if (lag > 3)
-		print_string("Link aggregation group must be 0-3!\n");
+	if (lag > 3) {
+		print_string("Link aggregation group out of range\n");
+		return;
+	}
 	REG_WRITE(RTL837X_TRK_HASH_CTRL_BASE + (lag << 2), 0, 0, 0, hash_bits);
 }
 

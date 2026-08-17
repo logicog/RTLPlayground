@@ -32,6 +32,17 @@ endif
 VERSION_EXTENSION = v$(VERSION)-$(GIT_VERSION)
 FILENAME_EXTENSION = $(VERSION_EXTENSION)-$(MACHINE)
 
+# Deterministic build date: honor SOURCE_DATE_EPOCH, else the HEAD commit date,
+# else wall-clock (no-git fallback). Keeps same-commit builds byte-identical
+# (BUILD_DATE is baked into the image and covered by the trailing CRC).
+SOURCE_DATE_EPOCH ?= $(shell git show -s --format=%ct HEAD 2>/dev/null)
+ifeq ($(SOURCE_DATE_EPOCH),)
+BUILD_DATE := $(shell date +"%Y-%m-%d %H:%M:%S")
+else
+BUILD_DATE := $(shell date -u -d @$(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
+	|| date -u -r $(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S")
+endif
+
 all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
 create_build_dir:
@@ -87,18 +98,14 @@ html_min: $(HTML)
 	mkdir -p $(HTML_MIN)
 	@for f in $(HTML); do python3 tools/minify.py $$f $(HTML_MIN)/$$(basename $$f) || exit 1; done
 
-html_data.c html_data.h: $(HTML) tools/output/fileadder html_min
+html_data.c html_data.h &: $(HTML) | tools html_min
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
-# httpd.c includes html_data.h; declare it explicitly so a parallel
-# build (-j) does not compile httpd before the header is generated.
-$(BUILDDIR)/httpd/httpd.rel: html_data.h
 
 $(VERSION_HEADER):
-	@echo "#ifndef VERSION_H" > $(VERSION_HEADER)
-	@echo "#define VERSION_H" >> $(VERSION_HEADER)
-	@echo "#define VERSION_SW \"$(VERSION_EXTENSION)\"" >> $(VERSION_HEADER)
-	@echo "#define BUILD_DATE \"$(shell date +"%Y-%m-%d %H:%M:%S")\"" >> $(VERSION_HEADER)
-	@echo "#endif" >> $(VERSION_HEADER)
+	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
+		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
+		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
+		"#endif" > $(VERSION_HEADER)
 
 httpd: html_data.h
 
@@ -113,20 +120,20 @@ distclean:
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-rm -rf $(BUILDDIR)
 
-$(BUILDDIR)/%.rel: %.c
+$(BUILDDIR)/%.rel: %.c | create_build_dir html_data.h
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
-$(BUILDDIR)/%.rel: %.asm
+$(BUILDDIR)/%.rel: %.asm | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtstart.rel $(BUILDDIR)/crc16.rel
+$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel
 	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img
+$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img | tools
 	if [ -e $@ ]; then rm $@; fi
 	tools/output/imagebuilder -i $^ $@
 	tools/output/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
@@ -135,7 +142,7 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
-.PHONY: clean all $(SUBDIRS) $(VERSION_HEADER)
+.PHONY: clean all $(SUBDIRS) $(VERSION_HEADER) create_build_dir
 
 .PHONY:
 machine_check:

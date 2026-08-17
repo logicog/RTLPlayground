@@ -356,6 +356,7 @@ void send_l2(uint16_t idx)
 	 */
 	__xdata uint16_t entry = idx & 0xfff;
 	__xdata uint16_t first_entry = 0xffff; // An illegal entry index
+	__bit first = true;
 	char_to_html('[');
 	while (1) {
 		entries_left--;
@@ -369,9 +370,22 @@ void send_l2(uint16_t idx)
 		} while (sfr_data[3] & TBL_EXECUTE);
 
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
-		if ((sfr_data[0] & 0x20)) {	// Check entry is valid
+		__bit valid = (sfr_data[0] & 0x20) != 0;
+		if (valid) {
+			/* separator + 74-byte worst-case entry + closing "]" */
+			if (slen + 76 > TCP_OUTBUF_SIZE)
+				break;
+			if (!first)
+				char_to_html(',');
+			first = false;
+
+			// VLAN, taken from the read above instead of reading the register twice
+			slen += strtox(outbuf + slen, "{\"vlan\":\"");
+			charhex_to_html(sfr_data[0] & 0x0f);
+			byte_to_html(sfr_data[1]);
+
 			// MAC
-			slen += strtox(outbuf + slen, "{\"mac\":\"");
+			slen += strtox(outbuf + slen, "\",\"mac\":\"");
 			byte_to_html(sfr_data[2]); char_to_html(':');
 			byte_to_html(sfr_data[3]); char_to_html(':');
 			port = (sfr_data[0] >> 6) & 0x3;
@@ -380,12 +394,6 @@ void send_l2(uint16_t idx)
 			byte_to_html(sfr_data[1]); char_to_html(':');
 			byte_to_html(sfr_data[2]); char_to_html(':');
 			byte_to_html(sfr_data[3]);
-
-			// VLAN
-			slen += strtox(outbuf + slen, "\",\"vlan\":\"");
-			reg_read_m(RTL837x_L2_DATA_OUT_B);
-			charhex_to_html(sfr_data[0] & 0x0f);
-			byte_to_html(sfr_data[1]);
 
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
@@ -396,32 +404,26 @@ void send_l2(uint16_t idx)
 
 			port |= (sfr_data[3] & 0x3) << 2;
 			itoa_html(port);
+		}
 
-			// Index
-			reg_read_m(RTL837x_TBL_DATA_0);
-			entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		// Index
+		reg_read_m(RTL837x_TBL_DATA_0);
+		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		if (valid) {
 			slen += strtox(outbuf + slen, ",\"idx\":\"");
 			byte_to_html(entry >> 8);
 			byte_to_html(entry);
 			char_to_html('"');
 			char_to_html('}');
-			entry += 1; // We want the next entry following after the current entry
-		} else {
-			reg_read_m(RTL837x_TBL_DATA_0);
-			entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3] + 1;
 		}
-		if (first_entry == 0xffff) {
-			char_to_html(',');
+		entry += 1; // We want the next entry following after the current entry
+
+		if (first_entry == 0xffff)
 			first_entry = entry;
-		} else {
-			if (first_entry == entry || !entries_left) {
-				char_to_html(']');
-				break;
-			} else {
-				char_to_html(',');
-			}
-		}
+		else if (first_entry == entry || !entries_left)
+			break;
 	}
+	char_to_html(']');
 }
 
 
@@ -518,8 +520,7 @@ void send_lag(void)
 		slen += strtox(outbuf + slen, "{\"lagNum\":");
 		itoa_html(l);
 		slen += strtox(outbuf + slen, ",\"members\":\"");
-		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (l << 2));
-		uint16_t ports = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		uint16_t ports = port_lag_members_get(l);
 		for (uint8_t i = 0; i < 16; i++) {
 			bool_to_html(!!(ports & 0x8000));
 			ports <<= 1;

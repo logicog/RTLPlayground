@@ -415,6 +415,7 @@ void machine_custom_init(void) { }
 __code const struct machine machine = {
 	.machine_name = "SWTGW218AS 8+1 Managed Switch",
 	.isRTL8373 = 1,
+	.mac_flash_offset = 0x1FC000,
 	.min_port = 0,
 	.max_port = 8,
 	.n_sfp = 1,

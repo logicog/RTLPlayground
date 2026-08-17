@@ -85,6 +85,7 @@ typedef struct machine {
 	uint32_t led_sets[4][4];
 	uint8_t led_mux_custom;
 	uint8_t led_mux[28];
+	uint32_t mac_flash_offset;
 };
 
 typedef struct machine_runtime

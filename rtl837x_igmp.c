@@ -16,6 +16,7 @@
 #include "machine.h"
 
 extern __code struct machine machine;
+extern __xdata uint8_t igmpEnabled;
 
 #include "uip.h"
 
@@ -85,6 +86,7 @@ void igmp_setup(void) __banked
 {
 	uint8_t i;
 	print_string("igmp_setup called\n");
+	igmpEnabled = 0;
 	// For now, forward all unkown IP-MC pkts (2 bits per port. 00: flood via floodmask, 01: drop, 10: trap, 11: to rport)
 	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
 	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
@@ -95,11 +97,6 @@ void igmp_setup(void) __banked
 
 	// Enable lookup of IPv4 MC addresses in table
 	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
-
-	// Configure per-port IGMP configuration, bits 0-10 enable MC protocol snooping,
-	// bits 16-24 configure max MC group used by that port. For now all protocols are flooded (01)
-	for (i = machine.min_port; i <= machine.max_port; i++)
-		REG_SET(RTL837X_IGMP_PORT_CFG + (i << 2), 0x00ff7c15); 
 
 	/* Configure per-port IGMP operations when protocol messages are received
 	 * bits 0-9 enable MC protocol snooping
@@ -135,6 +132,7 @@ void igmp_setup(void) __banked
 void igmp_enable(void) __banked
 {
 	print_string("igmp_enable called\n");
+	igmpEnabled = 1;
 	// Configure trapping of unhandled IGMP protocol packets to CPU
 	REG_SET(RTL837X_IGMP_TRAP_CFG, IGMP_CPU_PORT | IGMP_TRAP_PRIORITY);
 
@@ -223,7 +221,7 @@ void igmp_packet_handler(void) __banked
 #endif
 
 #ifdef IPMC_USES_L3MC
-	memset(&entry, 0, sizeof(struct ipmc_table_entry));
+	memset((__xdata uint8_t *)&entry, 0, sizeof(struct ipmc_table_entry));
 	// For IPv4 MC, the Source-IP is 0.0.0.0
 	entry.sip[0] = 0x00; entry.sip[1] = 0x00; entry.sip[2] = 0x00; entry.sip[3] = 0x00;
 	// For IPv4 MC, the Destination-IP is the IPv4 MC address
@@ -235,7 +233,7 @@ void igmp_packet_handler(void) __banked
 	 * yy = MC_IP[2]
 	 * zz = MC_IP[3]
 	 */
-	memset(&entry, 0, sizeof(struct l2mc_table_entry));
+	memset((__xdata uint8_t *)&entry, 0, sizeof(struct l2mc_table_entry));
 	entry.mac[0] = 0x01; entry.mac[1] = 0x00; entry.mac[2] = 0x5e;
 	entry.mac[3] = IGMP_I->mc_ip[1] & 0x7f; entry.mac[4] = IGMP_I->mc_ip[2]; entry.mac[5] = IGMP_I->mc_ip[3];
 	entry.vlan = 1; //TODO: Get this out of the packet and compare with VLAN table!
