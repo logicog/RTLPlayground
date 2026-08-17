@@ -536,13 +536,10 @@ void send_lag(void)
 }
 
 
-/* STP status and configuration for the Spanning Tree page ("/stp.json"). */
-__xdata uint8_t stp_we_root;
-__xdata uint8_t pi_i, pi_j, pi_j2;
-
 static __xdata uint32_t pi_u32;
 static __xdata uint8_t pi_prio, pi_ext;
 static __xdata uint8_t * __xdata pi_mac;
+
 
 static void u32hex_html(void)
 {
@@ -553,16 +550,20 @@ static void u32hex_html(void)
 	byte_to_html(b[0]);
 }
 
+
 static void bridge_to_html(void)
 {
 	byte_to_html(pi_prio);
 	byte_to_html(pi_ext);
-	for (pi_j2 = 0; pi_j2 < 6; pi_j2++)
-		byte_to_html(pi_mac[pi_j2]);
+	for (uint8_t i = 0; i < 6; i++)
+		byte_to_html(pi_mac[i]);
 }
+
 
 void send_stp(void)
 {
+	uint8_t i, j, st, dsg;
+
 	dbg_string("send_stp called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
@@ -584,19 +585,18 @@ void send_stp(void)
 	byte_to_html(root_bridge.prio);
 	byte_to_html(root_bridge.ext);
 	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
-	for (pi_j = 0; pi_j < 6; pi_j++)
-		byte_to_html(root_bridge.mac[pi_j]);
+	for (j = 0; j < 6; j++)
+		byte_to_html(root_bridge.mac[j]);
 	slen += strtox(outbuf + slen, "\",\"myMac\":\"");
-	for (pi_j = 0; pi_j < 6; pi_j++)
-		byte_to_html(uip_ethaddr.addr[pi_j]);
+	for (j = 0; j < 6; j++)
+		byte_to_html(uip_ethaddr.addr[j]);
 	slen += strtox(outbuf + slen, "\",\"cost\":\"");
 	byte_to_html(root_bridge_cost >> 24);
 	byte_to_html(root_bridge_cost >> 16);
 	byte_to_html(root_bridge_cost >> 8);
 	byte_to_html(root_bridge_cost);
-	stp_we_root = (stp_root_port == 0xff) ? 1 : 0;
 	slen += strtox(outbuf + slen, "\",\"weRoot\":");
-	bool_to_html(stp_we_root);
+	bool_to_html(stp_root_port == 0xff ? 1 : 0);
 	slen += strtox(outbuf + slen, ",\"rootPort\":");
 	itoa_html(stp_root_port == 0xff ? 0 : machine.log_to_phys_port[stp_root_port]);
 	slen += strtox(outbuf + slen, ",\"tc\":\"");
@@ -604,48 +604,44 @@ void send_stp(void)
 	byte_to_html(stp_tc_count);
 	slen += strtox(outbuf + slen, "\",\"ports\":[");
 	reg_read_m(RTL837X_MSTP_STATES);
-	for (pi_i = machine.min_port; pi_i <= machine.max_port; pi_i++) {
+	for (i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"p\":");
-		itoa_html(machine.log_to_phys_port[pi_i]);
+		itoa_html(machine.log_to_phys_port[i]);
 		slen += strtox(outbuf + slen, ",\"st\":");
-		stp_we_root = (sfr_data[3 - (pi_i >> 2)] >> ((pi_i << 1) & 0x7)) & 0x3;
-		itoa_html(stp_we_root);
-		/* role (approximated): 0 none/disabled, 1 root, 2 designated, 3 alternate(blocked) */
+		st = (sfr_data[3 - (i >> 2)] >> ((i << 1) & 0x7)) & 0x3;
+		itoa_html(st);
 		slen += strtox(outbuf + slen, ",\"role\":");
-		if (!(stp_pflags[pi_i] & STP_PF_ENABLED) || (stp_pflags[pi_i] & STP_PF_TRIPPED))
+		if (!(stp_pflags[i] & STP_PF_ENABLED) || (stp_pflags[i] & STP_PF_TRIPPED))
 			itoa_html(0);
-		else if (pi_i == stp_root_port)
+		else if (i == stp_root_port)
 			itoa_html(1);
-		else if (stp_we_root == 3)
+		else if (st == 3)
 			itoa_html(2);
 		else
 			itoa_html(3);
 		slen += strtox(outbuf + slen, ",\"f\":");
-		itoa_html(stp_pflags[pi_i]);
-		/* path cost (raw hex, full 0..200M range), priority, p2p */
+		itoa_html(stp_pflags[i]);
 		slen += strtox(outbuf + slen, ",\"pc\":\"");
-		pi_u32 = stp_pcost[pi_i]; u32hex_html();
+		pi_u32 = stp_pcost[i]; u32hex_html();
 		slen += strtox(outbuf + slen, "\",\"prio\":");
-		itoa_html(stp_pprio[pi_i]);
+		itoa_html(stp_pprio[i]);
 		slen += strtox(outbuf + slen, ",\"p2\":");
-		itoa_html(stp_pp2p[pi_i]);
-		/* designated info: a freshly heard BPDU wins, else we are the
-		 * segment's designated bridge and report our own values */
-		stp_we_root = stp_dpid[pi_i] && stp_bpdu_age[pi_i] < (uint16_t)stp_maxage_s * STP_HZ;
+		itoa_html(stp_pp2p[i]);
+		dsg = stp_dpid[i] && stp_bpdu_age[i] < (uint16_t)stp_maxage_s * STP_HZ;
 		slen += strtox(outbuf + slen, ",\"db\":\"");
-		if (stp_we_root) {
-			pi_prio = stp_dbridge[pi_i].prio; pi_ext = stp_dbridge[pi_i].ext;
-			pi_mac = stp_dbridge[pi_i].mac;
+		if (dsg) {
+			pi_prio = stp_dbridge[i].prio; pi_ext = stp_dbridge[i].ext;
+			pi_mac = stp_dbridge[i].mac;
 		} else {
 			pi_prio = stp_prio; pi_ext = 0;
 			pi_mac = uip_ethaddr.addr;
 		}
 		bridge_to_html();
 		slen += strtox(outbuf + slen, "\",\"dp\":\"");
-		byte_to_html(stp_we_root ? (stp_dpid[pi_i] >> 8) : stp_pprio[pi_i]);
-		byte_to_html(stp_we_root ? stp_dpid[pi_i] : (pi_i + 1));
+		byte_to_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[i]);
+		byte_to_html(dsg ? stp_dpid[i] : (i + 1));
 		slen += strtox(outbuf + slen, "\",\"dc\":\"");
-		pi_u32 = stp_we_root ? stp_dcost[pi_i] : root_bridge_cost; u32hex_html();
+		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
 		slen += strtox(outbuf + slen, "\"},");
 	}
 	slen -= 1; // remove comma
