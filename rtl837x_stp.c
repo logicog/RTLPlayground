@@ -337,12 +337,6 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	STP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	STP_O->rtl_tag.reason = 0x00;
-	/* Through HTONS like every tag field: raw 0x0020 lands on the wire as
-	 * 0x2000 (EFID), the ASIC fails to parse the tag and floods the frame
-	 * with the 0x8899 header still on it (same bug class as LACP had).
-	 * NOTE: no RTL_TAG_KEEP here - hardware-verified that KEEP on an
-	 * LLC/802.3 (length-field) frame makes the ASIC drop it entirely,
-	 * while the same flag works fine on ethertype frames (LACP). */
 	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
 
