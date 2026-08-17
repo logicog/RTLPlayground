@@ -414,26 +414,24 @@ void stp_cnf_send(uint8_t port) __reentrant
 
 void stp_in(void) __banked
 {
-	/* Robustness: never read fields past the received frame. 33 covers the
-	 * header through bpdu_type; the full Config/RST body is re-checked below.
-	 * (uip_len is consumed and zeroed at the end - keep a local view.) */
+	uint8_t port;
+
+	/* The header through bpdu_type is 33 bytes, the full Config/RST body is
+	 * checked further down before anything past it is read. */
 	if (uip_len < 33) {
 		uip_len = 0;
 		return;
 	}
 	stp_rxlen = uip_len;
 
-	// By default we do not send anything out (handle_rx would TX otherwise)
+	// By default we do not send anything out
 	uip_len = 0;
 
 	/* Ingress port: low nibble of the CPU tag's pmask on RX */
 	stp_scratch = ((uint8_t)HTONS(STP_I->rtl_tag.pmask)) & 0x0f;
 	if (stp_scratch < machine.min_port || stp_scratch > machine.max_port)
 		return;
-	{
-	__xdata static uint8_t port_l;	/* NOT stp_scratch: stp_state_set() clobbers it */
-	uint8_t port = (port_l = stp_scratch);
-	(void)port_l;
+	port = stp_scratch;
 
 	// Make sure this is the type of (R)STP packet we are interested in:
 	if (!(STP_I->dsap == 0x42 && STP_I->ssap == 0x42 && STP_I->ctrl == 0x03))
@@ -582,7 +580,6 @@ void stp_in(void) __banked
 		 * format); saturate rather than wrap on absurd input. */
 		stp_msg_age = (STP_I->age > 254) ? 254 : (uint8_t)STP_I->age;
 		root_bridge_cost = stp_dcost[port] + PCOST(port);
-	}
 	}
 }
 
@@ -804,6 +801,8 @@ void stp_off(void) __banked
 
 void stp_parse(void) __banked __reentrant
 {
+	uint8_t port;
+
 	if (cmd_compare(1, "on")) {
 		print_string("STP enabled\n");
 		stpEnabled = 1;
@@ -828,11 +827,7 @@ void stp_parse(void) __banked __reentrant
 			goto err;
 		if (atoi_byte(&stp_scratch, cmd_words_b[2]) || stp_scratch < 1 || stp_scratch > 9)
 			goto err;
-		{
-		uint8_t port = machine.phys_to_log_port[stp_scratch - 1];
-		/* every sub-command except on/off carries one more argument; without
-		 * this check cmd_compare(4,..) would read a stale word from the
-		 * PREVIOUS command line (cmd_words_b is not cleared between commands) */
+		port = machine.phys_to_log_port[stp_scratch - 1];
 		if (cmd_words_len < 5 && !cmd_compare(3, "on") && !cmd_compare(3, "off"))
 			goto err;
 		if (cmd_compare(3, "on")) {
@@ -903,7 +898,6 @@ void stp_parse(void) __banked __reentrant
 				goto err;
 		} else {
 			goto err;
-		}
 		}
 		return;
 	}
