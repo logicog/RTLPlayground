@@ -75,8 +75,10 @@ JSON polling of the visible section).
 - `fileadder` terminates the embedded files with a NUL directly after the
   content (previously at `data_read + 1`), so the `strlen()`-based size
   computation no longer depends on uninitialised buffer content.
-- `version.h` is no longer `.PHONY`; every build previously rewrote it
-  while a parallel build (`make -j`) could read a half-written copy.
+- `version.h` is now written by a single atomic `printf` (change from
+  upstream) instead of five separate `echo`s, so a parallel build
+  (`make -j`) can no longer read a half-written copy.  It stays in
+  `.PHONY` so it is regenerated on every build.
 
 ## Verification
 

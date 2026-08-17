@@ -934,6 +934,10 @@ function setSectionInterval(fn, ms) {
 function clearSectionIntervals() {
   sectionIntervals.forEach(function(t) { clearInterval(t); });
   sectionIntervals = [];
+  if (l2Timer) {
+    clearTimeout(l2Timer);
+    l2Timer = null;
+  }
 }
 
 function showSection(name) {
@@ -1650,10 +1654,7 @@ sectionInits.stat = function() {
   });
 };
 
-var l2GetInterval;
-var l2Entries = [];
-var l2CurrentEntry = 0;
-
+var l2Timer;
 
 function l2CMP(a, b)
 {
@@ -1744,7 +1745,6 @@ function fillL2(s)
   s = uniq(s);
   l2All = s;
   renderL2();
-  l2Entries = [];
 }
 
 function paintL2(tbl, s)
@@ -1773,50 +1773,22 @@ function paintL2(tbl, s)
 }
 
 function getL2() {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      var s = JSON.parse(xhttp.responseText);
-      var s = s.map(function(e) { 
-        e.vlan = parseInt(e.vlan, 16);
-        e.idx = parseInt(e.idx, 16);
-        e.type = e.type == "s" ? t('l2_static') : t('l2_learned');
-        e.port = e.port == 9 ? 'CPU' : logToPhysPort[e.port];
-      return e;
-    });
-      l2Entries.push(...s);
-      if (l2Entries >= 4096) {
-        l2Entries = [];
-        l2CurrentEntry = 0;
-        clearInterval(l2GetInterval);
-        return;
-      }
-      var w = 0;
-      for (var i = l2Entries.length-1; i > 0; i--) {
-        if (l2Entries[0].idx == l2Entries[i].idx) {
-          w = 1;
-          break;
-        }
-      }
-      if (w) {
-        l2CurrentEntry = 0; 
-        fillL2(l2Entries);
-      } else {
-        l2CurrentEntry = s[s.length-1].idx + 1;
-      }
+  walkL2(function(entries, ok) {
+    if (ok) {
+      for (var i = 0; i < entries.length; i++)
+        entries[i].type = entries[i].type == "s" ? t('l2_static') : t('l2_learned');
+      fillL2(entries);
     }
-  };
-  xhttp.open("GET", "/l2.json?idx=" + l2CurrentEntry, true);
-  xhttp.timeout = 1500; sendXHTTP(xhttp);
+    var sec = document.getElementById('page-l2');
+    if (sec && sec.style.display === 'block')
+      l2Timer = setTimeout(getL2, 1000);
+  });
 }
 
 sectionInits.l2 = function() {
-  l2Entries = [];
-  l2CurrentEntry = 0;
   update( () => {
     getL2();
     setSectionInterval(update, 2000);
-    l2GetInterval = setSectionInterval(getL2, 1000);
   });
 };
 
@@ -2497,3 +2469,66 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .catch(error => console.error('Error fetching the data:', error));
 });
+
+function walkL2(onDone)
+{
+  var entries = [];
+  var idx = 0;
+  var tries = 0;
+
+  function retry() {
+    if (++tries < 3) {
+      setTimeout(page, 1000);
+      return;
+    }
+    onDone(entries, false);
+  }
+
+  function page() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (this.readyState != 4)
+        return;
+      if (this.status != 200) {
+        retry();
+        return;
+      }
+      var s;
+      try {
+        s = JSON.parse(xhttp.responseText);
+      } catch (err) {
+        retry();
+        return;
+      }
+      tries = 0;
+      s = s.map(function(e) {
+        e.vlan = parseInt(e.vlan, 16);
+        e.idx = parseInt(e.idx, 16);
+        e.port = e.port == 9 ? 'CPU' : logToPhysPort[e.port];
+        return e;
+      });
+      if (!s.length) {
+        onDone(entries, true);
+        return;
+      }
+      entries.push(...s);
+      for (var i = entries.length - 1; i > 0; i--) {
+        if (entries[0].idx == entries[i].idx) {
+          onDone(entries, true);
+          return;
+        }
+      }
+      if (entries.length >= 4096) {
+        onDone(entries, true);
+        return;
+      }
+      idx = s[s.length - 1].idx + 1;
+      setTimeout(page, 1000);
+    };
+    xhttp.open("GET", "/l2.json?idx=" + idx, true);
+    xhttp.timeout = 1500;
+    sendXHTTP(xhttp);
+  }
+
+  page();
+}

@@ -121,6 +121,7 @@ __xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t stpEnabled;
+__xdata uint8_t igmpEnabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
 __code uint16_t bit_mask[16] = {
@@ -1152,7 +1153,7 @@ void handle_rx(void)
 				print_string("STP TX\n");
 				tcpip_output();
 			}
-		} else if (uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
+		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x16) {
 			igmp_packet_handler();
 			if (uip_len) {
@@ -2112,20 +2113,28 @@ void main(void)
 	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
 	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
-	reg_read_m(RTL837X_REG_CHIP_UUID);
-#ifdef DEBUG
-	print_string("SoC UUID: "); print_sfr_data();
-#endif
-	uip_ethaddr.addr[0] = 0x06;  // LAA prefix
-	uip_ethaddr.addr[3] = sfr_data[0] ^ sfr_data[3];
-	uip_ethaddr.addr[4] = sfr_data[1] ^ sfr_data[3];
-	uip_ethaddr.addr[5] = sfr_data[2] ^ sfr_data[3];
-	reg_read_m(RTL837X_REG_CHIP_LOT_NO);
-#ifdef DEBUG
-	print_string(", LOT: "); print_sfr_data(); write_char(' ');
-#endif
-	uip_ethaddr.addr[1] = sfr_data[0] ^ sfr_data[2];
-	uip_ethaddr.addr[2] = sfr_data[1] ^ sfr_data[3];
+	uip_ethaddr.addr[0] = 0xff;
+	if (machine.mac_flash_offset) {
+		flash_region.addr = machine.mac_flash_offset;
+		flash_region.len = FLASH_BUF_SIZE;
+		flash_read_bulk(flash_buf);
+		// accept only a real unicast, globally-administered address (reject blank/LAA/multicast/all-zero OUI)
+		if (flash_buf[0] != 0xff && !(flash_buf[0] & 0x03) && (flash_buf[0] | flash_buf[1] | flash_buf[2])) {
+			uip_ethaddr.addr[0] = flash_buf[0]; uip_ethaddr.addr[1] = flash_buf[1];
+			uip_ethaddr.addr[2] = flash_buf[2]; uip_ethaddr.addr[3] = flash_buf[3];
+			uip_ethaddr.addr[4] = flash_buf[4]; uip_ethaddr.addr[5] = flash_buf[5];
+		}
+	}
+	if (uip_ethaddr.addr[0] == 0xff) {  // no valid flash MAC -> generate locally-administered
+		reg_read_m(RTL837X_REG_CHIP_UUID);
+		uip_ethaddr.addr[0] = 0x06;  // LAA prefix
+		uip_ethaddr.addr[3] = sfr_data[0] ^ sfr_data[3];
+		uip_ethaddr.addr[4] = sfr_data[1] ^ sfr_data[3];
+		uip_ethaddr.addr[5] = sfr_data[2] ^ sfr_data[3];
+		reg_read_m(RTL837X_REG_CHIP_LOT_NO);
+		uip_ethaddr.addr[1] = sfr_data[0] ^ sfr_data[2];
+		uip_ethaddr.addr[2] = sfr_data[1] ^ sfr_data[3];
+	}
 	print_string("Setting MAC to: ");
 	print_byte(uip_ethaddr.addr[0]); write_char(':'); print_byte(uip_ethaddr.addr[1]); write_char(':');
 	print_byte(uip_ethaddr.addr[2]); write_char(':'); print_byte(uip_ethaddr.addr[3]); write_char(':');

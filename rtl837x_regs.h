@@ -232,6 +232,8 @@
 #define LAG_HASH_L4_SPORT		0x20
 #define LAG_HASH_L4_DPORT		0x40
 #define LAG_HASH_DEFAULT (LAG_HASH_L2_SMAC | LAG_HASH_L2_DMAC | LAG_HASH_L3_SIP | LAG_HASH_L3_DIP | LAG_HASH_L4_SPORT | LAG_HASH_L4_DPORT)
+#define LAG_HASH_RESET (LAG_HASH_SOURCE_PORT_NUMBER | LAG_HASH_L2_SMAC | LAG_HASH_L2_DMAC \
+			| LAG_HASH_L3_SIP | LAG_HASH_L3_DIP | LAG_HASH_L4_SPORT)
 
 /*
  * Port isolation
@@ -305,32 +307,40 @@
 
 #ifdef REGDBG
 
-#define REG_SET(r, v) SFR_DATA_24 = (((uint32_t)v) >> 24) & 0xff; \
+#define REG_SET(r, v) do { \
+	SFR_DATA_24 = (((uint32_t)v) >> 24) & 0xff; \
 	SFR_DATA_16 = (((uint32_t)v) >> 16) & 0xff; \
 	SFR_DATA_8 = (((uint16_t)v) >> 8 & 0xff); \
 	SFR_DATA_0 = (v) & 0xff; \
 	reg_write(r); \
 	write_char('R'); print_byte(r >> 8); print_byte(r); write_char('-'); \
-	print_byte(((v) >> 24) & 0xff); print_byte((v) >> 16 & 0xff); print_byte((v) >> 8 & 0xff); print_byte( (v) & 0xff); write_char(' ');
+	print_byte(((v) >> 24) & 0xff); print_byte((v) >> 16 & 0xff); print_byte((v) >> 8 & 0xff); print_byte( (v) & 0xff); write_char(' '); \
+} while (0)
 
-#define	REG_WRITE(r, v24, v16, v8, v0) SFR_DATA_24 = (v24); \
+#define	REG_WRITE(r, v24, v16, v8, v0) do { \
+	SFR_DATA_24 = (v24); \
 	SFR_DATA_16 = (v16); \
 	SFR_DATA_8 = (v8); \
 	SFR_DATA_0 = (v0); \
 	reg_write(r); \
-	write_char('R'); print_byte(r>>8); print_byte(r); write_char('-'); print_byte(v24); print_byte(v16); print_byte(v8); print_byte(v0); write_char(' ');
+	write_char('R'); print_byte(r>>8); print_byte(r); write_char('-'); print_byte(v24); print_byte(v16); print_byte(v8); print_byte(v0); write_char(' '); \
+} while (0)
 #else
-#define REG_SET(r, v) SFR_DATA_24 = (((uint32_t)v) >> 24) & 0xff; \
+#define REG_SET(r, v) do { \
+	SFR_DATA_24 = (((uint32_t)v) >> 24) & 0xff; \
 	SFR_DATA_16 = (((uint32_t)v) >> 16) & 0xff; \
 	SFR_DATA_8 = (((uint16_t)v) >> 8 & 0xff); \
 	SFR_DATA_0 = (v) & 0xff; \
-	reg_write(r);
+	reg_write(r); \
+} while (0)
 
-#define	REG_WRITE(r, v24, v16, v8, v0) SFR_DATA_24 = (v24); \
+#define	REG_WRITE(r, v24, v16, v8, v0) do { \
+	SFR_DATA_24 = (v24); \
 	SFR_DATA_16 = (v16); \
 	SFR_DATA_8 = (v8); \
 	SFR_DATA_0 = (v0); \
-	reg_write(r);
+	reg_write(r); \
+} while (0)
 #endif
 
 #endif

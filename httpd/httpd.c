@@ -640,7 +640,7 @@ void httpd_appcall(void)
 		p += 4;
 		scan_header(p);
 		__xdata uint8_t *q = p;
-		while (!is_separator(*p))
+		while (*p && !is_separator(*p))
 			p++;
 		*p = '\0';
 		dbg_string_x(q);
@@ -664,7 +664,16 @@ void httpd_appcall(void)
 				parse_short(q + 15);
 				send_vlan(short_parsed);
 			} else if (is_word(q, "/counters.json")) {
-				send_counters(q[20]-'0');
+				/* The port is one raw character of the request line and
+				 * indexes a nine entry table, so bound it here instead
+				 * of trusting the client to have sent a digit. Anything
+				 * below '0' wraps well past eight, so the one test
+				 * covers both ends. */
+				uint8_t cport = q[20] - '0';
+				if (cport > 8)
+					send_bad_request();
+				else
+					send_counters(cport);
 			} else if (is_word(q, "/eee.json")) {
 				send_eee();
 			} else if (is_word(q, "/bandwidth.json")) {
