@@ -264,14 +264,15 @@ uint8_t cmd_parse_port(uint8_t idx, __bit cpu_is_valid) {
 
 
 // Same as cmd_parse_port() addition to check the trailing space.
-// returns 0 when on parser error or invalid value or no space.
+// returns 0 when on parser error or invalid value or no space or no NUL.
 // return non-zero number of bytes consumed including the space.
-uint8_t cmd_parse_port_space(uint8_t idx, __bit cpu_is_valid) {
+uint8_t cmd_parse_port_separator(uint8_t idx, __bit cpu_is_valid) {
 	uint8_t ret = cmd_parse_port(idx, cpu_is_valid);
 	if (ret != 0) {
 		idx += ret;
 		ret++;
-		if (cmd_buffer[idx] != ' ')
+		uint8_t c = cmd_buffer[idx];
+		if (c != ' ' && c != '\0')
 			ret = 0;
 	}
 	return ret;
@@ -385,7 +386,7 @@ void parse_lag(void)
 		goto err;
 
 	group = atoi_results_u8 - 1;
-	if (group > 3)		/* '0' wraps well past three, so one test does both ends */
+	if (group > 3)
 		goto err;
 
 	uint8_t w = 2;
@@ -393,7 +394,7 @@ void parse_lag(void)
 //		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
 
 		// Parse port.
-		if (cmd_parse_port(cmd_words_b[w++], false) == 0)
+		if (cmd_parse_port_separator(cmd_words_b[w++], false) == 0)
 			goto err;
 
 		members |= ((uint16_t)1) << atoi_results_u8;
@@ -407,13 +408,16 @@ err:
 
 void parse_lag_hash(void)
 {
-	__xdata uint8_t group;
 	__xdata uint8_t hash = 0;
 
-	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]]))
+	if (cmd_words_len < 2)
 		goto err;
-	group = cmd_buffer[cmd_words_b[1]] - '1';
-	if (group > 3)		/* '0' wraps well past three, so one test does both ends */
+
+	if (cmd_parse_port_separator(cmd_buffer[cmd_words_b[1]], false) == 0)
+		goto err;
+
+	uint8_t group = atoi_results_u8 - 1;
+	if (group > 3)
 		goto err;
 
 	uint8_t w = 2;
@@ -507,8 +511,13 @@ void parse_vlan(void)
 			uint16_t pmask = ((uint16_t)1) << atoi_results_u8;
 			vlan_settings.members |= pmask;
 
-			if (cmd_buffer[idx] == 't')
+			if (cmd_buffer[idx] == 't') {
 				vlan_settings.tagged |= pmask;
+				idx++;
+			}
+
+			if (!cmd_is_space_or_null(idx))
+				goto err;
 		}
 		vlan_create();
 	} else if (cmd_compare(1, "show")) {
@@ -536,7 +545,7 @@ void parse_isolate(void)
 
 	print_string("\nISOLATE ");
 
-	if (cmd_parse_port_space(cmd_words_b[1], false) == 0)
+	if (cmd_parse_port_separator(cmd_words_b[1], false) == 0)
 		goto err;
 	uint8_t port_configured = atoi_results_u8;
 
@@ -568,9 +577,8 @@ void parse_isolate(void)
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
 		uint8_t idx = cmd_words_b[w++];
-		uint8_t ret = cmd_parse_port(idx, false);
-		idx += ret;
-		if (ret == 0 || !cmd_is_space_or_null(idx))
+		uint8_t ret = cmd_parse_port_separator(idx, false);
+		if (ret == 0)
 			goto err;
 		uint8_t port = atoi_results_u8;
 		members |= ((uint16_t)1) << port;
@@ -730,7 +738,7 @@ void parse_port(void)
 		return;
 	}
 
-	if (cmd_parse_port_space(cmd_words_b[1], false) == 0) {
+	if (cmd_parse_port_separator(cmd_words_b[1], false) == 0) {
 		print_string("Invalid port number\n");
 		return;
 	}
@@ -830,7 +838,7 @@ void parse_mtu(void)
 	if (cmd_words_len != 3)
 		goto err;
 
-	if (cmd_parse_port_space(cmd_words_b[1], false) == 0)
+	if (cmd_parse_port_separator(cmd_words_b[1], false) == 0)
 		goto err;
 
 	p = atoi_results_u8;
@@ -1273,7 +1281,7 @@ void parse_eee(void)
 			speed_word = 2;
 		} else if (cmd_buffer[idx] == ' ' || cmd_buffer[idx] == '\0') {
 			// Word 2 is a port number
-			if (cmd_parse_port_space(idx, false) == 0) {
+			if (cmd_parse_port_separator(idx, false) == 0) {
 				print_string("Speed word invalid, use: [100m|1g|2g5]\n");
 				return;
 			}
@@ -1326,7 +1334,7 @@ void parse_bw(void)
 	if (cmd_words_len < 2) // Check for at least 2 arguments
 		goto err;
 
-	if (cmd_parse_port_space(cmd_words_b[2], false) == 0)
+	if (cmd_parse_port_separator(cmd_words_b[2], false) == 0)
 		goto err;
 	port = atoi_results_u8;
 
@@ -1679,7 +1687,7 @@ void cmd_parser(void) __banked
 				stpEnabled = 0;
 			}
 		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
-			if (cmd_parse_port_space(cmd_words_b[1], false) != 0 && atoi_results_u8
+			if (cmd_parse_port_separator(cmd_words_b[1], false) != 0 && atoi_results_u8
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
 				port_pvid_set(atoi_results_u8, atoi_results_short);
 			else
