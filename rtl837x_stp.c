@@ -14,7 +14,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_stp.h"
-#include "rtl837x_port.h"	/* port_pvid_get(), port_l2mc_set() */
+#include "rtl837x_port.h"
 #include "uip.h"
 #include "machine.h"
 
