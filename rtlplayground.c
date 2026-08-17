@@ -203,6 +203,9 @@ struct nonq_frame {
 // The output frame structure with 802.1Q field and the padding moved before the buffer-start
 #define FRAME_Q ((__xdata struct q_frame *)&uip_buf[0])
 
+// Ether-type of the output frame, which is the RTL tag on a CPU-tagged frame
+#define FRAME_ETHERTYPE (*(__xdata uint16_t *)&uip_buf[RTL_FRAME_DESC_SIZE + 2 * sizeof(struct uip_eth_addr)])
+
 void isr_timer0(void) __interrupt(1)
 {
 }
@@ -1097,8 +1100,9 @@ void tcpip_output(void)
 	FRAME->len = uip_len;
 	FRAME->reserved_2[0] = 0x00; FRAME->reserved_2[1] = 0x00;
 
-	// For the management VLAN we insert an 802.1Q VLAN tag
-	if (management_vlan) {
+	// For the management VLAN we insert an 802.1Q VLAN tag, but never into a
+	// CPU-tagged frame, where the ASIC expects its tag right behind the addresses
+	if (management_vlan && FRAME_ETHERTYPE != HTONS(RTL_FRAME_TAG_ID)) {
 		// Shift the ethernet header before the HW type including the rtl_frame_desc to the beginning of uip_buf
 		// to allow space to insert the dot 1Q tag
 		for (uint8_t i = 0; i < sizeof(struct q_frame) - DOT_1Q_TAG_SIZE; i++)

@@ -28,7 +28,6 @@ __xdata uint8_t  stp_fdb_i;
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
-extern __xdata uint16_t management_vlan;	/* owned by rtlplayground.c; suppressed per-frame for BPDUs */
 
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_words_len;
@@ -408,20 +407,8 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->fwd_delay = stp_fwddelay_s;
 	STP_O->version1_length = 0;	/* RST BPDU: no version-1 information */
 
-	/* BPDUs are link-local and must egress untagged: with a management VLAN
-	 * set, tcpip_output() splices an 802.1Q tag after the SA, shifting the
-	 * in-frame rtl_tag out of the position the ASIC parses - the CPU tag then
-	 * leaks onto the wire as 0x8899 and the BPDU is flooded, not sent.
-	 * Hardware-verified fix, same as lacp_send(). */
-	{
-	uint16_t saved_mgmt_vlan = management_vlan;
-	management_vlan = 0;
-	/* A legacy Config BPDU body is 35 bytes - without the trailing
-	 * version-1 length byte that only the RST BPDU (36 bytes) carries. */
 	uip_len = stp_rstp ? sizeof(struct stp_pkt) : sizeof(struct stp_pkt) - 1;
 	tcpip_output();
-	management_vlan = saved_mgmt_vlan;
-	}
 }
 
 
