@@ -428,11 +428,11 @@ void parse_isolate(void)
 
 	print_string("\nISOLATE ");
 
-	__xdata int8_t port_configured = cmd_buffer[cmd_words_b[1]] - '1';
-	port_configured = machine.phys_to_log_port[port_configured];
-	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))  // CPU-port, logical port 9
-		port_configured = (port_configured + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
-	if (port_configured < 0 || port_configured > 9)
+	if (!isnumber(cmd_buffer[cmd_words_b[1]]) || cmd_buffer[cmd_words_b[1]] == '0'
+	    || isnumber(cmd_buffer[cmd_words_b[1] + 1]))
+		goto err;
+	__xdata uint8_t port_configured = machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'];
+	if (port_configured < machine.min_port || port_configured > machine.max_port)
 		goto err;
 
 	print_byte(port_configured); write_char('\n');
