@@ -381,6 +381,8 @@ void stp_cnf_send(uint8_t port) __reentrant
 	stp_tx_flags_extra = 0;
 
 	memcpy(STP_O->src_addr, uip_ethaddr.addr, 6);
+	STP_O->src_addr[0] |= 0x02;
+	STP_O->src_addr[5] = (uip_ethaddr.addr[5] & 0xf0) | port;
 	memcpy(STP_O->root.mac, root_bridge.mac, 6);
 	memcpy(STP_O->bridge.mac, uip_ethaddr.addr, 6);
 
