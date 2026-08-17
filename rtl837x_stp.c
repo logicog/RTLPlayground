@@ -137,6 +137,24 @@ struct stp_pkt_in {
 #define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 #define STP_I ((__xdata struct stp_pkt_in *)&uip_buf[0])
 
+#define BPDU_VER_STP		0x00
+#define BPDU_VER_RSTP		0x02
+
+#define BPDU_TYPE_CONFIG	0x00
+#define BPDU_TYPE_RST		0x02
+#define BPDU_TYPE_TCN		0x80
+
+#define BPDU_LEN_CONFIG		0x26	// LLC and a 35 byte body
+#define BPDU_LEN_RST		0x27	// LLC and a 36 byte body
+
+#define BPDU_FLAG_TC		0x01
+#define BPDU_FLAG_LEARNING	0x10
+#define BPDU_FLAG_FORWARDING	0x20
+#define BPDU_FLAG_TCACK		0x80
+
+#define BPDU_ROLE_ROOT		(0b10 << 2)
+#define BPDU_ROLE_DESIGNATED	(0b11 << 2)
+
 /* Console messages name the port on the front panel, not the internal index. */
 static void print_port_nl(uint8_t port) __reentrant
 {
@@ -345,34 +363,22 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->ctrl = 0x03;
 	STP_O->proto = 0x0000;
 	if (stp_rstp) {
-		/* 802.3 length = LLC (3) + RST BPDU body (36, incl. version1_length) */
-		STP_O->msg_len = HTONS(0x27);
-		STP_O->version = 0x02;		/* RSTP */
-		STP_O->bpdu_type = 0x02;	/* Rapid Spanning Tree BPDU */
-		/* Flags describe this port, so derive them instead of announcing
-		 * designated+learning+forwarding unconditionally: a blocked port
-		 * claiming to forward, or the root port claiming designated, is a
-		 * lie on the wire even when nothing downstream acts on it (yet).
-		 * Role is root on the root port and designated everywhere else -
-		 * there is no alternate/backup role computation, so a port blocked
-		 * by loop detection still transmits as designated, just with the
-		 * learning and forwarding bits clear. Those two mirror the ASIC
-		 * state (0b11 = forwarding); a listening or blocked port sends
-		 * neither. */
+		STP_O->msg_len = HTONS(BPDU_LEN_RST);
+		STP_O->version = BPDU_VER_RSTP;
+		STP_O->bpdu_type = BPDU_TYPE_RST;
 		reg_read_m(RTL837X_MSTP_STATES);
-		STP_O->flags = (uint8_t)((port == stp_root_port ? 0b10 : 0b11) << 2);
+		STP_O->flags = port == stp_root_port ? BPDU_ROLE_ROOT : BPDU_ROLE_DESIGNATED;
 		if (((sfr_data[3 - (port >> 2)] >> ((port << 1) & 0x7)) & 0b11) == 0b11)
-			STP_O->flags |= 0x30;	/* learning + forwarding */
+			STP_O->flags |= BPDU_FLAG_LEARNING | BPDU_FLAG_FORWARDING;
 	} else {
-		/* 802.3 length = LLC (3) + Config BPDU body (35) */
-		STP_O->msg_len = HTONS(0x26);
-		STP_O->version = 0x00;		/* legacy STP */
-		STP_O->bpdu_type = 0x00;	/* Config BPDU */
+		STP_O->msg_len = HTONS(BPDU_LEN_CONFIG);
+		STP_O->version = BPDU_VER_STP;
+		STP_O->bpdu_type = BPDU_TYPE_CONFIG;
 		STP_O->flags = 0x00;
 	}
 	if (stp_tc_while)
-		STP_O->flags |= 0x01;		/* Topology Change */
-	STP_O->flags |= stp_tx_flags_extra;	/* e.g. TCA in reply to a TCN */
+		STP_O->flags |= BPDU_FLAG_TC;
+	STP_O->flags |= stp_tx_flags_extra;
 	stp_tx_flags_extra = 0;
 
 	memcpy(STP_O->src_addr, uip_ethaddr.addr, 6);
@@ -447,16 +453,10 @@ void stp_in(void) __banked
 		return;
 	if (STP_I->proto)
 		return;
-	/* Accept RSTP BPDUs (v2 type 2), legacy Config BPDUs (v0 type 0) and
-	 * legacy TCN BPDUs (v0 type 0x80, 4-byte body).
-	 * Version 2 *or greater*: 802.1D-2004 14.4 requires an RSTP bridge to
-	 * accept a higher Protocol Version and treat it as RST, ignoring what
-	 * it does not understand. MSTP (802.1s) sends version 3 type 2 with a
-	 * prefix deliberately identical to an RST BPDU for exactly this reason;
-	 * insisting on == 2 makes us blind to every MST bridge on the segment. */
-	if (!((STP_I->version >= 2 && STP_I->bpdu_type == 2)
-	      || (STP_I->version == 0
-	          && (STP_I->bpdu_type == 0 || STP_I->bpdu_type == 0x80))))
+	if (!((STP_I->version >= BPDU_VER_RSTP && STP_I->bpdu_type == BPDU_TYPE_RST)
+	      || (STP_I->version == BPDU_VER_STP
+	          && (STP_I->bpdu_type == BPDU_TYPE_CONFIG
+	              || STP_I->bpdu_type == BPDU_TYPE_TCN))))
 		return;
 
 	if (!(stp_pflags[port] & STP_PF_ENABLED) || (stp_pflags[port] & STP_PF_FILTER))
@@ -484,15 +484,10 @@ void stp_in(void) __banked
 	 * L2 flush for a port that has a bridge behind it. */
 	stp_pflags[port] &= ~STP_PF_OPEREDGE;
 
-	if (STP_I->bpdu_type == 0x80) {
-		/* TCN: a downstream bridge reports a topology change. Acknowledge it
-		 * on this port so the sender stops repeating, then treat it like a
-		 * change of our own: flush the port and carry the TC flag on the
-		 * designated ports for the full window. No TCN goes towards the
-		 * root, so a legacy root further up keeps its normal aging. */
-		stp_tx_flags_extra = 0x80;	/* Topology Change Acknowledgment */
-		stp_cnf_send(port);		/* transmits internally */
-		uip_len = 0;			/* ...so handle_rx must not TX again */
+	if (STP_I->bpdu_type == BPDU_TYPE_TCN) {
+		stp_tx_flags_extra = BPDU_FLAG_TCACK;
+		stp_cnf_send(port);
+		uip_len = 0;
 		stp_topology_change(port);
 		return;
 	}
@@ -557,7 +552,7 @@ void stp_in(void) __banked
 	 * the long window a local change may have armed. The flush runs once,
 	 * on the arming edge: everything learned on the other non-edge ports
 	 * may sit behind the moved link and must be relearned. */
-	if (STP_I->flags & 0x01) {
+	if (STP_I->flags & BPDU_FLAG_TC) {
 		if (!stp_tc_while) {
 			uint8_t i;
 			stp_tc_count++;
