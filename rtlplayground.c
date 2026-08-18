@@ -702,12 +702,9 @@ void nic_tx_packet(uint16_t ring_ptr)
 	len += 0xf;
 	len >>= 3;
 	SFR_NIC_CTRL = len;
-	/* Bounded wait: normally the NIC consumes the frame in microseconds, but
-	 * when the egress port is held in an MSTP non-forwarding state the ASIC
-	 * has been observed to never complete the TX - an unbounded spin here
-	 * then freezes the entire main loop (no STP/LACP timers, no HTTP, no
-	 * ARP) until a power cycle. Give up after ~65k polls and drop the frame:
-	 * losing one packet is recoverable, a frozen switch is not. */
+	/* Bounded wait: the NIC normally consumes the frame in microseconds, and
+	 * an unbounded spin here would freeze the main loop for good if it ever
+	 * did not. Dropping one frame is recoverable, a frozen switch is not. */
 	{
 	uint16_t tx_guard = 0;
 	do { } while (SFR_NIC_CTRL != 0 && ++tx_guard != 0);
