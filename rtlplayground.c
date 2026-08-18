@@ -235,8 +235,25 @@ void isr_serial(void) __interrupt(4)
 }
 
 
+/* Set by the httpd while it runs a command that arrived over the network, so
+ * that everything the command prints lands in the response as well. */
+__xdata uint8_t cmd_capture;
+extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
+extern __xdata uint16_t slen;
+
 void write_char_no_syslog(char c)
 {
+	/* Capturing sits here rather than in write_char() so that the messages
+	 * printed through print_string_no_syslog() are captured too: those are
+	 * the replies of the syslog commands, which must not generate a syslog
+	 * packet but do belong in the answer to a command sent over HTTP. */
+	if (cmd_capture) {
+		if (slen < TCP_OUTBUF_SIZE - sizeof(CMD_TRUNCATED))
+			outbuf[slen++] = c;
+		else
+			cmd_capture = 2;	/* out of room, httpd says so */
+	}
+
 	do {
 	} while (tx_buf_empty == 0);
 	if (c =='\n') {

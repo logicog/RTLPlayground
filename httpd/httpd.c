@@ -16,10 +16,16 @@
 
 #define CMARK_S 6
 
+/* Answer to POST /cmd. Kept as a macro so that its length is known at compile
+ * time: an unchanged slen afterwards means the command printed nothing. */
+#define CMD_RESPONSE_HEADER "HTTP/1.1 200 OK\r\nConnection: close\r\n" \
+			    "Content-Type: text/plain\r\n\r\n"
+
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
 extern volatile __xdata uint8_t sfr_data[4];
+extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
 extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
@@ -463,11 +469,28 @@ void handle_post(void)
 			send_unauthorized();
 			return;
 		}
+		slen = strtox(outbuf, CMD_RESPONSE_HEADER);
+		cmd_capture = 1;
 		execute_commands(p);
+		if (cmd_capture == 2)
+			slen += strtox(outbuf + slen, CMD_TRUNCATED);
+		cmd_capture = 0;
+		/* Commands that configure something print nothing at all. Saying
+		 * so beats an empty body, which reads the same as "nothing ran".
+		 * Only on success: a silent failure must not answer with "OK". */
+		if (err_status == ERR_OK && slen == sizeof(CMD_RESPONSE_HEADER) - 1)
+			slen += strtox(outbuf + slen, "OK\n");
+		/* On a parse error keep what the parser printed, because that text
+		 * is the explanation, and only restate the status. "400 NO" is as
+		 * long as "200 OK", so the header does not have to be rebuilt. */
 		if (err_status != ERR_OK) {
-			send_bad_request();
-			return;
+			outbuf[9] = '4';
+			outbuf[10] = '0';
+			outbuf[11] = '0';
+			outbuf[13] = 'N';
+			outbuf[14] = 'O';
 		}
+		return;
 	} else if (is_word(request_path, "login")) {
 		dbg_string("POST login\n");
 
