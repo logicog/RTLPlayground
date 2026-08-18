@@ -315,6 +315,20 @@ void vlan_setup(void) __banked
 
 
 /*
+ * Forget the dynamic L2 entries learned on one port.
+ */
+void port_l2_forget_port(uint8_t port) __banked
+{
+	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);	/* port-based, dynamic entries */
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (((uint16_t)1) << port));
+
+	do {
+		reg_read_m(RTL837x_L2_TBL_FLUSH_CTRL);
+	} while (sfr_data[1]);
+}
+
+
+/*
  * Forget all dynamic L2 learned entries
  */
 uint8_t port_l2_forget(void) __banked
@@ -399,6 +413,27 @@ void port_l2_learned(void) __banked
 		entry++;
 		print_string("\n");
 	}
+}
+
+
+/*
+ * Static L2 multicast entry for the link-local group 01:80:C2:00:00:<mac_last>
+ * in VLAN `vid`, with member portmask `pmask` (bit 9 = CPU port).
+ */
+
+void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
+{
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & TBL_EXECUTE);
+
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0xc2, 0x00, 0x00, mac_last);
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | (vid >> 8) | ((pmask & 0x3) << 6), vid, 0x01, 0x80);
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0, 0, 0, pmask >> 2);
+	REG_WRITE(RTL837X_TBL_CTRL, 0, 0, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	do {
+		reg_read_m(RTL837X_TBL_CTRL);
+	} while (sfr_data[3] & TBL_EXECUTE);
 }
 
 

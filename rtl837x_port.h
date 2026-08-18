@@ -54,6 +54,8 @@ void vlan_name_remove(uint16_t vlan) __banked;
 void vlan_setup(void) __banked;
 void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked;
 uint16_t port_pvid_get(uint8_t port) __banked;
+void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked;
+void port_l2_forget_port(uint8_t port) __banked;
 void vlan_create(void) __banked;
 void vlan_delete(uint16_t vlan) __banked;
 void vlan_dump(void) __banked;
@@ -73,6 +75,7 @@ void port_eee_status(uint8_t port) __banked;
 void print_port_ingress_filter_mode(vlan_ingress_mode_t mode) __banked;
 bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked;
 bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked;
+vlan_ingress_mode_t port_ingress_filter_get(__xdata uint8_t port) __banked;
 void port_isolate(register uint8_t port, __xdata uint16_t pmask) __banked;
 uint16_t port_isolation_get(register uint8_t port) __banked;
 
