@@ -1257,11 +1257,11 @@ bool sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t lengt
 	if (!sfp_read_block(sfp, start, length))
 		return false;
 
-	dst[length] = '\0';
+	dst[length] = NUL;
 	memcpy(dst, sfp_buf, length);
 
 	while (length > 0 && dst[--length] == ' ')
-		dst[length] = '\0';
+		dst[length] = NUL;
 
 	return true;
 }
@@ -2069,7 +2069,7 @@ void check_and_flash_update_image(void)
  * because itohex() is inline and brings its own frame. */
 void set_hostname_default(void)
 {
-	if (hostname[0] != '\0')
+	if (hostname[0] != NUL)
 		return;
 
 	strcpy((__xdata uint8_t *)hostname, "RTLPlayground-");
@@ -2079,7 +2079,7 @@ void set_hostname_default(void)
 	hostname[17] = hex[uip_ethaddr.addr[4] & 0xf];
 	hostname[18] = hex[uip_ethaddr.addr[5] >> 4];
 	hostname[19] = hex[uip_ethaddr.addr[5] & 0xf];
-	hostname[20] = '\0';
+	hostname[20] = NUL;
 }
 
 
