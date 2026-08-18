@@ -48,6 +48,7 @@ __xdata uint16_t vlan_ptr;
 __xdata char port_names[9][PORT_NAME_SIZE];
 
 extern __xdata uint16_t management_vlan;
+extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t sfp_speed[2];
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata uint8_t sfp_options[2];
@@ -359,7 +360,9 @@ void parse_vlan(void)
 		if (cmd_compare(2, "mgmt")) {
 			if (vlan_settings.vlan > 4094)
 				goto err;
+			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, true);
 			management_vlan = vlan_settings.vlan;
+			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
 			else
