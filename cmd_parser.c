@@ -66,6 +66,13 @@ __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
 
+/* Scratch for parse_syslog()'s port parser, in xdata: locals here would take
+ * internal RAM the linker has none of. */
+__xdata uint16_t syslog_port_scratch;
+__xdata uint8_t  syslog_port_idx;
+__xdata uint8_t  syslog_port_digit;
+__xdata uint8_t  syslog_port_was_on;
+
 // These variables combined create a Fixed-capacity vector/bounded buffer.
 // `N_WORDS`: The total number of command arguments that can be tracked.
 // `cmd_words_len` stores the number of arguments found inside `cmd_buffer`
@@ -1293,6 +1300,7 @@ void parse_syslog(void)
 			print_string("enabled, sending to ");
 			itoa(syslog_state.server_ip[0]); write_char('.'); itoa(syslog_state.server_ip[1]); write_char('.');
 			itoa(syslog_state.server_ip[2]); write_char('.'); itoa(syslog_state.server_ip[3]);
+			write_char(':'); itoa_short(syslog_state.server_port);
 			write_char('\n');
 		} else {
 			print_string("disabled\n");
@@ -1322,11 +1330,53 @@ void parse_syslog(void)
 		} else {
 			print_string("Invalid IP address\n");
 		}
+	} else if (cmd_compare(1, "port")) {
+		if (cmd_words_len < 3) { // no additional argument -> print current port
+			print_string("Current syslog port: ");
+			itoa_short(syslog_state.server_port); write_char('\n');
+			return;
+		}
+		/* Parsed here rather than with atoi_short(), which reports "no
+		 * digits" but not overflow - 65540 would quietly wrap to 4 and we
+		 * would open a connection to a port nobody asked for. Checking
+		 * before each multiply keeps this in 16-bit arithmetic. */
+		syslog_port_scratch = 0;
+		syslog_port_idx = cmd_words_b[2];
+		for (;;) {
+			syslog_port_digit = cmd_buffer[syslog_port_idx];
+			if (syslog_port_digit < '0' || syslog_port_digit > '9')
+				break;
+			syslog_port_digit -= '0';
+			if (syslog_port_scratch > 6553
+			    || (syslog_port_scratch == 6553 && syslog_port_digit > 5)) {
+				syslog_port_scratch = 0;	/* too large - reject below */
+				break;
+			}
+			syslog_port_scratch = syslog_port_scratch * 10 + syslog_port_digit;
+			syslog_port_idx++;
+		}
+		/* Zero covers all three ways to be wrong: no digits at all, a value
+		 * past 65535, and an explicit "0", which is not a port either. */
+		if (!syslog_port_scratch) {
+			print_string("Invalid port\n");
+			return;
+		}
+		/* The port is frozen into the connection by uip_udp_new(), so
+		 * changing it has to tear the connection down and build a new one -
+		 * same dance as setting the address above. */
+		syslog_port_was_on = syslog_state.enabled;
+		if (syslog_port_was_on)
+			syslog_stop();
+		print_string("Setting new syslog port.\n");
+		syslog_state.server_port = syslog_port_scratch;
+		if (syslog_port_was_on)
+			syslog_start();
 	}
 	else
 	{
-		print_string("Error: syslog [on|off|ip [ip-address]]\n");
-		print_string("  on/off enables or disables syslog, ip sets the syslog server IP address\n");
+		print_string("Error: syslog [on|off|ip [ip-address]|port [number]]\n");
+		print_string("  on/off enables or disables syslog, ip sets the syslog server IP address,\n");
+		print_string("  port sets the destination UDP port (default 514)\n");
 	}
 }
 

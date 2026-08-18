@@ -131,6 +131,7 @@ void print_long(uint32_t a);
 void print_short(uint16_t a);
 void print_byte(uint8_t a);
 void itoa(uint8_t v);
+void itoa_short(uint16_t v);
 void print_sfr_data(void);
 void print_phy_data(void);
 void print_cmd_prompt(void);

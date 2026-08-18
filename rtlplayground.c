@@ -277,6 +277,32 @@ void itoa(uint8_t v)
 }
 
 
+/* Same as itoa(), one decade wider: enough for a port number. Kept separate
+ * rather than widening itoa() itself, because every existing caller passes a
+ * byte and would start paying for 16-bit divisions it does not need. */
+void itoa_short(uint16_t v)
+{
+	uint8_t t = v / 10000;
+	uint8_t print_zeros = t;
+
+	if (print_zeros)
+		write_char('0' + t);
+	t = (v / 1000) % 10;
+	print_zeros |= t;
+	if (print_zeros)
+		write_char('0' + t);
+	t = (v / 100) % 10;
+	print_zeros |= t;
+	if (print_zeros)
+		write_char('0' + t);
+	t = (v / 10) % 10;
+	print_zeros |= t;
+	if (print_zeros)
+		write_char('0' + t);
+	write_char('0' + (v % 10));
+}
+
+
 void print_string(__code char *p)
 {
 	while (*p)
