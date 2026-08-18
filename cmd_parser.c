@@ -275,15 +275,15 @@ __bit cmd_is_space(uint8_t idx) {
 	return cmd_buffer[idx] == ' ';
 }
 
-// check if the cmd_buffer[idx] is a space or null.
-__bit cmd_is_space_or_null(uint8_t idx) {
+// check if the cmd_buffer[idx] is a space or NULL.
+__bit cmd_is_space_or_nul(uint8_t idx) {
 	uint8_t c = cmd_buffer[idx];
 	return c == ' ' || c == '\0';
 }
 
 // returns 0 when on parser error or invalid value or no space.
 // return non-zero number of bytes consumed including the space.
-// Stops at a space or NULL.
+// Stops at a space or NUL.
 uint8_t parse_ip(uint8_t idx)
 {
 	uint8_t b = 0;
@@ -479,7 +479,7 @@ void parse_vlan(void)
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 8) & 0xf];
 			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 4) & 0xf] ;
 			vlan_names[vlan_ptr++] = hex[vlan_settings.vlan & 0xf];
-			while(cmd_buffer[cmd_words_b[w] + i] != ' ' && cmd_buffer[cmd_words_b[w] + i] != '\0') {
+			while(!cmd_is_space_or_nul(cmd_words_b[w] + i)) {
 				write_char(cmd_buffer[cmd_words_b[w] + i]);
 				vlan_names[vlan_ptr++] = cmd_buffer[cmd_words_b[w] + i++];
 			}
@@ -505,7 +505,7 @@ void parse_vlan(void)
 				idx++;
 			}
 
-			if (!cmd_is_space_or_null(idx))
+			if (!cmd_is_space_or_nul(idx))
 				goto err;
 		}
 		vlan_create();
@@ -604,7 +604,7 @@ void parse_ingress(void)
 	uint8_t idx = cmd_words_b[1];
 
 	if (vlan_ingress_mode_parse(cmd_buffer[idx++], &mode)) {
-		if (!cmd_is_space_or_null(idx))
+		if (!cmd_is_space_or_nul(idx))
 			goto err;
 		// Setting mode for all ports at once
 		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
@@ -626,7 +626,7 @@ void parse_ingress(void)
 			log_port = atoi_results_u8;
 			idx += ret;
 
-			if (!vlan_ingress_mode_parse(cmd_buffer[idx++], &mode) || !cmd_is_space_or_null(idx)) {
+			if (!vlan_ingress_mode_parse(cmd_buffer[idx++], &mode) || !cmd_is_space_or_nul(idx)) {
 				print_string("Invalid ingress mode for port "); print_port(log_port); print_string(" in ingress command\n");
 				goto err;
 			}
@@ -1262,7 +1262,7 @@ void parse_eee(void)
 		if (cmd_buffer[idx] == 'g' || cmd_buffer[idx] == 'm') {
 			// Word 2 is a speed (e.g., "2g5", "100m", "1g")
 			speed_word = 2;
-		} else if (cmd_buffer[idx] == ' ' || cmd_buffer[idx] == '\0') {
+		} else if (cmd_is_space_or_nul(idx)) {
 			// Word 2 is a port number
 			if (cmd_parse_port_separator(idx) == 0) {
 				print_string("Speed word invalid, use: [100m|1g|2g5]\n");
