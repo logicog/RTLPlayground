@@ -360,6 +360,32 @@ char strcmp(register __xdata const uint8_t *a, register __code const uint8_t *b)
 }
 
 
+/*
+ * True when b is a prefix of a. Unlike strcmp() the byte after the match is not
+ * compared, and unlike is_word_x() it need not be a separator.
+ */
+bool strstart(register __xdata const uint8_t *a, register __code const uint8_t *b)
+{
+	uint8_t i = 0;
+
+	while (b[i] && (b[i] == a[i]))
+		i++;
+
+	return !b[i];
+}
+
+
+bool strstart_x(register __xdata const uint8_t *a, register __xdata const uint8_t *b)
+{
+	uint8_t i = 0;
+
+	while (b[i] && (b[i] == a[i]))
+		i++;
+
+	return !b[i];
+}
+
+
 void print_short(uint16_t a)
 {
 	// allocating the registers first improves the sdcc code here
