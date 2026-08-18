@@ -95,7 +95,12 @@ $(VERSION_HEADER):
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
 		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
 		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
-		"#endif" > $(VERSION_HEADER)
+		"#endif" > $(VERSION_HEADER).tmp
+	@if ! cmp -s $(VERSION_HEADER).tmp $(VERSION_HEADER) 2>/dev/null; then \
+		mv $(VERSION_HEADER).tmp $(VERSION_HEADER); \
+	else \
+		rm -f $(VERSION_HEADER).tmp; \
+	fi
 
 httpd: html_data.h
 
