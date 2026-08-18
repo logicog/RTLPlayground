@@ -137,7 +137,7 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
-.PHONY: clean all $(SUBDIRS) $(VERSION_HEADER) create_build_dir
+.PHONY: clean all $(SUBDIRS) create_build_dir
 
 .PHONY:
 machine_check:
