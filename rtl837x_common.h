@@ -118,6 +118,8 @@ struct flash_region_t {
 
 extern __xdata char port_names[9][PORT_NAME_SIZE];
 
+extern __xdata uint8_t stp_enabled;
+
 /* System hostname (device identity). Set via `hostname <text>` and the System
  * Settings page, reported in /information.json. Other modules (e.g. LLDP, which
  * advertises it as the System Name TLV) read it from here. */

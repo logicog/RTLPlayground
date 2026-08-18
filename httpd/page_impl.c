@@ -568,7 +568,7 @@ void send_stp(void)
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
 	slen += strtox(outbuf + slen, "{\"on\":");
-	bool_to_html(stpEnabled);
+	bool_to_html(stp_enabled);
 	slen += strtox(outbuf + slen, ",\"rstp\":");
 	bool_to_html(stp_rstp);
 	slen += strtox(outbuf + slen, ",\"prio\":");

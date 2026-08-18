@@ -120,7 +120,7 @@ __xdata uint16_t rx_packet_vlan;
 __xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
-__xdata uint8_t stpEnabled;
+__xdata uint8_t stp_enabled;
 __xdata uint8_t igmpEnabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
@@ -1167,7 +1167,7 @@ void handle_rx(void)
 		print_byte(uip_buf[3]); print_byte(uip_buf[4]); print_byte(uip_buf[5]); write_char('\n');
 		print_string(" MGMT-VLAN: "); print_short(management_vlan); write_char('\n');
 #endif
-		if (stpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
+		if (stp_enabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x00) {
 			stp_in();
 			if (uip_len) {
@@ -1511,7 +1511,7 @@ void idle(void)
 	// Check UIP for packets to transmit
 	handle_tx();
 	// If STP protocol enabled, decrease STP timers to trigger actions
-	if (stpEnabled) {
+	if (stp_enabled) {
 		if (!stp_clock) {
 			stp_clock = STP_TICK_DIVIDER;
 			stp_timers();
@@ -2200,7 +2200,7 @@ void main(void)
 	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
-	stpEnabled = 0;
+	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	nic_setup();
 	vlan_setup();

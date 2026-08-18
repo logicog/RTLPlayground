@@ -38,18 +38,21 @@ uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx);
 
 /* ---- Configuration ---- */
 __xdata uint8_t  stp_prio;	/* bridge priority high byte (0x80 = 32768) */
-__xdata uint8_t  stp_hello_s;
-__xdata uint8_t  stp_maxage_s;
-__xdata uint8_t  stp_fwddelay_s;
-__xdata uint8_t  stp_rstp;
-__xdata uint8_t  stp_txhold;
+__xdata uint8_t  stp_hello_s;		/* 1-10 s */
+__xdata uint8_t  stp_maxage_s;		/* 6-40 s */
+__xdata uint8_t  stp_fwddelay_s;	/* 4-30 s, also our listen period */
+__xdata uint8_t  stp_rstp;		/* 1 = RST BPDUs, 0 = legacy Config BPDUs */
+__xdata uint8_t  stp_txhold;		/* BPDUs per port per second */
 
 
 __xdata uint8_t  stp_pflags[10];
-__xdata uint32_t stp_pcost[10];
+__xdata uint32_t stp_pcost[10];		/* 0 = auto */
 __xdata uint8_t  stp_pprio[10];
-__xdata uint8_t  stp_pp2p[10];
+__xdata uint8_t  stp_pp2p[10];		/* admin point-to-point: 0 auto, 1 on, 2 off */
 
+/* Designated bridge, port and cost last heard on the port; stp_bpdu_age tells
+ * whether they are still current.
+ */
 __xdata struct bridge stp_dbridge[10];
 __xdata uint16_t stp_dpid[10];
 __xdata uint32_t stp_dcost[10];
@@ -145,6 +148,7 @@ struct stp_pkt_in {
 
 #define BPDU_LEN_CONFIG		0x26	// LLC and a 35 byte body
 #define BPDU_LEN_RST		0x27	// LLC and a 36 byte body
+#define BPDU_LEN_MIN_HEADER	33	// addresses through bpdu_type
 
 #define BPDU_FLAG_TC		0x01
 #define BPDU_FLAG_LEARNING	0x10
@@ -185,10 +189,9 @@ static void print_field(__code const char *txt, uint8_t idx, uint8_t width) __re
 }
 
 
-/* Where you look when the tree is not what you expected. */
 static void stp_status(void)
 {
-	if (!stpEnabled) {
+	if (!stp_enabled) {
 		print_string("STP off\n");
 		return;
 	}
@@ -217,23 +220,11 @@ static void stp_status(void)
 		print_string("  ");
 		print_field(stp_state_txt, (sfr_data[3 - (stp_i >> 2)] >> ((stp_i << 1) & 0x7)) & 0x3, 5);
 		write_char(' ');
-		/* Only the root port is named. Everything else reads as designated
-		 * because that is all the state machine tracks today; an alternate
-		 * port is a designated one that happens to sit in blocking. */
 		print_field(stp_role_txt, stp_i == stp_root_port ? 1 : 0, 4);
 		write_char(' ');
 		print_field(stp_edge_txt, stp_pflags[stp_i] & STP_PF_OPEREDGE ? 1 : 0, 4);
-		/* BPDUs we put on the wire here. A designated port must show this
-		 * climbing once per hello; the root port never does, because we do
-		 * not announce back towards the root. Without it the only way to
-		 * tell "we are silent" from "the neighbour is not listening" is a
-		 * capture on the far side. */
 		write_char(' ');
 		print_byte(stp_tx_count[stp_i]);
-		/* Seconds since the last BPDU on this port, capped at 255. Without
-		 * it nothing in the output separates "nobody is speaking (R)STP
-		 * out there" from "we are dropping what arrives", and stp_in()
-		 * leaves on eight different conditions without saying so. */
 		write_char(' ');
 		stp_scratch16 = stp_bpdu_age[stp_i] / STP_HZ;
 		itoa(stp_scratch16 > 255 ? 255 : (uint8_t)stp_scratch16);
@@ -242,8 +233,6 @@ static void stp_status(void)
 }
 
 
-/* __reentrant so the temporaries land on the stack: stp_in() is __banked and
- * its locals get exclusive internal RAM, which is what runs out first here. */
 static void stp_record_designated(uint8_t port) __reentrant
 {
 	stp_dbridge[port].prio = STP_I->bridge.prio;
@@ -418,9 +407,7 @@ void stp_in(void) __banked
 {
 	uint8_t port;
 
-	/* The header through bpdu_type is 33 bytes, the full Config/RST body is
-	 * checked further down before anything past it is read. */
-	if (uip_len < 33) {
+	if (uip_len < BPDU_LEN_MIN_HEADER) {
 		uip_len = 0;
 		return;
 	}
@@ -483,29 +470,10 @@ void stp_in(void) __banked
 	if (stp_rxlen < 64)
 		return;
 
-	/* Our own BPDU coming back at us: two of our ports sit on one segment.
-	 * Only the one with the worse Port ID has to stop forwarding - 802.1D
-	 * calls it a backup port. Blocking both, as we used to, kills a segment
-	 * that can still carry traffic, and worse, leaves nobody forwarding to
-	 * hear the loop: both then time out of blocking together and the pair
-	 * oscillates for as long as the cable is in (measured: a topology change
-	 * every ~4 s).
-	 *
-	 * The port with the better Port ID decides for both and is the only one
-	 * that touches state - the other just drops the frame. One writer is
-	 * what makes this safe: while both were still deciding for themselves,
-	 * the winner's re-arm landed in the loser's port_timers[] first, the
-	 * loser then read it as "already blocked" and skipped its own
-	 * stp_state_set(), and the loop stayed open. Whether that happened came
-	 * down to which frame the switch handed us first.
-	 *
-	 * The winner is forwarding by construction (nothing here ever blocks
-	 * it), so it goes on hearing the loop and re-arms the loser's timer on
-	 * every BPDU - that is what makes the block a latch rather than a
-	 * forward-delay pulse, and it needs no assumption about a blocked port
-	 * still receiving. Pull the cable and the re-arming stops, so the loser
-	 * comes back on its own after a forward delay - and the link
-	 * supervision above gets there first anyway. */
+	/* Our own BPDU coming back: two of our ports sit on one segment. Only
+	 * the one with the worse Port ID stops forwarding, and only the other
+	 * one writes that state, so the two never race each other.
+	 */
 	if (cmpBytes(STP_I->bridge.mac, uip_ethaddr.addr, 6) == 0) {
 		/* Equal means the frame came back on the port it left: a loop
 		 * further out, behind an unmanaged switch. There is no pair to
@@ -807,14 +775,14 @@ void stp_parse(void) __banked __reentrant
 
 	if (cmd_compare(1, "on")) {
 		print_string("STP enabled\n");
-		stpEnabled = 1;
+		stp_enabled = 1;
 		stp_setup();
 		return;
 	}
 	if (cmd_compare(1, "off")) {
 		print_string("STP disabled\n");
 		stp_off();
-		stpEnabled = 0;
+		stp_enabled = 0;
 		return;
 	}
 	if (cmd_compare(1, "status")) {
@@ -835,13 +803,13 @@ void stp_parse(void) __banked __reentrant
 		if (cmd_compare(3, "on")) {
 			stp_pflags[port] |= STP_PF_ENABLED;
 			stp_pflags[port] &= ~STP_PF_TRIPPED;
-			if (stpEnabled) {	/* (re)join: listen first */
+			if (stp_enabled) {	/* (re)join: listen first */
 				stp_state_set(port, 0b01);
 				port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
 			}
 		} else if (cmd_compare(3, "off")) {
 			stp_pflags[port] &= ~STP_PF_ENABLED;
-			if (stpEnabled)
+			if (stp_enabled)
 				stp_state_set(port, 0b11);	/* plain forwarding */
 		} else if (cmd_compare(3, "edge")) {
 			/* Also drop the *operational* edge flag: it is what exempts the
