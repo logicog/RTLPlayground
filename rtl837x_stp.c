@@ -89,7 +89,7 @@ struct stp_pkt_in {
 #define P_DESIGNATED ((STP_I->flags & 0x0c) == 0x0c)
 #define P_PROPOSAL (STP_I->flags & FLAG_PROPOSAL)
 
-signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2)
+signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2) __reentrant
 {
 	for (uint8_t i = 0; i < 6; i++) {
 		if (m1[i] == m2[i])

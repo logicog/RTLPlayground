@@ -690,6 +690,8 @@ void httpd_appcall(void)
 				send_mtu();
 			} else if (is_word(q, "/lag.json")) {
 				send_lag();
+			} else if (is_word(q, "/lacp.json")) {
+				send_lacp();
 			} else if (is_word(q, "/vlanlist")) {
 				send_vlanlist();
 			} else if (is_word(q, "/config")) {
@@ -708,9 +710,10 @@ void httpd_appcall(void)
 			}
 		} else {
 			dbg_string("Have entry, authenticated: "); dbg_byte(authenticated); dbg_char('\n');
-			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html 
-						|| f_data[entry].start == FDATA_START_port_svg 
+			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html
+						|| f_data[entry].start == FDATA_START_port_svg
 						|| f_data[entry].start == FDATA_START_sfp_svg
+						|| f_data[entry].start == FDATA_START_i18n_js
 						|| f_data[entry].start == FDATA_START_style_css)) {
 				send_to_login();
 				goto do_send;

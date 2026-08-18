@@ -64,3 +64,27 @@ Writing 0x1 to register 0x7850 will transmit the frame. The Ethernet frame
 checksum and the TCP checksum are automatically calculated (offloaded) by the
 ASIC before transmitting on the wire.
 
+
+## The RTL tag words
+
+The proprietary header carries two words worth describing, both laid out as in
+the Linux DSA driver `tag_rtl8_4`.
+
+The `flags` word:
+
+```
+bit15 EFID_EN | 14:12 EFID | 11 PRI_EN | 10:8 PRI |
+bit7  KEEP    | 6 VSEL     | 5 LEARN_DIS         | 4:0 VIDX
+```
+
+This word has to be written through `HTONS` like every other field of the tag.
+Writing a constant raw puts the bits in the wrong byte, so `0x0020` reaches the
+wire as `0x2000`, which is EFID rather than LEARN_DIS. The ASIC then fails to
+parse the tag and forwards the frame with the `0x8899` header still on it.
+
+The `pmask` word: bit 15, ALLOW, selects how bits 14 to 0 are read. With ALLOW
+clear the field is a forwarding port mask and the frame goes to exactly the
+ports set, which is directed egress. With ALLOW set it is an allowance mask, a
+permission filter applied to a normal lookup, and for a one hot mask that
+yields an empty egress set, so the frame disappears. Directed egress therefore
+needs ALLOW cleared.

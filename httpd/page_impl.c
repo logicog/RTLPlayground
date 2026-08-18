@@ -12,6 +12,7 @@
 #include "phy.h"
 #include "version.h"
 #include "machine.h"
+#include "rtl837x_lacp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -356,13 +357,18 @@ void send_l2(uint16_t idx)
 	 */
 	__xdata uint16_t entry = idx & 0xfff;
 	__xdata uint16_t first_entry = 0xffff; // An illegal entry index
+	__xdata uint16_t mbr;
 	__bit first = true;
 	char_to_html('[');
 	while (1) {
 		entries_left--;
 		uint8_t port = 0;
+		uint8_t mc = 0;
 		reg_read_m(RTL837x_TBL_DATA_0);
-		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
+		// Iterate with "next address" (method 2) so static multicast entries -
+		// e.g. the LACP slow-protocols CPU-steering entry - are listed too,
+		// not only learned/static unicast ones.
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_ADDRESS << 6), sfr_data[3]);
 
 		REG_WRITE(RTL837X_TBL_CTRL, entry >> 8, entry, TBL_L2_UNICAST, TBL_EXECUTE);
 		do {
@@ -370,7 +376,7 @@ void send_l2(uint16_t idx)
 		} while (sfr_data[3] & TBL_EXECUTE);
 
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
-		__bit valid = (sfr_data[0] & 0x20) != 0;
+		__bit valid = (sfr_data[0] & 0x20) && !(sfr_data[0] & 0x10);
 		if (valid) {
 			/* separator + 74-byte worst-case entry + closing "]" */
 			if (slen + 76 > TCP_OUTBUF_SIZE)
@@ -378,6 +384,8 @@ void send_l2(uint16_t idx)
 			if (!first)
 				char_to_html(',');
 			first = false;
+
+			mc = sfr_data[2] & 0x01;	// multicast MAC: member mask, no SPA/age
 
 			// VLAN, taken from the read above instead of reading the register twice
 			slen += strtox(outbuf + slen, "{\"vlan\":\"");
@@ -397,12 +405,23 @@ void send_l2(uint16_t idx)
 
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
-			if (sfr_data[1] & 0x1)
+			if (mc || (sfr_data[1] & 0x1))
 				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
 			else
 				slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
 
-			port |= (sfr_data[3] & 0x3) << 2;
+			if (mc) {
+				// Report the lowest member of the mask (the CPU-steering
+				// entry has only the CPU port, rendered as "CPU" by the UI)
+				mbr = port | ((uint16_t)sfr_data[3] << 2);
+				port = 0;
+				while (mbr && !(mbr & 1)) {
+					mbr >>= 1;
+					port++;
+				}
+			} else {
+				port |= (sfr_data[3] & 0x3) << 2;
+			}
 			itoa_html(port);
 		}
 
@@ -532,6 +551,61 @@ void send_lag(void)
 	}
 	slen -=1; // remove comma
 	char_to_html(']');
+}
+
+
+/* LACP protocol status for the LAG page ("/lacp.json"). State variables are
+ * exported read-only via rtl837x_lacp.h; hardware trunk membership itself is
+ * already visible through send_lag() (it reads the trunk registers). */
+void send_lacp(void)
+{
+	dbg_string("send_lacp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(lacpEnabled);
+	/* Per-LAG section: candidate ports, elected aggregator, trunk members. */
+	slen += strtox(outbuf + slen, ",\"lags\":[");
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
+		slen += strtox(outbuf + slen, "{\"cfg\":\"");
+		byte_to_html(lacp_lag_ports[l] >> 8);
+		byte_to_html(lacp_lag_ports[l]);
+		slen += strtox(outbuf + slen, "\",\"aggValid\":");
+		bool_to_html(lacp_agg_valid[l]);
+		slen += strtox(outbuf + slen, ",\"agg\":\"");
+		for (uint8_t j = 0; j < 6; j++)
+			byte_to_html(lacp_agg_sys[l][j]);
+		slen += strtox(outbuf + slen, "\",\"members\":\"");
+		byte_to_html(lacp_members_last[l] >> 8);
+		byte_to_html(lacp_members_last[l]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "],\"ports\":[");
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		/* Which LACP LAG this port belongs to; 255 = none */
+		slen += strtox(outbuf + slen, ",\"lag\":");
+		itoa_html(lacp_port_lag[i]);
+		slen += strtox(outbuf + slen, ",\"a\":\"");
+		byte_to_html(lacp_actor_state[i]);
+		slen += strtox(outbuf + slen, "\",\"pt\":\"");
+		byte_to_html(lacp_partner_state[i]);
+		slen += strtox(outbuf + slen, "\",\"rs\":");
+		itoa_html(lacp_rx_state[i]);
+		/* rx as 4-digit hex: itoa16_html() only renders values up to 9999
+		 * correctly (see its VLAN-ID comment), the counter goes to 65535 */
+		slen += strtox(outbuf + slen, ",\"rx\":\"");
+		byte_to_html(lacp_rx_count[i] >> 8);
+		byte_to_html(lacp_rx_count[i]);
+		slen += strtox(outbuf + slen, "\",\"psys\":\"");
+		for (uint8_t j = 0; j < 6; j++)
+			byte_to_html(lacp_partner_sys[i][j]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
 }
 
 

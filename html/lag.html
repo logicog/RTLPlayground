@@ -9,18 +9,33 @@
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
+    <h1 data-i18n="lacp_heading">LACP (802.3ad)</h1>
+    <div id="lacpPorts" style="font-family:monospace;white-space:pre;"></div>
+    <br />
     <h1 data-i18n="lag_heading">Link Aggregation Groups Configuration</h1>
-    <h2>LAG 1 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 1 <label class="lacpmode">Mode: <select id="mode0"><option value="static">Static</option><option value="lacp">LACP</option></select></label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat0" style="font-family:monospace;"></div>
     <div id="mLAG0"></div>
+    <div class="hashsel">Load-balancing hash: <select id="hsel0"></select></div>
     <br />
-    <h2>LAG 2 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub1" onclick="lagSub(1);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 2 <label class="lacpmode">Mode: <select id="mode1"><option value="static">Static</option><option value="lacp">LACP</option></select></label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub1" onclick="lagSub(1);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat1" style="font-family:monospace;"></div>
     <div id="mLAG1"></div>
+    <div class="hashsel">Load-balancing hash: <select id="hsel1"></select></div>
     <br />
-    <h2>LAG 3 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub2" onclick="lagSub(2);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 3 <label class="lacpmode">Mode: <select id="mode2"><option value="static">Static</option><option value="lacp">LACP</option></select></label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub2" onclick="lagSub(2);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat2" style="font-family:monospace;"></div>
     <div id="mLAG2"></div>
+    <div class="hashsel">Load-balancing hash: <select id="hsel2"></select></div>
     <br />
-    <h2>LAG 4 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub3" onclick="lagSub(3);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <h2>LAG 4 <label class="lacpmode">Mode: <select id="mode3"><option value="static">Static</option><option value="lacp">LACP</option></select></label>
+      <input style="width:15%;margin-left: 3em;" class="action" id="l_sub3" onclick="lagSub(3);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+    <div id="lagStat3" style="font-family:monospace;"></div>
     <div id="mLAG3"></div>
+    <div class="hashsel">Load-balancing hash: <select id="hsel3"></select></div>
     <script src="/lag.js"></script>
     </div>
     <script src="/navigation.js"></script>
