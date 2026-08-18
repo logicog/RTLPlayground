@@ -87,10 +87,9 @@ vlan_ingress_mode_t port_ingress_filter_get(__xdata uint8_t port) __banked
 /*
  * Define a Primary VLAN ID for a port 
 */
-void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
+static void port_pvid_write(uint8_t port, __xdata uint16_t pvid)
 {
 	// r4e1c:00001001 R4e1c-000017d0 r6738:00000000 R6738-00000000 (no filtering)
-	print_string("\nport_pvid_set called \n");
 	uint16_t reg = RTL837x_PVID_BASE_REG + ((port >> 1) << 2);
 
 	reg_read_m(reg);
@@ -99,6 +98,22 @@ void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 	} else {
 		REG_WRITE(reg, sfr_data[0], sfr_data[1], sfr_data[2] & 0xf0 | (pvid >> 8), pvid);
 	}
+}
+
+void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
+{
+	uint8_t lag = port_lag_of(port);
+
+	print_string("\nport_pvid_set called \n");
+	if (lag == PORT_LAG_NONE) {
+		port_pvid_write(port, pvid);
+		return;
+	}
+
+	uint16_t members = port_lag_members_get(lag);
+	for (uint8_t i = 0; i < 10; i++)
+		if ((members >> i) & 1)
+			port_pvid_write(i, pvid);
 }
 
 uint16_t port_pvid_get(uint8_t port) __banked
@@ -743,6 +758,14 @@ uint16_t port_lag_members_get(uint8_t lag) __banked
 {
 	reg_read(RTL837X_TRK_MBR_CTRL_BASE + (lag << 2));
 	return ((uint16_t)SFR_DATA_8 << 8) | SFR_DATA_0;
+}
+
+uint8_t port_lag_of(uint8_t port) __banked
+{
+	for (uint8_t lag = 0; lag < 4; lag++)
+		if ((port_lag_members_get(lag) >> port) & 1)
+			return lag;
+	return PORT_LAG_NONE;
 }
 
 
