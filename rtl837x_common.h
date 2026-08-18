@@ -8,6 +8,7 @@
 #define SYS_TICK_HZ 200
 
 #define CPU_PORT        9
+#define NUL			'\0'
 
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff

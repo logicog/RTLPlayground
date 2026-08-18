@@ -193,7 +193,7 @@ void cmd_edit(void) __banked
 		// Check whether return was pressed:
 		if (sbuf[l] == '\n' || sbuf[l] == '\r') {
 			write_char('\n');
-			cmd_buffer[cmd_line_len] = '\0';
+			cmd_buffer[cmd_line_len] = NUL;
 //			write_char('>'); print_string_x(cmd_buffer); write_char('<');
 			// If there is a command we print the prompt after execution
 			// otherwise immediately because there is nothing to execute

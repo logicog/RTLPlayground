@@ -109,8 +109,8 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 		u = *xdata_str_p++;
 		c = *code_str_p++;
 
-		if (c == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+		if (c == NUL) {
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
 				return false;
 			return true;
 		}
@@ -130,8 +130,8 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 		u = *uri_str_p++;
 		s = *src_str_p++;
 
-		if (s == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+		if (s == NUL) {
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
 				return false;
 			return true;
 		}
@@ -173,9 +173,9 @@ bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 		u = *lhs_str_p++;
 		c = *rhs_str_p++;
 
-		if (c == '\0') {
+		if (c == NUL) {
 			/* ';' separates cookies in a Cookie header, so it ends a value too. */
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
 				return false;
 			return true;
 		}
@@ -418,10 +418,10 @@ void handle_post(void)
 		// Find end of request path
 		while (*p && !is_separator(*p))
 			p++;
-		*p++ = '\0';
+		*p++ = NUL;
 
 		// Find end of request header
-		boundary[0] ='\0';
+		boundary[0] =NUL;
 		p = scan_header(p);
 		dbg_string("Boundary: >"); dbg_string_x(boundary); dbg_string("<\n");
 		if (!*p || !content_type) {
@@ -482,7 +482,7 @@ void handle_post(void)
 			dbg_string("Password accepted!\n");
 			read_reg_timer(&last_session_use);
 			gen_random_bytes(session_id, SESSION_ID_LENGTH);
-			session_id[SESSION_ID_LENGTH] = '\0';
+			session_id[SESSION_ID_LENGTH] = NUL;
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");
 			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
@@ -642,7 +642,7 @@ void httpd_appcall(void)
 		__xdata uint8_t *q = p;
 		while (*p && !is_separator(*p))
 			p++;
-		*p = '\0';
+		*p = NUL;
 		dbg_string_x(q);
 		dbg_char('\n');
 

@@ -114,8 +114,8 @@ uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 		uint8_t b = cmd_buffer[i];
 
 		// cmd is garanteerd to be NULL-terminated.
-        if (c == '\0') {
-            if ((b == ' ') || (b == '\0')) {
+        if (c == NUL) {
+            if ((b == ' ') || (b == NUL)) {
 				// Match
                 return 1;
             }
@@ -147,7 +147,7 @@ uint8_t atoi_hex(uint8_t idx)
 	while(1) {
 		c = cmd_buffer[idx];
 
-		if (c == '\0' || c == ' ') {
+		if (c == NUL || c == ' ') {
 			break;
 		}
 
@@ -263,7 +263,7 @@ uint8_t cmd_parse_port_separator(uint8_t idx) {
 		uint8_t c = cmd_buffer[idx];
 		if (c == ' ') {
 			ret++;
-		} else if (c != '\0')
+		} else if (c != NUL)
 			ret = 0;
 	}
 	return ret;
@@ -278,7 +278,7 @@ __bit cmd_is_space(uint8_t idx) {
 // check if the cmd_buffer[idx] is a space or NULL.
 __bit cmd_is_space_or_nul(uint8_t idx) {
 	uint8_t c = cmd_buffer[idx];
-	return c == ' ' || c == '\0';
+	return c == ' ' || c == NUL;
 }
 
 // returns 0 when on parser error or invalid value or no space.
@@ -304,7 +304,7 @@ uint8_t parse_ip(uint8_t idx)
 				idx++;
 				break;
 			}
-			if (ret == '\0')
+			if (ret == NUL)
 				break;
 			goto err;
 		}
@@ -483,7 +483,7 @@ void parse_vlan(void)
 				write_char(cmd_buffer[cmd_words_b[w] + i]);
 				vlan_names[vlan_ptr++] = cmd_buffer[cmd_words_b[w] + i++];
 			}
-			vlan_names[vlan_ptr++] = ' '; vlan_names[vlan_ptr] = '\0';
+			vlan_names[vlan_ptr++] = ' '; vlan_names[vlan_ptr] = NUL;
 			w++;
 			print_string("<\n");
 		}
@@ -738,11 +738,11 @@ void parse_port(void)
 		}
 	} else if (cmd_compare(2, "name")) {
 		uint8_t i = 0;
-		while ( (i < PORT_NAME_SIZE-1) && (cmd_buffer[cmd_words_b[3] + i] != '\0') ) {
+		while ( (i < PORT_NAME_SIZE-1) && (cmd_buffer[cmd_words_b[3] + i] != NUL) ) {
 			port_names[phy_settings.port][i] = cmd_buffer[cmd_words_b[3] + i];
 			i++;
 		}
-		port_names[phy_settings.port][i] = '\0';
+		port_names[phy_settings.port][i] = NUL;
 		print_string("\nName set to: \"");
 		print_string_x(port_names[phy_settings.port]);
 		print_string("\"\n");
@@ -1237,8 +1237,8 @@ void parse_passwd(void)
 		do {
 			c = cmd_buffer[i++];
 			passwd[j++] = c;
-		} while (c != '\0' && j < 20);
-		passwd[j] = '\0';
+		} while (c != NUL && j < 20);
+		passwd[j] = NUL;
 		return;
 	}
 	print_string("Missing password\n");
@@ -1442,7 +1442,7 @@ void cmd_tokenize(void) __banked
 	while(1) {
 		c = cmd_buffer[line_ptr];
 		
-		if (c == '\0') {
+		if (c == NUL) {
 			// Store the word count
 			cmd_words_len = word;
 			break;
@@ -1647,13 +1647,13 @@ void cmd_parser(void) __banked
 				__xdata char *dst = hostname;
 				for (uint8_t hn = 0; hn < sizeof(hostname) - 1; hn++) {
 					uint8_t c = *hp++;
-					if (c == '\0' || c == '\r' || c == '\n')
+					if (c == NUL || c == '\r' || c == '\n')
 						break;
 					if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
 						c = '.';
 					*dst++ = c;
 				}
-				*dst = '\0';
+				*dst = NUL;
 			} else {
 				print_string("Error: hostname [name] - the name must not contain spaces\n");
 			}
@@ -1741,7 +1741,7 @@ void cmd_parser(void) __banked
 			uint8_t i = cmd_words_b[cmd_words_len - 1];
 			do {
 				i++;
-			} while(cmd_buffer[i] != '\0');
+			} while(cmd_buffer[i] != NUL);
 
 			// Copy last cmd-buffer to history.
 			cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
@@ -1789,7 +1789,7 @@ void execute_config(void) __banked
 		uint8_t c = 0;
 		do {
 			if (cmd_idx >= (CMD_BUF_SIZE - 1)) {
-				cmd_buffer[cmd_idx] = '\0';
+				cmd_buffer[cmd_idx] = NUL;
 				print_string("ERROR: Command too long: ");
 				print_string_x(cmd_buffer);
 				write_char('\n');
@@ -1798,7 +1798,7 @@ void execute_config(void) __banked
 			}
 			c = flash_buf[cfg_idx++];
 			if (c == 0 || c == '\n') {
-				cmd_buffer[cmd_idx] = '\0';
+				cmd_buffer[cmd_idx] = NUL;
 				if (cmd_idx) {
 					cmd_tokenize();
 					if (err_status != ERR_OK)
@@ -1834,7 +1834,7 @@ void execute_commands(__xdata uint8_t *p) __banked {
 	while (1) {
 		if (*p == 0 || *p == '\n' || *p == '\r') {
 			if (cmd_idx) {
-				cmd_buffer[cmd_idx] = '\0';
+				cmd_buffer[cmd_idx] = NUL;
 				cmd_tokenize();
 				if (err_status != ERR_OK)
 					return;
@@ -1847,7 +1847,7 @@ void execute_commands(__xdata uint8_t *p) __banked {
 			if (cmd_idx < (CMD_BUF_SIZE - 1)) {
 				cmd_buffer[cmd_idx++] = *p;
 			} else {
-				cmd_buffer[CMD_BUF_SIZE - 1] = '\0';
+				cmd_buffer[CMD_BUF_SIZE - 1] = NUL;
 				print_string("ERROR: Command too long: ");
 				print_string_x(cmd_buffer);
 				write_char('\n');
