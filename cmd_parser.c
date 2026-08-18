@@ -788,11 +788,14 @@ void parse_sfp(void)
 				print_string(" - empty\n");
 				continue;
 			}
+			sfp_i2c_fail = 0;
 			print_string(" - Rate: "); print_byte(sfp_read_reg(slot, 12));
 			print_string("  Encoding: "); print_byte(sfp_read_reg(slot, 11));
 			write_char('\n');
 			sfp_print_info(slot);
 			sfp_print_measurements(slot);
+			if (sfp_i2c_fail)
+				print_string("I2C read failed on this slot\n");
 		}
 		return;
 	}

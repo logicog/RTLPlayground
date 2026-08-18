@@ -140,6 +140,7 @@ __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
+__xdata uint8_t sfp_i2c_fail;	/* set by sfp_read_reg() when the controller flags a failed transfer */
 __xdata uint8_t sfp_speed[2];
 __xdata uint8_t sfp_quirks[2];
 __xdata bool button_last;
@@ -1062,6 +1063,14 @@ uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
 		reg_read_m(RTL837X_REG_I2C_CTRL);
 	} while (sfr_data[3] & 0x1);
 
+	/* Bit 1 is the controller's own failure indication, which the vendor SDK
+	 * looks at and this did not. Without it an unacknowledged address comes
+	 * back as an ordinary byte and the caller cannot tell it from data. */
+	if (sfr_data[3] & 0x2) {
+		sfp_i2c_fail = 1;
+		return 0xff;
+	}
+
 	reg_read_m(RTL837X_REG_I2C_OUT);
 	return sfr_data[3];
 }
@@ -1301,6 +1310,7 @@ void handle_sfp(void)
 				// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
 				// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
 				delay(100); // Delay, because some modules need time to wake up
+				sfp_i2c_fail = 0;
 				uint8_t rate = sfp_read_reg(sfp, 12);
 				if (sfp_speed[sfp] == SFP_SPEED_100M)
 					rate = 0x1;
@@ -1317,6 +1327,8 @@ void handle_sfp(void)
 				sfp_options[sfp] = sfp_read_reg(sfp, 92);
 				sfp_get_info(sfp);
 				sfp_apply_quirks(sfp);
+				if (sfp_i2c_fail)
+					print_string("SFP: an I2C read failed, the module data above may be wrong\n");
 				sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
 			}
 		} else {
