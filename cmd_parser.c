@@ -269,6 +269,34 @@ uint8_t cmd_parse_port_separator(uint8_t idx) {
 	return ret;
 }
 
+// Same as cmd_parse_port_separator() addition to allow the CPU-port.
+// returns 0 when on parser error or invalid value or no space or no NUL.
+// return non-zero number of bytes consumed including the space.
+uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
+	uint8_t ret = atoi_byte(idx);
+	// Check valid con
+	if (ret != 0) {
+		// port number 1-10 -> 0-9
+		atoi_results_u8 -= 1;
+		if(atoi_results_u8 < CPU_PORT)
+			// Phy port, translate it.
+			ret = cmd_parse_port(idx);
+		// Check is not
+		else if (atoi_results_u8 > CPU_PORT)
+			ret = 0;
+	}
+
+	if (ret != 0) {
+		idx += ret;
+		uint8_t c = cmd_buffer[idx];
+		if (c == ' ') {
+			ret++;
+		} else if (c != NUL)
+			ret = 0;
+	}
+	return ret;
+}
+
 
 // check if the cmd_buffer[idx] is a space.
 __bit cmd_is_space(uint8_t idx) {
@@ -562,7 +590,7 @@ void parse_isolate(void)
 
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
-		if (cmd_parse_port_separator(cmd_words_b[w++]) == 0)
+		if (cmd_parse_port_cpu_separator(cmd_words_b[w++]) == 0)
 			goto err;
 		uint8_t port = atoi_results_u8;
 		members |= ((uint16_t)1) << port;
