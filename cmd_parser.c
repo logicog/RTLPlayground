@@ -400,18 +400,15 @@ err:
 
 void parse_lag_hash(void)
 {
-	__xdata uint8_t hash = 0;
-
-	if (cmd_words_len < 2)
-		goto err;
-
-	if (cmd_parse_port_separator(cmd_buffer[cmd_words_b[1]]) == 0)
+	// Parse group, expect only one number 0-9.
+	if (cmd_words_len < 3 || atoi_byte(cmd_words_b[1]) != 1)
 		goto err;
 
 	uint8_t group = atoi_results_u8 - 1;
 	if (group > 3)
 		goto err;
 
+	uint8_t hash = 0;
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
 		if (cmd_compare(w, "spa"))
@@ -432,13 +429,14 @@ void parse_lag_hash(void)
 			print_string("Error: invalid hash type:");
 			print_string_x(&cmd_buffer[cmd_words_b[w]]);
 			write_char('\n');
+			goto err;
 		}
 		w++;
 	}
 	port_lag_hash_set(group, hash);
 	return;
 err:
-	print_string("Error: lag hash <1-4> [type]...\n");
+	print_string("Error: laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
 }
 
 
