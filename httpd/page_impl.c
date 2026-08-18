@@ -397,7 +397,7 @@ void send_l2(uint16_t idx)
 
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
-			if (sfr_data[2] & 0x1)
+			if (sfr_data[1] & 0x1)
 				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
 			else
 				slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
