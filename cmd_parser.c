@@ -27,7 +27,6 @@
 
 extern __code struct machine machine;
 extern __xdata uint8_t stpEnabled;
-extern __code uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -356,7 +355,7 @@ void parse_lag(void)
 			print_string(" member ports: ");
 			for (uint8_t j = 0; j < 10; j++) {
 				if (members & 1) {
-					write_char('0' + machine.log_to_phys_port[j]);
+					print_port(j);
 					write_char(' ');
 				}
 				members >>= 1;
@@ -545,10 +544,7 @@ void parse_isolate(void)
 		members = port_isolation_get(port_configured);
 		for (uint8_t i = 0; i < 10; i++) {
 			if (members & 1) {
-				if (i < 9)
-					write_char(machine.log_to_phys_port[i] + '0');
-				else
-					print_string("CPU");
+				print_port(i);
 				write_char(' ');
 			}
 			members >>= 1;
@@ -613,7 +609,7 @@ void parse_ingress(void)
 		// Setting mode for all ports at once
 		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
 			if (!port_ingress_filter(log_port, mode)) {
-				print_string("Error setting ingress filter for port "); print_byte(machine.log_to_phys_port[log_port]); write_char('\n');
+				print_string("Error setting ingress filter for port "); print_port(log_port); write_char('\n');
 				return;
 			}
 			print_string("All ports ingress filter set to: ");
@@ -622,7 +618,6 @@ void parse_ingress(void)
 	} else {
 		for(uint8_t w = 1; w < cmd_words_len; w++) {
 			idx = cmd_words_b[w];
-			char p = cmd_buffer[idx];
 			uint8_t ret = cmd_parse_port(idx);
 			if (ret != 1) {
 				print_string("Invalid physical port number\n");
@@ -632,14 +627,14 @@ void parse_ingress(void)
 			idx += ret;
 
 			if (!vlan_ingress_mode_parse(cmd_buffer[idx++], &mode) || !cmd_is_space_or_null(idx)) {
-				print_string("Invalid ingress mode for port "); write_char(p); print_string(" in ingress command\n");
+				print_string("Invalid ingress mode for port "); print_port(log_port); print_string(" in ingress command\n");
 				goto err;
 			}
 			if (!port_ingress_filter(log_port, mode)) {
-				print_string("Error setting ingress filter for port "); write_char(p); write_char('\n');
+				print_string("Error setting ingress filter for port "); print_port(log_port); write_char('\n');
 				return;
 			}
-			print_string("Port "); write_char(p);
+			print_string("Port "); print_port(log_port);
 			print_string(" ingress filter set to: ");
 			print_port_ingress_filter_mode(mode); write_char('\n');
 		}
@@ -664,7 +659,7 @@ void parse_mirror(void)
 			print_string("NOT Enabled: ");
 		}
 		print_string("Mirroring port: ");
-		write_char('0' + machine.log_to_phys_port[mPort >> 1]);
+		print_port(mirroring_port);
 		reg_read_m(RTL837x_MIRROR_CONF);
 		uint16_t m = sfr_data[0];
 		m = (m << 8) | sfr_data[1];
@@ -818,7 +813,7 @@ void parse_mtu(void)
 		for (p = machine.min_port; p <= machine.max_port; p++) {
 			reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8));
 			uint16_t mtu = SFR_DATA_U16 & 0x3fff;
-			print_string("Port "); print_byte(machine.log_to_phys_port[p]);
+			print_string("Port "); print_port(p);
 			write_char(' '); print_short(mtu); write_char('\n');
 		}
 		return;

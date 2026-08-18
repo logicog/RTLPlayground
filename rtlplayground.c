@@ -780,6 +780,19 @@ void print_reg(uint16_t reg)
 	print_sfr_data();
 }
 
+// Print the phy port for a log port number.
+void print_port(uint8_t port)
+{
+	if (port < 9)
+		write_char(machine.log_to_phys_port[port] + '0');
+	else if (port == 9)
+		print_string("CPU");
+	else {
+		print_string("UNKNOWN ");
+		write_char(port + '0');
+	}
+}
+
 
 /*
 // TODO: This uses 2 DSEG bytes and is not used!
