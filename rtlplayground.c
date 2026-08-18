@@ -783,9 +783,9 @@ void print_reg(uint16_t reg)
 // Print the phy port for a log port number.
 void print_port(uint8_t port)
 {
-	if (port < 9)
+	if (port < CPU_PORT)
 		write_char(machine.log_to_phys_port[port] + '0');
-	else if (port == 9)
+	else if (port == CPU_PORT)
 		print_string("CPU");
 	else {
 		print_string("UNKNOWN ");
