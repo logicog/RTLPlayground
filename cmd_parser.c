@@ -1316,9 +1316,7 @@ void parse_eee(void)
 
 void parse_bw(void)
 {
-	__xdata uint32_t bw = 0;
-
-	if (cmd_words_len < 2) // Check for at least 2 arguments
+	if (cmd_words_len < 3) // Check for at least 3 arguments
 		goto err;
 
 	if (cmd_parse_port_separator(cmd_words_b[2]) == 0)
@@ -1333,8 +1331,13 @@ void parse_bw(void)
 	if (cmd_words_len < 4) // Check for at least 4 arguments
 		goto err;
 
+	// Ensure first argument is only `in` or `out`.
+	__bit is_in = cmd_compare(1, "in") != 0;
+	if (!(is_in || cmd_compare(1, "out")))
+		goto err;
+
 	if (cmd_compare(3, "drop")) {
-		if (cmd_compare(1, "in")) {
+		if (is_in) {
 			bandwidth_ingress_drop(port);
 			return;
 		}
@@ -1342,7 +1345,7 @@ void parse_bw(void)
 	}
 
 	if (cmd_compare(3, "fc")) {
-		if (cmd_compare(1, "in")) {
+		if (is_in) {
 			bandwidth_ingress_fc(port);
 			return;
 		}
@@ -1350,34 +1353,30 @@ void parse_bw(void)
 	}
 
 	if (cmd_compare(3, "off")) {
-		if (cmd_compare(1, "in")) {
+		if (is_in) {
 			bandwidth_ingress_disable(port);
-			return;
-		} else if (cmd_compare(1, "out")) {
+		} else  {
 			bandwidth_egress_disable(port);
-			return;
 		}
-		goto err;
+		return;
 	}
 
+	__xdata uint32_t bw = 0;
 	uint8_t hex_size = atoi_hex(cmd_words_b[3]);
-	if (hex_size == 0 || hex_size > 4) {
+	if (hex_size == 0 || hex_size > 4)
 		goto err;
-	}
+
 	uint8_t i = 0;
-	while (hex_size) {
+	do {
 		hex_size--;
 		*(((uint8_t *) &bw) + hex_size) = hexvalue[i++];
-	}
+	} while (hex_size);
 
-	if (cmd_compare(1, "in")) {
+	if (is_in) {
 		bandwidth_ingress_set(port, bw);
-	} else if (cmd_compare(1, "out")) {
-		bandwidth_egress_set(port, bw);
 	} else {
-		goto err;
+		bandwidth_egress_set(port, bw);
 	}
-
 	return;
 
 err:
