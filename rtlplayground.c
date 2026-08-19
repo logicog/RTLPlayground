@@ -780,8 +780,8 @@ void print_reg(uint16_t reg)
 	print_sfr_data();
 }
 
-// Print the phy port for a log port number.
-void print_port(uint8_t port)
+// Print the physical port of a logical port number.
+void print_phys_port(uint8_t port)
 {
 	if (port < CPU_PORT)
 		write_char(machine.log_to_phys_port[port] + '0');
