@@ -621,17 +621,21 @@ void get_random_32(void)
  * data will be stored in the rx_header structure
  * len is the length of data to be transferred
  */
-void nic_rx_header(uint16_t ring_ptr)
+bool nic_rx_header(uint16_t ring_ptr)
 {
 	uint16_t buffer = (uint16_t) &rx_headers[0];
+	uint16_t guard = 0;
+
 	SFR_NIC_DATA_U16LE = buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
 	SFR_NIC_CTRL = 1;
-	/* Bounded, cf. nic_tx_packet: a stuck NIC DMA must not freeze the loop */
-	{
-	uint16_t rx_guard = 0;
-	do { } while (SFR_NIC_CTRL != 0 && ++rx_guard != 0);
+	while (SFR_NIC_CTRL != 0) {
+		if (++guard == 0) {
+			print_string("NIC: RX header transfer did not complete\n");
+			return false;
+		}
 	}
+	return true;
 }
 
 
@@ -641,8 +645,10 @@ void nic_rx_header(uint16_t ring_ptr)
  * data will be returned in the xmem buffer points to
  * ring_ptr is the current position of the RX Ring on the ASIC side
  */
-void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
+bool nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 {
+	uint16_t guard = 0;
+
 	SFR_NIC_DATA_U16LE = buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
 
@@ -654,11 +660,13 @@ void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 	print_short(len);
 #endif
 	SFR_NIC_CTRL = len;
-	/* Bounded, cf. nic_tx_packet: a stuck NIC DMA must not freeze the loop */
-	{
-	uint16_t rx_guard = 0;
-	do { } while (SFR_NIC_CTRL != 0 && ++rx_guard != 0);
+	while (SFR_NIC_CTRL != 0) {
+		if (++guard == 0) {
+			print_string("NIC: RX transfer did not complete\n");
+			return false;
+		}
 	}
+	return true;
 }
 
 
@@ -668,6 +676,7 @@ void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 void nic_tx_packet(uint16_t ring_ptr)
 {
 	uint16_t len;
+	uint16_t guard = 0;
 
 	/* If we have a management VLAN, we have inserted a dot1Q-tag into the frame and
 	 * the frame starts at the beginning of uip_buf with the RTL TX descriptor,
@@ -702,12 +711,11 @@ void nic_tx_packet(uint16_t ring_ptr)
 	len += 0xf;
 	len >>= 3;
 	SFR_NIC_CTRL = len;
-	/* Bounded wait: the NIC normally consumes the frame in microseconds, and
-	 * an unbounded spin here would freeze the main loop for good if it ever
-	 * did not. Dropping one frame is recoverable, a frozen switch is not. */
-	{
-	uint16_t tx_guard = 0;
-	do { } while (SFR_NIC_CTRL != 0 && ++tx_guard != 0);
+	while (SFR_NIC_CTRL != 0) {
+		if (++guard == 0) {
+			print_string("NIC: TX transfer did not complete\n");
+			return;
+		}
 	}
 }
 
@@ -1133,7 +1141,10 @@ void handle_rx(void)
 		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 		ring_ptr |= sfr_data[3];
 		ring_ptr <<= 3;
-		nic_rx_header(ring_ptr);
+		if (!nic_rx_header(ring_ptr)) {
+			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
+			return;
+		}
 #ifdef RXTXDBG
 		__xdata uint8_t *ptr = rx_headers;
 		print_string("RX on port "); print_byte(rx_headers[3] & 0xf);
@@ -1143,7 +1154,10 @@ void handle_rx(void)
 			write_char(' ');
 		}
 #endif
-		nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8);
+		if (!nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8)) {
+			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
+			return;
+		}
 
 #ifdef RXTXDBG
 		print_string("\n<< ");
