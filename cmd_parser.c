@@ -113,7 +113,7 @@ uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 		uint8_t c = cmd[j];
 		uint8_t b = cmd_buffer[i];
 
-		// cmd is garanteerd to be NULL-terminated.
+		// cmd is garanteerd to be NUL-terminated.
         if (c == NUL) {
             if ((b == ' ') || (b == NUL)) {
 				// Match
@@ -253,9 +253,9 @@ uint8_t cmd_parse_port(uint8_t idx) {
 }
 
 
-// Same as cmd_parse_port() addition to check the trailing space or NUL.
-// returns 0 when on parser error or invalid value or no space or no NUL.
-// return non-zero number of bytes consumed including the space.
+// Same as cmd_parse_port() addition to check the trailing SPACE or NUL.
+// returns 0 when on parser error or invalid value or no SPACE or no NUL.
+// return non-zero number of bytes consumed including the SPACE.
 uint8_t cmd_parse_port_separator(uint8_t idx) {
 	uint8_t ret = cmd_parse_port(idx);
 	if (ret != 0) {
@@ -270,18 +270,17 @@ uint8_t cmd_parse_port_separator(uint8_t idx) {
 }
 
 // Same as cmd_parse_port_separator() addition to allow the CPU-port.
-// returns 0 when on parser error or invalid value or no space or no NUL.
-// return non-zero number of bytes consumed including the space.
+// returns 0 when on parser error or invalid value or no SPACE or no NUL.
+// return non-zero number of bytes consumed including the SPACE.
 uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
 	uint8_t ret = atoi_byte(idx);
-	// Check valid con
+	// Check valid conversion
 	if (ret != 0) {
 		// port number 1-10 -> 0-9
 		atoi_results_u8 -= 1;
 		if(atoi_results_u8 < CPU_PORT)
 			// Phy port, translate it.
 			ret = cmd_parse_port(idx);
-		// Check is not
 		else if (atoi_results_u8 > CPU_PORT)
 			ret = 0;
 	}
@@ -298,20 +297,20 @@ uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
 }
 
 
-// check if the cmd_buffer[idx] is a space.
+// check if the cmd_buffer[idx] is a SPACE.
 __bit cmd_is_space(uint8_t idx) {
 	return cmd_buffer[idx] == ' ';
 }
 
-// check if the cmd_buffer[idx] is a space or NULL.
+// check if the cmd_buffer[idx] is a SPACE or NUL.
 __bit cmd_is_space_or_nul(uint8_t idx) {
 	uint8_t c = cmd_buffer[idx];
 	return c == ' ' || c == NUL;
 }
 
-// returns 0 when on parser error or invalid value or no space.
-// return non-zero number of bytes consumed including the space.
-// Stops at a space or NUL.
+// returns 0 when on parser error or invalid value or no SPACE.
+// return non-zero number of bytes consumed including the SPACE.
+// Stops at a SPACE or NUL.
 uint8_t parse_ip(uint8_t idx)
 {
 	uint8_t b = 0;
@@ -1257,7 +1256,7 @@ void parse_rnd(void)
 
 void parse_passwd(void)
 {
-	// cmd_words_len can be more then 2 if a space in the password.
+	// cmd_words_len can be more then 2 if a SPACE in the password.
 	if (cmd_words_len >= 2) {
 		uint8_t i = cmd_words_b[1];		
 		uint8_t c = 0;
@@ -1765,7 +1764,7 @@ void cmd_parser(void) __banked
 
 
 		if (save_cmd && cmd_words_len) {
-			// Find end of the cmd-buffer, looking for the NULL-byte.
+			// Find end of the cmd-buffer, looking for the NUL-byte.
 			uint8_t i = cmd_words_b[cmd_words_len - 1];
 			do {
 				i++;
