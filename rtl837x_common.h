@@ -145,7 +145,6 @@ void reg_write_m(uint16_t reg_addr);
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
 void delay(uint16_t t);
-void sleep(uint16_t t);
 void write_char_no_syslog(char c);
 void write_char(char c);
 void print_reg(uint16_t reg);
@@ -156,14 +155,21 @@ uint8_t reg_bit_test(uint16_t reg_addr, char bit);
 void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set);
 void sfr_set_zero(void);
 void reset_chip(void);
+/* Firmware implementations that shadow libc names. Host unit-test builds
+ * (RTLP_HOST_TEST) hide these prototypes so they don't clash with glibc;
+ * argument order matches libc, so on-host callers transparently use the
+ * C library. See test/. */
+#ifndef RTLP_HOST_TEST
+void sleep(uint16_t t);
 void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16_t len);
-void memcpyc(register __xdata uint8_t *dst, register __code uint8_t *src, register uint16_t len);
 void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register uint8_t len);
 uint16_t strlen(register __code const char *s);
-uint16_t strlen_x(register __xdata const char *s);
-uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 uint16_t strcpy(register __xdata uint8_t *dst, register const char *s);
 char strcmp(register __xdata const uint8_t *a, register __code const uint8_t *b);
+#endif
+void memcpyc(register __xdata uint8_t *dst, register __code uint8_t *src, register uint16_t len);
+uint16_t strlen_x(register __xdata const char *s);
+uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 void tcpip_output(void);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
