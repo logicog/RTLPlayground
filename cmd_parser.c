@@ -368,7 +368,6 @@ void parse_lag(void)
 {
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
-	uint8_t ret;
 
 	if (cmd_compare(1, "show")) {
 		print_string("LAG status:\n");
@@ -398,9 +397,8 @@ void parse_lag(void)
 	if (cmd_words_len < 2)
 		goto err;
 
-	// Parse group, expect only one number 0-9.
-	ret = atoi_byte(cmd_words_b[1]);
-	if (ret != 1)
+	// Parse group, expect only one number 0-9;
+	if (atoi_byte(cmd_words_b[1]) != 1)
 		goto err;
 
 	group = atoi_results_u8 - 1;
@@ -834,7 +832,7 @@ void parse_port(void)
 
 void parse_mtu(void)
 {
-	uint8_t p, ret;
+	uint8_t p;
 
 	if (cmd_compare(1, "show")) {
 		for (p = machine.min_port; p <= machine.max_port; p++) {
@@ -854,9 +852,7 @@ void parse_mtu(void)
 	p = atoi_results_u8;
 	print_byte(p);
 
-	ret = atoi_short(cmd_words_b[2]);
-
-	if (!ret || atoi_results_short < 64 || atoi_results_short > 0x3fff) {
+	if (atoi_short(cmd_words_b[2]) == 0 || atoi_results_short < 64 || atoi_results_short > 0x3fff) {
 		print_string("MTU must be 64..16383\n");
 		return;
 	}
@@ -948,8 +944,6 @@ err:
 
 void parse_regget(void)
 {
-	uint16_t reg = 0;
-
 	if (cmd_words_len != 2) {
 		goto err;
 	}
@@ -960,7 +954,7 @@ void parse_regget(void)
 		goto err;
 	}
 
-	reg = hexvalue[0];
+	uint16_t reg = hexvalue[0];
 	if (hex_size == 2) {
 		reg <<= 8;
 		reg |= hexvalue[1];
@@ -983,8 +977,6 @@ err:
 
 void parse_regset(void)
 {
-	uint16_t reg = 0;
-
 	if (cmd_words_len != 3) {
 		goto err;
 	}
@@ -994,7 +986,7 @@ void parse_regset(void)
 		goto err;
 	}
 
-	reg = hexvalue[0];
+	uint16_t reg = hexvalue[0];
 	if (hex_size == 2) {
 		reg <<= 8;
 		reg |= hexvalue[1];
