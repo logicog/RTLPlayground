@@ -113,7 +113,7 @@ uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 		uint8_t c = cmd[j];
 		uint8_t b = cmd_buffer[i];
 
-		// cmd is garanteerd to be NUL-terminated.
+		// cmd is guaranteed to be NUL-terminated.
         if (c == NUL) {
             if ((b == ' ') || (b == NUL)) {
 				// Match
@@ -187,8 +187,8 @@ uint8_t atoi_hex(uint8_t idx)
 }
 
 
-// return 0 on error or non-zero number of number-byte taken for the conversion.
-// Stops at any non-digit '0'-'9' char or bytes is more then 3.
+// Returns 0 or the number of digits taken into account for conversion.
+// Stops at any non-digit '0'-'9' char or more than 3 bytes.
 uint8_t atoi_byte(uint8_t idx)
 {
 	uint8_t cnt = 0;
@@ -211,7 +211,7 @@ uint8_t atoi_byte(uint8_t idx)
 }
 
 
-// return 0 on error or non-zero number of number-byte taken for the conversion.
+// Returns 0 or the number of digits taken into account for conversion.
 // Stops at any non-digit '0'-'9' char or bytes is more then 5.
 uint8_t atoi_short(uint8_t idx)
 {
@@ -234,9 +234,9 @@ uint8_t atoi_short(uint8_t idx)
 }
 
 /* Parse, validate and translate phys_to_log_port physical port argument.
- * So CPU-port 10 is not valid.
+ * The CPU-port, i.e. port 10, is not a valid argument.
  * returns 0 when on parser error or invalid value.
- * return non-zero number of bytes consumed.
+ * returns non-zero number of characters consumed.
  * Store the value in atoi_results_u8.
  */
 uint8_t cmd_parse_port(uint8_t idx) {
@@ -253,9 +253,9 @@ uint8_t cmd_parse_port(uint8_t idx) {
 }
 
 
-// Same as cmd_parse_port() addition to check the trailing SPACE or NUL.
+// Same as cmd_parse_port() but additionally check for trailing SPACE or NUL.
 // returns 0 when on parser error or invalid value or no SPACE or no NUL.
-// return non-zero number of bytes consumed including the SPACE.
+// returns non-zero number of characters consumed including the SPACE.
 uint8_t cmd_parse_port_separator(uint8_t idx) {
 	uint8_t ret = cmd_parse_port(idx);
 	if (ret != 0) {
@@ -269,9 +269,9 @@ uint8_t cmd_parse_port_separator(uint8_t idx) {
 	return ret;
 }
 
-// Same as cmd_parse_port_separator() addition to allow the CPU-port.
+// Same as cmd_parse_port_separator() but additionally allow CPU-port.
 // returns 0 when on parser error or invalid value or no SPACE or no NUL.
-// return non-zero number of bytes consumed including the SPACE.
+// returns number of characters consumed including the SPACE.
 uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
 	uint8_t ret = atoi_byte(idx);
 	// Check valid conversion
@@ -308,9 +308,9 @@ __bit cmd_is_space_or_nul(uint8_t idx) {
 	return c == ' ' || c == NUL;
 }
 
-// returns 0 when on parser error or invalid value or no SPACE.
-// return non-zero number of bytes consumed including the SPACE.
-// Stops at a SPACE or NUL.
+// Parse an IPv4 address
+// returns 0 when on parse error or invalid value or it don't ends with SPACE or NUL.
+// returns non-zero number of characters consumed including the SPACE.
 uint8_t parse_ip(uint8_t idx)
 {
 	uint8_t b = 0;
@@ -347,7 +347,7 @@ err:
 	return 0;
 }
 
-// Print a IPv4 adress.
+// Prints an IPv4 address.
 void print_ip(__xdata uint8_t * ptr)
 {
 	uint8_t idx = 0;
