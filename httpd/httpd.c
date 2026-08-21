@@ -48,6 +48,7 @@ __xdata uint8_t boundary[72];
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
 __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+__xdata uint16_t pre_acc;
 __xdata uint8_t cfg_bl;
 __xdata uint8_t *content_type = 0;
 __xdata uint8_t *session = 0;
@@ -239,17 +240,6 @@ void send_unauthorized(void)
 }
 
 
-__xdata uint8_t *skip_boundary(__xdata uint8_t *p)
-{
-	while (*p) {
-		if (is_word_x(p, boundary))
-			return p + strlen_x(boundary);
-		p++;
-	}
-	return p;
-}
-
-
 __xdata uint8_t *scan_header(__xdata uint8_t *p)
 {
 	content_type = 0;
@@ -378,21 +368,40 @@ static uint8_t config_take(void)
 }
 
 
+// returns the payload offset in the buffered body, or 0 while the octet-stream
+// part header is still arriving. unlike scan_header() this keeps no auth state,
+// so it is safe to call on every buffered segment
+static uint16_t preamble_payload_start(__xdata uint16_t n)
+{
+	for (cfg_pos = 0; cfg_pos + 24 <= n; cfg_pos++) {
+		if (strstart(&config_buf[cfg_pos], "application/octet-stream"))
+			break;
+	}
+	if (cfg_pos + 24 > n)
+		return 0;
+	cfg_pos += 24;
+	while (cfg_pos + 3 < n && !strstart(&config_buf[cfg_pos], "\r\n\r\n"))
+		cfg_pos++;
+	if (cfg_pos + 3 >= n)
+		return 0;
+	return cfg_pos + 4;
+}
+
+
 /*
  * Reads post data from the http stream and writes it into flash memory
  * Input: the current position in the TCP buffer (uip_appdata)
  * Returns 1: More data to read, 0: Upload complete, all parts reads
  */
-uint8_t stream_upload(uint16_t bptr)
+uint8_t stream_upload(__xdata uint8_t *p, uint16_t bptr, uint16_t plen)
 {
-	__xdata uint8_t *p = uip_appdata;
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
 	dbg_string("Stream_upload called: ");
 	dbg_short(bptr); dbg_char('\n');
 
 	do {
-		if (bptr >= uip_len) {
+		if (bptr >= plen) {
 			s->tstate = TSTATE_POST;
 			return 1;
 		}
@@ -423,7 +432,7 @@ uint8_t stream_upload(uint16_t bptr)
 			flash_region.addr = uptr;
 			flash_region.len = 1;
 			flash_write_bytes(flash_buf);
-			if (bptr >= uip_len)
+			if (bptr >= plen)
 				return 0;
 			if(!verify_crc)
 				//ugly hack to signal connection finished after config upload.
@@ -504,6 +513,7 @@ void handle_post(void)
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
 			max_upload = 1024576;
+			pre_acc = 0;
 		} else if (is_word(request_path, "config")) {
 			if (!authenticated) {
 				send_unauthorized();
@@ -592,21 +602,24 @@ void handle_post(void)
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
 			return;
 		}
-		// We skip the intial parts as part of the header
-		do {
-			p = skip_boundary(p);
-			if (!*p) {
-				s->tstate = TSTATE_MULTIPART;
-				return;
-			}
-			p = scan_header(p);
-			if (!*p)
-				goto bad_request;
-			if (!content_type) // We are waiting for the part with the octet stream
-				continue;
-		} while (!is_word(content_type, "application/octet-stream"));
+		// buffer the body only until the octet-stream header is complete, so a
+		// split inside it does not lose the parser; then stream, the buffered
+		// payload from config_buf and the rest from later segments
+		cfg_pos = uip_len - (p - uip_appdata);
+		if (pre_acc + cfg_pos >= CONFIG_UPLOAD_BUF) {
+			print_string("Firmware upload header too large, aborting.\n");
+			s->tstate = TSTATE_NONE;
+			send_bad_request();
+			return;
+		}
+		memcpy(config_buf + pre_acc, p, cfg_pos);
+		pre_acc += cfg_pos;
+		cfg_end = preamble_payload_start(pre_acc);
+		if (!cfg_end) {
+			s->tstate = TSTATE_MULTIPART;
+			return;
+		}
 		dbg_string("Have content octets\n");
-		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
 		set_sys_led_state(SYS_LED_FAST);
@@ -614,7 +627,7 @@ void handle_post(void)
 		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
-		stream_upload(p - uip_appdata);
+		stream_upload(config_buf, cfg_end, pre_acc);
 
 		dbg_string("Done reading first fragment\n");
 		return;
@@ -624,9 +637,6 @@ void handle_post(void)
 		return;
 	}
 	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-	return;
-bad_request:
-	send_bad_request();
 	return;
 }
 
@@ -695,7 +705,7 @@ void httpd_appcall(void)
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		// Check here maxupload by subtracting uip_len and close socekt if fails!
 		if (max_upload - uip_len > 0) {
-			stream_upload(0);
+			stream_upload(uip_appdata, 0, uip_len);
 			write_char('.');
 		} else {
 			send_bad_request();
