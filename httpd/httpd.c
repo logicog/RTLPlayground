@@ -41,6 +41,15 @@ __xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
+
+// a client may split the request anywhere, including inside a boundary or a
+// part header, so a configuration upload is parsed only once it is complete
+#define CONFIG_UPLOAD_BUF 2560
+__xdata uint8_t config_upload;
+__xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
+__xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+__xdata uint16_t pre_acc;
+__xdata uint8_t cfg_bl;
 __xdata uint8_t *content_type = 0;
 __xdata uint8_t *session = 0;
 
@@ -77,6 +86,7 @@ inline uint8_t is_separator(uint8_t c)
 
 void httpd_init(void) __banked
 {
+	config_upload = 0; // xdata is not zeroed by the startup code
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	// Start listening to port 80
 	uip_listen(HTONS(80));
@@ -230,17 +240,6 @@ void send_unauthorized(void)
 }
 
 
-__xdata uint8_t *skip_boundary(__xdata uint8_t *p)
-{
-	while (*p) {
-		if (is_word_x(p, boundary))
-			return p + strlen_x(boundary);
-		p++;
-	}
-	return p;
-}
-
-
 __xdata uint8_t *scan_header(__xdata uint8_t *p)
 {
 	content_type = 0;
@@ -315,21 +314,94 @@ void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
 }
 
 
+/* 0: body incomplete, 1: configuration stored, 2: malformed */
+static uint8_t config_take(void)
+{
+	cfg_bl = strlen_x(boundary);
+
+	// the body is complete once the closing boundary has arrived
+	cfg_last = 0;
+	while (1) {
+		if (cfg_last + cfg_bl + 1 >= write_len)
+			return 0;
+		if (strstart_x(&config_buf[cfg_last], boundary)
+		    && config_buf[cfg_last + cfg_bl] == '-'
+		    && config_buf[cfg_last + cfg_bl + 1] == '-')
+			break;
+		cfg_last++;
+	}
+
+	// every part lies ahead of the closing boundary, so it bounds the walk
+	cfg_pos = 0;
+	while (cfg_pos < cfg_last) {
+		if (!strstart_x(&config_buf[cfg_pos], boundary)) {
+			cfg_pos++;
+			continue;
+		}
+		cfg_hdr = cfg_pos + cfg_bl;
+		cfg_body = cfg_hdr;
+		while (cfg_body + 3 < cfg_last && !strstart(&config_buf[cfg_body], "\r\n\r\n"))
+			cfg_body++;
+		if (cfg_body + 3 >= cfg_last)
+			return 2;
+		cfg_end = cfg_body;
+		cfg_body += 4;
+		// reaching cfg_last is a match: the last part ends at the closing boundary
+		while (cfg_end < cfg_last && !strstart_x(&config_buf[cfg_end], boundary))
+			cfg_end++;
+		while (cfg_hdr + 8 < cfg_body) {
+			// the part carrying a filename holds the configuration
+			if (strstart(&config_buf[cfg_hdr], "filename")) {
+				config_buf[cfg_end] = 0;
+				flash_region.addr = CONFIG_START;
+				flash_sector_erase();
+				flash_region.addr = CONFIG_START;
+				flash_region.len = cfg_end - cfg_body + 1;
+				flash_write_bytes(config_buf + cfg_body);
+				return 1;
+			}
+			cfg_hdr++;
+		}
+		cfg_pos = cfg_end;
+	}
+	return 2;
+}
+
+
+// returns the payload offset in the buffered body, or 0 while the octet-stream
+// part header is still arriving. unlike scan_header() this keeps no auth state,
+// so it is safe to call on every buffered segment
+static uint16_t preamble_payload_start(__xdata uint16_t n)
+{
+	for (cfg_pos = 0; cfg_pos + 24 <= n; cfg_pos++) {
+		if (strstart(&config_buf[cfg_pos], "application/octet-stream"))
+			break;
+	}
+	if (cfg_pos + 24 > n)
+		return 0;
+	cfg_pos += 24;
+	while (cfg_pos + 3 < n && !strstart(&config_buf[cfg_pos], "\r\n\r\n"))
+		cfg_pos++;
+	if (cfg_pos + 3 >= n)
+		return 0;
+	return cfg_pos + 4;
+}
+
+
 /*
  * Reads post data from the http stream and writes it into flash memory
  * Input: the current position in the TCP buffer (uip_appdata)
  * Returns 1: More data to read, 0: Upload complete, all parts reads
  */
-uint8_t stream_upload(uint16_t bptr)
+uint8_t stream_upload(__xdata uint8_t *p, uint16_t bptr, uint16_t plen)
 {
-	__xdata uint8_t *p = uip_appdata;
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
 	dbg_string("Stream_upload called: ");
 	dbg_short(bptr); dbg_char('\n');
 
 	do {
-		if (bptr >= uip_len) {
+		if (bptr >= plen) {
 			s->tstate = TSTATE_POST;
 			return 1;
 		}
@@ -360,7 +432,7 @@ uint8_t stream_upload(uint16_t bptr)
 			flash_region.addr = uptr;
 			flash_region.len = 1;
 			flash_write_bytes(flash_buf);
-			if (bptr >= uip_len)
+			if (bptr >= plen)
 				return 0;
 			if(!verify_crc)
 				//ugly hack to signal connection finished after config upload.
@@ -437,20 +509,20 @@ void handle_post(void)
 				return;
 			}
 			print_string("Firmware upload started.");
+			config_upload = 0;
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
 			max_upload = 1024576;
+			pre_acc = 0;
 		} else if (is_word(request_path, "config")) {
 			if (!authenticated) {
 				send_unauthorized();
 				return;
 			}
-			dbg_string("Configuration upload, erasing config mem!\n");
-			uptr = CONFIG_START;
+			dbg_string("Configuration upload\n");
 			verify_crc = 0;
-			max_upload = 2048;
-			flash_region.addr = CONFIG_START;
-			flash_sector_erase();
+			config_upload = 1;
+			write_len = 0;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -504,21 +576,50 @@ void handle_post(void)
 			send_bad_request();
 			return;
 		}
-		// We skip the intial parts as part of the header
-		do {
-			p = skip_boundary(p);
-			if (!*p) {
+		if (config_upload) {
+			cfg_pos = uip_len - (p - uip_appdata);
+			if (write_len + cfg_pos >= CONFIG_UPLOAD_BUF) {
+				print_string("Configuration too large, aborting.\n");
+				config_upload = 0;
+				s->tstate = TSTATE_NONE;
+				send_bad_request();
+				return;
+			}
+			memcpy(config_buf + write_len, p, cfg_pos);
+			write_len += cfg_pos;
+			uint8_t taken = config_take();
+
+			if (!taken) {
 				s->tstate = TSTATE_MULTIPART;
 				return;
 			}
-			p = scan_header(p);
-			if (!*p)
-				goto bad_request;
-			if (!content_type) // We are waiting for the part with the octet stream
-				continue;
-		} while (!is_word(content_type, "application/octet-stream"));
+			config_upload = 0;
+			s->tstate = TSTATE_NONE;
+			if (taken == 2) {
+				send_bad_request();
+				return;
+			}
+			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+			return;
+		}
+		// buffer the body only until the octet-stream header is complete, so a
+		// split inside it does not lose the parser; then stream, the buffered
+		// payload from config_buf and the rest from later segments
+		cfg_pos = uip_len - (p - uip_appdata);
+		if (pre_acc + cfg_pos >= CONFIG_UPLOAD_BUF) {
+			print_string("Firmware upload header too large, aborting.\n");
+			s->tstate = TSTATE_NONE;
+			send_bad_request();
+			return;
+		}
+		memcpy(config_buf + pre_acc, p, cfg_pos);
+		pre_acc += cfg_pos;
+		cfg_end = preamble_payload_start(pre_acc);
+		if (!cfg_end) {
+			s->tstate = TSTATE_MULTIPART;
+			return;
+		}
 		dbg_string("Have content octets\n");
-		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
 		set_sys_led_state(SYS_LED_FAST);
@@ -526,7 +627,7 @@ void handle_post(void)
 		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
-		stream_upload(p - uip_appdata);
+		stream_upload(config_buf, cfg_end, pre_acc);
 
 		dbg_string("Done reading first fragment\n");
 		return;
@@ -536,9 +637,6 @@ void handle_post(void)
 		return;
 	}
 	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-	return;
-bad_request:
-	send_bad_request();
 	return;
 }
 
@@ -607,7 +705,7 @@ void httpd_appcall(void)
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		// Check here maxupload by subtracting uip_len and close socekt if fails!
 		if (max_upload - uip_len > 0) {
-			stream_upload(0);
+			stream_upload(uip_appdata, 0, uip_len);
 			write_char('.');
 		} else {
 			send_bad_request();
