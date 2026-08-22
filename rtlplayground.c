@@ -120,7 +120,7 @@ __xdata uint16_t rx_packet_vlan;
 __xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
-__xdata uint8_t stpEnabled;
+__xdata uint8_t stp_enabled;
 __xdata uint8_t igmpEnabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
@@ -202,6 +202,9 @@ struct nonq_frame {
 
 // The output frame structure with 802.1Q field and the padding moved before the buffer-start
 #define FRAME_Q ((__xdata struct q_frame *)&uip_buf[0])
+
+// Ether-type of the output frame, which is the RTL tag on a CPU-tagged frame
+#define FRAME_ETHERTYPE (*(__xdata uint16_t *)&uip_buf[RTL_FRAME_DESC_SIZE + 2 * sizeof(struct uip_eth_addr)])
 
 void isr_timer0(void) __interrupt(1)
 {
@@ -624,13 +627,21 @@ void get_random_32(void)
  * data will be stored in the rx_header structure
  * len is the length of data to be transferred
  */
-void nic_rx_header(uint16_t ring_ptr)
+bool nic_rx_header(uint16_t ring_ptr)
 {
 	uint16_t buffer = (uint16_t) &rx_headers[0];
+	uint16_t guard = 0;
+
 	SFR_NIC_DATA_U16LE = buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
 	SFR_NIC_CTRL = 1;
-	do { } while (SFR_NIC_CTRL != 0);
+	while (SFR_NIC_CTRL != 0) {
+		if (++guard == 0) {
+			print_string("NIC: RX header transfer did not complete\n");
+			return false;
+		}
+	}
+	return true;
 }
 
 
@@ -640,8 +651,10 @@ void nic_rx_header(uint16_t ring_ptr)
  * data will be returned in the xmem buffer points to
  * ring_ptr is the current position of the RX Ring on the ASIC side
  */
-void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
+bool nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 {
+	uint16_t guard = 0;
+
 	SFR_NIC_DATA_U16LE = buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
 
@@ -653,7 +666,13 @@ void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 	print_short(len);
 #endif
 	SFR_NIC_CTRL = len;
-	do { } while (SFR_NIC_CTRL != 0);
+	while (SFR_NIC_CTRL != 0) {
+		if (++guard == 0) {
+			print_string("NIC: RX transfer did not complete\n");
+			return false;
+		}
+	}
+	return true;
 }
 
 
@@ -663,6 +682,7 @@ void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
 void nic_tx_packet(uint16_t ring_ptr)
 {
 	uint16_t len;
+	uint16_t guard = 0;
 
 	/* If we have a management VLAN, we have inserted a dot1Q-tag into the frame and
 	 * the frame starts at the beginning of uip_buf with the RTL TX descriptor,
@@ -697,7 +717,12 @@ void nic_tx_packet(uint16_t ring_ptr)
 	len += 0xf;
 	len >>= 3;
 	SFR_NIC_CTRL = len;
-	do { } while (SFR_NIC_CTRL != 0);
+	while (SFR_NIC_CTRL != 0) {
+		if (++guard == 0) {
+			print_string("NIC: TX transfer did not complete\n");
+			return;
+		}
+	}
 }
 
 
@@ -1086,8 +1111,9 @@ void tcpip_output(void)
 	FRAME->len = uip_len;
 	FRAME->reserved_2[0] = 0x00; FRAME->reserved_2[1] = 0x00;
 
-	// For the management VLAN we insert an 802.1Q VLAN tag
-	if (management_vlan) {
+	// For the management VLAN we insert an 802.1Q VLAN tag, but never into a
+	// CPU-tagged frame, where the ASIC expects its tag right behind the addresses
+	if (management_vlan && FRAME_ETHERTYPE != HTONS(RTL_FRAME_TAG_ID)) {
 		// Shift the ethernet header before the HW type including the rtl_frame_desc to the beginning of uip_buf
 		// to allow space to insert the dot 1Q tag
 		for (uint8_t i = 0; i < sizeof(struct q_frame) - DOT_1Q_TAG_SIZE; i++)
@@ -1121,7 +1147,10 @@ void handle_rx(void)
 		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 		ring_ptr |= sfr_data[3];
 		ring_ptr <<= 3;
-		nic_rx_header(ring_ptr);
+		if (!nic_rx_header(ring_ptr)) {
+			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
+			return;
+		}
 #ifdef RXTXDBG
 		__xdata uint8_t *ptr = rx_headers;
 		print_string("RX on port "); print_byte(rx_headers[3] & 0xf);
@@ -1131,7 +1160,10 @@ void handle_rx(void)
 			write_char(' ');
 		}
 #endif
-		nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8);
+		if (!nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8)) {
+			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
+			return;
+		}
 
 #ifdef RXTXDBG
 		print_string("\n<< ");
@@ -1152,7 +1184,7 @@ void handle_rx(void)
 		print_byte(uip_buf[3]); print_byte(uip_buf[4]); print_byte(uip_buf[5]); write_char('\n');
 		print_string(" MGMT-VLAN: "); print_short(management_vlan); write_char('\n');
 #endif
-		if (stpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
+		if (stp_enabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x00) {
 			stp_in();
 			if (uip_len) {
@@ -1496,7 +1528,7 @@ void idle(void)
 	// Check UIP for packets to transmit
 	handle_tx();
 	// If STP protocol enabled, decrease STP timers to trigger actions
-	if (stpEnabled) {
+	if (stp_enabled) {
 		if (!stp_clock) {
 			stp_clock = STP_TICK_DIVIDER;
 			stp_timers();
@@ -2185,7 +2217,8 @@ void main(void)
 	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
-	stpEnabled = 0;
+	stp_enabled = 0;
+	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();

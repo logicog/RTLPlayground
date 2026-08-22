@@ -12,6 +12,7 @@
 #include "phy.h"
 #include "version.h"
 #include "machine.h"
+#include "rtl837x_stp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -532,6 +533,119 @@ void send_lag(void)
 	}
 	slen -=1; // remove comma
 	char_to_html(']');
+}
+
+
+static __xdata uint32_t pi_u32;
+static __xdata uint8_t pi_prio, pi_ext;
+static __xdata uint8_t * __xdata pi_mac;
+
+
+static void u32hex_html(void)
+{
+	__xdata uint8_t *b = (__xdata uint8_t *)&pi_u32;
+	byte_to_html(b[3]);
+	byte_to_html(b[2]);
+	byte_to_html(b[1]);
+	byte_to_html(b[0]);
+}
+
+
+static void bridge_to_html(void)
+{
+	byte_to_html(pi_prio);
+	byte_to_html(pi_ext);
+	for (uint8_t i = 0; i < 6; i++)
+		byte_to_html(pi_mac[i]);
+}
+
+
+void send_stp(void)
+{
+	uint8_t i, j, st, dsg;
+
+	dbg_string("send_stp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(stp_enabled);
+	slen += strtox(outbuf + slen, ",\"rstp\":");
+	bool_to_html(stp_rstp);
+	slen += strtox(outbuf + slen, ",\"prio\":");
+	itoa_html(stp_prio >> 4);
+	slen += strtox(outbuf + slen, ",\"hello\":");
+	itoa_html(stp_hello_s);
+	slen += strtox(outbuf + slen, ",\"maxage\":");
+	itoa_html(stp_maxage_s);
+	slen += strtox(outbuf + slen, ",\"fwd\":");
+	itoa_html(stp_fwddelay_s);
+	slen += strtox(outbuf + slen, ",\"txhold\":");
+	itoa_html(stp_txhold);
+	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
+	byte_to_html(root_bridge.prio);
+	byte_to_html(root_bridge.ext);
+	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
+	for (j = 0; j < 6; j++)
+		byte_to_html(root_bridge.mac[j]);
+	slen += strtox(outbuf + slen, "\",\"myMac\":\"");
+	for (j = 0; j < 6; j++)
+		byte_to_html(uip_ethaddr.addr[j]);
+	slen += strtox(outbuf + slen, "\",\"cost\":\"");
+	byte_to_html(root_bridge_cost >> 24);
+	byte_to_html(root_bridge_cost >> 16);
+	byte_to_html(root_bridge_cost >> 8);
+	byte_to_html(root_bridge_cost);
+	slen += strtox(outbuf + slen, "\",\"weRoot\":");
+	bool_to_html(stp_root_port == 0xff ? 1 : 0);
+	slen += strtox(outbuf + slen, ",\"rootPort\":");
+	itoa_html(stp_root_port == 0xff ? 0 : machine.log_to_phys_port[stp_root_port]);
+	slen += strtox(outbuf + slen, ",\"tc\":\"");
+	byte_to_html(stp_tc_count >> 8);
+	byte_to_html(stp_tc_count);
+	slen += strtox(outbuf + slen, "\",\"ports\":[");
+	reg_read_m(RTL837X_MSTP_STATES);
+	for (i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"st\":");
+		st = (sfr_data[3 - (i >> 2)] >> ((i << 1) & 0x7)) & 0x3;
+		itoa_html(st);
+		slen += strtox(outbuf + slen, ",\"role\":");
+		if (!(stp_pflags[i] & STP_PF_ENABLED) || (stp_pflags[i] & STP_PF_TRIPPED))
+			itoa_html(0);
+		else if (i == stp_root_port)
+			itoa_html(1);
+		else if (st == 3)
+			itoa_html(2);
+		else
+			itoa_html(3);
+		slen += strtox(outbuf + slen, ",\"f\":");
+		itoa_html(stp_pflags[i]);
+		slen += strtox(outbuf + slen, ",\"pc\":\"");
+		pi_u32 = stp_pcost[i]; u32hex_html();
+		slen += strtox(outbuf + slen, "\",\"prio\":");
+		itoa_html(stp_pprio[i]);
+		slen += strtox(outbuf + slen, ",\"p2\":");
+		itoa_html(stp_pp2p[i]);
+		dsg = stp_dpid[i] && stp_bpdu_age[i] < (uint16_t)stp_maxage_s * STP_HZ;
+		slen += strtox(outbuf + slen, ",\"db\":\"");
+		if (dsg) {
+			pi_prio = stp_dbridge[i].prio; pi_ext = stp_dbridge[i].ext;
+			pi_mac = stp_dbridge[i].mac;
+		} else {
+			pi_prio = stp_prio; pi_ext = 0;
+			pi_mac = uip_ethaddr.addr;
+		}
+		bridge_to_html();
+		slen += strtox(outbuf + slen, "\",\"dp\":\"");
+		byte_to_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[i]);
+		byte_to_html(dsg ? stp_dpid[i] : (i + 1));
+		slen += strtox(outbuf + slen, "\",\"dc\":\"");
+		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
 }
 
 

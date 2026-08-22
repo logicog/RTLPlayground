@@ -20,6 +20,7 @@
 #pragma constseg BANK1
 
 extern volatile __xdata uint8_t sfr_data[4];
+extern volatile __xdata uint32_t ticks;
 extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
@@ -41,8 +42,8 @@ __xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
-__xdata uint8_t *content_type = 0;
-__xdata uint8_t *session = 0;
+__xdata uint8_t * __xdata content_type = 0;
+__xdata uint8_t * __xdata session = 0;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
@@ -54,7 +55,7 @@ __xdata char passwd[21];
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
-__xdata uint8_t *timeptr;
+__xdata uint8_t * __xdata timeptr;
 __xdata uint32_t last_session_use;
 
 #define TSTATE_NONE		0
@@ -690,6 +691,8 @@ void httpd_appcall(void)
 				send_mtu();
 			} else if (is_word(q, "/lag.json")) {
 				send_lag();
+			} else if (is_word(q, "/stp.json")) {
+				send_stp();
 			} else if (is_word(q, "/vlanlist")) {
 				send_vlanlist();
 			} else if (is_word(q, "/config")) {

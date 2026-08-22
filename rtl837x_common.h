@@ -71,6 +71,9 @@ struct vlan_tag {
 #define VLAN_TAG_SIZE		(sizeof (struct vlan_tag))
 #define RTL_FRAME_TAG_ID	0x8899
 #define RTL_FRAME_TAG_VERSION	0x04
+/* Bits of the tag's `flags` word, see doc/CpuPort.md. */
+#define RTL_TAG_LEARN_DIS	0x0020	/* do not learn the source address from this frame */
+#define RTL_TAG_KEEP		0x0080	/* keep the frame's 802.1Q tag format as injected */
 
 // For TX, an 8 byte (plus 4 byte padding when when VLAN is enabled)
 // header describing the frame to be moved to the Asic is used
@@ -114,6 +117,8 @@ struct flash_region_t {
 };
 
 extern __xdata char port_names[9][PORT_NAME_SIZE];
+
+extern __xdata uint8_t stp_enabled;
 
 /* System hostname (device identity). Set via `hostname <text>` and the System
  * Settings page, reported in /information.json. Other modules (e.g. LLDP, which
