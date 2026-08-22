@@ -786,6 +786,19 @@ void print_reg(uint16_t reg)
 	print_sfr_data();
 }
 
+// Print the physical port of a logical port number.
+void print_phys_port(uint8_t port)
+{
+	if (port < CPU_PORT)
+		write_char(machine.log_to_phys_port[port] + '0');
+	else if (port == CPU_PORT)
+		print_string("CPU");
+	else {
+		print_string("UNKNOWN ");
+		write_char(port + '0');
+	}
+}
+
 
 /*
 // TODO: This uses 2 DSEG bytes and is not used!
@@ -1241,13 +1254,13 @@ void sfp_print_info(uint8_t sfp)
 // Normalize strings from EEPROM by removing any trailing spaces; this allows simpler comparisons
 void sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t length) __reentrant
 {
-	dst[length] = '\0';
+	dst[length] = NUL;
 
 	for (uint8_t i = 0; i < length; i++)
 		dst[i] = sfp_read_reg(sfp, start + i);
 
 	while (length > 0 && dst[--length] == ' ')
-		dst[length] = '\0';
+		dst[length] = NUL;
 }
 
 void sfp_get_info(uint8_t sfp)
@@ -2027,7 +2040,7 @@ void check_and_flash_update_image(void)
  * because itohex() is inline and brings its own frame. */
 void set_hostname_default(void)
 {
-	if (hostname[0] != '\0')
+	if (hostname[0] != NUL)
 		return;
 
 	strcpy((__xdata uint8_t *)hostname, "RTLPlayground-");
@@ -2037,7 +2050,7 @@ void set_hostname_default(void)
 	hostname[17] = hex[uip_ethaddr.addr[4] & 0xf];
 	hostname[18] = hex[uip_ethaddr.addr[5] >> 4];
 	hostname[19] = hex[uip_ethaddr.addr[5] & 0xf];
-	hostname[20] = '\0';
+	hostname[20] = NUL;
 }
 
 

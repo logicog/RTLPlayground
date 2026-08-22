@@ -390,10 +390,7 @@ void port_l2_learned(void) __banked
 				print_string("\tlearned\t");
 
 			port |= (sfr_data[3] & 0x3) << 2;
-			if (port < 9)
-				write_char(machine.log_to_phys_port[port] + '0');
-			else
-				print_string("CPU");
+			print_phys_port(port);
 		}
 
 		entry++;
@@ -431,7 +428,7 @@ void port_stats_print(void) __banked
 {
 	print_string("\nPort\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		write_char('0' + machine.log_to_phys_port[i]); write_char('\t');
+		print_phys_port(i); write_char('\t');
 
 		if (!machine.is_sfp[i]) {
 			phy_read(i, PHY_MMD31, 0xa610);
@@ -606,7 +603,7 @@ void port_eee_disable(uint8_t port) __banked
 
 void port_eee_status(uint8_t port) __banked
 {
-	print_string("Port: "); write_char('0' + machine.log_to_phys_port[port]);
+	print_string("Port: "); print_phys_port(port);
 	print_string(": ");
 	if (machine.is_sfp[port]) {
 		print_string("SFP\n");
@@ -799,16 +796,6 @@ void print_port_ingress_filter_mode(vlan_ingress_mode_t mode) __banked
 	default:
 		print_string("!!err!!");
 	}
-}
-
-static void print_phys_port(uint8_t port) __banked
-{
-	if (port >= machine.min_port && port <= machine.max_port)
-		write_char(machine.log_to_phys_port[port] + '0');
-	else if (port == 9)
-		write_char('9');
-	else
-		write_char('?');
 }
 
 void print_vlan_ingress_port(uint8_t log_port) __banked
