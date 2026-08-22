@@ -41,6 +41,14 @@ __xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
+
+// a client may split the request anywhere, including inside a boundary or a
+// part header, so a configuration upload is parsed only once it is complete
+#define CONFIG_UPLOAD_BUF 2560
+__xdata uint8_t config_upload;
+__xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
+__xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+__xdata uint8_t cfg_bl;
 __xdata uint8_t *content_type = 0;
 __xdata uint8_t *session = 0;
 
@@ -77,6 +85,7 @@ inline uint8_t is_separator(uint8_t c)
 
 void httpd_init(void) __banked
 {
+	config_upload = 0; // xdata is not zeroed by the startup code
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	// Start listening to port 80
 	uip_listen(HTONS(80));
@@ -315,6 +324,60 @@ void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
 }
 
 
+/* 0: body incomplete, 1: configuration stored, 2: malformed */
+static uint8_t config_take(void)
+{
+	cfg_bl = strlen_x(boundary);
+
+	// the body is complete once the closing boundary has arrived
+	cfg_last = 0;
+	while (1) {
+		if (cfg_last + cfg_bl + 1 >= write_len)
+			return 0;
+		if (strstart_x(&config_buf[cfg_last], boundary)
+		    && config_buf[cfg_last + cfg_bl] == '-'
+		    && config_buf[cfg_last + cfg_bl + 1] == '-')
+			break;
+		cfg_last++;
+	}
+
+	// every part lies ahead of the closing boundary, so it bounds the walk
+	cfg_pos = 0;
+	while (cfg_pos < cfg_last) {
+		if (!strstart_x(&config_buf[cfg_pos], boundary)) {
+			cfg_pos++;
+			continue;
+		}
+		cfg_hdr = cfg_pos + cfg_bl;
+		cfg_body = cfg_hdr;
+		while (cfg_body + 3 < cfg_last && !strstart(&config_buf[cfg_body], "\r\n\r\n"))
+			cfg_body++;
+		if (cfg_body + 3 >= cfg_last)
+			return 2;
+		cfg_end = cfg_body;
+		cfg_body += 4;
+		// reaching cfg_last is a match: the last part ends at the closing boundary
+		while (cfg_end < cfg_last && !strstart_x(&config_buf[cfg_end], boundary))
+			cfg_end++;
+		while (cfg_hdr + 8 < cfg_body) {
+			// the part carrying a filename holds the configuration
+			if (strstart(&config_buf[cfg_hdr], "filename")) {
+				config_buf[cfg_end] = 0;
+				flash_region.addr = CONFIG_START;
+				flash_sector_erase();
+				flash_region.addr = CONFIG_START;
+				flash_region.len = cfg_end - cfg_body + 1;
+				flash_write_bytes(config_buf + cfg_body);
+				return 1;
+			}
+			cfg_hdr++;
+		}
+		cfg_pos = cfg_end;
+	}
+	return 2;
+}
+
+
 /*
  * Reads post data from the http stream and writes it into flash memory
  * Input: the current position in the TCP buffer (uip_appdata)
@@ -437,6 +500,7 @@ void handle_post(void)
 				return;
 			}
 			print_string("Firmware upload started.");
+			config_upload = 0;
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
 			max_upload = 1024576;
@@ -445,12 +509,10 @@ void handle_post(void)
 				send_unauthorized();
 				return;
 			}
-			dbg_string("Configuration upload, erasing config mem!\n");
-			uptr = CONFIG_START;
+			dbg_string("Configuration upload\n");
 			verify_crc = 0;
-			max_upload = 2048;
-			flash_region.addr = CONFIG_START;
-			flash_sector_erase();
+			config_upload = 1;
+			write_len = 0;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -502,6 +564,32 @@ void handle_post(void)
 		if (!boundary[0]) {
 			dbg_string("Bad request, no boundary!\n");
 			send_bad_request();
+			return;
+		}
+		if (config_upload) {
+			cfg_pos = uip_len - (p - uip_appdata);
+			if (write_len + cfg_pos >= CONFIG_UPLOAD_BUF) {
+				print_string("Configuration too large, aborting.\n");
+				config_upload = 0;
+				s->tstate = TSTATE_NONE;
+				send_bad_request();
+				return;
+			}
+			memcpy(config_buf + write_len, p, cfg_pos);
+			write_len += cfg_pos;
+			uint8_t taken = config_take();
+
+			if (!taken) {
+				s->tstate = TSTATE_MULTIPART;
+				return;
+			}
+			config_upload = 0;
+			s->tstate = TSTATE_NONE;
+			if (taken == 2) {
+				send_bad_request();
+				return;
+			}
+			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
 			return;
 		}
 		// We skip the intial parts as part of the header
