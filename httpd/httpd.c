@@ -728,7 +728,10 @@ void httpd_appcall(void)
 			 * response; without advertising it a browser reuses the socket
 			 * from its keep-alive pool and the next request hits the already
 			 * closed connection (a POST is then dropped without a retry). */
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\n");
+			if (f_data[entry].gzip)
+				slen += strtox(outbuf + slen, "Content-Encoding: gzip\r\n");
+			slen += strtox(outbuf + slen, "Cache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {

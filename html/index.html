@@ -1,32 +1,274 @@
 <!DOCTYPE html>
 <html>
   <script src="/main.js"></script>
-  <script src="/main_info.js"></script>
-  <script src="/i18n.js"></script>
-  <script>
-  window.addEventListener("load", function() {
-    update( () => {
-      const interval = setInterval(update, 2000);
-    });
-  });
-  </script>
   <link rel="stylesheet" href="style.css">
   <title data-i18n="index_title">FreeSwitchOS Main Page</title>
-</head>
+  <style>
+    .popup {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .popup-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      text-align: center;
+      height: 80%
+    }
+    .popup .popup-content {
+       overflow-y: scroll;
+    }
+    .tab-bar { display: flex; border-bottom: 2px solid #226; margin-bottom: 0; padding: 1px 16px; padding-bottom: 0; }
+    .tab-btn { padding: 10px 20px; background-color: #ddf; border: none; cursor: pointer; font-size: 1em; border-radius: 8px 8px 0 0; margin-right: 4px; }
+    .tab-btn:hover { background-color: #aaf; }
+    .tab-btn.active { background-color: #aaf; font-weight: bold; border-bottom: 2px solid #aaf; margin-bottom: -2px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div id="ports" style="margin-left:16%;padding:1px 16px"></div>
 
-<body>
-  <nav id="sidebar"></nav>
-  <div style="margin-left:16%;padding:1px 16px;height:1000px;">
-    <div id="ports"></div>
-    <h1 data-i18n="index_heading">Switch Configuration</h1>
-    <table id="infoTable">
-      <tr>
-        <th colspan="2" data-i18n="index_settings">Settings</th>
-      </tr>
-      <tbody>
-      </tbody>
-    </table>
-  </div>
-  <script src="/navigation.js"></script>
-</body>
+    <div class="page" id="page-overview" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="index_heading">Switch Configuration</h1>
+      <table id="infoTable">
+        <tr>
+          <th colspan="2" data-i18n="index_settings">Settings</th>
+        </tr>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="page" id="page-ports" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="port_heading">Port Configuration</h1>
+      <table id="speedtable">
+        <tr> <th data-i18n="port_col_port">Port</th> <th data-i18n="port_col_name">Name</th> <th data-i18n="port_col_speed">Current Link Speed</th><th data-i18n="port_col_set_speed">Set Speed</th><th data-i18n="port_col_disabled">Disabled</th><th data-i18n="port_col_apply">Apply</th></tr>
+      </table>
+      <h2 style="margin-top:3em" data-i18n="port_mtu_heading">Configure Maximum Frame Size (MTU) forwarded at Port</h2>
+      <table id="mtutable" style="margin-top:1em">
+      </table>
+    </div>
+
+    <div class="page" id="page-stat" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <div id="popup" class="popup">
+        <div class="popup-content">
+          <h2 data-i18n="stat_detailed">Detailed Port Statistics</h2>
+          <div id="popup_text"></div>
+          <button id="closePopup" class="action" data-i18n="stat_close">Close</button>
+        </div>
+      </div>
+      <h1 data-i18n="stat_heading">Port Statistics</h1>
+      <table id="statstable">
+        <tr> <th data-i18n="stat_col_port">Port</th> <th data-i18n="stat_col_name">Name</th> <th data-i18n="stat_col_link">link</th> <th data-i18n="stat_col_tx_good">TX Good</th> <th data-i18n="stat_col_tx_bad">TX Bad</th> <th data-i18n="stat_col_rx_good">RX Good</th> <th data-i18n="stat_col_rx_bad">RX Bad</th> <th data-i18n="stat_col_all"> All Counters </th></tr>
+      </table>
+    </div>
+
+    <div class="page" id="page-vlan" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="vlan_heading">VLAN Configuration</h1>
+      <form id="vform">
+        <div>
+          <label for="vlanSelect" data-i18n="vlan_select">VLAN Select:</label>
+          <select id="vlanSelect" style="margin: 0 0 0 8px">
+            <option value="" disabled selected data-i18n="vlan_choose">— VLAN Choose —</option>
+          </select>
+        </div>
+        <br/>
+        <div>
+          <label for="vid" data-i18n="vlan_id">VLAN ID:</label>
+          <input type="number" min="1" max="4094" id="vid" name="vid">
+          <button type="button" style="margin: 0 0 0 24px" onclick="fetchVLAN();" data-i18n="vlan_get_config">Get Configuration</button>
+        </div>
+        <br/><br/>
+        <label for="vname" data-i18n="vlan_name">VLAN Name:</label>
+        <input type="text" id="vname" name="vname"><br><br>
+        <br/>
+        <h2 data-i18n="vlan_tagged">Tagged Ports</h2>
+        <div id="tPorts"><button type="button" style="transform: translateY(-100%);margin: 0 50px 0 0" onclick="utClicked(true);" data-i18n="vlan_select_all">Select all</button></div>
+        <h2 data-i18n="vlan_untagged">Untagged Ports</h2>
+        <div id="uPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="utClicked(false);" data-i18n="vlan_select_all">Select all</button> </div>
+        <h2 data-i18n="vlan_pvid">Use as default VLAN for incoming traffic (PVID)</h2>
+        <div id="pPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="pvClicked(true);" data-i18n="vlan_select_all">Select all</button> </div>
+        <br/> <input style="width:40%;" class="action" id="vlan_sub" onclick="vlanSub();" type="button" data-i18n="vlan_update" value="Update / Create">
+      </form>
+      <h2 data-i18n="vlan_configured">Configured VLANs</h2>
+      <table id="vlanTable" style="width:90%">
+        <thead>
+          <tr>
+            <th>VLAN</th>
+            <th data-i18n="vlan_col_name">Name</th>
+            <th data-i18n="vlan_col_member">Member Ports</th>
+            <th data-i18n="vlan_col_tagged">Tagged Ports</th>
+            <th data-i18n="vlan_col_untagged">Untagged Ports</th>
+            <th data-i18n="vlan_col_pvid">PVID Ports</th>
+            <th data-i18n="vlan_col_delete">Delete</th>
+          </tr>
+        </thead>
+        <tbody id="vlanTableBody">
+        </tbody>
+      </table>
+    </div>
+
+    <div class="page" id="page-l2" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="l2_heading">L2 Configuration</h1>
+      <p><span data-i18n="l2_shown">Shown:</span> <span id="l2count">-</span></p>
+      <table id="l2table">
+        <tr>
+          <th><span class="l2sort" onclick="l2SortBy('port')"><span data-i18n="l2_col_port">Port</span><span id="l2a_port" class="l2arrow"></span></span><br>
+              <input id="l2f_port" class="l2filter" oninput="l2FilterChanged()" size="5"></th>
+          <th><span class="l2sort" onclick="l2SortBy('mac')">MAC<span id="l2a_mac" class="l2arrow"></span></span><br>
+              <input id="l2f_mac" class="l2filter" oninput="l2FilterChanged()" size="14"></th>
+          <th><span class="l2sort" onclick="l2SortBy('vlan')">VLAN<span id="l2a_vlan" class="l2arrow"></span></span><br>
+              <input id="l2f_vlan" class="l2filter" oninput="l2FilterChanged()" size="5"></th>
+          <th><span class="l2sort" onclick="l2SortBy('type')"><span data-i18n="l2_col_type">Type</span><span id="l2a_type" class="l2arrow"></span></span><br>
+              <input id="l2f_type" class="l2filter" oninput="l2FilterChanged()" size="8"></th>
+          <th data-i18n="l2_col_remove">Remove Entry</th></tr>
+      </table>
+    </div>
+
+    <div class="page" id="page-mirror" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="mirror_heading">Mirror Configuration</h1>
+      <label class="tswitch"><span data-i18n="mirror_enabled">Enabled:</span> <input id="me" type="checkbox"></label><br/>
+      <label for="mp"><span data-i18n="mirror_port">Mirroring Port:</span></label> <input type="number" id="mp" name="mp" min="1" max="9"/>
+      <h2 data-i18n="mirror_tx">Mirrored Ports (TX)</h2>
+      <div id="mPortsTX"></div>
+      <br />
+      <h2 data-i18n="mirror_rx">Mirrored Ports (RX)</h2>
+      <div id="mPortsRX"></div>
+      <br/> <input style="width:15%;" class="action" id="mirror_sub" onclick="mirrorSub();" type="button" data-i18n="mirror_update" value="Update / Create">
+      <input style="width:15%;" class="action" id="mirror_del" onclick="mirrorDel();" type="button" data-i18n="mirror_disable" value="Disable Mirroring">
+    </div>
+
+    <div class="page" id="page-lag" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="lag_heading">Link Aggregation Groups Configuration</h1>
+      <h2>LAG 1 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+      <div id="mLAG0"></div>
+      <br />
+      <h2>LAG 2 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub1" onclick="lagSub(1);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+      <div id="mLAG1"></div>
+      <br />
+      <h2>LAG 3 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub2" onclick="lagSub(2);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+      <div id="mLAG2"></div>
+      <br />
+      <h2>LAG 4 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub3" onclick="lagSub(3);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
+      <div id="mLAG3"></div>
+    </div>
+
+    <div class="page" id="page-eee" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="eee_heading">EEE Status</h1>
+      <table id="eeetable">
+        <tr> <th> </th> <th colspan="3" data-i18n="eee_advertising"> Advertising </th> <th colspan="3" data-i18n="eee_partner">Link-Partner advertises</th>  <th></th></tr>
+        <tr> <th data-i18n="eee_port">Port</th> <th>2.5G</th> <th>1G</th> <th>100M</th> <th>2.5G</th> <th>1G</th> <th>100M</th>  <th data-i18n="eee_active">Active?</th></tr>
+      </table>
+      <div>
+        <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 1);" type="button" data-i18n="eee_enable" value="Enable EEE">
+        <input style="width:20%;" class="action" id="eee_disable" onclick="eeeSub(0, 0);" type="button" data-i18n="eee_disable" value="Disable EEE">
+      </div>
+    </div>
+
+    <div class="page" id="page-bandwidth" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="bw_heading">Ingress and Egress Bandwidth</h1>
+      <table id="bwtable">
+        <tr> <th> </th> <th colspan="3" data-i18n="bw_ingress"> Ingress </th> <th colspan="2" data-i18n="bw_egress">Egress</th>  <th></th></tr>
+        <tr> <th data-i18n="bw_col_port">Port</th> <th data-i18n="bw_col_limit">Limit</th> <th data-i18n="bw_col_bandwidth">Bandwidth [kBit/s]</th> <th data-i18n="bw_col_flow">Flow Control</th> <th data-i18n="bw_col_limit">Limit</th> <th data-i18n="bw_col_bandwidth">Bandwidth [kBit/s]</th> <th data-i18n="bw_col_apply">Apply</th></tr>
+      </table>
+    </div>
+
+    <div class="page" id="page-system" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="openTab(event, 'system-tab')" data-i18n="sys_tab_system">System</button>
+        <button class="tab-btn" onclick="openTab(event, 'advanced-tab')" data-i18n="sys_tab_advanced">Advanced</button>
+        <button class="tab-btn" onclick="openTab(event, 'console-tab')" data-i18n="sys_tab_console">Console</button>
+      </div>
+      <div id="system-tab" class="tab-content active">
+        <h1 data-i18n="sys_heading">System Settings</h1>
+        <div class="row">
+          <div class="lcol"> <label for="hostname" data-i18n="sys_hostname">Hostname:</label></div>
+          <div class="rcol"> <input id="hostname" type="text" maxlength="23" size="20"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lcol"> <label for="ip" data-i18n="sys_ip">IP address:</label></div>
+          <div class="rcol"> <input id="ip" type="text" size="15"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lcol"> <label for="netmask" data-i18n="sys_netmask">Netmask:</label></div>
+          <div class="rcol"> <input id="netmask" type="text" size="15"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lcol"> <label for="gw" data-i18n="sys_gateway">Gateway:</label></div>
+          <div class="rcol"> <input id="gw" type="text" size="15"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lcol"> <label for="model" data-i18n="sys_model">Model:</label></div>
+          <div class="rcol"> <span id="model">-</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lcol"> <label for="lang-select" data-i18n="sys_language">Language:</label></div>
+          <div class="rcol">
+            <select id="lang-select">
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="zh">中文</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="lcol"> <label for="mgmtvlan" data-i18n="sys_mgmt_vlan">Management VLAN:</label></div>
+          <div class="rcol">
+            <select id="mgmtvlan">
+            </select>
+          </div>
+        </div>
+        <br/>
+        <span data-i18n="sys_ip_note">When updating the above settings, remember to point your browser to the new IP afterwards:</span><br/>
+        <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" data-i18n="sys_update" value="Update Settings"><br/>
+        <br/>
+        <span data-i18n="sys_save_label">Save all current settings to Flash:</span><br/>
+        <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" data-i18n="sys_save" value="Save Settings to Flash">
+      </div>
+
+      <div id="advanced-tab" class="tab-content">
+        <h1 data-i18n="sys_advanced">Advanced Settings</h1>
+        <div class="lcol"> <label for="config_display" data-i18n="sys_startup_config">Startup configuration:</label></div>
+        <textarea id="config_display" rows="8" cols="60"></textarea>
+        <br/><br/>
+        <span data-i18n="sys_startup_warn">Be careful when saving the directly edited startup configuration, you can lock yourself out:</span><br/>
+        <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" data-i18n="sys_clear_config" value="Clear Startup Config">
+        <br/>
+        <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" data-i18n="sys_save_startup" value="Save Startup Settings to Flash">
+        <br/>
+        <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" data-i18n="sys_reset" value="Reset Switch">
+      </div>
+
+      <div id="console-tab" class="tab-content">
+        <h1 data-i18n="sys_console">Console Command</h1>
+        <label for="console_command" data-i18n="sys_enter_cmd">Enter command:</label>
+        <input type="text" id="console_cmd" name="console_cmd" style="width:40%;">
+        <input style="width:20%;" class="action" id="cmd_sub" onclick="cmdSub();" type="button" data-i18n="sys_send_cmd" value="Send Command"><br/>
+        <br/><br/> 
+        <span data-i18n="sys_console_warn">Be careful when entering console commands, you can lock yourself out!</span><br/>
+      </div>
+    </div>
+
+    <div class="page" id="page-update" style="margin-left:16%;padding:1px 16px;height:1000px;width:40%;">
+      <h1 data-i18n="update_heading">Firmware Update</h1>
+      <form enctype="multipart/form-data" action="/upload" method="POST">
+        <input type="hidden" name="MAX_FILE_SIZE" value="1000000" />
+        <span data-i18n="update_instruction">Choose a firmware update file to upload:</span> <br/> <br/>
+        <input name="uploadedfile" type="file" accept=".bin" /><br />
+        <input style="margin-top:3em" type="submit" data-i18n="update_upload" value="Upload File" />
+      </form>
+    </div>
+  </body>
 </html>
