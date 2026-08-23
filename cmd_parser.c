@@ -234,7 +234,7 @@ uint8_t atoi_short(uint8_t idx)
 }
 
 /* Parse, validate and translate phys_to_log_port physical port argument.
- * The CPU-port, i.e. port 10, is not a valid argument.
+ * The CPU-port, i.e. port 0, is not a valid argument.
  * returns 0 when on parser error or invalid value.
  * returns non-zero number of characters consumed.
  * Store the value in atoi_results_u8.
@@ -273,16 +273,11 @@ uint8_t cmd_parse_port_separator(uint8_t idx) {
 // returns 0 when on parser error or invalid value or no SPACE or no NUL.
 // returns number of characters consumed including the SPACE.
 uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
-	uint8_t ret = atoi_byte(idx);
-	// Check valid conversion
-	if (ret != 0) {
-		// port number 1-10 -> 0-9
-		atoi_results_u8 -= 1;
-		if(atoi_results_u8 < CPU_PORT)
-			// Phy port, translate it.
-			ret = cmd_parse_port(idx);
-		else if (atoi_results_u8 > CPU_PORT)
-			ret = 0;
+	uint8_t ret = cmd_parse_port(idx);
+
+	if (ret == 0 && cmd_buffer[idx] == '0') {
+		ret = 1;
+		atoi_results_u8 = CPU_PORT;
 	}
 
 	if (ret != 0) {
