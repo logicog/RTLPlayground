@@ -822,7 +822,7 @@ found_end:
 	if (valid_len > (TCP_OUTBUF_SIZE - slen)) {
 		cont_len = valid_len - (TCP_OUTBUF_SIZE - slen);
 		valid_len = TCP_OUTBUF_SIZE - slen;
-		cont_addr = valid_len;
+		cont_addr = CONFIG_START + valid_len;
 	}
 	
 	flash_region.addr = CONFIG_START;
