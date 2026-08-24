@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-bool send_counters(uint8_t phys_port_idx);
+bool send_counters(uint8_t phys_port);
 void send_status(void);
 void send_vlan(uint16_t vlan);
 void send_basic_info(void);

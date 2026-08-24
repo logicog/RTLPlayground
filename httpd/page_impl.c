@@ -290,11 +290,12 @@ void send_vlan(uint16_t vlan)
 }
 
 /* Send counters
- * Only accepts physical port idx to 0-8.
+ * Only accepts physical port 1..9.
  * Returns an error if the port physical don't exists.
  */
-bool send_counters(uint8_t phys_port_idx)
+bool send_counters(uint8_t phys_port)
 {
+	uint8_t phys_port_idx = phys_port - 1;
 	if (phys_port_idx > 8)
 		goto err;
 	uint8_t log_port = machine.phys_to_log_port[phys_port_idx];

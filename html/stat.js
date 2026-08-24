@@ -109,7 +109,7 @@ const mib_counters = [
 function getCounters(port) {
   var xhttp = new XMLHttpRequest();
   const popup = document.getElementById('popup');
-  xhttp.onreadystatechange = function() {
+  xhttp.onreadystatechange = function () {
     if (this.readyState == 4 && this.status == 200) {
       const s = JSON.parse(xhttp.responseText);
       console.log("Counters: ", JSON.stringify(s));
@@ -118,16 +118,16 @@ function getCounters(port) {
       console.log("Counter 0: ", BigInt(s[0]).toString(), " length: ", s.length);
       var c = 0;
       for (i = 0; i < mib_counters.length; i += 4) {
-        console.log(i, " ", mib_counters[i], ": ", mib_counters[i+1]);
+        console.log(i, " ", mib_counters[i], ": ", mib_counters[i + 1]);
         if (mib_counters[i] == "" && mib_counters[i + 1] == 8) {
           console.log("c " + i + ": continue");
           continue;
         }
-        var count = BigInt(s[i/4]);
-        if (mib_counters[i+1] == 8) {
+        var count = BigInt(s[i / 4]);
+        if (mib_counters[i + 1] == 8) {
           tableHtml += "<td>" + mib_counters[i] + "</td><td>" + count.toString() + "</td>";
           c += 1;
-        } else if (mib_counters[i+1] == 4) {
+        } else if (mib_counters[i + 1] == 4) {
           if (mib_counters[i] != "") {
             tableHtml += "<td>" + mib_counters[i] + "</td><td>" + (count >> 32n).toString() + "</td>";
             c += 1;
@@ -136,8 +136,8 @@ function getCounters(port) {
             tableHtml += "</tr> <tr>";
             c = 0;
           }
-          if (mib_counters[i+2] != "") {
-            tableHtml += "<td>" + mib_counters[i+2] + "</td><td>" + (count & 4294967295n).toString() + "</td>";
+          if (mib_counters[i + 2] != "") {
+            tableHtml += "<td>" + mib_counters[i + 2] + "</td><td>" + (count & 4294967295n).toString() + "</td>";
             c += 1;
           }
         }
@@ -161,26 +161,26 @@ function fillStats() {
     return;
   if (tbl.rows.length > 1) {
     for (let i = 0; i < numPorts; i++) {
-      console.log("Table Update row: " + i + " state " + pState[i] + " is " + linkS[pState[i] +1]);
-      tbl.rows[i+1].cells[2].innerHTML = linkText(pState[i]+1);
-      tbl.rows[i+1].cells[3].innerHTML = `${txG[i]}` + t('common_pkts');
-      tbl.rows[i+1].cells[4].innerHTML = `${txB[i]}` + t('common_pkts');
-      tbl.rows[i+1].cells[5].innerHTML = `${rxG[i]}` + t('common_pkts');
-      tbl.rows[i+1].cells[6].innerHTML = `${rxB[i]}` + t('common_pkts');
+      console.log("Table Update row: " + i + " state " + pState[i] + " is " + linkS[pState[i] + 1]);
+      tbl.rows[i + 1].cells[2].innerHTML = linkText(pState[i] + 1);
+      tbl.rows[i + 1].cells[3].innerHTML = `${txG[i]}` + t('common_pkts');
+      tbl.rows[i + 1].cells[4].innerHTML = `${txB[i]}` + t('common_pkts');
+      tbl.rows[i + 1].cells[5].innerHTML = `${rxG[i]}` + t('common_pkts');
+      tbl.rows[i + 1].cells[6].innerHTML = `${rxB[i]}` + t('common_pkts');
     }
   } else {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table row: " + i);
       const tr = tbl.insertRow();
-      let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + (i+1)));
+      let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + (i + 1)));
       let portName = portNames[physToLogPort[i]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
-      td = tr.insertCell(); td.appendChild(document.createTextNode(linkText(pState[i]+1)));
+      td = tr.insertCell(); td.appendChild(document.createTextNode(linkText(pState[i] + 1)));
       td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]}` + t('common_pkts')));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]}` + t('common_pkts')));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]}` + t('common_pkts')));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]}` + t('common_pkts')));
-      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + i + ');">' + t('stat_show') + '</button>';
+      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txB[i]}` + t('common_pkts')));
+      td = tr.insertCell(); td.appendChild(document.createTextNode(`${rxG[i]}` + t('common_pkts')));
+      td = tr.insertCell(); td.appendChild(document.createTextNode(`${rxB[i]}` + t('common_pkts')));
+      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + (i + 1) + ');">' + t('stat_show') + '</button>';
       td = tr.insertCell(); td.innerHTML = button;
     }
   }
@@ -197,8 +197,8 @@ window.addEventListener('click', (event) => {
   }
 });
 
-window.addEventListener("load", function() {
-  update( () => {
+window.addEventListener("load", function () {
+  update(() => {
     update();
     fillStats();
     const stat = setInterval(fillStats, 1000);
