@@ -139,7 +139,7 @@ __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
-__xdata uint8_t sfp_i2c_fail;	/* set by sfp_read_reg() when the controller flags a failed transfer */
+__xdata uint8_t sfp_buf[16];	/* scratch for one I2C transaction, the controller reads at most 16 bytes */
 __xdata uint8_t sfp_speed[2];
 __xdata uint8_t sfp_quirks[2];
 __xdata bool button_last;
@@ -1188,36 +1188,46 @@ static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
 }
 
 
-void sfp_print_info(uint8_t sfp)
+bool sfp_print_info(uint8_t sfp)
 {
 	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
-	for (uint8_t i = 20; i < 60; i++) {
-		if (i >= 36 && i < 40) // Skip Non-ASCII codes
+	for (uint8_t i = 16; i < 64; i++) {
+		if (!(i & 0xf) && !sfp_read_block(sfp, i, 16))
+			return false;
+		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
 			continue;
-		uint8_t c = sfp_read_reg(sfp, i);
+		uint8_t c = sfp_buf[i & 0xf];
 		if (c)
 			write_char(c);
 	}
 	print_string("\n");
+
+	return true;
 }
 
 // Normalize strings from EEPROM by removing any trailing spaces; this allows simpler comparisons
-void sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t length) __reentrant
+bool sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t length) __reentrant
 {
-	dst[length] = '\0';
+	if (!sfp_read_block(sfp, start, length))
+		return false;
 
-	for (uint8_t i = 0; i < length; i++)
-		dst[i] = sfp_read_reg(sfp, start + i);
+	dst[length] = '\0';
+	memcpy(dst, sfp_buf, length);
 
 	while (length > 0 && dst[--length] == ' ')
 		dst[length] = '\0';
+
+	return true;
 }
 
-void sfp_get_info(uint8_t sfp)
+bool sfp_get_info(uint8_t sfp)
 {
-	sfp_read_field(sfp_module_vendor[sfp], sfp, 20, 16);
-	sfp_read_field(sfp_module_model[sfp], sfp, 40, 16);
-	sfp_read_field(sfp_module_serial[sfp], sfp, 68, 16);
+	if (!sfp_read_field(sfp_module_vendor[sfp], sfp, 20, 16))
+		return false;
+	if (!sfp_read_field(sfp_module_model[sfp], sfp, 40, 16))
+		return false;
+
+	return sfp_read_field(sfp_module_serial[sfp], sfp, 68, 16);
 }
 
 void sfp_apply_quirks(uint8_t sfp) __reentrant
@@ -1236,7 +1246,7 @@ void sfp_apply_quirks(uint8_t sfp) __reentrant
 		if (!(sfp_options[sfp] & 0x40)) {
 			// The module reports that DDM is not implemented, but try a dummy read to confirm
 			// 0xff would mean a failed I2C read or an impossible (per spec) voltage greater than 6.5V
-			if (sfp_read_reg(sfp, 226) != 0xff) {
+			if (sfp_read_block(sfp, 226, 1) && sfp_buf[0] != 0xff) {
 				sfp_options[sfp] |= 0x40;
 			}
 		}
@@ -1260,6 +1270,45 @@ void setup_sfp_gpio(void)
 	}
 }
 
+static bool sfp_module_read(uint8_t sfp)
+{
+	uint8_t rate;
+
+	// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
+	// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
+	delay(100); // Delay, because some modules need time to wake up
+	if (!sfp_read_block(sfp, 11, 2))
+		return false;
+
+	rate = sfp_buf[1];
+	if (sfp_speed[sfp] == SFP_SPEED_100M)
+		rate = 0x1;
+	else if (sfp_speed[sfp] == SFP_SPEED_1G)
+		rate = 0xc;
+	else if (sfp_speed[sfp] == SFP_SPEED_2G5)
+		rate = 0x19;
+	else if (sfp_speed[sfp] == SFP_SPEED_10G)
+		rate = 0x69;
+	print_string("  Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
+	print_string("  Encoding: "); print_byte(sfp_buf[0]);
+	print_string("  Module: ");
+	if (!sfp_print_info(sfp))
+		return false;
+	print_string("\n");
+
+	if (!sfp_read_block(sfp, 92, 1))
+		return false;
+	sfp_options[sfp] = sfp_buf[0];
+	if (!sfp_get_info(sfp))
+		return false;
+
+	sfp_apply_quirks(sfp);
+	sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
+
+	return true;
+}
+
+
 void handle_sfp(void)
 {
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
@@ -1267,29 +1316,10 @@ void handle_sfp(void)
 			if (sfp_pins_last & (0x1 << (sfp << 2))) {
 				sfp_pins_last &= ~(0x01 << (sfp << 2));
 				print_string("\n<MODULE INSERTED>  Slot: "); write_char('1' + sfp);
-				// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
-				// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
-				delay(100); // Delay, because some modules need time to wake up
-				sfp_i2c_fail = 0;
-				uint8_t rate = sfp_read_reg(sfp, 12);
-				if (sfp_speed[sfp] == SFP_SPEED_100M)
-					rate = 0x1;
-				else if (sfp_speed[sfp] == SFP_SPEED_1G)
-					rate = 0xc;
-				else if (sfp_speed[sfp] == SFP_SPEED_2G5)
-					rate = 0x19;
-				else if (sfp_speed[sfp] == SFP_SPEED_10G)
-					rate = 0x69;
-				print_string("  Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
-				print_string("  Encoding: "); print_byte(sfp_read_reg(sfp, 11));
-				print_string("  Module: "); sfp_print_info(sfp);
-				print_string("\n");
-				sfp_options[sfp] = sfp_read_reg(sfp, 92);
-				sfp_get_info(sfp);
-				sfp_apply_quirks(sfp);
-				if (sfp_i2c_fail)
-					print_string("SFP: an I2C read failed, the module data above may be wrong\n");
-				sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
+				if (!sfp_module_read(sfp)) {
+					print_string("SFP: an I2C read failed, retrying on the next poll\n");
+					sfp_pins_last |= 0x01 << (sfp << 2);
+				}
 			}
 		} else {
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {

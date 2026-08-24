@@ -129,39 +129,53 @@ void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) __banked{
 
 
 /*
- * Read a register of the EEPROM via I2C
+ * Read up to 16 consecutive registers of the EEPROM via I2C into sfp_buf
  */
-uint8_t sfp_read_reg(uint8_t slot, uint8_t reg) __banked
+bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
 {
-	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
-		reg &= 0x7f;
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 0,  0x51 >> 5, (0x51 << 3) & 0xff);
-	} else {
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 0,  0x50 >> 5, (0x50 << 3) & 0xff);
-	}
+	uint8_t dev;
+	uint8_t val;
 
-	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
-	reg_write_m(RTL837X_REG_I2C_CTRL);
+	len--;
+	if (len > 15)
+		return false;
+
+	dev = (reg & 0x80) ? 0x51 : 0x50;	// 0x51 holds the diagnostics, 0x50 the module data
+	reg &= 0x7f;
 
 	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
 
-	// Execute I2C Read
-	reg_bit_set(RTL837X_REG_I2C_CTRL, 0);
+	REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00,
+		  0x1 << (I2C_MEM_ADDR_WIDTH - 16) | len,
+		  (dev >> 5) | i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5
+		  | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2,
+		  ((dev << 3) & 0xff) | 0x1);
 
-	// Wait for execution to finish
 	do {
-		reg_read_m(RTL837X_REG_I2C_CTRL);
-	} while (sfr_data[3] & 0x1);
+		reg_read(RTL837X_REG_I2C_CTRL);
+	} while (SFR_DATA_0 & 0x1);
 
-	/* Bit 1 is the controller's own failure indication, which the vendor SDK
-	 * looks at and this did not. Without it an unacknowledged address comes
-	 * back as an ordinary byte and the caller cannot tell it from data. */
-	if (sfr_data[3] & 0x2) {
-		sfp_i2c_fail = 1;
-		return 0xff;
+	if (SFR_DATA_0 & 0x2)
+		return false;
+
+	for (uint8_t i = 0; i <= len; i++) {
+		switch (i & 0x3) {
+		case 0:
+			reg_read(RTL837X_REG_I2C_OUT + i);
+			val = SFR_DATA_0;
+			break;
+		case 1:
+			val = SFR_DATA_8;
+			break;
+		case 2:
+			val = SFR_DATA_16;
+			break;
+		default:
+			val = SFR_DATA_24;
+			break;
+		}
+		sfp_buf[i] = val;
 	}
 
-	reg_read_m(RTL837X_REG_I2C_OUT);
-	return sfr_data[3];
+	return true;
 }
