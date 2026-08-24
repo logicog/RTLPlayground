@@ -114,7 +114,7 @@ function getCounters(port) {
       const s = JSON.parse(xhttp.responseText);
       console.log("Counters: ", JSON.stringify(s));
       const ptext = document.getElementById('popup_text');
-      var t = "<table style='width:100%'> <tr> <th>Counter</th> <th>Value</th> <th>Counter</th> <th>Value</th></tr> <tr>";
+      var tableHtml = "<table style='width:100%'> <tr> <th>" + t('stat_counter') + "</th> <th>" + t('stat_value') + "</th> <th>" + t('stat_counter') + "</th> <th>" + t('stat_value') + "</th></tr> <tr>";
       console.log("Counter 0: ", BigInt(s[0]).toString(), " length: ", s.length);
       var c = 0;
       for (i = 0; i < mib_counters.length; i += 4) {
@@ -125,28 +125,28 @@ function getCounters(port) {
         }
         var count = BigInt(s[i/4]);
         if (mib_counters[i+1] == 8) {
-          t += "<td>" + mib_counters[i] + "</td><td>" + count.toString() + "</td>";
+          tableHtml += "<td>" + mib_counters[i] + "</td><td>" + count.toString() + "</td>";
           c += 1;
         } else if (mib_counters[i+1] == 4) {
           if (mib_counters[i] != "") {
-            t += "<td>" + mib_counters[i] + "</td><td>" + (count >> 32n).toString() + "</td>";
+            tableHtml += "<td>" + mib_counters[i] + "</td><td>" + (count >> 32n).toString() + "</td>";
             c += 1;
           }
           if (c == 2) {
-            t += "</tr> <tr>";
+            tableHtml += "</tr> <tr>";
             c = 0;
           }
           if (mib_counters[i+2] != "") {
-            t += "<td>" + mib_counters[i+2] + "</td><td>" + (count & 4294967295n).toString() + "</td>";
+            tableHtml += "<td>" + mib_counters[i+2] + "</td><td>" + (count & 4294967295n).toString() + "</td>";
             c += 1;
           }
         }
         if (c == 2) {
-          t += "</tr> <tr>";
+          tableHtml += "</tr> <tr>";
           c = 0;
         }
       }
-      ptext.innerHTML = t + "</tr></table>";
+      ptext.innerHTML = tableHtml + "</tr></table>";
       popup.style.display = 'flex';
     }
   };
@@ -162,25 +162,25 @@ function fillStats() {
   if (tbl.rows.length > 1) {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table Update row: " + i + " state " + pState[i] + " is " + linkS[pState[i] +1]);
-      tbl.rows[i+1].cells[2].innerHTML = `${linkS[pState[i]+1]}`;
-      tbl.rows[i+1].cells[3].innerHTML = `${txG[i]} pkts`;
-      tbl.rows[i+1].cells[4].innerHTML = `${txB[i]} pkts`;
-      tbl.rows[i+1].cells[5].innerHTML = `${rxG[i]} pkts`;
-      tbl.rows[i+1].cells[6].innerHTML = `${rxB[i]} pkts`;
+      tbl.rows[i+1].cells[2].innerHTML = linkText(pState[i]+1);
+      tbl.rows[i+1].cells[3].innerHTML = `${txG[i]}` + t('common_pkts');
+      tbl.rows[i+1].cells[4].innerHTML = `${txB[i]}` + t('common_pkts');
+      tbl.rows[i+1].cells[5].innerHTML = `${rxG[i]}` + t('common_pkts');
+      tbl.rows[i+1].cells[6].innerHTML = `${rxB[i]}` + t('common_pkts');
     }
   } else {
     for (let i = 0; i < numPorts; i++) {
       console.log("Table row: " + i);
       const tr = tbl.insertRow();
-      let td = tr.insertCell(); td.appendChild(document.createTextNode(`Port ${i+1}`));
+      let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + (i+1)));
       let portName = portNames[physToLogPort[i]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
-      td = tr.insertCell(); td.appendChild(document.createTextNode(`${linkS[pState[i]+1]}`));
-      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]} pkts`));
-      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]} pkts`));
-      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + i + ');">Show</button>';
+      td = tr.insertCell(); td.appendChild(document.createTextNode(linkText(pState[i]+1)));
+      td = tr.insertCell(); td.appendChild(document.createTextNode(`${txG[i]}` + t('common_pkts')));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]}` + t('common_pkts')));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]}` + t('common_pkts')));
+      td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]}` + t('common_pkts')));
+      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + i + ');">' + t('stat_show') + '</button>';
       td = tr.insertCell(); td.innerHTML = button;
     }
   }

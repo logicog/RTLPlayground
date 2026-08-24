@@ -82,6 +82,7 @@ object, img {
 .isNOK{ color: #900;}
 .isOK{ color: #090;}
 .ip{padding:8px 16px;margin-bottom: 1em;margin-left: 1em}
+.rotext{display:inline-block;padding:8px 16px;margin-bottom: 1em;margin-left: 1em}
 .row {display: flex;}
 .rcol {flex: 90%;}
 .lcol {flex: 10%;}
@@ -164,3 +165,8 @@ margin: 30px 0;
 select { text-align-last: right; font-family: monospace}
 option { direction: rtl; font-family: sans-serif}
 #vlanTable td { text-align: left; }
+
+.l2sort{cursor:pointer;user-select:none}
+.l2sort:hover{text-decoration:underline}
+.l2arrow{opacity:0.55;font-size:0.85em}
+.l2filter{width:100%;box-sizing:border-box;font-weight:normal;font-size:0.9em}

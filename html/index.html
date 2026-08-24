@@ -2,6 +2,7 @@
 <html>
   <script src="/main.js"></script>
   <script src="/main_info.js"></script>
+  <script src="/i18n.js"></script>
   <script>
   window.addEventListener("load", function() {
     update( () => {
@@ -10,17 +11,17 @@
   });
   </script>
   <link rel="stylesheet" href="style.css">
-  <title>FreeSwitchOS Main Page</title>
+  <title data-i18n="index_title">FreeSwitchOS Main Page</title>
 </head>
 
 <body>
   <nav id="sidebar"></nav>
   <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
-    <h1>Switch Configuration</h1>
+    <h1 data-i18n="index_heading">Switch Configuration</h1>
     <table id="infoTable">
       <tr>
-        <th colspan="2">Settings</th>
+        <th colspan="2" data-i18n="index_settings">Settings</th>
       </tr>
       <tbody>
       </tbody>

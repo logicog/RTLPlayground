@@ -298,11 +298,8 @@
 
 /**
  * The TCP maximum segment size.
- *
- * This is should not be to set to more than
- * UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN.
  */
-#define UIP_TCP_MSS     (UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN)
+#define UIP_TCP_MSS     (UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN - UIP_BUFFER_EXTRA)
 
 /**
  * The size of the advertised receiver's window.
@@ -381,6 +378,17 @@
 #define UIP_BUFSIZE UIP_CONF_BUFFER_SIZE
 #endif /* UIP_CONF_BUFFER_SIZE */
 
+/**
+ * Bytes of uip_buf kept out of the advertised MSS.
+ *
+ * \hideinitializer
+ */
+#ifndef UIP_CONF_BUFFER_EXTRA
+#define UIP_BUFFER_EXTRA 0
+#else /* UIP_CONF_BUFFER_EXTRA */
+#define UIP_BUFFER_EXTRA UIP_CONF_BUFFER_EXTRA
+#endif /* UIP_CONF_BUFFER_EXTRA */
+
 
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
@@ -447,7 +455,7 @@ void uip_log(char *msg);
 #ifdef UIP_CONF_LLH_LEN
 #define UIP_LLH_LEN UIP_CONF_LLH_LEN
 #else /* UIP_CONF_LLH_LEN */
-#define UIP_LLH_LEN     ETHER_HEADER_SIZE + RTL_FRAME_DESC_SIZE
+#define UIP_LLH_LEN     (ETHER_HEADER_SIZE + RTL_FRAME_DESC_SIZE)
 #endif /* UIP_CONF_LLH_LEN */
 
 /** @} */

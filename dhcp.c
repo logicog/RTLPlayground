@@ -41,6 +41,7 @@ __xdata uip_ipaddr_t server;
 #define DHCP_REBIND_LEN		4
 #define DHCP_CLIENT_ID		61
 #define DHCP_CLIENT_ID_LEN	7
+#define DHCP_HOSTNAME		12
 #define DHCP_REQUEST_IP		50
 #define DHCP_REQUEST_IP_LEN	4
 #define DHCP_PARAMS		55
@@ -116,6 +117,20 @@ void dhcp_addopt_client_id(void)
 }
 
 
+void dhcp_addopt_hostname(void)
+{
+	uint8_t len = 0;
+	while (hostname[len])
+		len++;
+	if (!len)
+		return;
+	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_HOSTNAME;
+	DHCP_OPT[dhcp_state.opt_ptr++] = len;
+	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], hostname, len);
+	dhcp_state.opt_ptr += len;
+}
+
+
 void dhcp_addopt_request_ip(void)
 {
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_REQUEST_IP;
@@ -152,6 +167,7 @@ void dhcp_send_discover(void)
 
 	dhcp_addopt_client_id();
 	dhcp_addopt_request_ip();
+	dhcp_addopt_hostname();
 
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_PARAMS;
 	DHCP_OPT[dhcp_state.opt_ptr++] = 3;
@@ -188,6 +204,7 @@ void dhcp_send_request(void)
 	dhcp_addopt_client_id();
 	dhcp_addopt_request_ip();
 	dhcp_addopt_server_id();
+	dhcp_addopt_hostname();
 
 	DHCP_OPT[dhcp_state.opt_ptr++] = DHCP_PARAMS;
 	DHCP_OPT[dhcp_state.opt_ptr++] = 3;

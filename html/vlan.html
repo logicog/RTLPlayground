@@ -1,52 +1,53 @@
 <!DOCTYPE html>
 <html>
   <script src="/main.js"></script>
+  <script src="/i18n.js"></script>
   <link rel="stylesheet" href="style.css">
-  <title>FreeSwitchOS VLAN Configuration</title>
+  <title data-i18n="vlan_title">FreeSwitchOS VLAN Configuration</title>
   </head>
   <body>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
-    <h1>VLAN Configuration</h1>
+    <h1 data-i18n="vlan_heading">VLAN Configuration</h1>
     <form id="vform" action="/vlan.html">
       <div>
-        <label for="vlanSelect">VLAN auswählen:</label>
+        <label for="vlanSelect" data-i18n="vlan_select">VLAN Select:</label>
         <select id="vlanSelect" style="margin: 0 0 0 8px">
-          <option value="" disabled selected>— VLAN wählen —</option>
+          <option value="" disabled selected data-i18n="vlan_choose">— VLAN Choose —</option>
         </select>
       </div>
       <br/>
       <div>
-        <label for="vid">VLAN ID:</label>
+        <label for="vid" data-i18n="vlan_id">VLAN ID:</label>
         <input type="number" min="1" max="4094" id="vid" name="vid">
-        <button type="button" style="margin: 0 0 0 24px" onclick="fetchVLAN();">Get Configuration</button>
+        <button type="button" style="margin: 0 0 0 24px" onclick="fetchVLAN();" data-i18n="vlan_get_config">Get Configuration</button>
       </div>
       <br/><br/>
-      <label for="vname">VLAN Name:</label>
+      <label for="vname" data-i18n="vlan_name">VLAN Name:</label>
       <input type="text" id="vname" name="vname"><br><br>
       <br/>
-      <h2>Tagged Ports</h2>
-      <div id="tPorts"><button type="button" style="transform: translateY(-100%);margin: 0 50px 0 0" onclick="utClicked(true);">Select all</button></div>
-      <h2>Untagged Ports</h2>
-      <div id="uPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="utClicked(false);">Select all</button> </div>
-      <h2>Use as default VLAN for incoming traffic (PVID)</h2>
-      <div id="pPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="pvClicked(true);">Select all</button> </div>
+      <h2 data-i18n="vlan_tagged">Tagged Ports</h2>
+      <div id="tPorts"><button type="button" style="transform: translateY(-100%);margin: 0 50px 0 0" onclick="utClicked(true);" data-i18n="vlan_select_all">Select all</button></div>
+      <h2 data-i18n="vlan_untagged">Untagged Ports</h2>
+      <div id="uPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="utClicked(false);" data-i18n="vlan_select_all">Select all</button> </div>
+      <h2 data-i18n="vlan_pvid">Use as default VLAN for incoming traffic (PVID)</h2>
+      <div id="pPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="pvClicked(true);" data-i18n="vlan_select_all">Select all</button> </div>
       <script src="/vlan.js"></script>
-      <br/> <input style="width:40%;" class="action" id="vlan_sub" onclick="vlanSub();" type="button" value="Update / Create">
+      <br/> <input style="width:40%;" class="action" id="vlan_sub" onclick="vlanSub();" type="button" data-i18n="vlan_update" value="Update / Create">
       <script src="/vlan_sub.js"></script>
     </form>
-    <h2>Configured VLANs</h2>
+    <h2 data-i18n="vlan_configured">Configured VLANs</h2>
     <table id="vlanTable" style="width:90%">
       <thead>
         <tr>
           <th>VLAN</th>
-          <th>Name</th>
-          <th>Member Ports</th>
-          <th>Tagged Ports</th>
-          <th>Untagged Ports</th>
-          <th>PVID Ports</th>
-          <th>Delete</th>
+          <th data-i18n="vlan_col_name">Name</th>
+          <th data-i18n="vlan_col_member">Member Ports</th>
+          <th data-i18n="vlan_col_tagged">Tagged Ports</th>
+          <th data-i18n="vlan_col_untagged">Untagged Ports</th>
+          <th data-i18n="vlan_col_pvid">PVID Ports</th>
+          <th data-i18n="vlan_col_delete">Delete</th>
         </tr>
       </thead>
       <tbody id="vlanTableBody">

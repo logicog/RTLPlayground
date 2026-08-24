@@ -25,6 +25,7 @@ const conf_cmds = [
   /^igmp\s+(on|off)$/,
   /^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
+  /^hostname\s+.{1,23}$/,
 ];
 const conf_overwrite = [
   /^ip\b/,
@@ -49,6 +50,7 @@ const conf_overwrite = [
   /^igmp\b/,
   /^mtu\s+\d{1,2}\b/,
   /^bw\s+(in|out)\s+\d{1,2}\b/,
+  /^hostname\b/,
 ];
 
 function parseConf(s){

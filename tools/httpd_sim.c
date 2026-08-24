@@ -500,6 +500,10 @@ struct Server serverConstructor(int port, void (*launch)(struct Server *server))
         exit(EXIT_FAILURE);
     }
 
+    int reuse = 1;
+    if (setsockopt(server.socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
+        perror("setsockopt(SO_REUSEADDR) failed");
+
     if (bind(server.socket, (struct sockaddr*)&server.address, sizeof(server.address)) < 0) {
         perror("Failed to bind socket...\n");
         exit(EXIT_FAILURE);
@@ -554,8 +558,12 @@ char *scan_header(char *p)
 			break;
 		if (is_word(p, "\nContent-Type:"))
 			content_type = p + 15;
-		else if (is_word(p, "\nCookie:"))
-			session = p + 17;
+		else if (is_word(p, "\nCookie:")) {
+			session = p + 9;
+			while (*session == ' ') session++;
+			const char *s = strstr(session, "session=");
+			if (s) session = s + 8;
+		}
 	}
 	if (content_type && is_word(content_type, "multipart/form-data; boundary")) {
 		printf("Found multiplart\n");
@@ -799,7 +807,8 @@ void launch(struct Server *server)
 						printf("Password accepted!\n");
 						response = "HTTP/1.1 302 Found\r\n"
 							   "Location: index.html\r\n"
-							   "Set-Cookie: session=" SESSION_ID "; SameSite=Strict\r\n";
+							   "Set-Cookie: session=" SESSION_ID "; Path=/; SameSite=Strict\r\n"
+							   "\r\n";
 					} else {
 						response = "HTTP/1.1 302 Found\r\n"
 							   "Location: login.html\r\n\r\n";

@@ -26,6 +26,7 @@
 extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
+extern __xdata uint16_t management_vlan;
 extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
@@ -45,7 +46,7 @@ extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
 
-__code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
+__code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
 __code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
 
 // Convert uint8_t to ascii HEX char push on html-buffer.
@@ -252,6 +253,12 @@ void send_basic_info(void)
 	byte_to_html(uip_ethaddr.addr[3]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[4]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[5]);
+	slen += strtox(outbuf + slen, "\",\"hostname\":\"");
+	{
+		__xdata char *hp = hostname;	/* sanitized on ingest, emit verbatim */
+		while (*hp)
+			char_to_html(*hp++);
+	}
 	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
 	slen += strtox(outbuf + slen, VERSION_SW);
 	slen += strtox(outbuf + slen, "\",\"build_date\":\"");
@@ -349,6 +356,7 @@ void send_l2(uint16_t idx)
 	 */
 	__xdata uint16_t entry = idx & 0xfff;
 	__xdata uint16_t first_entry = 0xffff; // An illegal entry index
+	__bit first = true;
 	char_to_html('[');
 	while (1) {
 		entries_left--;
@@ -362,9 +370,22 @@ void send_l2(uint16_t idx)
 		} while (sfr_data[3] & TBL_EXECUTE);
 
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
-		if ((sfr_data[0] & 0x20)) {	// Check entry is valid
+		__bit valid = (sfr_data[0] & 0x20) != 0;
+		if (valid) {
+			/* separator + 74-byte worst-case entry + closing "]" */
+			if (slen + 76 > TCP_OUTBUF_SIZE)
+				break;
+			if (!first)
+				char_to_html(',');
+			first = false;
+
+			// VLAN, taken from the read above instead of reading the register twice
+			slen += strtox(outbuf + slen, "{\"vlan\":\"");
+			charhex_to_html(sfr_data[0] & 0x0f);
+			byte_to_html(sfr_data[1]);
+
 			// MAC
-			slen += strtox(outbuf + slen, "{\"mac\":\"");
+			slen += strtox(outbuf + slen, "\",\"mac\":\"");
 			byte_to_html(sfr_data[2]); char_to_html(':');
 			byte_to_html(sfr_data[3]); char_to_html(':');
 			port = (sfr_data[0] >> 6) & 0x3;
@@ -374,47 +395,35 @@ void send_l2(uint16_t idx)
 			byte_to_html(sfr_data[2]); char_to_html(':');
 			byte_to_html(sfr_data[3]);
 
-			// VLAN
-			slen += strtox(outbuf + slen, "\",\"vlan\":\"");
-			reg_read_m(RTL837x_L2_DATA_OUT_B);
-			charhex_to_html(sfr_data[0] & 0x0f);
-			byte_to_html(sfr_data[1]);
-
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
-			if (sfr_data[2] & 0x1)
+			if (sfr_data[1] & 0x1)
 				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
 			else
 				slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
 
 			port |= (sfr_data[3] & 0x3) << 2;
 			itoa_html(port);
+		}
 
-			// Index
-			reg_read_m(RTL837x_TBL_DATA_0);
-			entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		// Index
+		reg_read_m(RTL837x_TBL_DATA_0);
+		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		if (valid) {
 			slen += strtox(outbuf + slen, ",\"idx\":\"");
 			byte_to_html(entry >> 8);
 			byte_to_html(entry);
 			char_to_html('"');
 			char_to_html('}');
-			entry += 1; // We want the next entry following after the current entry
-		} else {
-			reg_read_m(RTL837x_TBL_DATA_0);
-			entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3] + 1;
 		}
-		if (first_entry == 0xffff) {
-			char_to_html(',');
+		entry += 1; // We want the next entry following after the current entry
+
+		if (first_entry == 0xffff)
 			first_entry = entry;
-		} else {
-			if (first_entry == entry || !entries_left) {
-				char_to_html(']');
-				break;
-			} else {
-				char_to_html(',');
-			}
-		}
+		else if (first_entry == entry || !entries_left)
+			break;
 	}
+	char_to_html(']');
 }
 
 
@@ -511,8 +520,7 @@ void send_lag(void)
 		slen += strtox(outbuf + slen, "{\"lagNum\":");
 		itoa_html(l);
 		slen += strtox(outbuf + slen, ",\"members\":\"");
-		reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (l << 2));
-		uint16_t ports = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		uint16_t ports = port_lag_members_get(l);
 		for (uint8_t i = 0; i < 16; i++) {
 			bool_to_html(!!(ports & 0x8000));
 			ports <<= 1;
@@ -660,52 +668,53 @@ void send_status(void)
 		slen += strtox(outbuf + slen, "\"");
 
 		if (machine.is_sfp[i]) {
+			uint8_t sfp = machine.is_sfp[i] - 1;
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
-			if (!(sfp_pins_last & (0x1 << ((machine.is_sfp[i] - 1) << 2)))) {
+			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
 				bool_to_html(1);
 				slen += strtox(outbuf + slen,",\"sfp_options\":\"0x");
-				byte_to_html(sfp_options[machine.is_sfp[i]-1]);
-				if (sfp_options[machine.is_sfp[i]-1] & 0x40) {
+				byte_to_html(sfp_options[sfp]);
+				if (sfp_options[sfp] & 0x40) {
 					slen += strtox(outbuf + slen,"\",\"sfp_temp\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 224, 2);
+					sfp_send_data(sfp, 224, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_vcc\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 226, 2);
+					sfp_send_data(sfp, 226, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_txbias\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 228, 2);
+					sfp_send_data(sfp, 228, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_txpower\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 230, 2);
+					sfp_send_data(sfp, 230, 2);
 					slen += strtox(outbuf + slen,"\",\"sfp_rxpower\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 232, 2);
-					if (sfp_options[machine.is_sfp[i]-1] & 0x10) {
+					sfp_send_data(sfp, 232, 2);
+					if (sfp_options[sfp] & 0x10) {
 						slen += strtox(outbuf + slen,"\",\"sfp_temp_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 212, 4);
+						sfp_send_data(sfp, 212, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_vcc_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 216, 4);
+						sfp_send_data(sfp, 216, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_txbias_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 204, 4);
+						sfp_send_data(sfp, 204, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_txpower_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 208, 4);
+						sfp_send_data(sfp, 208, 4);
 						slen += strtox(outbuf + slen,"\",\"sfp_rxpower_cal\":\"0x");
-						sfp_send_data(machine.is_sfp[i] - 1, 184, 16);
-						sfp_send_data(machine.is_sfp[i] - 1, 200, 4);
+						sfp_send_data(sfp, 184, 16);
+						sfp_send_data(sfp, 200, 4);
 					}
 					slen += strtox(outbuf + slen,"\",\"sfp_state\":\"0x");
-					sfp_send_data(machine.is_sfp[i] - 1, 238, 1);
+					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (register uint8_t s = 0; s < 16; s++)
-					outbuf[slen++] = sfp_module_vendor[machine.is_sfp[i]-1][s];
+				for (register uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
+					outbuf[slen++] = sfp_module_vendor[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (register uint8_t s = 0; s < 16; s++)
-					outbuf[slen++] = sfp_module_model[machine.is_sfp[i]-1][s];
+				for (register uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
+					outbuf[slen++] = sfp_module_model[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (register uint8_t s = 0; s < 16; s++)
-					outbuf[slen++] = sfp_module_serial[machine.is_sfp[i]-1][s];
+				for (register uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
+					outbuf[slen++] = sfp_module_serial[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
-				if (machine.sfp_port[machine.is_sfp[i]-1].pin_los == GPIO_NA) {
+				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");
 				} else {
-					bool_to_html(sfp_pins_last & (0x2 << (((machine.is_sfp[i]-1) << 2))));
+					bool_to_html(sfp_pins_last & (0x2 << (sfp << 2)));
 				}
 			} else {
 				bool_to_html(0);
@@ -850,7 +859,9 @@ void send_vlanlist(void)
 	uint8_t first = 1;
 
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	char_to_html('[');
+	slen += strtox(outbuf + slen, "{\"mgmt\":");
+	itoa16_html(management_vlan);
+	slen += strtox(outbuf + slen, ",\"vlan\":[");
 
 	for (i = 1; i < 4095; i++) {
 		if (vlan_get(i) < 0)
@@ -858,7 +869,7 @@ void send_vlanlist(void)
 		if (!(sfr_data[0] & 0x02)) /* bit 1: VLAN table entry valid */
 			continue;
 
-		if (slen + 139 > TCP_OUTBUF_SIZE) /* 138 bytes worst-case entry + 1 byte for closing ']' */
+		if (slen + 141 > TCP_OUTBUF_SIZE) /* comma + 138-byte worst-case entry + closing "]}" */
 			break;
 
 		if (!first)
@@ -880,4 +891,5 @@ void send_vlanlist(void)
 	}
 
 	char_to_html(']');
+	char_to_html('}');
 }

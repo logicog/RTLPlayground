@@ -60,6 +60,53 @@ still has an older version of sdcc, but you will need sdcc version 4.5 for the c
 sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ```
 
+<details>
+<summary>If using Docker (click to expand)</summary>
+
+### Prerequisites
+
+Install Docker for your platform:
+
+- **Linux (Debian/Ubuntu)**: `sudo apt install docker.io` then `sudo usermod -aG docker $USER` (log out and back in)
+- **Linux (other distros)**: Follow the [Docker Engine install guide](https://docs.docker.com/engine/install/)
+- **Windows**: Install [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
+- **macOS**: Install [Docker Desktop for Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
+
+### Usage
+
+A Dockerfile is provided for a reproducible build environment:
+
+```
+docker build -t rtlplayground-dev .
+```
+
+Build the firmware (replace MACHINE with your target, e.g. `DEFAULT_8C_1SFP`):
+
+```
+docker run --rm -v $(pwd):/workspace rtlplayground-dev make MACHINE=DEFAULT_8C_1SFP
+```
+
+The resulting `.bin` file appears in `output/` on your host.
+
+Build host tools only:
+
+```
+docker run --rm -v $(pwd):/workspace rtlplayground-dev make -C tools
+```
+
+Run the web-interface simulator locally:
+
+```
+docker run --rm -p 8080:8080 -v $(pwd):/workspace rtlplayground-dev \
+  tools/output/httpd_sim /workspace/html
+```
+
+Edit `machine.h` or `config.txt` on your host, then re-run `make` — the
+source directory is mounted into the container, so changes take effect
+immediately. To build for a different machine, pass `MACHINE=...`.
+
+</details>
+
 ## (1) Compiling for direct chip flashing AND upgrading an existing RTLPlayground running device
 
 Edit machine.h with an editor like vi or nano. Select the correct machine the firmware should build for.

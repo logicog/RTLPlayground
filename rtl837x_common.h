@@ -115,11 +115,17 @@ struct flash_region_t {
 
 extern __xdata char port_names[9][PORT_NAME_SIZE];
 
+/* System hostname (device identity). Set via `hostname <text>` and the System
+ * Settings page, reported in /information.json. Other modules (e.g. LLDP, which
+ * advertises it as the System Name TLV) read it from here. */
+extern __xdata char hostname[24];
+
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string_no_syslog(__code char *p);
+void print_string_newline_no_syslog(__code char *p);
 void print_string(__code char *p);
 void print_string_x(__xdata char *p);
 void print_long(uint32_t a);
@@ -158,6 +164,7 @@ uint16_t strlen(register __code const char *s);
 uint16_t strlen_x(register __xdata const char *s);
 uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 uint16_t strcpy(register __xdata uint8_t *dst, register const char *s);
+char strcmp(register __xdata const uint8_t *a, register __code const uint8_t *b);
 void tcpip_output(void);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);

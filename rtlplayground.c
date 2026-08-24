@@ -25,6 +25,7 @@
 #include "machine.h"
 #include "phy.h"
 #include "syslog.h"
+#include "httpd/page_impl.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -120,6 +121,8 @@ __xdata uint16_t management_vlan;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t stpEnabled;
+__xdata uint8_t igmpEnabled;
+__xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
@@ -138,9 +141,24 @@ __xdata char sfp_module_model[2][17];
 __xdata char sfp_module_serial[2][17];
 __xdata uint8_t sfp_options[2];
 __xdata uint8_t sfp_speed[2];
+__xdata uint8_t sfp_quirks[2];
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
 volatile __bit tx_buf_empty;
+
+__code enum sfp_quirk {
+	SFP_QUIRK_DDM = (1 << 0),
+};
+
+struct sfp_quirk_entry {
+	__code char *vendor; // Set vendor or model to 0 to act as wildcard
+	__code char *model;
+	uint8_t quirks;
+};
+
+static __code struct sfp_quirk_entry sfp_quirk_table[] = {
+	{ "QSFPTEK", "QT-SFP+-T", SFP_QUIRK_DDM },
+};
 
 struct eth_in {
 	struct uip_eth_addr dst;
@@ -271,6 +289,12 @@ void print_string_no_syslog(__code char *p)
 		write_char_no_syslog(*p++);
 }
 
+void print_string_newline_no_syslog(__code char *p)
+{
+	write_char_no_syslog('\n');
+	print_string_no_syslog(p);
+}
+
 void print_string_x(__xdata char *p)
 {
 	while (*p)
@@ -324,6 +348,21 @@ uint16_t strlen_x(register __xdata const char *s)
 	while (s[l])
 		l++;
 	return l;
+}
+
+
+char strcmp(register __xdata const uint8_t *a, register __code const uint8_t *b)
+{
+	uint8_t i = 0;
+
+	while (b[i] && (b[i] == a[i]))
+		i++;
+
+	if (a[i] < b[i])
+		return -1;
+	else if (a[i] > b[i])
+		return 1;
+	return 0;
 }
 
 
@@ -1120,7 +1159,7 @@ void handle_rx(void)
 				print_string("STP TX\n");
 				tcpip_output();
 			}
-		} else if (uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
+		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x16) {
 			igmp_packet_handler();
 			if (uip_len) {
@@ -1180,7 +1219,7 @@ static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
 		return SDS_1000BX_FIBER;
 	if (rate >= 0x19 && rate <= 0x20)  // Ethernet 2.5 GBit
 		return SDS_HSG;
-	if (rate >= 0x63 && rate < 0x70)
+	if (rate >= 0x62 && rate < 0x70)
 		return SDS_10GR;
 	return 0xff;
 }
@@ -1199,18 +1238,46 @@ void sfp_print_info(uint8_t sfp)
 	print_string("\n");
 }
 
+// Normalize strings from EEPROM by removing any trailing spaces; this allows simpler comparisons
+void sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t length) __reentrant
+{
+	dst[length] = '\0';
+
+	for (uint8_t i = 0; i < length; i++)
+		dst[i] = sfp_read_reg(sfp, start + i);
+
+	while (length > 0 && dst[--length] == ' ')
+		dst[length] = '\0';
+}
 
 void sfp_get_info(uint8_t sfp)
 {
-	for (uint8_t i = 20; i < 36; i++)
-		sfp_module_vendor[sfp][i-20] = sfp_read_reg(sfp, i);
-	sfp_module_vendor[sfp][16] = '\0';
-	for (uint8_t i = 40; i < 56; i++)
-		sfp_module_model[sfp][i-40] = sfp_read_reg(sfp, i);
-	sfp_module_model[sfp][16] = '\0';
-	for (uint8_t i = 68; i < 84; i++)
-		sfp_module_serial[sfp][i-68] = sfp_read_reg(sfp, i);
-	sfp_module_serial[sfp][16] = '\0';
+	sfp_read_field(sfp_module_vendor[sfp], sfp, 20, 16);
+	sfp_read_field(sfp_module_model[sfp], sfp, 40, 16);
+	sfp_read_field(sfp_module_serial[sfp], sfp, 68, 16);
+}
+
+void sfp_apply_quirks(uint8_t sfp) __reentrant
+{
+	sfp_quirks[sfp] = 0;
+
+	for (uint8_t i = 0; i < sizeof(sfp_quirk_table) / sizeof(*sfp_quirk_table); i++) {
+		if (!sfp_quirk_table[i].vendor || !strcmp(sfp_module_vendor[sfp], sfp_quirk_table[i].vendor)) {
+			if (!sfp_quirk_table[i].model || !strcmp(sfp_module_model[sfp], sfp_quirk_table[i].model)) {
+				sfp_quirks[sfp] |= sfp_quirk_table[i].quirks;
+			}
+		}
+	}
+
+	if (sfp_quirks[sfp] & SFP_QUIRK_DDM) {
+		if (!(sfp_options[sfp] & 0x40)) {
+			// The module reports that DDM is not implemented, but try a dummy read to confirm
+			// 0xff would mean a failed I2C read or an impossible (per spec) voltage greater than 6.5V
+			if (sfp_read_reg(sfp, 226) != 0xff) {
+				sfp_options[sfp] |= 0x40;
+			}
+		}
+	}
 }
 
 
@@ -1255,6 +1322,7 @@ void handle_sfp(void)
 				print_string("\n");
 				sfp_options[sfp] = sfp_read_reg(sfp, 92);
 				sfp_get_info(sfp);
+				sfp_apply_quirks(sfp);
 				sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
 			}
 		} else {
@@ -1945,6 +2013,34 @@ void check_and_flash_update_image(void)
 	}
 }
 
+/* Give the switch a name carrying the tail of its MAC, so several of them on
+ * one network are distinguishable out of the box. Called after the startup
+ * config has been replayed and returns at once if that config already set a
+ * name, so a configured switch does no work for it (suggested in review).
+ *
+ * Written without a loop on purpose. Locals - counters and pointers alike -
+ * land in the 8051's internal-RAM overlay, and on an image with LACP and STP
+ * both enabled that overlay is exhausted: a loop here makes the linker fail
+ * with "Could not get 8 consecutive bytes in internal RAM for area OSEG".
+ * Moving the code into its own function does not help; the overlay is shared
+ * across the whole image. Hoisting the locals to xdata does not help either,
+ * because itohex() is inline and brings its own frame. */
+void set_hostname_default(void)
+{
+	if (hostname[0] != '\0')
+		return;
+
+	strcpy((__xdata uint8_t *)hostname, "RTLPlayground-");
+	hostname[14] = hex[uip_ethaddr.addr[3] >> 4];
+	hostname[15] = hex[uip_ethaddr.addr[3] & 0xf];
+	hostname[16] = hex[uip_ethaddr.addr[4] >> 4];
+	hostname[17] = hex[uip_ethaddr.addr[4] & 0xf];
+	hostname[18] = hex[uip_ethaddr.addr[5] >> 4];
+	hostname[19] = hex[uip_ethaddr.addr[5] & 0xf];
+	hostname[20] = '\0';
+}
+
+
 void main(void)
 {
 	ticks = 0;
@@ -2023,20 +2119,28 @@ void main(void)
 	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
 	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
-	reg_read_m(RTL837X_REG_CHIP_UUID);
-#ifdef DEBUG
-	print_string("SoC UUID: "); print_sfr_data();
-#endif
-	uip_ethaddr.addr[0] = 0x06;  // LAA prefix
-	uip_ethaddr.addr[3] = sfr_data[0] ^ sfr_data[3];
-	uip_ethaddr.addr[4] = sfr_data[1] ^ sfr_data[3];
-	uip_ethaddr.addr[5] = sfr_data[2] ^ sfr_data[3];
-	reg_read_m(RTL837X_REG_CHIP_LOT_NO);
-#ifdef DEBUG
-	print_string(", LOT: "); print_sfr_data(); write_char(' ');
-#endif
-	uip_ethaddr.addr[1] = sfr_data[0] ^ sfr_data[2];
-	uip_ethaddr.addr[2] = sfr_data[1] ^ sfr_data[3];
+	uip_ethaddr.addr[0] = 0xff;
+	if (machine.mac_flash_offset) {
+		flash_region.addr = machine.mac_flash_offset;
+		flash_region.len = FLASH_BUF_SIZE;
+		flash_read_bulk(flash_buf);
+		// accept only a real unicast, globally-administered address (reject blank/LAA/multicast/all-zero OUI)
+		if (flash_buf[0] != 0xff && !(flash_buf[0] & 0x03) && (flash_buf[0] | flash_buf[1] | flash_buf[2])) {
+			uip_ethaddr.addr[0] = flash_buf[0]; uip_ethaddr.addr[1] = flash_buf[1];
+			uip_ethaddr.addr[2] = flash_buf[2]; uip_ethaddr.addr[3] = flash_buf[3];
+			uip_ethaddr.addr[4] = flash_buf[4]; uip_ethaddr.addr[5] = flash_buf[5];
+		}
+	}
+	if (uip_ethaddr.addr[0] == 0xff) {  // no valid flash MAC -> generate locally-administered
+		reg_read_m(RTL837X_REG_CHIP_UUID);
+		uip_ethaddr.addr[0] = 0x06;  // LAA prefix
+		uip_ethaddr.addr[3] = sfr_data[0] ^ sfr_data[3];
+		uip_ethaddr.addr[4] = sfr_data[1] ^ sfr_data[3];
+		uip_ethaddr.addr[5] = sfr_data[2] ^ sfr_data[3];
+		reg_read_m(RTL837X_REG_CHIP_LOT_NO);
+		uip_ethaddr.addr[1] = sfr_data[0] ^ sfr_data[2];
+		uip_ethaddr.addr[2] = sfr_data[1] ^ sfr_data[3];
+	}
 	print_string("Setting MAC to: ");
 	print_byte(uip_ethaddr.addr[0]); write_char(':'); print_byte(uip_ethaddr.addr[1]); write_char(':');
 	print_byte(uip_ethaddr.addr[2]); write_char(':'); print_byte(uip_ethaddr.addr[3]); write_char(':');
@@ -2109,6 +2213,8 @@ void main(void)
 	early_boot_handle_button();
 
 	execute_config();
+	/* After the config: a name from it wins, otherwise derive one. */
+	set_hostname_default();
 	print_cmd_prompt();
 	idle_ready = 1;
 

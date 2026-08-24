@@ -50,6 +50,7 @@ __xdata char port_names[9][PORT_NAME_SIZE];
 extern __xdata uint16_t management_vlan;
 extern __xdata uint8_t sfp_speed[2];
 extern __xdata uint8_t sfp_pins_last;
+extern __xdata uint8_t sfp_options[2];
 __xdata uint8_t gpio_last_value[8] = { 0 };
 
 // Temporatly for str to hex convertion value.
@@ -190,8 +191,11 @@ uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx)
 	uint8_t num = 0;
 
 	while (isnumber(cmd_buffer[idx])) {
+		uint8_t val = cmd_buffer[idx] - '0';
 		err = 0;
-		num = (num * 10) + cmd_buffer[idx] - '0';
+		if (num > 25 || (num == 25 && val > 5))
+			return 1;
+		num = (num * 10) + val;
 		idx++;
 	}
 
@@ -208,6 +212,8 @@ uint8_t atoi_short(__xdata uint16_t *vlan, uint8_t idx)
 	while (isnumber(cmd_buffer[idx])) {
 		err = 0;
 		uint8_t val = cmd_buffer[idx] - '0';
+		if (*vlan > 6553 || (*vlan == 6553 && val > 5))
+			return 1;
 		*vlan = (*vlan * 10) + val;
 		idx++;
 	}
@@ -244,8 +250,7 @@ void parse_lag(void)
 		print_string("LAG status:\n");
 		for (uint8_t i = 0; i < 4; i++) {
 			write_char(' '); write_char('1' + i);
-			reg_read_m(RTL837X_TRK_MBR_CTRL_BASE + (i << 2));
-			members = ((uint16_t)sfr_data[2]) << 8 | sfr_data[3]; 
+			members = port_lag_members_get(i);
 			if (!members) {
 				print_string(" disabled\n");
 				continue;
@@ -268,7 +273,9 @@ void parse_lag(void)
 
 	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]]))
 		goto err;
-	group = cmd_buffer[cmd_words_b[1]] - '0';
+	group = cmd_buffer[cmd_words_b[1]] - '1';
+	if (group > 3)		/* '0' wraps well past three, so one test does both ends */
+		goto err;
 
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
@@ -278,7 +285,9 @@ void parse_lag(void)
 			port = cmd_buffer[cmd_words_b[w]] - '1';
 			if (isnumber(cmd_buffer[cmd_words_b[w] + 1]))
 				port = (port + 1) * 10 + cmd_buffer[cmd_words_b[w] + 1] - '1';
-				port = machine.phys_to_log_port[port];
+			if (port > 8)	/* phys_to_log_port holds nine entries */
+				goto err;
+			port = machine.phys_to_log_port[port];
 		} else {
 			goto err;
 		}
@@ -290,7 +299,7 @@ void parse_lag(void)
 	port_lag_members_set(group, members);
 	return;
 err:
-	print_string("Error: lag <lag> [port]...\n");
+	print_string("Error: lag <1-4> [port]...\n");
 }
 
 
@@ -299,7 +308,11 @@ void parse_lag_hash(void)
 	__xdata uint8_t group;
 	__xdata uint8_t hash = 0;
 
-	group = cmd_buffer[cmd_words_b[1]] - '0';
+	if (cmd_words_len < 2 || !isnumber(cmd_buffer[cmd_words_b[1]]))
+		goto err;
+	group = cmd_buffer[cmd_words_b[1]] - '1';
+	if (group > 3)		/* '0' wraps well past three, so one test does both ends */
+		goto err;
 
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
@@ -325,6 +338,9 @@ void parse_lag_hash(void)
 		w++;
 	}
 	port_lag_hash_set(group, hash);
+	return;
+err:
+	print_string("Error: lag hash <1-4> [type]...\n");
 }
 
 
@@ -341,6 +357,8 @@ void parse_vlan(void)
 			return;
 		}
 		if (cmd_compare(2, "mgmt")) {
+			if (vlan_settings.vlan > 4094)
+				goto err;
 			management_vlan = vlan_settings.vlan;
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
@@ -348,6 +366,8 @@ void parse_vlan(void)
 				print_string("Management VLAN set to "); print_short(management_vlan); write_char('\n');
 			return;
 		}
+		if (!vlan_settings.vlan || vlan_settings.vlan > 4094)
+			goto err;
 		uint8_t w = 2;
 		if (cmd_words_len > w && isletter(cmd_buffer[cmd_words_b[w]])) {
 			register uint8_t i = 0;
@@ -408,11 +428,11 @@ void parse_isolate(void)
 
 	print_string("\nISOLATE ");
 
-	__xdata int8_t port_configured = cmd_buffer[cmd_words_b[1]] - '1';
-	port_configured = machine.phys_to_log_port[port_configured];
-	if (isnumber(cmd_buffer[cmd_words_b[1] + 1]))  // CPU-port, logical port 9
-		port_configured = (port_configured + 1) * 10 + cmd_buffer[cmd_words_b[1] + 1] - '1';
-	if (port_configured < 0 || port_configured > 9)
+	if (!isnumber(cmd_buffer[cmd_words_b[1]]) || cmd_buffer[cmd_words_b[1]] == '0'
+	    || isnumber(cmd_buffer[cmd_words_b[1] + 1]))
+		goto err;
+	__xdata uint8_t port_configured = machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'];
+	if (port_configured < machine.min_port || port_configured > machine.max_port)
 		goto err;
 
 	print_byte(port_configured); write_char('\n');
@@ -509,7 +529,7 @@ void parse_ingress(void)
 			if (!isnumber(p)) {
 				continue;
 			}
-			if (p - '1' > 9) {
+			if (p < '1') {
 				print_string("Invalid physical port number: "); write_char(p); write_char('\n');
 				continue;
 			}
@@ -720,17 +740,18 @@ void parse_mtu(void)
 			print_string("Port "); print_byte(machine.log_to_phys_port[p]);
 			write_char(' '); print_short(mtu); write_char('\n');
 		}
+		return;
 	}
-	p = cmd_buffer[cmd_words_b[1]] - '1';
-	p = machine.phys_to_log_port[p];
-	print_byte(p);
-	if (cmd_words_len != 3) {
+	if (cmd_words_len != 3 || cmd_buffer[cmd_words_b[1]] < '1'
+	    || cmd_buffer[cmd_words_b[1]] > '9'
+	    || cmd_buffer[cmd_words_b[1] + 1] > ' ') {
 		print_string("mtu [port] [size]\n");
 		return;
 	}
-	atoi_short(&mtu, cmd_words_b[2]);
-	if (mtu > 0x3fff) {
-		print_string("Maximum MTU is 16383\n");
+	p = machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'];
+	print_byte(p);
+	if (atoi_short(&mtu, cmd_words_b[2]) || mtu < 64 || mtu > 0x3fff) {
+		print_string("MTU must be 64..16383\n");
 		return;
 	}
 	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (mtu >> 10) & 0xf, (mtu >> 2) & 0xff,
@@ -741,7 +762,7 @@ void parse_mtu(void)
 void sfp_print_measurements(uint8_t sfp)
 {
 	print_string("Options: "); print_byte(sfp_read_reg(sfp, 92)); write_char('\n');
-	if (!(sfp_read_reg(sfp, 92) & 0x40))
+	if (!(sfp_options[sfp] & 0x40))
 		return;
 	print_string("Temp: "); print_byte(sfp_read_reg(sfp, 224)); print_byte(sfp_read_reg(sfp, 225)); write_char('\n');
 	print_string("Vcc: "); print_byte(sfp_read_reg(sfp, 226)); print_byte(sfp_read_reg(sfp, 227)); write_char('\n');
@@ -1519,10 +1540,35 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "igmp")) {
 			if (cmd_compare(1, "on"))
 				igmp_enable();
+			else if (cmd_compare(1, "off"))
+				igmp_setup();
 			else if (cmd_compare(1, "show"))
 				igmp_show();
 			else
-				igmp_setup();  // Reverts to default with IP-MC being flooded
+				print_string("Error: igmp on|off|show\n");
+		} else if (cmd_compare(0, "hostname")) {
+			/* "hostname" alone reports the current name; "hostname <text>"
+			 * sets it, sanitized to JSON-safe printable ASCII. A name with
+			 * spaces would tokenize into several words - reject it instead
+			 * of silently keeping the first one. */
+			if (cmd_words_len == 1) {
+				print_string_x(hostname);
+				write_char('\n');
+			} else if (cmd_words_len == 2) {
+				__xdata uint8_t *hp = &cmd_buffer[cmd_words_b[1]];
+				__xdata char *dst = hostname;
+				for (uint8_t hn = 0; hn < sizeof(hostname) - 1; hn++) {
+					uint8_t c = *hp++;
+					if (c == '\0' || c == '\r' || c == '\n')
+						break;
+					if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
+						c = '.';
+					*dst++ = c;
+				}
+				*dst = '\0';
+			} else {
+				print_string("Error: hostname [name] - the name must not contain spaces\n");
+			}
 		} else if (cmd_compare(0, "stp")) {
 			if (cmd_compare(1, "on")) {
 				print_string("STP enabled\n");
@@ -1535,11 +1581,13 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "pvid") && cmd_words_len == 3) {
 			__xdata uint16_t pvid;
-			uint8_t port;
-			port = cmd_buffer[cmd_words_b[1]] - '1';
-			port = machine.phys_to_log_port[port];
-			if (!atoi_short(&pvid, cmd_words_b[2]))
-				port_pvid_set(port, pvid);
+			if (cmd_buffer[cmd_words_b[1]] >= '1'
+			    && cmd_buffer[cmd_words_b[1]] <= '9'
+			    && cmd_buffer[cmd_words_b[1] + 1] <= ' '
+			    && !atoi_short(&pvid, cmd_words_b[2]) && pvid && pvid <= 4094)
+				port_pvid_set(machine.phys_to_log_port[cmd_buffer[cmd_words_b[1]] - '1'], pvid);
+			else
+				print_string("Error: pvid <port> <1-4094>\n");
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
 		} else if (cmd_compare(0, "isolate")) {

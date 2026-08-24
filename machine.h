@@ -38,7 +38,9 @@
 // #define MACHINE_HI_K0801WS
 // #define MACHINE_FNS1200P
 // #define MACHINE_PCB_SWTG024AS_A_2_0_1
+// #define MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
 // #define MACHINE_SWTG024AS_V2_0
+// #define MACHINE_FG_4GT_2SX_V2_0
 
 typedef struct {
 	// GPIO pins for SDA/SCL
@@ -93,6 +95,7 @@ typedef struct machine {
 	uint32_t led_sets[4][4];
 	uint8_t led_mux_custom;
 	uint8_t led_mux[28];
+	uint32_t mac_flash_offset;
 };
 
 typedef struct machine_runtime

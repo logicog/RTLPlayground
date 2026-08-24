@@ -76,7 +76,7 @@ function fetchVLAN() {
   };
   var v=document.getElementById('vid').value
   if (!v) {
-    alert("Set VLAN ID first");
+    alert(t('vlan_set_id_first'));
     return;
   }
   xhttp.open("GET", `/vlan.json?vid=${v}`, true);
@@ -110,7 +110,7 @@ async function loadVlanTable() {
   var resp;
   try { resp = await fetch('/vlanlist'); } catch(e) { return; }
   if (!resp.ok) return;
-  var vlans = await resp.json();
+  var vlans = (await resp.json()).vlan || [];
   for (var i = 0; i < vlans.length; i++) {
     var v = vlans[i];
     var vresp;
@@ -161,7 +161,7 @@ async function loadVlanTable() {
 }
 
 function deleteVlan(id) {
-  if (!confirm('Delete VLAN ' + id + '?')) return;
+  if (!confirm(t('vlan_delete_confirm') + id + '?')) return;
   fetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' d' })
     .then(function() { refreshVlanViews(); })
     .catch(function(err) { console.error('Delete failed:', err); });
@@ -181,7 +181,7 @@ function loadVlanList() {
       sel.style.display = 'none';
       return;
     }
-    var vlans = JSON.parse(this.responseText);
+    var vlans = JSON.parse(this.responseText).vlan || [];
     if (!vlans.length) {
       sel.style.display = 'none';
       return;
