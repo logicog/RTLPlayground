@@ -1037,45 +1037,6 @@ void sds_config(uint8_t sds, uint8_t mode)
 
 
 /*
- * Read a register of the EEPROM via I2C
- */
-uint8_t sfp_read_reg(uint8_t slot, uint8_t reg)
-{
-	if (reg & 0x80) {	// Configure SFP readings address (0x51) as I2C device address
-		reg &= 0x7f;
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 0,  0x51 >> 5, (0x51 << 3) & 0xff);
-	} else {
-		REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00, 0x1 << (I2C_MEM_ADDR_WIDTH-16) | 0,  0x50 >> 5, (0x50 << 3) & 0xff);
-	}
-
-	reg_read_m(RTL837X_REG_I2C_CTRL);
-	sfr_mask_data(1, 0xfc, i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5 | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2);
-	reg_write_m(RTL837X_REG_I2C_CTRL);
-
-	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
-
-	// Execute I2C Read
-	reg_bit_set(RTL837X_REG_I2C_CTRL, 0);
-
-	// Wait for execution to finish
-	do {
-		reg_read_m(RTL837X_REG_I2C_CTRL);
-	} while (sfr_data[3] & 0x1);
-
-	/* Bit 1 is the controller's own failure indication, which the vendor SDK
-	 * looks at and this did not. Without it an unacknowledged address comes
-	 * back as an ordinary byte and the caller cannot tell it from data. */
-	if (sfr_data[3] & 0x2) {
-		sfp_i2c_fail = 1;
-		return 0xff;
-	}
-
-	reg_read_m(RTL837X_REG_I2C_OUT);
-	return sfr_data[3];
-}
-
-
-/*
  * Adds TX Header to uip_buf and calls nic_tx_packet to send the packet
  * over the wire
  */
