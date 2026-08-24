@@ -43,8 +43,9 @@ __xdata uint32_t cont_addr;
 __xdata uint8_t boundary[72];
 
 // a client may split the request anywhere, including inside a boundary or a
-// part header, so a configuration upload is parsed only once it is complete
-#define CONFIG_UPLOAD_BUF 2560
+// part header, so a configuration upload is parsed only once it is complete;
+// sized for a full config sector plus the multipart framing around it
+#define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
 __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
@@ -364,6 +365,9 @@ static uint8_t config_take(void)
 		while (cfg_hdr + 8 < cfg_body) {
 			// the part carrying a filename holds the configuration
 			if (strstart(&config_buf[cfg_hdr], "filename")) {
+				// the payload plus its terminator must fit the sector
+				if (cfg_end - cfg_body + 1 > CONFIG_LEN)
+					return 2;
 				config_buf[cfg_end] = 0;
 				flash_region.addr = CONFIG_START;
 				flash_sector_erase();
