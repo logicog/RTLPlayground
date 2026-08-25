@@ -20,34 +20,15 @@ void machine_custom_init(void) __banked
 }
 
 #elif defined MACHINE_PCB_SWTG018AS_V2_1_0
-// The LED-set encoding cannot express this board's bi-color SFP LED (green <= 2.5G,
-// blue at 10G), so program the LED register block with the values the stock firmware
-// uses. Runs after leds_setup() and overrides the values computed there.
-// The final entry routes the blue-LED pin to the LED controller via PIN_MUX_0;
-// as a GPIO (the default) no LED register can drive it. PIN_MUX_1/2 stay
-// untouched so SFP detect (GPIO38) and i2c remain GPIOs.
+// Stock-firmware values for what the LED-set encoding cannot express: the
+// bi-color SFP LED (blue pin at 10G) and the PIN_MUX_0 routing of that pin
+// to the LED controller. Runs after leds_setup(), which covers the rest.
 static __code const struct { uint16_t reg; uint32_t val; } custom_init_regs[] = {
-	{ 0x6520, 0x0023e430UL },   // LED_MODE
-	{ 0x6524, 0xff001400UL },   // LED3_0_SET3
-	{ 0x6528, 0x00100000UL },   // LED3_0_SET1
-	{ 0x652c, 0x007f013fUL },   // LED3_2_SET3
-	{ 0x6530, 0x02000400UL },   // LED1_0_SET3
-	{ 0x6534, 0x01400141UL },   // LED3_2_SET2
-	{ 0x6538, 0x01440170UL },   // LED1_0_SET2
-	{ 0x653c, 0x18000041UL },   // LED3_2_SET1
-	{ 0x6540, 0x01400155UL },   // LED1_0_SET1
-	{ 0x6544, 0x01411000UL },   // LED3_2_SET0
-	{ 0x6548, 0x01740141UL },   // LED1_0_SET0
-	{ 0x654c, 0x00010000UL },   // LED_PORT_SET_SEL
-	{ 0x65d8, 0x3ffb6dffUL },   // LED_GLB_ACTIVE
-	{ 0x65dc, 0x7f24977fUL },   // LED_GLB_IO_EN
-	{ 0x65e0, 0x08144040UL },   // LED_GLB_MUX_1
-	{ 0x65e4, 0x10349309UL },   // LED_GLB_MUX_2
-	{ 0x65e8, 0x12454391UL },   // LED_GLB_MUX_3
-	{ 0x65ec, 0x19616555UL },   // LED_GLB_MUX_4
-	{ 0x65f0, 0x1c79d65aUL },   // LED_GLB_MUX_5
-	{ 0x65f4, 0x0002181dUL },   // LED_GLB_MUX_6
-	{ 0x7f8c, 0x20db6880UL },   // PIN_MUX_0
+	{ RTL837X_REG_LED3_0_SET1,   0x00100000UL },
+	{ RTL837X_REG_LED1_0_SET1,   0x01400155UL },
+	{ RTL837X_REG_LED1_0_SET0,   0x01740141UL },
+	{ RTL837X_REG_LED_GLB_IO_EN, 0x7f24977fUL },
+	{ RTL837X_PIN_MUX_0,         0x20db6880UL },
 };
 
 void machine_custom_init(void) __banked
