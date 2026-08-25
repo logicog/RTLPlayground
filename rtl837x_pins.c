@@ -7,6 +7,8 @@
 extern __code const struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 
+#pragma codeseg BANK2
+#pragma constseg BANK2
 
 uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin) __banked {
 	switch (sda_pin) {
