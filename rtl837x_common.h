@@ -8,6 +8,7 @@
 #define SYS_TICK_HZ 200
 
 #define CPU_PORT        9
+#define NUL			'\0'
 
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff
@@ -135,6 +136,7 @@ void itoa(uint8_t v);
 void print_sfr_data(void);
 void print_phy_data(void);
 void print_cmd_prompt(void);
+void print_phys_port(uint8_t port);
 void phy_write_mask(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v);
 void phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t v);
 void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg);
