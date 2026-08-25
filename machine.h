@@ -95,6 +95,6 @@ typedef struct machine_runtime
 	uint8_t isN : 1;
 };
 
-void machine_custom_init(void);
+void machine_custom_init(void) __banked;
 
 #endif
