@@ -61,6 +61,9 @@ __xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
 
 __xdata char passwd[21];
+// Set when a verified firmware upload awaits its response ACK, after
+// which the chip resets to apply the staged image
+__xdata uint8_t fw_reset_pending;
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
@@ -92,6 +95,7 @@ void httpd_init(void) __banked
 	// Start listening to port 80
 	uip_listen(HTONS(80));
 	s->tstate = TSTATE_CLOSED;
+	fw_reset_pending = 0; // xdata is not zeroed by the startup code
 }
 
 
@@ -420,17 +424,23 @@ uint8_t stream_upload(__xdata uint8_t *p, uint16_t bptr, uint16_t plen)
 			flash_write_bytes(flash_buf);
 			uptr += write_len;
 			write_len = 0;
-			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
 			if (verify_crc) {
 				dbg_string("CRC16: "); dbg_short(crc_final); dbg_char('\n');
+				// Both bodies are 33 bytes; Content-Length lets the
+				// browser complete the response without waiting for
+				// the connection close (which a reset would swallow)
 				if (crc_final == 0xb001) {
 					print_string("Checksum OK.\nUpload to flash done, will reset!\n");
-					// close connection to avoid retries by browser
-					uip_close();
-					reset_chip();
+					slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 33\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"OK: checksum verified, rebooting\n");
+					// Reset once the response is fully ACKed
+					fw_reset_pending = 1;
 				} else {
 					print_string("Checksum incorrect! Aborting.\n");
-					uip_close();
+					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 33\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"NO: checksum failed, not applied\n");
 				}
 			}
 			// Make sure there is a 0 at the end of the uploaded data
@@ -440,9 +450,6 @@ uint8_t stream_upload(__xdata uint8_t *p, uint16_t bptr, uint16_t plen)
 			flash_write_bytes(flash_buf);
 			if (bptr >= plen)
 				return 0;
-			if(!verify_crc)
-				//ugly hack to signal connection finished after config upload.
-				uip_close();
 			return 1;
 		}
 		if (p[bptr] == boundary[bindex]) {
@@ -630,6 +637,10 @@ void handle_post(void)
 		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
+		// A verdict is only built once the upload part completes;
+		// clear any stale response so the completion check in the
+		// appcall POST branch cannot send leftovers
+		slen = 0;
 		stream_upload(config_buf, cfg_end, pre_acc);
 
 		dbg_string("Done reading first fragment\n");
@@ -704,11 +715,20 @@ void httpd_appcall(void)
 			cont_len -= slen;
 			cont_addr += slen;
 			s->tstate = TSTATE_TX;
+		} else if (fw_reset_pending) {
+			// The upload verdict has been fully ACKed by the client;
+			// now it is safe to reset and apply the staged image
+			print_string("Resetting to apply update\n");
+			reset_chip();
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		// Check here maxupload by subtracting uip_len and close socekt if fails!
 		if (max_upload - uip_len > 0) {
 			stream_upload(uip_appdata, 0, uip_len);
+			// A completed part with a built verdict must go out
+			// through the normal TX path
+			if (s->tstate == TSTATE_NONE && slen)
+				goto do_send;
 			write_char('.');
 		} else {
 			send_bad_request();
