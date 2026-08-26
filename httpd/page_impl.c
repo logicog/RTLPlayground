@@ -290,17 +290,26 @@ void send_vlan(uint16_t vlan)
 	slen += strtox(outbuf + slen, "\"}");
 }
 
-
-void send_counters(char port)
+/* Send counters
+ * Only accepts physical port 1..9.
+ * Returns an error if the port physical don't exists.
+ */
+bool send_counters(uint8_t phys_port)
 {
-	dbg_string("send_counters called: "); dbg_byte(port); dbg_char('\n');
+	uint8_t phys_port_idx = phys_port - 1;
+	if (phys_port_idx > 8)
+		goto err;
+	uint8_t log_port = machine.phys_to_log_port[phys_port_idx];
+	if (log_port == 0)
+		goto err;
+
+	dbg_string("send_counters called: "); dbg_byte(phys_port_idx); dbg_char('\n');
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	dbg_string("sending counters\n");
-	dbg_byte(port);
-	uint8_t i = machine.phys_to_log_port[port];
-	slen += strtox(outbuf + slen, "[");
+	dbg_string("sending counters\n"); dbg_byte(phys_port_idx);
+
+	char_to_html('[');
 	for (uint8_t counter = 0; counter < 0x37; counter++) {
-		STAT_GET(counter, i);
+		STAT_GET(counter, log_port);
 		slen += strtox(outbuf + slen, "\"0x");
 		reg_to_html(RTL837X_STAT_V_HIGH);
 		reg_to_html_long(RTL837X_STAT_V_LOW);
@@ -309,6 +318,12 @@ void send_counters(char port)
 			char_to_html(',');
 	}
 	char_to_html(']');
+
+	return false;
+
+err:
+	dbg_string("Error: counters: phy_port_idx don't exists\n");
+	return true;
 }
 
 

@@ -34,7 +34,8 @@ extern __xdata uint8_t cmd_words_len;
 extern __xdata uint8_t cmd_words_b[15];
 extern __xdata char save_cmd;		/* 0 while execute_config() replays the saved config */
 uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd);
-uint8_t atoi_byte(__xdata uint8_t *out, uint8_t idx);
+uint8_t atoi_byte(uint8_t idx);
+extern __xdata uint8_t atoi_results_u8;
 
 /* ---- Configuration ---- */
 __xdata uint8_t  stp_prio;	/* bridge priority high byte (0x80 = 32768) */
@@ -795,7 +796,10 @@ void stp_parse(void) __banked __reentrant
 	if (cmd_compare(1, "port")) {
 		if (cmd_words_len < 4)
 			goto err;
-		if (atoi_byte(&stp_scratch, cmd_words_b[2]) || stp_scratch < 1 || stp_scratch > 9)
+		if (!atoi_byte(cmd_words_b[2]))
+			goto err;
+		stp_scratch = atoi_results_u8;
+		if (stp_scratch < 1 || stp_scratch > 9)
 			goto err;
 		port = machine.phys_to_log_port[stp_scratch - 1];
 		if (cmd_words_len < 5 && !cmd_compare(3, "on") && !cmd_compare(3, "off"))
@@ -848,9 +852,9 @@ void stp_parse(void) __banked __reentrant
 			else
 				goto err;
 		} else if (cmd_compare(3, "prio")) {
-			if (atoi_byte(&stp_scratch, cmd_words_b[4]))
+			if (!atoi_byte(cmd_words_b[4]))
 				goto err;
-			stp_pprio[port] = stp_scratch & 0xf0;
+			stp_pprio[port] = atoi_results_u8 & 0xf0;
 		} else if (cmd_compare(3, "guard")) {
 			stp_pflags[port] &= ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD);
 			if (cmd_compare(4, "bpdu"))
@@ -872,7 +876,7 @@ void stp_parse(void) __banked __reentrant
 		return;
 	}
 
-	if (atoi_byte(&stp_scratch, cmd_words_b[2])) {
+	if (!atoi_byte(cmd_words_b[2])) {
 		if (cmd_compare(1, "version")) {
 			if (cmd_compare(2, "rstp"))
 				stp_rstp = 1;
@@ -884,6 +888,8 @@ void stp_parse(void) __banked __reentrant
 		}
 		goto err;
 	}
+	stp_scratch = atoi_results_u8;
+
 	if (cmd_compare(1, "prio")) {
 		if (stp_scratch > 15)
 			goto err;
