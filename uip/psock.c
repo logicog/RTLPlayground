@@ -75,8 +75,7 @@
 /*---------------------------------------------------------------------------*/
 
 inline void
-buf_setup(register __xdata struct psock_buf *buf,
-	  register __xdata u8_t *bufptr, register u16_t bufsize)
+buf_setup(__xdata struct psock_buf *buf, __xdata u8_t *bufptr, u16_t bufsize)
 {
   buf->ptr = bufptr;
   buf->left = bufsize;
@@ -84,7 +83,7 @@ buf_setup(register __xdata struct psock_buf *buf,
 
 /*---------------------------------------------------------------------------*/
 inline u8_t
-buf_bufdata(register __xdata struct psock_buf *buf, register __xdata u8_t **dataptr, register __xdata u16_t *datalen)
+buf_bufdata(__xdata struct psock_buf *buf, __xdata u8_t **dataptr, __xdata u16_t *datalen)
 {
   if(*datalen < buf->left) {
     memcpy(buf->ptr, *dataptr, *datalen);
@@ -145,7 +144,7 @@ buf_bufto(__xdata struct psock_buf *buf, u8_t endmarker,
 }
 /*---------------------------------------------------------------------------*/
 static char
-send_data(register __xdata struct psock *s)
+send_data(__xdata struct psock *s)
 {
   if(s->state != STATE_DATA_SENT || uip_rexmit()) {
     if(s->sendlen > uip_mss()) {
@@ -160,7 +159,7 @@ send_data(register __xdata struct psock *s)
 }
 /*---------------------------------------------------------------------------*/
 static char
-data_acked(register __xdata struct psock *s)
+data_acked(__xdata struct psock *s)
 {
   if(s->state == STATE_DATA_SENT && uip_acked()) {
     if(s->sendlen > uip_mss()) {
@@ -176,8 +175,7 @@ data_acked(register __xdata struct psock *s)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-PT_THREAD(psock_send(register __xdata struct psock *s, register __xdata const char *buf,
-		     register uint16_t len))
+PT_THREAD(psock_send(__xdata struct psock *s, __xdata const char *buf, uint16_t len))
 {
   PT_BEGIN(&s->psockpt);
 
@@ -218,7 +216,7 @@ PT_THREAD(psock_send(register __xdata struct psock *s, register __xdata const ch
 
 
 /*---------------------------------------------------------------------------*/
-// PT_THREAD(psock_generator_send(register __xdata struct psock *s,
+// PT_THREAD(psock_generator_send(__xdata struct psock *s,
 // 			       unsigned short (*generate)(void *), void *arg))
 // {
 //   PT_BEGIN(&s->psockpt);
@@ -275,7 +273,7 @@ psock_newdata(__xdata struct psock *s)
   }
 }
 /*---------------------------------------------------------------------------*/
-PT_THREAD(psock_readto(register __xdata struct psock *psock, unsigned char c))
+PT_THREAD(psock_readto(__xdata struct psock *psock, unsigned char c))
 {
   PT_BEGIN(&psock->psockpt);
 
@@ -304,7 +302,7 @@ PT_THREAD(psock_readto(register __xdata struct psock *psock, unsigned char c))
   PT_END(&psock->psockpt);
 }
 /*---------------------------------------------------------------------------*/
-PT_THREAD(psock_readbuf(register __xdata struct psock *psock))
+PT_THREAD(psock_readbuf(__xdata struct psock *psock))
 {
   PT_BEGIN(&psock->psockpt);
 
@@ -334,7 +332,7 @@ PT_THREAD(psock_readbuf(register __xdata struct psock *psock))
 }
 /*---------------------------------------------------------------------------*/
 void
-psock_init(register __xdata struct psock *psock, register __xdata char *buffer, register uint16_t buffersize)
+psock_init(__xdata struct psock *psock, __xdata char *buffer, uint16_t buffersize)
 {
   psock->state = STATE_NONE;
   psock->readlen = 0;

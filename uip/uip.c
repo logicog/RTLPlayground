@@ -400,7 +400,7 @@ uip_init(void) __banked
 /*---------------------------------------------------------------------------*/
 #if UIP_ACTIVE_OPEN
 __xdata struct uip_conn *
-uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
+uip_connect(__xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 {
   __xdata struct uip_conn *conn, *cconn;
   
@@ -677,7 +677,7 @@ uip_add_rcv_nxt(u16_t n)
 void
 uip_process(u8_t flag) __banked
 {
-  register __xdata struct uip_conn *uip_connr = uip_conn;
+  __xdata struct uip_conn *uip_connr = uip_conn;
 
 #if UIP_UDP
   if(flag == UIP_UDP_SEND_CONN) {
