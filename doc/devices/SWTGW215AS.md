@@ -1,6 +1,7 @@
-### ZX-SWTGW215AS
+# ZX-SWTGW215AS
 
 ## Brands
+
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
 | Lianguo | ZX-SWTGW215AS | Yes | PCB-SWTG115AS-V2.0 | FM25Q16A | 8272 |
@@ -16,9 +17,9 @@ Port 5 RJ45 is interfaced through a RTL8221B IC.
 
 <img src="photos/ZX-SWTGW215AS/pcb_top.jpg" width="300" />
 
-# Connectors
+## Connectors
 
-## Port overview
+### Port overview
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
@@ -36,7 +37,7 @@ Port 5 RJ45 is interfaced through a RTL8221B IC.
 | RJ45 | 3, 4, 5, 6, 7 | 1-5 | 
 | SFP | 8 | 6 |
 
-## J4
+### J4
 
 * Location: SFP connector `J4`.
 * Connected to: 10GMAC number 8, SerDes 1.
@@ -48,10 +49,11 @@ Port 5 RJ45 is interfaced through a RTL8221B IC.
 |5|	MODDEF1 – SCL     | GPIO40	| I2C SCL |
 |6|	MODDEF0 – PRESENT | GPIO30 | Detect |
 |8|	LOS	              | GPIO37 | RX Loss of Signal |
-### Notes
+
+#### Notes
 * Not all signals were mapped mechanically, hence they've been left out of documentation.
 
-## T3, Slave Interface
+### T3, Slave Interface
 
 This connector goes to U4 `I2C EEPROM` and U10 `SPI FLASH` (mappings identical to SWTG024AS).
 
@@ -65,11 +67,12 @@ For detailed Slave Interface functionality and protocol information, see [T3 doc
 |4| VCC |
 |5| 33R -> U10-P2 | SPI-DO/D1 | 
 |6| U10-P1 | SPI-CS |
-### Notes
+
+#### Notes
 * 1 pin is square shaped.
 
 
-## T5, Serial Console
+### T5, Serial Console
 
 |`T5` pin|GPIO|Signal|
 |---|---|---|
@@ -77,10 +80,11 @@ For detailed Slave Interface functionality and protocol information, see [T3 doc
 | 2 | GND | |
 | 3 | GPIO32 | U0RXD (Input) |
 | 4 | 3V3 | |
-### Notes
+
+#### Notes
 * 1 pin is square shaped.
 
-## T8
+### T8
 
 |`T8` pin|GPIO|Signal|
 |---|---|---|
@@ -91,18 +95,19 @@ For detailed Slave Interface functionality and protocol information, see [T3 doc
 | 5 | GPIO47 | |
 | 6 | GPIO49 | |
 
-### Notes
+#### Notes
 * 1 pin is square shaped.
 * Mapping unverified but assumed the same as [LIANGUO SWTG024AS](SWTG024AS.md#t8).
 
-# Reset Circuit
+## Reset Circuit
 | Function | GPIO |
 |---|---|
 | Reset button | GPIO54 |
+
 ### Notes
 * Circuit is active-low
 
-# GPIO
+## GPIO
 
 Note: T3/U4/U10-related signal annotations below are copied from [LIANGUO SWTG024AS T3 section](SWTG024AS.md#t3-slave-interface) as well as T8 port from [LIANGUO SWTG024AS T8 section](SWTG024AS.md#t8). They should be treated as assumed identical for ZX-SWTGW215AS as it has not been 100% confirmed true at the moment. 
 
@@ -141,7 +146,7 @@ Note: T3/U4/U10-related signal annotations below are copied from [LIANGUO SWTG02
 | 40000000 | GPIO30 | J4-6 | SFP DETECT |  | GPIO62 |   |  |
 | 80000000 | GPIO31 | T5-1 | U0TXD |  | GPIO63 |   |  |
 
-# LEDs
+## LEDs
 
 | NAME | GPIO | Port(s) | Function | Notes |
 | ---- | ---- | ---- | ---- | ---- |
