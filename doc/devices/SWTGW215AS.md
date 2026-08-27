@@ -4,7 +4,8 @@
 
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
-| Lianguo | ZX-SWTGW215AS | Yes | PCB-SWTG115AS-V2.0 | FM25Q16A | 8272 |
+| Lianguo | ZX-SWTGW215AS | Yes | PCB-SWTG115AS-V2.0 | FM25Q16A | 8372 |
+| sold as Lianguo, actual device unbranded | ZX-SWTGW215AS | Yes | PCB-SWTG115AS-V2.1 | W25Q16JVSIQ (2MiB) | 8372 |
 
 ## RTLPlayground target
 
@@ -13,9 +14,19 @@ Use machine target `MACHINE_LIANGUO_ZX_SWTGW215AS` for this device.
 Physical hardware verification: 5x RJ45 ports + 1x SFP port. 
 Port 5 RJ45 is interfaced through a RTL8221B IC.
 
-## PCB
+## Label (V2.0)
 
-<img src="photos/ZX-SWTGW215AS/pcb_top.jpg" width="300" />
+<img src="photos/ZX-SWTGW215AS-V2.0/label.jpg" width="300" />
+
+## PCB (V2.0)
+
+<img src="photos/ZX-SWTGW215AS-V2.0/pcb_top.jpg" width="300" />
+<img src="photos/ZX-SWTGW215AS-V2.0/pcb_bottom.jpg" width="300" />
+
+## PCB (V2.1)
+
+<img src="photos/ZX-SWTGW215AS-V2.1/pcb-top.jpg" width="300" />
+<img src="photos/ZX-SWTGW215AS-V2.1/pcb-bottom.jpg" width="300" />
 
 ## Connectors
 
@@ -167,3 +178,6 @@ Note: T3/U4/U10-related signal annotations below are copied from [LIANGUO SWTG02
 
 While [SWTG024AS.md](SWTG024AS.md) can be used as a general reference for hardware concepts and interface specifications, this device should not be assumed to be identical beside the difference implicitely highlighted below. Not all information has been validated for compatibility with the SWTG215AS. Consult the SWTG024AS documentation with caution and verify any critical details against this device's.
 
+## Flashing
+
+For devices with Winbond 25Q16JVSIQ, flashing is possible for example using flashprog with device "W25Q16.V". Note that you should not overwrite the whole flash to keep device-specific data (like the MAC address at 0x1fc000). Also, creating a backup of the entire falsh before is of course a very good idea.

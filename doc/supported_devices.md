@@ -19,7 +19,7 @@ The following devices have been tested and are fully working:
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](devices/2M-PCB23-V2_2.md)                                 | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3_1.md)                                 | 2M    | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 0.5M  | 4 + 2 |
-| Lianguo  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0](devices/SWTGW215AS.md)                               | 2M    | 5 + 1 |
+| Lianguo  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0 / PCB-SWTG115AS-V2.1](devices/SWTGW215AS.md)          | 2M    | 5 + 1 |
 | Mokerlink| ZX-SWTGW218AS   | Yes     | [SWTG118AS-V2.0-16029](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                             | 4M    | 4 + 2 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 2M    | 4 + 2 |
