@@ -49,6 +49,7 @@ __xdata uint8_t boundary[72];
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
 __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+// part-header bytes buffered so far; accumulates across TCP segments
 __xdata uint16_t pre_acc;
 __xdata uint8_t cfg_bl;
 __xdata uint8_t * __xdata content_type = 0;
@@ -381,20 +382,22 @@ static uint8_t config_take(void)
 
 
 // unlike scan_header(), keeps no auth state, so it may run on every buffered segment
-static uint16_t preamble_payload_start(__xdata uint16_t n)
+static uint16_t preamble_payload_start(uint16_t n)
 {
-	for (cfg_pos = 0; cfg_pos + 24 <= n; cfg_pos++) {
-		if (strstart(&config_buf[cfg_pos], "application/octet-stream"))
+	uint16_t pos;
+
+	for (pos = 0; pos + 24 <= n; pos++) {
+		if (strstart(&config_buf[pos], "application/octet-stream"))
 			break;
 	}
-	if (cfg_pos + 24 > n)
+	if (pos + 24 > n)
 		return 0;
-	cfg_pos += 24;
-	while (cfg_pos + 3 < n && !strstart(&config_buf[cfg_pos], "\r\n\r\n"))
-		cfg_pos++;
-	if (cfg_pos + 3 >= n)
+	pos += 24;
+	while (pos + 3 < n && !strstart(&config_buf[pos], "\r\n\r\n"))
+		pos++;
+	if (pos + 3 >= n)
 		return 0;
-	return cfg_pos + 4;
+	return pos + 4;
 }
 
 
