@@ -44,6 +44,7 @@
 // #define MACHINE_SWTG024AS_V2_0
 // #define MACHINE_FG_4GT_2SX_V2_0
 // #define MACHINE_FG_8GT_1SX
+// #define MACHINE_POE_2G080110GS
 
 typedef struct {
 	// GPIO pins for SDA/SCL
