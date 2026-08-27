@@ -25,6 +25,7 @@
 #include "machine.h"
 #include "phy.h"
 #include "syslog.h"
+#include "snmp.h"
 #include "httpd/page_impl.h"
 
 extern __code const struct machine machine;
@@ -2209,6 +2210,7 @@ void main(void)
 	check_and_flash_update_image();
 
 	syslog_init();
+	snmp_init();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
