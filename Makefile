@@ -83,6 +83,7 @@ SRCS += \
 	rtl837x_pins.c\
 	rtl837x_port.c \
 	rtl837x_stp.c \
+	rtl837x_lldp.c \
 	rtl837x_storm.c
 SRCS += \
 	httpd/httpd.c \
