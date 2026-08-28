@@ -772,8 +772,13 @@ void httpd_appcall(void)
 			goto do_send;
 		}
 
-		if (is_word(p, "GET"))
-			dbg_string("GET request ");
+		// We only expect a GET request here.
+		if (!is_word(p, "GET")) {
+			send_bad_request();
+			goto do_send;
+		}
+
+		dbg_string("GET request ");
 		p += 4;
 		scan_header(p);
 		__xdata uint8_t *q = p;

@@ -325,7 +325,10 @@ uint8_t port_l2_forget(void) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);
 
 	// Flush L2 table for all ports by setting the ports and the flush-exec bit (bit 16)
-	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
+	uint16_t mask = PMASK_6;
+	if (machine_detected.isRTL8373)
+		mask = PMASK_9;
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | mask);
 
 	// Wait for flush completed
 	do {
@@ -410,12 +413,14 @@ void port_l2_setup(void) __banked
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		// Limit the number of automatically learned MAC-Entries per port to 0x1040
-		uint16_t reg = RTL837X_L2_LRN_PORT_CONSTRAINT + (i << 2);
-		REG_SET(reg, 0x00001040);
+		uint8_t idx = (i << 2);
+		REG_SET(RTL837X_L2_LRN_PORT_CONSTRAINT + idx, 0x00001040);
 
 		// All ports may communicate with each other and CPU-Port
-		reg = RTL837X_PORT_ISOLATION_BASE + (i << 2);
-		REG_SET(reg, PMASK_CPU | (machine_detected.isRTL8373? PMASK_9 : PMASK_6));
+		uint16_t mask = PMASK_CPU | PMASK_6;
+		if (machine_detected.isRTL8373)
+			mask = PMASK_CPU | PMASK_9;
+		REG_SET(RTL837X_PORT_ISOLATION_BASE + idx, mask);
 	}
 	// When maximim entries learned, then simply flood the packet
 	reg_bit_set(RTL837X_L2_LRN_PORT_CONSTRT_ACT, 0);
@@ -826,19 +831,23 @@ void vlan_dump(void) __banked
 
 
 /** Set the ingress VLAN filtering */
-bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked
+bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != 9) {
+	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
 		return false;
 	}
-	reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, port);
+	if (enabled)
+		reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, port);
+	else
+		reg_bit_clear(RTL837X_VLAN_PORT_IGR_FLTR, port);
+
 	return true;
 }
 
 /** Get the ingress VLAN filtering status */
-bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked
+bool port_ingress_vlan_filter_get(uint8_t port) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != 9) {
+	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
 		return false;
 	}
 
