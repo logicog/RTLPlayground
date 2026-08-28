@@ -56,6 +56,7 @@ SRCS = \
 	machine_init.c \
 	cmd_editor.c \
 	cmd_parser.c \
+	lldp.c \
 	dhcp.c \
 	html_data.c \
 	rtlplayground.c \

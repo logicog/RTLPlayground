@@ -15,6 +15,7 @@
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "dhcp.h"
+#include "lldp.h"
 #include "syslog.h"
 #include "uip/uip.h"
 #include "version.h"
@@ -28,6 +29,7 @@
 extern __code struct machine machine;
 extern __xdata bool stp_enabled;
 extern __code uint8_t log_to_phys_port[9];
+extern __xdata uint8_t lldpEnabled;
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -1748,6 +1750,16 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "ingress")) {
 			parse_ingress();
+		} else if (cmd_compare(0, "lldp")) {
+			if (cmd_compare(1, "on")) {
+				print_string("LLDP enabled\n");
+				lldpEnabled = 1;
+				lldp_setup();
+			} else {
+				print_string("LLDP disabled\n");
+				lldp_off();
+				lldpEnabled = 0;
+			}
 		}
 		else {
 			print_string("Unknown command\n");

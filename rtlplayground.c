@@ -1211,7 +1211,7 @@ void handle_rx(void)
 		} else if (lldpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x0e && uip_buf[12] == 0x88
 			&& uip_buf[13] == 0xcc) {	//LLDP Mac + EtherType check
-			//lldp_packet_handler();	//TODO
+			// LLDP packets shouldn't be passed elsewhere
 			if(uip_len){
 				print_string("LLDP received\n");
 			}
