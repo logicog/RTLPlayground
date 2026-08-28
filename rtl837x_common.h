@@ -8,6 +8,7 @@
 #define SYS_TICK_HZ 200
 
 #define CPU_PORT        9
+#define NUL			'\0'
 
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff
@@ -135,6 +136,7 @@ void itoa(uint8_t v);
 void print_sfr_data(void);
 void print_phy_data(void);
 void print_cmd_prompt(void);
+void print_phys_port(uint8_t port);
 void phy_write_mask(uint16_t phy_mask, uint8_t dev_id, uint16_t reg, uint16_t v);
 void phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t v);
 void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg);
@@ -150,7 +152,8 @@ void sleep(uint16_t t);
 void write_char_no_syslog(char c);
 void write_char(char c);
 void print_reg(uint16_t reg);
-uint8_t sfp_read_reg(uint8_t slot, uint8_t reg);
+bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant;
+extern __xdata uint8_t sfp_buf[16];
 void reg_bit_set(uint16_t reg_addr, char bit);
 void reg_bit_clear(uint16_t reg_addr, char bit);
 uint8_t reg_bit_test(uint16_t reg_addr, char bit);
@@ -165,11 +168,13 @@ uint16_t strlen_x(register __xdata const char *s);
 uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s);
 uint16_t strcpy(register __xdata uint8_t *dst, register const char *s);
 char strcmp(register __xdata const uint8_t *a, register __code const uint8_t *b);
+bool strstart(__xdata const uint8_t *a, __code const uint8_t *b);
+bool strstart_x(__xdata const uint8_t *a, __xdata const uint8_t *b);
 void tcpip_output(void);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(__xdata uint32_t * tmr);
-void sfp_print_info(uint8_t sfp);
+bool sfp_print_info(uint8_t sfp);
 bool gpio_pin_test(uint8_t pin);
 void set_sys_led_state(uint8_t state);
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);

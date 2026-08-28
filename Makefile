@@ -53,6 +53,7 @@ create_build_dir:
 # Keep machine.c in first position to fail immediately on invalid $MACHINE value
 SRCS = \
 	machine.c \
+	machine_init.c \
 	cmd_editor.c \
 	cmd_parser.c \
 	dhcp.c \
@@ -142,6 +143,7 @@ machine_check:
 	do \
 	echo "Checking $${MACHINE}"; \
 	$(CC) $(CC_FLAGS) -DMACHINE_$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine.c; \
+	$(CC) $(CC_FLAGS) -DMACHINE_$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine_init.c; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
 

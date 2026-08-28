@@ -28,6 +28,7 @@
 // #define MACHINE_HG0402XG_V1_1
 // #define MACHINE_SWTG018AS_A_V_2_0
 // #define MACHINE_SWTGW218AS
+// #define MACHINE_PCB_SWTG018AS_V2_1_0
 // #define MACHINE_PCB_K0402WS_V3
 // #define MACHINE_K0501W_V2_0
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
@@ -104,6 +105,6 @@ typedef struct machine_runtime
 	uint8_t isN : 1;
 };
 
-void machine_custom_init(void);
+void machine_custom_init(void) __banked;
 
 #endif

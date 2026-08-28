@@ -41,6 +41,15 @@ __xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
+
+// a client may split the request anywhere, including inside a boundary or a
+// part header, so a configuration upload is parsed only once it is complete;
+// sized for a full config sector plus the multipart framing around it
+#define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
+__xdata uint8_t config_upload;
+__xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
+__xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+__xdata uint8_t cfg_bl;
 __xdata uint8_t *content_type = 0;
 __xdata uint8_t *session = 0;
 
@@ -77,6 +86,7 @@ inline uint8_t is_separator(uint8_t c)
 
 void httpd_init(void) __banked
 {
+	config_upload = 0; // xdata is not zeroed by the startup code
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	// Start listening to port 80
 	uip_listen(HTONS(80));
@@ -109,8 +119,8 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 		u = *xdata_str_p++;
 		c = *code_str_p++;
 
-		if (c == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+		if (c == NUL) {
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
 				return false;
 			return true;
 		}
@@ -130,8 +140,8 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 		u = *uri_str_p++;
 		s = *src_str_p++;
 
-		if (s == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+		if (s == NUL) {
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
 				return false;
 			return true;
 		}
@@ -173,9 +183,9 @@ bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 		u = *lhs_str_p++;
 		c = *rhs_str_p++;
 
-		if (c == '\0') {
+		if (c == NUL) {
 			/* ';' separates cookies in a Cookie header, so it ends a value too. */
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
 				return false;
 			return true;
 		}
@@ -315,6 +325,65 @@ void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
 }
 
 
+/* 0: body incomplete, 1: configuration stored, 2: malformed */
+static uint8_t config_take(void)
+{
+	cfg_bl = strlen_x(boundary);
+
+	// the body is complete once the closing boundary has arrived
+	cfg_last = 0;
+	while (1) {
+		if (cfg_last + cfg_bl + 1 >= write_len)
+			return 0;
+		if (strstart_x(&config_buf[cfg_last], boundary)
+		    && strstart(&config_buf[cfg_last + cfg_bl], "--"))
+			break;
+		cfg_last++;
+	}
+
+	// every part lies ahead of the closing boundary, so it bounds the walk
+	cfg_pos = 0;
+	while (cfg_pos < cfg_last) {
+		if (!strstart_x(&config_buf[cfg_pos], boundary)) {
+			cfg_pos++;
+			continue;
+		}
+		cfg_hdr = cfg_pos + cfg_bl;
+		cfg_body = cfg_hdr;
+		while (1) {
+			if (cfg_body + 3 >= cfg_last)
+				return 2;
+			if (strstart(&config_buf[cfg_body], "\r\n\r\n"))
+				break;
+			cfg_body++;
+		}
+		cfg_end = cfg_body;
+		cfg_body += 4;
+		// reaching cfg_last is a match: the last part ends at the closing boundary
+		while (cfg_end < cfg_last && !strstart_x(&config_buf[cfg_end], boundary))
+			cfg_end++;
+		while (cfg_hdr + 8 < cfg_body) {
+			// the part carrying a filename holds the configuration
+			if (strstart(&config_buf[cfg_hdr], "filename")) {
+				// the payload plus its terminator must fit the sector
+				if (cfg_end - cfg_body + 1 > CONFIG_LEN)
+					return 2;
+				config_buf[cfg_end] = 0;
+				flash_region.addr = CONFIG_START;
+				flash_sector_erase();
+				flash_region.addr = CONFIG_START;
+				flash_region.len = cfg_end - cfg_body + 1;
+				flash_write_bytes(config_buf + cfg_body);
+				return 1;
+			}
+			cfg_hdr++;
+		}
+		cfg_pos = cfg_end;
+	}
+	return 2;
+}
+
+
 /*
  * Reads post data from the http stream and writes it into flash memory
  * Input: the current position in the TCP buffer (uip_appdata)
@@ -418,10 +487,10 @@ void handle_post(void)
 		// Find end of request path
 		while (*p && !is_separator(*p))
 			p++;
-		*p++ = '\0';
+		*p++ = NUL;
 
 		// Find end of request header
-		boundary[0] ='\0';
+		boundary[0] =NUL;
 		p = scan_header(p);
 		dbg_string("Boundary: >"); dbg_string_x(boundary); dbg_string("<\n");
 		if (!*p || !content_type) {
@@ -437,6 +506,7 @@ void handle_post(void)
 				return;
 			}
 			print_string("Firmware upload started.");
+			config_upload = 0;
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
 			max_upload = 1024576;
@@ -445,12 +515,10 @@ void handle_post(void)
 				send_unauthorized();
 				return;
 			}
-			dbg_string("Configuration upload, erasing config mem!\n");
-			uptr = CONFIG_START;
+			dbg_string("Configuration upload\n");
 			verify_crc = 0;
-			max_upload = 2048;
-			flash_region.addr = CONFIG_START;
-			flash_sector_erase();
+			config_upload = 1;
+			write_len = 0;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -482,7 +550,7 @@ void handle_post(void)
 			dbg_string("Password accepted!\n");
 			read_reg_timer(&last_session_use);
 			gen_random_bytes(session_id, SESSION_ID_LENGTH);
-			session_id[SESSION_ID_LENGTH] = '\0';
+			session_id[SESSION_ID_LENGTH] = NUL;
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");
 			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
@@ -502,6 +570,32 @@ void handle_post(void)
 		if (!boundary[0]) {
 			dbg_string("Bad request, no boundary!\n");
 			send_bad_request();
+			return;
+		}
+		if (config_upload) {
+			cfg_pos = uip_len - (p - uip_appdata);
+			if (write_len + cfg_pos >= CONFIG_UPLOAD_BUF) {
+				print_string("Configuration too large, aborting.\n");
+				config_upload = 0;
+				s->tstate = TSTATE_NONE;
+				send_bad_request();
+				return;
+			}
+			memcpy(config_buf + write_len, p, cfg_pos);
+			write_len += cfg_pos;
+			uint8_t taken = config_take();
+
+			if (!taken) {
+				s->tstate = TSTATE_MULTIPART;
+				return;
+			}
+			config_upload = 0;
+			s->tstate = TSTATE_NONE;
+			if (taken == 2) {
+				send_bad_request();
+				return;
+			}
+			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
 			return;
 		}
 		// We skip the intial parts as part of the header
@@ -642,7 +736,7 @@ void httpd_appcall(void)
 		__xdata uint8_t *q = p;
 		while (*p && !is_separator(*p))
 			p++;
-		*p = '\0';
+		*p = NUL;
 		dbg_string_x(q);
 		dbg_char('\n');
 
@@ -664,16 +758,9 @@ void httpd_appcall(void)
 				parse_short(q + 15);
 				send_vlan(short_parsed);
 			} else if (is_word(q, "/counters.json")) {
-				/* The port is one raw character of the request line and
-				 * indexes a nine entry table, so bound it here instead
-				 * of trusting the client to have sent a digit. Anything
-				 * below '0' wraps well past eight, so the one test
-				 * covers both ends. */
 				uint8_t cport = q[20] - '0';
-				if (cport > 8)
+				if (send_counters(cport))
 					send_bad_request();
-				else
-					send_counters(cport);
 			} else if (is_word(q, "/eee.json")) {
 				send_eee();
 			} else if (is_word(q, "/bandwidth.json")) {
