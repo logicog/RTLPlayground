@@ -26,6 +26,9 @@ Top silkscreen is marked `2M-PCB51-ML-V1.1`. PoE is provided by RTL8238C. Flash 
 
 ## Flashing process
 
+> [!CAUTION]
+> This device operates on mains voltage, which can be a dangerous or potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely. Also, opening the device may void your warranty.
+
 This example uses `flashrom` and a CH341A programmer [modded for 3.3V](https://flashrom.org/supported_hw/supported_prog/ch341ab.html).
 
 ```
