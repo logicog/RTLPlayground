@@ -1214,7 +1214,6 @@ void handle_rx(void)
 			//lldp_packet_handler();	//TODO
 			if(uip_len){
 				print_string("LLDP received\n");
-				tcpip_output();
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0806)) { // ARP
 			uip_arp_arpin();
