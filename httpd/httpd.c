@@ -553,7 +553,7 @@ void handle_post(void)
 			session_id[SESSION_ID_LENGTH] = NUL;
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");
-			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
+			for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
 				outbuf[slen++] = session_id[i];
 			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 		} else {

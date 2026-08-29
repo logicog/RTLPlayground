@@ -124,7 +124,7 @@ struct psock {
   u8_t state;                   /* The state of the protosocket. */
 };
 
-void psock_init(__xdata struct psock *psock, register __xdata char *buffer, register uint16_t buffersize);
+void psock_init(__xdata struct psock *psock, __xdata char *buffer, uint16_t buffersize);
 /**
  * Initialize a protosocket.
  *
@@ -158,7 +158,7 @@ void psock_init(__xdata struct psock *psock, register __xdata char *buffer, regi
  */
 #define PSOCK_BEGIN(psock) PT_BEGIN(&((psock)->pt))
 
-PT_THREAD(psock_send(register __xdata struct psock *psock, register __xdata const char *buf, register uint16_t len));
+PT_THREAD(psock_send(__xdata struct psock *psock, __xdata const char *buf, uint16_t len));
 /**
  * Send data.
  *
