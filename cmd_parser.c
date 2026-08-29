@@ -1754,10 +1754,8 @@ void cmd_parser(void) __banked
 			if (cmd_compare(1, "on")) {
 				print_string("LLDP enabled\n");
 				lldpEnabled = 1;
-				lldp_on();
 			} else {
 				print_string("LLDP disabled\n");
-				lldp_off();
 				lldpEnabled = 0;
 			}
 		}

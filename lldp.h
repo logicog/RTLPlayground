@@ -9,10 +9,7 @@
 #define LLDP_MAX_FRAME       256
 #define LLDP_TX_INTERVAL_SEC 30
 
-void lldp_on(void);
-void lldp_off(void);
-
-void lldp_init(const uint8_t mac[6], const char *system_name);
+void lldp_init();
 void lldp_tick(void);
 uint16_t put_eth_header(uint8_t *p);
 uint16_t lldp_put_tlv(uint8_t *p, uint8_t type, const uint8_t *value, uint8_t value_len);

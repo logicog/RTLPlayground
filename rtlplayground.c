@@ -210,6 +210,7 @@ struct nonq_frame {
 // Ether-type of the output frame, which is the RTL tag on a CPU-tagged frame
 #define FRAME_ETHERTYPE (*(__xdata uint16_t *)&uip_buf[RTL_FRAME_DESC_SIZE + 2 * sizeof(struct uip_eth_addr)])
 
+
 __xdata static uint8_t lldp_frame[LLDP_MAX_FRAME];
 
 __xdata static uint8_t lldp_mac[6];
@@ -2304,7 +2305,7 @@ void main(void)
 	uip_init();
 	uip_arp_init();
 	httpd_init();
-	//lldp_init(uip_ethaddr.addr, "ROBTEST-TODO");
+	lldp_init();
 
 	management_vlan = 1; // Default management VLAN is 1
 
@@ -2339,17 +2340,6 @@ void main(void)
 	}
 }
 
-
-
-void lldp_on(void)
-{
-    enable_lldp = 1;
-}
-void lldp_off(void)
-{
-    enable_lldp = 0;
-}
-
 /*
  * LLDP Ethernet header.
  */
@@ -2365,7 +2355,7 @@ uint16_t put_eth_header(uint8_t *p)
     p[5] = 0x0e;
 
     for (i = 0; i < 6; i++)
-        p[6 + i] = lldp_mac[i];
+        p[6 + i] = uip_ethaddr.addr[i];
 
     p[12] = (uint8_t)(LLDP_ETHERTYPE >> 8);
     p[13] = (uint8_t)(LLDP_ETHERTYPE & 0xff);
@@ -2373,21 +2363,8 @@ uint16_t put_eth_header(uint8_t *p)
     return 14;
 }
 
-void lldp_init(const uint8_t mac[6], const char *system_name)
+void lldp_init()
 {
-    uint8_t i;
-
-    for (i = 0; i < 6; i++)
-        lldp_mac[i] = mac[i];
-
-    for (i = 0; i < sizeof(lldp_system_name) - 1; i++) {
-        lldp_system_name[i] = system_name[i];
-
-        if (system_name[i] == '\0')
-            break;
-    }
-
-    lldp_system_name[sizeof(lldp_system_name) - 1] = '\0';
 }
 
 void lldp_tick(void)
@@ -2401,7 +2378,7 @@ void lldp_tick(void)
 
     seconds = 0;
 
-    if(enable_lldp == 1)
+    if(lldpEnabled == 1)
         lldp_send();
 }
 
