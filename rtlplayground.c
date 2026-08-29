@@ -17,6 +17,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_init.h"
 #include "dhcp.h"
+#include "lldp.h"
 #include "cmd_parser.h"
 #include "cmd_editor.h"
 #include "uip/uipopt.h"
@@ -208,6 +209,13 @@ struct nonq_frame {
 
 // Ether-type of the output frame, which is the RTL tag on a CPU-tagged frame
 #define FRAME_ETHERTYPE (*(__xdata uint16_t *)&uip_buf[RTL_FRAME_DESC_SIZE + 2 * sizeof(struct uip_eth_addr)])
+
+__xdata static uint8_t lldp_frame[LLDP_MAX_FRAME];
+
+__xdata static uint8_t lldp_mac[6];
+__xdata static char lldp_system_name[32];
+
+uint8_t enable_lldp;
 
 void isr_timer0(void) __interrupt(1)
 {
@@ -1535,6 +1543,7 @@ void idle(void)
 		print_sfr_data();
 		write_char('\n');
 #endif
+		lldp_tick();
 	}
 
 	// Check for Link changes
@@ -2295,6 +2304,7 @@ void main(void)
 	uip_init();
 	uip_arp_init();
 	httpd_init();
+	//lldp_init(uip_ethaddr.addr, "ROBTEST-TODO");
 
 	management_vlan = 1; // Default management VLAN is 1
 
@@ -2327,4 +2337,234 @@ void main(void)
 		cmd_edit();
 		idle(); // Enter Idle mode until interrupt occurs
 	}
+}
+
+
+
+void lldp_on(void)
+{
+    enable_lldp = 1;
+}
+void lldp_off(void)
+{
+    enable_lldp = 0;
+}
+
+/*
+ * LLDP Ethernet header.
+ */
+uint16_t put_eth_header(uint8_t *p)
+{
+    uint8_t i;
+
+    p[0] = 0x01;
+    p[1] = 0x80;
+    p[2] = 0xc2;
+    p[3] = 0x00;
+    p[4] = 0x00;
+    p[5] = 0x0e;
+
+    for (i = 0; i < 6; i++)
+        p[6 + i] = lldp_mac[i];
+
+    p[12] = (uint8_t)(LLDP_ETHERTYPE >> 8);
+    p[13] = (uint8_t)(LLDP_ETHERTYPE & 0xff);
+
+    return 14;
+}
+
+void lldp_init(const uint8_t mac[6], const char *system_name)
+{
+    uint8_t i;
+
+    for (i = 0; i < 6; i++)
+        lldp_mac[i] = mac[i];
+
+    for (i = 0; i < sizeof(lldp_system_name) - 1; i++) {
+        lldp_system_name[i] = system_name[i];
+
+        if (system_name[i] == '\0')
+            break;
+    }
+
+    lldp_system_name[sizeof(lldp_system_name) - 1] = '\0';
+}
+
+void lldp_tick(void)
+{
+    static uint8_t seconds;
+
+    seconds++;
+
+    if (seconds < 30)
+        return;
+
+    seconds = 0;
+
+    if(enable_lldp == 1)
+        lldp_send(0);
+}
+
+
+uint16_t lldp_put_tlv(uint8_t *p, uint8_t type, const uint8_t *value, uint8_t value_len)
+{
+    uint16_t header;
+    uint8_t i;
+
+    header = ((uint16_t)type << 9) | value_len;
+
+    p[0] = header >> 8;
+    p[1] = header & 0xff;
+
+    for (i = 0; i < value_len; i++)
+        p[2 + i] = value[i];
+
+    return (uint16_t)value_len + 2;
+}
+
+uint16_t lldp_put_local_string_tlv(uint8_t *p, uint8_t type, const char *string)
+{
+    uint8_t value[32];
+    uint8_t length;
+    uint8_t i;
+
+    /*
+     * Subtype 7 = locally assigned.
+     */
+    value[0] = 7;
+    length = 1;
+
+    for (i = 0; i < sizeof(value) - 1; i++) {
+        if (string[i] == '\0')
+            break;
+
+        value[length++] = string[i];
+    }
+
+    return lldp_put_tlv(p, type, value, length);
+}
+
+uint16_t lldp_put_ttl_tlv(uint8_t *p, uint16_t ttl)
+{
+    uint8_t value[2];
+
+    value[0] = ttl >> 8;
+    value[1] = ttl & 0xff;
+
+    return lldp_put_tlv(p, 3, value, 2);
+}
+
+void lldp_send(uint16_t tx_ring_ptr)
+{
+    uint8_t *p;
+    uint8_t chassis[7];
+    uint8_t port[8];
+    uint16_t len;
+    uint8_t i;
+
+    p = (uint8_t *)&FRAME->dst;
+
+    FRAME->tx_seq = tx_seq++;
+    FRAME->chksum_flags = 0;
+    FRAME->reserved_1[0] = 0;
+    FRAME->reserved_1[1] = 0;
+    FRAME->reserved_2[0] = 0;
+    FRAME->reserved_2[1] = 0;
+
+    /*
+     * Destination MAC: 01:80:c2:00:00:0e
+     */
+    p[0] = 0x01;
+    p[1] = 0x80;
+    p[2] = 0xc2;
+    p[3] = 0x00;
+    p[4] = 0x00;
+    p[5] = 0x0e;
+
+    /*
+     * Source MAC.
+     */
+    for (i = 0; i < 6; i++)
+        p[6 + i] = uip_ethaddr.addr[i];
+
+    /*
+     * This minimal version sends an untagged Ethernet frame.
+     *static 
+     * If tcpip_output inserts a management VLAN tag into FRAME_Q, copy
+     * the exact TPID/TCI assignment from tcpip_output here.
+     *
+     * The Ethernet header is:
+     *
+     *   destination: 6 bytes
+     *   source:      6 bytes
+     *   EtherType:   2 bytes
+     */
+    p[12] = LLDP_ETHERTYPE >> 8;
+    p[13] = LLDP_ETHERTYPE & 0xff;
+
+    len = 14;
+
+    /*
+     * Chassis ID TLV.
+     *
+     * Type 1, subtype 7, locally assigned "switch".
+     */
+    chassis[0] = 7;
+    chassis[1] = 's';
+    chassis[2] = 'w';
+    chassis[3] = 'i';
+    chassis[4] = 't';
+    chassis[5] = 'c';
+    chassis[6] = 'h';
+
+    len += lldp_put_tlv(&p[len], 1, chassis, sizeof(chassis));
+
+    /*
+     * Port ID TLV.
+     *
+     * Type 2, subtype 7, locally assigned "cpu".
+     */
+    port[0] = 7;
+    port[1] = 'c';
+    port[2] = 'p';
+    port[3] = 'u';
+    port[4] = '-';
+    port[5] = 'p';
+    port[6] = 'o';
+    port[7] = 'r';
+
+    len += lldp_put_tlv(&p[len], 2, port, sizeof(port));
+
+    /*
+     * TTL TLV: 120 seconds.
+     */
+    len += lldp_put_ttl_tlv(&p[len], 120);
+
+    /*
+     * System Name TLV, type 5.
+     *
+     * hostname is already maintained by RTLPlayground.
+     */
+    len += lldp_put_local_string_tlv(&p[len], 5, hostname);
+
+    /*
+     * End of LLDPDU TLV.
+     */
+    p[len++] = 0;
+    p[len++] = 0;
+
+    /*
+     * Ethernet minimum frame size excluding FCS.
+     */
+    while (len < 60)
+        p[len++] = 0;
+
+    FRAME->len = len;
+
+    /*
+     * This performs the actual XMEM-to-ASIC transfer. It internally selects
+     * the correct uip_buf offset according to management_vlan.
+     */
+     //TODO
+    //nic_tx_packet(0);
 }
