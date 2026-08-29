@@ -2406,73 +2406,136 @@ void lldp_tick(void)
 }
 
 
-uint16_t lldp_put_tlv(uint8_t *p, uint8_t type, const uint8_t *value, uint8_t value_len)
+#define LLDP_TTL 120
+
+static uint16_t lldp_tlv_start(uint8_t *p, uint8_t type, uint8_t length)
 {
-    uint16_t header;
-    uint8_t i;
+    uint16_t h;
 
-    header = ((uint16_t)type << 9) | value_len;
+    h = ((uint16_t)type << 9) | length;
 
-    p[0] = header >> 8;
-    p[1] = header & 0xff;
+    p[0] = h >> 8;
+    p[1] = h & 0xff;
 
-    for (i = 0; i < value_len; i++)
-        p[2 + i] = value[i];
-
-    return (uint16_t)value_len + 2;
+    return 2;
 }
 
-uint16_t lldp_put_local_string_tlv(uint8_t *p, uint8_t type, const char *string)
+uint16_t lldp_add_chassis_id(uint8_t *p)
 {
-    uint8_t value[32];
-    uint8_t length;
-    uint8_t i;
+    /*
+     * Type 1, length 7:
+     *
+     * subtype 7 + "switch"
+     */
+    p[0] = 0x02;
+    p[1] = 0x07;
+    p[2] = 0x07;
+    p[3] = 's';
+    p[4] = 'w';
+    p[5] = 'i';
+    p[6] = 't';
+    p[7] = 'c';
+    p[8] = 'h';
+
+    return 9;
+}
+
+uint16_t lldp_add_port_id(uint8_t *p)
+{
+    /*
+     * Type 2, length 8:
+     *
+     * subtype 7 + "cpu-port"
+     */
+    p[0] = 0x04;
+    p[1] = 0x08;
+    p[2] = 0x07;
+    p[3] = 'c';
+    p[4] = 'p';
+    p[5] = 'u';
+    p[6] = '-';
+    p[7] = 'p';
+    p[8] = 'o';
+    p[9] = 'r';
+    p[10] = 't';
+
+    return 11;
+}
+
+uint16_t lldp_add_ttl(uint8_t *p)
+{
+    /*
+     * Type 3, length 2, TTL = 120 seconds.
+     */
+    p[0] = 0x06;
+    p[1] = 0x02;
+    p[2] = 0x00;
+    p[3] = LLDP_TTL;
+
+    return 4;
+}
+
+uint16_t lldp_add_system_name(uint8_t *p)
+{
+    uint8_t n;
 
     /*
-     * Subtype 7 = locally assigned.
+     * Type 5. Use a fixed short system name initially to avoid another
+     * local buffer. The value is "RTLPlayground".
      */
-    value[0] = 7;
-    length = 1;
+    n = 13;
 
-    for (i = 0; i < sizeof(value) - 1; i++) {
-        if (string[i] == '\0')
-            break;
+    p[0] = (uint8_t)((5 << 1) | (n >> 8));
+    p[1] = n & 0xff;
 
-        value[length++] = string[i];
-    }
+    p[2]  = 'R';
+    p[3]  = 'T';
+    p[4]  = 'L';
+    p[5]  = 'P';
+    p[6]  = 'l';
+    p[7]  = 'a';
+    p[8]  = 'y';
+    p[9]  = 'g';
+    p[10] = 'r';
+    p[11] = 'o';
+    p[12] = 'u';
+    p[13] = 'n';
+    p[14] = 'd';
 
-    return lldp_put_tlv(p, type, value, length);
-}
-
-uint16_t lldp_put_ttl_tlv(uint8_t *p, uint16_t ttl)
-{
-    uint8_t value[2];
-
-    value[0] = ttl >> 8;
-    value[1] = ttl & 0xff;
-
-    return lldp_put_tlv(p, 3, value, 2);
+    return 15;
 }
 
 void lldp_send(uint16_t tx_ring_ptr)
 {
     uint8_t *p;
-    uint8_t chassis[7];
-    uint8_t port[8];
     uint16_t len;
     uint8_t i;
 
-    p = (uint8_t *)&FRAME->dst;
+    /*
+     * Select the same descriptor view used by tcpip_output().
+     */
+    if (management_vlan) {
+        p = (uint8_t *)&FRAME_Q->dst;
 
-    FRAME->tx_seq = tx_seq++;
-    FRAME->chksum_flags = 0;
-    FRAME->reserved_1[0] = 0;
-    FRAME->reserved_1[1] = 0;
-    FRAME->reserved_2[0] = 0;
-    FRAME->reserved_2[1] = 0;
+        FRAME_Q->tx_seq = tx_seq++;
+        FRAME_Q->chksum_flags = 0;
+        FRAME_Q->reserved_1[0] = 0;
+        FRAME_Q->reserved_1[1] = 0;
+        FRAME_Q->reserved_2[0] = 0;
+        FRAME_Q->reserved_2[1] = 0;
+    } else {
+        p = (uint8_t *)&FRAME->dst;
+
+        FRAME->tx_seq = tx_seq++;
+        FRAME->chksum_flags = 0;
+        FRAME->reserved_1[0] = 0;
+        FRAME->reserved_1[1] = 0;
+        FRAME->reserved_2[0] = 0;
+        FRAME->reserved_2[1] = 0;
+    }
 
     /*
-     * Destination MAC: 01:80:c2:00:00:0e
+     * Destination: 01:80:c2:00:00:0e
      */
     p[0] = 0x01;
     p[1] = 0x80;
@@ -2488,83 +2551,34 @@ void lldp_send(uint16_t tx_ring_ptr)
         p[6 + i] = uip_ethaddr.addr[i];
 
     /*
-     * This minimal version sends an untagged Ethernet frame.
-     *static 
-     * If tcpip_output inserts a management VLAN tag into FRAME_Q, copy
-     * the exact TPID/TCI assignment from tcpip_output here.
-     *
-     * The Ethernet header is:
-     *
-     *   destination: 6 bytes
-     *   source:      6 bytes
-     *   EtherType:   2 bytes
+     * EtherType: LLDP.
      */
-    p[12] = LLDP_ETHERTYPE >> 8;
-    p[13] = LLDP_ETHERTYPE & 0xff;
+    p[12] = 0x88;
+    p[13] = 0xcc;
 
     len = 14;
 
-    /*
-     * Chassis ID TLV.
-     *
-     * Type 1, subtype 7, locally assigned "switch".
-     */
-    chassis[0] = 7;
-    chassis[1] = 's';
-    chassis[2] = 'w';
-    chassis[3] = 'i';
-    chassis[4] = 't';
-    chassis[5] = 'c';
-    chassis[6] = 'h';
-
-    len += lldp_put_tlv(&p[len], 1, chassis, sizeof(chassis));
-
-    /*
-     * Port ID TLV.
-     *
-     * Type 2, subtype 7, locally assigned "cpu".
-     */
-    port[0] = 7;
-    port[1] = 'c';
-    port[2] = 'p';
-    port[3] = 'u';
-    port[4] = '-';
-    port[5] = 'p';
-    port[6] = 'o';
-    port[7] = 'r';
-
-    len += lldp_put_tlv(&p[len], 2, port, sizeof(port));
-
-    /*
-     * TTL TLV: 120 seconds.
-     */
-    len += lldp_put_ttl_tlv(&p[len], 120);
-
-    /*
-     * System Name TLV, type 5.
-     *
-     * hostname is already maintained by RTLPlayground.
-     */
-    len += lldp_put_local_string_tlv(&p[len], 5, hostname);
+    len += lldp_add_chassis_id(&p[len]);
+    len += lldp_add_port_id(&p[len]);
+    len += lldp_add_ttl(&p[len]);
+    len += lldp_add_system_name(&p[len]);
 
     /*
      * End of LLDPDU TLV.
      */
-    p[len++] = 0;
-    p[len++] = 0;
+    p[len++] = 0x00;
+    p[len++] = 0x00;
 
     /*
-     * Ethernet minimum frame size excluding FCS.
+     * Ethernet minimum length, excluding FCS.
      */
     while (len < 60)
         p[len++] = 0;
 
-    FRAME->len = len;
+    if (management_vlan)
+        FRAME_Q->len = len;
+    else
+        FRAME->len = len;
 
-    /*
-     * This performs the actual XMEM-to-ASIC transfer. It internally selects
-     * the correct uip_buf offset according to management_vlan.
-     */
-     //TODO
-    //nic_tx_packet(0);
+    nic_tx_packet(tx_ring_ptr);
 }
