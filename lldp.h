@@ -18,6 +18,6 @@ uint16_t put_eth_header(uint8_t *p);
 uint16_t lldp_put_tlv(uint8_t *p, uint8_t type, const uint8_t *value, uint8_t value_len);
 uint16_t lldp_put_local_string_tlv(uint8_t *p, uint8_t type, const char *string);
 uint16_t lldp_put_ttl_tlv(uint8_t *p, uint16_t ttl);
-void lldp_send(uint16_t tx_ring_ptr);
+void lldp_send(void);
 
 #endif

@@ -2402,66 +2402,80 @@ void lldp_tick(void)
     seconds = 0;
 
     if(enable_lldp == 1)
-        lldp_send(0);
+        lldp_send();
 }
 
-
-#define LLDP_TTL 120
-
-void lldp_send(uint16_t tx_ring_ptr)
+void lldp_send(void)
 {
     uint8_t *p;
     uint16_t len;
+    uint16_t ring_ptr;
     uint8_t i;
 
-	p = (uint8_t *)&FRAME->dst;
-
-	FRAME->tx_seq = tx_seq++;
-	FRAME->chksum_flags = 0;
-	FRAME->reserved_1[0] = 0;
-	FRAME->reserved_1[1] = 0;
-	FRAME->reserved_2[0] = 0;
-	FRAME->reserved_2[1] = 0;
+    /*
+     * FRAME is the normal, untagged TX layout.
+     *
+     * Do not select FRAME_Q here initially. Build the frame in FRAME first,
+     * then perform the same management-VLAN shift as tcpip_output().
+     */
+    p = (uint8_t *)&FRAME->dst;
 
     /*
-     * Ethernet header.
+     * Initialize the RTL TX descriptor.
+     *
+     * LLDP is not an IP packet, so hardware checksum insertion should be
+     * disabled. tcpip_output() uses 0x07 for IP packets.
      */
-    p[0]  = 0x01;
-    p[1]  = 0x80;
-    p[2]  = 0xc2;
-    p[3]  = 0x00;
-    p[4]  = 0x00;
-    p[5]  = 0x0e;
+    FRAME->tx_seq = tx_seq++;
+    FRAME->chksum_flags = 0x00;
+    FRAME->reserved_1[0] = 0x00;
+    FRAME->reserved_1[1] = 0x00;
+    FRAME->reserved_2[0] = 0x00;
+    FRAME->reserved_2[1] = 0x00;
 
+    /*
+     * Ethernet destination:
+     * 01:80:c2:00:00:0e
+     */
+    p[0] = 0x01;
+    p[1] = 0x80;
+    p[2] = 0xc2;
+    p[3] = 0x00;
+    p[4] = 0x00;
+    p[5] = 0x0e;
+
+    /*
+     * Ethernet source.
+     */
     for (i = 0; i < 6; i++)
         p[6 + i] = uip_ethaddr.addr[i];
 
+    /*
+     * EtherType: LLDP, 0x88cc.
+     */
     p[12] = 0x88;
     p[13] = 0xcc;
 
     len = 14;
 
     /*
-     * Chassis ID:
+     * Chassis ID TLV:
      *
      * Type 1, length 7
-     * Subtype 7, "switch"
+     * Subtype 7, value "RTL"
      */
     p[len++] = 0x02;
     p[len++] = 0x07;
     p[len++] = 0x07;
-    p[len++] = 's';
-    p[len++] = 'w';
-    p[len++] = 'i';
-    p[len++] = 't';
-    p[len++] = 'c';
-    p[len++] = 'h';
-
+    p[len++] = 'R';
+    p[len++] = 'T';
+    p[len++] = 'L';
+    
     /*
-     * Port ID:
+     * Port ID TLV:
      *
      * Type 2, length 8
-     * Subtype 7, "cpu"
+     * Subtype 7, value "cpu-port"
      */
     p[len++] = 0x04;
     p[len++] = 0x08;
@@ -2471,14 +2485,15 @@ void lldp_send(uint16_t tx_ring_ptr)
     p[len++] = 'u';
 
     /*
-     * TTL:
+     * TTL TLV:
      *
-     * Type 3, length 2, value 120 seconds.
+     * Type 3, length 2
+     * Value 120 seconds
      */
     p[len++] = 0x06;
     p[len++] = 0x02;
     p[len++] = 0x00;
-    p[len++] = LLDP_TTL;
+    p[len++] = 120;
 
     /*
      * End of LLDPDU.
@@ -2486,10 +2501,31 @@ void lldp_send(uint16_t tx_ring_ptr)
     p[len++] = 0x00;
     p[len++] = 0x00;
 
+    /*
+     * Ethernet minimum frame size, excluding FCS.
+     */
     while (len < 60)
-        p[len++] = 0;
+        p[len++] = 0x00;
 
-	FRAME->len = len;
+    FRAME->len = len;
 
-    nic_tx_packet(tx_ring_ptr);
+    /*
+     * Obtain the current CPU TX ring position exactly as tcpip_output()
+     * does.
+     */
+    reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
+
+    ring_ptr = ((uint16_t)sfr_data[2]) << 8;
+    ring_ptr |= sfr_data[3];
+
+    /*
+     * Copy the frame from XRAM to the ASIC-side TX buffer.
+     */
+    nic_tx_packet(ring_ptr);
+
+    /*
+     * Complete the ASIC-side transmission exactly as tcpip_output() does.
+     */
+    reg_read_m(RTL837X_REG_NIC_TX_CURR_PKT);
+    REG_SET(RTL837X_REG_NIC_TXCMD, 1);
 }
