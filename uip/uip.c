@@ -157,7 +157,7 @@ __xdata u16_t uip_len, uip_slen;
 __xdata u8_t uip_flags;     /* The uip_flags variable is used for
 				communication between the TCP/IP stack
 				and the application program. */
-__xdata struct uip_conn *uip_conn;   /* uip_conn always points to the current
+__xdata struct uip_conn * __xdata uip_conn;   /* uip_conn always points to the current
 				connection. */
 
 __xdata struct uip_conn uip_conns[UIP_CONNS];
@@ -167,7 +167,7 @@ __xdata u16_t uip_listenports[UIP_LISTENPORTS];
                              /* The uip_listenports list all currently
 				listning ports. */
 #if UIP_UDP
-__xdata struct uip_udp_conn *uip_udp_conn;
+__xdata struct uip_udp_conn * __xdata uip_udp_conn;
 __xdata struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
 #endif /* UIP_UDP */
 
@@ -400,7 +400,7 @@ uip_init(void) __banked
 /*---------------------------------------------------------------------------*/
 #if UIP_ACTIVE_OPEN
 __xdata struct uip_conn *
-uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
+uip_connect(__xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 {
   __xdata struct uip_conn *conn, *cconn;
   
@@ -466,7 +466,7 @@ uip_connect(register __xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banke
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
 __xdata struct uip_udp_conn *
-uip_udp_new(__xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
+uip_udp_new(__xdata uip_ipaddr_t * __xdata ripaddr, __xdata u16_t rport) __banked
 {
   __xdata struct uip_udp_conn *conn;
   
@@ -677,7 +677,7 @@ uip_add_rcv_nxt(u16_t n)
 void
 uip_process(u8_t flag) __banked
 {
-  register __xdata struct uip_conn *uip_connr = uip_conn;
+  __xdata struct uip_conn *uip_connr = uip_conn;
 
 #if UIP_UDP
   if(flag == UIP_UDP_SEND_CONN) {

@@ -213,7 +213,7 @@ uint8_t flash_read_status(void)
  * Reads bulk data of length len from the flash memory starging at address src
  * and writes the data into a buffer pointed to by dst in XMEM
  */
-void flash_read_bulk(register __xdata uint8_t *dst, __xdata uint32_t src, register uint16_t len)
+void flash_read_bulk(__xdata uint8_t *dst, __xdata uint32_t src, uint16_t len)
 {
 	short status;
 	do {
