@@ -48,10 +48,8 @@ __xdata uint8_t boundary[72];
 #define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
-__xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
 // part-header bytes buffered so far; accumulates across TCP segments
 __xdata uint16_t pre_acc;
-__xdata uint8_t cfg_bl;
 __xdata uint8_t * __xdata content_type = 0;
 __xdata uint8_t * __xdata session = 0;
 
@@ -325,6 +323,10 @@ void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 /* 0: body incomplete, 1: configuration stored, 2: malformed */
 static uint8_t config_take(void)
 {
+	// #386: needs static, otherwise it still lands in SRAM/DSEG
+	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+	__xdata uint8_t cfg_bl;
+
 	cfg_bl = strlen_x(boundary);
 
 	// the body is complete once the closing boundary has arrived
@@ -505,6 +507,7 @@ void handle_post(void)
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint8_t *p = uip_appdata;
 	__xdata uint8_t *request_path = p + 6;
+	__xdata uint16_t frag_len, payload_start;
 
 	// Was the multipart header sent in multiple packets?
 	if (s->tstate != TSTATE_MULTIPART) {
@@ -600,16 +603,16 @@ void handle_post(void)
 			return;
 		}
 		if (config_upload) {
-			cfg_pos = uip_len - (p - uip_appdata);
-			if (write_len + cfg_pos >= CONFIG_UPLOAD_BUF) {
+			frag_len = uip_len - (p - uip_appdata);
+			if (write_len + frag_len >= CONFIG_UPLOAD_BUF) {
 				print_string("Configuration too large, aborting.\n");
 				config_upload = 0;
 				s->tstate = TSTATE_NONE;
 				send_bad_request();
 				return;
 			}
-			memcpy(config_buf + write_len, p, cfg_pos);
-			write_len += cfg_pos;
+			memcpy(config_buf + write_len, p, frag_len);
+			write_len += frag_len;
 			uint8_t taken = config_take();
 
 			if (!taken) {
@@ -625,17 +628,17 @@ void handle_post(void)
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
 			return;
 		}
-		cfg_pos = uip_len - (p - uip_appdata);
-		if (pre_acc + cfg_pos >= CONFIG_UPLOAD_BUF) {
+		frag_len = uip_len - (p - uip_appdata);
+		if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 			print_string("Firmware upload header too large, aborting.\n");
 			s->tstate = TSTATE_NONE;
 			send_bad_request();
 			return;
 		}
-		memcpy(config_buf + pre_acc, p, cfg_pos);
-		pre_acc += cfg_pos;
-		cfg_end = preamble_payload_start(pre_acc);
-		if (!cfg_end) {
+		memcpy(config_buf + pre_acc, p, frag_len);
+		pre_acc += frag_len;
+		payload_start = preamble_payload_start(pre_acc);
+		if (!payload_start) {
 			s->tstate = TSTATE_MULTIPART;
 			return;
 		}
@@ -652,7 +655,7 @@ void handle_post(void)
 		// appcall POST branch cannot send leftovers
 		slen = 0;
 		upload_settings.p = config_buf;
-		upload_settings.bptr = cfg_end;
+		upload_settings.bptr = payload_start;
 		upload_settings.plen = pre_acc;
 		stream_upload();
 
