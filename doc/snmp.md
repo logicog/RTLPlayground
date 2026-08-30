@@ -38,14 +38,14 @@ therefore follows the `hostname` command.
 ## Testing from the LAN
 
 ```
-snmpwalk -v2c -c public 192.168.0.5 system
-snmpwalk -v2c -c public 192.168.0.5 ifTable
+snmpwalk -v2c -c public 192.168.10.247 system
+snmpwalk -v2c -c public 192.168.10.247 ifTable
 ```
 
 Or, to browse everything the agent serves:
 
 ```
-snmpwalk -v2c -c public 192.168.0.5 .1.3.6.1.2.1
+snmpwalk -v2c -c public 192.168.10.247 .1.3.6.1.2.1
 ```
 
 ## Served MIB
