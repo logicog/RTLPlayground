@@ -48,7 +48,8 @@ __xdata uint8_t boundary[72];
 #define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
-// part-header bytes buffered so far; accumulates across TCP segments
+// bytes buffered in config_buf so far (config body, or a firmware part
+// header); accumulates across TCP segments
 __xdata uint16_t pre_acc;
 __xdata uint8_t * __xdata content_type = 0;
 __xdata uint8_t * __xdata session = 0;
@@ -332,7 +333,7 @@ static uint8_t config_take(void)
 	// the body is complete once the closing boundary has arrived
 	cfg_last = 0;
 	while (1) {
-		if (cfg_last + cfg_bl + 1 >= write_len)
+		if (cfg_last + cfg_bl + 1 >= pre_acc)
 			return 0;
 		if (strstart_x(&config_buf[cfg_last], boundary)
 		    && strstart(&config_buf[cfg_last + cfg_bl], "--"))
@@ -548,7 +549,7 @@ void handle_post(void)
 			dbg_string("Configuration upload\n");
 			verify_crc = 0;
 			config_upload = 1;
-			write_len = 0;
+			pre_acc = 0;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -604,15 +605,15 @@ void handle_post(void)
 		}
 		if (config_upload) {
 			frag_len = uip_len - (p - uip_appdata);
-			if (write_len + frag_len >= CONFIG_UPLOAD_BUF) {
+			if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 				print_string("Configuration too large, aborting.\n");
 				config_upload = 0;
 				s->tstate = TSTATE_NONE;
 				send_bad_request();
 				return;
 			}
-			memcpy(config_buf + write_len, p, frag_len);
-			write_len += frag_len;
+			memcpy(config_buf + pre_acc, p, frag_len);
+			pre_acc += frag_len;
 			uint8_t taken = config_take();
 
 			if (!taken) {
