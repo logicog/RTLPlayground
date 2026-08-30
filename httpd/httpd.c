@@ -503,12 +503,83 @@ uint8_t stream_upload(void)
 }
 
 
+static void handle_config_fragment(__xdata uint8_t *p)
+{
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
+	__xdata uint16_t frag_len;
+	uint8_t taken;
+
+	frag_len = uip_len - (p - uip_appdata);
+	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
+		print_string("Configuration too large, aborting.\n");
+		config_upload = 0;
+		s->tstate = TSTATE_NONE;
+		send_bad_request();
+		return;
+	}
+	memcpy(config_buf + pre_acc, p, frag_len);
+	pre_acc += frag_len;
+	taken = config_take();
+	if (!taken) {
+		s->tstate = TSTATE_MULTIPART;
+		return;
+	}
+	config_upload = 0;
+	s->tstate = TSTATE_NONE;
+	if (taken == 2) {
+		send_bad_request();
+		return;
+	}
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+}
+
+
+static void handle_firmware_fragment(__xdata uint8_t *p)
+{
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
+	__xdata uint16_t frag_len, payload_start;
+
+	frag_len = uip_len - (p - uip_appdata);
+	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
+		print_string("Firmware upload header too large, aborting.\n");
+		config_upload = 0;
+		s->tstate = TSTATE_NONE;
+		send_bad_request();
+		return;
+	}
+	memcpy(config_buf + pre_acc, p, frag_len);
+	pre_acc += frag_len;
+	payload_start = preamble_payload_start(pre_acc);
+	if (!payload_start) {
+		s->tstate = TSTATE_MULTIPART;
+		return;
+	}
+	dbg_string("Have content octets\n");
+
+	flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
+	set_sys_led_state(SYS_LED_FAST);
+
+	crc_value = 0;
+	bindex = 0;
+	write_len = 0;
+	// A verdict is only built once the upload part completes;
+	// clear any stale response so the completion check in the
+	// appcall POST branch cannot send leftovers
+	slen = 0;
+	upload_settings.p = config_buf;
+	upload_settings.bptr = payload_start;
+	upload_settings.plen = pre_acc;
+	stream_upload();
+
+	dbg_string("Done reading first fragment\n");
+}
+
+
 void handle_post(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint8_t *p = uip_appdata;
 	__xdata uint8_t *request_path = p + 6;
-	__xdata uint16_t frag_len, payload_start;
 
 	// Was the multipart header sent in multiple packets?
 	if (s->tstate != TSTATE_MULTIPART) {
@@ -603,66 +674,11 @@ void handle_post(void)
 			send_bad_request();
 			return;
 		}
-		if (config_upload) {
-			frag_len = uip_len - (p - uip_appdata);
-			if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
-				print_string("Configuration too large, aborting.\n");
-				config_upload = 0;
-				s->tstate = TSTATE_NONE;
-				send_bad_request();
-				return;
-			}
-			memcpy(config_buf + pre_acc, p, frag_len);
-			pre_acc += frag_len;
-			uint8_t taken = config_take();
-
-			if (!taken) {
-				s->tstate = TSTATE_MULTIPART;
-				return;
-			}
-			config_upload = 0;
-			s->tstate = TSTATE_NONE;
-			if (taken == 2) {
-				send_bad_request();
-				return;
-			}
-			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-			return;
-		}
-		frag_len = uip_len - (p - uip_appdata);
-		if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
-			print_string("Firmware upload header too large, aborting.\n");
-			s->tstate = TSTATE_NONE;
-			send_bad_request();
-			return;
-		}
-		memcpy(config_buf + pre_acc, p, frag_len);
-		pre_acc += frag_len;
-		payload_start = preamble_payload_start(pre_acc);
-		if (!payload_start) {
-			s->tstate = TSTATE_MULTIPART;
-			return;
-		}
-		dbg_string("Have content octets\n");
-
-		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
-		set_sys_led_state(SYS_LED_FAST);
-
-		crc_value = 0;
-		bindex = 0;
-		write_len = 0;
-		// A verdict is only built once the upload part completes;
-		// clear any stale response so the completion check in the
-		// appcall POST branch cannot send leftovers
-		slen = 0;
-		upload_settings.p = config_buf;
-		upload_settings.bptr = payload_start;
-		upload_settings.plen = pre_acc;
-		stream_upload();
-
-		dbg_string("Done reading first fragment\n");
+		if (config_upload)
+			handle_config_fragment(p);
+		else
+			handle_firmware_fragment(p);
 		return;
-
 	} else {
 		send_not_found();
 		return;
