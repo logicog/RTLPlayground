@@ -65,11 +65,8 @@ __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
 
-/* Scratch for parse_syslog()'s port parser, in xdata: locals here would take
- * internal RAM the linker has none of. */
-__xdata uint16_t syslog_port_scratch;
-__xdata uint8_t  syslog_port_idx;
-__xdata uint8_t  syslog_port_digit;
+/* Scratch for parse_syslog(), in xdata: a local here would take internal RAM
+ * the linker has none of. */
 __xdata uint8_t  syslog_port_was_on;
 
 // These variables combined create a Fixed-capacity vector/bounded buffer.
@@ -1453,28 +1450,9 @@ void parse_syslog(void)
 			itoa_short(syslog_state.server_port); write_char('\n');
 			return;
 		}
-		/* Parsed here rather than with atoi_short(), which reports "no
-		 * digits" but not overflow - 65540 would quietly wrap to 4 and we
-		 * would open a connection to a port nobody asked for. Checking
-		 * before each multiply keeps this in 16-bit arithmetic. */
-		syslog_port_scratch = 0;
-		syslog_port_idx = cmd_words_b[2];
-		for (;;) {
-			syslog_port_digit = cmd_buffer[syslog_port_idx];
-			if (syslog_port_digit < '0' || syslog_port_digit > '9')
-				break;
-			syslog_port_digit -= '0';
-			if (syslog_port_scratch > 6553
-			    || (syslog_port_scratch == 6553 && syslog_port_digit > 5)) {
-				syslog_port_scratch = 0;	/* too large - reject below */
-				break;
-			}
-			syslog_port_scratch = syslog_port_scratch * 10 + syslog_port_digit;
-			syslog_port_idx++;
-		}
-		/* Zero covers all three ways to be wrong: no digits at all, a value
-		 * past 65535, and an explicit "0", which is not a port either. */
-		if (!syslog_port_scratch) {
+		/* atoi_short() returns zero for no digits and for a value past
+		 * 65535; port zero is not a port either, so both tests are needed. */
+		if (!atoi_short(cmd_words_b[2]) || !atoi_results_short) {
 			print_string("Invalid port\n");
 			return;
 		}
@@ -1485,7 +1463,7 @@ void parse_syslog(void)
 		if (syslog_port_was_on)
 			syslog_stop();
 		print_string("Setting new syslog port.\n");
-		syslog_state.server_port = syslog_port_scratch;
+		syslog_state.server_port = atoi_results_short;
 		if (syslog_port_was_on)
 			syslog_start();
 	}
