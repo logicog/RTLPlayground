@@ -401,20 +401,27 @@ static uint16_t preamble_payload_start(uint16_t n)
 }
 
 
+// Source window for stream_upload(); filled by the caller before the call
+__xdata struct {
+	__xdata uint8_t *p;
+	uint16_t bptr;
+	uint16_t plen;
+} upload_settings;
+
 /*
  * Reads post data from the http stream and writes it into flash memory
- * Input: the current position in the TCP buffer (uip_appdata)
+ * Input: upload_settings, set by the caller
  * Returns 1: More data to read, 0: Upload complete, all parts reads
  */
-uint8_t stream_upload(__xdata uint8_t *p, uint16_t bptr, uint16_t plen)
+uint8_t stream_upload(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
 	dbg_string("Stream_upload called: ");
-	dbg_short(bptr); dbg_char('\n');
+	dbg_short(upload_settings.bptr); dbg_char('\n');
 
 	do {
-		if (bptr >= plen) {
+		if (upload_settings.bptr >= upload_settings.plen) {
 			s->tstate = TSTATE_POST;
 			return 1;
 		}
@@ -451,15 +458,15 @@ uint8_t stream_upload(__xdata uint8_t *p, uint16_t bptr, uint16_t plen)
 			flash_region.addr = uptr;
 			flash_region.len = 1;
 			flash_write_bytes(flash_buf);
-			if (bptr >= plen)
+			if (upload_settings.bptr >= upload_settings.plen)
 				return 0;
 			return 1;
 		}
-		if (p[bptr] == boundary[bindex]) {
+		if (upload_settings.p[upload_settings.bptr] == boundary[bindex]) {
 			if (!bindex)
 				crc_final = crc_value;
-			crc16(p + bptr);
-			bptr++;
+			crc16(upload_settings.p + upload_settings.bptr);
+			upload_settings.bptr++;
 			bindex++;
 		} else {
 			if (bindex) {
@@ -467,8 +474,8 @@ uint8_t stream_upload(__xdata uint8_t *p, uint16_t bptr, uint16_t plen)
 				write_len += bindex;
 				bindex = 0;
 			}
-			crc16(p + bptr);
-			flash_buf[write_len++] = p[bptr++];
+			crc16(upload_settings.p + upload_settings.bptr);
+			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
 				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
@@ -644,7 +651,10 @@ void handle_post(void)
 		// clear any stale response so the completion check in the
 		// appcall POST branch cannot send leftovers
 		slen = 0;
-		stream_upload(config_buf, cfg_end, pre_acc);
+		upload_settings.p = config_buf;
+		upload_settings.bptr = cfg_end;
+		upload_settings.plen = pre_acc;
+		stream_upload();
 
 		dbg_string("Done reading first fragment\n");
 		return;
@@ -727,7 +737,10 @@ void httpd_appcall(void)
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		// Check here maxupload by subtracting uip_len and close socekt if fails!
 		if (max_upload - uip_len > 0) {
-			stream_upload(uip_appdata, 0, uip_len);
+			upload_settings.p = uip_appdata;
+			upload_settings.bptr = 0;
+			upload_settings.plen = uip_len;
+			stream_upload();
 			// A completed part with a built verdict must go out
 			// through the normal TX path
 			if (s->tstate == TSTATE_NONE && slen)
