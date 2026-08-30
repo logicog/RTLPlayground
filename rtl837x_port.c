@@ -30,7 +30,7 @@ __xdata	uint32_t l2_head;
 
 __xdata struct vlan_settings vlan_settings;
 
-void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
+void port_mirror_set(uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
 	print_string("\nport_mirror_set called \n");
 	print_string("Mirroring port: "); print_byte(port); print_string(" with rx-mask: ");
@@ -162,7 +162,7 @@ void vlan_name_remove(uint16_t vlan) __banked
  * Reads VLAN information from VLAN table
  * Returns data in sfr_data
  */
-int8_t vlan_get(register uint16_t vlan) __banked
+int8_t vlan_get(uint16_t vlan) __banked
 {
 	if (vlan >= 0xfff) // VLAN 4095 is special
 		return -1;
@@ -177,7 +177,7 @@ int8_t vlan_get(register uint16_t vlan) __banked
 }
 
 
-__xdata uint16_t vlan_name(register uint16_t vlan) __banked
+__xdata uint16_t vlan_name(uint16_t vlan) __banked
 {
 	__xdata int16_t i = 0;
 	__xdata uint8_t begin = 1;
@@ -505,14 +505,14 @@ void port_stats_print(void) __banked
 }
 
 
-void port_isolate(register uint8_t port, __xdata uint16_t pmask) __banked
+void port_isolate(uint8_t port, __xdata uint16_t pmask) __banked
 {
 	if (port <= machine.max_port)
 		REG_SET(RTL837X_PORT_ISOLATION_BASE + (port << 2), pmask);
 }
 
 
-uint16_t port_isolation_get(register uint8_t port) __banked
+uint16_t port_isolation_get(uint8_t port) __banked
 {
 	if (port > machine.max_port)
 		return 0;

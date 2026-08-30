@@ -14,6 +14,11 @@
 #include "uip.h"
 #include "machine.h"
 
+// All entry points are __banked and nothing here runs from an interrupt,
+// so the module does not need to stay in the resident bank
+#pragma codeseg BANK2
+#pragma constseg BANK2
+
 extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 

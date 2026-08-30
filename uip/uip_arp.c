@@ -175,7 +175,7 @@ uip_arp_timer(void) __banked
 }
 /*-----------------------------------------------------------------------------------*/
 static void
-uip_arp_update(__xdata u16_t *ipaddr, __xdata struct uip_eth_addr *ethaddr)
+uip_arp_update(__xdata u16_t * __xdata ipaddr, __xdata struct uip_eth_addr * __xdata ethaddr)
 {
   uint8_t i;
   /* Walk through the ARP mapping table and try to find an entry to

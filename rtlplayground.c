@@ -312,20 +312,20 @@ void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16
 		*d++ = *s++;
 }
 
-void memcpyc(register __xdata uint8_t *dst, register __code uint8_t *src, register uint16_t len)
+void memcpyc(__xdata uint8_t *dst, __code uint8_t *src, uint16_t len)
 {
 	while (len--)
 		*dst++ = *src++;
 }
 
 
-void memset(register __xdata uint8_t *dst, register __xdata uint8_t v, register uint8_t len)
+void memset(__xdata uint8_t *dst, __xdata uint8_t v, uint8_t len)
 {
 	while (len--)
 		*dst++ = v;
 }
 
-uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
+uint16_t strtox(__xdata uint8_t *dst, __code const char *s)
 {
 	__xdata uint8_t *b = dst;
 	while (*s)
@@ -335,7 +335,7 @@ uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
 }
 
 
-uint16_t strlen(register __code const char *s)
+uint16_t strlen(__code const char *s)
 {
 	uint16_t l = 0;
 	while (s[l])
@@ -344,7 +344,7 @@ uint16_t strlen(register __code const char *s)
 }
 
 
-uint16_t strlen_x(register __xdata const char *s)
+uint16_t strlen_x(__xdata const char *s)
 {
 	uint16_t l = 0;
 	while (s[l])
@@ -353,7 +353,7 @@ uint16_t strlen_x(register __xdata const char *s)
 }
 
 
-char strcmp(register __xdata const uint8_t *a, register __code const uint8_t *b)
+char strcmp(__xdata const uint8_t *a, __code const uint8_t *b)
 {
 	uint8_t i = 0;
 
@@ -668,7 +668,7 @@ void nic_rx_header(uint16_t ring_ptr)
  * data will be returned in the xmem buffer points to
  * ring_ptr is the current position of the RX Ring on the ASIC side
  */
-void nic_rx_packet(register uint16_t buffer, register uint16_t ring_ptr)
+void nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
 {
 	SFR_NIC_DATA_U16LE = buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
@@ -1221,7 +1221,7 @@ void handle_tx(void)
 }
 
 
-static inline uint8_t sfp_rate_to_sds_config(register uint8_t rate)
+static inline uint8_t sfp_rate_to_sds_config(uint8_t rate)
 {
 	if (rate == 0x1 || rate == 0x2)
 		return SDS_100FX;

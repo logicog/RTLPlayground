@@ -157,14 +157,14 @@ void sfr_data_to_html(void)
 }
 
 
-void reg_to_html(register uint16_t reg)
+void reg_to_html(uint16_t reg)
 {
 	reg_read_m(reg);
 	sfr_data_to_html();
 }
 
 
-void reg_to_html_long(register uint16_t reg)
+void reg_to_html_long(uint16_t reg)
 {
 	reg_read_m(reg);
 	byte_to_html(sfr_data[0]);
@@ -697,13 +697,13 @@ void send_status(void)
 					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
+				for (uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
 					outbuf[slen++] = sfp_module_vendor[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
+				for (uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
 					outbuf[slen++] = sfp_module_model[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
+				for (uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
 					outbuf[slen++] = sfp_module_serial[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
