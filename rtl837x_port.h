@@ -8,11 +8,12 @@
 #define STAT_COUNTER_RX_PKTS	47
 #define STAT_COUNTER_ERR_PKTS	48
 
-#define STAT_GET(cnt, port) \
+#define STAT_GET(cnt, port) do { \
 	REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, cnt >> 3, (cnt << 5) | (port << 1) | 1); \
 	do { \
 		reg_read_m(RTL837X_STAT_GET); \
-	} while (sfr_data[3] & 0x1);
+	} while (sfr_data[3] & 0x1); \
+	} while (0)
 
 // Possible values for ingress filter type
 typedef enum {
