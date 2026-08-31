@@ -1830,13 +1830,15 @@ void init_smi(void)
 	// Default: 0x000000ff
 	// Workaround for SDCC BUG 4070: SFR_DATA_U32 = 0x000000ff;
 	SFR_DATA_U16_UPPER = 0x0000;
-	SFR_DATA_U16= 0x00ff;
+	SFR_DATA_U16 = 0x00ff;
 	if (!machine_detected.isRTL8373) {
 		if (machine.n_sfp == 2) {
+			// 0x000000f0, only change the bytes that differs from the default.
 			SFR_DATA_0 = 0xf0;
 		} else {
+			// 0x000001f8, only change the bytes that differs from the default.
+			SFR_DATA_8 = 0x01;
 			SFR_DATA_0 = 0xf8;
-			SFR_DATA_16 = 0x1f;
 		}
 	}
 	reg_write(RTL837X_REG_SMI_PORT_POLLING);
