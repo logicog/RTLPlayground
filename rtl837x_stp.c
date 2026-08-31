@@ -35,6 +35,7 @@ extern __xdata uint8_t cmd_words_b[15];
 extern __xdata char save_cmd;		/* 0 while execute_config() replays the saved config */
 uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd);
 uint8_t atoi_byte(uint8_t idx);
+uint8_t cmd_parse_port_separator(uint8_t idx);
 extern __xdata uint8_t atoi_results_u8;
 
 /* ---- Configuration ---- */
@@ -660,7 +661,7 @@ void stp_timers(void) __banked
  * (before the startup config replays "stp ..." commands over it). */
 void stp_defaults(void) __banked
 {
-	stp_prio = 0x80;	/* 32768 */
+	stp_prio = 0x80;	/* high byte of the priority: 0x8000 is 32768 */
 	stp_hello_s = 2;
 	stp_maxage_s = 20;
 	stp_fwddelay_s = 15;
@@ -805,12 +806,9 @@ void stp_parse(void) __banked __reentrant
 	if (cmd_compare(1, "port")) {
 		if (cmd_words_len < 4)
 			goto err;
-		if (!atoi_byte(cmd_words_b[2]))
+		if (!cmd_parse_port_separator(cmd_words_b[2]))
 			goto err;
-		stp_scratch = atoi_results_u8;
-		if (stp_scratch < 1 || stp_scratch > 9)
-			goto err;
-		port = machine.phys_to_log_port[stp_scratch - 1];
+		port = atoi_results_u8;
 		if (cmd_words_len < 5 && !cmd_compare(3, "on") && !cmd_compare(3, "off"))
 			goto err;
 		if (cmd_compare(3, "on")) {
@@ -863,7 +861,9 @@ void stp_parse(void) __banked __reentrant
 		} else if (cmd_compare(3, "prio")) {
 			if (!atoi_byte(cmd_words_b[4]))
 				goto err;
-			stp_pprio[port] = atoi_results_u8 & 0xf0;
+			if (atoi_results_u8 > 240 || (atoi_results_u8 & 0x0f))
+				goto err;
+			stp_pprio[port] = atoi_results_u8;
 		} else if (cmd_compare(3, "guard")) {
 			stp_pflags[port] &= ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD);
 			if (cmd_compare(4, "bpdu"))
