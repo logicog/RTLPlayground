@@ -254,7 +254,7 @@ static void stp_record_designated(uint8_t port) __reentrant
 /* Lexicographic compare of n bytes. A MAC is 6 of them; a Bridge Identifier
  * is 8, the two priority octets ahead of the MAC, compared as one unsigned
  * number per 802.1D. */
-signed char cmpBytes(__xdata uint8_t *m1, __xdata uint8_t *m2, uint8_t n) __reentrant
+int8_t cmpBytes(__xdata uint8_t *m1, __xdata uint8_t *m2, uint8_t n) __reentrant
 {
 	for (uint8_t i = 0; i < n; i++) {
 		if (m1[i] == m2[i])

@@ -323,8 +323,8 @@ void port_l2_forget_port(uint8_t port) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (((uint16_t)1) << port));
 
 	do {
-		reg_read_m(RTL837x_L2_TBL_FLUSH_CTRL);
-	} while (sfr_data[1]);
+		reg_read(RTL837x_L2_TBL_FLUSH_CTRL);
+	} while (SFR_DATA_16);
 }
 
 
@@ -421,16 +421,16 @@ void port_l2_learned(void) __banked
 void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
 {
 	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & TBL_EXECUTE);
 
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0xc2, 0x00, 0x00, mac_last);
 	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | (vid >> 8) | ((pmask & 0x3) << 6), vid, 0x01, 0x80);
 	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0, 0, 0, pmask >> 2);
 	REG_WRITE(RTL837X_TBL_CTRL, 0, 0, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
 	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & TBL_EXECUTE);
 }
 
 

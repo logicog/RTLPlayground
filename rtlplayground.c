@@ -121,7 +121,7 @@ __xdata uint16_t management_vlan;
 __xdata bool frame_tagged;
 __xdata uint8_t tx_seq;
 
-__xdata uint8_t stp_enabled;
+__xdata bool stp_enabled;
 __xdata uint8_t igmpEnabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 

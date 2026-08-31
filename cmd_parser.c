@@ -26,7 +26,7 @@
 #pragma constseg BANK2
 
 extern __code struct machine machine;
-extern __xdata uint8_t stp_enabled;
+extern __xdata bool stp_enabled;
 extern __code uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
