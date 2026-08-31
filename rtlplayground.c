@@ -1813,18 +1813,35 @@ void init_smi(void)
 	/* Set the SMI(i.e.I2C) type for PHY polling, 0b01 is 2.5/10G PHY. Disable (0b00) for the SFP-ports
 	 * which are at port 8 and additionally at port 3 for a dual SFP device
 	 */
+
+	// Default: 0x00005555
+	// Workaround for SDCC BUG 4070: SFR_DATA_U32 = 0x00005555;
+	SFR_DATA_U16_UPPER = 0x0000;
+	SFR_DATA_U16 = 0x5555;
 	if (machine.n_10g == 2) {
-		REG_SET(RTL837X_REG_SMI_MAC_TYPE, 0x00015555);
-	} else {
-		REG_SET(RTL837X_REG_SMI_MAC_TYPE, machine.n_sfp == 2 ? 0x00005515 : 0x00005555);
-	}
+		// 0x00015555, only change the bytes that differs from the default.
+		SFR_DATA_16 = 0x01;
+	} else if (machine.n_sfp == 2)
+		// 0x00005515
+		SFR_DATA_0 = 0x15;
+	reg_write(RTL837X_REG_SMI_MAC_TYPE);
 
 	// Configure polling of all PHYs by the MAC to detect link-state changes
-	if (machine_detected.isRTL8373) {
-		REG_SET(RTL837X_REG_SMI_PORT_POLLING, 0xff);
-	} else {
-		REG_SET(RTL837X_REG_SMI_PORT_POLLING, machine.n_sfp == 2 ? 0xf0 : 0x1f8);
+	// Default: 0x000000ff
+	// Workaround for SDCC BUG 4070: SFR_DATA_U32 = 0x000000ff;
+	SFR_DATA_U16_UPPER = 0x0000;
+	SFR_DATA_U16 = 0x00ff;
+	if (!machine_detected.isRTL8373) {
+		if (machine.n_sfp == 2) {
+			// 0x000000f0, only change the bytes that differs from the default.
+			SFR_DATA_0 = 0xf0;
+		} else {
+			// 0x000001f8, only change the bytes that differs from the default.
+			SFR_DATA_8 = 0x01;
+			SFR_DATA_0 = 0xf8;
+		}
 	}
+	reg_write(RTL837X_REG_SMI_PORT_POLLING);
 	// Enable MDC
 	reg_read_m(RTL837X_REG_SMI_CTRL);
 	sfr_mask_data(1, 0, 0x70); 	// Set bits 12-14 to enable MDC for SMI0-SMI2

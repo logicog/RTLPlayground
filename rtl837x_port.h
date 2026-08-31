@@ -74,8 +74,8 @@ void port_eee_enable(__xdata uint8_t port, __xdata uint8_t speed) __banked;
 void port_eee_disable(uint8_t port) __banked;
 void port_eee_status(uint8_t port) __banked;
 void print_port_ingress_filter_mode(vlan_ingress_mode_t mode) __banked;
-bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked;
-bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked;
+bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked;
+bool port_ingress_vlan_filter_get(uint8_t port) __banked;
 void port_isolate(uint8_t port, __xdata uint16_t pmask) __banked;
 uint16_t port_isolation_get(uint8_t port) __banked;
 

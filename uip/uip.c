@@ -373,11 +373,10 @@ uip_udpchksum(void)
 void
 uip_init(void) __banked
 {
-  uint8_t c;
-  for(c = 0; c < UIP_LISTENPORTS; ++c) {
+  for(uint8_t c = 0; c < UIP_LISTENPORTS; c++) {
     uip_listenports[c] = 0;
   }
-  for(c = 0; c < UIP_CONNS; ++c) {
+  for(uint8_t c = 0; c < UIP_CONNS; c++) {
     uip_conns[c].tcpstateflags = UIP_CLOSED;
   }
 #if UIP_ACTIVE_OPEN
@@ -385,7 +384,7 @@ uip_init(void) __banked
 #endif /* UIP_ACTIVE_OPEN */
 
 #if UIP_UDP
-  for(c = 0; c < UIP_UDP_CONNS; ++c) {
+  for(uint8_t c = 0; c < UIP_UDP_CONNS; c++) {
     uip_udp_conns[c].lport = 0;
   }
 #endif /* UIP_UDP */
@@ -1461,7 +1460,7 @@ uip_process(u8_t flag) __banked
   }
 
   /* Do different things depending on in what state the connection is. */
-  switch(uip_connr->tcpstateflags & UIP_TS_MASK) {
+  switch(uip_connr->tcpstateflags & (uint8_t)UIP_TS_MASK) {
     /* CLOSED and LISTEN are not handled here. CLOSE_WAIT is not
 	implemented, since we force the application to close when the
 	peer sends a FIN (hence the application goes directly from
