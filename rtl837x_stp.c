@@ -24,8 +24,6 @@ extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata struct machine_runtime machine_detected;
 
-__xdata uint16_t stp_fdb_vid;
-__xdata uint8_t  stp_fdb_i;
 
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
@@ -691,6 +689,9 @@ void stp_defaults(void) __banked
  */
 static void stp_fdb_update(__xdata uint16_t pmask)
 {
+	uint16_t stp_fdb_vid;
+	uint8_t  stp_fdb_i;
+
 	/* Unlike LACPDUs (always untagged, so per-PVID entries suffice), BPDUs
 	 * can arrive VLAN-tagged and then classify into the tag's VID - cover
 	 * every VLAN that exists in the VLAN table, plus every port's PVID for
