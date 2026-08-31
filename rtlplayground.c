@@ -118,6 +118,7 @@ __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
 __xdata uint16_t rx_packet_vlan;
 __xdata uint16_t management_vlan;
+__xdata bool frame_tagged;
 __xdata uint8_t tx_seq;
 
 __xdata uint8_t stp_enabled;
@@ -711,13 +712,11 @@ void nic_tx_packet(uint16_t ring_ptr)
 	uint16_t len;
 	uint16_t guard = 0;
 
-	/* If we have a management VLAN, we have inserted a dot1Q-tag into the frame and
-	 * the frame starts at the beginning of uip_buf with the RTL TX descriptor,
-	 * otherwise the frame is a normal Ethernet frame which starts with
-	 * an RTL TX descriptor being padded at the beginning, in the second case
-	 * we need to skip the padding for the sending of the frame.
+	/* A frame that got a dot1Q tag was shifted forward over its padding, so it
+	 * starts at uip_buf and carries the q_frame layout. One that did not keeps
+	 * the padding in front and the nonq_frame layout, so the padding is skipped.
 	 */
-	if (management_vlan) {
+	if (frame_tagged) {
 		SFR_NIC_DATA_U16LE = (uint16_t) uip_buf;
 		len = FRAME_Q->len;
 		/*
@@ -1122,7 +1121,9 @@ void tcpip_output(void)
 
 	// For the management VLAN we insert an 802.1Q VLAN tag, but never into a
 	// CPU-tagged frame, where the ASIC expects its tag right behind the addresses
+	frame_tagged = false;
 	if (management_vlan && FRAME_ETHERTYPE != HTONS(RTL_FRAME_TAG_ID)) {
+		frame_tagged = true;
 		// Shift the ethernet header before the HW type including the rtl_frame_desc to the beginning of uip_buf
 		// to allow space to insert the dot 1Q tag
 		for (uint8_t i = 0; i < sizeof(struct q_frame) - DOT_1Q_TAG_SIZE; i++)
