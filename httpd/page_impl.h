@@ -1,7 +1,9 @@
 #ifndef __PAGE_IMPL_H__
 #define __PAGE_IMPL_H__
 
-void send_counters(char port);
+#include <stdbool.h>
+
+bool send_counters(uint8_t phys_port);
 void send_status(void);
 void send_vlan(uint16_t vlan);
 void send_basic_info(void);

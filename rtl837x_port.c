@@ -30,7 +30,7 @@ __xdata	uint32_t l2_head;
 
 __xdata struct vlan_settings vlan_settings;
 
-void port_mirror_set(register uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
+void port_mirror_set(uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
 	print_string("\nport_mirror_set called \n");
 	print_string("Mirroring port: "); print_byte(port); print_string(" with rx-mask: ");
@@ -87,10 +87,9 @@ vlan_ingress_mode_t port_ingress_filter_get(__xdata uint8_t port) __banked
 /*
  * Define a Primary VLAN ID for a port 
 */
-void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
+static void port_pvid_write(uint8_t port, __xdata uint16_t pvid)
 {
 	// r4e1c:00001001 R4e1c-000017d0 r6738:00000000 R6738-00000000 (no filtering)
-	print_string("\nport_pvid_set called \n");
 	uint16_t reg = RTL837x_PVID_BASE_REG + ((port >> 1) << 2);
 
 	reg_read_m(reg);
@@ -99,6 +98,22 @@ void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 	} else {
 		REG_WRITE(reg, sfr_data[0], sfr_data[1], sfr_data[2] & 0xf0 | (pvid >> 8), pvid);
 	}
+}
+
+void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
+{
+	uint8_t lag = port_lag_of(port);
+
+	print_string("\nport_pvid_set called \n");
+	if (lag == PORT_LAG_NONE) {
+		port_pvid_write(port, pvid);
+		return;
+	}
+
+	uint16_t members = port_lag_members_get(lag);
+	for (uint8_t i = 0; i < 10; i++)
+		if ((members >> i) & 1)
+			port_pvid_write(i, pvid);
 }
 
 uint16_t port_pvid_get(uint8_t port) __banked
@@ -162,7 +177,7 @@ void vlan_name_remove(uint16_t vlan) __banked
  * Reads VLAN information from VLAN table
  * Returns data in sfr_data
  */
-int8_t vlan_get(register uint16_t vlan) __banked
+int8_t vlan_get(uint16_t vlan) __banked
 {
 	if (vlan >= 0xfff) // VLAN 4095 is special
 		return -1;
@@ -177,7 +192,7 @@ int8_t vlan_get(register uint16_t vlan) __banked
 }
 
 
-__xdata uint16_t vlan_name(register uint16_t vlan) __banked
+__xdata uint16_t vlan_name(uint16_t vlan) __banked
 {
 	__xdata int16_t i = 0;
 	__xdata uint8_t begin = 1;
@@ -390,10 +405,7 @@ void port_l2_learned(void) __banked
 				print_string("\tlearned\t");
 
 			port |= (sfr_data[3] & 0x3) << 2;
-			if (port < 9)
-				write_char(machine.log_to_phys_port[port] + '0');
-			else
-				print_string("CPU");
+			print_phys_port(port);
 		}
 
 		entry++;
@@ -431,7 +443,7 @@ void port_stats_print(void) __banked
 {
 	print_string("\nPort\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		write_char('0' + machine.log_to_phys_port[i]); write_char('\t');
+		print_phys_port(i); write_char('\t');
 
 		if (!machine.is_sfp[i]) {
 			phy_read(i, PHY_MMD31, 0xa610);
@@ -508,14 +520,14 @@ void port_stats_print(void) __banked
 }
 
 
-void port_isolate(register uint8_t port, __xdata uint16_t pmask) __banked
+void port_isolate(uint8_t port, __xdata uint16_t pmask) __banked
 {
 	if (port <= machine.max_port)
 		REG_SET(RTL837X_PORT_ISOLATION_BASE + (port << 2), pmask);
 }
 
 
-uint16_t port_isolation_get(register uint8_t port) __banked
+uint16_t port_isolation_get(uint8_t port) __banked
 {
 	if (port > machine.max_port)
 		return 0;
@@ -606,7 +618,7 @@ void port_eee_disable(uint8_t port) __banked
 
 void port_eee_status(uint8_t port) __banked
 {
-	print_string("Port: "); write_char('0' + machine.log_to_phys_port[port]);
+	print_string("Port: "); print_phys_port(port);
 	print_string(": ");
 	if (machine.is_sfp[port]) {
 		print_string("SFP\n");
@@ -745,6 +757,14 @@ uint16_t port_lag_members_get(uint8_t lag) __banked
 	return ((uint16_t)SFR_DATA_8 << 8) | SFR_DATA_0;
 }
 
+uint8_t port_lag_of(uint8_t port) __banked
+{
+	for (uint8_t lag = 0; lag < 4; lag++)
+		if ((port_lag_members_get(lag) >> port) & 1)
+			return lag;
+	return PORT_LAG_NONE;
+}
+
 
 /*
  * Configure LAGs
@@ -799,16 +819,6 @@ void print_port_ingress_filter_mode(vlan_ingress_mode_t mode) __banked
 	default:
 		print_string("!!err!!");
 	}
-}
-
-static void print_phys_port(uint8_t port) __banked
-{
-	if (port >= machine.min_port && port <= machine.max_port)
-		write_char(machine.log_to_phys_port[port] + '0');
-	else if (port == 9)
-		write_char('9');
-	else
-		write_char('?');
 }
 
 void print_vlan_ingress_port(uint8_t log_port) __banked

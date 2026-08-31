@@ -5,9 +5,23 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 
-#ifdef MACHINE_KP_9000_6XHML_X2
+#if defined(MACHINE_KP_9000_6XHML_X2) || \
+	defined(MACHINE_KP_9000_6XH_X2_V1_1) || \
+	defined(MACHINE_KP_9000_6XHML_X2_V1_1) || \
+	defined(MACHINE_KP_9000_6XH_X2_V1_2) || \
+	defined(MACHINE_KP_9000_6XHML_X2_V1_2)
 __code const struct machine machine = {
+#if defined(MACHINE_KP_9000_6XH_X2_V1_1)
+	.machine_name = "keepLink KP-9000-6XH V1.1",
+#elif defined(MACHINE_KP_9000_6XHML_X2_V1_1)
+	.machine_name = "keepLink KP-9000-6XHML V1.1",
+#elif defined(MACHINE_KP_9000_6XH_X2_V1_2)
+	.machine_name = "keepLink KP-9000-6XH V1.2",
+#elif defined(MACHINE_KP_9000_6XHML_X2_V1_2)
+	.machine_name = "keepLink KP-9000-6XHML V1.2",
+#else
 	.machine_name = "keepLink KP-9000-6XHML-X2",
+#endif
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
@@ -42,8 +56,6 @@ __code const struct machine machine = {
 		    },
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_KP_9000_6XH_X
 __code const struct machine machine = {
 	.machine_name = "keepLink KP-9000-6XH-X",
@@ -72,11 +84,15 @@ __code const struct machine machine = {
 		    },
 };
 
-void machine_custom_init(void) { }
-
-#elif defined MACHINE_KP_9000_6XH_X2
+#elif defined(MACHINE_KP_9000_6XH_X2) || defined(MACHINE_KP_9000_6XH_X2_V2_1) || defined(MACHINE_KP_9000_6XHML_X2_V2_1)
 __code const struct machine machine = {
+#if defined(MACHINE_KP_9000_6XHML_X2_V2_1)
+	.machine_name = "keepLink KP-9000-6XHML V2.1",
+#elif defined(MACHINE_KP_9000_6XH_X2_V2_1)
+	.machine_name = "keepLink KP-9000-6XH-X2 V2.1",
+#else
 	.machine_name = "keepLink KP-9000-6XH-X2",
+#endif
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
@@ -122,10 +138,6 @@ __code const struct machine machine = {
 		},
 	};
 
-void machine_custom_init(void) {
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-}
-
 #elif defined MACHINE_KP_9000_9XH_X_EU
 __code const struct machine machine = {
 	.machine_name = "keepLink KP-9000-9XH-X-EU",
@@ -150,8 +162,6 @@ __code const struct machine machine = {
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };
-
-void machine_custom_init(void) { }
 
 #elif defined MACHINE_KP_9000_9XHML_X_V2_2
 __code const struct machine machine = {
@@ -204,8 +214,6 @@ __code const struct machine machine = {
 	},
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_KP_9000_9XHML_X_V3_1
 __code const struct machine machine = {
 	.machine_name = "keepLink KP-9000-9XHML-X V3.1",
@@ -240,8 +248,6 @@ __code const struct machine machine = {
 				0x11, 0x0e, 0x14, 0x11, 0x12, 0x15, 0x15, 0x16, 0x18, 0x19,
 				0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21},
 };
-
-void machine_custom_init(void) { }
 
 #elif defined MACHINE_SWGT024_V2_0_MANAGED
 __code const struct machine machine = {
@@ -284,8 +290,6 @@ __code const struct machine machine = {
 	},
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_SWGT024_V2_0_UNMANAGED
 __code const struct machine machine = {
 	.machine_name = "SWGT024 V2.0 Unmanaged",
@@ -327,8 +331,6 @@ __code const struct machine machine = {
 	},
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_SWTG018AS_A_V_2_0
 __code const struct machine machine = {
 	.machine_name = "SWTG018AS-A V2.0",
@@ -368,8 +370,6 @@ __code const struct machine machine = {
 		     0x1d, 0x20, 0x21 },
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_HG0402XG_V1_1
 __code const struct machine machine = {
 	.machine_name = "HG0402XG V1.1",
@@ -408,8 +408,6 @@ __code const struct machine machine = {
 		    },
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_SWTGW218AS
 
 __code const struct machine machine = {
@@ -443,7 +441,48 @@ __code const struct machine machine = {
 				},
 };
 
-void machine_custom_init(void) { }
+#elif defined MACHINE_PCB_SWTG018AS_V2_1_0 // Sold as Sodola SL902 / Horaco "SWTGW218AS"; the SWTGW218AS label also covers other PCBs with different SFP and LED wiring (see MACHINE_SWTGW218AS)
+
+__code const struct machine machine = {
+	.machine_name = "SWTGW218AS (SWTG018AS-V2.1.0)",
+	.isRTL8373 = 1,
+	.mac_flash_offset = 0x1FC000,
+	.min_port = 0,
+	.max_port = 8,
+	.n_sfp = 1,
+	.log_to_phys_port = {1, 2, 3, 4, 5, 6, 7, 8, 9},
+	.phys_to_log_port = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.sfp_port[0].pin_detect = GPIO38,   // pulled low on module insert
+	.sfp_port[0].pin_los = GPIO_NA,     // no LOS pin wired
+	.sfp_port[0].pin_tx_disable = GPIO_NA,
+	.sfp_port[0].sds = 1,
+	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO54_ACL_BIT2_EN,
+	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
+	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
+	// LED wiring matches the SWTG018AS-A V2.0 (same PCB family)
+	.led_sets = {
+		{   /* RJ45: First LED, yellow, second LED: green */
+			LEDS_2G5 | LEDS_LINK,
+			LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+			0,
+			0,
+		}, { /* SFP set (superseded by the raw register override in machine_custom_init) */
+			LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
+			0,
+			0,
+			0,
+		}},
+	.led_mux_custom = 1,
+	.led_mux = { 0x00, 0x01, 0x04, 0x05, 0x08, // 65e0
+		     0x09, 0x0c, 0x09, 0x0d, 0x10, // 65e4
+		     0x11, 0x0e, 0x14, 0x11, 0x12, // 65e8
+		     0x15, 0x15, 0x16, 0x18, 0x19, // 65ec
+		     0x1a, 0x19, 0x1d, 0x1e, 0x1c, // 65f0
+		     0x1d, 0x20, 0x21 },
+};
+
 #elif defined MACHINE_LIANGUO_ZX_SWTGW215AS // Has PCB branded PCB-SWTG115AS-V2.0 but is labeled and reports as a ZX-SWTGW215AS, seems to be identical to the "real" ZX-SWTGW215AS except for the LEDs
 __code const struct machine machine = {
 	.machine_name = "Lianguo ZX-SWTGW215AS",
@@ -476,8 +515,6 @@ __code const struct machine machine = {
 	.led_mux_custom = 0,
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_DEFAULT_8C_1SFP
 __code const struct machine machine = {
 	.machine_name = "8+1 SFP Port Switch",
@@ -502,8 +539,6 @@ __code const struct machine machine = {
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };
-
-void machine_custom_init(void) { }
 
 #elif defined MACHINE_TRENDNET_TEG_S562
 __code const struct machine machine = {
@@ -543,8 +578,6 @@ __code const struct machine machine = {
 	},
 
 };
-
-void machine_custom_init(void) { }
 
 #elif defined(MACHINE_PCB_K0402WS_V3) || defined(MACHINE_HI_K0402WS)  // Sold as a variety of devices, see doc/
 __code const struct machine machine = {
@@ -592,10 +625,6 @@ __code const struct machine machine = {
 		},
 	};
 
-void machine_custom_init(void) { 
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-}
-
 #elif defined MACHINE_K0501W_V2_0
 __code const struct machine machine = {
 	.machine_name = "K0501W V2.0",
@@ -629,8 +658,6 @@ __code const struct machine machine = {
 		},
 	 },
 };
-
-void machine_custom_init(void) { }
 
 #elif defined MACHINE_ZX310S_4T2XH
 __code const struct machine machine = {
@@ -674,8 +701,6 @@ __code const struct machine machine = {
 		      }
 		    },
 };
-
-void machine_custom_init(void) { }
 
 #elif defined MACHINE_STEAMEMO_IG204_V1
 __code const struct machine machine = {
@@ -727,8 +752,6 @@ __code const struct machine machine = {
 	},
 };
 
-void machine_custom_init(void) { }
-
 #elif defined MACHINE_HI_K0801WS
 __code const struct machine machine = {
     .machine_name = "Hi-Source HI-k0801WS",
@@ -777,8 +800,6 @@ __code const struct machine machine = {
         },
     },
 };
-
-void machine_custom_init(void) { }
 
 #elif defined MACHINE_FNS1200P
 __code const struct machine machine = {
@@ -835,11 +856,6 @@ __code const struct machine machine = {
     },
 };
 
-void machine_custom_init(void)
-{
-    reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-}
-
 
 #elif defined MACHINE_PCB_SWTG024AS_A_2_0_1
 __code const struct machine machine = {
@@ -889,14 +905,6 @@ __code const struct machine machine = {
             },
     };
 
-void machine_custom_init(void)
-{
-    reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-    reg_bit_set(RTL837X_REG_LED_MODE, 17);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 9);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 7);
-}
-
 #elif defined MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
 __code const struct machine machine = {
     .machine_name = "SWTG024AS-A-V2.0.1-5C-1SFP",
@@ -939,25 +947,6 @@ __code const struct machine machine = {
                             0x00,0x01,0x04,0x05,0x08,0x09,0x0c,0x3f,0x0d,0x10,0x11,0x0e,0x14,0x11,0x12,0x15,0x15,0x16,0x18,0x19,0x1a,0x19,0x1d,0x1e,0x1c,0x1d,0x20,0x21
             },
     };
-
-void machine_custom_init(void)
-{
-    uint16_t pval;
-
-    reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-    reg_bit_set(RTL837X_REG_LED_MODE, 17);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 9);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 7);
-
-    // OEM firmware sets these companion SDS0 polarity bits for the RTL8221B.
-    sds_read(0, 0, 0);
-    pval = SFR_DATA_U16;
-    sds_write_v(0, 0, 0, pval | 0x100);
-
-    sds_read(0, 6, 2);
-    pval = SFR_DATA_U16;
-    sds_write_v(0, 6, 2, pval | 0x4000);
-}
 
 #elif defined MACHINE_SWTG024AS_V2_0
 __code const struct machine machine = {
@@ -1002,25 +991,6 @@ __code const struct machine machine = {
             },
     };
 
-void machine_custom_init(void)
-{
-    uint16_t pval;
-
-    reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-    reg_bit_set(RTL837X_REG_LED_MODE, 17);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 9);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 7);
-
-    // OEM firmware sets these companion SDS0 polarity bits for the RTL8221B.
-    sds_read(0, 0, 0);
-    pval = SFR_DATA_U16;
-    sds_write_v(0, 0, 0, pval | 0x100);
-
-    sds_read(0, 6, 2);
-    pval = SFR_DATA_U16;
-    sds_write_v(0, 6, 2, pval | 0x4000);
-}
-
 #elif defined MACHINE_ZX310S_4T2XT
 __code const struct machine machine = {
 	.machine_name = "ZX310S_4T2XT",
@@ -1057,12 +1027,6 @@ __code const struct machine machine = {
 		      }
 		    },
 };
-
-void machine_custom_init(void) {
-	// For this device, the reset value of RTL837X_PIN_MUX_0 is 0x30000000,
-	// which would disables all LEDS, enable them manually:
-	REG_SET(RTL837X_PIN_MUX_0, 0x30db68bf);
-}
 
 #elif defined MACHINE_FG_4GT_2SX_V2_0
 __code const struct machine machine = {
@@ -1129,10 +1093,6 @@ __code const struct machine machine = {
 				0x1a, 0x1d, 0x1d, 0x1e, 0x1e, 0x20, 0x21, 0x22
 		},
 	};
-
-void machine_custom_init(void) {
-	REG_SET(RTL837X_REG_LED_GLB_IO_EN, 0x7624155b);
-}
 
 #else
 	#error "Please select a machine type in machine.h"

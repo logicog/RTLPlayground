@@ -53,6 +53,7 @@ create_build_dir:
 # Keep machine.c in first position to fail immediately on invalid $MACHINE value
 SRCS = \
 	machine.c \
+	machine_init.c \
 	cmd_editor.c \
 	cmd_parser.c \
 	dhcp.c \
@@ -139,10 +140,11 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 machine_check:
 	@mkdir -p $(BUILDDIR)/tmp
 	@set -eo pipefail; \
-	for MACHINE in `grep -e ' MACHINE_' machine.c | sed -e 's%^.* MACHINE_%%' -e 's%[ ]*//.*$$%%' | sort -u`; \
+	for MACHINE in `grep -E '^[[:space:]]*(//[[:space:]]*)?#define MACHINE_' machine.h | sed -E 's%^[[:space:]]*(//[[:space:]]*)?#define MACHINE_%%' | awk '{print $$1}' | sort -u`; \
 	do \
 	echo "Checking $${MACHINE}"; \
 	$(CC) $(CC_FLAGS) -DMACHINE_$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine.c; \
+	$(CC) $(CC_FLAGS) -DMACHINE_$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine_init.c; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
 

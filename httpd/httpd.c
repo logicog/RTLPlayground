@@ -41,8 +41,19 @@ __xdata uint32_t cont_addr;
 
 // HTTP header properties
 __xdata uint8_t boundary[72];
-__xdata uint8_t *content_type = 0;
-__xdata uint8_t *session = 0;
+
+// a client may split the request anywhere, including inside a boundary or a
+// part header, so a configuration upload is parsed only once it is complete;
+// sized for a full config sector plus the multipart framing around it
+#define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
+__xdata uint8_t config_upload;
+__xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
+__xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+// part-header bytes buffered so far; accumulates across TCP segments
+__xdata uint16_t pre_acc;
+__xdata uint8_t cfg_bl;
+__xdata uint8_t * __xdata content_type = 0;
+__xdata uint8_t * __xdata session = 0;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
@@ -51,10 +62,13 @@ __xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
 
 __xdata char passwd[21];
+// Set when a verified firmware upload awaits its response ACK, after
+// which the chip resets to apply the staged image
+__xdata uint8_t fw_reset_pending;
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
-__xdata uint8_t *timeptr;
+__xdata uint8_t * __xdata timeptr;
 __xdata uint32_t last_session_use;
 
 #define TSTATE_NONE		0
@@ -77,10 +91,12 @@ inline uint8_t is_separator(uint8_t c)
 
 void httpd_init(void) __banked
 {
+	config_upload = 0; // xdata is not zeroed by the startup code
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	// Start listening to port 80
 	uip_listen(HTONS(80));
 	s->tstate = TSTATE_CLOSED;
+	fw_reset_pending = 0; // xdata is not zeroed by the startup code
 }
 
 
@@ -109,8 +125,8 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 		u = *xdata_str_p++;
 		c = *code_str_p++;
 
-		if (c == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+		if (c == NUL) {
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
 				return false;
 			return true;
 		}
@@ -130,8 +146,8 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 		u = *uri_str_p++;
 		s = *src_str_p++;
 
-		if (s == '\0') {
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+		if (s == NUL) {
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
 				return false;
 			return true;
 		}
@@ -165,7 +181,7 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 }
 
 
-bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
+bool is_word_x(__xdata uint8_t * lhs_str_p, __xdata uint8_t * rhs_str_p)
 {
 	uint8_t u, c;
 
@@ -173,9 +189,9 @@ bool is_word_x(__xdata uint8_t *lhs_str_p, __xdata uint8_t *rhs_str_p)
 		u = *lhs_str_p++;
 		c = *rhs_str_p++;
 
-		if (c == '\0') {
+		if (c == NUL) {
 			/* ';' separates cookies in a Cookie header, so it ends a value too. */
-			if (u != '\0' && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
 				return false;
 			return true;
 		}
@@ -230,18 +246,7 @@ void send_unauthorized(void)
 }
 
 
-__xdata uint8_t *skip_boundary(__xdata uint8_t *p)
-{
-	while (*p) {
-		if (is_word_x(p, boundary))
-			return p + strlen_x(boundary);
-		p++;
-	}
-	return p;
-}
-
-
-__xdata uint8_t *scan_header(__xdata uint8_t *p)
+__xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 {
 	content_type = 0;
 	session = 0;
@@ -300,10 +305,12 @@ __xdata uint8_t *scan_header(__xdata uint8_t *p)
 	return p;
 }
 
-
-void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
+/*
+ * Generate random HEX-chars at the buffer location.
+ */
+void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 {
-	__xdata uint8_t i = 0;
+	uint8_t i = 0;
 	while (bytes) {
 		if (!i)
 			get_random_32();
@@ -315,21 +322,106 @@ void gen_random_bytes(__xdata uint8_t *b, uint8_t bytes)
 }
 
 
+/* 0: body incomplete, 1: configuration stored, 2: malformed */
+static uint8_t config_take(void)
+{
+	cfg_bl = strlen_x(boundary);
+
+	// the body is complete once the closing boundary has arrived
+	cfg_last = 0;
+	while (1) {
+		if (cfg_last + cfg_bl + 1 >= write_len)
+			return 0;
+		if (strstart_x(&config_buf[cfg_last], boundary)
+		    && strstart(&config_buf[cfg_last + cfg_bl], "--"))
+			break;
+		cfg_last++;
+	}
+
+	// every part lies ahead of the closing boundary, so it bounds the walk
+	cfg_pos = 0;
+	while (cfg_pos < cfg_last) {
+		if (!strstart_x(&config_buf[cfg_pos], boundary)) {
+			cfg_pos++;
+			continue;
+		}
+		cfg_hdr = cfg_pos + cfg_bl;
+		cfg_body = cfg_hdr;
+		while (1) {
+			if (cfg_body + 3 >= cfg_last)
+				return 2;
+			if (strstart(&config_buf[cfg_body], "\r\n\r\n"))
+				break;
+			cfg_body++;
+		}
+		cfg_end = cfg_body;
+		cfg_body += 4;
+		// reaching cfg_last is a match: the last part ends at the closing boundary
+		while (cfg_end < cfg_last && !strstart_x(&config_buf[cfg_end], boundary))
+			cfg_end++;
+		while (cfg_hdr + 8 < cfg_body) {
+			// the part carrying a filename holds the configuration
+			if (strstart(&config_buf[cfg_hdr], "filename")) {
+				// the payload plus its terminator must fit the sector
+				if (cfg_end - cfg_body + 1 > CONFIG_LEN)
+					return 2;
+				config_buf[cfg_end] = 0;
+				flash_region.addr = CONFIG_START;
+				flash_sector_erase();
+				flash_region.addr = CONFIG_START;
+				flash_region.len = cfg_end - cfg_body + 1;
+				flash_write_bytes(config_buf + cfg_body);
+				return 1;
+			}
+			cfg_hdr++;
+		}
+		cfg_pos = cfg_end;
+	}
+	return 2;
+}
+
+
+// unlike scan_header(), keeps no auth state, so it may run on every buffered segment
+static uint16_t preamble_payload_start(uint16_t n)
+{
+	uint16_t pos;
+
+	for (pos = 0; pos + 24 <= n; pos++) {
+		if (strstart(&config_buf[pos], "application/octet-stream"))
+			break;
+	}
+	if (pos + 24 > n)
+		return 0;
+	pos += 24;
+	while (pos + 3 < n && !strstart(&config_buf[pos], "\r\n\r\n"))
+		pos++;
+	if (pos + 3 >= n)
+		return 0;
+	return pos + 4;
+}
+
+
+// Source window for stream_upload(); filled by the caller before the call
+__xdata struct {
+	__xdata uint8_t *p;
+	uint16_t bptr;
+	uint16_t plen;
+} upload_settings;
+
 /*
  * Reads post data from the http stream and writes it into flash memory
- * Input: the current position in the TCP buffer (uip_appdata)
+ * Input: upload_settings, set by the caller
  * Returns 1: More data to read, 0: Upload complete, all parts reads
  */
-uint8_t stream_upload(uint16_t bptr)
+uint8_t stream_upload(void)
 {
-	__xdata uint8_t *p = uip_appdata;
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 
 	dbg_string("Stream_upload called: ");
-	dbg_short(bptr); dbg_char('\n');
+	dbg_short(upload_settings.bptr); dbg_char('\n');
 
 	do {
-		if (bptr >= uip_len) {
+		if (upload_settings.bptr >= upload_settings.plen) {
 			s->tstate = TSTATE_POST;
 			return 1;
 		}
@@ -342,17 +434,23 @@ uint8_t stream_upload(uint16_t bptr)
 			flash_write_bytes(flash_buf);
 			uptr += write_len;
 			write_len = 0;
-			// TODO: This is a bit premature, what about a nice web-page saying the device will reset???
 			if (verify_crc) {
 				dbg_string("CRC16: "); dbg_short(crc_final); dbg_char('\n');
+				// Both bodies are 33 bytes; Content-Length lets the
+				// browser complete the response without waiting for
+				// the connection close (which a reset would swallow)
 				if (crc_final == 0xb001) {
 					print_string("Checksum OK.\nUpload to flash done, will reset!\n");
-					// close connection to avoid retries by browser
-					uip_close();
-					reset_chip();
+					slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 33\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"OK: checksum verified, rebooting\n");
+					// Reset once the response is fully ACKed
+					fw_reset_pending = 1;
 				} else {
 					print_string("Checksum incorrect! Aborting.\n");
-					uip_close();
+					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 33\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"NO: checksum failed, not applied\n");
 				}
 			}
 			// Make sure there is a 0 at the end of the uploaded data
@@ -360,18 +458,15 @@ uint8_t stream_upload(uint16_t bptr)
 			flash_region.addr = uptr;
 			flash_region.len = 1;
 			flash_write_bytes(flash_buf);
-			if (bptr >= uip_len)
+			if (upload_settings.bptr >= upload_settings.plen)
 				return 0;
-			if(!verify_crc)
-				//ugly hack to signal connection finished after config upload.
-				uip_close();
 			return 1;
 		}
-		if (p[bptr] == boundary[bindex]) {
+		if (upload_settings.p[upload_settings.bptr] == boundary[bindex]) {
 			if (!bindex)
 				crc_final = crc_value;
-			crc16(p + bptr);
-			bptr++;
+			crc16(upload_settings.p + upload_settings.bptr);
+			upload_settings.bptr++;
 			bindex++;
 		} else {
 			if (bindex) {
@@ -379,8 +474,8 @@ uint8_t stream_upload(uint16_t bptr)
 				write_len += bindex;
 				bindex = 0;
 			}
-			crc16(p + bptr);
-			flash_buf[write_len++] = p[bptr++];
+			crc16(upload_settings.p + upload_settings.bptr);
+			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
 				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
@@ -418,10 +513,10 @@ void handle_post(void)
 		// Find end of request path
 		while (*p && !is_separator(*p))
 			p++;
-		*p++ = '\0';
+		*p++ = NUL;
 
 		// Find end of request header
-		boundary[0] ='\0';
+		boundary[0] =NUL;
 		p = scan_header(p);
 		dbg_string("Boundary: >"); dbg_string_x(boundary); dbg_string("<\n");
 		if (!*p || !content_type) {
@@ -437,20 +532,20 @@ void handle_post(void)
 				return;
 			}
 			print_string("Firmware upload started.");
+			config_upload = 0;
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
 			max_upload = 1024576;
+			pre_acc = 0;
 		} else if (is_word(request_path, "config")) {
 			if (!authenticated) {
 				send_unauthorized();
 				return;
 			}
-			dbg_string("Configuration upload, erasing config mem!\n");
-			uptr = CONFIG_START;
+			dbg_string("Configuration upload\n");
 			verify_crc = 0;
-			max_upload = 2048;
-			flash_region.addr = CONFIG_START;
-			flash_sector_erase();
+			config_upload = 1;
+			write_len = 0;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -481,11 +576,11 @@ void handle_post(void)
 		if (is_url_word_x(p, passwd)) {
 			dbg_string("Password accepted!\n");
 			read_reg_timer(&last_session_use);
-			gen_random_bytes(session_id, SESSION_ID_LENGTH);
-			session_id[SESSION_ID_LENGTH] = '\0';
+			gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
+			session_id[SESSION_ID_LENGTH] = NUL;
 			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 					      "Set-Cookie: session=");
-			for (register uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
+			for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
 				outbuf[slen++] = session_id[i];
 			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 		} else {
@@ -504,21 +599,47 @@ void handle_post(void)
 			send_bad_request();
 			return;
 		}
-		// We skip the intial parts as part of the header
-		do {
-			p = skip_boundary(p);
-			if (!*p) {
+		if (config_upload) {
+			cfg_pos = uip_len - (p - uip_appdata);
+			if (write_len + cfg_pos >= CONFIG_UPLOAD_BUF) {
+				print_string("Configuration too large, aborting.\n");
+				config_upload = 0;
+				s->tstate = TSTATE_NONE;
+				send_bad_request();
+				return;
+			}
+			memcpy(config_buf + write_len, p, cfg_pos);
+			write_len += cfg_pos;
+			uint8_t taken = config_take();
+
+			if (!taken) {
 				s->tstate = TSTATE_MULTIPART;
 				return;
 			}
-			p = scan_header(p);
-			if (!*p)
-				goto bad_request;
-			if (!content_type) // We are waiting for the part with the octet stream
-				continue;
-		} while (!is_word(content_type, "application/octet-stream"));
+			config_upload = 0;
+			s->tstate = TSTATE_NONE;
+			if (taken == 2) {
+				send_bad_request();
+				return;
+			}
+			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+			return;
+		}
+		cfg_pos = uip_len - (p - uip_appdata);
+		if (pre_acc + cfg_pos >= CONFIG_UPLOAD_BUF) {
+			print_string("Firmware upload header too large, aborting.\n");
+			s->tstate = TSTATE_NONE;
+			send_bad_request();
+			return;
+		}
+		memcpy(config_buf + pre_acc, p, cfg_pos);
+		pre_acc += cfg_pos;
+		cfg_end = preamble_payload_start(pre_acc);
+		if (!cfg_end) {
+			s->tstate = TSTATE_MULTIPART;
+			return;
+		}
 		dbg_string("Have content octets\n");
-		p += 4; // Skip \r\n\r\n sequence at end of preamble of part
 
 		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
 		set_sys_led_state(SYS_LED_FAST);
@@ -526,7 +647,14 @@ void handle_post(void)
 		crc_value = 0;
 		bindex = 0;
 		write_len = 0;
-		stream_upload(p - uip_appdata);
+		// A verdict is only built once the upload part completes;
+		// clear any stale response so the completion check in the
+		// appcall POST branch cannot send leftovers
+		slen = 0;
+		upload_settings.p = config_buf;
+		upload_settings.bptr = cfg_end;
+		upload_settings.plen = pre_acc;
+		stream_upload();
 
 		dbg_string("Done reading first fragment\n");
 		return;
@@ -536,9 +664,6 @@ void handle_post(void)
 		return;
 	}
 	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-	return;
-bad_request:
-	send_bad_request();
 	return;
 }
 
@@ -603,11 +728,23 @@ void httpd_appcall(void)
 			cont_len -= slen;
 			cont_addr += slen;
 			s->tstate = TSTATE_TX;
+		} else if (fw_reset_pending) {
+			// The upload verdict has been fully ACKed by the client;
+			// now it is safe to reset and apply the staged image
+			print_string("Resetting to apply update\n");
+			reset_chip();
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		// Check here maxupload by subtracting uip_len and close socekt if fails!
 		if (max_upload - uip_len > 0) {
-			stream_upload(0);
+			upload_settings.p = uip_appdata;
+			upload_settings.bptr = 0;
+			upload_settings.plen = uip_len;
+			stream_upload();
+			// A completed part with a built verdict must go out
+			// through the normal TX path
+			if (s->tstate == TSTATE_NONE && slen)
+				goto do_send;
 			write_char('.');
 		} else {
 			send_bad_request();
@@ -642,7 +779,7 @@ void httpd_appcall(void)
 		__xdata uint8_t *q = p;
 		while (*p && !is_separator(*p))
 			p++;
-		*p = '\0';
+		*p = NUL;
 		dbg_string_x(q);
 		dbg_char('\n');
 
@@ -664,16 +801,9 @@ void httpd_appcall(void)
 				parse_short(q + 15);
 				send_vlan(short_parsed);
 			} else if (is_word(q, "/counters.json")) {
-				/* The port is one raw character of the request line and
-				 * indexes a nine entry table, so bound it here instead
-				 * of trusting the client to have sent a digit. Anything
-				 * below '0' wraps well past eight, so the one test
-				 * covers both ends. */
 				uint8_t cport = q[20] - '0';
-				if (cport > 8)
+				if (send_counters(cport))
 					send_bad_request();
-				else
-					send_counters(cport);
 			} else if (is_word(q, "/eee.json")) {
 				send_eee();
 			} else if (is_word(q, "/bandwidth.json")) {
