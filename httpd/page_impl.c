@@ -178,8 +178,8 @@ void send_sfp_info(uint8_t sfp)
 {
 	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
 	for (uint8_t i = 16; i < 64; i++) {
-		if (!(i & 0xf))
-			sfp_read_block(sfp, i, 16);
+		if (!(i & 0xf) && !sfp_read_block(sfp, i, 16))
+			return;
 		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
 			continue;
 		uint8_t c = sfp_buf[i & 0xf];
@@ -195,7 +195,8 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 	if (len > 16)
 		return;
 
-	sfp_read_block(slot, reg, len);
+	if (!sfp_read_block(slot, reg, len))
+		return;
 
 	for (uint8_t i = 0; i < len; i++)
 		byte_to_html(sfp_buf[i]);
