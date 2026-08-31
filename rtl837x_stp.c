@@ -70,6 +70,7 @@ __xdata uint16_t stp_scratch16;	/* scratch for status printing only */
 __xdata uint16_t port_timers[10];	/* listen-period countdown (0 = not listening) */
 __xdata uint16_t port_hello[10];	/* hello TX countdown */
 __xdata uint16_t stp_bpdu_age[10];	/* ticks since last BPDU seen on port (saturating) */
+__xdata uint8_t  stp_loop_held[10];	/* port is out of forwarding because a loop was seen on it */
 __xdata uint8_t  stp_tx_budget[10];	/* tx hold: BPDUs left in the current second */
 __xdata uint8_t  stp_tx_count[10];	/* BPDUs actually put on the wire, wraps at 256 */
 __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
@@ -309,6 +310,7 @@ static void stp_loop_hold_peer(uint8_t port) __reentrant
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		stp_topology_change(port);
 	}
+	stp_loop_held[port] = 1;
 	port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
 }
 
@@ -624,11 +626,13 @@ void stp_timers(void) __banked
 		 * the designated bridge on that port). */
 		if (port_timers[stp_i]) {
 			if (!--port_timers[stp_i]) {
+				stp_loop_held[stp_i] = 0;
 				stp_state_set(stp_i, 0b11);
 				print_string("STP: port forwarding ");
 				print_port_nl(stp_i);
 				stp_topology_change(stp_i);
 			} else if ((stp_pflags[stp_i] & STP_PF_AUTOEDGE)
+			           && !stp_loop_held[stp_i]
 			           && stp_bpdu_age[stp_i] > STP_EDGE_DELAY) {
 				/* Auto edge: nothing talks (R)STP on this port - it is
 				 * host-facing, go to forwarding without the full wait. */
@@ -711,6 +715,7 @@ void stp_setup(void) __banked
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
+		stp_loop_held[stp_i] = 0;
 		stp_bpdu_age[stp_i] = 0;
 		stp_tx_budget[stp_i] = stp_txhold;
 		stp_tx_count[stp_i] = 0;
@@ -762,6 +767,7 @@ void stp_off(void) __banked
 		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
 		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
+		stp_loop_held[stp_i] = 0;
 		port_timers[stp_i] = 0;
 	}
 	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
