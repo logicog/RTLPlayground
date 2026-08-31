@@ -8,11 +8,12 @@
 #define STAT_COUNTER_RX_PKTS	47
 #define STAT_COUNTER_ERR_PKTS	48
 
-#define STAT_GET(cnt, port) \
+#define STAT_GET(cnt, port) do { \
 	REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, cnt >> 3, (cnt << 5) | (port << 1) | 1); \
 	do { \
 		reg_read_m(RTL837X_STAT_GET); \
-	} while (sfr_data[3] & 0x1);
+	} while (sfr_data[3] & 0x1); \
+	} while (0)
 
 // Possible values for ingress filter type
 typedef enum {
@@ -64,6 +65,8 @@ void port_mirror_del(void) __banked;
 bool port_ingress_filter(__xdata uint8_t port, __xdata vlan_ingress_mode_t type) __banked;
 void port_l2_setup(void) __banked;
 uint16_t port_lag_members_get(uint8_t lag) __banked;
+#define PORT_LAG_NONE 0xff
+uint8_t port_lag_of(uint8_t port) __banked;
 void port_lag_members_set(__xdata uint8_t lag, __xdata uint16_t members) __banked;
 void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash) __banked;
 void port_eee_enable_all(__xdata uint8_t speed) __banked;
@@ -73,8 +76,8 @@ void port_eee_enable(__xdata uint8_t port, __xdata uint8_t speed) __banked;
 void port_eee_disable(uint8_t port) __banked;
 void port_eee_status(uint8_t port) __banked;
 void print_port_ingress_filter_mode(vlan_ingress_mode_t mode) __banked;
-bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked;
-bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked;
+bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked;
+bool port_ingress_vlan_filter_get(uint8_t port) __banked;
 vlan_ingress_mode_t port_ingress_filter_get(__xdata uint8_t port) __banked;
 void port_isolate(uint8_t port, __xdata uint16_t pmask) __banked;
 uint16_t port_isolation_get(uint8_t port) __banked;

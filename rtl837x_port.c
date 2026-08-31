@@ -87,10 +87,9 @@ vlan_ingress_mode_t port_ingress_filter_get(__xdata uint8_t port) __banked
 /*
  * Define a Primary VLAN ID for a port 
 */
-void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
+static void port_pvid_write(uint8_t port, __xdata uint16_t pvid)
 {
 	// r4e1c:00001001 R4e1c-000017d0 r6738:00000000 R6738-00000000 (no filtering)
-	print_string("\nport_pvid_set called \n");
 	uint16_t reg = RTL837x_PVID_BASE_REG + ((port >> 1) << 2);
 
 	reg_read_m(reg);
@@ -99,6 +98,22 @@ void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
 	} else {
 		REG_WRITE(reg, sfr_data[0], sfr_data[1], sfr_data[2] & 0xf0 | (pvid >> 8), pvid);
 	}
+}
+
+void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked
+{
+	uint8_t lag = port_lag_of(port);
+
+	print_string("\nport_pvid_set called \n");
+	if (lag == PORT_LAG_NONE) {
+		port_pvid_write(port, pvid);
+		return;
+	}
+
+	uint16_t members = port_lag_members_get(lag);
+	for (uint8_t i = 0; i < 10; i++)
+		if ((members >> i) & 1)
+			port_pvid_write(i, pvid);
 }
 
 uint16_t port_pvid_get(uint8_t port) __banked
@@ -339,7 +354,10 @@ uint8_t port_l2_forget(void) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);
 
 	// Flush L2 table for all ports by setting the ports and the flush-exec bit (bit 16)
-	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
+	uint16_t mask = PMASK_6;
+	if (machine_detected.isRTL8373)
+		mask = PMASK_9;
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | mask);
 
 	// Wait for flush completed
 	do {
@@ -445,12 +463,14 @@ void port_l2_setup(void) __banked
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		// Limit the number of automatically learned MAC-Entries per port to 0x1040
-		uint16_t reg = RTL837X_L2_LRN_PORT_CONSTRAINT + (i << 2);
-		REG_SET(reg, 0x00001040);
+		uint8_t idx = (i << 2);
+		REG_SET(RTL837X_L2_LRN_PORT_CONSTRAINT + idx, 0x00001040);
 
 		// All ports may communicate with each other and CPU-Port
-		reg = RTL837X_PORT_ISOLATION_BASE + (i << 2);
-		REG_SET(reg, PMASK_CPU | (machine_detected.isRTL8373? PMASK_9 : PMASK_6));
+		uint16_t mask = PMASK_CPU | PMASK_6;
+		if (machine_detected.isRTL8373)
+			mask = PMASK_CPU | PMASK_9;
+		REG_SET(RTL837X_PORT_ISOLATION_BASE + idx, mask);
 	}
 	// When maximim entries learned, then simply flood the packet
 	reg_bit_set(RTL837X_L2_LRN_PORT_CONSTRT_ACT, 0);
@@ -777,6 +797,14 @@ uint16_t port_lag_members_get(uint8_t lag) __banked
 	return ((uint16_t)SFR_DATA_8 << 8) | SFR_DATA_0;
 }
 
+uint8_t port_lag_of(uint8_t port) __banked
+{
+	for (uint8_t lag = 0; lag < 4; lag++)
+		if ((port_lag_members_get(lag) >> port) & 1)
+			return lag;
+	return PORT_LAG_NONE;
+}
+
 
 /*
  * Configure LAGs
@@ -861,19 +889,23 @@ void vlan_dump(void) __banked
 
 
 /** Set the ingress VLAN filtering */
-bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked
+bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != 9) {
+	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
 		return false;
 	}
-	reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, port);
+	if (enabled)
+		reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, port);
+	else
+		reg_bit_clear(RTL837X_VLAN_PORT_IGR_FLTR, port);
+
 	return true;
 }
 
 /** Get the ingress VLAN filtering status */
-bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked
+bool port_ingress_vlan_filter_get(uint8_t port) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != 9) {
+	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
 		return false;
 	}
 
