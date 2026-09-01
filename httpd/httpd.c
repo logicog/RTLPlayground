@@ -62,6 +62,12 @@ __xdata uint8_t verify_crc;
 __xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
 
+#define POSTBODY_CMD	1
+#define POSTBODY_LOGIN	2
+#define POSTBODY_TIMEOUT (5 * SYS_TICK_HZ)
+__xdata uint8_t postbody_endpoint;
+__xdata uint16_t postbody_start;
+
 __xdata char passwd[21];
 // Set when a verified firmware upload awaits its response ACK, after
 // which the chip resets to apply the staged image
@@ -78,6 +84,7 @@ __xdata uint32_t last_session_use;
 #define TSTATE_CLOSED 		3
 #define TSTATE_POST 		4
 #define TSTATE_MULTIPART	5
+#define TSTATE_POSTBODY		6
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
@@ -265,6 +272,18 @@ void send_to_login(void)
 void send_unauthorized(void)
 {
 	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
+}
+
+
+void send_length_required(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 411 Length Required\r\nConnection: close\r\n\r\n");
+}
+
+
+void send_ok(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
 }
 
 
@@ -559,7 +578,7 @@ static void handle_config_fragment(__xdata uint8_t *p)
 		send_bad_request();
 		return;
 	}
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+	send_ok();
 }
 
 
@@ -604,11 +623,94 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 }
 
 
+static void run_cmd_body(__xdata uint8_t *body)
+{
+	execute_commands(body);
+	if (err_status != ERR_OK) {
+		send_bad_request();
+		return;
+	}
+	send_ok();
+}
+
+
+static void run_login_body(__xdata uint8_t *body)
+{
+	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
+		dbg_string("Password accepted!\n");
+		read_reg_timer(&last_session_use);
+		gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
+		session_id[SESSION_ID_LENGTH] = NUL;
+		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
+				      "Set-Cookie: session=");
+		for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
+			outbuf[slen++] = session_id[i];
+		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
+	} else {
+		dbg_string("Password invalid!\n");
+		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: login.html\r\n\r\n");
+	}
+}
+
+
+static uint8_t post_body_take(__xdata uint8_t *p)
+{
+	uint16_t have;
+
+	if (!content_length) {
+		send_length_required();
+		return 0;
+	}
+	if (content_length >= CONFIG_UPLOAD_BUF) {
+		send_bad_request();
+		return 0;
+	}
+	have = uip_len - (p - uip_appdata);
+	if (have >= content_length) {
+		p[content_length] = NUL;
+		return 1;
+	}
+	memcpy(config_buf, p, have);
+	pre_acc = have;
+	postbody_start = ticks;
+	uip_conn->appstate.tstate = TSTATE_POSTBODY;
+	return 0;
+}
+
+
+static void post_body_continue(void)
+{
+	uint16_t take;
+
+	// no header scan runs while the body is pending: content_length is this request's
+	take = content_length - pre_acc;
+	if (take > uip_len)
+		take = uip_len;
+	memcpy(config_buf + pre_acc, uip_appdata, take);
+	pre_acc += take;
+	if (pre_acc < content_length) {
+		postbody_start = ticks;
+		return;
+	}
+	config_buf[pre_acc] = NUL;
+	uip_conn->appstate.tstate = TSTATE_NONE;
+	if (postbody_endpoint == POSTBODY_CMD)
+		run_cmd_body(config_buf);
+	else
+		run_login_body(config_buf);
+}
+
+
 void handle_post(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint8_t *p = uip_appdata;
 	__xdata uint8_t *request_path = p + 6;
+
+	if (s->tstate == TSTATE_POSTBODY) {
+		post_body_continue();
+		return;
+	}
 
 	// Was the multipart header sent in multiple packets?
 	if (s->tstate != TSTATE_MULTIPART) {
@@ -662,11 +764,11 @@ void handle_post(void)
 			send_unauthorized();
 			return;
 		}
-		execute_commands(p);
-		if (err_status != ERR_OK) {
-			send_bad_request();
+		postbody_endpoint = POSTBODY_CMD;
+		if (!post_body_take(p))
 			return;
-		}
+		run_cmd_body(p);
+		return;
 	} else if (is_word(request_path, "login")) {
 		dbg_string("POST login\n");
 
@@ -676,21 +778,11 @@ void handle_post(void)
 			return;
 		}
 
-		p += 8; // Read also over "pwd="
-		if (is_url_word_x(p, passwd)) {
-			dbg_string("Password accepted!\n");
-			read_reg_timer(&last_session_use);
-			gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
-			session_id[SESSION_ID_LENGTH] = NUL;
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
-					      "Set-Cookie: session=");
-			for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
-				outbuf[slen++] = session_id[i];
-			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
-		} else {
-			dbg_string("Password invalid!\n");
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: login.html\r\n\r\n");
-		}
+		p += 4;
+		postbody_endpoint = POSTBODY_LOGIN;
+		if (!post_body_take(p))
+			return;
+		run_login_body(p);
 		return;
 	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
 		dbg_string("POST upload/config request\n");
@@ -712,8 +804,6 @@ void handle_post(void)
 		send_not_found();
 		return;
 	}
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-	return;
 }
 
 
@@ -743,6 +833,11 @@ void httpd_appcall(void)
 		if (s->tstate == TSTATE_ACKED) {
 			dbg_string("Closing because everything has been transmitted\n");
 			uip_close();
+			s->tstate = TSTATE_CLOSED;
+		} else if (s->tstate == TSTATE_POSTBODY
+			   && (uint16_t)ticks - postbody_start > POSTBODY_TIMEOUT) {
+			dbg_string("Body never arrived\n");
+			uip_abort();
 			s->tstate = TSTATE_CLOSED;
 		}
 	} else if (uip_acked() && s->tstate == TSTATE_TX) {
@@ -811,10 +906,12 @@ void httpd_appcall(void)
 		dbg_char('\n');
 #endif
 		p = uip_appdata;
-		if (is_word(p, "POST") || s->tstate == TSTATE_MULTIPART) {
+		if (is_word(p, "POST") || s->tstate == TSTATE_MULTIPART
+		    || s->tstate == TSTATE_POSTBODY) {
 			handle_post();
 			// If this is an ongoing post stream, then wait for the next packet
-			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART) {
+			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART
+			    || s->tstate == TSTATE_POSTBODY) {
 				uip_len = 0;
 				return;
 			}
