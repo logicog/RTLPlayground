@@ -1771,7 +1771,8 @@ void cmd_parser(void) __banked
 			// Copy last cmd-buffer to history.
 			cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
 			__xdata uint16_t p = cmd_history_ptr;
-			cmd_history[cmd_history_ptr++] = '\n';
+			cmd_history[cmd_history_ptr] = '\n';
+			cmd_history_ptr = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			do {
 				i--;
 				cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
