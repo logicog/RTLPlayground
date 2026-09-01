@@ -2388,6 +2388,7 @@ void lldp_send(void)
     uint16_t len;
     uint16_t ring_ptr;
     uint8_t i;
+	uint8_t portPosition;
 
     /*
      * FRAME is the normal, untagged TX layout.
@@ -2438,11 +2439,11 @@ void lldp_send(void)
     /*
      * Chassis ID TLV:
      *
-     * Type 1, length 7
+     * Type 1, length 3
      * Subtype 7, value "RTL"
      */
     p[len++] = 0x02;
-    p[len++] = 0x07;
+    p[len++] = 0x03;
     p[len++] = 0x07;
     p[len++] = 'R';
     p[len++] = 'T';
@@ -2451,15 +2452,14 @@ void lldp_send(void)
     /*
      * Port ID TLV:
      *
-     * Type 2, length 8
-     * Subtype 7, value "cpu-port"
+     * Type 2, length 1
+     * Subtype 7, value "0-9"
      */
     p[len++] = 0x04;
-    p[len++] = 0x08;
+    p[len++] = 0x01;
     p[len++] = 0x07;
+	portPosition = len;
     p[len++] = 'c';
-    p[len++] = 'p';
-    p[len++] = 'u';
 
     /*
      * TTL TLV:
@@ -2486,23 +2486,30 @@ void lldp_send(void)
 
     FRAME->len = len;
 
-    /*
-     * Obtain the current CPU TX ring position exactly as tcpip_output()
-     * does.
-     */
-    reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
+	for (char i = machine.min_port; i <= machine.max_port; i++) {
 
-    ring_ptr = ((uint16_t)sfr_data[2]) << 8;
-    ring_ptr |= sfr_data[3];
+		p[portPosition] = i + 0x30; //ATOI
 
-    /*
-     * Copy the frame from XRAM to the ASIC-side TX buffer.
-     */
-    nic_tx_packet(ring_ptr);
+		//TODO convert to RTLFRAME and send port specific
+		/*
+		* Obtain the current CPU TX ring position exactly as tcpip_output()
+		* does.
+		*/
+		reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
 
-    /*
-     * Complete the ASIC-side transmission exactly as tcpip_output() does.
-     */
-    reg_read_m(RTL837X_REG_NIC_TX_CURR_PKT);
-    REG_SET(RTL837X_REG_NIC_TXCMD, 1);
+		ring_ptr = ((uint16_t)sfr_data[2]) << 8;
+		ring_ptr |= sfr_data[3];
+
+		/*
+		* Copy the frame from XRAM to the ASIC-side TX buffer.
+		*/
+		nic_tx_packet(ring_ptr);
+
+		/*
+		* Complete the ASIC-side transmission exactly as tcpip_output() does.
+		*/
+		reg_read_m(RTL837X_REG_NIC_TX_CURR_PKT);
+		REG_SET(RTL837X_REG_NIC_TXCMD, 1);
+
+	}
 }
