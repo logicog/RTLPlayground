@@ -54,6 +54,7 @@ __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
 __xdata uint16_t pre_acc;
 __xdata uint8_t * __xdata content_type = 0;
 __xdata uint8_t * __xdata session = 0;
+__xdata uint16_t content_length;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
@@ -272,6 +273,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 	__xdata uint8_t *v;
 
 	content_type = 0;
+	content_length = 0;
 	session = 0;
 	authenticated = 0;
 
@@ -282,7 +284,10 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 		p++;
 		if ((v = header_value(p, "\ncontent-type:")))
 			content_type = v;
-		else if ((v = header_value(p, "\ncookie:"))) {
+		else if ((v = header_value(p, "\ncontent-length:"))) {
+			parse_short(v);
+			content_length = short_parsed;
+		} else if ((v = header_value(p, "\ncookie:"))) {
 			/* Scan for the "session" key: the header may hold several
 			 * cookies in any order. Match "session" not "session=" -
 			 * is_word() requires a separator after the match and '=' is
