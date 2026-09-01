@@ -994,6 +994,7 @@ void httpd_appcall(void)
 			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html 
 						|| f_data[entry].start == FDATA_START_port_svg 
 						|| f_data[entry].start == FDATA_START_sfp_svg
+						|| f_data[entry].start == FDATA_START_i18n_js
 						|| f_data[entry].start == FDATA_START_style_css)) {
 				send_to_login();
 				goto do_send;
