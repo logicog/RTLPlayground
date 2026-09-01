@@ -231,7 +231,10 @@ uint8_t parse_short(__xdata uint8_t *p)
 		c = *p++ - '0';
 		if (c > 9) { break; }
 		err = 0;
-		short_parsed = (short_parsed * 10) + c;
+		if (short_parsed > 6552)
+			short_parsed = 0xffff;
+		else
+			short_parsed = (short_parsed * 10) + c;
 	}
 	return err;
 }
