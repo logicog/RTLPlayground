@@ -1,6 +1,7 @@
 #ifndef _SYSLOG_H_
 #define _SYSLOG_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define LOGBUF_SIZE 512
@@ -8,7 +9,7 @@
 #define SYSLOG_PORT_DEFAULT 514
 
 struct syslog_state {
-    uint8_t enabled;
+    bool enabled;
     uint8_t line_available;
     uint16_t writeptr ;
     uint16_t readptr;
