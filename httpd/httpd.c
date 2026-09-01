@@ -138,6 +138,24 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 }
 
 
+/* name must be lower-case, starting with the '\n' of the previous line's end */
+__xdata uint8_t *header_value(__xdata uint8_t *p, __code uint8_t *name)
+{
+	uint8_t u, c;
+
+	while ((c = *name++)) {
+		u = *p++;
+		if (u >= 'A' && u <= 'Z')
+			u += 'a' - 'A';
+		if (u != c)
+			return 0;
+	}
+	while (*p == ' ' || *p == '\t')
+		p++;
+	return p;
+}
+
+
 bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 {
 	uint8_t u, s;
@@ -248,28 +266,29 @@ void send_unauthorized(void)
 
 __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 {
+	__xdata uint8_t *v;
+
 	content_type = 0;
 	session = 0;
 	authenticated = 0;
 
-	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
+	while (!strstart(p, "\r\n\r\n")) {
 		dbg_char(*p);
 		if (!*p++)
 			break;
-		if (is_word(p, "\nContent-Type:"))
-			content_type = p + 15;
-		else if (is_word(p, "\nCookie:")) {
+		if ((v = header_value(p, "\ncontent-type:")))
+			content_type = v;
+		else if ((v = header_value(p, "\ncookie:"))) {
 			/* Scan for the "session" key: the header may hold several
 			 * cookies in any order. Match "session" not "session=" -
 			 * is_word() requires a separator after the match and '=' is
 			 * one, so this also rejects a longer key like "sessionx". */
-			__xdata uint8_t *c = p + 8;	/* past "\nCookie:" */
-			while (*c && *c != '\r' && *c != '\n') {
-				if (is_word(c, "session")) {
-					session = c + 8;	/* past "session=" */
+			while (*v && *v != '\r' && *v != '\n') {
+				if (is_word(v, "session")) {
+					session = v + 8;	/* past "session=" */
 					break;
 				}
-				c++;
+				v++;
 			}
 		}
 	}
