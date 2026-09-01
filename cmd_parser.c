@@ -26,7 +26,8 @@
 #pragma constseg BANK2
 
 extern __code struct machine machine;
-extern __xdata uint8_t stpEnabled;
+extern __xdata bool stp_enabled;
+extern __code uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -1683,15 +1684,7 @@ void cmd_parser(void) __banked
 				print_string("Error: hostname [name] - the name must not contain spaces\n");
 			}
 		} else if (cmd_compare(0, "stp")) {
-			if (cmd_compare(1, "on")) {
-				print_string("STP enabled\n");
-				stpEnabled = 1;
-				stp_setup();
-			} else {
-				print_string("STP disabled\n");
-				stp_off();
-				stpEnabled = 0;
-			}
+			stp_parse();
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
