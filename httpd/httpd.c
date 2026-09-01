@@ -49,10 +49,9 @@ __xdata uint8_t boundary[72];
 #define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
-__xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
-// part-header bytes buffered so far; accumulates across TCP segments
+// bytes buffered in config_buf so far (config body, or a firmware part
+// header); accumulates across TCP segments
 __xdata uint16_t pre_acc;
-__xdata uint8_t cfg_bl;
 __xdata uint8_t * __xdata content_type = 0;
 __xdata uint8_t * __xdata session = 0;
 
@@ -326,12 +325,16 @@ void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 /* 0: body incomplete, 1: configuration stored, 2: malformed */
 static uint8_t config_take(void)
 {
+	// #386: needs static, otherwise it still lands in SRAM/DSEG
+	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+	__xdata uint8_t cfg_bl;
+
 	cfg_bl = strlen_x(boundary);
 
 	// the body is complete once the closing boundary has arrived
 	cfg_last = 0;
 	while (1) {
-		if (cfg_last + cfg_bl + 1 >= write_len)
+		if (cfg_last + cfg_bl + 1 >= pre_acc)
 			return 0;
 		if (strstart_x(&config_buf[cfg_last], boundary)
 		    && strstart(&config_buf[cfg_last + cfg_bl], "--"))
@@ -501,6 +504,78 @@ uint8_t stream_upload(void)
 }
 
 
+static void handle_config_fragment(__xdata uint8_t *p)
+{
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
+	__xdata uint16_t frag_len;
+	uint8_t taken;
+
+	frag_len = uip_len - (p - uip_appdata);
+	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
+		print_string("Configuration too large, aborting.\n");
+		config_upload = 0;
+		s->tstate = TSTATE_NONE;
+		send_bad_request();
+		return;
+	}
+	memcpy(config_buf + pre_acc, p, frag_len);
+	pre_acc += frag_len;
+	taken = config_take();
+	if (!taken) {
+		s->tstate = TSTATE_MULTIPART;
+		return;
+	}
+	config_upload = 0;
+	s->tstate = TSTATE_NONE;
+	if (taken == 2) {
+		send_bad_request();
+		return;
+	}
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+}
+
+
+static void handle_firmware_fragment(__xdata uint8_t *p)
+{
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
+	__xdata uint16_t frag_len, payload_start;
+
+	frag_len = uip_len - (p - uip_appdata);
+	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
+		print_string("Firmware upload header too large, aborting.\n");
+		config_upload = 0;
+		s->tstate = TSTATE_NONE;
+		send_bad_request();
+		return;
+	}
+	memcpy(config_buf + pre_acc, p, frag_len);
+	pre_acc += frag_len;
+	payload_start = preamble_payload_start(pre_acc);
+	if (!payload_start) {
+		s->tstate = TSTATE_MULTIPART;
+		return;
+	}
+	dbg_string("Have content octets\n");
+
+	flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
+	set_sys_led_state(SYS_LED_FAST);
+
+	crc_value = 0;
+	bindex = 0;
+	write_len = 0;
+	// A verdict is only built once the upload part completes;
+	// clear any stale response so the completion check in the
+	// appcall POST branch cannot send leftovers
+	slen = 0;
+	upload_settings.p = config_buf;
+	upload_settings.bptr = payload_start;
+	upload_settings.plen = pre_acc;
+	stream_upload();
+
+	dbg_string("Done reading first fragment\n");
+}
+
+
 void handle_post(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
@@ -546,7 +621,7 @@ void handle_post(void)
 			dbg_string("Configuration upload\n");
 			verify_crc = 0;
 			config_upload = 1;
-			write_len = 0;
+			pre_acc = 0;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -600,66 +675,11 @@ void handle_post(void)
 			send_bad_request();
 			return;
 		}
-		if (config_upload) {
-			cfg_pos = uip_len - (p - uip_appdata);
-			if (write_len + cfg_pos >= CONFIG_UPLOAD_BUF) {
-				print_string("Configuration too large, aborting.\n");
-				config_upload = 0;
-				s->tstate = TSTATE_NONE;
-				send_bad_request();
-				return;
-			}
-			memcpy(config_buf + write_len, p, cfg_pos);
-			write_len += cfg_pos;
-			uint8_t taken = config_take();
-
-			if (!taken) {
-				s->tstate = TSTATE_MULTIPART;
-				return;
-			}
-			config_upload = 0;
-			s->tstate = TSTATE_NONE;
-			if (taken == 2) {
-				send_bad_request();
-				return;
-			}
-			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-			return;
-		}
-		cfg_pos = uip_len - (p - uip_appdata);
-		if (pre_acc + cfg_pos >= CONFIG_UPLOAD_BUF) {
-			print_string("Firmware upload header too large, aborting.\n");
-			s->tstate = TSTATE_NONE;
-			send_bad_request();
-			return;
-		}
-		memcpy(config_buf + pre_acc, p, cfg_pos);
-		pre_acc += cfg_pos;
-		cfg_end = preamble_payload_start(pre_acc);
-		if (!cfg_end) {
-			s->tstate = TSTATE_MULTIPART;
-			return;
-		}
-		dbg_string("Have content octets\n");
-
-		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
-		set_sys_led_state(SYS_LED_FAST);
-
-		crc_value = 0;
-		bindex = 0;
-		write_len = 0;
-		// A verdict is only built once the upload part completes;
-		// clear any stale response so the completion check in the
-		// appcall POST branch cannot send leftovers
-		slen = 0;
-		upload_settings.p = config_buf;
-		upload_settings.bptr = cfg_end;
-		upload_settings.plen = pre_acc;
-		stream_upload();
-
-		dbg_string("Done reading first fragment\n");
+		if (config_upload)
+			handle_config_fragment(p);
+		else
+			handle_firmware_fragment(p);
 		return;
-
 	} else {
 		send_not_found();
 		return;
