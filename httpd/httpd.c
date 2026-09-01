@@ -277,8 +277,9 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 
 	while (!strstart(p, "\r\n\r\n")) {
 		dbg_char(*p);
-		if (!*p++)
+		if (!*p)
 			break;
+		p++;
 		if ((v = header_value(p, "\ncontent-type:")))
 			content_type = v;
 		else if ((v = header_value(p, "\ncookie:"))) {
