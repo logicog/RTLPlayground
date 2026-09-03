@@ -1,5 +1,6 @@
 #include "machine.h"
 #include "syslog.h"
+#include "cmd_parser.h"
 #include "uip/uip.h"
 #include "rtl837x_common.h"
 
@@ -35,8 +36,7 @@ void syslog_start(void) __banked
 			return;
 		}
 		print_string_newline_no_syslog("Started syslog to IP ");
-		itoa(state.server_ip[0]); write_char('.'); itoa(state.server_ip[1]); write_char('.');
-		itoa(state.server_ip[2]); write_char('.'); itoa(state.server_ip[3]);
+		print_ip(state.server_ip);
 		write_char(':'); itoa_short(state.server_port); write_char('\n');
 		state.enabled = 1;
 	}
