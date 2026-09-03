@@ -11,7 +11,7 @@ const conf_cmds = [
   /^passwd\s+\S+$/,
   /^vlan\s+\d{1,4}\s+d$/,
   /^vlan\s+\d{1,4}\s+mgmt$/,
-  /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}[tu]?)+$/,
+  /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+[1-9]t?)+$/,
   /^pvid\s+\d{1,2}\s+\d{1,4}$/,
   /^ingress(\s+\d{1,2}[tua])+$/,
   /^ingress\s+[tua]$/,

@@ -549,7 +549,7 @@ void parse_vlan(void)
 	}
 	return;
 err:
-	print_string("Error: vlan (<vlan-id>|show) [port][t/u]...\n");
+	print_string("Error: vlan (<vlan-id>|show) [port][t]...\n");
 }
 
 
