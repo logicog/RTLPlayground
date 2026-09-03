@@ -81,5 +81,6 @@ bool port_ingress_vlan_filter_get(uint8_t port) __banked;
 vlan_ingress_mode_t port_ingress_filter_get(__xdata uint8_t port) __banked;
 void port_isolate(uint8_t port, __xdata uint16_t pmask) __banked;
 uint16_t port_isolation_get(uint8_t port) __banked;
+void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked;
 
 #endif
