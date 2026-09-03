@@ -16,11 +16,6 @@
 
 #define CMARK_S 6
 
-/* Answer to POST /cmd. Kept as a macro so that its length is known at compile
- * time: an unchanged slen afterwards means the command printed nothing. */
-#define CMD_RESPONSE_HEADER "HTTP/1.1 200 OK\r\nConnection: close\r\n" \
-			    "Content-Type: text/plain\r\n\r\n"
-
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
@@ -631,7 +626,9 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 
 static void run_cmd_body(__xdata uint8_t *body)
 {
-	slen = strtox(outbuf, CMD_RESPONSE_HEADER);
+	uint16_t hdr_len = strtox(outbuf, HTTP_RESPONCE_TXT);
+
+	slen = hdr_len;
 	cmd_capture = 1;
 	execute_commands(body);
 	if (cmd_capture == 2)
@@ -640,7 +637,7 @@ static void run_cmd_body(__xdata uint8_t *body)
 	/* Commands that configure something print nothing at all. Saying
 	 * so beats an empty body, which reads the same as "nothing ran".
 	 * Only on success: a silent failure must not answer with "OK". */
-	if (err_status == ERR_OK && slen == sizeof(CMD_RESPONSE_HEADER) - 1)
+	if (err_status == ERR_OK && slen == hdr_len)
 		slen += strtox(outbuf + slen, "OK\n");
 	/* On a parse error keep what the parser printed, because that text
 	 * is the explanation, and only restate the status. "400 NO" is as
