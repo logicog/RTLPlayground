@@ -447,27 +447,34 @@ void l2_delete(uint16_t idx)
 	if (!(sfr_data[0] & 0x20)) {
 		char_to_html('0');
 	} else {
+		__bit own = sfr_data[2] == uip_ethaddr.addr[0] && sfr_data[3] == uip_ethaddr.addr[1];
 		sfr_data[0] &= 0x3f; // Clear SPA
 		reg_write_m(RTL837x_TBL_DATA_IN_B);
 
 		// Second half of MAC is copied
 		reg_read_m(RTL837x_L2_DATA_OUT_A);
-		reg_write_m(RTL837x_TBL_DATA_IN_A);
+		if (own && sfr_data[0] == uip_ethaddr.addr[2] && sfr_data[1] == uip_ethaddr.addr[3]
+		    && sfr_data[2] == uip_ethaddr.addr[4] && sfr_data[3] == uip_ethaddr.addr[5]) {
+			// the switch's own entry keeps management reachable
+			char_to_html('0');
+		} else {
+			reg_write_m(RTL837x_TBL_DATA_IN_A);
 
-		reg_read_m(RTL837x_L2_DATA_OUT_C);
-		sfr_data[3] &= 0xc0; // Clear age, auth and second part of ports
-		sfr_data[1] &= 0xfe; // Clear nosalearn
-		reg_write_m(RTL837x_TBL_DATA_IN_C);
+			reg_read_m(RTL837x_L2_DATA_OUT_C);
+			sfr_data[3] &= 0xc0; // Clear age, auth and second part of ports
+			sfr_data[1] &= 0xfe; // Clear nosalearn
+			reg_write_m(RTL837x_TBL_DATA_IN_C);
 
-		reg_read_m(RTL837x_TBL_DATA_0);
-		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], TBL_L2_UNICAST, sfr_data[3]);
+			reg_read_m(RTL837x_TBL_DATA_0);
+			REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], TBL_L2_UNICAST, sfr_data[3]);
 
-		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
-		do {
-			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & TBL_EXECUTE);
+			REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+			do {
+				reg_read_m(RTL837X_TBL_CTRL);
+			} while (sfr_data[3] & TBL_EXECUTE);
 
-		char_to_html('1');
+			char_to_html('1');
+		}
 	}
 	char_to_html('}');
 }
