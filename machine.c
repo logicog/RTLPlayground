@@ -801,9 +801,13 @@ __code const struct machine machine = {
     },
 };
 
-#elif defined MACHINE_FNS1200P
+#elif defined(MACHINE_PCB_K0402WS_V2) || defined(MACHINE_FNS1200P)
 __code const struct machine machine = {
+#if defined(MACHINE_PCB_K0402WS_V2)
+	.machine_name = "PCB-K0402WS-V2.0",
+#else
     .machine_name = "FNS-1200P",
+#endif
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
