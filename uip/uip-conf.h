@@ -97,11 +97,16 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_MAX_CONNECTIONS 1
 
 /**
- * uip_periodic() runs from idle() roughly once per system tick
- * (SYS_TICK_HZ, 200 Hz; interrupt wake-ups add sweeps, so the timeout
- * can only fire early, never late). A silent ESTABLISHED peer is
- * dropped after about 30 s: with a single connection slot it would
- * otherwise wedge the web UI until a power cycle.
+ * This httpd closes after every response, so an ESTABLISHED connection
+ * that stays idle is a peer that died or never sent its request. With a
+ * single connection slot it would hold the web UI until the next power
+ * cycle, so it is aged out instead.
+ *
+ * uip_periodic() runs from idle() once per system tick; interrupt
+ * wake-ups only add sweeps, so the timeout can fire early but never
+ * late.
+ *
+ * \hideinitializer
  */
 #define UIP_CONF_IDLE_PERIODS 200
 #define UIP_CONF_IDLE_TIMEOUT 30
