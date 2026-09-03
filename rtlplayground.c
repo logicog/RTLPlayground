@@ -2340,29 +2340,6 @@ void main(void)
 	}
 }
 
-/*
- * LLDP Ethernet header.
- */
-uint16_t put_eth_header(uint8_t *p)
-{
-    uint8_t i;
-
-    p[0] = 0x01;
-    p[1] = 0x80;
-    p[2] = 0xc2;
-    p[3] = 0x00;
-    p[4] = 0x00;
-    p[5] = 0x0e;
-
-    for (i = 0; i < 6; i++)
-        p[6 + i] = uip_ethaddr.addr[i];
-
-    p[12] = (uint8_t)(LLDP_ETHERTYPE >> 8);
-    p[13] = (uint8_t)(LLDP_ETHERTYPE & 0xff);
-
-    return 14;
-}
-
 void lldp_init()
 {
 }
@@ -2382,90 +2359,117 @@ void lldp_tick(void)
         lldp_send();
 }
 
-void lldp_send(void)
+/*
+ * Outgoing LLDP packet.
+
+ * The packet starts after the RTL frame descriptor.  The RTL CPU tag
+ * is between the source MAC and the Ethernet payload.
+ */
+struct lldp_pkt {
+    struct uip_eth_addr dst;
+    struct uip_eth_addr src;
+    struct rtl_tag rtl_tag;
+    uint16_t ether_type;
+
+    uint8_t payload[64];
+};
+
+/*
+ * The current source uses the same placement convention for STP:
+ *
+ *     (__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE]
+ *
+ * Use the same convention for LLDP.
+ */
+#define LLDP_O ((__xdata struct lldp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
+
+void lldp_send(void) __reentrant
 {
+    uint8_t port;
     uint8_t *p;
     uint16_t len;
-    uint16_t ring_ptr;
-    uint8_t i;
 	uint8_t portPosition;
 
     /*
-     * FRAME is the normal, untagged TX layout.
+     * LLDP destination:
      *
-     * Do not select FRAME_Q here initially. Build the frame in FRAME first,
-     * then perform the same management-VLAN shift as tcpip_output().
-     */
-    p = (uint8_t *)&FRAME->dst;
-
-    /*
-     * Initialize the RTL TX descriptor.
-     *
-     * LLDP is not an IP packet, so hardware checksum insertion should be
-     * disabled. tcpip_output() uses 0x07 for IP packets.
-     */
-    FRAME->tx_seq = tx_seq++;
-    FRAME->chksum_flags = 0x00;
-    FRAME->reserved_1[0] = 0x00;
-    FRAME->reserved_1[1] = 0x00;
-    FRAME->reserved_2[0] = 0x00;
-    FRAME->reserved_2[1] = 0x00;
-
-    /*
-     * Ethernet destination:
      * 01:80:c2:00:00:0e
      */
-    p[0] = 0x01;
-    p[1] = 0x80;
-    p[2] = 0xc2;
-    p[3] = 0x00;
-    p[4] = 0x00;
-    p[5] = 0x0e;
+    LLDP_O->dst.addr[0] = 0x01;
+    LLDP_O->dst.addr[1] = 0x80;
+    LLDP_O->dst.addr[2] = 0xc2;
+    LLDP_O->dst.addr[3] = 0x00;
+    LLDP_O->dst.addr[4] = 0x00;
+    LLDP_O->dst.addr[5] = 0x0e;
 
     /*
-     * Ethernet source.
+     * The source address is changed for each port only if desired.
+     * A common LLDP choice is one bridge MAC for every port.
      */
-    for (i = 0; i < 6; i++)
-        p[6 + i] = uip_ethaddr.addr[i];
+    for (uint8_t i = 0; i < 6; i++)
+    	LLDP_O->src.addr[i] = uip_ethaddr.addr[i];
 
     /*
-     * EtherType: LLDP, 0x88cc.
+     * This is the RTL CPU tag, not the Ethernet EtherType.
+     *
+     * pmask is one-hot:
+     *
+     *     port 0 -> 0x0001
+     *     port 1 -> 0x0002
+     *     port 2 -> 0x0004
      */
-    p[12] = 0x88;
-    p[13] = 0xcc;
+    LLDP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
+    LLDP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
+    LLDP_O->rtl_tag.reason = 0x00;
+    LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 
-    len = 14;
+    /*
+     * LLDP uses the normal Ethernet EtherType 0x88cc.
+     */
+    LLDP_O->ether_type = HTONS(0x88cc);
+
+    /*
+     * The LLDPDU begins after dst, src, rtl_tag, and ether_type.
+     */
+    p = LLDP_O->payload;
+    len = 0;
 
     /*
      * Chassis ID TLV:
      *
-     * Type 1, length 3
-     * Subtype 7, value "RTL"
+     * Type    = 1
+     * Length  = 7
+     * Subtype = 4, MAC address
      */
-    p[len++] = 0x02;
-    p[len++] = 0x03;
-    p[len++] = 0x07;
-    p[len++] = 'R';
-    p[len++] = 'T';
-    p[len++] = 'L';
-    
+    p[len++] = 0x02;       /* type 1, length high bits */
+    p[len++] = 0x07;       /* length */
+    p[len++] = 0x04;       /* subtype: MAC address */
+
+    for (uint8_t i = 0; i < 6; i++)
+    	p[len + i] = uip_ethaddr.addr[i];
+
+	len += 6;
+
     /*
      * Port ID TLV:
      *
-     * Type 2, length 1
-     * Subtype 7, value "0-9"
+     * Type    = 2
+     * Length  = 2
+     * Subtype = 7, locally assigned
+     * Value   = logical port number
      */
-    p[len++] = 0x04;
-    p[len++] = 0x01;
-    p[len++] = 0x07;
-	portPosition = len;
-    p[len++] = 'c';
+    p[len++] = 0x04;       /* type 2, length high bits */
+    p[len++] = 0x02;       /* length */
+    p[len++] = 0x07;       /* subtype */
+    portPosition = len;
+	p[len++] = '0';       /* filled in per port below */
 
     /*
-     * TTL TLV:
+     * Time To Live TLV:
      *
-     * Type 3, length 2
-     * Value 120 seconds
+     * Type   = 3
+     * Length = 2
+     * TTL    = 120 seconds
      */
     p[len++] = 0x06;
     p[len++] = 0x02;
@@ -2473,43 +2477,50 @@ void lldp_send(void)
     p[len++] = 120;
 
     /*
-     * End of LLDPDU.
+     * End of LLDPDU TLV.
      */
     p[len++] = 0x00;
     p[len++] = 0x00;
 
     /*
-     * Ethernet minimum frame size, excluding FCS.
+     * Ethernet payload must be at least 46 bytes.
+     * The Ethernet frame length is therefore at least 60 bytes,
+     * excluding FCS.
      */
-    while (len < 60)
+    while (len < 46)
         p[len++] = 0x00;
 
-    FRAME->len = len;
+    /*
+     * uip_len is the Ethernet frame length excluding FCS.
+     *
+     * The frame consists of:
+     *
+     *     dst       6
+     *     src       6
+     *     rtl_tag  sizeof(struct rtl_tag)
+     *     EtherType 2
+     *     payload   len
+     */
+    uip_len = 6 + 6 + sizeof(struct rtl_tag) + 2 + len;
 
-	for (char i = machine.min_port; i <= machine.max_port; i++) {
+    /*
+     * Send one copy per physical/logical port.
+     */
+    for (port = machine.min_port; port <= machine.max_port; port++) {
 
-		p[portPosition] = i + 0x30; //ATOI
+        LLDP_O->payload[portPosition] = '0' + port;
 
-		//TODO convert to RTLFRAME and send port specific
-		/*
-		* Obtain the current CPU TX ring position exactly as tcpip_output()
-		* does.
-		*/
-		reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
+        /*
+         * Restrict this packet to exactly one egress port.
+         */
+		// if it starts from 1 instead of 0:
+		// LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << (port - 1));
+        LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 
-		ring_ptr = ((uint16_t)sfr_data[2]) << 8;
-		ring_ptr |= sfr_data[3];
-
-		/*
-		* Copy the frame from XRAM to the ASIC-side TX buffer.
-		*/
-		nic_tx_packet(ring_ptr);
-
-		/*
-		* Complete the ASIC-side transmission exactly as tcpip_output() does.
-		*/
-		reg_read_m(RTL837X_REG_NIC_TX_CURR_PKT);
-		REG_SET(RTL837X_REG_NIC_TXCMD, 1);
-
-	}
+        /*
+         * tcpip_output() performs the normal RTLPlayground TX path.
+         * It also handles the descriptor/ring setup.
+         */
+        tcpip_output();
+    }
 }
