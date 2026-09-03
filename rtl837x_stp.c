@@ -47,31 +47,36 @@ __xdata uint8_t  stp_rstp;		/* 1 = RST BPDUs, 0 = legacy Config BPDUs */
 __xdata uint8_t  stp_txhold;		/* BPDUs per port per second */
 
 
-__xdata uint8_t  stp_pflags[10];
-__xdata uint32_t stp_pcost[10];		/* 0 = auto */
-__xdata uint8_t  stp_pprio[10];
-__xdata uint8_t  stp_pp2p[10];		/* admin point-to-point: 0 auto, 1 on, 2 off */
+__xdata uint8_t  stp_ent_of[10];
+__xdata uint16_t stp_lag_mask[STP_LAG_COUNT];
+__xdata uint8_t  stp_ss_i;
+__xdata uint8_t  stp_map_dirty;
+__xdata uint8_t  stp_pflags[STP_ENTITIES];
+__xdata uint32_t stp_pcost[STP_ENTITIES];	/* 0 = auto */
+__xdata uint8_t  stp_pprio[STP_ENTITIES];
+__xdata uint8_t  stp_pp2p[STP_ENTITIES];	/* admin point-to-point: 0 auto, 1 on, 2 off */
 
 /* Designated bridge, port and cost last heard on the port; stp_bpdu_age tells
  * whether they are still current.
  */
-__xdata struct bridge stp_dbridge[10];
-__xdata uint16_t stp_dpid[10];
-__xdata uint32_t stp_dcost[10];
+__xdata struct bridge stp_dbridge[STP_ENTITIES];
+__xdata uint16_t stp_dpid[STP_ENTITIES];
+__xdata uint32_t stp_dcost[STP_ENTITIES];
 
 /* ---- Status / runtime ---- */
 __xdata struct bridge root_bridge;
 __xdata uint32_t root_bridge_cost;	/* our cost to the root (rx cost + root port cost) */
 __xdata uint8_t  stp_root_port;		/* 0xff = we are the root */
 __xdata uint16_t stp_tc_count;
-__xdata uint16_t stp_scratch16;	/* scratch for status printing only */
+__xdata uint16_t stp_scratch16;	/* scratch for status printing and the lag map */
+__xdata uint8_t  stp_st_of;
 
-__xdata uint16_t port_timers[10];	/* listen-period countdown (0 = not listening) */
-__xdata uint16_t port_hello[10];	/* hello TX countdown */
-__xdata uint16_t stp_bpdu_age[10];	/* ticks since last BPDU seen on port (saturating) */
-__xdata uint8_t  stp_loop_held[10];	/* port is out of forwarding because a loop was seen on it */
-__xdata uint8_t  stp_tx_budget[10];	/* tx hold: BPDUs left in the current second */
-__xdata uint8_t  stp_tx_count[10];	/* BPDUs actually put on the wire, wraps at 256 */
+__xdata uint16_t port_timers[STP_ENTITIES];	/* listen-period countdown (0 = not listening) */
+__xdata uint16_t port_hello[STP_ENTITIES];	/* hello TX countdown */
+__xdata uint16_t stp_bpdu_age[STP_ENTITIES];	/* ticks since last BPDU seen on port (saturating) */
+__xdata uint8_t  stp_loop_held[STP_ENTITIES];	/* port is out of forwarding because a loop was seen on it */
+__xdata uint8_t  stp_tx_budget[STP_ENTITIES];	/* tx hold: BPDUs left in the current second */
+__xdata uint8_t  stp_tx_count[STP_ENTITIES];	/* BPDUs actually put on the wire, wraps at 256 */
 __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 __xdata uint16_t stp_link_prev;		/* carrier bitmap as of the last check */
 __xdata uint16_t stp_link_now;
@@ -164,7 +169,12 @@ struct stp_pkt_in {
 /* Console messages name the port on the front panel, not the internal index. */
 static void print_port_nl(uint8_t port) __reentrant
 {
-	print_byte(machine.log_to_phys_port[port]);
+	if (port >= STP_LAG_BASE) {
+		write_char('L');
+		write_char('1' + port - STP_LAG_BASE);
+	} else {
+		print_byte(machine.log_to_phys_port[port]);
+	}
 	write_char('\n');
 }
 
@@ -183,6 +193,8 @@ static void print_bridge_id(uint8_t prio, uint8_t ext, __xdata uint8_t *mac) __r
 static __code const char stp_state_txt[] = "off  blocklearnfwd  ";
 static __code const char stp_role_txt[]  = "desgroot";
 static __code const char stp_edge_txt[]  = "no  yes ";
+
+static uint8_t stp_ent_active(uint8_t e) __reentrant;
 
 static void print_field(__code const char *txt, uint8_t idx, uint8_t width) __reentrant
 {
@@ -207,7 +219,12 @@ static void stp_status(void)
 		print_string(" (this switch)\n");
 	} else {
 		print_string(" port ");
-		print_byte(machine.log_to_phys_port[stp_root_port]);
+		if (stp_root_port >= STP_LAG_BASE) {
+			write_char('L');
+			write_char('1' + stp_root_port - STP_LAG_BASE);
+		} else {
+			print_byte(machine.log_to_phys_port[stp_root_port]);
+		}
 		print_string(" cost ");
 		print_long(root_bridge_cost);
 		write_char('\n');
@@ -217,11 +234,26 @@ static void stp_status(void)
 	write_char('\n');
 	print_string("port state role edge tx bpdu\n");
 	reg_read_m(RTL837X_MSTP_STATES);
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
+		if (!stp_ent_active(stp_i))
+			continue;
 		write_char(' ');
-		print_byte(machine.log_to_phys_port[stp_i]);
+		if (stp_i >= STP_LAG_BASE) {
+			write_char('L');
+			write_char('1' + stp_i - STP_LAG_BASE);
+		} else {
+			print_byte(machine.log_to_phys_port[stp_i]);
+		}
 		print_string("  ");
-		print_field(stp_state_txt, (sfr_data[3 - (stp_i >> 2)] >> ((stp_i << 1) & 0x7)) & 0x3, 5);
+		stp_st_of = stp_i;
+		if (stp_i >= STP_LAG_BASE) {
+			stp_st_of = 0;
+			while (stp_st_of < 10 && !((stp_lag_mask[stp_i - STP_LAG_BASE] >> stp_st_of) & 1))
+				stp_st_of++;
+			if (stp_st_of >= 10)
+				stp_st_of = 0;
+		}
+		print_field(stp_state_txt, (sfr_data[3 - (stp_st_of >> 2)] >> ((stp_st_of << 1) & 0x7)) & 0x3, 5);
 		write_char(' ');
 		print_field(stp_role_txt, stp_i == stp_root_port ? 1 : 0, 4);
 		write_char(' ');
@@ -266,15 +298,93 @@ int8_t cmpBytes(__xdata uint8_t *m1, __xdata uint8_t *m2, uint8_t n) __reentrant
 }
 
 
-/* Write one port's 2-bit state into the ASIC's MSTP register.
- * 00 disable, 01 blocking, 10 learning, 11 forwarding. */
+static void stp_lag_map(void)
+{
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+		stp_ent_of[stp_ss_i] = stp_ss_i;
+	for (stp_scratch = 0; stp_scratch < STP_LAG_COUNT; stp_scratch++) {
+		stp_scratch16 = port_lag_members_get(stp_scratch);
+		if (stp_lag_mask[stp_scratch] != stp_scratch16)
+			stp_map_dirty = 1;
+		stp_lag_mask[stp_scratch] = stp_scratch16;
+		for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+			if ((stp_lag_mask[stp_scratch] >> stp_ss_i) & 1)
+				stp_ent_of[stp_ss_i] = STP_LAG_BASE + stp_scratch;
+	}
+}
+
+
+static uint8_t stp_ent_active(uint8_t e) __reentrant
+{
+	if (e >= STP_ENTITIES)
+		return 0;
+	if (e >= STP_LAG_BASE)
+		return stp_lag_mask[e - STP_LAG_BASE] != 0;
+	return e >= machine.min_port && e <= machine.max_port && stp_ent_of[e] == e;
+}
+
+
+static uint8_t stp_ent_has(uint8_t ent, uint8_t p) __reentrant
+{
+	if (ent < STP_LAG_BASE)
+		return ent == p;
+	return (stp_lag_mask[ent - STP_LAG_BASE] >> p) & 1;
+}
+
+
+static uint8_t stp_state_port(uint8_t e) __reentrant
+{
+	if (e < STP_LAG_BASE)
+		return e;
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+		if ((stp_lag_mask[e - STP_LAG_BASE] >> stp_ss_i) & 1)
+			return stp_ss_i;
+	return 0;
+}
+
+
+static void stp_state_bits(uint8_t port, uint8_t state) __reentrant
+{
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+		if (stp_ent_has(port, stp_ss_i))
+			sfr_data[3 - (stp_ss_i >> 2)] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
+}
+
+
+/* MSTP register encoding: 00 disable, 01 blocking, 10 learning, 11 forwarding. */
 static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 {
 	reg_read_m(RTL837X_MSTP_STATES);
-	stp_scratch = 3 - (port >> 2);
-	sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((port << 1) & 0x7));
-	sfr_data[stp_scratch] |= (uint8_t)(state << ((port << 1) & 0x7));
+	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++) {
+		if (!stp_ent_has(port, stp_ss_i))
+			continue;
+		stp_scratch = 3 - (stp_ss_i >> 2);
+		sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((stp_ss_i << 1) & 0x7));
+		sfr_data[stp_scratch] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
+	}
 	reg_write_m(RTL837X_MSTP_STATES);
+}
+
+
+static void stp_ent_apply(uint8_t e) __reentrant
+{
+	if (!(stp_pflags[e] & STP_PF_ENABLED)) {
+		stp_state_set(e, 0b11);
+		return;
+	}
+	if (stp_pflags[e] & STP_PF_TRIPPED) {
+		stp_state_set(e, 0b00);
+		return;
+	}
+	if (stp_pflags[e] & STP_PF_ADMEDGE) {
+		stp_pflags[e] |= STP_PF_OPEREDGE;
+		stp_state_set(e, 0b11);
+		return;
+	}
+	if (port_timers[e])
+		stp_state_set(e, 0b01);
+	else
+		stp_state_set(e, ((stp_link_prev >> e) & 1) ? 0b11 : 0b01);
 }
 
 
@@ -285,7 +395,13 @@ static void stp_topology_change(uint8_t port) __reentrant
 		return;
 	stp_tc_count++;
 	stp_tc_while = ((uint16_t)stp_maxage_s + stp_fwddelay_s) * STP_HZ;
-	port_l2_forget_port(port);
+	if (port >= STP_LAG_BASE) {
+		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
+			if (stp_ent_has(port, i))
+				port_l2_forget_port(i);
+	} else {
+		port_l2_forget_port(port);
+	}
 }
 
 
@@ -296,7 +412,7 @@ static void stp_topology_change(uint8_t port) __reentrant
  */
 static void stp_loop_hold_peer(uint8_t port) __reentrant
 {
-	if (port < machine.min_port || port > machine.max_port)
+	if (port >= STP_ENTITIES || !stp_ent_active(port))
 		return;
 	if (!(stp_pflags[port] & STP_PF_ENABLED))
 		return;
@@ -348,7 +464,18 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	STP_O->rtl_tag.reason = 0x00;
 	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
-	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
+	if (port >= STP_LAG_BASE) {
+		stp_scratch = 0;
+		while (stp_scratch < 10 && !stp_ent_has(port, stp_scratch))
+			stp_scratch++;
+		if (stp_scratch >= 10) {
+			stp_tx_flags_extra = 0;
+			return;
+		}
+		STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << stp_scratch);
+	} else {
+		STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << port);
+	}
 
 	STP_O->dsap = 0x42;
 	STP_O->ssap = 0x42;
@@ -359,8 +486,9 @@ void stp_cnf_send(uint8_t port) __reentrant
 		STP_O->version = BPDU_VER_RSTP;
 		STP_O->bpdu_type = BPDU_TYPE_RST;
 		reg_read_m(RTL837X_MSTP_STATES);
+		stp_scratch = stp_state_port(port);
 		STP_O->flags = port == stp_root_port ? BPDU_ROLE_ROOT : BPDU_ROLE_DESIGNATED;
-		if (((sfr_data[3 - (port >> 2)] >> ((port << 1) & 0x7)) & 0b11) == 0b11)
+		if (((sfr_data[3 - (stp_scratch >> 2)] >> ((stp_scratch << 1) & 0x7)) & 0b11) == 0b11)
 			STP_O->flags |= BPDU_FLAG_LEARNING | BPDU_FLAG_FORWARDING;
 	} else {
 		STP_O->msg_len = HTONS(BPDU_LEN_CONFIG);
@@ -424,7 +552,7 @@ void stp_in(void) __banked
 	stp_scratch = ((uint8_t)HTONS(STP_I->rtl_tag.pmask)) & 0x0f;
 	if (stp_scratch < machine.min_port || stp_scratch > machine.max_port)
 		return;
-	port = stp_scratch;
+	port = stp_ent_of[stp_scratch];
 
 	// Make sure this is the type of (R)STP packet we are interested in:
 	if (!(STP_I->dsap == 0x42 && STP_I->ssap == 0x42 && STP_I->ctrl == 0x03))
@@ -516,8 +644,9 @@ void stp_in(void) __banked
 			uint8_t i;
 			stp_tc_count++;
 			for (i = machine.min_port; i <= machine.max_port; i++)
-				if (i != port && (stp_pflags[i] & STP_PF_ENABLED)
-				    && !(stp_pflags[i] & STP_PF_OPEREDGE))
+				if (!stp_ent_has(port, i)
+				    && (stp_pflags[stp_ent_of[i]] & STP_PF_ENABLED)
+				    && !(stp_pflags[stp_ent_of[i]] & STP_PF_OPEREDGE))
 					port_l2_forget_port(i);
 		}
 		if (stp_tc_while < ((uint16_t)stp_hello_s + 1) * STP_HZ)
@@ -563,8 +692,34 @@ void stp_timers(void) __banked
 	/* Refill the per-port tx budgets once per second (tx hold count) */
 	if (++stp_sec_tick >= STP_HZ) {
 		stp_sec_tick = 0;
-		for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+		for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++)
 			stp_tx_budget[stp_i] = stp_txhold;
+
+		stp_lag_map();
+		if (stp_map_dirty) {
+			stp_map_dirty = 0;
+			for (stp_i = 0; stp_i < STP_LAG_BASE; stp_i++) {
+				if (stp_i < machine.min_port || stp_i > machine.max_port)
+					continue;
+				if (stp_ent_of[stp_i] != stp_i) {
+					stp_loop_held[stp_i] = 0;
+					port_timers[stp_i] = 0;
+				} else {
+					stp_ent_apply(stp_i);
+				}
+			}
+			for (stp_i = STP_LAG_BASE; stp_i < STP_ENTITIES; stp_i++) {
+				if (stp_lag_mask[stp_i - STP_LAG_BASE]) {
+					stp_ent_apply(stp_i);
+				} else {
+					stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
+					stp_loop_held[stp_i] = 0;
+					port_timers[stp_i] = 0;
+				}
+			}
+			if (stp_root_port != 0xff && !stp_ent_active(stp_root_port))
+				stp_claim_root();
+		}
 
 		/* Link supervision. Without this the state machine never learns
 		 * that a port lost carrier: it keeps the port in forwarding, keeps
@@ -574,8 +729,20 @@ void stp_timers(void) __banked
 		 * of the 50 Hz tick. */
 		reg_read_m(RTL837X_REG_LINKS_STS);
 		stp_link_now = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
+		{
+			__xdata static uint16_t eff;
+			eff = 0;
+			for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+				if ((stp_link_now >> stp_i) & 1)
+					eff |= (uint16_t)1 << stp_ent_of[stp_i];
+			stp_link_now = eff;
+		}
 		if (stp_link_now != stp_link_prev) {
-			for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+			for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
+				if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
+					continue;
+				if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
+					continue;
 				if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
 					continue;
 				if (!((stp_link_now ^ stp_link_prev) >> stp_i & 1))
@@ -600,8 +767,8 @@ void stp_timers(void) __banked
 		}
 	}
 
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
-		if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
+		if (!stp_ent_active(stp_i) || !(stp_pflags[stp_i] & STP_PF_ENABLED))
 			continue;
 
 		if (stp_bpdu_age[stp_i] < 0xffff)
@@ -667,7 +834,12 @@ void stp_defaults(void) __banked
 	stp_fwddelay_s = 15;
 	stp_rstp = 1;
 	stp_txhold = 6;
-	for (stp_i = 0; stp_i < 10; stp_i++) {
+	for (stp_i = 0; stp_i < 10; stp_i++)
+		stp_ent_of[stp_i] = stp_i;
+	for (stp_i = 0; stp_i < STP_LAG_COUNT; stp_i++)
+		stp_lag_mask[stp_i] = 0;
+	stp_map_dirty = 0;
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		/* enabled, auto-edge on: host-facing ports go forwarding after
 		 * 3 s of BPDU silence instead of the full forward delay */
 		stp_pflags[stp_i] = STP_PF_ENABLED | STP_PF_AUTOEDGE;
@@ -714,25 +886,34 @@ static void stp_fdb_update(__xdata uint16_t pmask)
 void stp_setup(void) __banked
 {
 	print_string("Enabling STP: ");
+	stp_lag_map();
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
 		stp_loop_held[stp_i] = 0;
 		stp_bpdu_age[stp_i] = 0;
 		stp_tx_budget[stp_i] = stp_txhold;
 		stp_tx_count[stp_i] = 0;
-		if (!(stp_pflags[stp_i] & STP_PF_ENABLED) || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
+		port_timers[stp_i] = 0;
+		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
+		if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
+			continue;
+		if (stp_i >= STP_LAG_BASE && !stp_lag_mask[stp_i - STP_LAG_BASE])
+			continue;
+		if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
+			continue;
+		if (!(stp_pflags[stp_i] & STP_PF_ENABLED)
+		    || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
 			/* not participating, or admin edge: forwarding immediately */
 			if (stp_pflags[stp_i] & STP_PF_ADMEDGE)
 				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
-			sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
+			stp_state_bits(stp_i, 0b11);
 			port_timers[stp_i] = 0;
 		} else {
 			/* listen first: blocking until the forward-delay expires */
-			sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b01 << ((stp_i << 1) & 0x7));
+			stp_state_bits(stp_i, 0b01);
 			port_timers[stp_i] = (uint16_t)stp_fwddelay_s * STP_HZ;
 		}
-		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
 	}
 	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
 	reg_write_m(RTL837X_MSTP_STATES);
@@ -752,7 +933,11 @@ void stp_setup(void) __banked
 	/* Seed the carrier bitmap, so turning STP on does not report every
 	 * port that was already down as a fresh topology change. */
 	reg_read_m(RTL837X_REG_LINKS_STS);
-	stp_link_prev = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
+	stp_link_now = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
+	stp_link_prev = 0;
+	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+		if ((stp_link_now >> stp_i) & 1)
+			stp_link_prev |= (uint16_t)1 << stp_ent_of[stp_i];
 
 	stp_claim_root();
 
@@ -768,6 +953,8 @@ void stp_off(void) __banked
 		// Set STP port state to forwarding
 		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
 		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
+	}
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
 		stp_loop_held[stp_i] = 0;
 		port_timers[stp_i] = 0;
@@ -803,12 +990,27 @@ void stp_parse(void) __banked __reentrant
 	if (cmd_words_len < 3)
 		goto err;
 
-	if (cmd_compare(1, "port")) {
+	if (cmd_compare(1, "port") || cmd_compare(1, "lag")) {
+		stp_lag_map();
 		if (cmd_words_len < 4)
 			goto err;
-		if (!cmd_parse_port_separator(cmd_words_b[2]))
-			goto err;
-		port = atoi_results_u8;
+		if (cmd_compare(1, "lag")) {
+			if (!atoi_byte(cmd_words_b[2]))
+				goto err;
+			if (!atoi_results_u8 || atoi_results_u8 > STP_LAG_COUNT)
+				goto err;
+			port = STP_LAG_BASE + atoi_results_u8 - 1;
+		} else {
+			if (!cmd_parse_port_separator(cmd_words_b[2]))
+				goto err;
+			port = atoi_results_u8;
+			if (stp_ent_of[port] != port) {
+				print_string("Port belongs to a LAG, configure it as lag ");
+				print_byte(stp_ent_of[port] - STP_LAG_BASE + 1);
+				write_char('\n');
+				return;
+			}
+		}
 		if (cmd_words_len < 5 && !cmd_compare(3, "on") && !cmd_compare(3, "off"))
 			goto err;
 		if (cmd_compare(3, "on")) {
@@ -926,5 +1128,5 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
-	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9> on|off|edge|cost|prio|guard|filter ...\n");
+	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
 }
