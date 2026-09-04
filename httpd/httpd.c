@@ -842,7 +842,7 @@ void httpd_appcall(void)
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
-	} else if (uip_aborted()) {
+	} else if (uip_aborted() || uip_timedout()) {
 		dbg_string("Connection aborted\n");
 		uip_close();
 		s->tstate = TSTATE_CLOSED;
