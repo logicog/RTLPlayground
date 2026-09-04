@@ -228,7 +228,7 @@ void send_basic_info(void)
 	itoa_html(syslog_state.server_ip[1]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[2]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[3]); char_to_html(':');
-	itoa_html(syslog_state.server_port);
+	itoa16_html(syslog_state.server_port);
 	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
