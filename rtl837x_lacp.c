@@ -6,8 +6,8 @@
 // #define DEBUG
 
 /* Place this module's code and constants in code bank 2 (cf. rtl837x_igmp.c) */
-#pragma codeseg BANK2
-#pragma constseg BANK2
+#pragma codeseg BANK3
+#pragma constseg BANK3
 
 #include <stdint.h>
 #include "rtl837x_common.h"
