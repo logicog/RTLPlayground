@@ -97,6 +97,21 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_MAX_CONNECTIONS 1
 
 /**
+ * This httpd closes after every response, so an ESTABLISHED connection
+ * that stays idle is a peer that died or never sent its request. With a
+ * single connection slot it would hold the web UI until the next power
+ * cycle, so it is aged out instead.
+ *
+ * uip_periodic() runs from idle() once per system tick; interrupt
+ * wake-ups only add sweeps, so the timeout can fire early but never
+ * late.
+ *
+ * \hideinitializer
+ */
+#define UIP_CONF_IDLE_PERIODS 200
+#define UIP_CONF_IDLE_TIMEOUT 30
+
+/**
  * Maximum number of listening TCP ports. TODO: increase this!
  *
  * \hideinitializer
