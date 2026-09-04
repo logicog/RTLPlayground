@@ -37,6 +37,10 @@ extern __xdata uint8_t sbuf[SBUF_SIZE];
 // Size of the TCP Output buffer
 #define TCP_OUTBUF_SIZE 2500
 
+// Appended when a captured command wrote more than the output buffer holds,
+// so a clipped listing is visibly clipped instead of silently short.
+#define CMD_TRUNCATED "\n[output truncated]\n"
+
 // Size of the port name, including the terminating null byte
 #define PORT_NAME_SIZE 32
 
@@ -73,7 +77,7 @@ struct vlan_tag {
 #define RTL_FRAME_TAG_ID	0x8899
 #define RTL_FRAME_TAG_VERSION	0x04
 /* Bits of the tag's `flags` word, see doc/CpuPort.md. */
-#define RTL_TAG_LEARN_DIS	0x0020	/* do not learn the CPU's SA on the egress port */
+#define RTL_TAG_LEARN_DIS	0x0020	/* do not learn the source address from this frame */
 #define RTL_TAG_KEEP		0x0080	/* keep the frame's 802.1Q tag format as injected */
 /* The `pmask` word, see doc/CpuPort.md. */
 
@@ -120,6 +124,8 @@ struct flash_region_t {
 
 extern __xdata char port_names[9][PORT_NAME_SIZE];
 
+extern __xdata bool stp_enabled;
+
 /* System hostname (device identity). Set via `hostname <text>` and the System
  * Settings page, reported in /information.json. Other modules (e.g. LLDP, which
  * advertises it as the System Name TLV) read it from here. */
@@ -137,6 +143,7 @@ void print_long(uint32_t a);
 void print_short(uint16_t a);
 void print_byte(uint8_t a);
 void itoa(uint8_t v);
+void itoa_short(uint16_t v);
 void print_sfr_data(void);
 void print_phy_data(void);
 void print_cmd_prompt(void);

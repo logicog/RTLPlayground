@@ -20,6 +20,8 @@
 #pragma constseg BANK1
 
 extern volatile __xdata uint8_t sfr_data[4];
+extern volatile __xdata uint32_t ticks;
+extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
 extern __code uint8_t * __code hex;
 extern __code struct f_data f_data[];
 extern __code char * __code mime_strings[];
@@ -48,18 +50,24 @@ __xdata uint8_t boundary[72];
 #define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
-__xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
-// part-header bytes buffered so far; accumulates across TCP segments
+// bytes buffered in config_buf so far (config body, or a firmware part
+// header); accumulates across TCP segments
 __xdata uint16_t pre_acc;
-__xdata uint8_t cfg_bl;
 __xdata uint8_t * __xdata content_type = 0;
 __xdata uint8_t * __xdata session = 0;
+__xdata uint16_t content_length;
 
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
 __xdata uint8_t verify_crc;
 __xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
+
+#define POSTBODY_CMD	1
+#define POSTBODY_LOGIN	2
+#define POSTBODY_TIMEOUT (5 * SYS_TICK_HZ)
+__xdata uint8_t postbody_endpoint;
+__xdata uint16_t postbody_start;
 
 __xdata char passwd[21];
 // Set when a verified firmware upload awaits its response ACK, after
@@ -77,6 +85,7 @@ __xdata uint32_t last_session_use;
 #define TSTATE_CLOSED 		3
 #define TSTATE_POST 		4
 #define TSTATE_MULTIPART	5
+#define TSTATE_POSTBODY		6
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
@@ -135,6 +144,24 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 			return false;
 		}
 	}
+}
+
+
+/* name must be lower-case, starting with the '\n' of the previous line's end */
+__xdata uint8_t *header_value(__xdata uint8_t *p, __code uint8_t *name)
+{
+	uint8_t u, c;
+
+	while ((c = *name++)) {
+		u = *p++;
+		if (u >= 'A' && u <= 'Z')
+			u += 'a' - 'A';
+		if (u != c)
+			return 0;
+	}
+	while (*p == ' ' || *p == '\t')
+		p++;
+	return p;
 }
 
 
@@ -213,7 +240,10 @@ uint8_t parse_short(__xdata uint8_t *p)
 		c = *p++ - '0';
 		if (c > 9) { break; }
 		err = 0;
-		short_parsed = (short_parsed * 10) + c;
+		if (short_parsed > 6552)
+			short_parsed = 0xffff;
+		else
+			short_parsed = (short_parsed * 10) + c;
 	}
 	return err;
 }
@@ -246,30 +276,48 @@ void send_unauthorized(void)
 }
 
 
+void send_length_required(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 411 Length Required\r\nConnection: close\r\n\r\n");
+}
+
+
+void send_ok(void)
+{
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+}
+
+
 __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 {
+	__xdata uint8_t *v;
+
 	content_type = 0;
+	content_length = 0;
 	session = 0;
 	authenticated = 0;
 
-	while (*p != '\r' || *(p + 1) != '\n' || *(p + 2) != '\r' || *(p + 3) != '\n') {
+	while (!strstart(p, "\r\n\r\n")) {
 		dbg_char(*p);
-		if (!*p++)
+		if (!*p)
 			break;
-		if (is_word(p, "\nContent-Type:"))
-			content_type = p + 15;
-		else if (is_word(p, "\nCookie:")) {
+		p++;
+		if ((v = header_value(p, "\ncontent-type:")))
+			content_type = v;
+		else if ((v = header_value(p, "\ncontent-length:"))) {
+			parse_short(v);
+			content_length = short_parsed;
+		} else if ((v = header_value(p, "\ncookie:"))) {
 			/* Scan for the "session" key: the header may hold several
 			 * cookies in any order. Match "session" not "session=" -
 			 * is_word() requires a separator after the match and '=' is
 			 * one, so this also rejects a longer key like "sessionx". */
-			__xdata uint8_t *c = p + 8;	/* past "\nCookie:" */
-			while (*c && *c != '\r' && *c != '\n') {
-				if (is_word(c, "session")) {
-					session = c + 8;	/* past "session=" */
+			while (*v && *v != '\r' && *v != '\n') {
+				if (is_word(v, "session")) {
+					session = v + 8;	/* past "session=" */
 					break;
 				}
-				c++;
+				v++;
 			}
 		}
 	}
@@ -325,12 +373,16 @@ void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 /* 0: body incomplete, 1: configuration stored, 2: malformed */
 static uint8_t config_take(void)
 {
+	// #386: needs static, otherwise it still lands in SRAM/DSEG
+	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
+	__xdata uint8_t cfg_bl;
+
 	cfg_bl = strlen_x(boundary);
 
 	// the body is complete once the closing boundary has arrived
 	cfg_last = 0;
 	while (1) {
-		if (cfg_last + cfg_bl + 1 >= write_len)
+		if (cfg_last + cfg_bl + 1 >= pre_acc)
 			return 0;
 		if (strstart_x(&config_buf[cfg_last], boundary)
 		    && strstart(&config_buf[cfg_last + cfg_bl], "--"))
@@ -500,11 +552,183 @@ uint8_t stream_upload(void)
 }
 
 
+static void handle_config_fragment(__xdata uint8_t *p)
+{
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
+	__xdata uint16_t frag_len;
+	uint8_t taken;
+
+	frag_len = uip_len - (p - uip_appdata);
+	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
+		print_string("Configuration too large, aborting.\n");
+		config_upload = 0;
+		s->tstate = TSTATE_NONE;
+		send_bad_request();
+		return;
+	}
+	memcpy(config_buf + pre_acc, p, frag_len);
+	pre_acc += frag_len;
+	taken = config_take();
+	if (!taken) {
+		s->tstate = TSTATE_MULTIPART;
+		return;
+	}
+	config_upload = 0;
+	s->tstate = TSTATE_NONE;
+	if (taken == 2) {
+		send_bad_request();
+		return;
+	}
+	send_ok();
+}
+
+
+static void handle_firmware_fragment(__xdata uint8_t *p)
+{
+	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
+	__xdata uint16_t frag_len, payload_start;
+
+	frag_len = uip_len - (p - uip_appdata);
+	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
+		print_string("Firmware upload header too large, aborting.\n");
+		config_upload = 0;
+		s->tstate = TSTATE_NONE;
+		send_bad_request();
+		return;
+	}
+	memcpy(config_buf + pre_acc, p, frag_len);
+	pre_acc += frag_len;
+	payload_start = preamble_payload_start(pre_acc);
+	if (!payload_start) {
+		s->tstate = TSTATE_MULTIPART;
+		return;
+	}
+	dbg_string("Have content octets\n");
+
+	flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
+	set_sys_led_state(SYS_LED_FAST);
+
+	crc_value = 0;
+	bindex = 0;
+	write_len = 0;
+	// A verdict is only built once the upload part completes;
+	// clear any stale response so the completion check in the
+	// appcall POST branch cannot send leftovers
+	slen = 0;
+	upload_settings.p = config_buf;
+	upload_settings.bptr = payload_start;
+	upload_settings.plen = pre_acc;
+	stream_upload();
+
+	dbg_string("Done reading first fragment\n");
+}
+
+
+static void run_cmd_body(__xdata uint8_t *body)
+{
+	uint16_t hdr_len = strtox(outbuf, HTTP_RESPONCE_TXT);
+
+	slen = hdr_len;
+	cmd_capture = 1;
+	execute_commands(body);
+	if (cmd_capture == 2)
+		slen += strtox(outbuf + slen, CMD_TRUNCATED);
+	cmd_capture = 0;
+	/* Commands that configure something print nothing at all. Saying
+	 * so beats an empty body, which reads the same as "nothing ran".
+	 * Only on success: a silent failure must not answer with "OK". */
+	if (err_status == ERR_OK && slen == hdr_len)
+		slen += strtox(outbuf + slen, "OK\n");
+	/* On a parse error keep what the parser printed, because that text
+	 * is the explanation, and only restate the status. "400 NO" is as
+	 * long as "200 OK", so the header does not have to be rebuilt. */
+	if (err_status != ERR_OK) {
+		outbuf[9] = '4';
+		outbuf[10] = '0';
+		outbuf[11] = '0';
+		outbuf[13] = 'N';
+		outbuf[14] = 'O';
+	}
+}
+
+
+static void run_login_body(__xdata uint8_t *body)
+{
+	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
+		dbg_string("Password accepted!\n");
+		read_reg_timer(&last_session_use);
+		gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
+		session_id[SESSION_ID_LENGTH] = NUL;
+		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
+				      "Set-Cookie: session=");
+		for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
+			outbuf[slen++] = session_id[i];
+		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
+	} else {
+		dbg_string("Password invalid!\n");
+		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: login.html\r\n\r\n");
+	}
+}
+
+
+static uint8_t post_body_take(__xdata uint8_t *p)
+{
+	uint16_t have;
+
+	if (!content_length) {
+		send_length_required();
+		return 0;
+	}
+	if (content_length >= CONFIG_UPLOAD_BUF) {
+		send_bad_request();
+		return 0;
+	}
+	have = uip_len - (p - uip_appdata);
+	if (have >= content_length) {
+		p[content_length] = NUL;
+		return 1;
+	}
+	memcpy(config_buf, p, have);
+	pre_acc = have;
+	postbody_start = ticks;
+	uip_conn->appstate.tstate = TSTATE_POSTBODY;
+	return 0;
+}
+
+
+static void post_body_continue(void)
+{
+	uint16_t take;
+
+	// no header scan runs while the body is pending: content_length is this request's
+	take = content_length - pre_acc;
+	if (take > uip_len)
+		take = uip_len;
+	memcpy(config_buf + pre_acc, uip_appdata, take);
+	pre_acc += take;
+	if (pre_acc < content_length) {
+		postbody_start = ticks;
+		return;
+	}
+	config_buf[pre_acc] = NUL;
+	uip_conn->appstate.tstate = TSTATE_NONE;
+	if (postbody_endpoint == POSTBODY_CMD)
+		run_cmd_body(config_buf);
+	else
+		run_login_body(config_buf);
+}
+
+
 void handle_post(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint8_t *p = uip_appdata;
 	__xdata uint8_t *request_path = p + 6;
+
+	if (s->tstate == TSTATE_POSTBODY) {
+		post_body_continue();
+		return;
+	}
 
 	// Was the multipart header sent in multiple packets?
 	if (s->tstate != TSTATE_MULTIPART) {
@@ -545,7 +769,7 @@ void handle_post(void)
 			dbg_string("Configuration upload\n");
 			verify_crc = 0;
 			config_upload = 1;
-			write_len = 0;
+			pre_acc = 0;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -558,11 +782,11 @@ void handle_post(void)
 			send_unauthorized();
 			return;
 		}
-		execute_commands(p);
-		if (err_status != ERR_OK) {
-			send_bad_request();
+		postbody_endpoint = POSTBODY_CMD;
+		if (!post_body_take(p))
 			return;
-		}
+		run_cmd_body(p);
+		return;
 	} else if (is_word(request_path, "login")) {
 		dbg_string("POST login\n");
 
@@ -572,21 +796,11 @@ void handle_post(void)
 			return;
 		}
 
-		p += 8; // Read also over "pwd="
-		if (is_url_word_x(p, passwd)) {
-			dbg_string("Password accepted!\n");
-			read_reg_timer(&last_session_use);
-			gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
-			session_id[SESSION_ID_LENGTH] = NUL;
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
-					      "Set-Cookie: session=");
-			for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
-				outbuf[slen++] = session_id[i];
-			slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
-		} else {
-			dbg_string("Password invalid!\n");
-			slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: login.html\r\n\r\n");
-		}
+		p += 4;
+		postbody_endpoint = POSTBODY_LOGIN;
+		if (!post_body_take(p))
+			return;
+		run_login_body(p);
 		return;
 	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
 		dbg_string("POST upload/config request\n");
@@ -599,72 +813,15 @@ void handle_post(void)
 			send_bad_request();
 			return;
 		}
-		if (config_upload) {
-			cfg_pos = uip_len - (p - uip_appdata);
-			if (write_len + cfg_pos >= CONFIG_UPLOAD_BUF) {
-				print_string("Configuration too large, aborting.\n");
-				config_upload = 0;
-				s->tstate = TSTATE_NONE;
-				send_bad_request();
-				return;
-			}
-			memcpy(config_buf + write_len, p, cfg_pos);
-			write_len += cfg_pos;
-			uint8_t taken = config_take();
-
-			if (!taken) {
-				s->tstate = TSTATE_MULTIPART;
-				return;
-			}
-			config_upload = 0;
-			s->tstate = TSTATE_NONE;
-			if (taken == 2) {
-				send_bad_request();
-				return;
-			}
-			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-			return;
-		}
-		cfg_pos = uip_len - (p - uip_appdata);
-		if (pre_acc + cfg_pos >= CONFIG_UPLOAD_BUF) {
-			print_string("Firmware upload header too large, aborting.\n");
-			s->tstate = TSTATE_NONE;
-			send_bad_request();
-			return;
-		}
-		memcpy(config_buf + pre_acc, p, cfg_pos);
-		pre_acc += cfg_pos;
-		cfg_end = preamble_payload_start(pre_acc);
-		if (!cfg_end) {
-			s->tstate = TSTATE_MULTIPART;
-			return;
-		}
-		dbg_string("Have content octets\n");
-
-		flash_init(0); // Re-initialize flash for non-DIO operation, otherwise flashing fails
-		set_sys_led_state(SYS_LED_FAST);
-
-		crc_value = 0;
-		bindex = 0;
-		write_len = 0;
-		// A verdict is only built once the upload part completes;
-		// clear any stale response so the completion check in the
-		// appcall POST branch cannot send leftovers
-		slen = 0;
-		upload_settings.p = config_buf;
-		upload_settings.bptr = cfg_end;
-		upload_settings.plen = pre_acc;
-		stream_upload();
-
-		dbg_string("Done reading first fragment\n");
+		if (config_upload)
+			handle_config_fragment(p);
+		else
+			handle_firmware_fragment(p);
 		return;
-
 	} else {
 		send_not_found();
 		return;
 	}
-	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
-	return;
 }
 
 
@@ -685,7 +842,7 @@ void httpd_appcall(void)
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
-	} else if (uip_aborted()) {
+	} else if (uip_aborted() || uip_timedout()) {
 		dbg_string("Connection aborted\n");
 		uip_close();
 		s->tstate = TSTATE_CLOSED;
@@ -694,6 +851,11 @@ void httpd_appcall(void)
 		if (s->tstate == TSTATE_ACKED) {
 			dbg_string("Closing because everything has been transmitted\n");
 			uip_close();
+			s->tstate = TSTATE_CLOSED;
+		} else if (s->tstate == TSTATE_POSTBODY
+			   && (uint16_t)ticks - postbody_start > POSTBODY_TIMEOUT) {
+			dbg_string("Body never arrived\n");
+			uip_abort();
 			s->tstate = TSTATE_CLOSED;
 		}
 	} else if (uip_acked() && s->tstate == TSTATE_TX) {
@@ -762,18 +924,25 @@ void httpd_appcall(void)
 		dbg_char('\n');
 #endif
 		p = uip_appdata;
-		if (is_word(p, "POST") || s->tstate == TSTATE_MULTIPART) {
+		if (is_word(p, "POST") || s->tstate == TSTATE_MULTIPART
+		    || s->tstate == TSTATE_POSTBODY) {
 			handle_post();
 			// If this is an ongoing post stream, then wait for the next packet
-			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART) {
+			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART
+			    || s->tstate == TSTATE_POSTBODY) {
 				uip_len = 0;
 				return;
 			}
 			goto do_send;
 		}
 
-		if (is_word(p, "GET"))
-			dbg_string("GET request ");
+		// We only expect a GET request here.
+		if (!is_word(p, "GET")) {
+			send_bad_request();
+			goto do_send;
+		}
+
+		dbg_string("GET request ");
 		p += 4;
 		scan_header(p);
 		__xdata uint8_t *q = p;
@@ -820,6 +989,8 @@ void httpd_appcall(void)
 				send_mtu();
 			} else if (is_word(q, "/lag.json")) {
 				send_lag();
+			} else if (is_word(q, "/stp.json")) {
+				send_stp();
 			} else if (is_word(q, "/lacp.json")) {
 				send_lacp();
 			} else if (is_word(q, "/vlanlist")) {

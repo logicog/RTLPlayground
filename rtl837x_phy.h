@@ -28,7 +28,7 @@ void phy_show(uint8_t port) __banked;
 void phy_reset(uint8_t port) __banked;
 void rtl8224_read_reg_u16(uint16_t reg) __banked;
 void rtl8224_write_reg_u16(uint16_t reg, uint16_t val) __banked;
-void rtl8224_sds_write(uint16_t sds_cmd, uint16_t val) __banked;
+void rtl8224_sds_write(uint16_t sds_cmd, __xdata uint16_t val) __banked;
 void phy_config_8261(uint8_t phy, uint8_t sds) __banked;
 
 #define	RTL8224_SDS_WRITE(sds_id, page, reg, v) do { \

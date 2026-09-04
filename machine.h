@@ -30,6 +30,7 @@
 // #define MACHINE_SWTGW218AS
 // #define MACHINE_PCB_SWTG018AS_V2_1_0
 // #define MACHINE_PCB_K0402WS_V3
+// #define MACHINE_PCB_K0402WS_V2
 // #define MACHINE_K0501W_V2_0
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
 // #define MACHINE_ZX310S_4T2XH
@@ -42,6 +43,7 @@
 // #define MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
 // #define MACHINE_SWTG024AS_V2_0
 // #define MACHINE_FG_4GT_2SX_V2_0
+// #define MACHINE_FG_8GT_1SX
 
 typedef struct {
 	// GPIO pins for SDA/SCL

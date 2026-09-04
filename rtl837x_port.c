@@ -330,6 +330,20 @@ void vlan_setup(void) __banked
 
 
 /*
+ * Forget the dynamic L2 entries learned on one port.
+ */
+void port_l2_forget_port(uint8_t port) __banked
+{
+	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);	/* port-based, dynamic entries */
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (((uint16_t)1) << port));
+
+	do {
+		reg_read(RTL837x_L2_TBL_FLUSH_CTRL);
+	} while (SFR_DATA_16);
+}
+
+
+/*
  * Forget all dynamic L2 learned entries
  */
 uint8_t port_l2_forget(void) __banked
@@ -340,7 +354,10 @@ uint8_t port_l2_forget(void) __banked
 	REG_SET(RTL837x_L2_TBL_FLUSH_CNF, 0x0);
 
 	// Flush L2 table for all ports by setting the ports and the flush-exec bit (bit 16)
-	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
+	uint16_t mask = PMASK_6;
+	if (machine_detected.isRTL8373)
+		mask = PMASK_9;
+	REG_SET(RTL837x_L2_TBL_FLUSH_CTRL, L2_TBL_FLUSH_EXEC | mask);
 
 	// Wait for flush completed
 	do {
@@ -415,6 +432,27 @@ void port_l2_learned(void) __banked
 
 
 /*
+ * Static L2 multicast entry for the link-local group 01:80:C2:00:00:<mac_last>
+ * in VLAN `vid`, with member portmask `pmask` (bit 9 = CPU port).
+ */
+
+void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
+{
+	do {
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & TBL_EXECUTE);
+
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0xc2, 0x00, 0x00, mac_last);
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | (vid >> 8) | ((pmask & 0x3) << 6), vid, 0x01, 0x80);
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0, 0, 0, pmask >> 2);
+	REG_WRITE(RTL837X_TBL_CTRL, 0, 0, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	do {
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & TBL_EXECUTE);
+}
+
+
+/*
  * Basic L2 configuration such as time to forget an entry
  */
 void port_l2_setup(void) __banked
@@ -425,12 +463,14 @@ void port_l2_setup(void) __banked
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		// Limit the number of automatically learned MAC-Entries per port to 0x1040
-		uint16_t reg = RTL837X_L2_LRN_PORT_CONSTRAINT + (i << 2);
-		REG_SET(reg, 0x00001040);
+		uint8_t idx = (i << 2);
+		REG_SET(RTL837X_L2_LRN_PORT_CONSTRAINT + idx, 0x00001040);
 
 		// All ports may communicate with each other and CPU-Port
-		reg = RTL837X_PORT_ISOLATION_BASE + (i << 2);
-		REG_SET(reg, PMASK_CPU | (machine_detected.isRTL8373? PMASK_9 : PMASK_6));
+		uint16_t mask = PMASK_CPU | PMASK_6;
+		if (machine_detected.isRTL8373)
+			mask = PMASK_CPU | PMASK_9;
+		REG_SET(RTL837X_PORT_ISOLATION_BASE + idx, mask);
 	}
 	// When maximim entries learned, then simply flood the packet
 	reg_bit_set(RTL837X_L2_LRN_PORT_CONSTRT_ACT, 0);
@@ -849,21 +889,79 @@ void vlan_dump(void) __banked
 
 
 /** Set the ingress VLAN filtering */
-bool port_ingress_vlan_filter_set(__xdata uint8_t port, __xdata bool enabled) __banked
+bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != 9) {
+	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
 		return false;
 	}
-	reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, port);
+	if (enabled)
+		reg_bit_set(RTL837X_VLAN_PORT_IGR_FLTR, port);
+	else
+		reg_bit_clear(RTL837X_VLAN_PORT_IGR_FLTR, port);
+
 	return true;
 }
 
 /** Get the ingress VLAN filtering status */
-bool port_ingress_vlan_filter_get(__xdata uint8_t port) __banked
+bool port_ingress_vlan_filter_get(uint8_t port) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != 9) {
+	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
 		return false;
 	}
 
 	return reg_bit_test(RTL837X_VLAN_PORT_IGR_FLTR, port);
+}
+
+// C1 bit 0: static (no aging); age at C3[4:2] must be non-zero or the
+// entry is invisible to lookup
+static void l2_mgmt_entry_fill(__xdata uint8_t *mac, __xdata uint16_t vlan)
+{
+	REG_WRITE(RTL837x_TBL_DATA_IN_A, mac[2], mac[3], mac[4], mac[5]);
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | ((CPU_PORT & 0x3) << 6) | (vlan >> 8),
+		  vlan & 0xff, mac[0], mac[1]);
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0x00, 0x01, 0x00, (7 << 2) | (CPU_PORT >> 2));
+}
+
+static void l2_mgmt_tbl_prepare(void)
+{
+	reg_read_m(RTL837x_TBL_DATA_0);
+	sfr_data[2] &= 0x3f;
+	sfr_data[1] &= 0xf8;
+	reg_write_m(RTL837x_TBL_DATA_0);
+}
+
+static void wait_table_ready(void)
+{
+	do {
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & TBL_EXECUTE);
+}
+
+/** Pin the management MAC to the CPU port; remove_entry deletes it */
+void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked
+{
+	wait_table_ready();
+
+	// vlan 0 = management VLAN disabled: untagged management resolves in
+	// VLAN 1; clients in other VLANs keep their learned entry and age as before
+	if (!vlan)
+		vlan = 1;
+	l2_mgmt_entry_fill(mac, vlan);
+	l2_mgmt_tbl_prepare();
+	if (remove_entry) {
+		// a search miss returns index 0, not a slot
+		REG_WRITE(RTL837X_TBL_CTRL, 0x00, 0x00, TBL_L2_UNICAST, TBL_EXECUTE);
+		wait_table_ready();
+		reg_read_m(RTL837x_TBL_DATA_0);
+		if (!(sfr_data[2] & 0x10))
+			return;
+		sfr_data[1] |= 0x04; // CLEAR-entry
+		reg_write_m(RTL837x_TBL_DATA_0);
+		__xdata uint16_t idx = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx & 0xff, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	} else {
+		// method-0 write: the hardware hashes the key and places the entry
+		REG_WRITE(RTL837X_TBL_CTRL, 0x00, 0x00, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+	}
+	wait_table_ready();
 }

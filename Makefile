@@ -104,13 +104,16 @@ httpd: html_data.h
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-clean:
+clean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-if [ -d $(BUILDDIR) ]; then find $(BUILDDIR) -type f ! -name "*.bin" -delete; fi
 
-distclean:
+distclean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-rm -rf $(BUILDDIR)
+
+$(SUBDIRSCLEAN):
+	$(MAKE) -C $(@:clean=) clean
 
 $(BUILDDIR)/%.rel: %.c | create_build_dir html_data.h
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
@@ -134,7 +137,7 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
-.PHONY: clean all $(SUBDIRS) $(VERSION_HEADER) create_build_dir
+.PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) $(VERSION_HEADER) create_build_dir
 
 .PHONY:
 machine_check:

@@ -67,8 +67,9 @@ ASIC before transmitting on the wire.
 
 ## The RTL tag words
 
-The proprietary header carries two words worth describing, both laid out as in
-the Linux DSA driver `tag_rtl8_4`.
+=======
+The frame header uses the Realtek Remote Control Protocol (RRCP) format or
+the like.
 
 The `flags` word:
 
@@ -77,14 +78,25 @@ bit15 EFID_EN | 14:12 EFID | 11 PRI_EN | 10:8 PRI |
 bit7  KEEP    | 6 VSEL     | 5 LEARN_DIS         | 4:0 VIDX
 ```
 
+All fields are in network byte order.
+
+* `EFID_EN`, `EFID`: look the destination up under this filtering ID
+  instead of the port's own
+* `PRI_EN`, `PRI`: force the given priority on the frame
+* `KEEP`: keep the 802.1Q tagging of the frame exactly as injected,
+  bypassing the egress tagging rules of the port
+* `VSEL`, `VIDX`: classify the frame into the VLAN at this index of the
+  VLAN table
+* `LEARN_DIS`: do not learn the source address from this frame
+
+The `pmask` word: bit 15 is `ALLOW`, bits 14 to 0 are a port mask.
+
+* `ALLOW` clear: the mask is the egress set, the frame goes to exactly
+  the ports given
+* `ALLOW` set: the ASIC looks the destination up as usual and the mask
+  only limits which ports the result may use
+
 This word has to be written through `HTONS` like every other field of the tag.
 Writing a constant raw puts the bits in the wrong byte, so `0x0020` reaches the
 wire as `0x2000`, which is EFID rather than LEARN_DIS. The ASIC then fails to
 parse the tag and forwards the frame with the `0x8899` header still on it.
-
-The `pmask` word: bit 15, ALLOW, selects how bits 14 to 0 are read. With ALLOW
-clear the field is a forwarding port mask and the frame goes to exactly the
-ports set, which is directed egress. With ALLOW set it is an allowance mask, a
-permission filter applied to a normal lookup, and for a one hot mask that
-yields an empty egress set, so the frame disappears. Directed egress therefore
-needs ALLOW cleared.

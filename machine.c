@@ -487,6 +487,7 @@ __code const struct machine machine = {
 __code const struct machine machine = {
 	.machine_name = "Lianguo ZX-SWTGW215AS",
 	.isRTL8373 = 0,
+	.mac_flash_offset = 0x1FC000,
 	.min_port = 3,
 	.max_port = 8,
 	.n_sfp = 1,
@@ -801,9 +802,13 @@ __code const struct machine machine = {
     },
 };
 
-#elif defined MACHINE_FNS1200P
+#elif defined(MACHINE_PCB_K0402WS_V2) || defined(MACHINE_FNS1200P)
 __code const struct machine machine = {
+#if defined(MACHINE_PCB_K0402WS_V2)
+	.machine_name = "PCB-K0402WS-V2.0",
+#else
     .machine_name = "FNS-1200P",
+#endif
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
@@ -1093,6 +1098,51 @@ __code const struct machine machine = {
 				0x1a, 0x1d, 0x1d, 0x1e, 0x1e, 0x20, 0x21, 0x22
 		},
 	};
+
+#elif defined MACHINE_FG_8GT_1SX
+__code const struct machine machine = {
+	.machine_name = "FG-8GT-1SX",
+	.isRTL8373 = 1,
+	.min_port = 0,
+	.max_port = 8,
+	.n_sfp = 1,
+	.log_to_phys_port = {1, 2, 3, 4, 5, 6, 7, 8, 9},
+	.phys_to_log_port = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.sfp_port[0].pin_detect = GPIO38,
+	.sfp_port[0].pin_los = GPIO_NA,
+	.sfp_port[0].pin_tx_disable = GPIO_NA,
+	.sfp_port[0].sds = 1,
+	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.reset_pin = GPIO_NA,
+	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
+	.port_led_set = {0, 0, 0, 0, 0, 0, 0, 0, 1},
+	.led_sets = {
+		/*
+			Ports 1-8: Left Amber 10/100/1000MBit (Vendor no 10M, but we add it)
+					   Right Green 2.5GBit
+			SFP-port: Any speed
+		*/
+		{
+			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+			0,
+			0,
+		},
+		{
+			LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+			0,
+			0,
+			0,
+		},
+	},
+	.led_mux_custom = 1,
+	.led_mux = {
+		0x00, 0x01, 0x04, 0x05, 0x08, 0x09, 0x0c, 0x09, 0x0d, 0x10,
+		0x11, 0x0e, 0x14, 0x11, 0x12, 0x15, 0x15, 0x16, 0x18, 0x19,
+		0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21,
+	},
+};
 
 #else
 	#error "Please select a machine type in machine.h"

@@ -14,7 +14,6 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_lacp.h"
-#include "rtl837x_stp.h"	/* cmpMAC() - same code bank, shared 6-byte compare */
 #include "rtl837x_port.h"
 #include "uip.h"
 #include "machine.h"
@@ -120,6 +119,19 @@ __xdata uint8_t  lacp_fdb_i, lacp_fdb_j, lacp_fdb_guard;
 
 
 void lacp_mux_update(void) __banked;	/* defined below, used from lacp_in */
+
+static signed char cmpMAC(__xdata uint8_t *m1, __xdata uint8_t *m2) __reentrant
+{
+	for (uint8_t i = 0; i < 6; i++) {
+		if (m1[i] == m2[i])
+			continue;
+		if (m1[i] < m2[i])
+			return -1;
+		return 1;
+	}
+	return 0;
+}
+
 
 /*
  * Selection logic (simplified 43.4.14): a port may join the aggregator when

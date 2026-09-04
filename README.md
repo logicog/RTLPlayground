@@ -28,8 +28,10 @@ only the following features are provided:
 <img width="1420" height="623" alt="GUI" src="doc/images/gui.png" />
 
 While the firmware provides already considerable improvements over the original managed firmware,
-the firmware still lacks support for STP and the proprietary loop prevention
-protocols as well as DHCP. If you need these features, do not install the playground on your managed
+the firmware still lacks support for the proprietary loop prevention
+protocols as well as DHCP. Spanning Tree is available (see doc/stp.md), but is
+a simplified implementation - read that document before enabling it on a
+switch you administer over the network. If you need these features, do not install the playground on your managed
 devices. In any case, installation is strongly discouraged unless you can at least make
 a backup of the original flash content via a SOIC clamp such as also used for BIOS
 backups and can re-install that firmware in case something is wrong. For this no soldering
@@ -356,5 +358,6 @@ The following documents give further documentation on specific features of the R
 - [IGMP (IP-MC streaming)](doc/igmp.md)
 - [SFP+ ports](doc/sfp.md) 
 - [Trunking aka. port aggregation](doc/trunking.md)
+- [LACP (802.3ad link aggregation)](doc/lacp.md)
 - [VLAN](doc/vlan.md)
 - [Modifications and Flash replacement](doc/mods.md)

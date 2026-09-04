@@ -48,7 +48,7 @@ void machine_custom_init(void) __banked
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
 }
 
-#elif defined MACHINE_FNS1200P
+#elif defined(MACHINE_PCB_K0402WS_V2) || defined(MACHINE_FNS1200P)
 void machine_custom_init(void) __banked
 {
     reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
