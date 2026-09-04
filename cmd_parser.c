@@ -16,6 +16,7 @@
 #include "rtl837x_bandwidth.h"
 #include "dhcp.h"
 #include "syslog.h"
+#include "snmp.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -1479,6 +1480,64 @@ void parse_syslog(void)
 	}
 }
 
+/* Copy a whitespace/NUL-terminated token from cmd_buffer[idx] into dst,
+ * clamped to max characters. dst is always NUL-terminated on return. */
+static void copy_token(__xdata char *dst, uint8_t idx, uint8_t max)
+{
+	uint8_t n = 0;
+	while (cmd_buffer[idx] > ' ' && n < max) {
+		dst[n++] = cmd_buffer[idx++];
+	}
+	dst[n] = '\0';
+}
+
+void parse_snmp(void)
+{
+	if (cmd_words_len < 2) {
+		print_string("SNMP: ");
+		if (snmp_state.enabled)
+			print_string("enabled");
+		else
+			print_string("disabled");
+		print_string("\n  community: ");
+		print_string_x(snmp_state.community);
+		print_string("\n  sysContact: ");
+		print_string_x(snmp_state.contact);
+		print_string("\n  sysLocation: ");
+		print_string_x(snmp_state.location);
+		write_char('\n');
+		return;
+	}
+	if (cmd_compare(1, "on")) {
+		snmp_start();
+	} else if (cmd_compare(1, "off")) {
+		snmp_stop();
+	} else if (cmd_compare(1, "community")) {
+		if (cmd_words_len < 3) {
+			print_string("Error: snmp community <string>\n");
+			return;
+		}
+		copy_token(snmp_state.community, cmd_words_b[2],
+			   SNMP_COMMUNITY_MAX);
+	} else if (cmd_compare(1, "contact")) {
+		if (cmd_words_len < 3) {
+			print_string("Error: snmp contact <string>\n");
+			return;
+		}
+		copy_token(snmp_state.contact, cmd_words_b[2],
+			   sizeof(snmp_state.contact) - 1);
+	} else if (cmd_compare(1, "location")) {
+		if (cmd_words_len < 3) {
+			print_string("Error: snmp location <string>\n");
+			return;
+		}
+		copy_token(snmp_state.location, cmd_words_b[2],
+			   sizeof(snmp_state.location) - 1);
+	} else {
+		print_string("Error: snmp [on|off|community <s>|contact <s>|location <s>]\n");
+	}
+}
+
 // Parse command into words
 // cmd_words_len contains the number of words found.
 // cmd_words_b[] contains only start of a word offset.
@@ -1621,6 +1680,8 @@ void cmd_parser(void) __banked
 			parse_mtu();
 		} else if (cmd_compare(0, "syslog")) {
 			parse_syslog();
+		} else if (cmd_compare(0, "snmp")) {
+			parse_snmp();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
