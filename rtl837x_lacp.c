@@ -188,6 +188,7 @@ static uint8_t lacp_mux_machine(uint8_t port)
 /* Build and emit one LACPDU out physical port `port` (802.3ad 43.4.2). */
 void lacp_send(uint8_t port) __banked
 {
+	memset((__xdata uint8_t *)LACP_O, 0, sizeof(struct lacpdu));
 	LACP_O->dst[0] = 0x01; LACP_O->dst[1] = 0x80; LACP_O->dst[2] = 0xc2;
 	LACP_O->dst[3] = 0x00; LACP_O->dst[4] = 0x00; LACP_O->dst[5] = LACP_DST5;
 	memcpy(LACP_O->src, uip_ethaddr.addr, 6);
