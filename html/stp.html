@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <script src="/main.js"></script>
+  <script src="/i18n.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <title>FreeSwitchOS Spanning Tree</title>
+  </head>
+  <body>
+    <nav id="sidebar"></nav>
+    <div style="margin-left:16%;padding:1px 16px;height:1000px;">
+    <div id="ports"></div>
+    <h1>Spanning Tree (RSTP)</h1>
+    <h2>Mode: <select id="stpMode"><option value="off">Disabled</option><option value="on">Enabled</option></select>
+      <input style="width:15%;margin-left: 3em;" class="action" id="stp_sub" onclick="stpSub();" type="button" value="Apply"></h2>
+    <div id="stpStat" style="font-family:monospace;"></div>
+    <h2>Bridge settings</h2>
+    <table id="stpBridge">
+      <tr>
+        <th>Priority</th><th>Version</th><th>Hello [s]</th><th>Max age [s]</th><th>Fwd delay [s]</th><th>Tx hold</th>
+      </tr>
+      <tr>
+        <td><select id="bPrio"></select></td>
+        <td><select id="bVer"><option value="rstp">RSTP</option><option value="stp">STP compat</option></select></td>
+        <td><input id="bHello" type="number" min="1" max="10" style="width:4em"></td>
+        <td><input id="bMaxage" type="number" min="6" max="40" style="width:4em"></td>
+        <td><input id="bFwd" type="number" min="4" max="30" style="width:4em"></td>
+        <td><input id="bTxhold" type="number" min="1" max="10" style="width:4em"></td>
+      </tr>
+    </table>
+    <p style="font-size:small">Changes apply immediately. Edge ports skip the listen period; guard/filter act on received BPDUs.</p>
+    <h2>Port configuration</h2>
+    <table id="stpPortsTbl">
+      <tr>
+        <th>Port</th><th>State</th><th>Path Cost<br><span style="font-weight:normal;font-size:small">(0 = Auto)</span></th><th>Priority</th><th>Edge Port</th><th>BPDU Filter</th><th>Guard</th><th>Point-to-Point</th>
+      </tr>
+    </table>
+    <h2>Port status</h2>
+    <table id="stpStatTbl">
+      <tr>
+        <th>Port</th><th>Port State</th><th>Role</th><th>Designated Bridge</th><th>Designated Port ID</th><th>Designated Cost</th><th>Oper. Edge</th><th>Oper. P2P</th>
+      </tr>
+    </table>
+    <script src="/stp.js"></script>
+    </div>
+  </body>
+  <script src="/navigation.js"></script>
+</html>

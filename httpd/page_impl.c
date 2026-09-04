@@ -12,6 +12,7 @@
 #include "phy.h"
 #include "version.h"
 #include "machine.h"
+#include "rtl837x_stp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -47,7 +48,7 @@ extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
 
 __code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
-__code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n";
+__code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
 // Convert uint8_t to ascii HEX char push on html-buffer.
 void charhex_to_html(char c)
@@ -157,14 +158,14 @@ void sfr_data_to_html(void)
 }
 
 
-void reg_to_html(register uint16_t reg)
+void reg_to_html(uint16_t reg)
 {
 	reg_read_m(reg);
 	sfr_data_to_html();
 }
 
 
-void reg_to_html_long(register uint16_t reg)
+void reg_to_html_long(uint16_t reg)
 {
 	reg_read_m(reg);
 	byte_to_html(sfr_data[0]);
@@ -178,8 +179,8 @@ void send_sfp_info(uint8_t sfp)
 {
 	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
 	for (uint8_t i = 16; i < 64; i++) {
-		if (!(i & 0xf))
-			sfp_read_block(sfp, i, 16);
+		if (!(i & 0xf) && !sfp_read_block(sfp, i, 16))
+			return;
 		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
 			continue;
 		uint8_t c = sfp_buf[i & 0xf];
@@ -195,7 +196,8 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 	if (len > 16)
 		return;
 
-	sfp_read_block(slot, reg, len);
+	if (!sfp_read_block(slot, reg, len))
+		return;
 
 	for (uint8_t i = 0; i < len; i++)
 		byte_to_html(sfp_buf[i]);
@@ -221,11 +223,12 @@ void send_basic_info(void)
 	itoa_html(uip_netmask[0] >> 8); char_to_html('.');
 	itoa_html(uip_netmask[1]); char_to_html('.');
 	itoa_html(uip_netmask[1] >> 8);
-	slen += strtox(outbuf + slen, "\",\"syslog_server_ip\":\"");
+	slen += strtox(outbuf + slen, "\",\"syslog_server\":\"");
 	itoa_html(syslog_state.server_ip[0]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[1]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[2]); char_to_html('.');
-	itoa_html(syslog_state.server_ip[3]);
+	itoa_html(syslog_state.server_ip[3]); char_to_html(':');
+	itoa_html(syslog_state.server_port);
 	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
@@ -430,42 +433,52 @@ void l2_delete(uint16_t idx)
 	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
 
 	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & TBL_EXECUTE);
 	slen += strtox(outbuf + slen, "{\"result\":");
 	// First, search for the entry based on the index
 	reg_read_m(RTL837x_TBL_DATA_0);
-	REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
+	sfr_data[1] &= 0xfc;
+	sfr_data[2] |= (TBL_LUTREAD_NEXT_L2UC << 6);
+	reg_write_m(RTL837x_TBL_DATA_0);
 
 	REG_WRITE(RTL837X_TBL_CTRL, (idx >> 8) & 0xf, idx, TBL_L2_UNICAST, TBL_EXECUTE);
 	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x1);
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & 0x1);
 	reg_read_m(RTL837x_L2_DATA_OUT_B);
-	if (!(sfr_data[0] & 0x20)) {
+	if (!(SFR_DATA_24 & 0x20)) {
 		char_to_html('0');
 	} else {
+		__bit is_our_mac_addr = uip_ethaddr.addr[0] == SFR_DATA_8 && uip_ethaddr.addr[1] == SFR_DATA_0;
 		sfr_data[0] &= 0x3f; // Clear SPA
 		reg_write_m(RTL837x_TBL_DATA_IN_B);
 
 		// Second half of MAC is copied
 		reg_read_m(RTL837x_L2_DATA_OUT_A);
-		reg_write_m(RTL837x_TBL_DATA_IN_A);
+		if (is_our_mac_addr && uip_ethaddr.addr[2] == SFR_DATA_24 && uip_ethaddr.addr[3] == SFR_DATA_16
+		    && uip_ethaddr.addr[4] == SFR_DATA_8 && uip_ethaddr.addr[5] == SFR_DATA_0) {
+			// the switch's own entry keeps management reachable
+			char_to_html('0');
+		} else {
+			reg_write_m(RTL837x_TBL_DATA_IN_A);
 
-		reg_read_m(RTL837x_L2_DATA_OUT_C);
-		sfr_data[3] &= 0xc0; // Clear age, auth and second part of ports
-		sfr_data[1] &= 0xfe; // Clear nosalearn
-		reg_write_m(RTL837x_TBL_DATA_IN_C);
+			reg_read_m(RTL837x_L2_DATA_OUT_C);
+			sfr_data[3] &= 0xc0; // Clear age, auth and second part of ports
+			sfr_data[1] &= 0xfe; // Clear nosalearn
+			reg_write_m(RTL837x_TBL_DATA_IN_C);
 
-		reg_read_m(RTL837x_TBL_DATA_0);
-		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], TBL_L2_UNICAST, sfr_data[3]);
+			reg_read_m(RTL837x_TBL_DATA_0);
+			sfr_data[2] = TBL_L2_UNICAST;
+			reg_write_m(RTL837x_TBL_DATA_0);
 
-		REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
-		do {
-			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & TBL_EXECUTE);
+			REG_WRITE(RTL837X_TBL_CTRL, idx >> 8, idx, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
+			do {
+				reg_read(RTL837X_TBL_CTRL);
+			} while (SFR_DATA_0 & TBL_EXECUTE);
 
-		char_to_html('1');
+			char_to_html('1');
+		}
 	}
 	char_to_html('}');
 }
@@ -527,6 +540,119 @@ void send_lag(void)
 	}
 	slen -=1; // remove comma
 	char_to_html(']');
+}
+
+
+static __xdata uint32_t pi_u32;
+static __xdata uint8_t pi_prio, pi_ext;
+static __xdata uint8_t * __xdata pi_mac;
+
+
+static void u32hex_html(void)
+{
+	__xdata uint8_t *b = (__xdata uint8_t *)&pi_u32;
+	byte_to_html(b[3]);
+	byte_to_html(b[2]);
+	byte_to_html(b[1]);
+	byte_to_html(b[0]);
+}
+
+
+static void bridge_to_html(void)
+{
+	byte_to_html(pi_prio);
+	byte_to_html(pi_ext);
+	for (uint8_t i = 0; i < 6; i++)
+		byte_to_html(pi_mac[i]);
+}
+
+
+void send_stp(void)
+{
+	uint8_t i, j, st, dsg;
+
+	dbg_string("send_stp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(stp_enabled);
+	slen += strtox(outbuf + slen, ",\"rstp\":");
+	bool_to_html(stp_rstp);
+	slen += strtox(outbuf + slen, ",\"prio\":");
+	itoa_html(stp_prio >> 4);
+	slen += strtox(outbuf + slen, ",\"hello\":");
+	itoa_html(stp_hello_s);
+	slen += strtox(outbuf + slen, ",\"maxage\":");
+	itoa_html(stp_maxage_s);
+	slen += strtox(outbuf + slen, ",\"fwd\":");
+	itoa_html(stp_fwddelay_s);
+	slen += strtox(outbuf + slen, ",\"txhold\":");
+	itoa_html(stp_txhold);
+	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
+	byte_to_html(root_bridge.prio);
+	byte_to_html(root_bridge.ext);
+	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
+	for (j = 0; j < 6; j++)
+		byte_to_html(root_bridge.mac[j]);
+	slen += strtox(outbuf + slen, "\",\"myMac\":\"");
+	for (j = 0; j < 6; j++)
+		byte_to_html(uip_ethaddr.addr[j]);
+	slen += strtox(outbuf + slen, "\",\"cost\":\"");
+	byte_to_html(root_bridge_cost >> 24);
+	byte_to_html(root_bridge_cost >> 16);
+	byte_to_html(root_bridge_cost >> 8);
+	byte_to_html(root_bridge_cost);
+	slen += strtox(outbuf + slen, "\",\"weRoot\":");
+	bool_to_html(stp_root_port == 0xff ? 1 : 0);
+	slen += strtox(outbuf + slen, ",\"rootPort\":");
+	itoa_html(stp_root_port == 0xff ? 0 : machine.log_to_phys_port[stp_root_port]);
+	slen += strtox(outbuf + slen, ",\"tc\":\"");
+	byte_to_html(stp_tc_count >> 8);
+	byte_to_html(stp_tc_count);
+	slen += strtox(outbuf + slen, "\",\"ports\":[");
+	reg_read_m(RTL837X_MSTP_STATES);
+	for (i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"st\":");
+		st = (sfr_data[3 - (i >> 2)] >> ((i << 1) & 0x7)) & 0x3;
+		itoa_html(st);
+		slen += strtox(outbuf + slen, ",\"role\":");
+		if (!(stp_pflags[i] & STP_PF_ENABLED) || (stp_pflags[i] & STP_PF_TRIPPED))
+			itoa_html(0);
+		else if (i == stp_root_port)
+			itoa_html(1);
+		else if (st == 3)
+			itoa_html(2);
+		else
+			itoa_html(3);
+		slen += strtox(outbuf + slen, ",\"f\":");
+		itoa_html(stp_pflags[i]);
+		slen += strtox(outbuf + slen, ",\"pc\":\"");
+		pi_u32 = stp_pcost[i]; u32hex_html();
+		slen += strtox(outbuf + slen, "\",\"prio\":");
+		itoa_html(stp_pprio[i]);
+		slen += strtox(outbuf + slen, ",\"p2\":");
+		itoa_html(stp_pp2p[i]);
+		dsg = stp_dpid[i] && stp_bpdu_age[i] < (uint16_t)stp_maxage_s * STP_HZ;
+		slen += strtox(outbuf + slen, ",\"db\":\"");
+		if (dsg) {
+			pi_prio = stp_dbridge[i].prio; pi_ext = stp_dbridge[i].ext;
+			pi_mac = stp_dbridge[i].mac;
+		} else {
+			pi_prio = stp_prio; pi_ext = 0;
+			pi_mac = uip_ethaddr.addr;
+		}
+		bridge_to_html();
+		slen += strtox(outbuf + slen, "\",\"dp\":\"");
+		byte_to_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[i]);
+		byte_to_html(dsg ? stp_dpid[i] : (i + 1));
+		slen += strtox(outbuf + slen, "\",\"dc\":\"");
+		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
 }
 
 
@@ -697,13 +823,13 @@ void send_status(void)
 					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
+				for (uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
 					outbuf[slen++] = sfp_module_vendor[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
+				for (uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
 					outbuf[slen++] = sfp_module_model[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
+				for (uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
 					outbuf[slen++] = sfp_module_serial[sfp][s];
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {

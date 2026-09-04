@@ -4,6 +4,7 @@ document.getElementById('sidebar').innerHTML =
  + "<li><a href='stat.html' data-i18n='nav_port_stat'>Port Statistics</a></li>"
  + "<li><a href='vlan.html' >VLAN</a></li>"
  + "<li><a href='l2.html' data-i18n='nav_l2'>L2 Configuration</a></li>"
+ + "<li><a href='stp.html'>Spanning Tree</a></li>"
  + "<li><a href='mirror.html' data-i18n='nav_mirror'>Mirroring</a></li>"
  + "<li><a href='lag.html' data-i18n='nav_lag'>Link Aggregation</a></li>"
  + "<li><a href='eee.html' data-i18n='nav_eee'>EEE</a></li>"

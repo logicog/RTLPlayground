@@ -52,8 +52,10 @@ function delL2(idx) {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      var s = JSON.parse(xhttp.responseText);
-      console.log("Entry deletion result: ", s.result);
+      if (JSON.parse(xhttp.responseText).result == 1) {
+        l2All = l2All.filter(function(e) { return e.idx != idx; });
+        renderL2();
+      }
     }
   };
   xhttp.open("GET", "/l2_del.json?idx=" + idx, true);
@@ -116,6 +118,13 @@ function fillL2(s)
   renderL2();
 }
 
+function delL2Button(e)
+{
+  if (e.port == 'CPU')
+    return '';
+  return '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
+}
+
 function paintL2(tbl, s)
 {
   console.log("L2: ", JSON.stringify(s));
@@ -127,14 +136,14 @@ function paintL2(tbl, s)
       tbl.rows[i+1].cells[1].innerHTML = `${e.mac}`;
       tbl.rows[i+1].cells[2].innerHTML = `${e.vlan}`;
       tbl.rows[i+1].cells[3].innerHTML = `${e.type}`;
-      tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
+      tbl.rows[i+1].cells[4].innerHTML = delL2Button(e);
     } else {
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.innerHTML = `${e.port}`;
       td = tr.insertCell(); td.innerHTML = `${e.mac}`;
       td = tr.insertCell(); td.innerHTML = `${e.vlan}`;
       td = tr.insertCell(); td.innerHTML = `${e.type}`;
-      td = tr.insertCell(); td.innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
+      td = tr.insertCell(); td.innerHTML = delL2Button(e);
     }
   }
   for (let i = tbl.rows.length - 1; i > s.length; i--)

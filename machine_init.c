@@ -13,7 +13,9 @@
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-#if defined MACHINE_KP_9000_6XH_X2
+#if defined(MACHINE_KP_9000_6XH_X2) || \
+	defined(MACHINE_KP_9000_6XH_X2_V2_1) || \
+	defined(MACHINE_KP_9000_6XHML_X2_V2_1)
 void machine_custom_init(void) __banked
 {
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
@@ -46,7 +48,7 @@ void machine_custom_init(void) __banked
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
 }
 
-#elif defined MACHINE_FNS1200P
+#elif defined(MACHINE_PCB_K0402WS_V2) || defined(MACHINE_FNS1200P)
 void machine_custom_init(void) __banked
 {
     reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);

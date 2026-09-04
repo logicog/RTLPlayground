@@ -468,9 +468,13 @@ void phy_show(uint8_t port) __banked
 		phy_read(port, PHY_MMD_PMAPMD, 0);
 		v = SFR_DATA_U16;
 		print_string("\nForced speed: "); print_short(v); write_char('\n');
-		uint8_t s1 = ((v & 0x40) ? 0x2 : 0x0) | ((v & 0x2000) ? 0x1 : 0x0);
-		uint8_t s2 = (v >> 2) & 0xf;
-		switch(s1) {
+		uint8_t s1 = 0x00;
+		if ((uint8_t)v & 0x40)
+			s1 = 0x2;
+		if (v & 0x2000)
+			s1 |= 0x1;
+		uint8_t s2 = ((uint8_t)v >> 2) & 0xf;
+		switch(s1 & 0x3) {
 		case 0:
 			print_string("10M\n");
 			break;
@@ -495,8 +499,6 @@ void phy_show(uint8_t port) __banked
 				print_string("Unknown\n");
 			}
 			break;
-		default:
-			print_string("Unknown\n");
 		}
 		phy_read(port, PHY_MMD31, PHY_MMD31_FEDCR);
 		v = SFR_DATA_U16;
@@ -582,7 +584,7 @@ void phy_reset(uint8_t port) __banked
 // Reading only reads the lower 16-bit part of the 32-bit register.
 // When also needing read the upper 16-bits, use register address + 1.
 // Readed values it return via sfr-data.
-void inline rtl8224_read_reg_u16(uint16_t reg) __banked
+void rtl8224_read_reg_u16(uint16_t reg) __banked
 {
 	//	void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 	// phy_read(RTL8224_PHY_ID, PHY_MMD30, reg);
@@ -590,7 +592,7 @@ void inline rtl8224_read_reg_u16(uint16_t reg) __banked
 	SFR_SMI_REG_U16 = reg;		// c2, c2
 
 	SFR_SMI_PHY = RTL8224_PHY_ID;		// a5
-	SFR_SMI_DEV = PHY_MMD30 << 3 | 2;	// c4
+	SFR_SMI_DEV = (uint8_t)PHY_MMD30 << 3 | 2;	// c4
 
 	SFR_EXEC_GO = SFR_EXEC_READ_SMI;
 	do {
@@ -601,7 +603,7 @@ void inline rtl8224_read_reg_u16(uint16_t reg) __banked
 // Registers names are the same as on the RTL837x.
 // Writing only the lower 16-bit part of the 32-bit register.
 // When also needing to write the upper 16-bits, use register address + 1.
-void inline rtl8224_write_reg_u16(uint16_t reg, uint16_t val) __banked
+void rtl8224_write_reg_u16(uint16_t reg, uint16_t val) __banked
 {
 	SFR_DATA_U16 = val;			    // SFR_A6, SFR_A7
 	SFR_SMI_REG_U16 = reg;			// SFR_C2, SFR_C3
@@ -633,7 +635,7 @@ void inline rtl8224_write_reg_u16(uint16_t reg, uint16_t val) __banked
 
 
 // Write to the RTL8224 SDS registers.
-void rtl8224_sds_write(uint16_t sds_cmd, uint16_t value) __banked
+void rtl8224_sds_write(uint16_t sds_cmd, __xdata uint16_t value) __banked
 {
 	// Wait for command bit is cleared
 	do {

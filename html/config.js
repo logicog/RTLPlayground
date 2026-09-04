@@ -7,10 +7,11 @@ const conf_cmds = [
   /^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,
   /^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,
+  /^syslog\s+port\s+\d{1,5}$/,
   /^passwd\s+\S+$/,
   /^vlan\s+\d{1,4}\s+d$/,
   /^vlan\s+\d{1,4}\s+mgmt$/,
-  /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}[tu]?)+$/,
+  /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+[1-9]t?)+$/,
   /^pvid\s+\d{1,2}\s+\d{1,4}$/,
   /^ingress(\s+\d{1,2}[tua])+$/,
   /^ingress\s+[tua]$/,
@@ -22,17 +23,35 @@ const conf_cmds = [
   /^laghash\s+\d(\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
   /^stp\s+(on|off)$/,
+  /^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
+  /^stp\s+version\s+(rstp|stp)$/,
+  /^stp\s+port\s+\d{1,2}\s+(on|off)$/,
+  /^stp\s+port\s+\d{1,2}\s+edge\s+(on|off|auto)$/,
+  /^stp\s+port\s+\d{1,2}\s+cost\s+\d{1,9}$/,
+  /^stp\s+port\s+\d{1,2}\s+prio\s+\d{1,3}$/,
+  /^stp\s+port\s+\d{1,2}\s+guard\s+(none|bpdu|root)$/,
+  /^stp\s+port\s+\d{1,2}\s+filter\s+(on|off)$/,
+  /^stp\s+port\s+\d{1,2}\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,
   /^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^hostname\s+.{1,23}$/,
 ];
+/* Commands that come in an on/off pair replace each other, which the list
+ * below cannot express: it drops lines starting with the text it matched, and
+ * "syslog off" does not start with "syslog on". Naming the stem separately
+ * keeps the pair collapsed without widening the match to the whole family. */
+const conf_toggle = [
+  /^(syslog)\s+(?:on|off)$/,
+];
+
 const conf_overwrite = [
   /^ip\b/,
   /^gw\b/,
   /^netmask\b/,
   /^syslog\s+ip\b/,
-  /^syslog\b/,
+  /^syslog\s+port\b/,
+  /^syslog\s+(on|off)$/,
   /^passwd\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
@@ -46,7 +65,8 @@ const conf_overwrite = [
   /^lag\s+\d+\b/,
   /^laghash\b/,
   /^isolate\s+\d{1,2}\b/,
-  /^stp\b/,
+  /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
+  /^stp\s+port\s+\d{1,2}\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,
   /^mtu\s+\d{1,2}\b/,
   /^bw\s+(in|out)\s+\d{1,2}\b/,
@@ -69,6 +89,13 @@ function parseConf(s){
     for (const x of conf_cmds)
       if (x.test(line)) { ignore = false; break; }
     if (ignore) continue;
+    for (const x of conf_toggle) {
+      const t = line.match(x);
+      if (t) {
+        configuration = configuration.filter(item => item !== t[1] + " on" && item !== t[1] + " off");
+        break;
+      }
+    }
     for (const x of conf_overwrite) {
       if (x.test(line)) {
         let m = line.match(x);
