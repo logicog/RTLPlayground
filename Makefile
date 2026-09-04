@@ -72,7 +72,8 @@ SRCS += \
 	rtl837x_phy.c \
 	rtl837x_pins.c\
 	rtl837x_port.c \
-	rtl837x_stp.c
+	rtl837x_stp.c \
+	rtl837x_lacp.c
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c
@@ -122,7 +123,7 @@ $(BUILDDIR)/%.rel: %.asm | create_build_dir
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
 $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel
-	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-r -o $@ $^
+	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-r -o $@ $^
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@

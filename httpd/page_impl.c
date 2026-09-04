@@ -13,6 +13,7 @@
 #include "version.h"
 #include "machine.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -1013,4 +1014,59 @@ void send_vlanlist(void)
 
 	char_to_html(']');
 	char_to_html('}');
+}
+
+
+/* LACP protocol status for the LAG page ("/lacp.json"). State variables are
+ * exported read-only via rtl837x_lacp.h; hardware trunk membership itself is
+ * already visible through send_lag() (it reads the trunk registers). */
+void send_lacp(void)
+{
+	dbg_string("send_lacp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(lacpEnabled);
+	/* Per-LAG section: candidate ports, elected aggregator, trunk members. */
+	slen += strtox(outbuf + slen, ",\"lags\":[");
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
+		slen += strtox(outbuf + slen, "{\"cfg\":\"");
+		byte_to_html(lacp_lag_ports[l] >> 8);
+		byte_to_html(lacp_lag_ports[l]);
+		slen += strtox(outbuf + slen, "\",\"aggValid\":");
+		bool_to_html(lacp_agg_valid[l]);
+		slen += strtox(outbuf + slen, ",\"agg\":\"");
+		for (uint8_t j = 0; j < 6; j++)
+			byte_to_html(lacp_agg_sys[l][j]);
+		slen += strtox(outbuf + slen, "\",\"members\":\"");
+		byte_to_html(lacp_members_last[l] >> 8);
+		byte_to_html(lacp_members_last[l]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "],\"ports\":[");
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		/* Which LACP LAG this port belongs to; 255 = none */
+		slen += strtox(outbuf + slen, ",\"lag\":");
+		itoa_html(lacp_port_lag[i]);
+		slen += strtox(outbuf + slen, ",\"a\":\"");
+		byte_to_html(lacp_actor_state[i]);
+		slen += strtox(outbuf + slen, "\",\"pt\":\"");
+		byte_to_html(lacp_partner_state[i]);
+		slen += strtox(outbuf + slen, "\",\"rs\":");
+		itoa_html(lacp_rx_state[i]);
+		/* rx as 4-digit hex: itoa16_html() only renders values up to 9999
+		 * correctly (see its VLAN-ID comment), the counter goes to 65535 */
+		slen += strtox(outbuf + slen, ",\"rx\":\"");
+		byte_to_html(lacp_rx_count[i] >> 8);
+		byte_to_html(lacp_rx_count[i]);
+		slen += strtox(outbuf + slen, "\",\"psys\":\"");
+		for (uint8_t j = 0; j < 6; j++)
+			byte_to_html(lacp_partner_sys[i][j]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
 }

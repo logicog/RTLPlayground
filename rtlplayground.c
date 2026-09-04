@@ -12,6 +12,7 @@
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
 #include "rtl837x_bandwidth.h"
@@ -124,6 +125,7 @@ __xdata uint8_t tx_seq;
 __xdata bool stp_enabled;
 __xdata uint8_t igmpEnabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
+__xdata uint8_t lacpEnabled;
 
 __code uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
@@ -1237,12 +1239,18 @@ void handle_rx(void)
 		print_byte(uip_buf[3]); print_byte(uip_buf[4]); print_byte(uip_buf[5]); write_char('\n');
 		print_string(" MGMT-VLAN: "); print_short(management_vlan); write_char('\n');
 #endif
-		if (stp_enabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
-			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x00) {
-			stp_in();
-			if (uip_len) {
-				print_string("STP TX\n");
-				tcpip_output();
+		if ((stp_enabled || lacpEnabled) && uip_buf[0] == 0x01 && uip_buf[1] == 0x80
+			&& uip_buf[2] == 0xc2 && uip_buf[3] == 0x00 && uip_buf[4] == 0x00) {
+			if (stp_enabled && uip_buf[5] == 0x00) {
+				stp_in();
+				if (uip_len) {
+					print_string("STP TX\n");
+					tcpip_output();
+				}
+			} else if (lacpEnabled && uip_buf[5] == 0x02) {
+				lacp_in();
+				if (uip_len)
+					tcpip_output();
 			}
 		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x16) {
@@ -1622,6 +1630,9 @@ void idle(void)
 			stp_clock--;
 		}
 	}
+	// If LACP enabled, drive its machines (own tick divider lives in the banked module)
+	if (lacpEnabled)
+		lacp_timers();
 	// Check whether a command is waiting in the cmd_buffer and execute
 	if (cmd_available) {
 		cmd_available = 0;
@@ -2322,6 +2333,8 @@ void main(void)
 #endif
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
+	lacpEnabled = 0;
+	lacp_init();		/* clear per-LAG state (port->LAG map = NONE) before any config replay */
 	nic_setup();
 	vlan_setup();
 	port_l2_setup();

@@ -12,6 +12,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "dhcp.h"
@@ -406,7 +407,18 @@ void parse_lag(void)
 	if (group > 3)
 		goto err;
 
+	/* "lag <n> lacp [port]..." - run LACP on this LAG with the given candidate
+	 * ports; "lag <n> lacp off" (or no ports) removes the LAG from LACP. */
 	uint8_t w = 2;
+	__xdata uint8_t lacp_mode = 0;
+	if (cmd_words_len > 2 && cmd_compare(2, "lacp")) {
+		lacp_mode = 1;
+		w = 3;
+		if (cmd_words_len > 3 && cmd_compare(3, "off")) {
+			lacp_lag_set(group, 0);
+			return;
+		}
+	}
 	while (w < cmd_words_len) {
 //		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
 
@@ -416,10 +428,13 @@ void parse_lag(void)
 
 		members |= ((uint16_t)1) << atoi_results_u8;
 	}
-	port_lag_members_set(group, members);
+	if (lacp_mode)
+		lacp_lag_set(group, members);	/* 0 ports also valid: removes the LAG */
+	else
+		port_lag_members_set(group, members);
 	return;
 err:
-	print_string("Error: lag <1-4> [port]...\n");
+	print_string("Error: lag <1-4> [lacp] [port]...\n");
 }
 
 
@@ -1716,6 +1731,11 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "stp")) {
 			stp_parse();
+		} else if (cmd_compare(0, "lacp")) {
+			if (cmd_compare(1, "show"))
+				lacp_show();
+			else
+				lacp_cmd(cmd_compare(1, "on"));
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)

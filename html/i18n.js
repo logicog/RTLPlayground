@@ -91,6 +91,8 @@ var LANG = {
     lag_title: 'Link Aggregation Configuration',
     lag_heading: 'Link Aggregation Groups Configuration',
     lag_update: 'Update / Create',
+    lacp_heading: 'LACP (802.3ad)',
+    lacp_status: 'Status',
 
     mirror_title: 'Mirror Configuration',
     mirror_heading: 'Mirror Configuration',
