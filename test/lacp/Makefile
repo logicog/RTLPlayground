@@ -6,7 +6,7 @@
 # platform headers) instead of the firmware tree.
 CC ?= cc
 CFLAGS = -std=c11 -Wall -Wextra -Wno-unknown-pragmas \
-         -D__xdata= -D__code= -D__banked= \
+         -D__xdata= -D__code= -D__banked= -D__reentrant= \
          -Ishim -I../..
 
 all: build/lacp_sim
