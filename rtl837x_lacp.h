@@ -78,16 +78,21 @@ extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];/* trunk members we las
 #define LACP_STATE_FULL		(LACP_STATE_SYNC | LACP_STATE_COLLECTING | LACP_STATE_DISTRIBUTING)
 
 /*
- * Timer units: one decrement per active lacp_timers() call (~64 Hz: the main
- * loop runs ~256 Hz and LACP_TICK_DIVIDER skips 3 of 4 calls). The values
- * below are the HARDWARE-VERIFIED ones the aggregate converged with; their
- * wall-clock equivalents are ~4x the nominal 802.3ad figures, which only
- * makes us more patient with the partner (and the partner sets the pace of
- * our fast/slow TX via its TIMEOUT bit). Do not "fix" the scale blindly. */
-#define LACP_FAST_PERIODIC	0x0100	/* fast periodic TX   (~4 s wall clock)  */
-#define LACP_SLOW_PERIODIC	0x1e00	/* slow periodic TX  (~120 s wall clock) */
-#define LACP_SHORT_TIMEOUT	0x0300	/* partner dead after (~12 s wall clock) */
-#define LACP_LONG_TIMEOUT	0x5a00	/* partner dead after (~360 s wall clock)*/
+ * Timer units: one decrement per active lacp_timers() call, measured at about
+ * 50 Hz on a SWTGW218AS. The rate jitters with how often interrupts wake the
+ * main loop; the longest gap observed was 1.6x the median, so a period is a
+ * range and the worst case is what matters.
+ *
+ * The transmit periods are not free to choose. Our own timeouts only decide
+ * how patient we are, but our TX period decides when the PARTNER gives up on
+ * us: 802.3ad pairs fast periodic 1 s with a 3 s short timeout, and slow
+ * periodic 30 s with a 90 s long timeout. A period whose worst case reaches
+ * the partner's threshold makes it expire us intermittently, which reads as
+ * an aggregate that works but never stops churning. */
+#define LACP_FAST_PERIODIC	0x0032	/* fast TX ~1 s, worst ~1.6 s; partner expires at 3 s  */
+#define LACP_SLOW_PERIODIC	0x05dc	/* slow TX ~30 s, worst ~48 s; partner expires at 90 s */
+#define LACP_SHORT_TIMEOUT	0x0300	/* we drop a silent partner after 6-9 s  */
+#define LACP_LONG_TIMEOUT	0x5a00	/* long-timeout variant, after 3-5 min   */
 
 /* Per-port LACP receive-machine state (802.3ad 43.4.12) */
 #define LACP_RX_INITIALIZE	0
