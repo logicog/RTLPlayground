@@ -80,18 +80,32 @@ mismatch should be rejected or applied to the whole group.
 ## Protocol timing
 
 ```
-#define LACP_FAST_PERIODIC	0x0100	/* fast periodic TX   (~4 s wall clock)  */
-#define LACP_SLOW_PERIODIC	0x1e00	/* slow periodic TX  (~120 s wall clock) */
-#define LACP_SHORT_TIMEOUT	0x0300	/* partner dead after (~12 s wall clock) */
-#define LACP_LONG_TIMEOUT	0x5a00	/* partner dead after (~360 s wall clock)*/
+#define LACP_FAST_PERIODIC	0x0032	/* fast TX ~1 s, worst ~1.6 s; partner expires at 3 s  */
+#define LACP_SLOW_PERIODIC	0x05dc	/* slow TX ~30 s, worst ~48 s; partner expires at 90 s */
+#define LACP_SHORT_TIMEOUT	0x0300	/* we drop a silent partner after 6-9 s  */
+#define LACP_LONG_TIMEOUT	0x5a00	/* long-timeout variant, after 3-5 min   */
 ```
 
-One unit is one call of `lacp_timers()`, roughly 64 Hz. The wall clock values
-are about four times the nominal 802.3ad figures. These are the numbers the
-aggregate was verified to converge with on hardware; being slower only makes
-this end more patient with the partner, and the partner sets the pace of our
-fast and slow transmission through its TIMEOUT bit. They are deliberate, not a
-scaling mistake.
+One unit is one call of `lacp_timers()`, measured at 50 Hz on a SWTGW218AS: 50
+units came out as 1.00 s on the wire in all 116 intervals of a two minute
+capture.
+
+The two transmit periods are worth a word, because they are the one thing here
+that is not ours to choose freely. Our own timeouts only decide how patient we
+are with a partner that has gone quiet, and being slow there costs nobody
+anything. The transmit period is the opposite: it decides when the *partner*
+gives up on us. 802.3ad pairs a 1 s fast period with a 3 s short timeout, and a
+30 s slow period with a 90 s long timeout, and the ratio is the whole point.
+
+Getting that wrong does not break the aggregate, which is what makes it easy to
+miss. An earlier version of this code transmitted every 2 to 3 s while the
+partner was asking for the fast rate. The links still aggregated and still
+carried traffic, but every time a gap crossed 3 s the partner's receive machine
+timed us out and recovered: 13 of its 93 LACPDUs came back carrying `EXPIRED`
+and reporting our SYNC as cleared. Since a received actor state is recorded
+verbatim as the partner state and sent back out, the flap was visible from both
+ends, and the bond's churn machines never settled. With the periods above, the
+same capture shows no expiry at all and both churn states read `none`.
 
 ## LACP API
 
@@ -152,23 +166,42 @@ ip link set enp2s0 down && ip link set enp2s0 master bond0
 ip link set bond0 up
 ```
 
-On the switch, with the two ports as members:
+On the switch, with those two ports as the group:
 
 ```
 lag 1 lacp 7 8
 lacp on
 ```
 
-Then on the host, `cat /proc/net/bonding/bond0` should show both slaves with
-`Aggregator ID` equal and the partner MAC equal to the switch's, and `lacp show`
-on the switch should show both ports with an actor state of `0x3f`
-(ACTIVITY, TIMEOUT, AGGREGATION, SYNC, COLLECTING, DISTRIBUTING) and a partner
-state with SYNC set. `lag show` should list both ports as trunk members.
+`lacp show` should then give both ports an actor state of `0x3f`, which is
+ACTIVITY, TIMEOUT, AGGREGATION, SYNC, COLLECTING and DISTRIBUTING together, a
+partner state with SYNC in it, and the partner's system MAC. `lag show` should
+list both ports as trunk members, since that reads the hardware rather than the
+protocol's opinion of itself.
 
-Two things are worth checking beyond convergence: `tcpdump -i enp1s0 ether proto
-0x8809` on each slave should show only the switch's own LACPDUs and never the
-other slave's, and no `illegal loopback` should be logged. Both of those failed
-under the earlier flooding delivery and are what the FDB steering fixes.
+The host's view is the one worth trusting, in `/proc/net/bonding/bond0`. Both
+slaves want the **same `Aggregator ID`**; two different numbers mean the bond
+has not aggregated anything and each link is sitting in its own group, which
+looks healthy at a glance and is not. Both churn states should read `none`.
+`monitoring` that never settles is the signature of our transmit period being
+too slow for the rate the partner asked for.
+
+Three things are worth checking past convergence, because each of them has been
+broken here at some point:
+
+* `tcpdump -i enp1s0 ether proto 0x8809` on each slave should show the switch's
+  LACPDUs and that slave's own, and never the other slave's. A sibling leak is
+  what the FDB steering exists to prevent.
+* No `illegal loopback` in the host's log.
+* In a hex dump of a frame from the switch, the three reserved bytes after the
+  actor state should be zero. They used to carry whatever the transmit buffer
+  held from the previous frame.
+
+Pulling one slave down and putting it back is the cheapest failure test. The
+group narrows to the surviving member and comes back within tens of seconds,
+and traffic across the transition loses a few percent at the edges rather than
+half of everything, which is what it would lose if the ASIC kept hashing onto
+the dead member.
 
 ## Known limits
 
