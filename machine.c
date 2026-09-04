@@ -487,6 +487,7 @@ __code const struct machine machine = {
 __code const struct machine machine = {
 	.machine_name = "Lianguo ZX-SWTGW215AS",
 	.isRTL8373 = 0,
+	.mac_flash_offset = 0x1FC000,
 	.min_port = 3,
 	.max_port = 8,
 	.n_sfp = 1,
