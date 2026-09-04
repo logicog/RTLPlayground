@@ -26,7 +26,8 @@
 #pragma constseg BANK2
 
 extern __code struct machine machine;
-extern __xdata uint8_t stpEnabled;
+extern __xdata bool stp_enabled;
+extern __code uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -47,6 +48,7 @@ __xdata uint16_t vlan_ptr;
 __xdata char port_names[9][PORT_NAME_SIZE];
 
 extern __xdata uint16_t management_vlan;
+extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t sfp_speed[2];
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata uint8_t sfp_options[2];
@@ -64,6 +66,10 @@ __xdata uint8_t cmd_available;
 __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
+
+/* Scratch for parse_syslog(), in xdata: a local here would take internal RAM
+ * the linker has none of. */
+__xdata uint8_t  syslog_port_was_on;
 
 // These variables combined create a Fixed-capacity vector/bounded buffer.
 // `N_WORDS`: The total number of command arguments that can be tracked.
@@ -475,7 +481,9 @@ void parse_vlan(void)
 		vlan_settings.vlan = atoi_results_short;
 
 		if (cmd_compare(2, "mgmt")) {
+			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, true);
 			management_vlan = vlan_settings.vlan;
+			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
 			else
@@ -541,7 +549,7 @@ void parse_vlan(void)
 	}
 	return;
 err:
-	print_string("Error: vlan (<vlan-id>|show) [port][t/u]...\n");
+	print_string("Error: vlan (<vlan-id>|show) [port][t]...\n");
 }
 
 
@@ -573,7 +581,7 @@ void parse_isolate(void)
     }
 
 	if (cmd_compare(2, "off")) {
-		for (uint8_t i = machine.min_port; i < machine.max_port; i++)
+		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
 			members |= ((uint16_t)1) << i;
 		members |= 0x200; // CPU-port
 		port_isolate(port_configured, members);
@@ -1411,6 +1419,7 @@ void parse_syslog(void)
 		if (syslog_state.enabled) {
 			print_string("enabled, sending to ");
 			print_ip(syslog_state.server_ip);
+			write_char(':'); itoa_short(syslog_state.server_port);
 			write_char('\n');
 		} else {
 			print_string("disabled\n");
@@ -1439,11 +1448,34 @@ void parse_syslog(void)
 		} else {
 			print_string("Invalid IP address\n");
 		}
+	} else if (cmd_compare(1, "port")) {
+		if (cmd_words_len < 3) { // no additional argument -> print current port
+			print_string("Current syslog port: ");
+			itoa_short(syslog_state.server_port); write_char('\n');
+			return;
+		}
+		/* atoi_short() returns zero for no digits and for a value past
+		 * 65535; port zero is not a port either, so both tests are needed. */
+		if (!atoi_short(cmd_words_b[2]) || !atoi_results_short) {
+			print_string("Invalid port\n");
+			return;
+		}
+		/* The port is frozen into the connection by uip_udp_new(), so
+		 * changing it has to tear the connection down and build a new one -
+		 * same dance as setting the address above. */
+		syslog_port_was_on = syslog_state.enabled;
+		if (syslog_port_was_on)
+			syslog_stop();
+		print_string("Setting new syslog port.\n");
+		syslog_state.server_port = atoi_results_short;
+		if (syslog_port_was_on)
+			syslog_start();
 	}
 	else
 	{
-		print_string("Error: syslog [on|off|ip [ip-address]]\n");
-		print_string("  on/off enables or disables syslog, ip sets the syslog server IP address\n");
+		print_string("Error: syslog [on|off|ip [ip-address]|port [number]]\n");
+		print_string("  on/off enables or disables syslog, ip sets the syslog server IP address,\n");
+		print_string("  port sets the destination UDP port (default 514)\n");
 	}
 }
 
@@ -1683,15 +1715,7 @@ void cmd_parser(void) __banked
 				print_string("Error: hostname [name] - the name must not contain spaces\n");
 			}
 		} else if (cmd_compare(0, "stp")) {
-			if (cmd_compare(1, "on")) {
-				print_string("STP enabled\n");
-				stpEnabled = 1;
-				stp_setup();
-			} else {
-				print_string("STP disabled\n");
-				stp_off();
-				stpEnabled = 0;
-			}
+			stp_parse();
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
@@ -1771,7 +1795,8 @@ void cmd_parser(void) __banked
 			// Copy last cmd-buffer to history.
 			cmd_history_ptr = (cmd_history_ptr + i) & CMD_HISTORY_MASK;
 			__xdata uint16_t p = cmd_history_ptr;
-			cmd_history[cmd_history_ptr++] = '\n';
+			cmd_history[cmd_history_ptr] = '\n';
+			cmd_history_ptr = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			do {
 				i--;
 				cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
