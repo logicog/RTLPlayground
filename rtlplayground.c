@@ -2350,7 +2350,7 @@ void lldp_tick(void)
 
     seconds++;
 
-    if (seconds < 30)
+    if (seconds < LLDP_TX_INTERVAL_SEC)
         return;
 
     seconds = 0;
