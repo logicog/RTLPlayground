@@ -545,6 +545,7 @@ void send_lag(void)
 }
 
 
+static __xdata uint16_t pi_u16;
 static __xdata uint32_t pi_u32;
 static __xdata uint8_t pi_prio, pi_ext;
 static __xdata uint8_t * __xdata pi_mac;
@@ -747,6 +748,27 @@ void send_bandwidth(void)
 		else
 			char_to_html(']');
 	}
+}
+
+
+void send_isolation(void)
+{
+	dbg_string("send_isolation called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	char_to_html('[');
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"allow\":\"");
+		pi_u16 = port_isolation_get(i);
+		byte_to_html(pi_u16 >> 8);
+		byte_to_html(pi_u16 & 0xff);
+		char_to_html('"');
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+	}
+	slen += strtox(outbuf + slen, "]");
 }
 
 

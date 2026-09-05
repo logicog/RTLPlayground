@@ -170,3 +170,13 @@ option { direction: rtl; font-family: sans-serif}
 .l2sort:hover{text-decoration:underline}
 .l2arrow{opacity:0.55;font-size:0.85em}
 .l2filter{width:100%;box-sizing:border-box;font-weight:normal;font-size:0.9em}
+
+#isoTbl{width:auto;margin-top:1em}
+#isoTbl th,#isoTbl td{padding:5px 10px;text-align:center}
+#isoTbl th{background:#aaf}
+#isoTbl th.isolimited{background:#f88}
+#isoTbl td.isoself{background:#ddd;color:#226}
+#isoTbl th.isocpu,#isoTbl td.isocpu{border-left:3px solid #226}
+#isoTbl tr.isorow:hover td{background:#eef}
+#isoTbl tr.isorow:hover td.isoself{background:#ccd}
+#isoTbl input{margin:0;cursor:pointer}

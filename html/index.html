@@ -179,6 +179,15 @@
       <input style="width:15%;" class="action" id="mirror_del" onclick="mirrorDel();" type="button" data-i18n="mirror_disable" value="Disable Mirroring">
     </div>
 
+    <div class="page" id="page-isolate" style="margin-left:16%;padding:1px 16px;height:1000px;">
+      <h1 data-i18n="iso_heading">Port Isolation</h1>
+      <p style="max-width:60em" data-i18n="iso_intro">A frame entering a port may only leave through the ports ticked in its row. Isolation is decided before forwarding, so a port that is not ticked is unreachable directly, whatever the address table says.</p>
+      <table id="isoTbl"></table>
+      <p style="max-width:60em;font-size:90%" data-i18n="iso_legend">A greyed cell is the port itself, always allowed. A red row label marks a port that is not fully open.</p>
+      <input style="width:15%" class="action" id="iso_apply" onclick="isoApply();" type="button" data-i18n="iso_apply" value="Apply">
+      <input style="width:15%;margin-left:3em" class="action" id="iso_reset" onclick="isoAll();" type="button" data-i18n="iso_reset" value="Allow all">
+    </div>
+
     <div class="page" id="page-lag" style="margin-left:16%;padding:1px 16px;height:1000px;">
       <h1 data-i18n="lag_heading">Link Aggregation Groups Configuration</h1>
       <h2>LAG 1 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
