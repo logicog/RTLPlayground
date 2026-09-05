@@ -2359,12 +2359,8 @@ void lldp_tick(void)
         lldp_send();
 }
 
-/*
- * Outgoing LLDP packet.
+//Outgoing LLDP packet.
 
- * The packet starts after the RTL frame descriptor.  The RTL CPU tag
- * is between the source MAC and the Ethernet payload.
- */
 struct lldp_pkt {
     struct uip_eth_addr dst;
     struct uip_eth_addr src;
@@ -2374,13 +2370,6 @@ struct lldp_pkt {
     uint8_t payload[64];
 };
 
-/*
- * The current source uses the same placement convention for STP:
- *
- *     (__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE]
- *
- * Use the same convention for LLDP.
- */
 #define LLDP_O ((__xdata struct lldp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 
 void lldp_send(void) __reentrant
@@ -2391,9 +2380,7 @@ void lldp_send(void) __reentrant
 	uint8_t portPosition;
 
     /*
-     * LLDP destination:
-     *
-     * 01:80:c2:00:00:0e
+     * LLDP destination multicast addr: 01:80:c2:00:00:0e
      */
     LLDP_O->dst.addr[0] = 0x01;
     LLDP_O->dst.addr[1] = 0x80;
@@ -2402,18 +2389,11 @@ void lldp_send(void) __reentrant
     LLDP_O->dst.addr[4] = 0x00;
     LLDP_O->dst.addr[5] = 0x0e;
 
-    /*
-     * The source address is changed for each port only if desired.
-     * A common LLDP choice is one bridge MAC for every port.
-     */
     for (uint8_t i = 0; i < 6; i++)
     	LLDP_O->src.addr[i] = uip_ethaddr.addr[i];
 
     /*
      * This is the RTL CPU tag, not the Ethernet EtherType.
-     *
-     * pmask is one-hot:
-     *
      *     port 0 -> 0x0001
      *     port 1 -> 0x0002
      *     port 2 -> 0x0004
@@ -2423,14 +2403,8 @@ void lldp_send(void) __reentrant
     LLDP_O->rtl_tag.reason = 0x00;
     LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 
-    /*
-     * LLDP uses the normal Ethernet EtherType 0x88cc.
-     */
     LLDP_O->ether_type = HTONS(0x88cc);
 
-    /*
-     * The LLDPDU begins after dst, src, rtl_tag, and ether_type.
-     */
     p = LLDP_O->payload;
     len = 0;
 
@@ -2441,9 +2415,9 @@ void lldp_send(void) __reentrant
      * Length  = 7
      * Subtype = 4, MAC address
      */
-    p[len++] = 0x02;       /* type 1, length high bits */
-    p[len++] = 0x07;       /* length */
-    p[len++] = 0x04;       /* subtype: MAC address */
+    p[len++] = 0x02;
+    p[len++] = 0x07;
+    p[len++] = 0x04;
 
     for (uint8_t i = 0; i < 6; i++)
     	p[len + i] = uip_ethaddr.addr[i];
@@ -2458,9 +2432,9 @@ void lldp_send(void) __reentrant
      * Subtype = 7, locally assigned
      * Value   = logical port number
      */
-    p[len++] = 0x04;       /* type 2, length high bits */
-    p[len++] = 0x02;       /* length */
-    p[len++] = 0x07;       /* subtype */
+    p[len++] = 0x04;
+    p[len++] = 0x02;
+    p[len++] = 0x07;
     portPosition = len;
 	p[len++] = '0';       /* filled in per port below */
 
@@ -2482,11 +2456,7 @@ void lldp_send(void) __reentrant
     p[len++] = 0x00;
     p[len++] = 0x00;
 
-    /*
-     * Ethernet payload must be at least 46 bytes.
-     * The Ethernet frame length is therefore at least 60 bytes,
-     * excluding FCS.
-     */
+    //Ethernet payload must be at least 46 bytes,  so pad
     while (len < 46)
         p[len++] = 0x00;
 
@@ -2503,24 +2473,15 @@ void lldp_send(void) __reentrant
      */
     uip_len = 6 + 6 + sizeof(struct rtl_tag) + 2 + len;
 
-    /*
-     * Send one copy per physical/logical port.
-     */
     for (port = machine.min_port; port <= machine.max_port; port++) {
 
         LLDP_O->payload[portPosition] = '0' + port;
 
-        /*
-         * Restrict this packet to exactly one egress port.
-         */
+        //Restrict this packet to exactly one egress port
 		// if it starts from 1 instead of 0:
 		// LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << (port - 1));
         LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 
-        /*
-         * tcpip_output() performs the normal RTLPlayground TX path.
-         * It also handles the descriptor/ring setup.
-         */
         tcpip_output();
     }
 }
