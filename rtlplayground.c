@@ -2340,7 +2340,7 @@ void main(void)
 	}
 }
 
-void lldp_init()
+void lldp_init(void)
 {
 }
 

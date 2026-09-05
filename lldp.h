@@ -8,7 +8,7 @@
 #define LLDP_MAC_ADDR_LEN    6
 #define LLDP_TX_INTERVAL_SEC 30
 
-void lldp_init();
+void lldp_init(void);
 void lldp_tick(void);
 void lldp_send(void);
 
