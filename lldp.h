@@ -12,4 +12,6 @@ void lldp_init(void);
 void lldp_tick(void);
 void lldp_send(void);
 
+extern uint8_t enable_lldp;
+
 #endif

@@ -29,7 +29,7 @@
 extern __code struct machine machine;
 extern __xdata bool stp_enabled;
 extern __code uint8_t log_to_phys_port[9];
-extern __xdata uint8_t lldpEnabled;
+extern __xdata uint8_t lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -1753,10 +1753,10 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "lldp")) {
 			if (cmd_compare(1, "on")) {
 				print_string("LLDP enabled\n");
-				lldpEnabled = 1;
+				lldp_enabled = 1;
 			} else {
 				print_string("LLDP disabled\n");
-				lldpEnabled = 0;
+				lldp_enabled = 0;
 			}
 		}
 		else {
