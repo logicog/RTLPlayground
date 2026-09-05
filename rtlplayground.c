@@ -2389,7 +2389,7 @@ void lldp_send(void) __reentrant
     LLDP_O->dst.addr[4] = 0x00;
     LLDP_O->dst.addr[5] = 0x0e;
 
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 0; i < LLDP_MAC_ADDR_LEN; i++)
     	LLDP_O->src.addr[i] = uip_ethaddr.addr[i];
 
     /*
