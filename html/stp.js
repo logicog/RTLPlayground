@@ -41,7 +41,7 @@ function num(id, min, max, onch) {
 function members(mask) {
   const a = [];
   for (let i = 0; i < 10; i++)
-    if (mask & (1 << i)) a.push(i + 1);
+    if (mask & (1 << i)) a.push(logToPhysPort[i]);
   return a.join(",");
 }
 
@@ -53,7 +53,7 @@ function buildPortsTable(ports) {
     p.n = p.lag ? "lag " + p.lag : "port " + p.p;
     p.k = p.lag ? "L" + p.lag : p.p;
     tr.insertCell().textContent = p.lag
-      ? "Trk" + p.lag + " (" + members(p.mbr) + ")"
+      ? "LAG" + p.lag + " (" + members(p.mbr) + ")"
       : p.p;
     tr.insertCell().appendChild(sel("en_" + p.k,
       [["on","Enable"],["off","Disable"]],
@@ -86,7 +86,7 @@ function buildPortsTable(ports) {
 
     const sr = stat.insertRow();
     sr.insertCell().textContent = p.lag
-      ? "Trk" + p.lag + " (" + members(p.mbr) + ")"
+      ? "LAG" + p.lag + " (" + members(p.mbr) + ")"
       : p.p;
     for (const id of ["st","role","db","dp","dc","oe","op"])
       sr.insertCell().id = id + "_" + p.k;
