@@ -43,6 +43,8 @@ var LANG = {
     port_col_speed: 'Current Link Speed',
     port_col_set_speed: 'Set Speed',
     port_col_disabled: 'Disabled',
+    port_col_devices: 'Connected devices',
+    port_devices: 'devices',
     port_col_apply: 'Apply',
     port_mtu_heading: 'Configure Maximum Frame Size (MTU) forwarded at Port',
     port_auto: 'Auto',
@@ -230,6 +232,8 @@ var LANG = {
     port_col_speed: '現在のリンク速度',
     port_col_set_speed: '速度設定',
     port_col_disabled: '無効',
+    port_col_devices: '接続デバイス',
+    port_devices: 'デバイス',
     port_col_apply: '適用',
     port_mtu_heading: 'ポートの最大フレームサイズ (MTU) 設定',
     port_auto: '自動',
@@ -417,6 +421,8 @@ var LANG = {
     port_col_speed: '当前链路速率',
     port_col_set_speed: '设置速率',
     port_col_disabled: '禁用',
+    port_col_devices: '已连接设备',
+    port_devices: '台设备',
     port_col_apply: '应用',
     port_mtu_heading: '配置端口转发的最大帧大小 (MTU)',
     port_auto: '自动',
@@ -903,7 +909,8 @@ document.addEventListener('DOMContentLoaded', function() {
    + "<li><a href='#/ports' data-i18n='nav_port_config'>Port Configuration</a></li>"
    + "<li><a href='#/stat' data-i18n='nav_port_stat'>Port Statistics</a></li>"
    + "<li><a href='#/vlan' >VLAN</a></li>"
-   + "<li><a href='#/l2' data-i18n='nav_l2'>L2 Configuration</a></li>"
+    + "<li><a href='#/l2' data-i18n='nav_l2'>L2 Configuration</a></li>"
+   + "<li><a href='#/stp'>Spanning Tree</a></li>"
    + "<li><a href='#/mirror' data-i18n='nav_mirror'>Mirroring</a></li>"
    + "<li><a href='#/lag' data-i18n='nav_lag'>Link Aggregation</a></li>"
    + "<li><a href='#/eee' data-i18n='nav_eee'>EEE</a></li>"
@@ -981,10 +988,11 @@ const conf_cmds = [
   /^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,
   /^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,
+  /^syslog\s+port\s+\d{1,5}$/,
   /^passwd\s+\S+$/,
   /^vlan\s+\d{1,4}\s+d$/,
   /^vlan\s+\d{1,4}\s+mgmt$/,
-  /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}[tu]?)+$/,
+  /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+[1-9]t?)+$/,
   /^pvid\s+\d{1,2}\s+\d{1,4}$/,
   /^ingress(\s+\d{1,2}[tua])+$/,
   /^ingress\s+[tua]$/,
@@ -996,17 +1004,35 @@ const conf_cmds = [
   /^laghash\s+\d(\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
   /^stp\s+(on|off)$/,
+  /^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
+  /^stp\s+version\s+(rstp|stp)$/,
+  /^stp\s+port\s+\d{1,2}\s+(on|off)$/,
+  /^stp\s+port\s+\d{1,2}\s+edge\s+(on|off|auto)$/,
+  /^stp\s+port\s+\d{1,2}\s+cost\s+\d{1,9}$/,
+  /^stp\s+port\s+\d{1,2}\s+prio\s+\d{1,3}$/,
+  /^stp\s+port\s+\d{1,2}\s+guard\s+(none|bpdu|root)$/,
+  /^stp\s+port\s+\d{1,2}\s+filter\s+(on|off)$/,
+  /^stp\s+port\s+\d{1,2}\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,
   /^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^hostname\s+.{1,23}$/,
 ];
+/* Commands that come in an on/off pair replace each other, which the list
+ * below cannot express: it drops lines starting with the text it matched, and
+ * "syslog off" does not start with "syslog on". Naming the stem separately
+ * keeps the pair collapsed without widening the match to the whole family. */
+const conf_toggle = [
+  /^(syslog)\s+(?:on|off)$/,
+];
+
 const conf_overwrite = [
   /^ip\b/,
   /^gw\b/,
   /^netmask\b/,
   /^syslog\s+ip\b/,
-  /^syslog\b/,
+  /^syslog\s+port\b/,
+  /^syslog\s+(on|off)$/,
   /^passwd\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
@@ -1020,7 +1046,8 @@ const conf_overwrite = [
   /^lag\s+\d+\b/,
   /^laghash\b/,
   /^isolate\s+\d{1,2}\b/,
-  /^stp\b/,
+  /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
+  /^stp\s+port\s+\d{1,2}\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,
   /^mtu\s+\d{1,2}\b/,
   /^bw\s+(in|out)\s+\d{1,2}\b/,
@@ -1043,6 +1070,13 @@ function parseConf(s){
     for (const x of conf_cmds)
       if (x.test(line)) { ignore = false; break; }
     if (ignore) continue;
+    for (const x of conf_toggle) {
+      const t = line.match(x);
+      if (t) {
+        configuration = configuration.filter(item => item !== t[1] + " on" && item !== t[1] + " off");
+        break;
+      }
+    }
     for (const x of conf_overwrite) {
       if (x.test(line)) {
         let m = line.match(x);
@@ -1121,14 +1155,28 @@ async function ipSub() {
 }
 
 async function cmdSub() {
-  var cmd = document.getElementById('console_cmd').value;
+  const input = document.getElementById('console_cmd');
+  const out = document.getElementById('console_out');
+  const cmd = input.value;
   try {
     const response = await fetch('/cmd', {
       method: 'POST',
       body: cmd
     });
-    console.log('Completed!', response);
+    if (response.status == 401) {
+      window.location.href = 'login.html';
+      return;
+    }
+    let text = await response.text();
+    if (text != "" && !text.endsWith("\n"))
+      text += "\n";
+    if (out.textContent.length > 20000)
+      out.textContent = out.textContent.slice(-16000);
+    out.textContent += "> " + cmd + "\n" + text;
+    out.scrollTop = out.scrollHeight;
+    input.value = "";
   } catch(err) {
+      out.textContent += "> " + cmd + "\n" + err + "\n";
       console.error(`Error: ${err}`);
   }
 }
@@ -1317,6 +1365,7 @@ function createPortTable() {
       let portName = portNames[physToLogPort[i-1]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
       td = tr.insertCell(); td.innerHTML = linkText(pState[i] + 1);
+      tr.insertCell(); // filled by devRender()
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
       td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
 						  .replace("portOnOff()", "portOnOff(" + i + ")");
@@ -1412,6 +1461,46 @@ async function applyMTU(port) {
   }
 }
 
+function devRender(entries) {
+  var tbl = document.getElementById('speedtable');
+  if (tbl.rows.length <= 2 || !numPorts)
+    return;
+  var perPort = {};
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i];
+    if (e.port == 'CPU')
+      continue;
+    if (!perPort[e.port])
+      perPort[e.port] = [];
+    if (perPort[e.port].indexOf(e.mac) < 0)
+      perPort[e.port].push(e.mac);
+  }
+  for (let i = 1; i <= numPorts; i++) {
+    if (pIsSFP[i-1])
+      continue;
+    var cell = tbl.rows[i].cells[3];
+    var macs = perPort[i] || [];
+    if (macs.length == 1) {
+      cell.textContent = macs[0];
+      cell.title = '';
+    } else if (macs.length > 1) {
+      cell.textContent = macs.length + ' ' + t('port_devices');
+      cell.title = macs.join('\n');
+    } else {
+      cell.textContent = '';
+      cell.title = '';
+    }
+  }
+}
+
+function devWalk() {
+  walkL2(function(entries, ok) {
+    if (ok)
+      devRender(entries);
+    setTimeout(devWalk, 15000);
+  });
+}
+
 function getMTUs() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -1438,6 +1527,7 @@ sectionInits.ports = function() {
     createPortTable();
     updatePortTable();
     getMTUs()
+    setTimeout(devWalk, 3000);
     setSectionInterval(update, 2000);
     setSectionInterval(updatePortTable, 1000);
   });
@@ -1747,6 +1837,13 @@ function fillL2(s)
   renderL2();
 }
 
+function delL2Button(e)
+{
+  if (e.port == 'CPU')
+    return '';
+  return '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
+}
+
 function paintL2(tbl, s)
 {
   console.log("L2: ", JSON.stringify(s));
@@ -1758,14 +1855,14 @@ function paintL2(tbl, s)
       tbl.rows[i+1].cells[1].innerHTML = `${e.mac}`;
       tbl.rows[i+1].cells[2].innerHTML = `${e.vlan}`;
       tbl.rows[i+1].cells[3].innerHTML = `${e.type}`;
-      tbl.rows[i+1].cells[4].innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
+      tbl.rows[i+1].cells[4].innerHTML = delL2Button(e);
     } else {
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.innerHTML = `${e.port}`;
       td = tr.insertCell(); td.innerHTML = `${e.mac}`;
       td = tr.insertCell(); td.innerHTML = `${e.vlan}`;
       td = tr.insertCell(); td.innerHTML = `${e.type}`;
-      td = tr.insertCell(); td.innerHTML = '<button type="button" onclick="delL2(' + e.idx + ');">' + t('l2_delete') + '</button>';
+      td = tr.insertCell(); td.innerHTML = delL2Button(e);
     }
   }
   for (let i = tbl.rows.length - 1; i > s.length; i--)
@@ -2444,6 +2541,196 @@ sectionInits.bandwidth = function() {
     getBW();
     setSectionInterval(update, 2000);
   });
+};
+
+/* STP page (stp.html / stp.js merged) */
+const STP_STATES = ["Disabled", "Blocking", "Learning", "Forwarding"];
+const STP_ROLES  = ["-", "Root", "Designated", "Alternate"];
+
+const PF_ENABLED = 1, PF_ADMEDGE = 2, PF_AUTOEDGE = 4, PF_BPDUGUARD = 8,
+      PF_ROOTGUARD = 16, PF_FILTER = 32, PF_OPEREDGE = 64, PF_TRIPPED = 128;
+
+var stpDirty = false;
+var stpRows = 0;
+
+async function stpCmd(cmd) {
+  stpDirty = true;
+  try {
+    await fetch('/cmd', { method: 'POST', body: cmd });
+  } catch(err) {
+    console.error(`Error: ${err}`);
+  }
+  stpDirty = false;
+  fetchStp();
+}
+
+function sel(id, opts, onch) {
+  const s = document.createElement("select");
+  s.id = id;
+  for (const [v, label] of opts) {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = label;
+    s.appendChild(o);
+  }
+  s.addEventListener("change", onch);
+  return s;
+}
+
+function num(id, min, max, onch) {
+  const n = document.createElement("input");
+  n.type = "number"; n.id = id; n.min = min; n.max = max; n.style.width = "4em";
+  n.addEventListener("change", onch);
+  return n;
+}
+
+function buildPortsTable(ports) {
+  const tbl = document.getElementById("stpPortsTbl");
+  const stat = document.getElementById("stpStatTbl");
+  for (const p of [...ports].sort((a, b) => a.p - b.p)) {
+    const tr = tbl.insertRow();
+    tr.insertCell().textContent = p.p;
+    tr.insertCell().appendChild(sel("en_" + p.p,
+      [["on","Enable"],["off","Disable"]],
+      e => stpCmd("stp port " + p.p + " " + e.target.value)));
+    const pc = num("cost_" + p.p, 0, 200000000,
+      e => stpCmd("stp port " + p.p + " cost " + e.target.value));
+    pc.style.width = "7em";
+    pc.title = "0 - 200000000 (0 = Auto)";
+    tr.insertCell().appendChild(pc);
+    const pr = sel("prio_" + p.p, [],
+      e => stpCmd("stp port " + p.p + " prio " + e.target.value));
+    for (let v = 0; v <= 240; v += 16) {
+      const o = document.createElement("option");
+      o.value = v; o.textContent = v + (v === 128 ? " (default)" : "");
+      pr.appendChild(o);
+    }
+    tr.insertCell().appendChild(pr);
+    tr.insertCell().appendChild(sel("edge_" + p.p,
+      [["auto","Auto"],["on","Enable"],["off","Disable"]],
+      e => stpCmd("stp port " + p.p + " edge " + e.target.value)));
+    tr.insertCell().appendChild(sel("filt_" + p.p,
+      [["off","Disable"],["on","Enable"]],
+      e => stpCmd("stp port " + p.p + " filter " + e.target.value)));
+    tr.insertCell().appendChild(sel("guard_" + p.p,
+      [["none","None"],["bpdu","BPDU"],["root","Root"]],
+      e => stpCmd("stp port " + p.p + " guard " + e.target.value)));
+    tr.insertCell().appendChild(sel("p2p_" + p.p,
+      [["auto","Auto"],["on","Enable"],["off","Disable"]],
+      e => stpCmd("stp port " + p.p + " p2p " + e.target.value)));
+
+    const sr = stat.insertRow();
+    sr.insertCell().textContent = p.p;
+    for (const id of ["st","role","db","dp","dc","oe","op"])
+      sr.insertCell().id = id + "_" + p.p;
+  }
+  stpRows = ports.length;
+}
+
+function bridgeSelf(s) {
+  return fmtBridgeId((s.prio * 4096).toString(16).padStart(4, "0") + s.myMac);
+}
+
+function fmtBridgeId(h) {
+  if (!h || h.length < 16) return "";
+  const prio = parseInt(h.slice(0, 4), 16);
+  const mac = h.slice(4).replace(/(..)(?=.)/g, "$1:");
+  return prio + "-" + mac.toUpperCase();
+}
+
+function fetchStp() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      const s = JSON.parse(xhttp.responseText);
+      if (!stpRows)
+        buildPortsTable(s.ports);
+      document.getElementById("stpStat").textContent = s.on
+        ? (s.weRoot
+            ? "This switch (" + bridgeSelf(s) + ") is the root bridge \u2014 topology changes: "
+              + parseInt(s.tc, 16)
+            : "This switch: " + bridgeSelf(s)
+              + " \u2014 root bridge: " + fmtBridgeId(s.rootPrio + s.rootMac)
+              + " via port " + s.rootPort + " \u2014 path cost: " + parseInt(s.cost, 16)
+              + " \u2014 topology changes: " + parseInt(s.tc, 16))
+        : "";
+      for (const p of s.ports) {
+        const trip = (p.f & PF_TRIPPED) ? " (guard!)" : "";
+        document.getElementById("st_" + p.p).textContent =
+          s.on ? STP_STATES[p.st] + trip : "-";
+        document.getElementById("role_" + p.p).textContent =
+          s.on ? STP_ROLES[p.role] : "-";
+        document.getElementById("db_" + p.p).textContent = s.on ? fmtBridgeId(p.db) : "-";
+        document.getElementById("dp_" + p.p).textContent =
+          s.on ? (parseInt(p.dp.slice(0, 2), 16) + "-" + parseInt(p.dp.slice(2), 16)) : "-";
+        document.getElementById("dc_" + p.p).textContent = s.on ? parseInt(p.dc, 16) : "-";
+        document.getElementById("oe_" + p.p).textContent =
+          s.on ? ((p.f & PF_OPEREDGE) ? "True" : "False") : "-";
+        document.getElementById("op_" + p.p).textContent = s.on ? (p.p2 == 2 ? "False" : "True") : "-";
+      }
+      if (stpDirty)
+        return;
+      document.getElementById("stpMode").value = s.on ? "on" : "off";
+      document.getElementById("bPrio").value = s.prio;
+      document.getElementById("bVer").value = s.rstp ? "rstp" : "stp";
+      document.getElementById("bHello").value = s.hello;
+      document.getElementById("bMaxage").value = s.maxage;
+      document.getElementById("bFwd").value = s.fwd;
+      document.getElementById("bTxhold").value = s.txhold;
+      for (const p of s.ports) {
+        document.getElementById("en_" + p.p).value = (p.f & PF_ENABLED) ? "on" : "off";
+        document.getElementById("edge_" + p.p).value =
+          (p.f & PF_ADMEDGE) ? "on" : ((p.f & PF_AUTOEDGE) ? "auto" : "off");
+        document.getElementById("cost_" + p.p).value = parseInt(p.pc, 16);
+        document.getElementById("prio_" + p.p).value = p.prio;
+        document.getElementById("p2p_" + p.p).value = ["auto","on","off"][p.p2];
+        document.getElementById("guard_" + p.p).value =
+          (p.f & PF_BPDUGUARD) ? "bpdu" : ((p.f & PF_ROOTGUARD) ? "root" : "none");
+        document.getElementById("filt_" + p.p).value = (p.f & PF_FILTER) ? "on" : "off";
+      }
+    }
+  };
+  xhttp.open("GET", `/stp.json`, true);
+  sendXHTTP(xhttp);
+}
+
+async function stpSub() {
+  const on = document.getElementById("stpMode").value === "on";
+  document.getElementById("stpStat").textContent = on
+    ? "Enabling STP. The ports start blocked and take up to "
+      + (2 * document.getElementById("bFwd").value)
+      + " s to reach forwarding, and this page can stay silent until they do."
+    : "Disabling STP.";
+  await stpCmd(on ? "stp on" : "stp off");
+}
+
+function initStpSection() {
+  const bp = document.getElementById("bPrio");
+  if (!bp || bp.options.length) return;
+  for (let i = 0; i < 16; i++) {
+    const o = document.createElement("option");
+    o.value = i; o.textContent = (i * 4096) + (i === 8 ? " (default)" : "");
+    bp.appendChild(o);
+  }
+  bp.addEventListener("change", e => stpCmd("stp prio " + e.target.value));
+  document.getElementById("bVer")
+    .addEventListener("change", e => stpCmd("stp version " + e.target.value));
+  document.getElementById("bHello")
+    .addEventListener("change", e => stpCmd("stp hello " + e.target.value));
+  document.getElementById("bMaxage")
+    .addEventListener("change", e => stpCmd("stp maxage " + e.target.value));
+  document.getElementById("bFwd")
+    .addEventListener("change", e => stpCmd("stp fwd " + e.target.value));
+  document.getElementById("bTxhold")
+    .addEventListener("change", e => stpCmd("stp txhold " + e.target.value));
+  document.getElementById("stpMode")
+    .addEventListener("change", () => { stpDirty = true; });
+}
+
+sectionInits.stp = function() {
+  initStpSection();
+  fetchStp();
+  setSectionInterval(fetchStp, 2000);
+  setSectionInterval(update, 2000);
 };
 
 document.addEventListener("DOMContentLoaded", function () {

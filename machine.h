@@ -6,9 +6,19 @@
 /*
  * Select your machine type below
  */
+// Legacy KP-9000 4+2 targets. Prefer the PCB-revision-specific targets below.
 // #define MACHINE_KP_9000_6XHML_X2
-// #define MACHINE_KP_9000_6XH_X
 // #define MACHINE_KP_9000_6XH_X2
+
+// KP-9000 4+2 targets by PCB silkscreen revision.
+// #define MACHINE_KP_9000_6XH_X2_V1_1
+// #define MACHINE_KP_9000_6XHML_X2_V1_1
+// #define MACHINE_KP_9000_6XH_X2_V1_2
+// #define MACHINE_KP_9000_6XHML_X2_V1_2
+// #define MACHINE_KP_9000_6XH_X2_V2_1
+// #define MACHINE_KP_9000_6XHML_X2_V2_1
+
+// #define MACHINE_KP_9000_6XH_X
 // #define MACHINE_KP_9000_9XH_X_EU
 // #define MACHINE_KP_9000_9XHML_X_V2_2
 // #define MACHINE_KP_9000_9XHML_X_V3_1
@@ -18,7 +28,9 @@
 // #define MACHINE_HG0402XG_V1_1
 // #define MACHINE_SWTG018AS_A_V_2_0
 // #define MACHINE_SWTGW218AS
+// #define MACHINE_PCB_SWTG018AS_V2_1_0
 // #define MACHINE_PCB_K0402WS_V3
+// #define MACHINE_PCB_K0402WS_V2
 // #define MACHINE_K0501W_V2_0
 // #define MACHINE_LIANGUO_ZX_SWTGW215AS
 // #define MACHINE_ZX310S_4T2XH
@@ -31,6 +43,7 @@
 // #define MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
 // #define MACHINE_SWTG024AS_V2_0
 // #define MACHINE_FG_4GT_2SX_V2_0
+// #define MACHINE_FG_8GT_1SX
 
 typedef struct {
 	// GPIO pins for SDA/SCL
@@ -94,6 +107,6 @@ typedef struct machine_runtime
 	uint8_t isN : 1;
 };
 
-void machine_custom_init(void);
+void machine_custom_init(void) __banked;
 
 #endif

@@ -92,8 +92,11 @@ void igmp_setup(void) __banked
 	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
 
 	// Define ports where unknown MC addresses are flooded to:
-	REG_SET(RTL837X_IPV4_UNKN_MC_FLD_PMSK, machine_detected.isRTL8373? PMASK_9: PMASK_6);
-	REG_SET(RTL837X_IPV6_UNKN_MC_FLD_PMSK, machine_detected.isRTL8373? PMASK_9: PMASK_6);
+	uint16_t mask = PMASK_6;
+	if (machine_detected.isRTL8373)
+		mask = PMASK_9;
+	REG_SET(RTL837X_IPV4_UNKN_MC_FLD_PMSK, mask);
+	REG_SET(RTL837X_IPV6_UNKN_MC_FLD_PMSK, mask);
 
 	// Enable lookup of IPv4 MC addresses in table
 	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);

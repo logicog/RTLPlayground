@@ -64,3 +64,33 @@ Writing 0x1 to register 0x7850 will transmit the frame. The Ethernet frame
 checksum and the TCP checksum are automatically calculated (offloaded) by the
 ASIC before transmitting on the wire.
 
+
+## The RTL tag words
+
+The frame header uses the Realtek Remote Control Protocol (RRCP) format or
+the like.
+
+The `flags` word:
+
+```
+bit15 EFID_EN | 14:12 EFID | 11 PRI_EN | 10:8 PRI |
+bit7  KEEP    | 6 VSEL     | 5 LEARN_DIS         | 4:0 VIDX
+```
+
+All fields are in network byte order.
+
+* `EFID_EN`, `EFID`: look the destination up under this filtering ID
+  instead of the port's own
+* `PRI_EN`, `PRI`: force the given priority on the frame
+* `KEEP`: keep the 802.1Q tagging of the frame exactly as injected,
+  bypassing the egress tagging rules of the port
+* `VSEL`, `VIDX`: classify the frame into the VLAN at this index of the
+  VLAN table
+* `LEARN_DIS`: do not learn the source address from this frame
+
+The `pmask` word: bit 15 is `ALLOW`, bits 14 to 0 are a port mask.
+
+* `ALLOW` clear: the mask is the egress set, the frame goes to exactly
+  the ports given
+* `ALLOW` set: the ASIC looks the destination up as usual and the mask
+  only limits which ports the result may use

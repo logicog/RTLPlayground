@@ -1,7 +1,11 @@
 #ifndef __PAGE_IMPL_H__
 #define __PAGE_IMPL_H__
 
-void send_counters(char port);
+#include <stdbool.h>
+
+extern __code uint8_t * __code HTTP_RESPONCE_TXT;
+
+bool send_counters(uint8_t phys_port);
 void send_status(void);
 void send_vlan(uint16_t vlan);
 void send_basic_info(void);
@@ -14,6 +18,7 @@ void send_mtu(void);
 void send_config(void);
 void send_cmd_log(void);
 void send_lag(void);
+void send_stp(void);
 void send_vlanlist(void);
 
 /*  Convert only the lower nibble to ascii HEX char.

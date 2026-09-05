@@ -69,9 +69,9 @@ void vlan_delete(uint16_t vlan) __banked;
 # VLAN configuration on the Serial Console
 For testing the following commands are provided on the serial console:
 ```
-vlan <VLAN-ID> p[t/u]...
-  create or set vlan with given ID and the list of ports as members, a t
-  behind a port defines the port as a tagged member, the u is optional
+vlan <VLAN-ID> p[t]...
+  create or set vlan with given ID and the list of ports as members, a `t`
+  behind a port defines the port as a tagged member.
 
 vlan <VLAN-ID> d
   deletes the VLAN
