@@ -24,26 +24,8 @@ Top silkscreen is marked `2M-PCB51-ML-V1.1`. PoE is provided by RTL8238C. Flash 
 
 <img src="photos/POE-2G080110GS/POE-2G080110GS-pcb.jpg" width="300" />
 
-## Flashing process
-
 > [!CAUTION]
 > This device operates on mains voltage, which can be a dangerous or potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely. Also, opening the device may void your warranty.
-
-This example uses `flashrom` and a CH341A programmer [modded for 3.3V](https://flashrom.org/supported_hw/supported_prog/ch341ab.html).
-
-```
-# compile RTLPlayground
-make MACHINE=POE_2G080110GS
-
-# for unmanaged POE-2G080110GS with 4MB Winbond: extend firmware to 4MB with 0xFF (or else flashrom gets mad)
-objcopy -I binary -O binary --gap-fill=0xff --pad-to=0x400000 output/rtlplayground.bin output/rtlplayground-4MiB.bin
-
-# read stock firmware for backup
-sudo flashrom -p ch341a_spi -c W25Q32JV -r mokerlink-stock.bin
-
-# write RTLPlayground firmware
-sudo flashrom -p ch341a_spi -c W25Q32JV -w output/rtlplayground-4MiB.bin
-```
 
 ## Notes
 
