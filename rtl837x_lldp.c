@@ -1,5 +1,5 @@
 #include "rtl837x_common.h"
-#include "lldp.h"
+#include "rtl837x_lldp.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_common.h"
 #include "dhcp.h"
