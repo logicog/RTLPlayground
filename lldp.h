@@ -4,9 +4,8 @@
 #include <stdint.h>
 
 #define LLDP_ETHERTYPE       0x88cc
-#define LLDP_DST_LEN         6
-#define LLDP_SRC_LEN         6
 #define LLDP_MAX_FRAME       256
+#define LLDP_MAC_ADDR_LEN    6
 #define LLDP_TX_INTERVAL_SEC 30
 
 void lldp_init();

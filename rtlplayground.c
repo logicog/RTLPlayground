@@ -213,7 +213,7 @@ struct nonq_frame {
 
 __xdata static uint8_t lldp_frame[LLDP_MAX_FRAME];
 
-__xdata static uint8_t lldp_mac[6];
+__xdata static uint8_t lldp_mac[LLDP_MAC_ADDR_LEN];
 __xdata static char lldp_system_name[32];
 
 uint8_t enable_lldp;
@@ -2377,7 +2377,7 @@ void lldp_send(void) __reentrant
     uint8_t port;
     uint8_t *p;
     uint16_t len;
-	uint8_t portPosition;
+	uint8_t port_position;
 
     /*
      * LLDP destination multicast addr: 01:80:c2:00:00:0e
@@ -2403,7 +2403,7 @@ void lldp_send(void) __reentrant
     LLDP_O->rtl_tag.reason = 0x00;
     LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 
-    LLDP_O->ether_type = HTONS(0x88cc);
+    LLDP_O->ether_type = HTONS(LLDP_ETHERTYPE);
 
     p = LLDP_O->payload;
     len = 0;
@@ -2419,7 +2419,7 @@ void lldp_send(void) __reentrant
     p[len++] = 0x07;
     p[len++] = 0x04;
 
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 0; i < LLDP_MAC_ADDR_LEN; i++)
     	p[len + i] = uip_ethaddr.addr[i];
 
 	len += 6;
@@ -2435,7 +2435,7 @@ void lldp_send(void) __reentrant
     p[len++] = 0x04;
     p[len++] = 0x02;
     p[len++] = 0x07;
-    portPosition = len;
+    port_position = len;
 	p[len++] = '0';       /* filled in per port below */
 
     /*
@@ -2465,17 +2465,17 @@ void lldp_send(void) __reentrant
      *
      * The frame consists of:
      *
-     *     dst       6
-     *     src       6
+     *     dst mac
+     *     src mac
      *     rtl_tag  sizeof(struct rtl_tag)
      *     EtherType 2
      *     payload   len
      */
-    uip_len = 6 + 6 + sizeof(struct rtl_tag) + 2 + len;
+    uip_len = LLDP_MAC_ADDR_LEN + LLDP_MAC_ADDR_LEN + sizeof(struct rtl_tag) + 2 + len;
 
     for (port = machine.min_port; port <= machine.max_port; port++) {
 
-        LLDP_O->payload[portPosition] = '0' + port;
+        LLDP_O->payload[port_position] = '0' + port;
 
         //Restrict this packet to exactly one egress port
 		// if it starts from 1 instead of 0:
