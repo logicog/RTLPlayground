@@ -58,6 +58,28 @@ port set to admit tagged frames only (`ingress <port>t`) never delivers one
 to the CPU. `stp_setup()` prints a warning for every STP-enabled port in that
 state.
 
+## Link aggregation
+
+A LAG is a port to the protocol, the way the vendor firmware presents it as
+Trk1 to Trk4. The four groups are entities alongside the nine physical ports:
+they carry their own path cost, priority, edge and guard settings, they hold
+their own timers, and they appear as their own rows on the Spanning Tree page.
+
+```
+stp lag 1 cost 10000    # the group decides, not its members
+stp lag 1 edge off
+```
+
+Membership comes from the aggregation registers the `lag` command writes, re-read
+once a second, so a group changing under LACP is picked up without any
+coordination between the two. A member port is not an STP port of its own:
+`stp port <n>` on a member says which group to configure instead. State
+changes are written to every member in one register write, since the hardware
+has no per-group state, and BPDUs are transmitted through the lowest
+member while carrying the group's own port id. Losing one member of a live
+LAG is not a topology change; the logical port only goes down with its last
+link.
+
 Port states live in `RTL837X_MSTP_STATES (0x5310)`, two bits per port:
 `00` disabled, `01` blocking, `10` learning, `11` forwarding. A port in
 blocking forwards nothing between ports, but it still sends what the CPU

@@ -12,6 +12,10 @@ void stp_defaults(void) __banked;
 /* Tick rate of stp_timers(), also used by the web UI. */
 #define STP_HZ 50
 
+#define STP_LAG_BASE	10
+#define STP_LAG_COUNT	4
+#define STP_ENTITIES	(STP_LAG_BASE + STP_LAG_COUNT)
+
 /* Bridge identifier as carried in a BPDU (priority, extension, MAC). */
 struct bridge {
 	uint8_t prio;
@@ -36,15 +40,19 @@ extern __xdata uint8_t  stp_txhold;
 #define STP_PF_OPEREDGE	0x40	/* runtime: port went forwarding as an edge  */
 #define STP_PF_TRIPPED	0x80	/* runtime: disabled by BPDU guard           */
 
-extern __xdata uint8_t  stp_pflags[10];
-extern __xdata uint32_t stp_pcost[10];
-extern __xdata uint8_t  stp_pprio[10];
-extern __xdata uint8_t  stp_pp2p[10];
+extern __xdata uint8_t  stp_pflags[STP_ENTITIES];
+extern __xdata uint32_t stp_pcost[STP_ENTITIES];	/* path cost; 0 = auto (20000)      */
+extern __xdata uint8_t  stp_pprio[STP_ENTITIES];
+extern __xdata uint8_t  stp_pp2p[STP_ENTITIES];
+extern __xdata uint8_t  stp_ent_of[10];		/* the STP entity a port answers to: itself, or its lag */
+extern __xdata uint16_t stp_lag_mask[STP_LAG_COUNT];	/* member ports of each lag; 0 = not part of STP */
 
-extern __xdata struct bridge stp_dbridge[10];
-extern __xdata uint16_t stp_dpid[10];
-extern __xdata uint32_t stp_dcost[10];
-extern __xdata uint16_t stp_bpdu_age[10];
+/* Last-heard designated info per port (from received BPDUs); consult
+ * stp_bpdu_age to decide whether it is still current. */
+extern __xdata struct bridge stp_dbridge[STP_ENTITIES];
+extern __xdata uint16_t stp_dpid[STP_ENTITIES];
+extern __xdata uint32_t stp_dcost[STP_ENTITIES];
+extern __xdata uint16_t stp_bpdu_age[STP_ENTITIES];	/* ticks since a BPDU was heard */
 
 extern __xdata struct bridge root_bridge;
 extern __xdata uint32_t root_bridge_cost;

@@ -38,45 +38,58 @@ function num(id, min, max, onch) {
   return n;
 }
 
+function members(mask) {
+  const a = [];
+  for (let i = 0; i < 10; i++)
+    if (mask & (1 << i)) a.push(logToPhysPort[i]);
+  return a.join(",");
+}
+
 function buildPortsTable(ports) {
   const tbl = document.getElementById("stpPortsTbl");
   const stat = document.getElementById("stpStatTbl");
   for (const p of [...ports].sort((a, b) => a.p - b.p)) {
     const tr = tbl.insertRow();
-    tr.insertCell().textContent = p.p;                     // Port
-    tr.insertCell().appendChild(sel("en_" + p.p,
+    p.n = p.lag ? "lag " + p.lag : "port " + p.p;
+    p.k = p.lag ? "L" + p.lag : p.p;
+    tr.insertCell().textContent = p.lag
+      ? "LAG" + p.lag + " (" + members(p.mbr) + ")"
+      : p.p;
+    tr.insertCell().appendChild(sel("en_" + p.k,
       [["on","Enable"],["off","Disable"]],
-      e => stpCmd("stp port " + p.p + " " + e.target.value)));
-    const pc = num("cost_" + p.p, 0, 200000000,
-      e => stpCmd("stp port " + p.p + " cost " + e.target.value));
+      e => stpCmd("stp " + p.n + " " + e.target.value)));
+    const pc = num("cost_" + p.k, 0, 200000000,
+      e => stpCmd("stp " + p.n + " cost " + e.target.value));
     pc.style.width = "7em";
     pc.title = "0 - 200000000 (0 = Auto)";
     tr.insertCell().appendChild(pc);
-    const pr = sel("prio_" + p.p, [], 
-      e => stpCmd("stp port " + p.p + " prio " + e.target.value));
+    const pr = sel("prio_" + p.k, [], 
+      e => stpCmd("stp " + p.n + " prio " + e.target.value));
     for (let v = 0; v <= 240; v += 16) {
       const o = document.createElement("option");
       o.value = v; o.textContent = v + (v === 128 ? " (default)" : "");
       pr.appendChild(o);
     }
     tr.insertCell().appendChild(pr);
-    tr.insertCell().appendChild(sel("edge_" + p.p,
+    tr.insertCell().appendChild(sel("edge_" + p.k,
       [["auto","Auto"],["on","Enable"],["off","Disable"]],
-      e => stpCmd("stp port " + p.p + " edge " + e.target.value)));
-    tr.insertCell().appendChild(sel("filt_" + p.p,
+      e => stpCmd("stp " + p.n + " edge " + e.target.value)));
+    tr.insertCell().appendChild(sel("filt_" + p.k,
       [["off","Disable"],["on","Enable"]],
-      e => stpCmd("stp port " + p.p + " filter " + e.target.value)));
-    tr.insertCell().appendChild(sel("guard_" + p.p,
+      e => stpCmd("stp " + p.n + " filter " + e.target.value)));
+    tr.insertCell().appendChild(sel("guard_" + p.k,
       [["none","None"],["bpdu","BPDU"],["root","Root"]],
-      e => stpCmd("stp port " + p.p + " guard " + e.target.value)));
-    tr.insertCell().appendChild(sel("p2p_" + p.p,
+      e => stpCmd("stp " + p.n + " guard " + e.target.value)));
+    tr.insertCell().appendChild(sel("p2p_" + p.k,
       [["auto","Auto"],["on","Enable"],["off","Disable"]],
-      e => stpCmd("stp port " + p.p + " p2p " + e.target.value)));
+      e => stpCmd("stp " + p.n + " p2p " + e.target.value)));
 
     const sr = stat.insertRow();
-    sr.insertCell().textContent = p.p;
+    sr.insertCell().textContent = p.lag
+      ? "LAG" + p.lag + " (" + members(p.mbr) + ")"
+      : p.p;
     for (const id of ["st","role","db","dp","dc","oe","op"])
-      sr.insertCell().id = id + "_" + p.p;
+      sr.insertCell().id = id + "_" + p.k;
   }
   stpRows = ports.length;
 }
@@ -109,18 +122,19 @@ function fetchStp() {
               + " — topology changes: " + parseInt(s.tc, 16))
         : "";
       for (const p of s.ports) {
+        const k = p.lag ? "L" + p.lag : p.p;
         const trip = (p.f & PF_TRIPPED) ? " (guard!)" : "";
-        document.getElementById("st_" + p.p).textContent =
+        document.getElementById("st_" + k).textContent =
           s.on ? STP_STATES[p.st] + trip : "-";
-        document.getElementById("role_" + p.p).textContent =
+        document.getElementById("role_" + k).textContent =
           s.on ? STP_ROLES[p.role] : "-";
-        document.getElementById("db_" + p.p).textContent = s.on ? fmtBridgeId(p.db) : "-";
-        document.getElementById("dp_" + p.p).textContent =
+        document.getElementById("db_" + k).textContent = s.on ? fmtBridgeId(p.db) : "-";
+        document.getElementById("dp_" + k).textContent =
           s.on ? (parseInt(p.dp.slice(0, 2), 16) + "-" + parseInt(p.dp.slice(2), 16)) : "-";
-        document.getElementById("dc_" + p.p).textContent = s.on ? parseInt(p.dc, 16) : "-";
-        document.getElementById("oe_" + p.p).textContent =
+        document.getElementById("dc_" + k).textContent = s.on ? parseInt(p.dc, 16) : "-";
+        document.getElementById("oe_" + k).textContent =
           s.on ? ((p.f & PF_OPEREDGE) ? "True" : "False") : "-";
-        document.getElementById("op_" + p.p).textContent = s.on ? (p.p2 == 2 ? "False" : "True") : "-";
+        document.getElementById("op_" + k).textContent = s.on ? (p.p2 == 2 ? "False" : "True") : "-";
       }
       if (stpDirty)          // an edit is in flight - do not revert controls
         return;
@@ -132,15 +146,16 @@ function fetchStp() {
       document.getElementById("bFwd").value = s.fwd;
       document.getElementById("bTxhold").value = s.txhold;
       for (const p of s.ports) {
-        document.getElementById("en_" + p.p).value = (p.f & PF_ENABLED) ? "on" : "off";
-        document.getElementById("edge_" + p.p).value =
+        const k = p.lag ? "L" + p.lag : p.p;
+        document.getElementById("en_" + k).value = (p.f & PF_ENABLED) ? "on" : "off";
+        document.getElementById("edge_" + k).value =
           (p.f & PF_ADMEDGE) ? "on" : ((p.f & PF_AUTOEDGE) ? "auto" : "off");
-        document.getElementById("cost_" + p.p).value = parseInt(p.pc, 16);
-        document.getElementById("prio_" + p.p).value = p.prio;
-        document.getElementById("p2p_" + p.p).value = ["auto","on","off"][p.p2];
-        document.getElementById("guard_" + p.p).value =
+        document.getElementById("cost_" + k).value = parseInt(p.pc, 16);
+        document.getElementById("prio_" + k).value = p.prio;
+        document.getElementById("p2p_" + k).value = ["auto","on","off"][p.p2];
+        document.getElementById("guard_" + k).value =
           (p.f & PF_BPDUGUARD) ? "bpdu" : ((p.f & PF_ROOTGUARD) ? "root" : "none");
-        document.getElementById("filt_" + p.p).value = (p.f & PF_FILTER) ? "on" : "off";
+        document.getElementById("filt_" + k).value = (p.f & PF_FILTER) ? "on" : "off";
       }
     }
   };
