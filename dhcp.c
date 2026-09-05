@@ -351,7 +351,12 @@ void dhcp_start(void) __banked
 		return;
 	}
 	get_random_32();
-	dhcp_state.transaction_id = SFR_DATA_U32;
+	// Workaround SDCC bug 4070: dhcp_state.transaction_id = SFR_DATA_U32;
+	__xdata uint8_t * tid = &dhcp_state.transaction_id;
+	*tid++ = SFR_DATA_24;
+	*tid++ = SFR_DATA_16;
+	*tid++ = SFR_DATA_8;
+	*tid = SFR_DATA_0;
 	dhcp_state.state = DHCP_START;
 	print_string("dhcp_start done\n");
 }

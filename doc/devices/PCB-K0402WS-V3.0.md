@@ -19,6 +19,9 @@ of the device just above the big label, might be covered by a QC sticker.
 
 <img src="photos/PCB-K0402WS-V3.0/Ztyuav_Z-QWYT0402_label.jpg" width="300" />
 
+* Siscolink SL-G0402F
+
+<img src="photos/PCB-K0402WS-V3.0/Siscolink SL-G0402F.jpg" width="300"/>
 ### Programming
 
 Using SPI clamp in-board is the only method for initial installation.
