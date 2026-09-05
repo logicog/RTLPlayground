@@ -35,13 +35,20 @@ excluding the CPU.
 #define RTL837X_RMA_ACT_DROP	0x00000020
 ```
 
-`TRAP` looks like the right action and is not. On these boards its destination
-is an *external* CPU on a physical port (`cpuTag_externalCpuPort_set`,
-`EXT_CPU_CTRL 0x6724`), which the hardware does not have, so trapped frames are
-taken out of the forwarding path and never arrive anywhere. The receive counters
-stay at zero. The same is true of an ACL rule with `FWD_INT_TRAP` or a redirect
-aimed at the CPU port: the rule matches, the frames leave the normal path, and
-nothing reaches the 8051.
+`TRAP` looks like the right action for this address and is not. Trapped frames
+are taken out of the forwarding path and never arrive: with `0x4ed4` on trap the
+receive counters freeze, and they resume the moment it goes back to forward. The
+same is true of an ACL rule with `FWD_INT_TRAP` or a redirect aimed at the CPU
+port: the rule matches, the frames leave the normal path, and nothing reaches
+the 8051. The destination looks like an *external* CPU on a physical port
+(`cpuTag_externalCpuPort_set`, `EXT_CPU_CTRL 0x6724`), which these boards do not
+have.
+
+That is a statement about **this address**, not about the RMA block. The LLDP
+group at `01:80:C2:00:00:0E` is trapped and its frames do reach the CPU quite
+happily, measured on the same switch in the same session. Neighbouring addresses
+in the same block behave differently, so measure before carrying a conclusion
+about one of them across to another.
 
 What does work is `FORWARD`, because the CPU port is in the forwarding domain,
 so a forwarded frame lands in the NIC receive ring the firmware already polls.
