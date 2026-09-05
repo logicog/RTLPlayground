@@ -381,6 +381,7 @@ void port_l2_learned(void) __banked
 
 	while (1) {
 		uint8_t port = 0;
+		uint8_t lag;
 		reg_read_m(RTL837x_TBL_DATA_0);
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
 
@@ -422,7 +423,13 @@ void port_l2_learned(void) __banked
 				print_string("\tlearned\t");
 
 			port |= (sfr_data[3] & 0x3) << 2;
-			print_phys_port(port);
+			lag = port_lag_of(port);
+			if (lag == PORT_LAG_NONE) {
+				print_phys_port(port);
+			} else {
+				print_string("LAG");
+				itoa(lag + 1);
+			}
 		}
 
 		entry++;
