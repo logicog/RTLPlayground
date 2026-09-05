@@ -68,7 +68,11 @@ var l2SortCol = 'port';
 var l2SortDir = 1;
 
 function l2Key(e, col) {
-  if (col === 'port') return e.port === 'CPU' ? Number.MAX_SAFE_INTEGER : Number(e.port);
+  if (col === 'port') {
+    if (e.port === 'CPU') return Number.MAX_SAFE_INTEGER;
+    if (e.lag) return 100 + e.lag;
+    return Number(e.port);
+  }
   if (col === 'vlan') return Number(e.vlan);
   return String(e[col]).toLowerCase();
 }
@@ -114,7 +118,11 @@ function fillL2(s)
     return;
   s.sort(l2CMP);
   s = uniq(s);
-  l2All = s;
+  l2All = s.map(function(e) {
+    if (e.lag)
+      e.port = 'LAG' + e.lag;
+    return e;
+  });
   renderL2();
 }
 
