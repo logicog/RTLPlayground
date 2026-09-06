@@ -300,7 +300,7 @@ void parse_opts(void)
 
 void parse_dhcp(void)
 {
-	if (!DHCP_P->tid == HTONS(dhcp_state.transaction_id))
+	if (DHCP_P->tid != HTONS(dhcp_state.transaction_id))
 		return;
 	if (DHCP_P->cookie[0] != 0x63 || DHCP_P->cookie[1] != 0x82 || DHCP_P->cookie[2] != 0x53 || DHCP_P->cookie[3] != 0x63)
 		return;
