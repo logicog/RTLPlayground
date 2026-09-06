@@ -47,7 +47,7 @@ __xdata uint8_t  stp_rstp;		/* 1 = RST BPDUs, 0 = legacy Config BPDUs */
 __xdata uint8_t  stp_txhold;		/* BPDUs per port per second */
 
 
-__xdata uint8_t  stp_ent_of[10];
+__xdata uint8_t  stp_ent_of[STP_PORTS];
 __xdata uint16_t stp_lag_mask[STP_LAG_COUNT];
 __xdata uint8_t  stp_ss_i;
 __xdata uint8_t  stp_map_dirty;
@@ -248,9 +248,9 @@ static void stp_status(void)
 		stp_st_of = stp_i;
 		if (stp_i >= STP_LAG_BASE) {
 			stp_st_of = 0;
-			while (stp_st_of < 10 && !((stp_lag_mask[stp_i - STP_LAG_BASE] >> stp_st_of) & 1))
+			while (stp_st_of < STP_PORTS && !((stp_lag_mask[stp_i - STP_LAG_BASE] >> stp_st_of) & 1))
 				stp_st_of++;
-			if (stp_st_of >= 10)
+			if (stp_st_of >= STP_PORTS)
 				stp_st_of = 0;
 		}
 		print_field(stp_state_txt, (sfr_data[3 - (stp_st_of >> 2)] >> ((stp_st_of << 1) & 0x7)) & 0x3, 5);
@@ -300,14 +300,14 @@ int8_t cmpBytes(__xdata uint8_t *m1, __xdata uint8_t *m2, uint8_t n) __reentrant
 
 static void stp_lag_map(void)
 {
-	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+	for (stp_ss_i = 0; stp_ss_i < STP_PORTS; stp_ss_i++)
 		stp_ent_of[stp_ss_i] = stp_ss_i;
 	for (stp_scratch = 0; stp_scratch < STP_LAG_COUNT; stp_scratch++) {
 		stp_scratch16 = port_lag_members_get(stp_scratch);
 		if (stp_lag_mask[stp_scratch] != stp_scratch16)
 			stp_map_dirty = 1;
 		stp_lag_mask[stp_scratch] = stp_scratch16;
-		for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+		for (stp_ss_i = 0; stp_ss_i < STP_PORTS; stp_ss_i++)
 			if ((stp_lag_mask[stp_scratch] >> stp_ss_i) & 1)
 				stp_ent_of[stp_ss_i] = STP_LAG_BASE + stp_scratch;
 	}
@@ -336,7 +336,7 @@ static uint8_t stp_state_port(uint8_t e) __reentrant
 {
 	if (e < STP_LAG_BASE)
 		return e;
-	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+	for (stp_ss_i = 0; stp_ss_i < STP_PORTS; stp_ss_i++)
 		if ((stp_lag_mask[e - STP_LAG_BASE] >> stp_ss_i) & 1)
 			return stp_ss_i;
 	return 0;
@@ -345,7 +345,7 @@ static uint8_t stp_state_port(uint8_t e) __reentrant
 
 static void stp_state_bits(uint8_t port, uint8_t state) __reentrant
 {
-	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++)
+	for (stp_ss_i = 0; stp_ss_i < STP_PORTS; stp_ss_i++)
 		if (stp_ent_has(port, stp_ss_i))
 			sfr_data[3 - (stp_ss_i >> 2)] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
 }
@@ -355,7 +355,7 @@ static void stp_state_bits(uint8_t port, uint8_t state) __reentrant
 static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 {
 	reg_read_m(RTL837X_MSTP_STATES);
-	for (stp_ss_i = 0; stp_ss_i < 10; stp_ss_i++) {
+	for (stp_ss_i = 0; stp_ss_i < STP_PORTS; stp_ss_i++) {
 		if (!stp_ent_has(port, stp_ss_i))
 			continue;
 		stp_scratch = 3 - (stp_ss_i >> 2);
@@ -466,9 +466,9 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 	if (port >= STP_LAG_BASE) {
 		stp_scratch = 0;
-		while (stp_scratch < 10 && !stp_ent_has(port, stp_scratch))
+		while (stp_scratch < STP_PORTS && !stp_ent_has(port, stp_scratch))
 			stp_scratch++;
-		if (stp_scratch >= 10) {
+		if (stp_scratch >= STP_PORTS) {
 			stp_tx_flags_extra = 0;
 			return;
 		}
@@ -739,9 +739,9 @@ void stp_timers(void) __banked
 		}
 		if (stp_link_now != stp_link_prev) {
 			for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
-				if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
+				if (stp_i < STP_PORTS && (stp_i < machine.min_port || stp_i > machine.max_port))
 					continue;
-				if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
+				if (stp_i < STP_PORTS && stp_ent_of[stp_i] != stp_i)
 					continue;
 				if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
 					continue;
@@ -834,7 +834,7 @@ void stp_defaults(void) __banked
 	stp_fwddelay_s = 15;
 	stp_rstp = 1;
 	stp_txhold = 6;
-	for (stp_i = 0; stp_i < 10; stp_i++)
+	for (stp_i = 0; stp_i < STP_PORTS; stp_i++)
 		stp_ent_of[stp_i] = stp_i;
 	for (stp_i = 0; stp_i < STP_LAG_COUNT; stp_i++)
 		stp_lag_mask[stp_i] = 0;
@@ -896,11 +896,11 @@ void stp_setup(void) __banked
 		stp_tx_count[stp_i] = 0;
 		port_timers[stp_i] = 0;
 		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
-		if (stp_i < 10 && (stp_i < machine.min_port || stp_i > machine.max_port))
+		if (stp_i < STP_PORTS && (stp_i < machine.min_port || stp_i > machine.max_port))
 			continue;
 		if (stp_i >= STP_LAG_BASE && !stp_lag_mask[stp_i - STP_LAG_BASE])
 			continue;
-		if (stp_i < 10 && stp_ent_of[stp_i] != stp_i)
+		if (stp_i < STP_PORTS && stp_ent_of[stp_i] != stp_i)
 			continue;
 		if (!(stp_pflags[stp_i] & STP_PF_ENABLED)
 		    || (stp_pflags[stp_i] & STP_PF_ADMEDGE)) {
