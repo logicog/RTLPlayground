@@ -1,0 +1,21 @@
+# Read-only switch diagnostics. Independent of the firmware build Makefile.
+.DEFAULT_GOAL := help
+PYTHON ?= python3
+SWITCH_IP ?= 192.168.5.9
+MACHINE ?= SWTGW218AS
+BUILD_DIR ?= output/$(MACHINE)
+
+.PHONY: help status storage ram size
+help:
+	@echo 'make -f Makefile.switch status    # identify switch (asks for password)'
+	@echo 'make -f Makefile.switch storage   # physical flash capacity and layout'
+	@echo 'make -f Makefile.switch ram       # local SDCC RAM report; build first'
+	@echo 'make -f Makefile.switch size      # RAM, code banks, HTML, image and CRC'
+	@echo 'Options: SWITCH_IP, MACHINE, BUILD_DIR; password: SWITCH_PASSWORD env or prompt'
+	@echo 'No upload, reboot, reset or configuration-write targets exist.'
+
+status storage:
+	@$(PYTHON) tools/switch_inspect.py $@ --host "$(SWITCH_IP)"
+
+ram size:
+	@$(PYTHON) tools/memory_report.py $@ --build-dir "$(BUILD_DIR)"

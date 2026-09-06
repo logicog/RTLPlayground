@@ -1,0 +1,29 @@
+{
+  "name": "rtlplayground-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node scripts/package.mjs",
+    "check": "tsc --noEmit",
+    "test": "vitest run --dir tests",
+    "test:browser": "playwright test",
+    "preview": "vite preview --host 127.0.0.1",
+    "format": "prettier --write src tests browser-tests scripts *.ts *.json index.html login.html",
+    "format:check": "prettier --check src tests browser-tests scripts *.ts *.json index.html login.html"
+  },
+  "dependencies": {
+    "lit": "^3.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.12",
+    "html-minifier-terser": "^7.2.0",
+    "prettier": "^3.6.2",
+    "rollup-plugin-html-literals": "^2.0.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.3",
+    "vitest": "^3.2.4"
+  }
+}
