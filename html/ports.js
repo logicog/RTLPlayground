@@ -16,12 +16,11 @@ function createPortTable() {
      for (let i = 1; i <= numPorts; i++) {
       if (pIsSFP[i-1])
         continue;
-      console.log("Table row: " + i + "pState: " + pState[i-2]);
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + i));
       let portName = portNames[physToLogPort[i-1]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
-      td = tr.insertCell(); td.innerHTML = linkText(pState[i] + 1);
+      td = tr.insertCell(); td.innerHTML = linkText(pState[i-1] + 1);
       tr.insertCell(); // filled by devRender()
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
       td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
