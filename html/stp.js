@@ -1,6 +1,10 @@
 
-const STP_STATES = ["Disabled", "Blocking", "Learning", "Forwarding"];
-const STP_ROLES  = ["-", "Root", "Designated", "Alternate"];
+const STP_STATES = ["stp_state_disabled", "stp_state_blocking", "stp_state_learning", "stp_state_forwarding"];
+const STP_ROLES  = ["-", "stp_role_root", "stp_role_designated", "stp_role_alternate"];
+
+function tf(key, map) {
+  return t(key).replace(/\{(\w+)\}/g, function (m, k) { return (map && map[k] !== undefined) ? map[k] : m; });
+}
 
 const PF_ENABLED = 1, PF_ADMEDGE = 2, PF_AUTOEDGE = 4, PF_BPDUGUARD = 8,
       PF_ROOTGUARD = 16, PF_FILTER = 32, PF_OPEREDGE = 64, PF_TRIPPED = 128;
@@ -45,32 +49,32 @@ function buildPortsTable(ports) {
     const tr = tbl.insertRow();
     tr.insertCell().textContent = p.p;                     // Port
     tr.insertCell().appendChild(sel("en_" + p.p,
-      [["on","Enable"],["off","Disable"]],
+      [["on", t('stp_enable')], ["off", t('stp_disable')]],
       e => stpCmd("stp port " + p.p + " " + e.target.value)));
     const pc = num("cost_" + p.p, 0, 200000000,
       e => stpCmd("stp port " + p.p + " cost " + e.target.value));
     pc.style.width = "7em";
-    pc.title = "0 - 200000000 (0 = Auto)";
+    pc.title = t('stp_cost_title');
     tr.insertCell().appendChild(pc);
     const pr = sel("prio_" + p.p, [], 
       e => stpCmd("stp port " + p.p + " prio " + e.target.value));
     for (let v = 0; v <= 240; v += 16) {
       const o = document.createElement("option");
-      o.value = v; o.textContent = v + (v === 128 ? " (default)" : "");
+      o.value = v; o.textContent = v + (v === 128 ? t('stp_default') : "");
       pr.appendChild(o);
     }
     tr.insertCell().appendChild(pr);
     tr.insertCell().appendChild(sel("edge_" + p.p,
-      [["auto","Auto"],["on","Enable"],["off","Disable"]],
+      [["auto", t('stp_auto')], ["on", t('stp_enable')], ["off", t('stp_disable')]],
       e => stpCmd("stp port " + p.p + " edge " + e.target.value)));
     tr.insertCell().appendChild(sel("filt_" + p.p,
-      [["off","Disable"],["on","Enable"]],
+      [["off", t('stp_disable')], ["on", t('stp_enable')]],
       e => stpCmd("stp port " + p.p + " filter " + e.target.value)));
     tr.insertCell().appendChild(sel("guard_" + p.p,
-      [["none","None"],["bpdu","BPDU"],["root","Root"]],
+      [["none", t('stp_none')], ["bpdu", t('stp_bpdu')], ["root", t('stp_root')]],
       e => stpCmd("stp port " + p.p + " guard " + e.target.value)));
     tr.insertCell().appendChild(sel("p2p_" + p.p,
-      [["auto","Auto"],["on","Enable"],["off","Disable"]],
+      [["auto", t('stp_auto')], ["on", t('stp_enable')], ["off", t('stp_disable')]],
       e => stpCmd("stp port " + p.p + " p2p " + e.target.value)));
 
     const sr = stat.insertRow();
@@ -101,26 +105,22 @@ function fetchStp() {
         buildPortsTable(s.ports);
       document.getElementById("stpStat").textContent = s.on
         ? (s.weRoot
-            ? "This switch (" + bridgeSelf(s) + ") is the root bridge — topology changes: "
-              + parseInt(s.tc, 16)
-            : "This switch: " + bridgeSelf(s)
-              + " — root bridge: " + fmtBridgeId(s.rootPrio + s.rootMac)
-              + " via port " + s.rootPort + " — path cost: " + parseInt(s.cost, 16)
-              + " — topology changes: " + parseInt(s.tc, 16))
+            ? tf('stp_stat_we_root', { id: bridgeSelf(s), tc: parseInt(s.tc, 16) })
+            : tf('stp_stat_root', { id: bridgeSelf(s), root: fmtBridgeId(s.rootPrio + s.rootMac), port: s.rootPort, cost: parseInt(s.cost, 16), tc: parseInt(s.tc, 16) }))
         : "";
       for (const p of s.ports) {
-        const trip = (p.f & PF_TRIPPED) ? " (guard!)" : "";
+        const trip = (p.f & PF_TRIPPED) ? t('stp_guard_tripped') : "";
         document.getElementById("st_" + p.p).textContent =
-          s.on ? STP_STATES[p.st] + trip : "-";
+          s.on ? t(STP_STATES[p.st]) + trip : "-";
         document.getElementById("role_" + p.p).textContent =
-          s.on ? STP_ROLES[p.role] : "-";
+          s.on ? t(STP_ROLES[p.role]) : "-";
         document.getElementById("db_" + p.p).textContent = s.on ? fmtBridgeId(p.db) : "-";
         document.getElementById("dp_" + p.p).textContent =
           s.on ? (parseInt(p.dp.slice(0, 2), 16) + "-" + parseInt(p.dp.slice(2), 16)) : "-";
         document.getElementById("dc_" + p.p).textContent = s.on ? parseInt(p.dc, 16) : "-";
         document.getElementById("oe_" + p.p).textContent =
-          s.on ? ((p.f & PF_OPEREDGE) ? "True" : "False") : "-";
-        document.getElementById("op_" + p.p).textContent = s.on ? (p.p2 == 2 ? "False" : "True") : "-";
+          s.on ? ((p.f & PF_OPEREDGE) ? t('stp_true') : t('stp_false')) : "-";
+        document.getElementById("op_" + p.p).textContent = s.on ? (p.p2 == 2 ? t('stp_false') : t('stp_true')) : "-";
       }
       if (stpDirty)          // an edit is in flight - do not revert controls
         return;
@@ -151,10 +151,8 @@ function fetchStp() {
 async function stpSub() {
   const on = document.getElementById("stpMode").value === "on";
   document.getElementById("stpStat").textContent = on
-    ? "Enabling STP. The ports start blocked and take up to "
-      + (2 * document.getElementById("bFwd").value)
-      + " s to reach forwarding, and this page can stay silent until they do."
-    : "Disabling STP.";
+    ? tf('stp_enabling', { s: 2 * document.getElementById("bFwd").value })
+    : t('stp_disabling');
   await stpCmd(on ? "stp on" : "stp off");
 }
 
@@ -162,7 +160,7 @@ window.addEventListener("load", function() {
   const bp = document.getElementById("bPrio");
   for (let i = 0; i < 16; i++) {
     const o = document.createElement("option");
-    o.value = i; o.textContent = (i * 4096) + (i === 8 ? " (default)" : "");
+    o.value = i; o.textContent = (i * 4096) + (i === 8 ? t('stp_default') : "");
     bp.appendChild(o);
   }
   bp.addEventListener("change", e => stpCmd("stp prio " + e.target.value));

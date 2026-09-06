@@ -3,41 +3,45 @@
   <script src="/main.js"></script>
   <script src="/i18n.js"></script>
   <link rel="stylesheet" href="style.css">
-  <title>FreeSwitchOS Spanning Tree</title>
+  <title data-i18n="stp_title">FreeSwitchOS Spanning Tree</title>
   </head>
   <body>
     <nav id="sidebar"></nav>
     <div style="margin-left:16%;padding:1px 16px;height:1000px;">
     <div id="ports"></div>
-    <h1>Spanning Tree (RSTP)</h1>
-    <h2>Mode: <select id="stpMode"><option value="off">Disabled</option><option value="on">Enabled</option></select>
-      <input style="width:15%;margin-left: 3em;" class="action" id="stp_sub" onclick="stpSub();" type="button" value="Apply"></h2>
+    <h1 data-i18n="stp_heading">Spanning Tree (RSTP)</h1>
+    <h2><span data-i18n="stp_mode">Mode:</span> <select id="stpMode">
+        <option value="off" data-i18n="stp_disabled">Disabled</option>
+        <option value="on" data-i18n="stp_enabled">Enabled</option>
+      </select>
+      <input style="width:15%;margin-left: 3em;" class="action" id="stp_sub" onclick="stpSub();" type="button" value="Apply" data-i18n="stp_apply"></h2>
     <div id="stpStat" style="font-family:monospace;"></div>
-    <h2>Bridge settings</h2>
+    <h2 data-i18n="stp_bridge_settings">Bridge settings</h2>
     <table id="stpBridge">
       <tr>
-        <th>Priority</th><th>Version</th><th>Hello [s]</th><th>Max age [s]</th><th>Fwd delay [s]</th><th>Tx hold</th>
+        <th data-i18n="stp_priority">Priority</th><th data-i18n="stp_version">Version</th><th data-i18n="stp_hello">Hello [s]</th><th data-i18n="stp_maxage">Max age [s]</th><th data-i18n="stp_fwd_delay">Fwd delay [s]</th><th data-i18n="stp_txhold">Tx hold</th>
       </tr>
       <tr>
         <td><select id="bPrio"></select></td>
-        <td><select id="bVer"><option value="rstp">RSTP</option><option value="stp">STP compat</option></select></td>
+        <td><select id="bVer"><option value="rstp" data-i18n="stp_rstp">RSTP</option><option value="stp" data-i18n="stp_stp_compat">STP compat</option></select></td>
         <td><input id="bHello" type="number" min="1" max="10" style="width:4em"></td>
         <td><input id="bMaxage" type="number" min="6" max="40" style="width:4em"></td>
         <td><input id="bFwd" type="number" min="4" max="30" style="width:4em"></td>
         <td><input id="bTxhold" type="number" min="1" max="10" style="width:4em"></td>
       </tr>
     </table>
-    <p style="font-size:small">Changes apply immediately. Edge ports skip the listen period; guard/filter act on received BPDUs.</p>
-    <h2>Port configuration</h2>
+    <p style="font-size:small" data-i18n="stp_changes_note">Changes apply immediately. Edge ports skip the listen period; guard/filter act on received BPDUs.</p>
+    <h2 data-i18n="stp_port_config">Port configuration</h2>
     <table id="stpPortsTbl">
       <tr>
-        <th>Port</th><th>State</th><th>Path Cost<br><span style="font-weight:normal;font-size:small">(0 = Auto)</span></th><th>Priority</th><th>Edge Port</th><th>BPDU Filter</th><th>Guard</th><th>Point-to-Point</th>
+        <th data-i18n="stp_port">Port</th><th data-i18n="stp_state">State</th><th data-i18n="stp_path_cost">Path Cost</th><th data-i18n="stp_priority">Priority</th><th data-i18n="stp_edge_port">Edge Port</th><th data-i18n="stp_bpdu_filter">BPDU Filter</th><th data-i18n="stp_guard">Guard</th><th data-i18n="stp_point_to_point">Point-to-Point</th>
       </tr>
     </table>
-    <h2>Port status</h2>
+    <p style="font-size:small;margin-top:4px" data-i18n="stp_auto_hint">(0 = Auto)</p>
+    <h2 data-i18n="stp_port_status">Port status</h2>
     <table id="stpStatTbl">
       <tr>
-        <th>Port</th><th>Port State</th><th>Role</th><th>Designated Bridge</th><th>Designated Port ID</th><th>Designated Cost</th><th>Oper. Edge</th><th>Oper. P2P</th>
+        <th data-i18n="stp_port">Port</th><th data-i18n="stp_port_state">Port State</th><th data-i18n="stp_role">Role</th><th data-i18n="stp_designated_bridge">Designated Bridge</th><th data-i18n="stp_designated_port_id">Designated Port ID</th><th data-i18n="stp_designated_cost">Designated Cost</th><th data-i18n="stp_oper_edge">Oper. Edge</th><th data-i18n="stp_oper_p2p">Oper. P2P</th>
       </tr>
     </table>
     <script src="/stp.js"></script>
