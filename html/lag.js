@@ -57,7 +57,7 @@ function fetchLag() {
   sendXHTTP(xhttp);
 }
 async function lagSub(l) {
-  var cmd = "lag " + l;
+  var cmd = "lag " + (l + 1);
   for (let i = 1; i <= numPorts; i++) {
     if (document.getElementById("p_mLAG"+l+"_"+i).checked)
       cmd = cmd + ` ${i}`;

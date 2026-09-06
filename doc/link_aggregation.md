@@ -48,9 +48,11 @@ void port_lag_hash_set(__xdata uint8_t lag, __xdata uint8_t hash_bits) __banked;
 ## LAG configuration on the Serial Console
 For testing the following commands are provided on the serial console:
 ```
-> lag <LAG-ID> [p1] [p2]...
-  Create or set a LAG. Trunk-ID is 1 or 2. Ports are physical ports
-  If only the LAG-ID is given but no members, the LAG is deleted
+> lag <LAG-ID> <p1> [p2]...
+  Create or set a LAG. LAG-ID is 1 to 4. Ports are physical ports.
+
+> lag <LAG-ID> d
+  Delete the LAG.
 
 > lag show
   Shows information on all 4 lags
