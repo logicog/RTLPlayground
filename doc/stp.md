@@ -60,23 +60,27 @@ state.
 
 ## Link aggregation
 
-A LAG is a port to the protocol, the way the vendor firmware presents it as
-Trk1 to Trk4. The four groups are entities alongside the nine physical ports:
-they carry their own path cost, priority, edge and guard settings, they hold
-their own timers, and they appear as their own rows on the Spanning Tree page.
+A LAG (Link Aggregation Group) is handled like an additional port by the STP
+protocol, with its own timers and states. The switch devices support up to 4
+LAGs, which are shown alongside the physical ports in the STP status. A group
+carries its own path cost, priority, edge and guard settings, and gets its own
+row on the Spanning Tree page.
 
 ```
 stp lag 1 cost 10000    # the group decides, not its members
 stp lag 1 edge off
 ```
 
-Membership comes from the aggregation registers the `lag` command writes, re-read
-once a second, so a group changing under LACP is picked up without any
-coordination between the two. A member port is not an STP port of its own:
-`stp port <n>` on a member says which group to configure instead. State
-changes are written to every member in one register write, since the hardware
-has no per-group state, and BPDUs are transmitted through the lowest
-member while carrying the group's own port id. Losing one member of a live
+LAGs are configured via the `lag` command. Once a port is a member of a LAG it
+can no longer be configured individually for STP, so `stp port <n>` on a member
+tells you which group to configure instead. Membership is re-read from the
+aggregation registers once a second, so a group changing under LACP is picked
+up without any coordination between the two.
+
+The switch hardware does not handle STP state for a LAG as a whole. State
+changes for the members have to be done by the firmware, updating every member
+port, which is possible using a single register write. BPDUs go out through the
+lowest member and carry the group's own port id. Losing one member of a live
 LAG is not a topology change; the logical port only goes down with its last
 link.
 

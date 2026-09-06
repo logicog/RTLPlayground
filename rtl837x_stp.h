@@ -2,6 +2,7 @@
 #define _RTL837X_STP_H_
 
 #include <stdint.h>
+#include "rtl837x_common.h"
 void stp_in(void) __banked;
 void stp_setup(void) __banked;
 void stp_timers(void) __banked;
@@ -12,7 +13,8 @@ void stp_defaults(void) __banked;
 /* Tick rate of stp_timers(), also used by the web UI. */
 #define STP_HZ 50
 
-#define STP_LAG_BASE	10
+#define STP_PORTS	(CPU_PORT + 1)
+#define STP_LAG_BASE	STP_PORTS
 #define STP_LAG_COUNT	4
 #define STP_ENTITIES	(STP_LAG_BASE + STP_LAG_COUNT)
 
