@@ -2027,13 +2027,14 @@ void health_show(void) __banked
 	print_byte(i);
 	write_char('\n');
 
-	/* The TCP connection slots (a single one on this configuration) */
-	for (i = 0; i < UIP_CONNS; i++) {
+	/* The TCP connection slot. One on this configuration; a build with more
+	 * has to say which slot each line is, so make that a visible decision. */
+#if UIP_CONNS != 1
+#error "health: the tcp dump prints a single slot, extend it for UIP_CONNS > 1"
+#endif
+	i = 0;
+	{
 		print_string("tcp ");
-		if (UIP_CONNS > 1) {
-			print_byte(i);
-			write_char(' ');
-		}
 		print_string("st ");
 		print_byte(uip_conns[i].tcpstateflags);
 		print_string(" tmr ");
