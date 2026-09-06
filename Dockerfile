@@ -1,4 +1,9 @@
+FROM node:22-bookworm-slim AS node
+
 FROM debian:13-slim
+
+COPY --from=node /usr/local/ /usr/local/
+ENV NPM_CONFIG_CACHE=/tmp/rtlplayground-npm-cache
 
 RUN apt-get update && apt-get install -y \
     make \

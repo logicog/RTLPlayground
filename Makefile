@@ -9,6 +9,7 @@ CC = sdcc
 endif
 CC_FLAGS = -mmcs51 -I. -Ihttpd -Iuip
 ASM ?= sdas8051
+NPM ?= npm
 AFLAGS= -plosgff
 
 SUBDIRS := tools
@@ -87,9 +88,18 @@ SRCS += \
 
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
-HTML := $(shell find html -name '*.js' -or -name '*.html' -or -name '*.svg')
+WEB_DEPENDENCIES := web/node_modules/.rtl-dependencies
 
-html_data.c html_data.h &: $(HTML) | tools
+$(WEB_DEPENDENCIES): web/package.json web/package-lock.json
+	$(NPM) --prefix web ci --no-audit --no-fund
+	touch $@
+
+# Always regenerate the packaged UI, including when html/ is absent or incomplete.
+# The shared prerequisite runs once even with parallel make and direct BIN targets.
+frontend: $(WEB_DEPENDENCIES)
+	$(NPM) --prefix web run build
+
+html_data.c html_data.h &: frontend | tools
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -d html -p html_data
 
 $(VERSION_HEADER):
@@ -101,7 +111,7 @@ $(VERSION_HEADER):
 httpd: html_data.h
 
 $(SUBDIRS):
-	$(MAKE) -C $@
+	$(MAKE) -C $@ BUILDDIR=output
 
 clean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
@@ -134,9 +144,9 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -d html -p html_data -b BANK1 $@
 	tools/output/crc_calculator -u $@
-	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
+	ln -srf $@ output/rtlplayground.bin
 
-.PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) $(VERSION_HEADER) create_build_dir
+.PHONY: clean distclean all frontend $(SUBDIRS) $(SUBDIRSCLEAN) $(VERSION_HEADER) create_build_dir
 
 .PHONY:
 machine_check:

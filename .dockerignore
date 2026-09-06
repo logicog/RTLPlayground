@@ -17,3 +17,7 @@ html_data.h
 *.map
 *.mem
 *.lk
+web/node_modules/
+web/dist/
+html/
+.switch-backups/

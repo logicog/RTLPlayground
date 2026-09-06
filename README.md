@@ -62,6 +62,18 @@ still has an older version of sdcc, but you will need sdcc version 4.5 for the c
 sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
 ```
 
+The Lit/Vite frontend also requires Node.js 22.12 or newer and npm. The firmware
+Makefile installs the locked frontend dependencies with `npm ci`, runs its
+production build and then embeds the generated `html/` assets in the image.
+`html/` is generated and ignored by Git; edit frontend sources in `web/`.
+
+```sh
+make MACHINE=SWTGW218AS
+```
+
+This builds the frontend and firmware together. `make frontend` builds just the
+production UI. Both targets are local builds and do not contact a switch.
+
 <details>
 <summary>If using Docker (click to expand)</summary>
 
@@ -82,13 +94,16 @@ A Dockerfile is provided for a reproducible build environment:
 docker build -t rtlplayground-dev .
 ```
 
-Build the firmware (replace MACHINE with your target, e.g. `DEFAULT_8C_1SFP`):
+Build the firmware with the exact hardware target (for this workspace, `SWTGW218AS`):
 
 ```
-docker run --rm -v $(pwd):/workspace rtlplayground-dev make MACHINE=DEFAULT_8C_1SFP
+docker run --rm --user "$(id -u):$(id -g)" -v "$(pwd):/workspace" rtlplayground-dev make MACHINE=SWTGW218AS
 ```
 
-The resulting `.bin` file appears in `output/` on your host.
+The image includes Node.js and npm as well as the firmware toolchain. The first
+build needs access to the npm registry. Later builds reuse `web/node_modules/`
+until the dependency manifests change. The resulting `.bin` file appears in
+`output/` on your host.
 
 Build host tools only:
 

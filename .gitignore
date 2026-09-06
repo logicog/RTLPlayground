@@ -1,9 +1,16 @@
 .gitignore
 .idea/
 output/
+html/
 html_data.c
 html_data.h
 version.h
 tools/httpd_sim
 tools/injector
 tools/fileadder
+.switch-backups/
+__pycache__/
+web/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
