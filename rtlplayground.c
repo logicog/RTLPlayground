@@ -89,6 +89,7 @@ volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_clock;
+__xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
 #define STP_TICK_DIVIDER 3
@@ -1565,6 +1566,11 @@ void idle(void)
 
 		// Check for button presses once a second
 		handle_button();
+		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
+		if (++arp_age_secs >= 10) {
+			arp_age_secs = 0;
+			uip_arp_timer();
+		}
 
 #ifdef DEBUG
 		print_sfr_data();
