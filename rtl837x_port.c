@@ -30,6 +30,14 @@ __xdata	uint32_t l2_head;
 
 __xdata struct vlan_settings vlan_settings;
 
+// Wait for the TABLE ready
+static void wait_table_ready(void)
+{
+	do {
+		reg_read(RTL837X_TBL_CTRL);
+	} while (SFR_DATA_0 & TBL_EXECUTE);
+}
+
 void port_mirror_set(uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
 {
 	print_string("\nport_mirror_set called \n");
@@ -183,9 +191,9 @@ int8_t vlan_get(uint16_t vlan) __banked
 		return -1;
 
 	REG_WRITE(RTL837X_TBL_CTRL, vlan >> 8, vlan, TBL_VLAN, TBL_EXECUTE);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+
+	wait_table_ready();
+
 	reg_read_m(RTL837x_L2_DATA_OUT_A);
 
 	return 0;
@@ -239,9 +247,9 @@ void vlan_create(void) __banked
 	// Initialize VLAN table with VLAN 1
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0x02, (a >> 6) & 0x0f, (a << 2) | (vlan_settings.members >> 8), vlan_settings.members);
 	REG_WRITE(RTL837X_TBL_CTRL, vlan_settings.vlan >> 8, vlan_settings.vlan, TBL_VLAN, TBL_WRITE | TBL_EXECUTE);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+
+	wait_table_ready();
+
 	print_string("vlan_create done \n");
 }
 
@@ -265,9 +273,8 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837x_TBL_DATA_IN_A, machine_detected.isRTL8373? 0x0007ffff : 0x0007e3f8);
 
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+
+	wait_table_ready();
 
 	// Set PVID 1 for every port. TODO: Skip unused ports!
 	for (uint8_t i = machine.min_port; i <= machine.max_port + 1; i++) {  // Do this also for the CPU port (+1)
@@ -310,9 +317,8 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837x_TBL_DATA_IN_A, machine_detected.isRTL8373? 0x0207ffff : 0x0207e3f8);	// 02: Entry valid, 7...: membership
 
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);	// Write VLAN 1
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & TBL_EXECUTE);
+
+	wait_table_ready();
 
 #ifdef DEBUG
 	print_string("\nvlan_setup, REG 0x6738: "); print_reg(0x6738);
@@ -372,9 +378,8 @@ uint8_t port_l2_forget(void) __banked
 void port_l2_learned(void) __banked
 {
 	// Whait for any table action to be finished
-	do {
-		reg_read_m(RTL837X_TBL_CTRL);
-	} while (sfr_data[3] & 0x01);
+	wait_table_ready();
+
 	print_string("\n\tMAC\t\tVLAN\ttype\tport\n");
 	__xdata uint16_t entry = 0x0000;
 	__xdata uint16_t first_entry = 0xffff; // Table does not have that many entries
@@ -386,9 +391,8 @@ void port_l2_learned(void) __banked
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1],sfr_data[2] | 0xc0, sfr_data[3]);
 
 		REG_WRITE(RTL837X_TBL_CTRL, (entry >> 8) & 0xf, entry, TBL_L2_UNICAST, TBL_EXECUTE);
-		do {
-			reg_read_m(RTL837X_TBL_CTRL);
-		} while (sfr_data[3] & TBL_EXECUTE);
+
+		wait_table_ready();
 
 		reg_read_m(RTL837x_TBL_DATA_0);
 		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
@@ -417,7 +421,7 @@ void port_l2_learned(void) __banked
 
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
-			if (sfr_data[2] & 0x1)
+			if (sfr_data[1] & 0x1)
 				print_string("\tstatic\t");
 			else
 				print_string("\tlearned\t");
@@ -445,17 +449,14 @@ void port_l2_learned(void) __banked
 
 void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
 {
-	do {
-		reg_read(RTL837X_TBL_CTRL);
-	} while (SFR_DATA_0 & TBL_EXECUTE);
+	wait_table_ready();
 
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, 0xc2, 0x00, 0x00, mac_last);
 	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | (vid >> 8) | ((pmask & 0x3) << 6), vid, 0x01, 0x80);
 	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0, 0, 0, pmask >> 2);
 	REG_WRITE(RTL837X_TBL_CTRL, 0, 0, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
-	do {
-		reg_read(RTL837X_TBL_CTRL);
-	} while (SFR_DATA_0 & TBL_EXECUTE);
+
+	wait_table_ready();
 }
 
 
@@ -937,13 +938,6 @@ static void l2_mgmt_tbl_prepare(void)
 	reg_write_m(RTL837x_TBL_DATA_0);
 }
 
-static void wait_table_ready(void)
-{
-	do {
-		reg_read(RTL837X_TBL_CTRL);
-	} while (SFR_DATA_0 & TBL_EXECUTE);
-}
-
 /** Pin the management MAC to the CPU port; remove_entry deletes it */
 void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked
 {
@@ -970,5 +964,6 @@ void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bo
 		// method-0 write: the hardware hashes the key and places the entry
 		REG_WRITE(RTL837X_TBL_CTRL, 0x00, 0x00, TBL_L2_UNICAST, TBL_WRITE | TBL_EXECUTE);
 	}
+
 	wait_table_ready();
 }
