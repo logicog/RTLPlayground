@@ -1,0 +1,240 @@
+.vlan-navigation {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.vlan-workbench {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.vlan-bulk-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin: 0 26px 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.vlan-selection-actions,
+.vlan-membership-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.vlan-membership-actions strong {
+  margin-right: 6px;
+  font-size: var(--text-control);
+}
+
+.vlan-bulk-toolbar > p {
+  flex-basis: 100%;
+  font-size: var(--text-label);
+}
+
+.vlan-selection-summary p {
+  margin-top: 12px;
+  max-width: 460px;
+}
+
+@media (max-width: 800px) {
+  .vlan-bulk-toolbar {
+    margin-inline: 12px;
+    padding: 12px;
+  }
+}
+
+.vlan-identity {
+  display: grid;
+  grid-template-columns: 100px minmax(180px, 300px) 1fr;
+  align-items: center;
+  gap: 22px;
+  padding: 24px 26px;
+}
+
+.vlan-identity input[readonly] {
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.vlan-context {
+  justify-self: end;
+  max-width: 330px;
+  font-size: 13px;
+}
+
+.vlan-context p {
+  margin-top: 5px;
+}
+
+.vlan-settings .vlan-identity {
+  grid-template-columns: 80px minmax(0, 1fr);
+  padding: 0 0 20px;
+}
+
+.vlan-settings .vlan-context {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.vlan-workbench .vlan-navigation {
+  margin: 0;
+}
+
+.membership-options {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.port-membership-settings {
+  --accent: var(--network-color);
+  --accent-soft: color-mix(in srgb, var(--network-color) 12%, var(--panel));
+}
+
+.port-membership-settings .membership-option {
+  padding: 10px 12px;
+}
+
+.port-membership-settings .pvid-editor {
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
+.membership-options legend {
+  margin-bottom: 10px;
+  font-size: var(--text-label);
+  color: var(--muted);
+}
+
+.membership-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  margin-bottom: 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.membership-option:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.membership-option:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.membership-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.membership-option > span {
+  min-width: 0;
+}
+
+.membership-option strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.membership-option small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: var(--text-label);
+  line-height: 1.5;
+}
+
+.pvid-editor {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.pvid-editor h3 {
+  margin-bottom: 6px;
+}
+
+.pvid-editor .check {
+  margin: 12px 0;
+}
+
+.vlan-change-summary {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  min-width: 0;
+}
+
+.vlan-change-summary h2 {
+  margin-bottom: 8px;
+}
+
+.vlan-change-summary ul {
+  padding-left: 20px;
+  margin-block: 18px;
+  font-size: var(--text-control);
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+.vlan-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.draft-indicator {
+  color: var(--accent);
+  font-size: var(--text-label);
+  font-weight: 600;
+}
+
+.management-warning {
+  padding: 12px;
+  background: color-mix(in srgb, #d39c28 12%, var(--panel));
+  border-left: 2px solid #d39c28;
+  color: var(--ink);
+}
+
+@media (max-width: 800px) {
+  .vlan-navigation {
+    flex-wrap: wrap;
+  }
+  .vlan-identity {
+    grid-template-columns: 80px minmax(0, 1fr);
+    padding: 18px;
+    gap: 16px;
+  }
+  .vlan-context {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .vlan-change-summary {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 20px 0 0;
+  }
+}

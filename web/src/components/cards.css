@@ -1,0 +1,288 @@
+.port-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+rtl-port-card {
+  display: block;
+  min-width: 0;
+}
+
+.port-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 9px;
+  width: 100%;
+  padding: 22px;
+  border-radius: 12px;
+  text-align: left;
+  font-weight: 400;
+}
+
+.port-card.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.port-card > strong {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.port-card-top,
+.port-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.port-card-top {
+  margin-bottom: 17px;
+}
+
+.port-glyph {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: 24px;
+}
+
+.port-card-bottom {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.connections {
+  padding: 0 22px 12px;
+}
+
+.connection {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 19px 0;
+  border-top: 1px solid var(--line);
+}
+
+.connection-number {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.connection-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.connection-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.connection-name small,
+.connection-arrow {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.identity-card {
+  padding: 27px;
+  background: var(--panel);
+}
+
+.identity-card h2 {
+  margin: 19px 0 7px;
+  font-size: 20px;
+}
+
+.identity-address {
+  margin: 26px 0 18px;
+  font-size: 27px;
+  letter-spacing: -1px;
+}
+
+.identity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 25px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.network-summary {
+  margin-top: 23px;
+}
+
+.network-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  padding: 0 22px 23px;
+}
+
+.network-pill {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 6px 13px;
+  align-items: center;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.network-pill strong {
+  font-size: 12px;
+}
+
+.network-pill small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.network-orbit {
+  grid-row: span 2;
+  width: 29px;
+  height: 29px;
+  border: 7px solid var(--accent-soft);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.reading-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.reading-grid > div {
+  padding: 15px;
+  border-radius: 8px;
+  background: var(--bg);
+  overflow-wrap: anywhere;
+}
+
+.reading-grid dt {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: var(--text-label);
+}
+
+.reading-grid dd {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.capabilities {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.network-cards,
+.device-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.network-card {
+  padding: 24px;
+}
+
+.network-card h2 {
+  margin: 20px 0 8px;
+  font-size: 21px;
+}
+
+.membership {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 22px 0;
+}
+
+.member-port {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 33px;
+  padding: 10px 6px;
+  border-radius: 6px;
+  background: var(--soft);
+  color: var(--muted);
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.member-port.tagged,
+.member-port.untagged {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.member-port small {
+  font-size: 8px;
+}
+
+@media (max-width: 520px) {
+  .port-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .port-card {
+    padding: 15px;
+  }
+
+  .port-card > strong {
+    font-size: 14px;
+  }
+
+  .port-card .chip {
+    font-size: 8px;
+  }
+
+  .port-glyph {
+    width: 25px;
+    height: 25px;
+    font-size: 19px;
+  }
+
+  .connection-arrow {
+    display: none;
+  }
+
+  .network-cards,
+  .device-cards {
+    grid-template-columns: 1fr;
+  }
+}

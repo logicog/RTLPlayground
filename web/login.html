@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="icon"
+      href="data:,"
+    />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <meta
+      name="theme-color"
+      content="#087e68"
+    />
+    <link
+      rel="stylesheet"
+      href="/style.css"
+    />
+    <title>Sign in · RTLPlayground</title>
+  </head>
+  <body class="login-body">
+    <main class="login-shell">
+      <a
+        class="brand"
+        href="/login.html"
+      >
+        <span
+          class="brand-mark"
+          aria-hidden="true"
+        >
+          R
+        </span>
+        <div>
+          RTLPlayground
+          <small>NETWORK CONSOLE</small>
+        </div>
+      </a>
+      <section class="card">
+        <div class="eyebrow">WELCOME BACK</div>
+        <h1>Your network awaits.</h1>
+        <p>Sign in to manage your switch.</p>
+        <form
+          id="login"
+          action="/login"
+          method="post"
+        >
+          <label class="field">
+            <span>Password</span>
+            <input
+              name="pwd"
+              type="password"
+              autocomplete="current-password"
+              required
+              autofocus
+            />
+          </label>
+          <p
+            id="login-error"
+            role="alert"
+            hidden
+          ></p>
+          <button
+            class="primary"
+            type="submit"
+          >
+            Sign in ↗
+          </button>
+        </form>
+      </section>
+      <footer>Local management. No cloud account required.</footer>
+    </main>
+    <!-- login-script -->
+  </body>
+</html>
