@@ -125,11 +125,11 @@ function getCounters(port) {
         }
         var count = BigInt(s[i / 4]);
         if (mib_counters[i + 1] == 8) {
-          tableHtml += "<td>" + mib_counters[i] + "</td><td>" + count.toString() + "</td>";
+          tableHtml += "<td>" + t(mib_counters[i]) + "</td><td>" + count.toString() + "</td>";
           c += 1;
         } else if (mib_counters[i + 1] == 4) {
           if (mib_counters[i] != "") {
-            tableHtml += "<td>" + mib_counters[i] + "</td><td>" + (count >> 32n).toString() + "</td>";
+            tableHtml += "<td>" + t(mib_counters[i]) + "</td><td>" + (count >> 32n).toString() + "</td>";
             c += 1;
           }
           if (c == 2) {
@@ -137,7 +137,7 @@ function getCounters(port) {
             c = 0;
           }
           if (mib_counters[i + 2] != "") {
-            tableHtml += "<td>" + mib_counters[i + 2] + "</td><td>" + (count & 4294967295n).toString() + "</td>";
+            tableHtml += "<td>" + t(mib_counters[i + 2]) + "</td><td>" + (count & 4294967295n).toString() + "</td>";
             c += 1;
           }
         }
