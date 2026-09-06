@@ -94,7 +94,7 @@ void dhcp_prepare_request(void)
 	DHCP_P->hw_len = 6;
 	DHCP_P->hops = 0;
 
-	DHCP_P->tid = HTONS(dhcp_state.transaction_id);
+	DHCP_P->tid = dhcp_state.transaction_id;
 	DHCP_P->delay = HTONS(0);
 	DHCP_P->flags = 0;
 	// Clear fields client_ip to bootp_file
@@ -300,7 +300,7 @@ void parse_opts(void)
 
 void parse_dhcp(void)
 {
-	if (DHCP_P->tid != HTONS(dhcp_state.transaction_id))
+	if (DHCP_P->tid != dhcp_state.transaction_id)
 		return;
 	if (DHCP_P->cookie[0] != 0x63 || DHCP_P->cookie[1] != 0x82 || DHCP_P->cookie[2] != 0x53 || DHCP_P->cookie[3] != 0x63)
 		return;
