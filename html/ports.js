@@ -14,16 +14,14 @@ function createPortTable() {
        + '</select>';
       const dSwitch = '<input type="checkbox" id="disable_port" onchange="portOnOff();">'
      for (let i = 1; i <= numPorts; i++) {
+      if (pIsSFP[i-1])
+        continue;
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + i));
       let portName = portNames[physToLogPort[i-1]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
       td = tr.insertCell(); td.innerHTML = linkText(pState[i-1] + 1);
       tr.insertCell(); // filled by devRender()
-      if (pIsSFP[i-1]) {
-        tr.insertCell(); tr.insertCell(); tr.insertCell();
-        continue;
-      }
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
       td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
 						  .replace("portOnOff()", "portOnOff(" + i + ")");
@@ -68,9 +66,9 @@ function updatePortTable() {
   if (tbl.rows.length <= 2 || !numPorts)
     return;
   for (let i = 1; i <= numPorts ; i++) {
-    tbl.rows[i].cells[2].innerHTML = linkText(pState[i-1]+1);
     if (pIsSFP[i-1])
       continue;
+    tbl.rows[i].cells[2].innerHTML = linkText(pState[i-1]+1);
     if (!clicked[i] && pState[i - 1] < 0) {
       document.getElementById('speed_sel_' + i).disabled = true;
       document.getElementById('disable_port_' + i).checked = true;
@@ -134,6 +132,8 @@ function devRender(entries) {
       perPort[e.port].push(e.mac);
   }
   for (let i = 1; i <= numPorts; i++) {
+    if (pIsSFP[i-1])
+      continue;
     var cell = tbl.rows[i].cells[3];
     var macs = perPort[i] || [];
     if (macs.length == 1) {
