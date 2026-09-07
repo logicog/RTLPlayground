@@ -332,6 +332,18 @@ void parse_dhcp(void)
 		uip_ipaddr(&uip_hostaddr, dhcp_state.current_ip[0], dhcp_state.current_ip[1], dhcp_state.current_ip[2], dhcp_state.current_ip[3]);
 		uip_ipaddr(&uip_draddr, dhcp_state.router[0], dhcp_state.router[1], dhcp_state.router[2], dhcp_state.router[3]);
 		uip_ipaddr(&uip_netmask, dhcp_state.subnet[0], dhcp_state.subnet[1], dhcp_state.subnet[2], dhcp_state.subnet[3]);
+		/* T1 is optional. Without it the renewal time stays zero, which
+		 * makes dhcp_timer zero, and the callback then sends a REQUEST on
+		 * every pass through LEASING: client and server trade REQUEST and
+		 * ACK as fast as the round trip allows. RFC 2131 has the client
+		 * renew at half the lease when the server does not say, and if
+		 * there is no lease either, pick something rather than zero. Only
+		 * filled in when absent, so a server that asks for a short renewal
+		 * still gets it. */
+		if (!dhcp_state.renewal)
+			dhcp_state.renewal = dhcp_state.lease / 2;
+		if (!dhcp_state.renewal)
+			dhcp_state.renewal = 60;
 		dhcp_state.state = DHCP_LEASING;
 		dhcp_state.ticks = SYS_TICK_HZ;
 		dhcp_state.dhcp_timer = dhcp_state.renewal > 0xffff ? 0xffff : dhcp_state.renewal;
