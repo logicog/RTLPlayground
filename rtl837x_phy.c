@@ -343,7 +343,7 @@ void phy_set_speed(void) __banked
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
 			if (!phy_settings.duplex)
 				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1481);
-			if (phy_settings.duplex == 1)
+			else if (phy_settings.duplex == 1)
 				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1501);
 			else
 				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1581);
