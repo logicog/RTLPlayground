@@ -101,10 +101,11 @@ inline uint8_t is_separator(uint8_t c)
 void httpd_init(void) __banked
 {
 	config_upload = 0; // xdata is not zeroed by the startup code
-	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	// Start listening to port 80
 	uip_listen(HTONS(80));
-	s->tstate = TSTATE_CLOSED;
+	// Not through uip_conn: it only points at a connection while uIP is
+	// handling one, and nothing has set it yet at init time.
+	uip_conns[0].appstate.tstate = TSTATE_CLOSED;
 	fw_reset_pending = 0; // xdata is not zeroed by the startup code
 }
 
