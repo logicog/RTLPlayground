@@ -935,7 +935,9 @@ var sectionIntervals = [];
 var sectionInits = {};
 
 function setSectionInterval(fn, ms) {
-  sectionIntervals.push(setInterval(fn, ms));
+  var id = setInterval(fn, ms);
+  sectionIntervals.push(id);
+  return id;
 }
 
 function clearSectionIntervals() {
@@ -961,6 +963,7 @@ window.addEventListener('hashchange', function() {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+  if (!document.getElementById('page-overview')) return; // not index.html (e.g. login.html)
   showSection((location.hash || '#/overview').replace(/^#\//, ''));
 });
 
