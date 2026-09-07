@@ -516,7 +516,6 @@ void isr_ext1(void) __interrupt(2)
 void isr_ext2(void) __interrupt(8)
 {
 	EXIF &= 0xef;	// Clear IRQ flag (bit 7) in EXIF
-	PCON |= 1; // Enter Idle mode until interrupt occurs
 }
 
 /*
