@@ -277,8 +277,19 @@ void write_char(char c)
 	write_char_no_syslog(c);
 
 	if (syslog_state.enabled) {
-		logbuf[syslog_state.writeptr++] = c;
-		syslog_state.writeptr &= (LOGBUF_SIZE - 1);
+		__xdata uint16_t next = (syslog_state.writeptr + 1) & (LOGBUF_SIZE - 1);
+
+		/* The ring is drained once per main loop pass, and a single command
+		 * can print several times its size, so writing on regardless laps
+		 * the reader and the datagram starts mid record. Drop instead, and
+		 * flag a line so the reader empties what is there even if no
+		 * newline has been seen yet. */
+		if (next == syslog_state.readptr) {
+			syslog_state.line_available = 1;
+			return;
+		}
+		logbuf[syslog_state.writeptr] = c;
+		syslog_state.writeptr = next;
 		if (c == '\n')
 			syslog_state.line_available = 1;
 	}
