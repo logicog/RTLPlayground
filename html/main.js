@@ -1359,12 +1359,11 @@ function createPortTable() {
      for (let i = 1; i <= numPorts; i++) {
       if (pIsSFP[i-1])
         continue;
-      console.log("Table row: " + i + "pState: " + pState[i-2]);
       const tr = tbl.insertRow();
       let td = tr.insertCell(); td.appendChild(document.createTextNode(t('common_port') + i));
       let portName = portNames[physToLogPort[i-1]] || '';
       td = tr.insertCell(); td.appendChild(document.createTextNode(portName));
-      td = tr.insertCell(); td.innerHTML = linkText(pState[i] + 1);
+      td = tr.insertCell(); td.innerHTML = linkText(pState[i-1] + 1);
       tr.insertCell(); // filled by devRender()
       td = tr.insertCell(); td.innerHTML = sSelect.replaceAll("speed_sel", "speed_sel_" + i);
       td = tr.insertCell(); td.innerHTML = dSwitch.replaceAll("disable_port", "disable_port_" + i)
@@ -1787,7 +1786,11 @@ var l2SortCol = 'port';
 var l2SortDir = 1;
 
 function l2Key(e, col) {
-  if (col === 'port') return e.port === 'CPU' ? Number.MAX_SAFE_INTEGER : Number(e.port);
+  if (col === 'port') {
+    if (e.port === 'CPU') return Number.MAX_SAFE_INTEGER;
+    if (e.lag) return 100 + e.lag;
+    return Number(e.port);
+  }
   if (col === 'vlan') return Number(e.vlan);
   return String(e[col]).toLowerCase();
 }
@@ -1833,7 +1836,11 @@ function fillL2(s)
     return;
   s.sort(l2CMP);
   s = uniq(s);
-  l2All = s;
+  l2All = s.map(function(e) {
+    if (e.lag)
+      e.port = 'LAG' + e.lag;
+    return e;
+  });
   renderL2();
 }
 
@@ -2200,7 +2207,7 @@ function fetchLag() {
   sendXHTTP(xhttp);
 }
 async function lagSub(l) {
-  var cmd = "lag " + l;
+  var cmd = "lag " + (l + 1);
   for (let i = 1; i <= numPorts; i++) {
     if (document.getElementById("p_mLAG"+l+"_"+i).checked)
       cmd = cmd + ` ${i}`;

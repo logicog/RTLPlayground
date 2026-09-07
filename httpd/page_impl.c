@@ -359,6 +359,7 @@ void send_l2(uint16_t idx)
 	while (1) {
 		entries_left--;
 		uint8_t port = 0;
+		uint8_t lag;
 		reg_read_m(RTL837x_TBL_DATA_0);
 		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1] & 0xfc, sfr_data[2] | (TBL_LUTREAD_NEXT_L2UC << 6), sfr_data[3]);
 
@@ -402,6 +403,9 @@ void send_l2(uint16_t idx)
 
 			port |= (sfr_data[3] & 0x3) << 2;
 			itoa_html(port);
+			slen += strtox(outbuf + slen, ",\"lag\":");
+			lag = port_lag_of(port);
+			itoa_html(lag == PORT_LAG_NONE ? 0 : lag + 1);
 		}
 
 		// Index
