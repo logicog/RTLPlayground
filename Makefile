@@ -102,11 +102,14 @@ html_min: $(HTML)
 html_data.c html_data.h &: $(HTML) | tools html_min
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
-$(VERSION_HEADER):
+$(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
 		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
 		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
-		"#endif" > $(VERSION_HEADER)
+		"#endif" > $(VERSION_HEADER).tmp
+	@cmp -s $(VERSION_HEADER).tmp $(VERSION_HEADER) \
+		&& rm -f $(VERSION_HEADER).tmp \
+		|| mv $(VERSION_HEADER).tmp $(VERSION_HEADER)
 
 httpd: html_data.h
 
@@ -146,7 +149,9 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
-.PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) $(VERSION_HEADER) create_build_dir
+.PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir FORCE
+
+FORCE:
 
 .PHONY:
 machine_check:
