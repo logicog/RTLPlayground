@@ -395,7 +395,7 @@ void parse_lag(void)
 		return;
 	}
 
-	if (cmd_words_len < 2)
+	if (cmd_words_len < 3)
 		goto err;
 
 	// Parse group, expect only one number 0-9;
@@ -406,10 +406,13 @@ void parse_lag(void)
 	if (group > 3)
 		goto err;
 
+	if (cmd_compare(2, "d")) {
+		port_lag_members_set(group, 0);
+		return;
+	}
+
 	uint8_t w = 2;
 	while (w < cmd_words_len) {
-//		write_char('|'); print_byte(w); write_char(':'); write_char(cmd_buffer[cmd_words_b[w]]); write_char('-');
-
 		// Parse port.
 		if (cmd_parse_port_separator(cmd_words_b[w++]) == 0)
 			goto err;
@@ -419,7 +422,7 @@ void parse_lag(void)
 	port_lag_members_set(group, members);
 	return;
 err:
-	print_string("Error: lag <1-4> [port]...\n");
+	print_string("Error: lag (show | <1-4> (d | <port>...))\n");
 }
 
 

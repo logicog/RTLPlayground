@@ -89,6 +89,7 @@ volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_clock;
+__xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
 #define STP_TICK_DIVIDER 3
@@ -493,7 +494,6 @@ void print_cmd_prompt(void)
 void isr_ext0(void) __interrupt(0)
 {
 	EX0 = 0;	// Disable interrupt for the moment
-	write_char('X');
 	IT0 = 1;	// Trigger on falling edge of external interrupt
 	EX0 = 1;	// Re-enable interrupt
 }
@@ -501,14 +501,11 @@ void isr_ext0(void) __interrupt(0)
 
 /*
  * External IRQ 1 Service Routine, triggered by the NIC recieving a packet
- * Note that all registers are being put on the STACK because of calling
- * a subroutine (write_char), we shold do better...
  */
 void isr_ext1(void) __interrupt(2)
 {
 	// This flag should only be reset after all packets have been read
 	EX1 = 0;
-	write_char('Y');
 	EX1 = 1;
 }
 
@@ -519,7 +516,6 @@ void isr_ext1(void) __interrupt(2)
 void isr_ext2(void) __interrupt(8)
 {
 	EXIF &= 0xef;	// Clear IRQ flag (bit 7) in EXIF
-	write_char('Z');
 	PCON |= 1; // Enter Idle mode until interrupt occurs
 }
 
@@ -530,7 +526,6 @@ void isr_ext2(void) __interrupt(8)
 void isr_ext3(void) __interrupt(9)
 {
 	EXIF &= 0xdf;	// Clear IRQ flag (bit 6) in EXIF
-	write_char('W');
 }
 
 // Timer2: handles system tick.
@@ -1565,6 +1560,11 @@ void idle(void)
 
 		// Check for button presses once a second
 		handle_button();
+		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
+		if (++arp_age_secs >= 10) {
+			arp_age_secs = 0;
+			uip_arp_timer();
+		}
 
 #ifdef DEBUG
 		print_sfr_data();
