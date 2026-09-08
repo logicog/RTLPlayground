@@ -364,6 +364,98 @@ void print_ip(__xdata uint8_t * ptr)
 	}
 }
 
+// Prints a MAC address.
+void print_mac(__xdata uint8_t *ptr)
+{
+	uint8_t idx = 0;
+	uint8_t num;
+
+	while (1) {
+		num = *ptr++;
+		print_byte(num);
+		if (++idx == 6)
+			break;
+
+		write_char(':');
+	}
+}
+
+// Parses a MAC address (12 hex digits, ':' or '-' separators optional) from
+// cmd_buffer starting at idx into mac[6]. Returns the number of bytes
+// consumed, or 0 on error.
+uint8_t parse_mac(uint8_t idx, __xdata uint8_t *mac)
+{
+	uint8_t b = 0;
+	uint8_t hi = 0xff;   /* 0xff = waiting for the high nibble */
+	uint8_t c;
+
+	while (b < 6) {
+		c = cmd_buffer[idx];
+		if (c == NUL || c == ' ' || c == '\r' || c == '\n')
+			break;
+		idx++;
+		if (c == ':' || c == '-')
+			continue;
+		c |= 0x20;
+		if (c >= '0' && c <= '9')
+			c -= '0';
+		else if (c >= 'a' && c <= 'f')
+			c -= 'a' - 10;
+		else
+			break;
+		if (hi == 0xff) {
+			hi = c;
+		} else {
+			mac[b++] = (hi << 4) | c;
+			hi = 0xff;
+		}
+	}
+	if (b != 6 || hi != 0xff)
+		return 0;
+	return idx;
+}
+
+// Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
+// the current one with a bare "mac"). Refuses blank/multicast/locally
+// administered/all-zero-OUI addresses so the running MAC stays reachable, and
+// re-registers the static L2 management entry so the change applies without a
+// reboot. As a regular command a "mac ..." line in the startup config applies
+// on every boot (execute_config runs before the final static L2 entry).
+void parse_mac_cmd(void)
+{
+	__xdata uint8_t mac[6];
+
+	if (cmd_words_len == 1) {
+		print_string("Current MAC: ");
+		print_mac(uip_ethaddr.addr);
+		write_char('\n');
+		return;
+	}
+	if (cmd_words_len != 2 || !parse_mac(cmd_words_b[1], mac)) {
+		print_string("Error: mac [<aa:bb:cc:dd:ee:ff>]\n");
+		return;
+	}
+	if ((mac[0] & 0x03) || ((mac[0] | mac[1] | mac[2]) == 0)) {
+		print_string("refusing: must be unicast, globally administered\n");
+		return;
+	}
+	if (memcmp(mac, uip_ethaddr.addr, 6) == 0) {
+		print_string("MAC unchanged\n");
+		return;
+	}
+
+	// Swap the static management entry over to the new address: remove the
+	// old one (still in uip_ethaddr) before overwriting it.
+	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, true);
+	memcpy(uip_ethaddr.addr, mac, 6);
+	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
+
+	print_string("MAC set to: ");
+	print_mac(uip_ethaddr.addr);
+	write_char('\n');
+	print_string("Save the startup config to keep it across reboots\n");
+}
+
 
 void parse_lag(void)
 {
@@ -1694,6 +1786,8 @@ void cmd_parser(void) __banked
 				igmp_show();
 			else
 				print_string("Error: igmp on|off|show\n");
+		} else if (cmd_compare(0, "mac")) {
+			parse_mac_cmd();
 		} else if (cmd_compare(0, "hostname")) {
 			/* "hostname" alone reports the current name; "hostname <text>"
 			 * sets it, sanitized to JSON-safe printable ASCII. A name with
