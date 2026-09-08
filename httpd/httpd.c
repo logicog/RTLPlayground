@@ -89,7 +89,7 @@ __xdata uint32_t last_session_use;
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
-void crc16(__xdata uint8_t *v) __naked;
+void crc16_bank1(__xdata uint8_t *v) __naked;
 
 
 inline uint8_t is_separator(uint8_t c)
@@ -518,7 +518,7 @@ uint8_t stream_upload(void)
 		if (upload_settings.p[upload_settings.bptr] == boundary[bindex]) {
 			if (!bindex)
 				crc_final = crc_value;
-			crc16(upload_settings.p + upload_settings.bptr);
+			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			upload_settings.bptr++;
 			bindex++;
 		} else {
@@ -527,7 +527,7 @@ uint8_t stream_upload(void)
 				write_len += bindex;
 				bindex = 0;
 			}
-			crc16(upload_settings.p + upload_settings.bptr);
+			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
