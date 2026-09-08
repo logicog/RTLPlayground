@@ -353,6 +353,12 @@ void parse_dhcp(void)
 
 void dhcp_start(void) __banked
 {
+	/* Starting twice would leave the first socket bound: uip_udp_new() takes
+	 * the next free slot while the old one keeps port 68, and dhcp_callback()
+	 * matches on that port rather than on the connection, so every leftover
+	 * runs the state machine too and the timers count down once per socket. */
+	if (dhcp_state.state != DHCP_OFF)
+		dhcp_stop();
 	uip_ipaddr(server, 255,255,255,255);
 	dhcp_state.conn = uip_udp_new(&server, HTONS(DHCPC_SERVER_PORT));
 	dhcp_state.current_ip[0] = dhcp_state.current_ip[1] = dhcp_state.current_ip[2] = dhcp_state.current_ip[3] = 0;
