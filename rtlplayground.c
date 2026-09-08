@@ -32,7 +32,7 @@ extern __xdata uint32_t flash_size;
 
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
-void crc16(__xdata uint8_t *v) __naked;
+void crc16_bank1(__xdata uint8_t *v) __naked;
 void flash_default_config(void);
 void early_boot_handle_button(void);
 
@@ -2095,7 +2095,7 @@ void check_and_flash_update_image(void)
 			flash_read_bulk(flash_buf);
 			bptr = flash_buf;
 			for (j = 0; j < FLASH_BUF_SIZE; j++) {
-				crc16(bptr++);
+				crc16_bank1(bptr++);
 			}
 			source += FLASH_BUF_SIZE;
 			if (i%16 == 0) write_char('.');
