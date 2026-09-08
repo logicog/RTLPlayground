@@ -332,21 +332,25 @@ void phy_set_speed(void) __banked
 		phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x2000);	// Clear bit 12: No Autoneg, Set Extended Pages (bit 13)
 		if (phy_settings.speed == PHY_SPEED_10M) {
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
-			if (!phy_settings.duplex)
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1421);
-			else if (phy_settings.duplex == 1)
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1441);
+			uint16_t adv10;
+			if (phy_settings.duplex == PHY_DUPLEX_HALF)
+				adv10 = 0x1421;
+			else if (phy_settings.duplex == PHY_DUPLEX_FULL)
+				adv10 = 0x1441;
 			else
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1461);
+				adv10 = 0x1461;
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, adv10);
 			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else if (phy_settings.speed == PHY_SPEED_100M) {
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
-			if (!phy_settings.duplex)
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1481);
-			else if (phy_settings.duplex == 1)
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1501);
+			uint16_t adv100;
+			if (phy_settings.duplex == PHY_DUPLEX_HALF)
+				adv100 = 0x1481;
+			else if (phy_settings.duplex == PHY_DUPLEX_FULL)
+				adv100 = 0x1501;
 			else
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1581);
+				adv100 = 0x1581;
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, adv100);
 			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
