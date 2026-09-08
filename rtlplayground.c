@@ -515,7 +515,7 @@ void isr_ext1(void) __interrupt(2)
  */
 void isr_ext2(void) __interrupt(8)
 {
-	EXIF &= 0xef;	// Clear IRQ flag IE2 (bit 4) in EXIF
+	EXIF &= 0xef;
 }
 
 /*
@@ -524,7 +524,7 @@ void isr_ext2(void) __interrupt(8)
  */
 void isr_ext3(void) __interrupt(9)
 {
-	EXIF &= 0xdf;	// Clear IRQ flag IE3 (bit 5) in EXIF
+	EXIF &= 0xdf;
 }
 
 // Timer2: handles system tick.
