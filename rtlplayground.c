@@ -359,6 +359,19 @@ void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16
 		*d++ = *s++;
 }
 
+int memcmp(__xdata const void *a, __xdata const void *b, uint16_t len)
+{
+	__xdata const uint8_t *x = a;
+	__xdata const uint8_t *y = b;
+	while (len--) {
+		if (*x != *y)
+			return *x - *y;
+		x++;
+		y++;
+	}
+	return 0;
+}
+
 void memcpyc(__xdata uint8_t *dst, __code uint8_t *src, uint16_t len)
 {
 	while (len--)
