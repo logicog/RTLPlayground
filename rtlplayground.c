@@ -515,8 +515,7 @@ void isr_ext1(void) __interrupt(2)
  */
 void isr_ext2(void) __interrupt(8)
 {
-	EXIF &= 0xef;	// Clear IRQ flag (bit 7) in EXIF
-	PCON |= 1; // Enter Idle mode until interrupt occurs
+	EXIF &= 0xef;	// Clear IRQ flag (bit 4) in EXIF
 }
 
 /*
@@ -525,7 +524,7 @@ void isr_ext2(void) __interrupt(8)
  */
 void isr_ext3(void) __interrupt(9)
 {
-	EXIF &= 0xdf;	// Clear IRQ flag (bit 6) in EXIF
+	EXIF &= 0xdf;	// Clear IRQ flag (bit 5) in EXIF
 }
 
 // Timer2: handles system tick.
