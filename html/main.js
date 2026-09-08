@@ -947,6 +947,10 @@ function clearSectionIntervals() {
     clearTimeout(l2Timer);
     l2Timer = null;
   }
+  if (devTimer) {
+    clearTimeout(devTimer);
+    devTimer = null;
+  }
 }
 
 function showSection(name) {
@@ -1495,11 +1499,14 @@ function devRender(entries) {
   }
 }
 
+var devTimer = null;
 function devWalk() {
   walkL2(function(entries, ok) {
     if (ok)
       devRender(entries);
-    setTimeout(devWalk, 15000);
+    var sec = document.getElementById('page-ports');
+    if (sec && sec.style.display === 'block')
+      devTimer = setTimeout(devWalk, 15000);
   });
 }
 
@@ -1717,7 +1724,7 @@ function fillStats() {
       td = tr.insertCell();td.appendChild(document.createTextNode(`${txB[i]}` + t('common_pkts')));
       td = tr.insertCell();td.appendChild(document.createTextNode(`${rxG[i]}` + t('common_pkts')));
       td = tr.insertCell();td.appendChild(document.createTextNode(`${rxB[i]}` + t('common_pkts')));
-      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + i + ');">' + t('stat_show') + '</button>';
+      var button = '<button type="button" style="margin: 0 0 0 24px" onclick="getCounters(' + (i + 1) + ');">' + t('stat_show') + '</button>';
       td = tr.insertCell(); td.innerHTML = button;
     }
   }
@@ -2496,9 +2503,10 @@ async function applyBandwidth(i) {
     cmd = 'bw in ' + (i-1) + ' ' + parseInt(document.getElementById("ibw_" + i).value).toString(16).padStart(4, "0");;
   doCMD(cmd);
   if (document.getElementById("ilimit_port_" + i).checked) {
-    if (!document.getElementById("fc_port_" + i).checked)
+    if (!document.getElementById("fc_port_" + i).checked) {
       cmd = "bw in " + (i-1) + " drop";
-    doCMD(cmd);
+      doCMD(cmd);
+    }
   }
   var cmd = "bw out " + (i-1) + " off";
   if (document.getElementById("elimit_port_" + i).checked)

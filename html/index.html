@@ -250,7 +250,7 @@
         <div class="row">
           <div class="lcol"> <label for="lang-select" data-i18n="sys_language">Language:</label></div>
           <div class="rcol">
-            <select id="lang-select">
+            <select id="lang-select" onchange="changeLang()">
               <option value="en">English</option>
               <option value="ja">日本語</option>
               <option value="zh">中文</option>
@@ -260,7 +260,7 @@
         <div class="row">
           <div class="lcol"> <label for="mgmtvlan" data-i18n="sys_mgmt_vlan">Management VLAN:</label></div>
           <div class="rcol">
-            <select id="mgmtvlan">
+            <select id="mgmtvlan" onchange="mgmtVlanChanged()">
             </select>
           </div>
         </div>
