@@ -60,6 +60,7 @@ SRCS = \
 	html_data.c \
 	rtlplayground.c \
 	boot.c \
+	sfp.c \
 	syslog.c \
 	udp_apps.c
 

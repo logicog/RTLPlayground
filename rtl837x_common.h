@@ -184,10 +184,8 @@ void tcpip_output(void);
 uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(__xdata uint32_t * tmr);
-bool sfp_print_info(uint8_t sfp);
 bool gpio_pin_test(uint8_t pin);
 void set_sys_led_state(uint8_t state);
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
-void handle_sfp(void);
 #endif
