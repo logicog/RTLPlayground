@@ -13,7 +13,6 @@ extern __code const struct machine machine;
 __xdata static uint8_t lldp_frame[LLDP_MAX_FRAME];
 
 __xdata static uint8_t lldp_mac[LLDP_MAC_ADDR_LEN];
-__xdata static char lldp_system_name[32];
 
 uint8_t lldp_seconds;
 
@@ -54,6 +53,8 @@ void lldp_send(void) __reentrant
     uint8_t *p;
     uint16_t len;
 	uint8_t port_position;
+
+    uint16_t hostname_length;
 
     /*
      * LLDP destination multicast addr: 01:80:c2:00:00:0e
@@ -99,6 +100,23 @@ void lldp_send(void) __reentrant
     	p[len + i] = uip_ethaddr.addr[i];
 
 	len += LLDP_MAC_ADDR_LEN;
+
+    /*
+     * SysName TLV:
+     *
+     * Type    = 5
+     * Length  = dynamic
+     */
+    p[len++] = 0x05;
+    p[len++] = 0;
+
+    __xdata char *hp = hostname;
+    while (*hp)
+    {
+        hostname_length++;
+        p[len++] = *hp++;
+    }
+    p[len-hostname_length] = hostname_length;
 
     /*
      * Port ID TLV:
