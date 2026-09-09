@@ -151,11 +151,7 @@ void lldp_send(void) __reentrant
 
     for (port = machine.min_port; port <= machine.max_port; port++) {
 
-        LLDP_O->payload[port_position] = '0' + port;
-
-        //Restrict this packet to exactly one egress port
-		// if it starts from 1 instead of 0:
-		// LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << (port - 1));
+        LLDP_O->payload[port_position] = '1' + port;
         LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 
         tcpip_output();
