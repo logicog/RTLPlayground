@@ -1746,7 +1746,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 sectionInits.stat = function() {
   update( () => {
-    update();
     fillStats();
     setSectionInterval(fillStats, 1000);
     setSectionInterval(update, 2000);
