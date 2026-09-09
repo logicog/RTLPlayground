@@ -50,14 +50,12 @@ struct lldp_pkt {
 
 #define LLDP_O ((__xdata struct lldp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 
-uint8_t lldp_type(uint8_t value) __banked {
-    // The type is 7 bits and the length is 9 bits
-    // we can represent this as the 7 most significant
-    // bits of the type bit and leave the least significant
-    // bit as 0 always as we're not going to need 2^9 for
-    // the length at any point
-    return value << 1;
-}
+// The type is 7 bits and the length is 9 bits
+// we can represent this as the 7 most significant
+// bits of the type bit and leave the least significant
+// bit as 0 always as we're not going to need 2^9 for
+// the length at any point
+#define LLDP_TYPE(value) (value << 1)
 
 void lldp_send(void) __banked __reentrant
 {
@@ -78,7 +76,7 @@ void lldp_send(void) __banked __reentrant
     len = 0;
 
     //Chassis ID
-    p[len++] = lldp_type(LLDP_CHASSIS_ID_TLV_TYPE);
+    p[len++] = LLDP_TYPE(LLDP_CHASSIS_ID_TLV_TYPE);
     p[len++] = LLDP_CHASSIS_ID_TLV_LENGTH;
     p[len++] = LLDP_CHASSIS_ID_TLV_SUBTYPE;
 
@@ -88,20 +86,20 @@ void lldp_send(void) __banked __reentrant
 	len += LLDP_MAC_ADDR_LEN;
 
     //Port ID
-    p[len++] = lldp_type(LLDP_PORT_ID_TLV_TYPE);
+    p[len++] = LLDP_TYPE(LLDP_PORT_ID_TLV_TYPE);
     p[len++] = LLDP_PORT_ID_TLV_LENGTH;
     p[len++] = LLDP_PORT_ID_TLV_SUBTYPE;
     port_position = len;
 	p[len++] = '0';       // filled in per port below
 
     //TTL
-    p[len++] = lldp_type(LLDP_TTL_TLV_TYPE);
+    p[len++] = LLDP_TYPE(LLDP_TTL_TLV_TYPE);
     p[len++] = LLDP_TTL_TLV_LENGTH;
     p[len++] = 0x00; //padding
     p[len++] = LLDP_TTL_TTL_SECONDS;
 
     //SysName
-    p[len++] = lldp_type(LLDP_SYSNAME_TLV_TYPE);
+    p[len++] = LLDP_TYPE(LLDP_SYSNAME_TLV_TYPE);
     p[len++] = 0;
 
     while (*hp)
@@ -112,7 +110,7 @@ void lldp_send(void) __banked __reentrant
     p[len-hostname_length-1] = hostname_length;
 
     //SysDesc
-    p[len++] = lldp_type(LLDP_SYSDESC_TLV_TYPE);
+    p[len++] = LLDP_TYPE(LLDP_SYSDESC_TLV_TYPE);
     p[len++] = 0;
 
     while (*mp)
