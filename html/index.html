@@ -1,310 +1,444 @@
 <!DOCTYPE html>
 <html>
-  <script src="/main.js"></script>
-  <link rel="stylesheet" href="style.css">
-  <title data-i18n="index_title">FreeSwitchOS Main Page</title>
-  <style>
-    .popup {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      justify-content: center;
-      align-items: center;
-    }
-    .popup-content {
-      background: #fff;
-      padding: 20px;
-      border-radius: 5px;
-      text-align: center;
-      height: 80%
-    }
-    .popup .popup-content {
-       overflow-y: scroll;
-    }
-    .tab-bar { display: flex; border-bottom: 2px solid #226; margin-bottom: 0; padding: 1px 16px; padding-bottom: 0; }
-    .tab-btn { padding: 10px 20px; background-color: #ddf; border: none; cursor: pointer; font-size: 1em; border-radius: 8px 8px 0 0; margin-right: 4px; }
-    .tab-btn:hover { background-color: #aaf; }
-    .tab-btn.active { background-color: #aaf; font-weight: bold; border-bottom: 2px solid #aaf; margin-bottom: -2px; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-  </style>
-  </head>
-  <body>
-    <nav id="sidebar"></nav>
-    <div id="ports" style="margin-left:16%;padding:1px 16px"></div>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Switch</title>
+<style>
+:root{
+  --bg:#f4f6f8;--panel:#ffffff;--panel2:#eaeef2;--bd:#d7dde4;--fg:#1a222c;--fg2:#5c6773;
+  --ac:#0969da;--acfg:#ffffff;--ok:#158744;--bad:#cf222e;--warn:#9a6700;--cy:#1b7c83;
+  --sel:rgba(9,105,218,.10);--shadow:0 2px 10px rgba(20,30,40,.07);
+  --s10:#b58900;--s100:#b58900;--s1000:#159744;--s2g5:#0d9488;--s5g:#0d9488;--s10g:#2563eb;
+}
+:root[data-theme="dark"]{
+  --bg:#0e1116;--panel:#161b22;--panel2:#1f262e;--bd:#2c333c;--fg:#e6edf3;--fg2:#8d96a0;
+  --ac:#4c8ef7;--acfg:#ffffff;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--cy:#39c5cf;
+  --sel:rgba(76,142,247,.16);--shadow:0 2px 10px rgba(0,0,0,.35);
+  --s10:#d29922;--s100:#d29922;--s1000:#3fb950;--s2g5:#2dd4bf;--s5g:#2dd4bf;--s10g:#58a6ff;
+}
+:root[data-theme="sel-dark"]{
+  --bg:#103c48;--panel:#184956;--panel2:#2d5b69;--bd:#2d5b69;--fg:#adbcbc;--fg2:#72898f;
+  --ac:#4695f7;--acfg:#ffffff;--ok:#75b938;--bad:#fa5750;--warn:#dbb32d;--cy:#41c7b9;
+  --sel:rgba(70,149,247,.18);--shadow:0 2px 10px rgba(0,20,26,.35);
+  --s10:#dbb32d;--s100:#dbb32d;--s1000:#75b938;--s2g5:#41c7b9;--s5g:#41c7b9;--s10g:#4695f7;
+}
+:root[data-theme="sel-light"]{
+  --bg:#fbf3db;--panel:#ece3cc;--panel2:#d5cdb6;--bd:#d5cdb6;--fg:#53676d;--fg2:#909995;
+  --ac:#0072d4;--acfg:#ffffff;--ok:#489100;--bad:#d2212d;--warn:#ad8900;--cy:#009c8f;
+  --sel:rgba(0,114,212,.12);--shadow:0 2px 10px rgba(80,70,40,.12);
+  --s10:#ad8900;--s100:#ad8900;--s1000:#489100;--s2g5:#009c8f;--s5g:#009c8f;--s10g:#0072d4;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--fg);display:flex;
+}
+button,input,select,textarea{font:inherit;color:var(--fg)}
+a{color:var(--ac);text-decoration:none}
+#nav{
+  width:200px;flex:none;background:var(--panel);border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
+}
+#brand{display:flex;align-items:center;gap:9px;padding:16px 16px 12px;font-weight:650;font-size:15px}
+#brand svg{flex:none;stroke:var(--ac)}
+#navlist{list-style:none;padding:4px 8px;overflow-y:auto;flex:1}
+#navlist li{
+  display:flex;align-items:center;gap:9px;padding:7px 10px;margin:1px 0;
+  border-radius:7px;cursor:pointer;color:var(--fg2);font-weight:500;
+}
+#navlist li svg{flex:none;stroke:currentColor}
+#navlist li:hover{background:var(--panel2);color:var(--fg)}
+#navlist li.act{background:var(--sel);color:var(--ac)}
+#navfoot{padding:10px 16px;border-top:1px solid var(--bd);font-size:12px;color:var(--fg2)}
+#wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+#top{
+  display:flex;align-items:center;gap:10px;padding:10px 20px;
+  background:var(--panel);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:5;
+}
+#burger{display:none;background:none;border:0;cursor:pointer;padding:4px}
+#ttitle{font-size:16px;font-weight:650;flex:1}
+#dirty{
+  display:none;font-size:12px;font-weight:600;color:var(--warn);
+  border:1px solid var(--warn);border-radius:20px;padding:2px 10px;
+}
+#dirty.show{display:inline-block}
+select.ctl,button.ctl{
+  background:var(--panel2);border:1px solid var(--bd);border-radius:7px;
+  padding:5px 9px;cursor:pointer;font-size:13px;white-space:nowrap;
+}
+button.pri{background:var(--ac);color:var(--acfg);border-color:transparent;font-weight:600}
+button.pri:hover,button.ctl:hover{filter:brightness(1.07)}
+button:disabled{opacity:.45;cursor:default;filter:none}
+main{padding:18px 20px 40px;max-width:1100px;width:100%}
+section.tab{display:none}
+section.tab.act{display:block}
+.card{
+  background:var(--panel);border:1px solid var(--bd);border-radius:10px;
+  box-shadow:var(--shadow);padding:16px 18px;margin-bottom:16px;
+}
+.card h2{font-size:14px;font-weight:650;margin-bottom:12px;color:var(--fg)}
+.card h2 .hint{font-weight:400;font-size:12px;color:var(--fg2);margin-left:8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
+.grid2 .card{margin-bottom:0}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{
+  text-align:left;font-weight:600;color:var(--fg2);font-size:12px;
+  padding:6px 8px;border-bottom:1px solid var(--bd);white-space:nowrap;
+}
+table.t th[data-sort]{cursor:pointer;user-select:none}
+table.t td{padding:6px 8px;border-bottom:1px solid var(--bd);vertical-align:middle}
+table.t tr:last-child td{border-bottom:0}
+table.t tr:hover td{background:var(--sel)}
+.num{font-variant-numeric:tabular-nums;text-align:right}
+.scrollx{overflow-x:auto}
+input.in,select.in,textarea.in{
+  background:var(--bg);border:1px solid var(--bd);border-radius:7px;padding:5px 8px;outline:none;
+}
+input.in:focus,select.in:focus,textarea.in:focus{border-color:var(--ac)}
+input.in.sm{width:70px}
+label.row{display:flex;align-items:center;gap:10px;margin:8px 0}
+label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
+.switch{position:relative;display:inline-block;width:34px;height:19px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch i{
+  position:absolute;inset:0;background:var(--bd);border-radius:19px;transition:.15s;cursor:pointer;
+}
+.switch i:before{
+  content:"";position:absolute;width:15px;height:15px;border-radius:50%;
+  left:2px;top:2px;background:var(--panel);transition:.15s;
+}
+.switch input:checked+i{background:var(--ok)}
+.switch input:checked+i:before{transform:translateX(15px)}
+#strip{display:flex;gap:8px;flex-wrap:wrap;padding:4px 0 2px}
+.port{
+  width:46px;border:2px solid var(--bd);border-radius:7px;padding:5px 0 3px;
+  text-align:center;cursor:pointer;background:var(--panel2);position:relative;
+}
+.port.sfp{width:56px}
+.port .pn{font-weight:650;font-size:13px}
+.port .ps{font-size:10px;color:var(--fg2);display:block;line-height:1.2}
+.port .jack{
+  display:block;width:18px;height:12px;margin:3px auto 2px;border-radius:2px;
+  border:2px solid var(--fg2);border-top-width:5px;opacity:.55;
+}
+.port.sfp .jack{width:28px;height:10px;border-top-width:3px}
+.port.up{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 10%,var(--panel2))}
+.port.up .jack{border-color:var(--pc);opacity:1}
+.port.up .ps{color:var(--pc);font-weight:600}
+.port.dis{opacity:.45;border-style:dashed}
+.badge{font-size:11px;font-weight:600;border-radius:10px;padding:1px 8px;background:var(--panel2);color:var(--fg2)}
+.badge.ok{color:var(--ok)}.badge.bad{color:var(--bad)}
+.seg{display:inline-flex;border:1px solid var(--bd);border-radius:7px;overflow:hidden}
+.seg button{
+  background:var(--panel);border:0;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--fg2);
+  border-right:1px solid var(--bd);
+}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ac);color:var(--acfg)}
+#toasts{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:var(--panel);border:1px solid var(--bd);border-left:4px solid var(--ac);
+  border-radius:8px;padding:9px 14px;box-shadow:var(--shadow);font-size:13px;max-width:340px;
+  animation:tin .18s ease-out;
+}
+.toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--bad)}
+@keyframes tin{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+#mback{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;display:none;
+  align-items:flex-start;justify-content:center;padding:6vh 16px;
+}
+#mback.show{display:flex}
+#modal{
+  background:var(--panel);border:1px solid var(--bd);border-radius:12px;box-shadow:var(--shadow);
+  width:min(760px,96vw);max-height:86vh;display:flex;flex-direction:column;
+}
+#mhead{display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--bd)}
+#mtitle{font-weight:650;font-size:15px;flex:1}
+#mx{background:none;border:0;font-size:19px;cursor:pointer;color:var(--fg2);padding:0 2px}
+#mbody{padding:14px 18px;overflow:auto}
+#mfoot{padding:12px 18px;border-top:1px solid var(--bd);display:flex;gap:10px;justify-content:flex-end}
+#mfoot:empty{display:none}
+pre.cfg{
+  background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;
+  font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;
+}
+textarea.cfg{
+  width:100%;min-height:200px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;
+  padding:10px 12px;font:12px/1.5 ui-monospace,Consolas,monospace;resize:vertical;outline:none;
+}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.mut{color:var(--fg2)}
+.small{font-size:12px}
+.dangerzone{border-color:color-mix(in srgb,var(--bad) 40%,var(--bd))}
+button.danger{background:var(--bad);color:#fff;border-color:transparent}
+@media (max-width:820px){
+  #nav{position:fixed;left:-210px;transition:left .18s;z-index:30;box-shadow:var(--shadow)}
+  #nav.open{left:0}
+  #burger{display:block}
+  main{padding:14px 12px 40px}
+  #top{padding:8px 10px;gap:7px}
+  #ttitle{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #themeSel{max-width:96px}
+  #dirty{padding:2px 7px}
+}
+</style>
+<script>
+(function(){
+  var pref;
+  try{pref=localStorage.getItem("theme")||"auto";}catch(e){pref="auto";}
+  var dark=window.matchMedia("(prefers-color-scheme: dark)").matches;
+  var t=pref;
+  if(pref==="auto")t=dark?"dark":"light";
+  if(pref==="auto-sel")t=dark?"sel-dark":"sel-light";
+  document.documentElement.dataset.theme=t;
+})();
+</script>
+</head>
+<body>
 
-    <div class="page" id="page-overview" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="index_heading">Switch Configuration</h1>
-      <table id="infoTable">
-        <tr>
-          <th colspan="2" data-i18n="index_settings">Settings</th>
-        </tr>
-        <tbody>
-        </tbody>
-      </table>
-    </div>
+<nav id="nav">
+  <div id="brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2">
+      <rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 11v2M10 11v2M14 11v2M18 11v2"/>
+    </svg>
+    <span id="brandname">Switch</span>
+  </div>
+  <ul id="navlist"></ul>
+  <div id="navfoot"><span id="fver"></span></div>
+</nav>
 
-    <div class="page" id="page-ports" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="port_heading">Port Configuration</h1>
-      <table id="speedtable">
-        <tr> <th data-i18n="port_col_port">Port</th> <th data-i18n="port_col_name">Name</th> <th data-i18n="port_col_speed">Current Link Speed</th><th data-i18n="port_col_devices">Connected devices</th><th data-i18n="port_col_set_speed">Set Speed</th><th data-i18n="port_col_disabled">Disabled</th><th data-i18n="port_col_apply">Apply</th></tr>
-      </table>
-      <h2 style="margin-top:3em" data-i18n="port_mtu_heading">Configure Maximum Frame Size (MTU) forwarded at Port</h2>
-      <table id="mtutable" style="margin-top:1em">
-      </table>
-    </div>
+<div id="wrap">
+  <header id="top">
+    <button id="burger" title="Menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <span id="ttitle"></span>
+    <span id="dirty" data-i18n="hdr_dirty" data-i18n-t="hdr_dirty_t">unsaved changes</span>
+    <button class="ctl pri" id="saveBtn" data-i18n="hdr_save" data-i18n-t="hdr_save_t">Save to flash</button>
+    <select class="ctl" id="langSel" data-i18n-t="sy_lang">
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+      <option value="zh">中文</option>
+    </select>
+    <select class="ctl" id="themeSel">
+      <option value="auto" data-i18n="th_auto">Theme: System</option>
+      <option value="auto-sel" data-i18n="th_auto_sel">Theme: System (Selenized)</option>
+      <option value="light" data-i18n="th_light">Light</option>
+      <option value="dark" data-i18n="th_dark">Dark</option>
+      <option value="sel-light" data-i18n="th_sel_light">Selenized Light</option>
+      <option value="sel-dark" data-i18n="th_sel_dark">Selenized Dark</option>
+    </select>
+  </header>
 
-    <div class="page" id="page-stat" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <div id="popup" class="popup">
-        <div class="popup-content">
-          <h2 data-i18n="stat_detailed">Detailed Port Statistics</h2>
-          <div id="popup_text"></div>
-          <button id="closePopup" class="action" data-i18n="stat_close">Close</button>
+  <main>
+    <section class="tab act" id="tab-dash">
+      <div class="card"><h2><span data-i18n="d_ports">Ports</span> <span class="hint" data-i18n="d_ports_h">click a port for details</span></h2>
+        <div id="strip"></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h2 data-i18n="d_system">System</h2><table class="t" id="sysinfo"></table></div>
+        <div class="card"><h2><span data-i18n="d_traffic">Traffic</span> <span class="hint" data-i18n="d_traffic_h">packets/s, live</span></h2>
+          <div class="scrollx"><table class="t" id="traffic">
+            <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_link">Link</th><th class="num" data-i18n="d_txpps">TX pps</th><th class="num" data-i18n="d_rxpps">RX pps</th><th class="num" data-i18n="d_txbad">TX bad</th><th class="num" data-i18n="d_rxbad">RX bad</th></tr></thead>
+            <tbody></tbody></table></div>
         </div>
       </div>
-      <h1 data-i18n="stat_heading">Port Statistics</h1>
-      <table id="statstable">
-        <tr> <th data-i18n="stat_col_port">Port</th> <th data-i18n="stat_col_name">Name</th> <th data-i18n="stat_col_link">link</th> <th data-i18n="stat_col_tx_good">TX Good</th> <th data-i18n="stat_col_tx_bad">TX Bad</th> <th data-i18n="stat_col_rx_good">RX Good</th> <th data-i18n="stat_col_rx_bad">RX Bad</th> <th data-i18n="stat_col_all"> All Counters </th></tr>
-      </table>
-    </div>
+    </section>
 
-    <div class="page" id="page-vlan" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="vlan_heading">VLAN Configuration</h1>
-      <form id="vform">
-        <div>
-          <label for="vlanSelect" data-i18n="vlan_select">VLAN Select:</label>
-          <select id="vlanSelect" style="margin: 0 0 0 8px">
-            <option value="" disabled selected data-i18n="vlan_choose">— VLAN Choose —</option>
-          </select>
-        </div>
-        <br/>
-        <div>
-          <label for="vid" data-i18n="vlan_id">VLAN ID:</label>
-          <input type="number" min="1" max="4094" id="vid" name="vid">
-          <button type="button" style="margin: 0 0 0 24px" onclick="fetchVLAN();" data-i18n="vlan_get_config">Get Configuration</button>
-        </div>
-        <br/><br/>
-        <label for="vname" data-i18n="vlan_name">VLAN Name:</label>
-        <input type="text" id="vname" name="vname"><br><br>
-        <br/>
-        <h2 data-i18n="vlan_tagged">Tagged Ports</h2>
-        <div id="tPorts"><button type="button" style="transform: translateY(-100%);margin: 0 50px 0 0" onclick="utClicked(true);" data-i18n="vlan_select_all">Select all</button></div>
-        <h2 data-i18n="vlan_untagged">Untagged Ports</h2>
-        <div id="uPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="utClicked(false);" data-i18n="vlan_select_all">Select all</button> </div>
-        <h2 data-i18n="vlan_pvid">Use as default VLAN for incoming traffic (PVID)</h2>
-        <div id="pPorts"><button type="button" style="transform: translateY(-100%); margin: 0 50px 0 0" onclick="pvClicked(true);" data-i18n="vlan_select_all">Select all</button> </div>
-        <br/> <input style="width:40%;" class="action" id="vlan_sub" onclick="vlanSub();" type="button" data-i18n="vlan_update" value="Update / Create">
-      </form>
-      <h2 data-i18n="vlan_configured">Configured VLANs</h2>
-      <table id="vlanTable" style="width:90%">
-        <thead>
-          <tr>
-            <th>VLAN</th>
-            <th data-i18n="vlan_col_name">Name</th>
-            <th data-i18n="vlan_col_member">Member Ports</th>
-            <th data-i18n="vlan_col_tagged">Tagged Ports</th>
-            <th data-i18n="vlan_col_untagged">Untagged Ports</th>
-            <th data-i18n="vlan_col_pvid">PVID Ports</th>
-            <th data-i18n="vlan_col_delete">Delete</th>
-          </tr>
-        </thead>
-        <tbody id="vlanTableBody">
-        </tbody>
-      </table>
-    </div>
-
-    <div class="page" id="page-l2" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="l2_heading">L2 Configuration</h1>
-      <p><span data-i18n="l2_shown">Shown:</span> <span id="l2count">-</span></p>
-      <table id="l2table">
-        <tr>
-          <th><span class="l2sort" onclick="l2SortBy('port')"><span data-i18n="l2_col_port">Port</span><span id="l2a_port" class="l2arrow"></span></span><br>
-              <input id="l2f_port" class="l2filter" oninput="l2FilterChanged()" size="5"></th>
-          <th><span class="l2sort" onclick="l2SortBy('mac')">MAC<span id="l2a_mac" class="l2arrow"></span></span><br>
-              <input id="l2f_mac" class="l2filter" oninput="l2FilterChanged()" size="14"></th>
-          <th><span class="l2sort" onclick="l2SortBy('vlan')">VLAN<span id="l2a_vlan" class="l2arrow"></span></span><br>
-              <input id="l2f_vlan" class="l2filter" oninput="l2FilterChanged()" size="5"></th>
-          <th><span class="l2sort" onclick="l2SortBy('type')"><span data-i18n="l2_col_type">Type</span><span id="l2a_type" class="l2arrow"></span></span><br>
-              <input id="l2f_type" class="l2filter" oninput="l2FilterChanged()" size="8"></th>
-          <th data-i18n="l2_col_remove">Remove Entry</th></tr>
-      </table>
-    </div>
-
-    <div class="page" id="page-stp" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1>Spanning Tree (RSTP)</h1>
-      <h2>Mode: <select id="stpMode"><option value="off">Disabled</option><option value="on">Enabled</option></select>
-        <input style="width:15%;margin-left: 3em;" class="action" id="stp_sub" onclick="stpSub();" type="button" value="Apply"></h2>
-      <div id="stpStat" style="font-family:monospace;"></div>
-      <h2>Bridge settings</h2>
-      <table id="stpBridge">
-        <tr>
-          <th>Priority</th><th>Version</th><th>Hello [s]</th><th>Max age [s]</th><th>Fwd delay [s]</th><th>Tx hold</th>
-        </tr>
-        <tr>
-          <td><select id="bPrio"></select></td>
-          <td><select id="bVer"><option value="rstp">RSTP</option><option value="stp">STP compat</option></select></td>
-          <td><input id="bHello" type="number" min="1" max="10" style="width:4em"></td>
-          <td><input id="bMaxage" type="number" min="6" max="40" style="width:4em"></td>
-          <td><input id="bFwd" type="number" min="4" max="30" style="width:4em"></td>
-          <td><input id="bTxhold" type="number" min="1" max="10" style="width:4em"></td>
-        </tr>
-      </table>
-      <p style="font-size:small">Changes apply immediately. Edge ports skip the listen period; guard/filter act on received BPDUs.</p>
-      <h2>Port configuration</h2>
-      <table id="stpPortsTbl">
-        <tr>
-          <th>Port</th><th>State</th><th>Path Cost<br><span style="font-weight:normal;font-size:small">(0 = Auto)</span></th><th>Priority</th><th>Edge Port</th><th>BPDU Filter</th><th>Guard</th><th>Point-to-Point</th>
-        </tr>
-      </table>
-      <h2>Port status</h2>
-      <table id="stpStatTbl">
-        <tr>
-          <th>Port</th><th>Port State</th><th>Role</th><th>Designated Bridge</th><th>Designated Port ID</th><th>Designated Cost</th><th>Oper. Edge</th><th>Oper. P2P</th>
-        </tr>
-      </table>
-    </div>
-
-    <div class="page" id="page-mirror" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="mirror_heading">Mirror Configuration</h1>
-      <label class="tswitch"><span data-i18n="mirror_enabled">Enabled:</span> <input id="me" type="checkbox"></label><br/>
-      <label for="mp"><span data-i18n="mirror_port">Mirroring Port:</span></label> <input type="number" id="mp" name="mp" min="1" max="9"/>
-      <h2 data-i18n="mirror_tx">Mirrored Ports (TX)</h2>
-      <div id="mPortsTX"></div>
-      <br />
-      <h2 data-i18n="mirror_rx">Mirrored Ports (RX)</h2>
-      <div id="mPortsRX"></div>
-      <br/> <input style="width:15%;" class="action" id="mirror_sub" onclick="mirrorSub();" type="button" data-i18n="mirror_update" value="Update / Create">
-      <input style="width:15%;" class="action" id="mirror_del" onclick="mirrorDel();" type="button" data-i18n="mirror_disable" value="Disable Mirroring">
-    </div>
-
-    <div class="page" id="page-lag" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="lag_heading">Link Aggregation Groups Configuration</h1>
-      <h2>LAG 1 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub0" onclick="lagSub(0);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
-      <div id="mLAG0"></div>
-      <br />
-      <h2>LAG 2 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub1" onclick="lagSub(1);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
-      <div id="mLAG1"></div>
-      <br />
-      <h2>LAG 3 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub2" onclick="lagSub(2);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
-      <div id="mLAG2"></div>
-      <br />
-      <h2>LAG 4 <input style="width:15%;margin-left: 3em;" class="action" id="l_sub3" onclick="lagSub(3);" type="button" data-i18n="lag_update" value="Update / Create"></h2>
-      <div id="mLAG3"></div>
-    </div>
-
-    <div class="page" id="page-eee" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="eee_heading">EEE Status</h1>
-      <table id="eeetable">
-        <tr> <th> </th> <th colspan="3" data-i18n="eee_advertising"> Advertising </th> <th colspan="3" data-i18n="eee_partner">Link-Partner advertises</th>  <th></th></tr>
-        <tr> <th data-i18n="eee_port">Port</th> <th>2.5G</th> <th>1G</th> <th>100M</th> <th>2.5G</th> <th>1G</th> <th>100M</th>  <th data-i18n="eee_active">Active?</th></tr>
-      </table>
-      <div>
-        <input style="width:20%;" class="action" id="eee_enable" onclick="eeeSub(0, 1);" type="button" data-i18n="eee_enable" value="Enable EEE">
-        <input style="width:20%;" class="action" id="eee_disable" onclick="eeeSub(0, 0);" type="button" data-i18n="eee_disable" value="Disable EEE">
+    <section class="tab" id="tab-ports">
+      <div class="card"><h2 data-i18n="pt_title">Port configuration</h2>
+        <div class="scrollx"><table class="t" id="ptable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_name">Name</th><th data-i18n="c_link">Link</th><th data-i18n="pt_conn">Connected</th><th data-i18n="pt_speed">Speed</th><th data-i18n="c_enabled">Enabled</th><th data-i18n="pt_mtu">MTU</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="pt_sfp_note">SFP speed is set per slot and is not saved in the startup config.</p>
       </div>
-    </div>
+    </section>
 
-    <div class="page" id="page-bandwidth" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <h1 data-i18n="bw_heading">Ingress and Egress Bandwidth</h1>
-      <table id="bwtable">
-        <tr> <th> </th> <th colspan="3" data-i18n="bw_ingress"> Ingress </th> <th colspan="2" data-i18n="bw_egress">Egress</th>  <th></th></tr>
-        <tr> <th data-i18n="bw_col_port">Port</th> <th data-i18n="bw_col_limit">Limit</th> <th data-i18n="bw_col_bandwidth">Bandwidth [kBit/s]</th> <th data-i18n="bw_col_flow">Flow Control</th> <th data-i18n="bw_col_limit">Limit</th> <th data-i18n="bw_col_bandwidth">Bandwidth [kBit/s]</th> <th data-i18n="bw_col_apply">Apply</th></tr>
-      </table>
-    </div>
-
-    <div class="page" id="page-system" style="margin-left:16%;padding:1px 16px;height:1000px;">
-      <div class="tab-bar">
-        <button class="tab-btn active" onclick="openTab(event, 'system-tab')" data-i18n="sys_tab_system">System</button>
-        <button class="tab-btn" onclick="openTab(event, 'advanced-tab')" data-i18n="sys_tab_advanced">Advanced</button>
-        <button class="tab-btn" onclick="openTab(event, 'console-tab')" data-i18n="sys_tab_console">Console</button>
+    <section class="tab" id="tab-stp">
+      <div class="card"><h2><span data-i18n="stp_title">Spanning tree</span> <span class="hint" data-i18n="stp_h">RSTP, 802.1w</span></h2>
+        <label class="row"><span class="lb" data-i18n="c_enabled">Enabled</span>
+          <span class="switch"><input type="checkbox" id="stpen"><i></i></span></label>
+        <p class="small mono" id="stpids">-</p>
+        <div id="stpbridge" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+          <label><span class="small mut" data-i18n="stp_version">Version</span><br><select class="in" id="stpver"><option value="rstp">RSTP</option><option value="stp" data-i18n="stp_v_stp">STP compatible</option></select></label>
+          <label><span class="small mut" data-i18n="stp_prio">Bridge priority</span><br><select class="in" id="stpprio"></select></label>
+          <label><span class="small mut" data-i18n="stp_hello">Hello [s]</span><br><input class="in sm" id="stphello" type="number" min="1" max="10"></label>
+          <label><span class="small mut" data-i18n="stp_maxage">Max age [s]</span><br><input class="in sm" id="stpmaxage" type="number" min="6" max="40"></label>
+          <label><span class="small mut" data-i18n="stp_fwd">Forward delay [s]</span><br><input class="in sm" id="stpfwd" type="number" min="4" max="30"></label>
+          <label><span class="small mut" data-i18n="stp_txhold">TX hold</span><br><input class="in sm" id="stptxhold" type="number" min="1" max="10"></label>
+        </div>
+        <div style="margin-top:10px"><button class="ctl pri" id="stpbapply" data-i18n="stp_bridge_apply">Apply bridge settings</button></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="stp_prio_note">Lower priority wins the root election (default 8 = 32768). Settings apply immediately; use Save to flash to keep them.</p>
       </div>
-      <div id="system-tab" class="tab-content active">
-        <h1 data-i18n="sys_heading">System Settings</h1>
-        <div class="row">
-          <div class="lcol"> <label for="hostname" data-i18n="sys_hostname">Hostname:</label></div>
-          <div class="rcol"> <input id="hostname" type="text" maxlength="23" size="20"/>
-          </div>
-        </div>
-        <div class="row">
-          <div class="lcol"> <label for="ip" data-i18n="sys_ip">IP address:</label></div>
-          <div class="rcol"> <input id="ip" type="text" size="15"/>
-          </div>
-        </div>
-        <div class="row">
-          <div class="lcol"> <label for="netmask" data-i18n="sys_netmask">Netmask:</label></div>
-          <div class="rcol"> <input id="netmask" type="text" size="15"/>
-          </div>
-        </div>
-        <div class="row">
-          <div class="lcol"> <label for="gw" data-i18n="sys_gateway">Gateway:</label></div>
-          <div class="rcol"> <input id="gw" type="text" size="15"/>
-          </div>
-        </div>
-        <div class="row">
-          <div class="lcol"> <label for="model" data-i18n="sys_model">Model:</label></div>
-          <div class="rcol"> <span id="model">-</span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="lcol"> <label for="lang-select" data-i18n="sys_language">Language:</label></div>
-          <div class="rcol">
-            <select id="lang-select" onchange="changeLang()">
-              <option value="en">English</option>
-              <option value="ja">日本語</option>
-              <option value="zh">中文</option>
-            </select>
-          </div>
-        </div>
-        <div class="row">
-          <div class="lcol"> <label for="mgmtvlan" data-i18n="sys_mgmt_vlan">Management VLAN:</label></div>
-          <div class="rcol">
-            <select id="mgmtvlan" onchange="mgmtVlanChanged()">
-            </select>
-          </div>
-        </div>
-        <br/>
-        <span data-i18n="sys_ip_note">When updating the above settings, remember to point your browser to the new IP afterwards:</span><br/>
-        <input style="width:40%;" class="action" id="ip_sub" onclick="ipSub();" type="button" data-i18n="sys_update" value="Update Settings"><br/>
-        <br/>
-        <span data-i18n="sys_save_label">Save all current settings to Flash:</span><br/>
-        <input style="width:40%;" class="action" id="flash_sub" onclick="flashSave();" type="button" data-i18n="sys_save" value="Save Settings to Flash">
+      <div class="card"><h2 data-i18n="stp_portcfg">Port configuration</h2>
+        <div class="scrollx"><table class="t" id="stpcfg">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_enabled">Enabled</th><th data-i18n="stp_edge">Edge</th><th data-i18n="stp_pcost">Path cost</th><th data-i18n="stp_pprio">Priority</th><th data-i18n="stp_guard">Guard</th><th data-i18n="stp_filter">BPDU filter</th><th data-i18n="stp_p2p">Point-to-point</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="stp_port_note">Edge ports forward immediately and cause no topology change; Auto treats a port as edge after 3 s without BPDUs, and any received BPDU revokes it. Path cost 0 = automatic.</p>
       </div>
-
-      <div id="advanced-tab" class="tab-content">
-        <h1 data-i18n="sys_advanced">Advanced Settings</h1>
-        <div class="lcol"> <label for="config_display" data-i18n="sys_startup_config">Startup configuration:</label></div>
-        <textarea id="config_display" rows="8" cols="60"></textarea>
-        <br/><br/>
-        <span data-i18n="sys_startup_warn">Be careful when saving the directly edited startup configuration, you can lock yourself out:</span><br/>
-        <input style="width:40%;" class="action" id="clear_config" onclick="clearConfig();" type="button" data-i18n="sys_clear_config" value="Clear Startup Config">
-        <br/>
-        <input style="width:40%;" class="action" id="flash_startup_sub" onclick="flashStartupSave();" type="button" data-i18n="sys_save_startup" value="Save Startup Settings to Flash">
-        <br/>
-        <input style="width:40%;" class="action" id="switch_reset" onclick="resetSwitch();" type="button" data-i18n="sys_reset" value="Reset Switch">
+      <div class="card"><h2 data-i18n="stp_status">Port status</h2>
+        <div class="scrollx"><table class="t" id="stpstat">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_role">Role</th><th data-i18n="c_state">State</th><th data-i18n="stp_db">Designated bridge</th><th data-i18n="stp_dp">Designated port</th><th data-i18n="stp_dc">Designated cost</th><th data-i18n="stp_oedge">Oper. edge</th><th data-i18n="stp_op2p">Oper. P2P</th></tr></thead>
+          <tbody></tbody></table></div>
       </div>
+    </section>
 
-      <div id="console-tab" class="tab-content">
-        <h1 data-i18n="sys_console">Console Command</h1>
-        <label for="console_command" data-i18n="sys_enter_cmd">Enter command:</label>
-        <input type="text" id="console_cmd" name="console_cmd" style="width:40%;">
-        <input style="width:20%;" class="action" id="cmd_sub" onclick="cmdSub();" type="button" data-i18n="sys_send_cmd" value="Send Command"><br/>
-        <br/><br/> 
-        <span data-i18n="sys_console_warn">Be careful when entering console commands, you can lock yourself out!</span><br/>
-        <br/>
-        <pre id="console_out" style="height:22em;overflow:auto;white-space:pre-wrap;border:1px solid;padding:0.5em;"></pre>
+    <section class="tab" id="tab-stats">
+      <div class="card"><h2><span data-i18n="st_title">Port statistics</span> <span class="hint" data-i18n="st_h">totals since boot</span></h2>
+        <div class="scrollx"><table class="t" id="stable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_name">Name</th><th data-i18n="c_link">Link</th><th class="num" data-i18n="st_txg">TX good</th><th class="num" data-i18n="st_txb">TX bad</th><th class="num" data-i18n="st_rxg">RX good</th><th class="num" data-i18n="st_rxb">RX bad</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
       </div>
-    </div>
+    </section>
 
-    <div class="page" id="page-update" style="margin-left:16%;padding:1px 16px;height:1000px;width:40%;">
-      <h1 data-i18n="update_heading">Firmware Update</h1>
-      <form enctype="multipart/form-data" action="/upload" method="POST">
-        <input type="hidden" name="MAX_FILE_SIZE" value="1000000" />
-        <span data-i18n="update_instruction">Choose a firmware update file to upload:</span> <br/> <br/>
-        <input name="uploadedfile" type="file" accept=".bin" /><br />
-        <input style="margin-top:3em" type="submit" data-i18n="update_upload" value="Upload File" />
-      </form>
-    </div>
-  </body>
+    <section class="tab" id="tab-vlan">
+      <div class="card"><h2><span data-i18n="v_title">VLANs</span> <span class="hint"><span data-i18n="v_mgmt">Management VLAN</span>: <span id="vmgmtcur">-</span></span></h2>
+        <div class="scrollx"><table class="t" id="vtable">
+          <thead><tr><th data-i18n="v_vid">VID</th><th data-i18n="c_name">Name</th><th data-i18n="v_members">Members</th><th data-i18n="v_tagged">Tagged</th><th data-i18n="v_untagged">Untagged</th><th data-i18n="v_pvid_on">PVID on</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" id="vempty" style="display:none;margin-top:6px" data-i18n="v_empty">No VLANs configured.</p>
+      </div>
+      <div class="card"><h2 data-i18n="v_editor">VLAN editor</h2>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <label><span data-i18n="v_vid">VID</span> <input class="in sm" id="vvid" type="number" min="1" max="4094"></label>
+          <label><span data-i18n="c_name">Name</span> <input class="in" id="vname" size="12" maxlength="15" data-i18n-p="v_optional"></label>
+          <button class="ctl" id="vload" data-i18n="c_load">Load</button>
+          <button class="ctl pri" id="vapply" data-i18n="c_apply">Apply</button>
+          <button class="ctl" id="vmgmt" data-i18n="v_setmgmt" data-i18n-t="v_setmgmt_t">Set as mgmt VLAN</button>
+        </div>
+        <div class="scrollx"><table class="t" id="vedit"><tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:6px" data-i18n="v_legend">U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.</p>
+      </div>
+      <div class="card"><h2><span data-i18n="v_ingress">Ingress filtering</span> <span class="hint" data-i18n="v_ingress_h">write-only: the state is not readable from the switch</span></h2>
+        <div class="scrollx"><table class="t" id="ingress"><tbody></tbody></table></div>
+        <div style="margin-top:10px"><button class="ctl pri" id="ingapply" data-i18n="v_ing_apply">Apply ingress modes</button></div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-l2">
+      <div class="card"><h2><span data-i18n="l2_title">MAC address table</span>
+        <span class="hint"><input class="in" id="l2filter" data-i18n-p="l2_filter" size="14"></span></h2>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <button class="ctl" id="l2refresh" data-i18n="c_refresh">Refresh</button>
+          <button class="ctl" id="l2flush" data-i18n="l2_flush">Flush learned entries</button>
+          <span class="small mut" id="l2count" style="align-self:center"></span>
+        </div>
+        <div class="scrollx"><table class="t" id="l2table">
+          <thead><tr><th data-sort="pport"><span data-i18n="c_port">Port</span><span class="arrow"></span></th><th data-sort="mac">MAC<span class="arrow"></span></th><th data-sort="vlan">VLAN<span class="arrow"></span></th><th data-sort="stat"><span data-i18n="c_type">Type</span><span class="arrow"></span></th><th></th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-mirror">
+      <div class="card"><h2 data-i18n="m_title">Port mirroring</h2>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <span class="badge" id="mstate">off</span>
+          <label><span data-i18n="m_monitor">Monitor port</span> <select class="in" id="mport"></select></label>
+          <button class="ctl pri" id="mapply" data-i18n="c_apply">Apply</button>
+          <button class="ctl" id="moff" data-i18n="c_disable">Disable</button>
+        </div>
+        <div class="scrollx"><table class="t" id="mtable"><tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:6px" data-i18n="m_note">Both = mirror RX and TX of the port to the monitor port.</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-lag">
+      <div id="lagwrap" class="grid2"></div>
+      <p class="small mut" style="margin-top:10px" data-i18n="lag_note">A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.</p>
+    </section>
+
+    <section class="tab" id="tab-eee">
+      <div class="card"><h2 data-i18n="e_title">Energy Efficient Ethernet</h2>
+        <div class="scrollx"><table class="t" id="etable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="e_adv">Advertised</th><th data-i18n="e_lp">Link partner</th><th data-i18n="e_active">Active</th><th data-i18n="e_enable">Enable</th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="e_note">Advertised and link-partner flags per speed: 100M, 1G, 2.5G. SFP ports do not support EEE.</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-bw">
+      <div class="card"><h2><span data-i18n="bw_title">Bandwidth limits</span> <span class="hint" data-i18n="bw_h">Mbit/s, 0.016-10000</span></h2>
+        <div class="scrollx"><table class="t" id="btable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="bw_in">Ingress limit</th><th>Mbit/s</th><th data-i18n="bw_exceed">When exceeded</th><th data-i18n="bw_out">Egress limit</th><th>Mbit/s</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-system">
+      <div class="grid2">
+        <div class="card"><h2 data-i18n="sy_network">Network</h2>
+          <label class="row"><span class="lb" data-i18n="i_host">Hostname</span><input class="in" id="sy-host" maxlength="23"></label>
+          <label class="row"><span class="lb" data-i18n="i_ip">IP address</span><input class="in" id="sy-ip" size="15"></label>
+          <label class="row"><span class="lb" data-i18n="i_mask">Netmask</span><input class="in" id="sy-mask" size="15"></label>
+          <label class="row"><span class="lb" data-i18n="i_gw">Gateway</span><input class="in" id="sy-gw" size="15"></label>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="ctl pri" id="sy-apply" data-i18n="c_apply">Apply</button>
+            <button class="ctl" id="sy-dhcp" data-i18n="sy_dhcp" data-i18n-t="sy_dhcp_t">Use DHCP</button>
+          </div>
+        </div>
+        <div class="card"><h2 data-i18n="sy_services">Services</h2>
+          <label class="row" style="justify-content:space-between"><span data-i18n="sy_igmp">IGMP snooping</span>
+            <span class="switch"><input type="checkbox" id="sy-igmp"><i></i></span></label>
+          <label class="row" style="justify-content:space-between"><span data-i18n="i_syslog">Syslog</span>
+            <span class="switch"><input type="checkbox" id="sy-syslog"><i></i></span></label>
+          <div class="row" style="display:flex;gap:8px;align-items:center;margin:-2px 0 10px">
+            <span class="small mut" data-i18n="sy_server">Server</span>
+            <input class="in" id="sy-sysip" style="flex:1;min-width:0;width:0" data-i18n-p="sy_sysip">
+            <span class="small mut" data-i18n="sy_port">Port</span>
+            <input class="in" id="sy-sysport" style="width:64px" type="number" min="1" max="65535"></div>
+          <p class="small mut" data-i18n="sy_services_note">Service state reflects the startup config; runtime state is not readable.</p>
+        </div>
+        <div class="card"><h2 data-i18n="sy_password">Admin password</h2>
+          <label class="row"><span class="lb" data-i18n="sy_newpw">New password</span><input class="in" id="sy-pw1" type="password" maxlength="20"></label>
+          <label class="row"><span class="lb" data-i18n="sy_repeat">Repeat</span><input class="in" id="sy-pw2" type="password" maxlength="20"></label>
+          <button class="ctl pri" id="sy-pwapply" style="margin-top:8px" data-i18n="sy_pwapply">Change password</button>
+          <p class="small mut" style="margin-top:8px" data-i18n="sy_pw_note">Takes effect immediately; save to flash to keep it after reboot.</p>
+        </div>
+        <div class="card"><h2 data-i18n="sy_console">Console</h2>
+          <div style="display:flex;gap:8px">
+            <input class="in" id="sy-cmd" style="flex:1" data-i18n-p="sy_cmd" spellcheck="false">
+            <button class="ctl pri" id="sy-send" data-i18n="sy_send">Send</button>
+          </div>
+          <pre class="cfg" id="sy-cout" style="margin-top:10px;min-height:70px;max-height:180px;overflow:auto"></pre>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px"><h2><span data-i18n="sy_startup">Startup configuration</span>
+        <span class="hint"><span id="cfgbytes"></span>, <span data-i18n="sy_replayed">replayed on every boot</span></span></h2>
+        <textarea class="cfg" id="cfgedit" spellcheck="false"></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <button class="ctl" id="cfgreload" data-i18n="sy_reload">Reload from flash</button>
+          <button class="ctl pri" id="cfgwrite" data-i18n="sy_write">Write to flash</button>
+          <span class="small mut" style="align-self:center" data-i18n="sy_unknown_note">Unknown lines are highlighted before writing.</span>
+        </div>
+      </div>
+      <div class="card dangerzone" style="margin-top:16px"><h2 data-i18n="sy_maint">Maintenance</h2>
+        <button class="ctl danger" id="sy-reboot" data-i18n="sy_reboot">Reboot switch</button>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-fw">
+      <div class="card"><h2 data-i18n="fw_title">Firmware update</h2>
+        <p class="small mut" style="margin-bottom:12px" data-i18n="fw_intro">Upload an RTLPlayground image (512 KiB .bin). The image is staged to flash and CRC-checked; on success the switch reboots itself, re-verifies the image and applies it. The startup configuration is preserved.</p>
+        <input type="file" id="fwfile" accept=".bin">
+        <div id="fwinfo" class="small" style="margin:10px 0"></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="ctl pri" id="fwup" disabled data-i18n="fw_upload">Upload</button>
+          <progress id="fwprog" max="100" value="0" style="display:none;width:220px"></progress>
+          <span class="small" id="fwstat"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toasts"></div>
+<div id="mback"><div id="modal">
+  <div id="mhead"><span id="mtitle"></span><button id="mx">&#x2715;</button></div>
+  <div id="mbody"></div><div id="mfoot"></div>
+</div></div>
+
+<script src="/app.js"></script>
+</body>
 </html>
