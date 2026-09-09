@@ -1,135 +1,107 @@
 # Supporting Multiple Languages in the Web UI
 
-The firmware uses a client-side i18n approach
-all translations are stored in a single JavaScript dictionary embedded in the firmware.
-No server-side changes are needed.
+The firmware uses a client-side i18n approach: all translations are stored
+in one JavaScript dictionary embedded in the firmware. No server-side
+changes are needed.
 
 ## Architecture
 
-All translation logic lives in `html/i18n.js`. The file contains:
+All translation logic lives at the top of `html/app.js`:
 
-- A `LANG` object with one sub-object per language (`en`, `ja`, ...)
-- Language auto-detection (browser language → `localStorage` override)
-- `t(key)` — look up a translated string
-- `setLang(lang)` — switch language and update the page
-- `applyTranslation(el)` — apply translation to one DOM element
+- A `LANG` object with one sub-object per language (`en`, `ja`, `zh`)
+- Language auto-detection (browser language, overridden by the
+  `rtl_lang` key in `localStorage`, which the language selector in the
+  page header writes)
+- `t(key, vars)` looks up a translated string; `{name}` placeholders in
+  the string are replaced from `vars`, e.g. `t("v_del_q", {n: vid})`
+- `i18nApply()` applies the dictionary to the static markup once at load
 
-Translation keys are **flat strings** (no nesting). The English keys in `LANG.en` also serve as the fallback when a key is missing in another language.
+Translation keys are flat strings. The English entry is the fallback when
+a key is missing in another language, and the key itself is the fallback
+when it is missing everywhere.
+
+Changing the language stores the choice and reloads the page, so every
+dynamically built table is rebuilt in the new language.
+
+`login.html` is served before authentication and does not load `app.js`;
+it carries its own five strings per language in an inline table.
 
 ## How to Add a New Language
 
-### 1. Add a dictionary entry in `html/i18n.js`
+### 1. Add a dictionary entry in `html/app.js`
 
-Append a new sub-object to the `LANG` object. Every key from `LANG.en` must be present:
+Append a sub-object to `LANG`. Every key from `LANG.en` should be present:
 
 ```js
-var LANG = {
-  en: {
-    nav_overview: 'Overview',
-    nav_port_config: 'Port Configuration',
-    // ... all keys for English
-  },
-  ja: {
-    nav_overview: '概要',
-    nav_port_config: 'ポート設定',
-    // ... all keys for Japanese
-  },
-  LANGCODE: {            // ← add your language here
-    nav_overview: '...',
-    nav_port_config: '...',
-    // ... translate every key
-  },
+var LANG={
+en:{
+nav_dash:"Dashboard",
+...
+},
+LANGCODE:{            // add your language here
+nav_dash:"...",
+...
+}
 };
 ```
 
-### 2. Add the language to the navigation sidebar
+### 2. Add the language to the selector in `html/index.html`
 
-In `html/navigation.js`, add an `<option>` to the language selector:
-
-```js
-+ "<option value='en'>English</option><option value='ja'>日本語</option>"
+```html
+<select class="ctl" id="langSel" data-i18n-t="sy_lang">
+  <option value="en">English</option>
+  <option value="ja">日本語</option>
+  <option value="zh">中文</option>
+  <option value="LANGCODE">Native name</option>
+</select>
 ```
 
-Replace with:
+### 3. Add the login strings in `html/login.html`
 
-```js
-+ "<option value='en'>English</option><option value='ja'>日本語</option><option value='LANGCODE'>Native Name</option>"
-```
+The inline table there holds, per language: page title, subtitle,
+password label, button label, wrong-password message.
 
-### 3. Verify auto-detection
+### 4. Verify auto-detection
 
-The language detection code in `i18n.js` reads `navigator.language` and normalises it to the first two characters:
-
-```js
-var browser = (navigator.language || navigator.userLanguage || 'en').substring(0, 2);
-return LANG[browser] ? browser : 'en';
-```
-
-If the two-letter code matches a key in `LANG`, it will be auto-selected. No changes needed here.
+The detection normalises `navigator.language` to its first two
+characters and selects that language if `LANG` has it, otherwise English.
 
 ## Two Translation Mechanisms
 
-### (A) `data-i18n` attribute (declarative — for HTML)
-
-Add `data-i18n="key_name"` to any HTML element. The English text goes in the element content as a fallback:
+### (A) `data-i18n` attributes (declarative, for HTML)
 
 ```html
-<h1 data-i18n="port_heading">Port Configuration</h1>
-<input type="button" data-i18n="port_apply" value="Apply">
-<option data-i18n="port_auto">Auto</option>
-<title data-i18n="port_title">Port Configuration</title>
+<h2 data-i18n="pt_title">Port configuration</h2>
+<button class="ctl" data-i18n="c_apply" data-i18n-t="sy_dhcp_t">Apply</button>
+<input class="in" data-i18n-p="l2_filter">
 ```
 
-On page load, `applyTranslation()` sets:
+- `data-i18n` sets the element's text content
+- `data-i18n-t` sets the `title` attribute (tooltip)
+- `data-i18n-p` sets the `placeholder` attribute
 
-- `el.value` for `<input type="submit|button">`
-- `el.textContent` for `<option>`, `<title>`
-- `el.innerHTML` for everything else
+The English text stays in the markup as the fallback and as the source
+of truth for what the key means.
 
-### (B) `t('key')` call (imperative — for JavaScript strings)
-
-When generating HTML or text in JavaScript, wrap translatable strings with `t()`:
+### (B) `t("key")` calls (imperative, for JavaScript)
 
 ```js
-td.appendChild(document.createTextNode(t('common_port') + i));
-td.innerHTML = t('port_auto');
-iHTML += "<tr><td>" + t('port_vendor') + "</td></tr>";
+tr.insertCell().textContent=t("c_port")+" "+p;
+toast(t("v_loaded",{n:vid}),"ok");
 ```
 
-### Special Case: Link Speed Display
-
-The `linkS` array in `html/main.js` maps numeric link states to display strings. The first two entries (`speed_disabled`, `speed_down`) use `t()` for translation; the remaining entries are static literals (they are the same in all languages):
-
-```js
-const linkS = [
-  function(){return t('speed_disabled')},
-  function(){return t('speed_down')},
-  "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"
-];
-function linkText(idx) { var v = linkS[idx]; return typeof v === 'function' ? v() : v; }
-```
-
-Always use `linkText(idx)` (not `linkS[idx]`) to read these values.
+Strings that are identical in every language (`10M`, `2.5G`, `MAC`,
+`VLAN`, `CPU`, `RSTP`) are literals, not dictionary entries.
 
 ## Size Considerations
 
-- `html/i18n.js` is embedded in the firmware filesystem (~14 KB for two languages)
-- Each new language adds roughly the same number of bytes as the English dictionary (~3–4 KB)
-- The firmware binary is padded to 512 KiB, so a few extra KB do not change the flash footprint
-- Values that are identical in all languages should be inlined as literals rather than added to the dictionary (e.g., `"10M"`, `"2.5G"`, `"MAC"`, `"VLAN"`, `"CPU"`)
+- Each language adds roughly 3 KB to `app.js` before compression; the
+  build gzips the file, so the flash cost of a language is closer to 1 KB
+- The largest embedded file must stay below 64 KB after compression
+  (`uint16_t` length in the file table); `app.js` with three languages
+  is about 29 KB compressed
 
 ## Build
 
-No special flags are needed. The `html/` directory is embedded by `fileadder` during the build.
-
-## Script Load Order
-
-`i18n.js` must be loaded after `main.js` (which defines `t()`'s dependencies like `LANG`) but before any page-specific JS that calls `t()`:
-
-```html
-<script src="/main.js"></script>
-<script src="/i18n.js"></script>
-<script src="/eee.js"></script>    <!-- uses t() -->
-```
-
-The `navigation.js` script is loaded last (bottom of `<body>`).
+No special flags are needed. `html/` is minified and embedded by the
+normal build (see `webui-compression.md`).
