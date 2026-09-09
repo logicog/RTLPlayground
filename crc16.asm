@@ -3,6 +3,8 @@
 ;
 	.globl 	_crc_value
 	.globl 	_crc16
+	.globl 	_crc16_bank1
+	.globl 	__sdcc_banked_ret
 	.equ	BANK, 0x96
 ;	.equ	DPS, 0x86
 ; Variable in XMEM holding current CRC16 value, being updated
@@ -18,7 +20,7 @@ _crc_value::
 	.area HOME    (CODE)
 	.area CSEG    (CODE)
 ;	.area BANK1   (CODE)
-_crc16:
+_crc16_bank1:
 	mov	BANK, #1
 	push	dph
 	push	dpl
@@ -51,6 +53,10 @@ _crc16:
 	ret
 
 	.area BANK1   (CODE)
+
+_crc16:
+	lcall	_crc16_bank1
+	ljmp	__sdcc_banked_ret
 
 crc16_table_l:
 	.byte #0x00, #0xc1, #0x81, #0x40, #0x01, #0xc0, #0x80, #0x41
