@@ -1,3 +1,6 @@
+#pragma codeseg BANK2
+#pragma constseg BANK2
+
 #include "rtl837x_common.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_sfr.h"
@@ -16,12 +19,12 @@ __xdata static uint8_t lldp_mac[LLDP_MAC_ADDR_LEN];
 
 uint8_t lldp_seconds;
 
-void lldp_init(void)
+void lldp_init(void) __banked
 {
     lldp_seconds = 0;
 }
 
-void lldp_tick(void)
+void lldp_tick(void) __banked
 {
     lldp_seconds++;
 
@@ -47,7 +50,16 @@ struct lldp_pkt {
 
 #define LLDP_O ((__xdata struct lldp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
 
-void lldp_send(void) __reentrant
+uint8_t lldp_type(uint8_t value) __banked {
+    // The type is 7 bits and the length is 9 bits
+    // we can represent this as the 7 most significant
+    // bits of the type bit and leave the least significant
+    // bit as 0 always as we're not going to need 2^9 for
+    // the length at any point
+    return value << 1;
+}
+
+void lldp_send(void) __banked __reentrant
 {
     uint8_t port;
     uint8_t *p;
@@ -57,60 +69,39 @@ void lldp_send(void) __reentrant
     uint16_t hostname_length = 0;
     uint16_t machine_name_length = 0;
     __xdata char *hp = hostname;
-    char *mp = machine.machine_name;
+    const char *mp = machine.machine_name;
 
-    /*
-     * LLDP destination multicast addr: 01:80:c2:00:00:0e
-     */
-    LLDP_O->dst.addr[0] = 0x01;
-    LLDP_O->dst.addr[1] = 0x80;
-    LLDP_O->dst.addr[2] = 0xc2;
-    LLDP_O->dst.addr[3] = 0x00;
-    LLDP_O->dst.addr[4] = 0x00;
-    LLDP_O->dst.addr[5] = 0x0e;
-
-    for (uint8_t i = 0; i < LLDP_MAC_ADDR_LEN; i++)
-    	LLDP_O->src.addr[i] = uip_ethaddr.addr[i];
-
-    /*
-     * This is the RTL CPU tag, not the Ethernet EtherType.
-     *     port 0 -> 0x0001
-     *     port 1 -> 0x0002
-     *     port 2 -> 0x0004
-     */
-    LLDP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
-    LLDP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
-    LLDP_O->rtl_tag.reason = 0x00;
-    LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
-
-    LLDP_O->ether_type = HTONS(LLDP_ETHERTYPE);
+    lldp_set_addresses();
+    lldp_set_rtl_wrapper();
 
     p = LLDP_O->payload;
     len = 0;
 
-    /*
-     * Chassis ID TLV:
-     *
-     * Type    = 1
-     * Length  = 7
-     * Subtype = 4, MAC address
-     */
-    p[len++] = 0x02;
-    p[len++] = 0x07;
-    p[len++] = 0x04;
+    //Chassis ID
+    p[len++] = lldp_type(LLDP_CHASSIS_ID_TLV_TYPE);
+    p[len++] = LLDP_CHASSIS_ID_TLV_LENGTH;
+    p[len++] = LLDP_CHASSIS_ID_TLV_SUBTYPE;
 
     for (uint8_t i = 0; i < LLDP_MAC_ADDR_LEN; i++)
     	p[len + i] = uip_ethaddr.addr[i];
 
 	len += LLDP_MAC_ADDR_LEN;
 
-    /*
-     * SysName TLV:
-     *
-     * Type    = 5
-     * Length  = dynamic
-     */
-    p[len++] = 0x05;
+    //Port ID
+    p[len++] = lldp_type(LLDP_PORT_ID_TLV_TYPE);
+    p[len++] = LLDP_PORT_ID_TLV_LENGTH;
+    p[len++] = LLDP_PORT_ID_TLV_SUBTYPE;
+    port_position = len;
+	p[len++] = '0';       // filled in per port below
+
+    //TTL
+    p[len++] = lldp_type(LLDP_TTL_TLV_TYPE);
+    p[len++] = LLDP_TTL_TLV_LENGTH;
+    p[len++] = 0x00; //padding
+    p[len++] = LLDP_TTL_TTL_SECONDS;
+
+    //SysName
+    p[len++] = lldp_type(LLDP_SYSNAME_TLV_TYPE);
     p[len++] = 0;
 
     while (*hp)
@@ -118,15 +109,10 @@ void lldp_send(void) __reentrant
         hostname_length++;
         p[len++] = *hp++;
     }
-    p[len-hostname_length] = hostname_length;
+    p[len-hostname_length-1] = hostname_length;
 
-    /*
-     * SysDescription TLV:
-     *
-     * Type    = 5
-     * Length  = dynamic
-     */
-    p[len++] = 0x06;
+    //SysDesc
+    p[len++] = lldp_type(LLDP_SYSDESC_TLV_TYPE);
     p[len++] = 0;
 
     while (*mp)
@@ -134,41 +120,13 @@ void lldp_send(void) __reentrant
         machine_name_length++;
         p[len++] = *mp++;
     }
-    p[len-machine_name_length] = machine_name_length;
+    p[len-machine_name_length-1] = machine_name_length;
 
-    /*
-     * Port ID TLV:
-     *
-     * Type    = 2
-     * Length  = 2
-     * Subtype = 7, locally assigned
-     * Value   = logical port number
-     */
-    p[len++] = 0x04;
-    p[len++] = 0x02;
-    p[len++] = 0x07;
-    port_position = len;
-	p[len++] = '0';       /* filled in per port below */
+    // End of LLDPDU TLV
+    p[len++] = 0x00; //padding
+    p[len++] = 0x00; //padding
 
-    /*
-     * Time To Live TLV:
-     *
-     * Type   = 3
-     * Length = 2
-     * TTL    = 120 seconds
-     */
-    p[len++] = 0x06;
-    p[len++] = 0x02;
-    p[len++] = 0x00;
-    p[len++] = 120;
-
-    /*
-     * End of LLDPDU TLV.
-     */
-    p[len++] = 0x00;
-    p[len++] = 0x00;
-
-    //Ethernet payload must be at least 46 bytes,  so pad
+    //Ethernet payload must be at least 46 bytes, so pad
     while (len < 46)
         p[len++] = 0x00;
 
@@ -192,4 +150,32 @@ void lldp_send(void) __reentrant
 
         tcpip_output();
     }
+}
+
+void lldp_set_addresses(void) __banked {
+    // LLDP destination multicast addr: 01:80:c2:00:00:0e
+    LLDP_O->dst.addr[0] = 0x01;
+    LLDP_O->dst.addr[1] = 0x80;
+    LLDP_O->dst.addr[2] = 0xc2;
+    LLDP_O->dst.addr[3] = 0x00;
+    LLDP_O->dst.addr[4] = 0x00;
+    LLDP_O->dst.addr[5] = 0x0e;
+
+    for (uint8_t i = 0; i < LLDP_MAC_ADDR_LEN; i++)
+        LLDP_O->src.addr[i] = uip_ethaddr.addr[i];
+}
+
+void lldp_set_rtl_wrapper(void) __banked {
+    /*
+     * This is the RTL CPU tag, not the Ethernet EtherType.
+     *     port 0 -> 0x0001
+     *     port 1 -> 0x0002
+     *     port 2 -> 0x0004
+     */
+    LLDP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
+    LLDP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
+    LLDP_O->rtl_tag.reason = 0x00;
+    LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
+
+    LLDP_O->ether_type = HTONS(LLDP_ETHERTYPE);
 }
