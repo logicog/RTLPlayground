@@ -106,6 +106,18 @@ inline uint8_t isnumber(uint8_t l)
 	return (l <= ('9'-'0'));
 }
 
+/* Converts a single ASCII hex digit to its value, or 0xff if it is not a valid
+ * hex digit. Accepts '0'-'9', 'a'-'f' and 'A'-'F'. */
+inline uint8_t hexval(uint8_t c)
+{
+	if (isnumber(c))
+		return c - '0';
+	c |= 0x20;
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return 0xff;
+}
+
 
 uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 {
@@ -349,7 +361,7 @@ err:
 }
 
 // Prints an IPv4 address.
-void print_ip(__xdata uint8_t * ptr)
+void print_ip(__xdata uint8_t * ptr) __banked
 {
 	uint8_t idx = 0;
 	uint8_t num;
@@ -365,7 +377,7 @@ void print_ip(__xdata uint8_t * ptr)
 }
 
 // Prints a MAC address.
-void print_mac(__xdata uint8_t *ptr)
+void print_mac(__xdata uint8_t *ptr) __banked
 {
 	uint8_t idx = 0;
 	uint8_t num;
@@ -380,38 +392,44 @@ void print_mac(__xdata uint8_t *ptr)
 	}
 }
 
-// Parses a MAC address (12 hex digits, ':' or '-' separators optional) from
-// cmd_buffer starting at idx into mac[6]. Returns the number of bytes
-// consumed, or 0 on error.
+// Parses a strict MAC address "aa:bb:cc:dd:ee:ff" (or "-" separators) from
+// cmd_buffer starting at idx into mac[6]. Each of the 6 octets must be exactly
+// two hex digits and the 5 separators must be the same single character, so
+// malformed input like repeated separators ("aa::bb"), missing digits or a
+// trailing hex digit ("aa:bb:cc:dd:ee:ff:0") is rejected. Returns the number of
+// bytes consumed, or 0 on error.
 uint8_t parse_mac(uint8_t idx, __xdata uint8_t *mac)
 {
+	uint8_t sep = 0;
 	uint8_t b = 0;
-	uint8_t hi = 0xff;   /* 0xff = waiting for the high nibble */
 	uint8_t c;
+	uint8_t hi;
+	uint8_t lo;
 
 	while (b < 6) {
+		hi = hexval(cmd_buffer[idx++]);
+		lo = hexval(cmd_buffer[idx++]);
+		if (hi == 0xff || lo == 0xff)
+			return 0;
+		mac[b++] = (hi << 4) | lo;
+
+		if (b == 6)
+			break;
 		c = cmd_buffer[idx];
-		if (c == NUL || c == ' ' || c == '\r' || c == '\n')
-			break;
+		if (c != ':' && c != '-')
+			return 0;
+		if (sep == 0)
+			sep = c;
+		else if (c != sep)
+			return 0;
 		idx++;
-		if (c == ':' || c == '-')
-			continue;
-		c |= 0x20;
-		if (c >= '0' && c <= '9')
-			c -= '0';
-		else if (c >= 'a' && c <= 'f')
-			c -= 'a' - 10;
-		else
-			break;
-		if (hi == 0xff) {
-			hi = c;
-		} else {
-			mac[b++] = (hi << 4) | c;
-			hi = 0xff;
-		}
 	}
-	if (b != 6 || hi != 0xff)
+
+	// No trailing characters: the next byte must be a separator-like EOF.
+	c = cmd_buffer[idx];
+	if (c != NUL && c != ' ')
 		return 0;
+
 	return idx;
 }
 
