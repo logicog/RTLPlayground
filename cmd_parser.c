@@ -504,19 +504,29 @@ void parse_vlan(void)
 		}
 
 		uint8_t w = 2;
-		if (cmd_words_len > w && isletter(cmd_buffer[cmd_words_b[w]])) {
+		uint8_t pos = cmd_words_b[w];
+		if (cmd_words_len > w && isletter(cmd_buffer[pos])) {
 			uint8_t i = 0;
-			vlan_name_remove(vlan_settings.vlan);
-			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 8) & 0xf];
-			vlan_names[vlan_ptr++] = hex[(vlan_settings.vlan >> 4) & 0xf] ;
-			vlan_names[vlan_ptr++] = hex[vlan_settings.vlan & 0xf];
-			while(!cmd_is_space_or_nul(cmd_words_b[w] + i)) {
-				write_char(cmd_buffer[cmd_words_b[w] + i]);
-				vlan_names[vlan_ptr++] = cmd_buffer[cmd_words_b[w] + i++];
+			while (!cmd_is_space_or_nul(pos + i))
+				i++;
+			if (vlan_ptr + i > (VLAN_NAMES_SIZE - 5)) {
+				print_string("VLAN name table full, name ignored\n");
+			} else {
+				vlan_name_remove(vlan_settings.vlan);
+				__xdata uint8_t *vlan_str = &vlan_names[vlan_ptr];
+				*vlan_str++ = hex[(vlan_settings.vlan >> 8) & 0xf];
+				*vlan_str++ = hex[(vlan_settings.vlan >> 4) & 0xf] ;
+				*vlan_str++ = hex[vlan_settings.vlan & 0xf];
+				while(!cmd_is_space_or_nul(pos)) {
+					uint8_t c = cmd_buffer[pos++];
+					write_char(c);
+					*vlan_str++ = c;
+				}
+				*vlan_str++ = ' '; *vlan_str = NUL;
+				vlan_ptr = vlan_str - vlan_names;
+				print_string("<\n");
 			}
-			vlan_names[vlan_ptr++] = ' '; vlan_names[vlan_ptr] = NUL;
 			w++;
-			print_string("<\n");
 		}
 
 		uint8_t ret;
