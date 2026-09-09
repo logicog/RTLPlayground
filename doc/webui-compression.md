@@ -19,16 +19,17 @@ html/  --(minify.py)-->  output/html_min/  --(fileadder -z)-->  flash image
   served bytes, so minification alone already reduces the transfer size
   from 109,814 to 97,730 bytes, independent of gzip.
 - The Web UI is a single-page application: `index.html` holds all pages
-  as sections (`#/ports`, `#/vlan`, ...) that the sidebar switches
+  as sections (`#ports`, `#vlan`, ...) that the sidebar switches
   between via the URL hash.  `login.html` stays separate because it is
-  the authentication gate.  Only these two pages plus `main.js`,
-  `style.css`, the three SVG port images and the favicon are embedded.
-- All JavaScript (i18n, shared helpers, navigation and the per-section
-  scripts) lives in one `html/main.js` bundle that the pages load as
-  their only script, so the browser fetches it once and gzip can
-  compress across all of it.  A section's initialisation runs when the
-  section is shown, its polling intervals run only while it is visible,
-  and re-entering a section refetches the data.
+  the authentication gate and is self-contained (its own styles and
+  strings), so nothing else is served before login.  Only these two
+  pages plus `app.js` and the favicon are embedded; the stylesheet and
+  the theme bootstrap are inline in `index.html`.
+- All JavaScript (translation table, shared helpers, navigation and the
+  per-section code) lives in one `html/app.js` that the page loads as
+  its only script, so the browser fetches it once and gzip can compress
+  across all of it.  A section starts its pollers when it is shown and
+  stops them when it is left; re-entering a section refetches the data.
 - `fileadder -z` gzip-compresses every file (zlib, gzip format,
   `Z_BEST_COMPRESSION`) when it generates the file table
   (`html_data.c`/`html_data.h`) and when it embeds the files into the
@@ -71,7 +72,8 @@ JSON polling of the visible section).
 ## Notes
 
 - The files stay well below the `uint16_t` size limit of the file table
-  (largest gzip output: 17.2 KB for the merged `main.js`).
+  (largest gzip output: about 29 KB for `app.js`, three languages
+  included).
 - `fileadder` terminates the embedded files with a NUL directly after the
   content (previously at `data_read + 1`), so the `strlen()`-based size
   computation no longer depends on uninitialised buffer content.
