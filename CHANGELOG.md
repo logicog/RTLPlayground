@@ -4,14 +4,12 @@
 
 ## Added
 
+- Web UI
+  - Compress the embedded assets (minify + gzip) and switch to a single-page layout. #315
+
 ## Changed
 
 ## Fixed
-
-- Web UI
-  - `/counters.json` rejects physical port 1 on 9-port devices.
-    A mapped logical port of `0` was treated as invalid,
-    but it is a valid port there.
 
 ## Breaking changes
 
