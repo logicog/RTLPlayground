@@ -54,7 +54,10 @@ void lldp_send(void) __reentrant
     uint16_t len;
 	uint8_t port_position;
 
-    uint16_t hostname_length;
+    uint16_t hostname_length = 0;
+    uint16_t machine_name_length = 0;
+    __xdata char *hp = hostname;
+    char *mp = machine.machine_name;
 
     /*
      * LLDP destination multicast addr: 01:80:c2:00:00:0e
@@ -110,13 +113,28 @@ void lldp_send(void) __reentrant
     p[len++] = 0x05;
     p[len++] = 0;
 
-    __xdata char *hp = hostname;
     while (*hp)
     {
         hostname_length++;
         p[len++] = *hp++;
     }
     p[len-hostname_length] = hostname_length;
+
+    /*
+     * SysDescription TLV:
+     *
+     * Type    = 5
+     * Length  = dynamic
+     */
+    p[len++] = 0x06;
+    p[len++] = 0;
+
+    while (*mp)
+    {
+        machine_name_length++;
+        p[len++] = *mp++;
+    }
+    p[len-machine_name_length] = machine_name_length;
 
     /*
      * Port ID TLV:
