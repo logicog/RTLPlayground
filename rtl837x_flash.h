@@ -13,7 +13,6 @@
 
 void flash_init(uint8_t enable_dio);
 void flash_read_uid(void);
-void flash_write_enable(void);
 void flash_dump(uint8_t len);
 void flash_read_jedecid(void);
 void flash_read_security(void);
