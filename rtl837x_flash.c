@@ -85,18 +85,32 @@ void flash_init(uint8_t enable_dio)
 
 uint8_t flash_read_status(void)
 {
-	// Test Controller Busy (we might call this directly after executing a command)
-	while(SFR_FLASH_EXEC_BUSY);
+    uint8_t old_modeb;
+    uint8_t old_dummy;
+    uint8_t status;
 
-	// setup status read command
-	SFR_FLASH_TCONF = 0x11;
-	SFR_FLASH_CMD_R = CMD_READ_STATUS;
+    while(SFR_FLASH_EXEC_BUSY);
 
+    // SAVE current hardware state (Dual I/O, Dummy Clocks)
+    old_modeb = SFR_FLASH_MODEB;
+    old_dummy = SFR_FLASH_DUMMYCYCLES;
+
+    // FORCE Standard Single SPI mode for the status command
+    SFR_FLASH_MODEB = 0x0;
+    SFR_FLASH_DUMMYCYCLES = 0;
+
+    SFR_FLASH_TCONF = 0x11;
+    SFR_FLASH_CMD_R = CMD_READ_STATUS; 
 	// execute and wait for controller done
-	SFR_FLASH_EXEC_GO = 1;
-	while(SFR_FLASH_EXEC_BUSY);
+    SFR_FLASH_EXEC_GO = 1;
+    while(SFR_FLASH_EXEC_BUSY);
+    status = SFR_FLASH_DATA0;
 
-	return SFR_FLASH_DATA0;
+    // RESTORE previous hardware state for MMIO execution
+    SFR_FLASH_MODEB = old_modeb;
+    SFR_FLASH_DUMMYCYCLES = old_dummy;
+
+    return status;
 }
 
 
