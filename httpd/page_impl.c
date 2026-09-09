@@ -302,7 +302,7 @@ bool send_counters(uint8_t phys_port)
 	if (phys_port_idx > 8)
 		goto err;
 	uint8_t log_port = machine.phys_to_log_port[phys_port_idx];
-	if (log_port == 0)
+	if (log_port < machine.min_port || log_port > machine.max_port)
 		goto err;
 
 	dbg_string("send_counters called: "); dbg_byte(phys_port_idx); dbg_char('\n');
