@@ -1211,6 +1211,7 @@ void handle_rx(void)
 			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
 			return;
 		}
+		health_rx_frames++;
 
 #ifdef RXTXDBG
 		print_string("\n<< ");
@@ -1530,6 +1531,7 @@ void handle_button(void)
 void idle(void)
 {
 	PCON |= 1;
+	health_loop_start();
 	if (sec_counter >= SYS_TICK_HZ) {
 		sec_counter -= SYS_TICK_HZ;
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
@@ -1605,13 +1607,18 @@ void idle(void)
 		}
 	}
 
+	health_phase(HEALTH_PH_LINK);
+
 	// Check for changes with SFP modules
 	handle_sfp();
+	health_phase(HEALTH_PH_SFP);
 
 	// Check new Packets RX
 	handle_rx();
+	health_phase(HEALTH_PH_RX);
 	// Check UIP for packets to transmit
 	handle_tx();
+	health_phase(HEALTH_PH_TX);
 	// If STP protocol enabled, decrease STP timers to trigger actions
 	if (stp_enabled) {
 		if (!stp_clock) {
@@ -1621,6 +1628,7 @@ void idle(void)
 			stp_clock--;
 		}
 	}
+	health_phase(HEALTH_PH_STP);
 	// Check whether a command is waiting in the cmd_buffer and execute
 	if (cmd_available) {
 		cmd_available = 0;
@@ -1629,6 +1637,7 @@ void idle(void)
 			cmd_parser();
 		print_cmd_prompt();
 	}
+	health_phase(HEALTH_PH_CMD);
 }
 
 
@@ -2359,6 +2368,7 @@ void main(void)
 
 	cmd_editor_init();
 
+	health_stack_paint();
 	while (1) {
 		cmd_edit();
 		idle(); // Enter Idle mode until interrupt occurs
