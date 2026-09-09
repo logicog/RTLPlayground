@@ -1013,7 +1013,7 @@ void httpd_appcall(void)
 			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html 
 						|| f_data[entry].start == FDATA_START_port_svg 
 						|| f_data[entry].start == FDATA_START_sfp_svg
-						|| f_data[entry].start == FDATA_START_i18n_js
+						|| f_data[entry].start == FDATA_START_main_js
 						|| f_data[entry].start == FDATA_START_style_css)) {
 				send_to_login();
 				goto do_send;
@@ -1031,7 +1031,10 @@ void httpd_appcall(void)
 			 * response; without advertising it a browser reuses the socket
 			 * from its keep-alive pool and the next request hits the already
 			 * closed connection (a POST is then dropped without a retry). */
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\n");
+			if (f_data[entry].gzip)
+				slen += strtox(outbuf + slen, "Content-Encoding: gzip\r\n");
+			slen += strtox(outbuf + slen, "Cache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {
