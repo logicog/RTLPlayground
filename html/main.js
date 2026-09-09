@@ -97,6 +97,8 @@ var LANG = {
     lag_title: 'Link Aggregation Configuration',
     lag_heading: 'Link Aggregation Groups Configuration',
     lag_update: 'Update / Create',
+    lacp_heading: 'LACP (802.3ad)',
+    lacp_status: 'Status',
 
     mirror_title: 'Mirror Configuration',
     mirror_heading: 'Mirror Configuration',
@@ -1007,7 +1009,8 @@ const conf_cmds = [
   /^port\s+\d{1,2}\s+name\s+\S+$/,
   /^eee(\s+\d{1,2})?\s+(on|off)$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,
-  /^lag\s+\d(\s+\d{1,2})+$/,
+  /^lag\s+\d\s+lacp\s+off$/,
+  /^lag\s+\d(\s+lacp)?(\s+\d{1,2})*$/,
   /^laghash\s+\d(\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
   /^stp\s+(on|off)$/,
@@ -2158,6 +2161,28 @@ async function vlanSub() {
 
 var lagInterval = Number();
 
+const HASH_PRESETS = [
+  { label: "L2+L3+L4  (MAC + IP + Port)", bits: 0x7e, kw: "smac dmac sip dip sport dport" },
+  { label: "L2  (Src+Dst MAC)",           bits: 0x06, kw: "smac dmac" },
+  { label: "L3  (Src+Dst IP)",            bits: 0x18, kw: "sip dip" },
+  { label: "L4  (Src+Dst TCP/UDP port)",  bits: 0x60, kw: "sport dport" },
+  { label: "L2+L3  (MAC + IP)",           bits: 0x1e, kw: "smac dmac sip dip" },
+  { label: "L3+L4  (IP + Port)",          bits: 0x78, kw: "sip dip sport dport" },
+  { label: "Ingress port number",         bits: 0x01, kw: "spa" },
+];
+
+var lagDirty = [false, false, false, false];
+var lacpCfg = [0, 0, 0, 0];
+
+function modeChanged(l) {
+  lagDirty[l] = true;
+  const stat = document.getElementById("lagStat" + l);
+  if (document.getElementById("mode" + l).value === "lacp")
+    stat.textContent = "LACP: select candidate ports and press Update to start negotiation";
+  else
+    stat.textContent = "";
+}
+
 function lagForm() {
   if (!numPorts)
     return;
@@ -2176,6 +2201,7 @@ function lagForm() {
       const inp = document.createElement("input");
       inp.type = "checkbox"; inp.setAttribute("class","psel");
       inp.id = "p_" + lag + "_" + i;
+      inp.addEventListener("change", () => { lagDirty[j] = true; });
       const o = document.createElement("img");
       if (pIsSFP[i - 1]) {
         o.src = "sfp.svg"; o.width ="60"; o.height ="60";
@@ -2186,6 +2212,15 @@ function lagForm() {
       d.appendChild(l)
       m.appendChild(d);
     }
+    const sel = document.getElementById("hsel" + j);
+    sel.innerHTML = '';
+    for (let k = 0; k < HASH_PRESETS.length; k++) {
+      const o = document.createElement("option");
+      o.value = k; o.textContent = HASH_PRESETS[k].label;
+      sel.appendChild(o);
+    }
+    sel.onchange = () => { lagDirty[j] = true; };
+    document.getElementById("mode" + j).onchange = () => modeChanged(j);
   }
   fetchLag();
 }
@@ -2202,13 +2237,28 @@ function fetchLag() {
       const s = JSON.parse(xhttp.responseText);
       console.log("LAG: ", JSON.stringify(s));
       for (let l = 0; l < 4; l++) {
-        let members = parseInt(s[l].members, 2);
+        if (lagDirty[l])
+          continue;
+        let members = lacpCfg[l] ? lacpCfg[l] : parseInt(s[l].members, 2);
         let hash = parseInt(s[l].hash, 16);
         for (let i = 1; i <= numPorts; i++) {
           let p = i - 1;
           if (numPorts < 9)
-            p = physToLogPort[p];            
+            p = physToLogPort[p];
           setL("p_mLAG"+l+"_"+i, members & (1<<p));
+        }
+        const sel = document.getElementById("hsel" + l);
+        let idx = HASH_PRESETS.findIndex(p => p.bits === hash);
+        const custom = sel.querySelector('option[data-custom]');
+        if (custom) sel.removeChild(custom);
+        if (idx < 0) {
+          const o = document.createElement("option");
+          o.value = "c"; o.textContent = "Custom (0x" + hash.toString(16) + ")";
+          o.setAttribute("data-custom", "1");
+          sel.appendChild(o);
+          o.selected = true;
+        } else {
+          sel.value = idx;
         }
       }
     }
@@ -2218,25 +2268,72 @@ function fetchLag() {
 }
 async function lagSub(l) {
   var cmd = "lag " + (l + 1);
+  const lacpMode = document.getElementById("mode" + l).value === "lacp";
+  if (lacpMode)
+    cmd = cmd + " lacp";
+  else if (lacpCfg[l])
+    await fetch('/cmd', { method: 'POST', body: "lag " + (l + 1) + " lacp off" })
+      .catch(err => console.error(`Error: ${err}`));
   for (let i = 1; i <= numPorts; i++) {
     if (document.getElementById("p_mLAG"+l+"_"+i).checked)
       cmd = cmd + ` ${i}`;
   }
   try {
-    const response = await fetch('/cmd', {
-      method: 'POST',
-      body: cmd
-    });
-    console.log('Completed!', response);
+    await fetch('/cmd', { method: 'POST', body: cmd });
+    const sel = document.getElementById("hsel" + l);
+    if (sel.value !== "c") {
+      const hcmd = "laghash " + (l + 1) + " " + HASH_PRESETS[Number(sel.value)].kw;
+      await fetch('/cmd', { method: 'POST', body: hcmd });
+      console.log('Completed!', cmd, '/', hcmd);
+    } else {
+      console.log('Completed!', cmd, '(hash unchanged)');
+    }
   } catch(err) {
     console.error(`Error: ${err}`);
   }
+  lagDirty[l] = false;
+  fetchLacp();
+}
+
+function fetchLacp() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      const s = JSON.parse(xhttp.responseText);
+      for (let l = 0; l < 4; l++) {
+        const lg = s.lags[l];
+        lacpCfg[l] = parseInt(lg.cfg, 16);
+        if (lagDirty[l])
+          continue;
+        document.getElementById("mode" + l).value = lacpCfg[l] ? "lacp" : "static";
+        document.getElementById("lagStat" + l).textContent = lacpCfg[l]
+          ? ("LACP: aggregator " + (lg.aggValid ? lg.agg : "(negotiating)")
+             + " - active members: 0x" + lg.members)
+          : "";
+      }
+      let t = "";
+      if (s.on) {
+        t = "port  lag   actor  partner  rxstate  rx-count  partner-system\n";
+        for (const p of s.ports) {
+          if (p.lag == 255) continue;
+          t += String(p.p).padEnd(6) + String(p.lag + 1).padEnd(6)
+             + p.a.padEnd(7) + p.pt.padEnd(9)
+             + String(p.rs).padEnd(9) + String(parseInt(p.rx, 16)).padEnd(10) + p.psys + "\n";
+        }
+      }
+      document.getElementById("lacpPorts").textContent = t;
+    }
+  };
+  xhttp.open("GET", `/lacp.json`, true);
+  sendXHTTP(xhttp);
 }
 
 sectionInits.lag = function() {
   update( () => {
     lagForm();
+    fetchLacp();
     setSectionInterval(update, 2000);
+    setSectionInterval(fetchLacp, 2000);
   });
 };
 
