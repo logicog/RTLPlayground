@@ -8,6 +8,11 @@
 
 ## Fixed
 
+- Web UI
+  - `/counters.json` rejects physical port 1 on 9-port devices.
+    A mapped logical port of `0` was treated as invalid,
+    but it is a valid port there.
+
 ## Breaking changes
 
 - Config
