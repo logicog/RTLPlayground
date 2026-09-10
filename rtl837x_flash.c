@@ -8,6 +8,7 @@
 #include "rtl837x_sfr.h"
 
 __xdata uint8_t dio_enabled;
+__xdata uint8_t sio_compat_busy_flag_read;
 __xdata struct flash_region_t flash_region;
 
 __xdata uint32_t flash_size;
@@ -27,6 +28,90 @@ __xdata uint8_t flash_capacity_code;
 #define CMD_READ_UNIQUE_ID	0x4b
 #define CMD_READ_JEDEC_ID	0x9f
 #define CMD_FREAD_DIO		0xbb
+
+static uint8_t flash_read_status_mmio(void)
+{
+	while(SFR_FLASH_EXEC_BUSY);
+
+	SFR_FLASH_TCONF = 0x11;
+	SFR_FLASH_CMD_R = CMD_READ_STATUS; 
+	// execute and wait for controller done
+	SFR_FLASH_EXEC_GO = 1;
+	while(SFR_FLASH_EXEC_BUSY);
+	return SFR_FLASH_DATA0;
+}
+
+static uint8_t flash_read_status_sio(void)
+{
+    uint8_t old_modeb;
+    uint8_t old_dummy;
+    uint8_t status;
+
+    while(SFR_FLASH_EXEC_BUSY);
+
+    // SAVE current hardware state (Dual I/O, Dummy Clocks)
+    old_modeb = SFR_FLASH_MODEB;
+    old_dummy = SFR_FLASH_DUMMYCYCLES;
+
+    // FORCE Standard Single SPI mode for the status command
+    SFR_FLASH_MODEB = 0x0;
+    SFR_FLASH_DUMMYCYCLES = 0;
+
+    status = flash_read_status_mmio();
+
+    // RESTORE previous hardware state for MMIO execution
+    SFR_FLASH_MODEB = old_modeb;
+    SFR_FLASH_DUMMYCYCLES = old_dummy;
+
+    return status;
+}
+
+static uint8_t flash_read_status(void)
+{
+	if(sio_compat_busy_flag_read)
+		return flash_read_status_sio();
+	else
+		return flash_read_status_mmio();
+}
+
+static void flash_wait_busy(void)
+{
+	uint16_t i = 0;
+	while (flash_read_status() & 0x1) {
+		// Wait until busy bit clear
+		if(++i > 5000) {
+			test_mmio_sio();
+			i = 0;
+		}
+	}
+}
+
+static void flash_wait_write_latch_enable(void)
+{
+	uint8_t status;
+	do {
+		status = flash_read_status();
+	} while (!(status & 0x2));
+}
+
+void test_mmio_sio(void)
+{
+    // If we already fell back, don't even bother testing anymore
+    if (sio_compat_busy_flag_read) return;
+
+    uint8_t sio_status = flash_read_status_sio();
+    uint8_t mmio_status = flash_read_status_mmio();
+
+    if(mmio_status != sio_status) {
+        print_string("WARNING: SPI Flash MMIO failure detected. Falling back to SPI Flash SIO Mode: ");
+        print_byte(mmio_status);
+        write_char(' ');
+        print_byte(sio_status);
+        write_char('\n');
+        
+        sio_compat_busy_flag_read = 1;
+    }
+}
 
 /*
  * Configure Memory Managed IO
@@ -56,6 +141,7 @@ void flash_configure_mmio(void)
  */
 void flash_init(uint8_t enable_dio)
 {
+	sio_compat_busy_flag_read = 0;
 	if (enable_dio) {
 		SFR_FLASH_CONFIG = 9;  // There may be a chip-select in here
 		SFR_FLASH_CONF_RCMD = CMD_FREAD_DIO;
@@ -82,41 +168,9 @@ void flash_init(uint8_t enable_dio)
 	flash_configure_mmio();
 }
 
-
-uint8_t flash_read_status(void)
-{
-    uint8_t old_modeb;
-    uint8_t old_dummy;
-    uint8_t status;
-
-    while(SFR_FLASH_EXEC_BUSY);
-
-    // SAVE current hardware state (Dual I/O, Dummy Clocks)
-    old_modeb = SFR_FLASH_MODEB;
-    old_dummy = SFR_FLASH_DUMMYCYCLES;
-
-    // FORCE Standard Single SPI mode for the status command
-    SFR_FLASH_MODEB = 0x0;
-    SFR_FLASH_DUMMYCYCLES = 0;
-
-    SFR_FLASH_TCONF = 0x11;
-    SFR_FLASH_CMD_R = CMD_READ_STATUS; 
-	// execute and wait for controller done
-    SFR_FLASH_EXEC_GO = 1;
-    while(SFR_FLASH_EXEC_BUSY);
-    status = SFR_FLASH_DATA0;
-
-    // RESTORE previous hardware state for MMIO execution
-    SFR_FLASH_MODEB = old_modeb;
-    SFR_FLASH_DUMMYCYCLES = old_dummy;
-
-    return status;
-}
-
-
 void flash_read_uid(void)
 {
-	while (flash_read_status() & 0x1);
+	flash_wait_busy();
 
 	// Set slow read mode for UID
 	SFR_FLASH_MODEB = 0x0;
@@ -166,7 +220,7 @@ __code char* get_flash_size_str(void)
 
 void flash_read_jedecid(void)
 {
-	while (flash_read_status() & 0x1);
+	flash_wait_busy();
 
 	// Set read mode for JEDEC ID
 	SFR_FLASH_MODEB = 0x0;
@@ -196,12 +250,8 @@ void flash_read_jedecid(void)
 
 void flash_write_enable(void)
 {
-	short status;
-
 	// Wait until busy bit clear
-	do {
-		status = flash_read_status();
-	} while (status & 0x1);
+	flash_wait_busy();
 
 	SFR_FLASH_TCONF = 0x18;
 	SFR_FLASH_CMD = CMD_WRITE_ENABLE;
@@ -214,10 +264,8 @@ void flash_write_enable(void)
 	SFR_FLASH_MODEB = 0;
 
 	SFR_FLASH_EXEC_GO = 1;
-	// Wait for write status enabled
-	do {
-		status = flash_read_status();
-	} while (!(status & 0x2));
+
+	flash_wait_write_latch_enable();
 }
 
 /*
@@ -226,10 +274,7 @@ void flash_write_enable(void)
  */
 void flash_read_bulk(__xdata uint8_t *dst)
 {
-	short status;
-	do {
-		status = flash_read_status();
-	} while (status & 0x1);
+	flash_wait_busy();
 
 	// Set fast read mode
 	if (dio_enabled) {
@@ -274,7 +319,7 @@ void flash_read_bulk(__xdata uint8_t *dst)
 
 void flash_read_security(void)
 {
-	while (flash_read_status() & 0x1);
+	flash_wait_busy();
 
 	// Set slow read mode
 	SFR_FLASH_MODEB = 0x0;
@@ -321,7 +366,7 @@ void flash_sector_erase(void)
 	SFR_FLASH_ADDR0 = flash_region.addr;
 
 	SFR_FLASH_EXEC_GO = 1;
-	while (flash_read_status() & 0x1);
+	flash_wait_busy();
 
 	flash_configure_mmio();
 }
@@ -356,6 +401,6 @@ void flash_write_bytes(__xdata uint8_t *ptr)
 		flash_region.len -= 4;
 		flash_region.addr += 4;
 	};
-	while (flash_read_status() & 0x1);
+	flash_wait_busy();
 	flash_configure_mmio();
 }
