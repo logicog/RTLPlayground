@@ -882,9 +882,15 @@ __code const struct machine machine = {
 };
 
 
-#elif defined MACHINE_PCB_SWTG024AS_A_2_0_1
+#elif defined(MACHINE_PCB_SWTG024AS_A_2_0_1) || defined(MACHINE_PCB_SWTG024AS_V2_1_1)
+// V2.1.1_19023 shares the A-V2.0.1 port, SFP and LED tables; see doc/devices/SWTG024AS-V2.1.1.md.
 __code const struct machine machine = {
+#if defined(MACHINE_PCB_SWTG024AS_V2_1_1)
+    .machine_name = "SWTG024AS-V2.1.1_19023",
+    .mac_flash_offset = 0x1FC000,
+#else
     .machine_name = "PCB-SWTG024AS-A-2.0.1",
+#endif
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
@@ -907,8 +913,13 @@ __code const struct machine machine = {
     .sfp_port[1].sds = 1,
     .sfp_port[1].i2c =  I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
+#if defined(MACHINE_PCB_SWTG024AS_V2_1_1)
+    .reset_pin = GPIO48_I2C_SCL1,
+    .high_leds = { .mux = LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
+#else
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
+#endif
     .port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
     .led_sets = {
                     {
