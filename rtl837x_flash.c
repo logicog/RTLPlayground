@@ -29,6 +29,9 @@ __xdata uint8_t flash_capacity_code;
 #define CMD_READ_JEDEC_ID	0x9f
 #define CMD_FREAD_DIO		0xbb
 
+#define STATUS_REG_BUSY_MASK	0x01
+#define STATUS_REG_WEL_MASK		0x02
+
 static uint8_t flash_read_status_mmio(void)
 {
 	while(SFR_FLASH_EXEC_BUSY);
@@ -77,9 +80,8 @@ static uint8_t flash_read_status(void)
 static void flash_wait_busy(void)
 {
 	uint16_t i = 0;
-	while (flash_read_status() & 0x1) {
-		// Wait until busy bit clear
-		if(++i > 5000) {
+	while (flash_read_status() & STATUS_REG_BUSY_MASK) {
+		if(i++ > 5000) {
 			test_mmio_sio();
 			i = 0;
 		}
@@ -91,7 +93,7 @@ static void flash_wait_write_latch_enable(void)
 	uint8_t status;
 	do {
 		status = flash_read_status();
-	} while (!(status & 0x2));
+	} while (!(status & STATUS_REG_WEL_MASK));
 }
 
 void test_mmio_sio(void)
@@ -102,7 +104,7 @@ void test_mmio_sio(void)
     uint8_t sio_status = flash_read_status_sio();
     uint8_t mmio_status = flash_read_status_mmio();
 
-    if(mmio_status != sio_status) {
+    if (mmio_status != sio_status) {
         print_string("WARNING: SPI Flash MMIO failure detected. Falling back to SPI Flash SIO Mode: ");
         print_byte(mmio_status);
         write_char(' ');
