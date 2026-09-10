@@ -166,6 +166,13 @@ struct stp_pkt_in {
 #define BPDU_ROLE_ROOT		(0b10 << 2)
 #define BPDU_ROLE_DESIGNATED	(0b11 << 2)
 
+/* Port state as the MSTP register encodes it, two bits per port. */
+#define STP_ST_DISABLED		0b00
+#define STP_ST_BLOCKING		0b01
+#define STP_ST_LEARNING		0b10
+#define STP_ST_FORWARDING	0b11
+#define STP_ST_MASK		0b11
+
 /* Console messages name the port on the front panel, not the internal index. */
 static void print_port_nl(uint8_t port) __reentrant
 {
@@ -351,7 +358,6 @@ static void stp_state_bits(uint8_t port, uint8_t state) __reentrant
 }
 
 
-/* MSTP register encoding: 00 disable, 01 blocking, 10 learning, 11 forwarding. */
 static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 {
 	reg_read_m(RTL837X_MSTP_STATES);
@@ -359,7 +365,7 @@ static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 		if (!stp_ent_has(port, stp_ss_i))
 			continue;
 		stp_scratch = 3 - (stp_ss_i >> 2);
-		sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((stp_ss_i << 1) & 0x7));
+		sfr_data[stp_scratch] &= ~(uint8_t)(STP_ST_MASK << ((stp_ss_i << 1) & 0x7));
 		sfr_data[stp_scratch] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
 	}
 	reg_write_m(RTL837X_MSTP_STATES);
@@ -369,22 +375,22 @@ static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 static void stp_ent_apply(uint8_t e) __reentrant
 {
 	if (!(stp_pflags[e] & STP_PF_ENABLED)) {
-		stp_state_set(e, 0b11);
+		stp_state_set(e, STP_ST_FORWARDING);
 		return;
 	}
 	if (stp_pflags[e] & STP_PF_TRIPPED) {
-		stp_state_set(e, 0b00);
+		stp_state_set(e, STP_ST_DISABLED);
 		return;
 	}
 	if (stp_pflags[e] & STP_PF_ADMEDGE) {
 		stp_pflags[e] |= STP_PF_OPEREDGE;
-		stp_state_set(e, 0b11);
+		stp_state_set(e, STP_ST_FORWARDING);
 		return;
 	}
 	if (port_timers[e])
-		stp_state_set(e, 0b01);
+		stp_state_set(e, STP_ST_BLOCKING);
 	else
-		stp_state_set(e, ((stp_link_prev >> e) & 1) ? 0b11 : 0b01);
+		stp_state_set(e, ((stp_link_prev >> e) & 1) ? STP_ST_FORWARDING : STP_ST_BLOCKING);
 }
 
 
@@ -421,7 +427,7 @@ static void stp_loop_hold_peer(uint8_t port) __reentrant
 	if (!port_timers[port]) {
 		print_string("STP: loop detected, blocking port ");
 		print_port_nl(port);
-		stp_state_set(port, 0b01);
+		stp_state_set(port, STP_ST_BLOCKING);
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		stp_topology_change(port);
 	}
@@ -488,7 +494,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 		reg_read_m(RTL837X_MSTP_STATES);
 		stp_scratch = stp_state_port(port);
 		STP_O->flags = port == stp_root_port ? BPDU_ROLE_ROOT : BPDU_ROLE_DESIGNATED;
-		if (((sfr_data[3 - (stp_scratch >> 2)] >> ((stp_scratch << 1) & 0x7)) & 0b11) == 0b11)
+		if (((sfr_data[3 - (stp_scratch >> 2)] >> ((stp_scratch << 1) & 0x7)) & STP_ST_MASK) == STP_ST_FORWARDING)
 			STP_O->flags |= BPDU_FLAG_LEARNING | BPDU_FLAG_FORWARDING;
 	} else {
 		STP_O->msg_len = HTONS(BPDU_LEN_CONFIG);
@@ -573,7 +579,7 @@ void stp_in(void) __banked
 		print_string("STP: BPDU guard tripped, disabling port ");
 		print_port_nl(port);
 		stp_pflags[port] |= STP_PF_TRIPPED;
-		stp_state_set(port, 0b00);
+		stp_state_set(port, STP_ST_DISABLED);
 		stp_tc_count++;
 		return;
 	}
@@ -664,7 +670,7 @@ void stp_in(void) __banked
 		if (stp_pflags[port] & STP_PF_ROOTGUARD) {
 			print_string("STP: root guard blocking port ");
 			print_port_nl(port);
-			stp_state_set(port, 0b01);
+			stp_state_set(port, STP_ST_BLOCKING);
 			port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
 			stp_pflags[port] &= ~STP_PF_OPEREDGE;
 			return;
@@ -748,7 +754,7 @@ void stp_timers(void) __banked
 				if (!((stp_link_now ^ stp_link_prev) >> stp_i & 1))
 					continue;
 				/* Either way the port must stop forwarding first. */
-				stp_state_set(stp_i, 0b01);
+				stp_state_set(stp_i, STP_ST_BLOCKING);
 				if ((stp_link_now >> stp_i) & 1) {
 					/* Carrier back: re-run the listen period rather than
 					 * forwarding straight away - the segment may have been
@@ -793,7 +799,7 @@ void stp_timers(void) __banked
 		if (port_timers[stp_i]) {
 			if (!--port_timers[stp_i]) {
 				stp_loop_held[stp_i] = 0;
-				stp_state_set(stp_i, 0b11);
+				stp_state_set(stp_i, STP_ST_FORWARDING);
 				print_string("STP: port forwarding ");
 				print_port_nl(stp_i);
 				stp_topology_change(stp_i);
@@ -804,7 +810,7 @@ void stp_timers(void) __banked
 				 * host-facing, go to forwarding without the full wait. */
 				port_timers[stp_i] = 0;
 				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
-				stp_state_set(stp_i, 0b11);
+				stp_state_set(stp_i, STP_ST_FORWARDING);
 				print_string("STP: edge port forwarding ");
 				print_port_nl(stp_i);
 			}
@@ -907,11 +913,11 @@ void stp_setup(void) __banked
 			/* not participating, or admin edge: forwarding immediately */
 			if (stp_pflags[stp_i] & STP_PF_ADMEDGE)
 				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
-			stp_state_bits(stp_i, 0b11);
+			stp_state_bits(stp_i, STP_ST_FORWARDING);
 			port_timers[stp_i] = 0;
 		} else {
 			/* listen first: blocking until the forward-delay expires */
-			stp_state_bits(stp_i, 0b01);
+			stp_state_bits(stp_i, STP_ST_BLOCKING);
 			port_timers[stp_i] = (uint16_t)stp_fwddelay_s * STP_HZ;
 		}
 	}
@@ -952,7 +958,7 @@ void stp_off(void) __banked
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
 		// Set STP port state to forwarding
 		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
-		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
+		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(STP_ST_FORWARDING << ((stp_i << 1) & 0x7));
 	}
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
@@ -969,7 +975,7 @@ void stp_off(void) __banked
 
 void stp_parse(void) __banked __reentrant
 {
-	uint8_t port;
+	uint8_t ent;
 
 	if (cmd_compare(1, "on")) {
 		print_string("STP enabled\n");
@@ -990,7 +996,7 @@ void stp_parse(void) __banked __reentrant
 	if (cmd_words_len < 3)
 		goto err;
 
-	if (cmd_compare(1, "port") || cmd_compare(1, "lag")) {
+	if (cmd_compare(1, "ent") || cmd_compare(1, "lag")) {
 		stp_lag_map();
 		if (cmd_words_len < 4)
 			goto err;
@@ -999,14 +1005,14 @@ void stp_parse(void) __banked __reentrant
 				goto err;
 			if (!atoi_results_u8 || atoi_results_u8 > STP_LAG_COUNT)
 				goto err;
-			port = STP_LAG_BASE + atoi_results_u8 - 1;
+			ent = STP_LAG_BASE + atoi_results_u8 - 1;
 		} else {
 			if (!cmd_parse_port_separator(cmd_words_b[2]))
 				goto err;
-			port = atoi_results_u8;
-			if (stp_ent_of[port] != port) {
+			ent = atoi_results_u8;
+			if (stp_ent_of[ent] != ent) {
 				print_string("Port belongs to a LAG, configure it as lag ");
-				print_byte(stp_ent_of[port] - STP_LAG_BASE + 1);
+				print_byte(stp_ent_of[ent] - STP_LAG_BASE + 1);
 				write_char('\n');
 				return;
 			}
@@ -1014,26 +1020,26 @@ void stp_parse(void) __banked __reentrant
 		if (cmd_words_len < 5 && !cmd_compare(3, "on") && !cmd_compare(3, "off"))
 			goto err;
 		if (cmd_compare(3, "on")) {
-			stp_pflags[port] |= STP_PF_ENABLED;
-			stp_pflags[port] &= ~STP_PF_TRIPPED;
+			stp_pflags[ent] |= STP_PF_ENABLED;
+			stp_pflags[ent] &= ~STP_PF_TRIPPED;
 			if (stp_enabled) {	/* (re)join: listen first */
-				stp_state_set(port, 0b01);
-				port_timers[port] = (uint16_t)stp_fwddelay_s * STP_HZ;
+				stp_state_set(ent, STP_ST_BLOCKING);
+				port_timers[ent] = (uint16_t)stp_fwddelay_s * STP_HZ;
 			}
 		} else if (cmd_compare(3, "off")) {
-			stp_pflags[port] &= ~STP_PF_ENABLED;
+			stp_pflags[ent] &= ~STP_PF_ENABLED;
 			if (stp_enabled)
-				stp_state_set(port, 0b11);	/* plain forwarding */
+				stp_state_set(ent, STP_ST_FORWARDING);	/* plain forwarding */
 		} else if (cmd_compare(3, "edge")) {
 			/* Also drop the *operational* edge flag: it is what exempts the
-			 * port from topology changes and lets it skip the listen period,
+			 * ent from topology changes and lets it skip the listen period,
 			 * so leaving it set would keep the old behaviour until the next
 			 * "stp off"/"stp on". An admin edge is operational immediately. */
-			stp_pflags[port] &= ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE | STP_PF_OPEREDGE);
+			stp_pflags[ent] &= ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE | STP_PF_OPEREDGE);
 			if (cmd_compare(4, "on"))
-				stp_pflags[port] |= STP_PF_ADMEDGE | STP_PF_OPEREDGE;
+				stp_pflags[ent] |= STP_PF_ADMEDGE | STP_PF_OPEREDGE;
 			else if (cmd_compare(4, "auto"))
-				stp_pflags[port] |= STP_PF_AUTOEDGE;
+				stp_pflags[ent] |= STP_PF_AUTOEDGE;
 			else if (!cmd_compare(4, "off"))
 				goto err;
 		} else if (cmd_compare(3, "cost")) {
@@ -1050,14 +1056,14 @@ void stp_parse(void) __banked __reentrant
 			}
 			if (stp_cost_scratch > 200000000UL)
 				goto err;
-			stp_pcost[port] = stp_cost_scratch;
+			stp_pcost[ent] = stp_cost_scratch;
 		} else if (cmd_compare(3, "p2p")) {
 			if (cmd_compare(4, "auto"))
-				stp_pp2p[port] = 0;
+				stp_pp2p[ent] = 0;
 			else if (cmd_compare(4, "on"))
-				stp_pp2p[port] = 1;
+				stp_pp2p[ent] = 1;
 			else if (cmd_compare(4, "off"))
-				stp_pp2p[port] = 2;
+				stp_pp2p[ent] = 2;
 			else
 				goto err;
 		} else if (cmd_compare(3, "prio")) {
@@ -1065,20 +1071,20 @@ void stp_parse(void) __banked __reentrant
 				goto err;
 			if (atoi_results_u8 > 240 || (atoi_results_u8 & 0x0f))
 				goto err;
-			stp_pprio[port] = atoi_results_u8;
+			stp_pprio[ent] = atoi_results_u8;
 		} else if (cmd_compare(3, "guard")) {
-			stp_pflags[port] &= ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD);
+			stp_pflags[ent] &= ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD);
 			if (cmd_compare(4, "bpdu"))
-				stp_pflags[port] |= STP_PF_BPDUGUARD;
+				stp_pflags[ent] |= STP_PF_BPDUGUARD;
 			else if (cmd_compare(4, "root"))
-				stp_pflags[port] |= STP_PF_ROOTGUARD;
+				stp_pflags[ent] |= STP_PF_ROOTGUARD;
 			else if (!cmd_compare(4, "none"))
 				goto err;
 		} else if (cmd_compare(3, "filter")) {
 			if (cmd_compare(4, "on"))
-				stp_pflags[port] |= STP_PF_FILTER;
+				stp_pflags[ent] |= STP_PF_FILTER;
 			else if (cmd_compare(4, "off"))
-				stp_pflags[port] &= ~STP_PF_FILTER;
+				stp_pflags[ent] &= ~STP_PF_FILTER;
 			else
 				goto err;
 		} else {
@@ -1128,5 +1134,5 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
-	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
+	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | ent <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
 }
