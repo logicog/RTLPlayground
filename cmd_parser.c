@@ -14,6 +14,7 @@
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
+#include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
 #include "uip/uip.h"
@@ -49,9 +50,6 @@ __xdata char port_names[9][PORT_NAME_SIZE];
 
 extern __xdata uint16_t management_vlan;
 extern __xdata struct uip_eth_addr uip_ethaddr;
-extern __xdata uint8_t sfp_speed[2];
-extern __xdata uint8_t sfp_pins_last;
-extern __xdata uint8_t sfp_options[2];
 __xdata uint8_t gpio_last_value[8] = { 0 };
 
 // Temporatly for str to hex convertion value.

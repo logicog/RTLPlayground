@@ -6,6 +6,7 @@
 #include "rtl837x_phy.h"
 #include "phy.h"
 #include "machine.h"
+#include "boot.h"
 
 extern __xdata uint8_t sfr_data[4];
 extern __code struct machine machine;
