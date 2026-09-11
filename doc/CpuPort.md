@@ -79,6 +79,11 @@ bit7  KEEP    | 6 VSEL     | 5 LEARN_DIS         | 4:0 VIDX
 
 All fields are in network byte order.
 
+This word has to be written through `HTONS` like every other field of the tag.
+Writing a constant raw puts the bits in the wrong byte, so `0x0020` reaches the
+wire as `0x2000`, which is EFID rather than LEARN_DIS. The ASIC then fails to
+parse the tag and forwards the frame with the `0x8899` header still on it.
+
 * `EFID_EN`, `EFID`: look the destination up under this filtering ID
   instead of the port's own
 * `PRI_EN`, `PRI`: force the given priority on the frame
