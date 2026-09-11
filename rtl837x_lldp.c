@@ -13,10 +13,6 @@
 extern __xdata uint8_t lldp_enabled;
 extern __code const struct machine machine;
 
-__xdata static uint8_t lldp_frame[LLDP_MAX_FRAME];
-
-__xdata static uint8_t lldp_mac[LLDP_MAC_ADDR_LEN];
-
 uint8_t lldp_seconds;
 
 void lldp_init(void) __banked
@@ -63,11 +59,6 @@ void lldp_send(void) __banked __reentrant
     uint16_t len = 0;
 	uint8_t port_position;
 
-    uint16_t hostname_length = 0;
-    uint16_t machine_name_length = 0;
-    __xdata char *hp = hostname;
-    const char *mp = machine.machine_name;
-
     lldp_set_addresses();
     lldp_set_rtl_wrapper();
 
@@ -96,33 +87,13 @@ void lldp_send(void) __banked __reentrant
     p[len++] = 0x00; //padding
     p[len++] = LLDP_TTL_TTL_SECONDS;
 
-    //SysName
-    p[len++] = LLDP_TYPE(LLDP_SYSNAME_TLV_TYPE);
-    p[len++] = 0;
-
-    while (*hp)
-    {
-        hostname_length++;
-        p[len++] = *hp++;
-    }
-    p[len-hostname_length-1] = hostname_length;
-
-    //SysDesc
-    p[len++] = LLDP_TYPE(LLDP_SYSDESC_TLV_TYPE);
-    p[len++] = 0;
-
-    while (*mp)
-    {
-        machine_name_length++;
-        p[len++] = *mp++;
-    }
-    p[len-machine_name_length-1] = machine_name_length;
+    lldp_sysname(p, &len);
+    lldp_sysdesc(p, &len);
 
     // End of LLDPDU TLV
     p[len++] = 0x00; //padding
     p[len++] = 0x00; //padding
 
-    //Ethernet payload must be at least 46 bytes, so pad
     while (len < LLDP_MIN_ETHERNET_PAYLOAD_LENGTH)
         p[len++] = 0x00;
 
@@ -174,4 +145,37 @@ void lldp_set_rtl_wrapper(void) __banked {
     LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 
     LLDP_O->ether_type = HTONS(LLDP_ETHERTYPE);
+}
+
+void lldp_sysname(uint8_t *p, uint16_t *len) __banked
+{
+    uint16_t hostname_length = 0;
+    __xdata char *hp = hostname;
+
+    p[(*len)++] = LLDP_TYPE(LLDP_SYSNAME_TLV_TYPE);
+    p[(*len)++] = 0;
+
+    while (*hp)
+    {
+        hostname_length++;
+        p[(*len)++] = *hp++;
+    }
+    p[(*len)-hostname_length-1] = hostname_length;
+
+}
+
+void lldp_sysdesc(uint8_t *p, uint16_t *len) __banked
+{
+    uint16_t machine_name_length = 0;
+    const char *mp = machine.machine_name;
+
+    p[(*len)++] = LLDP_TYPE(LLDP_SYSDESC_TLV_TYPE);
+    p[(*len)++] = 0;
+
+    while (*mp)
+    {
+        machine_name_length++;
+        p[(*len)++] = *mp++;
+    }
+    p[(*len)-machine_name_length-1] = machine_name_length;
 }
