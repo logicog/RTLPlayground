@@ -15,7 +15,6 @@ void execute_config(void) __banked;
 void execute_commands(__xdata uint8_t *p) __banked;
 void print_ip(__xdata uint8_t *ptr) __banked;
 void print_mac(__xdata uint8_t *ptr) __banked;
-uint8_t parse_mac(uint8_t idx, __xdata uint8_t *mac);
 void print_sw_version(void) __banked;
 void clear_command_history(void) __banked;
 
