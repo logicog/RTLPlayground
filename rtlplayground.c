@@ -1251,7 +1251,7 @@ void handle_rx(void)
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0800)) { // IPv4
 			if (!management_vlan || management_vlan == rx_packet_vlan) {
-				uip_arp_ipin();	// Learn MAC addresses in TCP packets
+				uip_arp_ipin();
 				uip_input();
 				if (uip_len) {
 					// Add ethernet frame
