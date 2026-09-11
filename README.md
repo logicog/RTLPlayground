@@ -198,7 +198,7 @@ Finally, push the Upload File Button and you're done !
 ## (5) Flashing the ROM directly (hardware way, but also only way to rescue)
 
 This procedure is the only way to flash unmanaged switches, if the ROM chip is large enough.
-This is also the only way to unbrick your device if something went wroong.
+This is also the only way to unbrick your device if something went wrong.
 
 > [!IMPORTANT]
 > You need a SOIC-8 clip to flash the ROM chip directly onboard.
@@ -207,6 +207,11 @@ This is also the only way to unbrick your device if something went wroong.
 
 > [!CAUTION]
 > As you need to open your switch case, consider that the warranty is gone.
+> Also, the inside of some devices expose mains voltage, which can be a
+> dangerous or potentially lethal hazard. Even after the device is unplugged,
+> high-voltage capacitors can remain charged afterward and may still shock you.
+> Do not attempt to open/disassemble a mains powered device unless you understand
+> how to do so safely.
 
 - Disconnect power from switch.
 - Open the switch.
@@ -220,6 +225,29 @@ This is also the only way to unbrick your device if something went wroong.
 - Flash is to the ROM chip.
 - Disconect the clip from the ROM chip.
 - You're done, ready for the first boot.
+
+### Flashrom example
+
+This example uses `flashrom` and a CH341A programmer [modded for 3.3V](https://flashrom.org/supported_hw/supported_prog/ch341ab.html)
+to program a MokerLink POE-2G080110GS. This device has mains voltage on the inside,
+see the above caution about working with mains devices.
+
+```
+# compile RTLPlayground
+make MACHINE=POE_2G080110GS
+
+# detect chip
+sudo flashrom -p ch341a_spi
+
+# for unmanaged POE-2G080110GS with 4MB Winbond: extend firmware to 4MB with 0xFF (or else flashrom gets mad)
+objcopy -I binary -O binary --gap-fill=0xff --pad-to=0x400000 output/rtlplayground.bin output/rtlplayground-4MiB.bin
+
+# read stock firmware for backup
+sudo flashrom -p ch341a_spi -c W25Q32JV -r mokerlink-stock-backup.bin
+
+# write RTLPlayground firmware
+sudo flashrom -p ch341a_spi -c W25Q32JV -w output/rtlplayground-4MiB.bin
+```
 
 ## (6) Connecting a serial interface (optional)
 
