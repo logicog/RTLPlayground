@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 
+#define LLDP_MIN_ETHERNET_PAYLOAD_LENGTH 46
 #define LLDP_ETHERTYPE       0x88cc
+#define LLDP_ETHERTYPE_LENGTH 2
 #define LLDP_MAX_FRAME       256
 #define LLDP_MAC_ADDR_LEN    6
 #define LLDP_TX_INTERVAL_SEC 30

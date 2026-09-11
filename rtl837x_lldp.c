@@ -59,9 +59,8 @@ struct lldp_pkt {
 
 void lldp_send(void) __banked __reentrant
 {
-    uint8_t port;
     uint8_t *p;
-    uint16_t len;
+    uint16_t len = 0;
 	uint8_t port_position;
 
     uint16_t hostname_length = 0;
@@ -73,7 +72,6 @@ void lldp_send(void) __banked __reentrant
     lldp_set_rtl_wrapper();
 
     p = LLDP_O->payload;
-    len = 0;
 
     //Chassis ID
     p[len++] = LLDP_TYPE(LLDP_CHASSIS_ID_TLV_TYPE);
@@ -125,7 +123,7 @@ void lldp_send(void) __banked __reentrant
     p[len++] = 0x00; //padding
 
     //Ethernet payload must be at least 46 bytes, so pad
-    while (len < 46)
+    while (len < LLDP_MIN_ETHERNET_PAYLOAD_LENGTH)
         p[len++] = 0x00;
 
     /*
@@ -136,12 +134,12 @@ void lldp_send(void) __banked __reentrant
      *     dst mac
      *     src mac
      *     rtl_tag  sizeof(struct rtl_tag)
-     *     EtherType 2
+     *     EtherType (2 bytes)
      *     payload   len
      */
-    uip_len = LLDP_MAC_ADDR_LEN + LLDP_MAC_ADDR_LEN + sizeof(struct rtl_tag) + 2 + len;
+    uip_len = LLDP_MAC_ADDR_LEN + LLDP_MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + len;
 
-    for (port = machine.min_port; port <= machine.max_port; port++) {
+    for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
 
         LLDP_O->payload[port_position] = '1' + port;
         LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
