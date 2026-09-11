@@ -295,7 +295,7 @@ void igmp_packet_handler(void) __banked
 			entry.pmask |= ((uint16_t)sfr_data[3]) << 2;
 		}
 		// Update (found) entry with portmask from trapped Packet
-		entry.pmask |= (1L << (IGMP_I->rtl_tag.pmask >> 8));  // Swap bytes from network order, only 4 LSB count
+		entry.pmask |= ((uint16_t)1) << ((IGMP_I->rtl_tag.pmask >> 8) & 0x0f);  // Swap bytes from network order, only 4 LSB count
 //		print_string("\nPort-Mask: "); print_short(entry.pmask); write_char('\n');
 	} else if (IGMP_I->igmp_rtype == 0x3){  // Leave group
 		if (sfr_data[2] & 0x10) {
@@ -312,7 +312,7 @@ void igmp_packet_handler(void) __banked
 			write_char('\n');
 #endif
 			// Remove portmask of IGMP packet from entry
-			entry.pmask &= ~(1L << (IGMP_I->rtl_tag.pmask >> 8));  // Swap bytes from network order, only 4 LSB count
+			entry.pmask &= ~(((uint16_t)1) << ((IGMP_I->rtl_tag.pmask >> 8) & 0x0f));  // Swap bytes from network order, only 4 LSB count
 //			print_string("\nPort-Mask: "); print_short(entry.pmask); write_char('\n');
 		} else {
 			print_string("IGMP Entry already deleted\n");
