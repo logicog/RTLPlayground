@@ -2013,25 +2013,45 @@ function portsToRange(mask, nPorts) {
   return parts.length ? parts.join(',') : '-';
 }
 
-async function loadVlanTable() {
+var vlanTableGen = 0;
+
+async function loadVlanTable(vlans) {
   var tbody = document.getElementById('vlanTableBody');
   if (!tbody) return;
-  tbody.innerHTML = '';
-  var resp;
-  try { resp = await fetch('/vlanlist'); } catch(e) { return; }
-  if (!resp.ok) return;
-  var vlans = (await resp.json()).vlan || [];
+  var gen = ++vlanTableGen;
+  if (!vlans) {
+    var resp;
+    try { resp = await fetch('/vlanlist'); } catch(e) { return; }
+    if (gen !== vlanTableGen) return;
+    if (resp.status === 401) {
+      document.location = "/login.html";
+      return;
+    }
+    if (!resp.ok) return;
+    vlans = (await resp.json()).vlan || [];
+  }
+  var frag = document.createDocumentFragment();
   for (var i = 0; i < vlans.length; i++) {
     var v = vlans[i];
-    var vresp;
-    try { vresp = await fetch('/vlan.json?vid=' + v.id); } catch(e) { continue; }
-    if (!vresp.ok) continue;
-    var s = await vresp.json();
-    var m = parseInt(s.members, 16);
-    var members = m & 0x3FF;
-    var untag   = ((m >> 10) & 0x3FF) & members;
-    var tagged  = members & ~untag;
-    var pvid    = parseInt(s.pvid, 16) & 0x3FF;
+    var vresp = null;
+    var s = null;
+    try { vresp = await fetch('/vlan.json?vid=' + v.id); } catch(e) { vresp = null; }
+    if (gen !== vlanTableGen) return;
+    if (vresp && vresp.status === 401) {
+      document.location = "/login.html";
+      return;
+    }
+    if (vresp && vresp.ok) {
+      try { s = await vresp.json(); } catch(e) { s = null; }
+    }
+    var members = 0, untag = 0, tagged = 0, pvid = 0;
+    if (s) {
+      var m = parseInt(s.members, 16);
+      members = m & 0x3FF;
+      untag   = ((m >> 10) & 0x3FF) & members;
+      tagged  = members & ~untag;
+      pvid    = parseInt(s.pvid, 16) & 0x3FF;
+    }
     var tr = document.createElement('tr');
     var td, a, btn;
     td = document.createElement('td');
@@ -2049,13 +2069,13 @@ async function loadVlanTable() {
     td = document.createElement('td');
     td.textContent = v.name || ''; tr.appendChild(td);
     td = document.createElement('td');
-    td.textContent = portsToRange(members, numPorts); tr.appendChild(td);
+    td.textContent = s ? portsToRange(members, numPorts) : '?'; tr.appendChild(td);
     td = document.createElement('td');
-    td.textContent = portsToRange(tagged, numPorts); tr.appendChild(td);
+    td.textContent = s ? portsToRange(tagged, numPorts) : '?'; tr.appendChild(td);
     td = document.createElement('td');
-    td.textContent = portsToRange(untag, numPorts); tr.appendChild(td);
+    td.textContent = s ? portsToRange(untag, numPorts) : '?'; tr.appendChild(td);
     td = document.createElement('td');
-    td.textContent = portsToRange(pvid, numPorts); tr.appendChild(td);
+    td.textContent = s ? portsToRange(pvid, numPorts) : '?'; tr.appendChild(td);
     td = document.createElement('td');
     if (v.id !== 1) {
       btn = document.createElement('button');
@@ -2066,8 +2086,11 @@ async function loadVlanTable() {
       td.appendChild(btn);
     }
     tr.appendChild(td);
-    tbody.appendChild(tr);
+    frag.appendChild(tr);
   }
+  if (gen !== vlanTableGen) return;
+  tbody.innerHTML = '';
+  tbody.appendChild(frag);
 }
 
 function deleteVlan(id) {
@@ -2077,35 +2100,38 @@ function deleteVlan(id) {
     .catch(function(err) { console.error('Delete failed:', err); });
 }
 
-function refreshVlanViews() {
-  loadVlanList();
-  loadVlanTable();
+async function refreshVlanViews() {
+  var sel = document.getElementById('vlanSelect');
+  var resp;
+  try { resp = await fetch('/vlanlist'); } catch(e) { return; }
+  if (resp.status === 401) {
+    document.location = "/login.html";
+    return;
+  }
+  if (!resp.ok) {
+    if (sel) sel.style.display = 'none';
+    return;
+  }
+  var vlans = (await resp.json()).vlan || [];
+  fillVlanList(vlans);
+  await loadVlanTable(vlans);
 }
 
-function loadVlanList() {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-    if (this.readyState !== 4) return;
-    var sel = document.getElementById('vlanSelect');
-    if (this.status !== 200) {
-      sel.style.display = 'none';
-      return;
-    }
-    var vlans = JSON.parse(this.responseText).vlan || [];
-    if (!vlans.length) {
-      sel.style.display = 'none';
-      return;
-    }
-    sel.options.length = 1;
-    for (var i = 0; i < vlans.length; i++) {
-      var opt = document.createElement('option');
-      opt.value = vlans[i].id;
-      opt.text = vlans[i].name ? vlans[i].id + ' — ' + vlans[i].name : String(vlans[i].id);
-      sel.appendChild(opt);
-    }
-  };
-  xhttp.open('GET', '/vlanlist', true);
-  sendXHTTP(xhttp);
+function fillVlanList(vlans) {
+  var sel = document.getElementById('vlanSelect');
+  if (!sel) return;
+  if (!vlans.length) {
+    sel.style.display = 'none';
+    return;
+  }
+  sel.style.display = '';
+  sel.options.length = 1;
+  for (var i = 0; i < vlans.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = vlans[i].id;
+    opt.text = vlans[i].name ? vlans[i].id + ' — ' + vlans[i].name : String(vlans[i].id);
+    sel.appendChild(opt);
+  }
 }
 
 sectionInits.vlan = function() {
