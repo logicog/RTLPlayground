@@ -66,6 +66,7 @@ __xdata uint8_t cmd_available;
 __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
+__xdata uint8_t mac_parse_result[6];
 
 /* Scratch for parse_syslog(), in xdata: a local here would take internal RAM
  * the linker has none of. */
@@ -105,19 +106,6 @@ inline uint8_t isnumber(uint8_t l)
 	l -= '0';
 	return (l <= ('9'-'0'));
 }
-
-/* Converts a single ASCII hex digit to its value, or 0xff if it is not a valid
- * hex digit. Accepts '0'-'9', 'a'-'f' and 'A'-'F'. */
-inline uint8_t hexval(uint8_t c)
-{
-	if (isnumber(c))
-		return c - '0';
-	c |= 0x20;
-	if (c >= 'a' && c <= 'f')
-		return c - 'a' + 10;
-	return 0xff;
-}
-
 
 uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 {
@@ -392,45 +380,52 @@ void print_mac(__xdata uint8_t *ptr) __banked
 	}
 }
 
-// Parses a strict MAC address "aa:bb:cc:dd:ee:ff" (or "-" separators) from
-// cmd_buffer starting at idx into mac[6]. Each of the 6 octets must be exactly
-// two hex digits and the 5 separators must be the same single character, so
-// malformed input like repeated separators ("aa::bb"), missing digits or a
-// trailing hex digit ("aa:bb:cc:dd:ee:ff:0") is rejected. Returns the number of
-// bytes consumed, or 0 on error.
-uint8_t parse_mac(uint8_t idx, __xdata uint8_t *mac)
+// Parses a MAC address "aa:bb:cc:dd:ee:ff" (":" or "-" separators) from
+// cmd_buffer starting at idx into the global mac_parse_result[6]. Each octet
+// must be exactly two hex digits with a separator between octets and nothing
+// trailing, so repeated separators, missing digits or a trailing hex digit are
+// rejected. Returns the number of bytes consumed, or 0 on error.
+uint8_t parse_mac(uint8_t idx)
 {
-	uint8_t sep = 0;
 	uint8_t b = 0;
-	uint8_t c;
-	uint8_t hi;
-	uint8_t lo;
+	uint8_t c = ':';
 
-	while (b < 6) {
-		hi = hexval(cmd_buffer[idx++]);
-		lo = hexval(cmd_buffer[idx++]);
-		if (hi == 0xff || lo == 0xff)
-			return 0;
-		mac[b++] = (hi << 4) | lo;
-
-		if (b == 6)
-			break;
-		c = cmd_buffer[idx];
+	do {
 		if (c != ':' && c != '-')
-			return 0;
-		if (sep == 0)
-			sep = c;
-		else if (c != sep)
-			return 0;
-		idx++;
-	}
+			goto err;
 
-	// No trailing characters: the next byte must be a separator-like EOF.
-	c = cmd_buffer[idx];
-	if (c != NUL && c != ' ')
-		return 0;
+		__bit again = true;
+		uint8_t v = 0;
 
-	return idx;
+		while(1) {
+			c = cmd_buffer[idx++];
+			c -= '0';
+			if (c > 9) {
+				c |= 0x20;
+				c += '0' - 'a';
+				if (c > 5)
+					goto err;
+				c += 10;
+			}
+			// force swap-instr.
+			v = (v << 4) | (v >> 4);
+			v |= c;
+
+			if (again)
+				again = false;
+			else
+				break;
+		}
+		mac_parse_result[b++] = v;
+
+		c = cmd_buffer[idx++];
+	} while(b < 6);
+
+	if (c == ' ' || c == NUL)
+		return idx;
+
+err:
+	return 0;
 }
 
 // Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
@@ -441,23 +436,21 @@ uint8_t parse_mac(uint8_t idx, __xdata uint8_t *mac)
 // on every boot (execute_config runs before the final static L2 entry).
 void parse_mac_cmd(void)
 {
-	__xdata uint8_t mac[6];
-
 	if (cmd_words_len == 1) {
 		print_string("Current MAC: ");
 		print_mac(uip_ethaddr.addr);
 		write_char('\n');
 		return;
 	}
-	if (cmd_words_len != 2 || !parse_mac(cmd_words_b[1], mac)) {
+	if (cmd_words_len != 2 || !parse_mac(cmd_words_b[1])) {
 		print_string("Error: mac [<aa:bb:cc:dd:ee:ff>]\n");
 		return;
 	}
-	if ((mac[0] & 0x03) || ((mac[0] | mac[1] | mac[2]) == 0)) {
+	if ((mac_parse_result[0] & 0x03) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
 		print_string("refusing: must be unicast, globally administered\n");
 		return;
 	}
-	if (memcmp(mac, uip_ethaddr.addr, 6) == 0) {
+	if (memcmp(mac_parse_result, uip_ethaddr.addr, 6) == 0) {
 		print_string("MAC unchanged\n");
 		return;
 	}
@@ -465,7 +458,7 @@ void parse_mac_cmd(void)
 	// Swap the static management entry over to the new address: remove the
 	// old one (still in uip_ethaddr) before overwriting it.
 	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, true);
-	memcpy(uip_ethaddr.addr, mac, 6);
+	memcpy(uip_ethaddr.addr, mac_parse_result, 6);
 	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
 
 	print_string("MAC set to: ");
