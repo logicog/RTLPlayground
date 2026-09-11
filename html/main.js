@@ -932,6 +932,7 @@ document.addEventListener('DOMContentLoaded', function() {
  * shown.  Each section initialises on first display, and its polling
  * intervals run only while the section is visible. */
 var sectionIntervals = [];
+var l2WalkGen = 0;
 var sectionInits = {};
 
 function setSectionInterval(fn, ms) {
@@ -951,6 +952,7 @@ function clearSectionIntervals() {
     clearTimeout(devTimer);
     devTimer = null;
   }
+  l2WalkGen++;
 }
 
 function showSection(name) {
@@ -2780,10 +2782,11 @@ function walkL2(onDone)
   var entries = [];
   var idx = 0;
   var tries = 0;
+  var gen = l2WalkGen;
 
   function retry() {
     if (++tries < 3) {
-      setTimeout(page, 1000);
+      setTimeout(function() { if (gen === l2WalkGen) page(); }, 1000);
       return;
     }
     onDone(entries, false);
@@ -2828,7 +2831,7 @@ function walkL2(onDone)
         return;
       }
       idx = s[s.length - 1].idx + 1;
-      setTimeout(page, 1000);
+      setTimeout(function() { if (gen === l2WalkGen) page(); }, 1000);
     };
     xhttp.open("GET", "/l2.json?idx=" + idx, true);
     xhttp.timeout = 1500;
