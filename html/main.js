@@ -966,8 +966,34 @@ window.addEventListener('hashchange', function() {
   showSection((location.hash || '#/overview').replace(/^#\//, ''));
 });
 
+var svgWarm = null;
+var svgData = {};
+
+function warmPortSvgs() {
+  if (svgWarm) return svgWarm;
+  svgWarm = Promise.all(['port.svg', 'sfp.svg'].map(function(u) {
+    return fetch(u)
+      .then(function(r) { return r.ok ? r.text() : null; })
+      .then(function(txt) {
+        if (txt)
+          svgData[u] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(txt);
+      })
+      .catch(function() {});
+  }));
+  return svgWarm;
+}
+
+function svgIcon(u, size) {
+  var el = document.createElement('img');
+  el.src = svgData[u] || u;
+  el.width = size;
+  el.height = size;
+  return el;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   if (!document.getElementById('page-overview')) return; // not index.html (e.g. login.html)
+  warmPortSvgs();
   showSection((location.hash || '#/overview').replace(/^#\//, ''));
 });
 
@@ -1926,12 +1952,7 @@ function vlanForm() {
     inp.type = "checkbox"; inp.setAttribute("class","psel");
     inp.id = "tport" + i;
     inp.setAttribute('onclick', `setC("u", ${i}, false);`);
-    const o = document.createElement("img");
-    if (pIsSFP[i - 1]) {
-      o.src = "sfp.svg"; o.width ="60"; o.height ="60";
-    } else {
-      o.src = "port.svg"; o.width = "40"; o.height = "40";
-    }
+    const o = pIsSFP[i - 1] ? svgIcon("sfp.svg", 60) : svgIcon("port.svg", 40);
     l.appendChild(inp); l.appendChild(o);
     d.appendChild(l)
     t.appendChild(d);
@@ -2109,7 +2130,8 @@ function loadVlanList() {
 }
 
 sectionInits.vlan = function() {
-  update( () => {
+  update( async () => {
+    await warmPortSvgs();
     vlanForm();
     refreshVlanViews();
     document.getElementById('vlanSelect').onchange = function() {
@@ -2176,12 +2198,7 @@ function lagForm() {
       const inp = document.createElement("input");
       inp.type = "checkbox"; inp.setAttribute("class","psel");
       inp.id = "p_" + lag + "_" + i;
-      const o = document.createElement("img");
-      if (pIsSFP[i - 1]) {
-        o.src = "sfp.svg"; o.width ="60"; o.height ="60";
-      } else {
-        o.src = "port.svg"; o.width = "40"; o.height = "40";
-      }
+      const o = pIsSFP[i - 1] ? svgIcon("sfp.svg", 60) : svgIcon("port.svg", 40);
       l.appendChild(inp); l.appendChild(o);
       d.appendChild(l)
       m.appendChild(d);
@@ -2259,12 +2276,7 @@ function mirrorForm() {
       const inp = document.createElement("input");
       inp.type = "checkbox"; inp.setAttribute("class","psel");
       inp.id = mirrors[j] + i;
-      const o = document.createElement("img");
-      if (pIsSFP[i - 1]) {
-        o.src = "sfp.svg"; o.width ="60"; o.height ="60";
-      } else {
-        o.src = "port.svg"; o.width = "40"; o.height = "40";
-      }
+      const o = pIsSFP[i - 1] ? svgIcon("sfp.svg", 60) : svgIcon("port.svg", 40);
       l.appendChild(inp); l.appendChild(o);
       d.appendChild(l)
       m.appendChild(d);
