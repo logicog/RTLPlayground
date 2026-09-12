@@ -627,8 +627,6 @@ function linkText(idx) { var v = linkS[idx]; return typeof v === 'function' ? v(
 var logToPhysPort = new Int8Array(10);
 var physToLogPort = new Int8Array(10);
 var portNames = new Array(10);
-var currentRequests = [];
-var currentCallback;
 function drawPorts() {
   var f = document.getElementById('ports');
   console.log("DRAWING PORTS: ", numPorts);
@@ -840,65 +838,42 @@ function rxLosHTML(pinStatus, moduleStatus) {
   return moduleStatus ?? pinStatus;
 }
 
-function callbackXHTTP()
-{
-  x = currentRequests.shift();
-  x.onreadystatechange = currentCallback;
-  x.onreadystatechange();
-  if (currentRequests.length === 0)
-    return;
-  x = currentRequests[0];
-  currentCallback = x.onreadystatechange;
-  x.onreadystatechange = callbackXHTTP;
-  var retries = 10;
-  while (retries) {
-    try {
-      setTimeout(() => {
-              x.send();
-              console.log("B1");
-      }, 20);
-    } catch (error) {
-      retries--;
-      setTimeout(() => {
-        console.log(`Retry ${retries}/${maxRetries} failed: ${error.message}`);
-      }, 200);
-      if (retries < 1) {
-        throw error;
-      }
-    }
-    console.log("B2");
-    return;
-  }
-}
+var netChain = Promise.resolve();
 
 function sendXHTTP(x)
 {
-  console.log("sendXHTTP ", x);
-  if (currentRequests.length === 0) {
-    currentRequests.push(x);
-    currentCallback = x.onreadystatechange;
-    x.onreadystatechange = callbackXHTTP;
-    var retries = 10;
-    while (retries) {
-      try {
-        x.send();
-        console.log("A1");
-      } catch (error) {
-        retries--;
-        setTimeout(() => {
-          console.log(`Retry ${retries}/${maxRetries} failed: ${error.message}`);
-        }, 200);
-        if (retries < 1) {
-          throw error;
-        }
-      }
-      console.log("A2");
-      return;
-    }
-    console.log("A3");
-    return;
-  }
-  currentRequests.push(x);
+  netChain = netChain.then(function() {
+    return new Promise(function(resolve) {
+      var done = false;
+      var finish = function() { if (done) return; done = true; resolve(); };
+      var real = x.onreadystatechange;
+      x.onreadystatechange = function() {
+        if (real) real.call(x);
+        if (x.readyState === 4) finish();
+      };
+      x.onerror = finish;
+      x.ontimeout = finish;
+      if (!x.timeout)
+        x.timeout = 10000;
+      try { x.send(); } catch (e) { finish(); }
+    });
+  });
+}
+
+function qfetch(url, opts)
+{
+  var run = function() {
+    return fetch(url, opts).then(function(r) {
+      return r.clone().arrayBuffer().then(function() { return r; });
+    });
+  };
+  var p = netChain.then(run, run);
+  netChain = new Promise(function(resolve) {
+    var t = setTimeout(resolve, 15000);
+    var go = function() { clearTimeout(t); resolve(); };
+    p.then(go, go);
+  });
+  return p;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1104,7 +1079,7 @@ function parseConf(s){
 
 async function fetchConfig() {
   try {
-    const response = await fetch('/config');
+    const response = await qfetch('/config');
     console.log("CONFIG: ", response);
     const t = await response.text();
     return t;
@@ -1115,7 +1090,7 @@ async function fetchConfig() {
 
 async function fetchCmdLog() {
   try {
-    const response = await fetch('/cmd_log');
+    const response = await qfetch('/cmd_log');
     console.log("CMD-Log: ", response);
     const t = await response.text();
     return t;
@@ -1150,7 +1125,7 @@ async function ipSub() {
     cmd += ips[i]+' '+document.getElementById(ips[i]).value+'\n';
   }
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -1166,7 +1141,7 @@ async function cmdSub() {
   const out = document.getElementById('console_out');
   const cmd = input.value;
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -1191,7 +1166,7 @@ async function cmdSub() {
 
 async function hostSub() {
   const h = document.getElementById("hostname").value;
-  try { await fetch('/cmd', { method: 'POST', body: "hostname " + h }); }
+  try { await qfetch('/cmd', { method: 'POST', body: "hostname " + h }); }
   catch(err) { console.error(`Error: ${err}`); }
   fetchIP();
 }
@@ -1205,13 +1180,13 @@ async function sendConfig(c) {
   form.append("MAX_FILE_SIZE", "4096");
   form.append("configuration", new Blob([c], {type: "application/octet-stream"}), "config.txt");
   try {
-    const response = await fetch('/config', {
+    const response = await qfetch('/config', {
       method: 'POST',
       body: form
     });
     console.log('Completed!', response);
     try {
-      await fetch('/cmd_log_clear', { method: 'GET' });
+      await qfetch('/cmd_log_clear', { method: 'GET' });
     } catch(e) {}
   } catch(err) {
     console.error(`Error: ${err}`);
@@ -1239,7 +1214,7 @@ async function flashStartupSave() {
   sendConfig(configContent);
   // Clear the command log 1 second after initiating the config save
   setTimeout(() => {
-    fetch('/cmd_log_clear', { method: 'GET' })
+    qfetch('/cmd_log_clear', { method: 'GET' })
       .then(response => console.log('Command log cleared', response))
       .catch(err => console.error('Error clearing command log:', err));
   }, 1000);
@@ -1289,14 +1264,14 @@ function fetchIP() {
       };
     }
   xhttp.open("GET", `/information.json`, true);
-  xhttp.send();
+  sendXHTTP(xhttp);
 }
 
 function resetSwitch() {
   if (!confirm(t('sys_reset_confirm'))) {
     return;
   }
-  fetch('/reset', { method: 'GET' }).catch(() => {});
+  qfetch('/reset', { method: 'GET' }).catch(() => {});
   setTimeout(() => {
     alert(t('sys_resetting'));
   }, 3000);
@@ -1314,7 +1289,7 @@ var mgmtVlanCurrent = 0;
 function loadMgmtVlan() {
   var sel = document.getElementById('mgmtvlan');
   if (!sel) return;
-  fetch('/vlanlist').then(function(r) { return r.json(); }).then(function(d) {
+  qfetch('/vlanlist').then(function(r) { return r.json(); }).then(function(d) {
     var cur = d.mgmt || 0;
     var list = d.vlan || [];
     mgmtVlanCurrent = cur;
@@ -1343,7 +1318,7 @@ function mgmtVlanChanged() {
     sel.value = mgmtVlanCurrent;
     return;
   }
-  fetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' mgmt' })
+  qfetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' mgmt' })
     .then(function() { mgmtVlanCurrent = id; })
     .catch(function(err) { console.error('Set management VLAN failed:', err); sel.value = mgmtVlanCurrent; });
 }
@@ -1436,7 +1411,7 @@ async function applySpeed(port) {
     cmd = cmd + "off";
   console.log("CMD: " + cmd);
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -1456,7 +1431,7 @@ async function applyMTU(port) {
   var mtu = document.getElementById('mtu_sel_' + port).value;
   var cmd = "mtu " + port + " " + mtu;
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -1787,7 +1762,7 @@ function delL2(idx) {
     }
   };
   xhttp.open("GET", "/l2_del.json?idx=" + idx, true);
-  xhttp.timeout = 1500; xhttp.send();
+  xhttp.timeout = 1500; sendXHTTP(xhttp);
 }
 
 var l2All = [];
@@ -2018,13 +1993,13 @@ async function loadVlanTable() {
   if (!tbody) return;
   tbody.innerHTML = '';
   var resp;
-  try { resp = await fetch('/vlanlist'); } catch(e) { return; }
+  try { resp = await qfetch('/vlanlist'); } catch(e) { return; }
   if (!resp.ok) return;
   var vlans = (await resp.json()).vlan || [];
   for (var i = 0; i < vlans.length; i++) {
     var v = vlans[i];
     var vresp;
-    try { vresp = await fetch('/vlan.json?vid=' + v.id); } catch(e) { continue; }
+    try { vresp = await qfetch('/vlan.json?vid=' + v.id); } catch(e) { continue; }
     if (!vresp.ok) continue;
     var s = await vresp.json();
     var m = parseInt(s.members, 16);
@@ -2072,7 +2047,7 @@ async function loadVlanTable() {
 
 function deleteVlan(id) {
   if (!confirm(t('vlan_delete_confirm') + id + '?')) return;
-  fetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' d' })
+  qfetch('/cmd', { method: 'POST', body: 'vlan ' + id + ' d' })
     .then(function() { refreshVlanViews(); })
     .catch(function(err) { console.error('Delete failed:', err); });
 }
@@ -2144,7 +2119,7 @@ async function vlanSub() {
   }
   try {
     for (let c of commands) {
-      const response = await fetch('/cmd', {
+      const response = await qfetch('/cmd', {
         method: 'POST',
         body: c
       });
@@ -2223,7 +2198,7 @@ async function lagSub(l) {
       cmd = cmd + ` ${i}`;
   }
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -2328,7 +2303,7 @@ async function mirrorSub() {
     return;
   }
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -2340,7 +2315,7 @@ async function mirrorSub() {
 async function mirrorDel() {
   var cmd = "mirror off";
 try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -2411,7 +2386,7 @@ async function eeeSub(port, enable) {
     cmd = cmd + "off";
   console.log("eeeSub port " + port, ", value " + enable);
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -2485,7 +2460,7 @@ async function doCMD(cmd)
 {
   console.log("Sending >" + cmd + "<");
   try {
-    const response = await fetch('/cmd', {
+    const response = await qfetch('/cmd', {
       method: 'POST',
       body: cmd
     });
@@ -2574,7 +2549,7 @@ var stpRows = 0;
 async function stpCmd(cmd) {
   stpDirty = true;
   try {
-    await fetch('/cmd', { method: 'POST', body: cmd });
+    await qfetch('/cmd', { method: 'POST', body: cmd });
   } catch(err) {
     console.error(`Error: ${err}`);
   }
@@ -2753,7 +2728,7 @@ sectionInits.stp = function() {
 
 document.addEventListener("DOMContentLoaded", function () {
     if (!document.getElementById('infoTable')) return;
-    fetch('/information.json')
+    qfetch('/information.json')
         .then(response => response.json())
         .then(data => {
             const tableBody = document.getElementById('infoTable').querySelector('tbody');
