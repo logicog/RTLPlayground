@@ -71,7 +71,7 @@ bw_title:"Bandwidth limits",bw_h:"Mbit/s, 0.016-10000",bw_in:"Ingress limit",bw_
 bw_exceed:"When exceeded",bw_fc:"Flow control",bw_drop:"Drop",
 bw_in_err:"Ingress limit must be 0.016-10000 Mbit/s",bw_out_err:"Egress limit must be 0.016-10000 Mbit/s",
 sy_network:"Network",sy_dhcp:"Use DHCP",sy_dhcp_t:"Request address via DHCP",sy_services:"Services",
-sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",
+sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",sy_lldp:"LLDP",
 sy_sesstmo:"Session timeout (s)",sy_sesstmo_err:"Session timeout must be 1-65535 s",
 sy_services_note:"Service state reflects the startup config; runtime state is not readable.",
 sy_password:"Admin password",sy_newpw:"New password",sy_repeat:"Repeat",sy_pwapply:"Change password",
@@ -1746,15 +1746,18 @@ function sysLoad(){
   cfgReload();
 }
 function cfgParseKnown(txt){
-  var igmp=false,syslog=false;
+  var igmp=false,lldp=false,syslog=false;
   txt.split(/\r?\n/).forEach(function(l){
     l=l.trim();
     if(/^igmp on$/.test(l))igmp=true;
     if(/^igmp off$/.test(l))igmp=false;
+    if(/^lldp on$/.test(l))lldp=true;
+    if(/^lldp off$/.test(l))lldp=false;
     if(/^syslog on$/.test(l))syslog=true;
     if(/^syslog off$/.test(l))syslog=false;
   });
   $("sy-igmp").checked=igmp;
+  $("sy-lldp").checked=lldp;
   $("sy-syslog").checked=syslog;
 }
 $("sy-apply").addEventListener("click",function(){
@@ -1781,6 +1784,10 @@ $("sy-dhcp").addEventListener("click",function(){
 $("sy-igmp").addEventListener("change",function(){
   var el=this;
   postCmd("igmp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+});
+$("sy-lldp").addEventListener("change",function(){
+  var el=this;
+  postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
 $("sy-syslog").addEventListener("change",function(){
   var cmds=[],el=this;
