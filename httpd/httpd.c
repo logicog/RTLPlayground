@@ -986,6 +986,8 @@ void httpd_appcall(void)
 				l2_delete(short_parsed);
 			} else if (is_word(q, "/mirror.json")) {
 				send_mirror();
+			} else if (is_word(q, "/isolation.json")) {
+				send_isolation();
 			} else if (is_word(q, "/mtu.json")) {
 				send_mtu();
 			} else if (is_word(q, "/lag.json")) {

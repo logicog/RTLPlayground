@@ -97,6 +97,14 @@ var LANG = {
     lag_title: 'Link Aggregation Configuration',
     lag_heading: 'Link Aggregation Groups Configuration',
     lag_update: 'Update / Create',
+    nav_isolate: 'Port Isolation',
+    iso_heading: 'Port Isolation',
+    iso_from: 'From port',
+    iso_to: 'To port',
+    iso_apply: 'Apply',
+    iso_reset: 'Allow all',
+    iso_legend: 'A greyed cell is the port itself, always allowed. A red row label marks a port that is not fully open.',
+    iso_intro: 'A frame entering a port may only leave through the ports ticked in its row. Isolation is decided before forwarding, so a port that is not ticked is unreachable directly, whatever the address table says.',
 
     mirror_title: 'Mirror Configuration',
     mirror_heading: 'Mirror Configuration',
@@ -912,6 +920,7 @@ document.addEventListener('DOMContentLoaded', function() {
     + "<li><a href='#/l2' data-i18n='nav_l2'>L2 Configuration</a></li>"
    + "<li><a href='#/stp'>Spanning Tree</a></li>"
    + "<li><a href='#/mirror' data-i18n='nav_mirror'>Mirroring</a></li>"
+   + "<li><a href='#/isolate' data-i18n='nav_isolate'>Port Isolation</a></li>"
    + "<li><a href='#/lag' data-i18n='nav_lag'>Link Aggregation</a></li>"
    + "<li><a href='#/eee' data-i18n='nav_eee'>EEE</a></li>"
    + "<li><a href='#/bandwidth' data-i18n='nav_bandwidth'>Bandwidth Limits</a></li>"
@@ -2239,6 +2248,170 @@ sectionInits.lag = function() {
     setSectionInterval(update, 2000);
   });
 };
+
+var isoAllow = [];
+var isoBuilt = false;
+var isoDirty = false;
+
+function isoTh(tr, text, cls, rows, cols) {
+  const th = document.createElement("th");
+  th.textContent = text;
+  if (cls)
+    th.className = cls;
+  if (rows)
+    th.rowSpan = rows;
+  if (cols)
+    th.colSpan = cols;
+  tr.appendChild(th);
+  return th;
+}
+
+function isoCell(row, col) {
+  return document.getElementById("iso_" + row + "_" + col);
+}
+
+function isoMark() {
+  for (let r = 1; r <= numPorts; r++) {
+    let full = true;
+    for (let c = 1; c <= numPorts + 1; c++) {
+      const cb = isoCell(r, c);
+      if (cb && !cb.checked)
+        full = false;
+    }
+    const th = document.getElementById("isohd_" + r);
+    if (th)
+      th.className = full ? "" : "isolimited";
+  }
+}
+
+function isoBuild() {
+  const tbl = document.getElementById("isoTbl");
+  if (!tbl || !numPorts || isoBuilt)
+    return;
+  const head = tbl.createTHead();
+  const h1 = head.insertRow();
+  isoTh(h1, t('iso_from'), "", 2, 0);
+  isoTh(h1, t('iso_to'), "", 0, numPorts);
+  isoTh(h1, "CPU", "isocpu", 2, 0);
+  const h2 = head.insertRow();
+  for (let c = 1; c <= numPorts; c++)
+    isoTh(h2, "" + c);
+
+  const body = tbl.createTBody();
+  for (let r = 1; r <= numPorts; r++) {
+    const tr = body.insertRow();
+    tr.className = "isorow";
+    isoTh(tr, "" + r).id = "isohd_" + r;
+    for (let c = 1; c <= numPorts + 1; c++) {
+      const td = tr.insertCell();
+      if (r == c) {
+        td.className = "isoself";
+        td.textContent = "•";
+        continue;
+      }
+      if (c == numPorts + 1)
+        td.className = "isocpu";
+      const inp = document.createElement("input");
+      inp.type = "checkbox";
+      inp.id = "iso_" + r + "_" + c;
+      inp.onchange = function() { isoDirty = true; isoMark(); };
+      td.appendChild(inp);
+    }
+  }
+  isoBuilt = true;
+}
+
+function isoFill(s) {
+  isoBuild();
+  isoAllow = s;
+  if (isoDirty)
+    return;
+  for (const e of s) {
+    const mask = parseInt(e.allow, 16);
+    for (let c = 1; c <= numPorts; c++) {
+      const cb = isoCell(e.portNum, c);
+      if (cb)
+        cb.checked = (mask & (1 << physToLogPort[c - 1])) != 0;
+    }
+    const cpu = isoCell(e.portNum, numPorts + 1);
+    if (cpu)
+      cpu.checked = (mask & 0x200) != 0;
+  }
+  isoMark();
+}
+
+function isoFetch() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200)
+      isoFill(JSON.parse(xhttp.responseText));
+  };
+  xhttp.open("GET", `/isolation.json`, true);
+  sendXHTTP(xhttp);
+}
+
+function isoMaskOf(r) {
+  let mask = 0;
+  for (let c = 1; c <= numPorts; c++) {
+    const cb = isoCell(r, c);
+    if (r == c || (cb && cb.checked))
+      mask |= 1 << physToLogPort[c - 1];
+  }
+  const cpu = isoCell(r, numPorts + 1);
+  if (cpu && cpu.checked)
+    mask |= 0x200;
+  return mask;
+}
+
+function isoStored(r) {
+  for (const e of isoAllow)
+    if (e.portNum == r)
+      return parseInt(e.allow, 16);
+  return -1;
+}
+
+async function isoRow(r) {
+  let cmd = "isolate " + r;
+  for (let c = 1; c <= numPorts; c++) {
+    const cb = isoCell(r, c);
+    if (r == c || (cb && cb.checked))
+      cmd = cmd + ` ${c}`;
+  }
+  const cpu = isoCell(r, numPorts + 1);
+  if (cpu && cpu.checked)
+    cmd = cmd + " 0";
+  await fetch('/cmd', { method: 'POST', body: cmd });
+}
+
+async function isoApply() {
+  for (let r = 1; r <= numPorts; r++)
+    if (isoMaskOf(r) != isoStored(r))
+      await isoRow(r);
+  isoDirty = false;
+  isoFetch();
+}
+
+function isoAll() {
+  isoDirty = true;
+  for (let r = 1; r <= numPorts; r++)
+    for (let c = 1; c <= numPorts + 1; c++) {
+      const cb = isoCell(r, c);
+      if (cb)
+        cb.checked = true;
+    }
+  isoMark();
+}
+
+sectionInits.isolate = function() {
+  update(isoFetch);
+  setSectionInterval(function() {
+    if (numPorts)
+      isoFetch();
+    else
+      update(isoFetch);
+  }, 5000);
+};
+
 
 var mirrorInterval = Number();
 const mirrors = ["mPortsTX", "mPortsRX"];
