@@ -173,6 +173,7 @@ void reset_chip(void);
 void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16_t len);
 void memcpyc(__xdata uint8_t *dst, __code uint8_t *src, uint16_t len);
 void memset(__xdata uint8_t *dst, __xdata uint8_t v, uint8_t len);
+int memcmp(__xdata const void *a, __xdata const void *b, uint16_t len);
 uint16_t strlen(__code const char *s);
 uint16_t strlen_x(__xdata const char *s);
 uint16_t strtox(__xdata uint8_t *dst, __code const char *s);
