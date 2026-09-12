@@ -5,6 +5,23 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 
+#define I2CBUS(sda, scl) \
+    ((uint8_t)((I2C_BUS_FROM_SCL_PIN(scl) << 5) | \
+                     (I2C_BUS_FROM_SDA_PIN(sda) << 2)))
+
+#define I2C_BUS_FROM_SDA_PIN(sda_pin) \
+	((sda_pin) == GPIO47_I2C_SDA0 ? (uint8_t)0 : \
+	 (sda_pin) == GPIO49_I2C_SDA1 ? (uint8_t)1 : \
+	 (sda_pin) == GPIO51_I2C_SDA2_UART1_RX ? (uint8_t)2 : \
+	 (sda_pin) == GPIO41_I2C_SDA3_MDIO1 ? (uint8_t)3 : \
+	 (sda_pin) == GPIO39_I2C_SDA4 ? (uint8_t)4 : -1)
+
+#define I2C_BUS_FROM_SCL_PIN(scl_pin) \
+	((scl_pin) == GPIO46_I2C_SCL0 ? 0 : \
+	 (scl_pin) == GPIO48_I2C_SCL1 ? 1 : \
+	 (scl_pin) == GPIO50_I2C_SCL2_UART1_TX ? 2 : \
+	 (scl_pin) == GPIO40_I2C_SCL3_MDC1 ? 3 : -1)
+
 #if defined(MACHINE_KP_9000_6XHML_X2) || \
 	defined(MACHINE_KP_9000_6XH_X2_V1_1) || \
 	defined(MACHINE_KP_9000_6XHML_X2_V1_1) || \
@@ -34,13 +51,13 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO10_LED10,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 0,
-	.sfp_port[0].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 	// Right SFP port (6)
 	.sfp_port[1].pin_detect = GPIO30_ACL_BIT3_EN,
 	.sfp_port[1].pin_los = GPIO37,
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 1,
-	.sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[1].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -70,7 +87,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO_NA,
 	/* Conditions for LED on:
 	 * dual led orange: ledset_0 & ledset_2
@@ -105,13 +122,13 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_detect = GPIO38,
 	.sfp_port[0].pin_los = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
 	// Right SFP port
 	.sfp_port[1].pin_detect = GPIO37,
 	.sfp_port[1].pin_los = GPIO_NA,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
 	.reset_pin = GPIO48_I2C_SCL1,   // Button-Switch is unpopulated on PCB, but can be added manually (hole in case is already there)
 	.high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
@@ -152,7 +169,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -177,7 +194,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1 },
@@ -227,7 +244,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_detect = GPIO38,
 	.sfp_port[0].pin_los = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO48_I2C_SCL1,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -265,13 +282,13 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO_NA,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 }, /* GPIO 39 */
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ), /* GPIO 39 */
 	// Right SFP port (J2)
 	.sfp_port[1].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[1].pin_los = GPIO_NA,
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 }, /* GPIO 40 */
+	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ), /* GPIO 40 */
 	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
@@ -306,13 +323,13 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 }, /* GPIO 39 */
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ), /* GPIO 39 */
 	// Right SFP port (J2)
 	.sfp_port[1].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[1].pin_los = GPIO51_I2C_SDA2_UART1_RX,
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 }, /* GPIO 40 */
+	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ), /* GPIO 40 */
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
@@ -346,7 +363,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO_NA,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO48_I2C_SCL1,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -385,12 +402,12 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = 10,
 	.sfp_port[0].pin_tx_disable = 0xFF,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 	.sfp_port[1].pin_detect = 30,
 	.sfp_port[1].pin_los = 51,
 	.sfp_port[1].pin_tx_disable = 0xFF,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[1].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux = LED_27 , .enable = LED_27 | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
@@ -425,7 +442,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -458,7 +475,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO_NA,     // no LOS pin wired
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -499,7 +516,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -531,7 +548,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -556,12 +573,12 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[0].pin_tx_disable = GPIO54_ACL_BIT2_EN,
 	.sfp_port[0].sds = 0,
-	.sfp_port[0].i2c = { .sda = GPIO47_I2C_SDA0, .scl = GPIO46_I2C_SCL0 },
+	.sfp_port[0].i2c = I2CBUS( GPIO47_I2C_SDA0, GPIO46_I2C_SCL0 ),
 	.sfp_port[1].pin_detect = GPIO36_PWM_OUT,
 	.sfp_port[1].pin_los = GPIO37,
 	.sfp_port[1].pin_tx_disable = GPIO51_I2C_SDA2_UART1_RX,
 	.sfp_port[1].sds = 1,
-	.sfp_port[1].i2c = { .sda = GPIO49_I2C_SDA1, .scl = GPIO48_I2C_SCL1 },
+	.sfp_port[1].i2c = I2CBUS( GPIO49_I2C_SDA1, GPIO48_I2C_SCL1 ),
 	.reset_pin = GPIO_NA,
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
 	.led_sets = {
@@ -596,13 +613,13 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_detect = GPIO38, 
 	.sfp_port[0].pin_los = GPIO_NA, 
 	.sfp_port[0].sds = 1, 
-	.sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 }, 
+	.sfp_port[0].i2c =  I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
 	// Right SFP port
 	.sfp_port[1].pin_detect = GPIO37,
 	.sfp_port[1].pin_los = GPIO_NA, 
 	.sfp_port[1].sds = 0, 
-	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 }, 
+	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
@@ -641,7 +658,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c =  I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
 	.reset_pin = GPIO_NA,
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -676,7 +693,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO_NA,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO48_I2C_SCL1,
 	.high_leds = { .mux =  LED_28_SYS, .enable = LED_27 | LED_28_SYS | LED_29 },
 	.led_mux_custom = 1,
@@ -720,14 +737,14 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO37,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	// Right SFP port (6)
 	// LED pin 24
 	.sfp_port[1].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[1].pin_los = GPIO51_I2C_SDA2_UART1_RX,
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux =  LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
@@ -769,11 +786,7 @@ __code const struct machine machine = {
     .sfp_port[0].pin_los = GPIO37,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 1,
-    .sfp_port[0].i2c = {
-        .sda = GPIO39_I2C_SDA4,
-        .scl = GPIO40_I2C_SCL3_MDC1
-    },
-
+    .sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
     .reset_pin = GPIO_NA,
 
     .high_leds = {
@@ -823,14 +836,14 @@ __code const struct machine machine = {
     .sfp_port[0].pin_los = GPIO37,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 1,
-    .sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
     /* Right SFP (logical 3, SDS0): GPIO50=ModAbs, GPIO51=RX_LOS */
     .sfp_port[1].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
     .sfp_port[1].pin_los = GPIO51_I2C_SDA2_UART1_RX,
     .sfp_port[1].pin_tx_disable = GPIO_NA,
     .sfp_port[1].sds = 0,
-    .sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
     .reset_pin = GPIO_NA,
 
@@ -879,14 +892,14 @@ __code const struct machine machine = {
     .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 0,
-    .sfp_port[0].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
     // SFP port on SDS1 / logical port 8
     .sfp_port[1].pin_detect = GPIO38,
     .sfp_port[1].pin_los = GPIO_NA,
     .sfp_port[1].pin_tx_disable = GPIO_NA,
     .sfp_port[1].sds = 1,
-    .sfp_port[1].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[1].i2c =  I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
@@ -925,7 +938,7 @@ __code const struct machine machine = {
     .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 1,
-    .sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
@@ -968,7 +981,7 @@ __code const struct machine machine = {
     .sfp_port[0].pin_los = GPIO37,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 1,
-    .sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
@@ -1049,13 +1062,13 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_detect = GPIO38, 
 	.sfp_port[0].pin_los = GPIO_NA, 
 	.sfp_port[0].sds = 1, 
-	.sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 }, 
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
 	// Right SFP port
 	.sfp_port[1].pin_detect = GPIO37,
 	.sfp_port[1].pin_los = GPIO_NA, 
 	.sfp_port[1].sds = 0, 
-	.sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 }, 
+	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
@@ -1114,7 +1127,7 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO_NA,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO_NA,
 	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = {0, 0, 0, 0, 0, 0, 0, 0, 1},

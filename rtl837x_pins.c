@@ -10,38 +10,6 @@ extern __xdata uint8_t sfr_data[4];
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-uint8_t i2c_bus_from_sda_pin(uint8_t sda_pin) __banked {
-	switch (sda_pin) {
-		case GPIO47_I2C_SDA0:
-			return 0;
-		case GPIO49_I2C_SDA1:
-			return 1;
-		case GPIO51_I2C_SDA2_UART1_RX:
-			return 2;
-		case GPIO41_I2C_SDA3_MDIO1:
-			return 3;
-		case GPIO39_I2C_SDA4:
-			return 4;
-		default:
-			return 0xFF;
-	}
-}
-
-uint8_t i2c_bus_from_scl_pin(uint8_t scl_pin) __banked{
-	switch (scl_pin) {
-		case GPIO46_I2C_SCL0:
-			return 0;
-		case GPIO48_I2C_SCL1:
-			return 1;
-		case GPIO50_I2C_SCL2_UART1_TX:
-			return 2;
-		case GPIO40_I2C_SCL3_MDC1:
-			return 3;
-		default:
-			return 0xFF;
-	}
-}
-
 /* Returns RTL837X_REG_GPIO_XX_OUTPUT register address */
 static uint16_t gpio_output_reg(uint8_t pin) __banked{
 	return pin < 32 ? RTL837X_REG_GPIO_00_31_OUTPUT : RTL837X_REG_GPIO_32_63_OUTPUT;
@@ -147,8 +115,7 @@ bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
 
 	REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00,
 		  0x1 << (I2C_MEM_ADDR_WIDTH - 16) | len,
-		  (dev >> 5) | i2c_bus_from_scl_pin(machine.sfp_port[slot].i2c.scl) << 5
-		  | i2c_bus_from_sda_pin(machine.sfp_port[slot].i2c.sda) << 2,
+		  (dev >> 5) | machine.sfp_port[slot].i2c,
 		  ((dev << 3) & 0xff) | 0x1);
 
 	do {
