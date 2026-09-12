@@ -337,15 +337,16 @@ int main(int argc, char **argv)
 	if (stat(arguments.data_file, &s) == 0 && s.st_mode & S_IFDIR) {
 		printf("Adding entries in directory %s\n", arguments.data_file);
 		addsDir = true;
-		DIR *dirptr = opendir(arguments.data_file);
-		if (!dirptr) {
+		struct dirent **entries;
+		int n_entries = scandir(arguments.data_file, &entries, NULL, alphasort);
+		if (n_entries < 0) {
 			fprintf(stderr, "%s: ", arguments.data_file);
 			perror("Error opening directory");
 			return 5;
 		}
-		struct dirent *in_file;
 		int addr = arguments.address;
-		while ( (in_file = readdir(dirptr)) )  {
+		for (int e = 0; e < n_entries; e++)  {
+			struct dirent *in_file = entries[e];
 			snprintf(pathbuffer, PATH_SIZE, "%s/%s", arguments.data_file, in_file->d_name);
 			if (stat(pathbuffer, &s) < 0) {
 				fprintf(stderr, "%s: ", pathbuffer);
@@ -375,6 +376,9 @@ int main(int argc, char **argv)
 			addidx(in_file->d_name, addr, data_read);
 			addr += data_read;
 		}
+		for (int e = 0; e < n_entries; e++)
+			free(entries[e]);
+		free(entries);
 	} else {
 		size_t data_read = addfile(arguments.data_file, arguments.address);
 
