@@ -49,13 +49,6 @@
 // #define MACHINE_PB_2132
 // #define MACHINE_HASIVO_S600W_4GT_2XGT_SE
 
-typedef struct {
-	// GPIO pins for SDA/SCL
-	uint8_t sda; 
-	uint8_t scl;
-} i2c_bus_t;
-
-
 #define LED_27 1
 // SYSTEM LED
 #define LED_28_SYS 2
@@ -74,7 +67,7 @@ struct sfp_port
 	uint8_t pin_los; // gpio number 0-63, 0xFF = don't have it?
 	uint8_t pin_tx_disable; // gpio number 0-63, 0xFF = not present
 	uint8_t sds;
-	i2c_bus_t i2c;
+	uint8_t i2c;
 };
 
 struct machine {
