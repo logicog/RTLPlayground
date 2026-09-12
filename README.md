@@ -24,6 +24,8 @@ only the following features are provided:
 - Configuration saved to flash via the web-interface
 - Firmware updates via the web
 - Installation as a firmware upgrade from the original web-interface
+- SNMPv1 / SNMPv2c read-only agent exposing the system group and a
+  per-port ifTable (see [doc/snmp.md](doc/snmp.md))
 
 <img width="1420" height="623" alt="GUI" src="doc/images/gui.png" />
 
