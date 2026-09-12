@@ -2020,8 +2020,9 @@ void setup_i2c(void)
 	// HW Control register, enable I2C depending on PIN configuration
 	reg_read_m(RTL837X_PIN_MUX_1);
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
-		const uint8_t scl_bus = i2c_bus_from_scl_pin(machine.sfp_port[sfp].i2c.scl);
-		const uint8_t sda_bus = i2c_bus_from_sda_pin(machine.sfp_port[sfp].i2c.sda);
+		uint8_t i2c = machine.sfp_port[sfp].i2c;
+		uint8_t scl_bus = (i2c >> 5) & 0x03;
+		uint8_t sda_bus = (i2c >> 2) & 0x07;
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
 		switch (scl_bus) {
 			case 3:
