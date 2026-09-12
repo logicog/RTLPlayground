@@ -76,7 +76,6 @@ __xdata uint8_t fw_reset_pending;
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
-__xdata uint8_t * __xdata timeptr;
 __xdata uint32_t last_session_use;
 
 #define TSTATE_NONE		0
@@ -345,9 +344,10 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 		if (now - last_session_use > SESSION_TIMEOUT) {
 			dbg_string("Session expired\n");
 		} else {
-			if (is_word_x(session, session_id))
+			if (is_word_x(session, session_id)) {
 				authenticated = 1;
-			else
+				last_session_use = now;
+			} else
 				dbg_string("Invalid session cookie!\n");
 		}
 	}
@@ -1018,11 +1018,6 @@ void httpd_appcall(void)
 				send_to_login();
 				goto do_send;
 			}
-			// A web-page is actively accessed, we can reset session time-out
-			reg_read_m(RTL837X_REG_SEC_COUNTER);
-			timeptr = (uint8_t*)&last_session_use; // last_session_use is Little endian
-			timeptr[0] = sfr_data[3]; timeptr[1] = sfr_data[2]; timeptr[2] = sfr_data[1]; timeptr[3] = sfr_data[0];
-
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
 			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
 			/* 'unsafe-inline' is needed for the inline onclick handlers
