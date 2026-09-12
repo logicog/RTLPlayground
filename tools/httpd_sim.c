@@ -724,7 +724,7 @@ void launch(struct Server *server)
 						send_counters(new_socket, port);
 					goto done;
 				}
-				if (!authenticated && !(!strncmp(&buffer[4], "/login.html", 11) || !strncmp(&buffer[4], "/style.css", 10))) {
+				if (!authenticated && !(!strncmp(&buffer[4], "/login.html", 11) || !strncmp(&buffer[4], "/favicon.ico", 12))) {
 					send_to_login(new_socket);
 					goto done;
 				}
