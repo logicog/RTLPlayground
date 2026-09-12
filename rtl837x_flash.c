@@ -262,6 +262,9 @@ void flash_read_bulk(__xdata uint8_t *dst)
 
 void flash_read_security(void)
 {
+	if (!flash_region.len)
+		return;
+
 	flash_configure_sio();
 
 	while (flash_read_status() & STATUS_REG_BUSY_MASK);
