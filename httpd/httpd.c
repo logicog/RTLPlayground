@@ -60,7 +60,6 @@ __xdata uint16_t content_length;
 // Global variables holding POST state
 __xdata uint16_t bindex; // Current index into the boundary
 __xdata uint8_t verify_crc;
-__xdata uint32_t max_upload;
 __xdata uint16_t short_parsed;
 
 #define POSTBODY_CMD	1
@@ -530,6 +529,19 @@ uint8_t stream_upload(void)
 			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
+				/* The staged image spans FIRMWARE_UPLOAD_START to twice that,
+				 * the span check_and_flash_update_image() reads back. Nothing
+				 * else bounds uptr: a body whose closing boundary never arrives
+				 * keeps writing, and on a flash exactly this size the address
+				 * wraps onto the running image at zero. */
+				if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+					print_string("Upload runs past the image area! Aborting.\n");
+					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"NO: upload exceeds image area\n");
+					s->tstate = TSTATE_NONE;
+					return 0;
+				}
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
 				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
 				if (uptr % FLASH_SECTOR_SIZE == 0) {
@@ -760,7 +772,6 @@ void handle_post(void)
 			config_upload = 0;
 			uptr = FIRMWARE_UPLOAD_START;
 			verify_crc = 1;
-			max_upload = 1024576;
 			pre_acc = 0;
 		} else if (is_word(request_path, "config")) {
 			if (!authenticated) {
@@ -898,21 +909,15 @@ void httpd_appcall(void)
 			reset_chip();
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
-		// Check here maxupload by subtracting uip_len and close socekt if fails!
-		if (max_upload - uip_len > 0) {
-			upload_settings.p = uip_appdata;
-			upload_settings.bptr = 0;
-			upload_settings.plen = uip_len;
-			stream_upload();
-			// A completed part with a built verdict must go out
-			// through the normal TX path
-			if (s->tstate == TSTATE_NONE && slen)
-				goto do_send;
-			write_char('.');
-		} else {
-			send_bad_request();
+		upload_settings.p = uip_appdata;
+		upload_settings.bptr = 0;
+		upload_settings.plen = uip_len;
+		stream_upload();
+		// A completed part with a built verdict must go out
+		// through the normal TX path
+		if (s->tstate == TSTATE_NONE && slen)
 			goto do_send;
-		}
+		write_char('.');
 	} else if (uip_newdata() && s->tstate != TSTATE_TX) {
 		cont_len = 0;
 		dbg_char('<'); dbg_short(uip_len); dbg_char('\n');
