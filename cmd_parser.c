@@ -66,6 +66,7 @@ __xdata uint8_t cmd_available;
 __xdata	char save_cmd;
 
 __xdata uint8_t ip[4];
+__xdata uint8_t mac_parse_result[6];
 
 /* Scratch for parse_syslog(), in xdata: a local here would take internal RAM
  * the linker has none of. */
@@ -105,7 +106,6 @@ inline uint8_t isnumber(uint8_t l)
 	l -= '0';
 	return (l <= ('9'-'0'));
 }
-
 
 uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
 {
@@ -349,7 +349,7 @@ err:
 }
 
 // Prints an IPv4 address.
-void print_ip(__xdata uint8_t * ptr)
+void print_ip(__xdata uint8_t * ptr) __banked
 {
 	uint8_t idx = 0;
 	uint8_t num;
@@ -362,6 +362,109 @@ void print_ip(__xdata uint8_t * ptr)
 
 		write_char('.');
 	}
+}
+
+// Prints a MAC address.
+void print_mac(__xdata uint8_t *ptr) __banked
+{
+	uint8_t idx = 0;
+	uint8_t num;
+
+	while (1) {
+		num = *ptr++;
+		print_byte(num);
+		if (++idx == 6)
+			break;
+
+		write_char(':');
+	}
+}
+
+// Parses a MAC address "aa:bb:cc:dd:ee:ff" (":" or "-" separators) from
+// cmd_buffer starting at idx into the global mac_parse_result[6]. Each octet
+// must be exactly two hex digits with a separator between octets and nothing
+// trailing, so repeated separators, missing digits or a trailing hex digit are
+// rejected. Returns the number of bytes consumed, or 0 on error.
+uint8_t parse_mac(uint8_t idx)
+{
+	uint8_t b = 0;
+	uint8_t c = ':';
+
+	do {
+		if (c != ':' && c != '-')
+			goto err;
+
+		__bit again = true;
+		uint8_t v = 0;
+
+		while(1) {
+			c = cmd_buffer[idx++];
+			c -= '0';
+			if (c > 9) {
+				c |= 0x20;
+				c += '0' - 'a';
+				if (c > 5)
+					goto err;
+				c += 10;
+			}
+			// force swap-instr.
+			v = (v << 4) | (v >> 4);
+			v |= c;
+
+			if (again)
+				again = false;
+			else
+				break;
+		}
+		mac_parse_result[b++] = v;
+
+		c = cmd_buffer[idx++];
+	} while(b < 6);
+
+	if (c == ' ' || c == NUL)
+		return idx;
+
+err:
+	return 0;
+}
+
+// Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
+// the current one with a bare "mac"). Refuses blank/multicast/locally
+// administered/all-zero-OUI addresses so the running MAC stays reachable, and
+// re-registers the static L2 management entry so the change applies without a
+// reboot. As a regular command a "mac ..." line in the startup config applies
+// on every boot (execute_config runs before the final static L2 entry).
+void parse_mac_cmd(void)
+{
+	if (cmd_words_len == 1) {
+		print_string("Current MAC: ");
+		print_mac(uip_ethaddr.addr);
+		write_char('\n');
+		return;
+	}
+	if (cmd_words_len != 2 || !parse_mac(cmd_words_b[1])) {
+		print_string("Error: mac [<aa:bb:cc:dd:ee:ff>]\n");
+		return;
+	}
+	if ((mac_parse_result[0] & 0x03) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
+		print_string("refusing: must be unicast, globally administered\n");
+		return;
+	}
+	if (memcmp(mac_parse_result, uip_ethaddr.addr, 6) == 0) {
+		print_string("MAC unchanged\n");
+		return;
+	}
+
+	// Swap the static management entry over to the new address: remove the
+	// old one (still in uip_ethaddr) before overwriting it.
+	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, true);
+	memcpy(uip_ethaddr.addr, mac_parse_result, 6);
+	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
+
+	print_string("MAC set to: ");
+	print_mac(uip_ethaddr.addr);
+	write_char('\n');
+	print_string("Save the startup config to keep it across reboots\n");
 }
 
 
@@ -1704,6 +1807,8 @@ void cmd_parser(void) __banked
 				igmp_show();
 			else
 				print_string("Error: igmp on|off|show\n");
+		} else if (cmd_compare(0, "mac")) {
+			parse_mac_cmd();
 		} else if (cmd_compare(0, "hostname")) {
 			/* "hostname" alone reports the current name; "hostname <text>"
 			 * sets it, sanitized to JSON-safe printable ASCII. A name with
