@@ -128,7 +128,7 @@ __xdata uint8_t tx_seq;
 
 __xdata bool stp_enabled;
 __xdata uint8_t igmpEnabled;
-__xdata uint8_t lldp_enabled;
+__xdata bool lldp_enabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
 __code const uint16_t bit_mask[16] = {
@@ -1063,9 +1063,6 @@ void handle_rx(void)
 			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x0e && uip_buf[12] == 0x88
 			&& uip_buf[13] == 0xcc) {	//LLDP Mac + EtherType check
 			// LLDP packets shouldn't be passed elsewhere
-			if(uip_len){
-				print_string("LLDP received\n");
-			}
 		} else if (ETH_IN->ether_type == HTONS(0x0806)) { // ARP
 			uip_arp_arpin();
 			if (uip_len) {
