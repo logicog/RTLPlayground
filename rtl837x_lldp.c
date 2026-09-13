@@ -1,5 +1,5 @@
-#pragma codeseg BANK2
-#pragma constseg BANK2
+#pragma codeseg BANK3
+#pragma constseg BANK3
 
 #include "rtl837x_common.h"
 #include "rtl837x_lldp.h"
@@ -10,7 +10,7 @@
 #include "uip/uip.h"
 #include "machine.h"
 
-extern __xdata uint8_t lldp_enabled;
+extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
 
 uint8_t lldp_seconds;
