@@ -34,7 +34,7 @@ __xdata uint8_t flash_capacity_code;
 /*
  * Configure Memory Managed IO
  */
-static void flash_configure_mmio()
+static void flash_configure_mmio(void)
 {
 	while(SFR_FLASH_EXEC_BUSY);
 
@@ -51,7 +51,7 @@ static void flash_configure_mmio()
 	SFR_FLASH_DUMMYCYCLES = 8;
 }
 
-static void flash_configure_sio()
+static void flash_configure_sio(void)
 {
 	while(SFR_FLASH_EXEC_BUSY);
 
@@ -88,19 +88,15 @@ static uint8_t flash_read_status(void)
 
 static void flash_write_enable(void)
 {
-	short status;
+    while (flash_read_status() & STATUS_REG_BUSY_MASK);
+	while(SFR_FLASH_EXEC_BUSY);
 
-	while (flash_read_status() & STATUS_REG_BUSY_MASK);
-	
-	while (!(status & STATUS_REG_WEL_MASK)) {	
-		while(SFR_FLASH_EXEC_BUSY);
+	SFR_FLASH_TCONF = 0x18;
+	SFR_FLASH_CMD = CMD_WRITE_ENABLE;
 
-		SFR_FLASH_TCONF = 0x18;
-		SFR_FLASH_CMD = CMD_WRITE_ENABLE;
-		
-		SFR_FLASH_EXEC_GO = 1;
-		status = flash_read_status();
-	}
+	SFR_FLASH_EXEC_GO = 1;
+	while (SFR_FLASH_EXEC_BUSY);
+	while (!(flash_read_status() & STATUS_REG_WEL_MASK));
 }
 
 
