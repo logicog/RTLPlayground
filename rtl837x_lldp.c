@@ -55,9 +55,8 @@ struct lldp_pkt {
 
 void lldp_send(void) __banked __reentrant
 {
-    uint8_t *p;
-    uint16_t len = 0;
-	uint8_t port_position;
+    __xdata uint8_t *p;
+    uint8_t port_position;
 
     lldp_set_addresses();
     lldp_set_rtl_wrapper();
@@ -65,37 +64,35 @@ void lldp_send(void) __banked __reentrant
     p = LLDP_O->payload;
 
     //Chassis ID
-    p[len++] = LLDP_TYPE(LLDP_CHASSIS_ID_TLV_TYPE);
-    p[len++] = LLDP_CHASSIS_ID_TLV_LENGTH;
-    p[len++] = LLDP_CHASSIS_ID_TLV_SUBTYPE;
+    *p++ = LLDP_TYPE(LLDP_CHASSIS_ID_TLV_TYPE);
+    *p++ = LLDP_CHASSIS_ID_TLV_LENGTH;
+    *p++ = LLDP_CHASSIS_ID_TLV_SUBTYPE;
 
-    for (uint8_t i = 0; i < MAC_ADDR_LEN; i++)
-    	p[len + i] = uip_ethaddr.addr[i];
-
-	len += MAC_ADDR_LEN;
+    memcpy(p, uip_ethaddr.addr, MAC_ADDR_LEN);
+    p += MAC_ADDR_LEN;
 
     //Port ID
-    p[len++] = LLDP_TYPE(LLDP_PORT_ID_TLV_TYPE);
-    p[len++] = LLDP_PORT_ID_TLV_LENGTH;
-    p[len++] = LLDP_PORT_ID_TLV_SUBTYPE;
-    port_position = len;
-	p[len++] = '0';       // filled in per port below
+    *p++ = LLDP_TYPE(LLDP_PORT_ID_TLV_TYPE);
+    *p++ = LLDP_PORT_ID_TLV_LENGTH;
+    *p++ = LLDP_PORT_ID_TLV_SUBTYPE;
+    port_position = (p-LLDP_O->payload);
+	*p++ = '0';       // filled in per port below
 
     //TTL
-    p[len++] = LLDP_TYPE(LLDP_TTL_TLV_TYPE);
-    p[len++] = LLDP_TTL_TLV_LENGTH;
-    p[len++] = 0x00; //padding
-    p[len++] = LLDP_TTL_TTL_SECONDS;
+    *p++ = LLDP_TYPE(LLDP_TTL_TLV_TYPE);
+    *p++ = LLDP_TTL_TLV_LENGTH;
+    *p++ = 0x00; //padding
+    *p++ = LLDP_TTL_TTL_SECONDS;
 
-    lldp_sysname(p, &len);
-    lldp_sysdesc(p, &len);
+    p += lldp_sysname(p);
+    p += lldp_sysdesc(p);
 
     // End of LLDPDU TLV
-    p[len++] = 0x00; //padding
-    p[len++] = 0x00; //padding
+    *p++ = 0x00; //padding
+    *p++ = 0x00; //padding
 
-    while (len < LLDP_MIN_ETHERNET_PAYLOAD_LENGTH)
-        p[len++] = 0x00;
+    while (p < (LLDP_O->payload + LLDP_MIN_ETHERNET_PAYLOAD_LENGTH))
+        *p++ = 0x00;
 
     /*
      * uip_len is the Ethernet frame length excluding FCS.
@@ -106,13 +103,13 @@ void lldp_send(void) __banked __reentrant
      *     src mac
      *     rtl_tag  sizeof(struct rtl_tag)
      *     EtherType (2 bytes)
-     *     payload   len
+     *     payload (how far we've moved p pointer)
      */
-    uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + len;
+    uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + (p - LLDP_O->payload);
 
     for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
 
-        LLDP_O->payload[port_position] = '1' + port;
+        LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
         LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 
         tcpip_output();
@@ -140,35 +137,22 @@ void lldp_set_rtl_wrapper(void) __banked {
     LLDP_O->ether_type = HTONS(LLDP_ETHERTYPE);
 }
 
-void lldp_sysname(uint8_t *p, uint16_t *len) __banked
+uint8_t lldp_sysname(__xdata uint8_t *p) __banked
 {
-    uint16_t hostname_length = 0;
-    __xdata char *hp = hostname;
+    uint8_t hostname_length = strlen_x(hostname);
 
-    p[(*len)++] = LLDP_TYPE(LLDP_SYSNAME_TLV_TYPE);
-    p[(*len)++] = 0;
-
-    while (*hp)
-    {
-        hostname_length++;
-        p[(*len)++] = *hp++;
-    }
-    p[(*len)-hostname_length-1] = hostname_length;
-
+    *p++ = LLDP_TYPE(LLDP_SYSNAME_TLV_TYPE);
+    *p++ = hostname_length;
+    memcpy(p, hostname, hostname_length);
+    return hostname_length + 2;
 }
 
-void lldp_sysdesc(uint8_t *p, uint16_t *len) __banked
+uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked
 {
-    uint16_t machine_name_length = 0;
-    const char *mp = machine.machine_name;
+    uint16_t machine_name_length = strlen(machine.machine_name);
 
-    p[(*len)++] = LLDP_TYPE(LLDP_SYSDESC_TLV_TYPE);
-    p[(*len)++] = 0;
-
-    while (*mp)
-    {
-        machine_name_length++;
-        p[(*len)++] = *mp++;
-    }
-    p[(*len)-machine_name_length-1] = machine_name_length;
+    *p++ = LLDP_TYPE(LLDP_SYSDESC_TLV_TYPE);
+    *p++ = machine_name_length;
+    memcpyc(p, machine.machine_name, machine_name_length);
+    return machine_name_length + 2; 
 }
