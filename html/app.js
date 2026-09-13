@@ -353,7 +353,7 @@ function i18nApply(){
 }
 
 var S={
-  ports:[],n:0,physToLog:[],logToPhys:[],sfpSlot:[],info:{},
+  ports:[],n:0,physToLog:[],logToPhys:[],sfpSlot:[],info:{},detail:null,
   dirty:false,prev:null,prevT:0,rates:[],mtu:[],
 };
 var LINKS=["Down","10M","100M","1000M","500M","10G","2.5G","5G"];
@@ -476,13 +476,14 @@ function toast(msg,cls){
   setTimeout(function(){el.remove()},3800);
 }
 function modal(title,bodyEl,buttons){
+  S.detail=null;
   $("mtitle").textContent=title;
   var b=$("mbody");b.innerHTML="";b.appendChild(bodyEl);
   var f=$("mfoot");f.innerHTML="";
   (buttons||[]).forEach(function(bt){f.appendChild(bt)});
   $("mback").classList.add("show");
 }
-function closeModal(){$("mback").classList.remove("show")}
+function closeModal(){S.detail=null;$("mback").classList.remove("show")}
 $("mx").addEventListener("click",closeModal);
 $("mback").addEventListener("click",function(e){if(e.target===this)closeModal()});
 function confirmModal(title,detail,onok){
@@ -606,8 +607,9 @@ function updateStrip(){
     el.classList.toggle("up",!!up);
     if(up)el.style.setProperty("--pc","var("+(LINKC[p.link]||"--s1000")+")");
     lb.textContent=!p.enabled?t("c_off"):(p.link>0?LINKS[p.link]:t("c_down"));
-    el.title=(p.name?p.name+" ":"")+(p.isSFP?"SFP":"RJ45");
+    el.title=portRows(p).map(function(r){return r[0]+": "+r[1]}).join("\n");
   });
+  if(S.detail!=null){var b=$("mbody");b.innerHTML="";b.appendChild(detailTable(S.ports[S.detail]));}
 }
 
 function pU16(v){return parseInt(v,16)&0xffff}
@@ -628,9 +630,7 @@ function calRx(val,cal){
     +v.getFloat32(8)*Math.pow(val,2)+v.getFloat32(12)*val+v.getFloat32(16);
 }
 function dBm(mw){return 10*Math.log10(mw)}
-function portDetail(i){
-  var p=S.ports[i];
-  if(!p)return;
+function portRows(p){
   var rows=[[t("c_port"),String(p.portNum)],[t("c_type"),p.isSFP?"SFP":"RJ45"]];
   if(p.name)rows.push([t("c_name"),p.name]);
   rows.push([t("p_state"),!p.enabled?t("p_disabled"):(p.link>0?t("p_up")+" "+LINKS[p.link]:t("c_down"))]);
@@ -662,11 +662,19 @@ function portDetail(i){
     var on=names.filter(function(_,b){return bits&(1<<b)});
     rows.push([t("p_adv"),on.join(", ")||"-"]);
   }
+  return rows;
+}
+function detailTable(p){
   var tb=h("table",{class:"t"});
-  rows.forEach(function(r){
+  portRows(p).forEach(function(r){
     tb.appendChild(h("tr",null,[h("td",{class:"mut",text:r[0]}),h("td",{text:r[1]})]));
   });
-  modal(t("c_port")+" "+(i+1),tb);
+  return tb;
+}
+function portDetail(i){
+  if(!S.ports[i])return;
+  modal(t("c_port")+" "+(i+1),detailTable(S.ports[i]));
+  S.detail=i;
 }
 
 function renderInfo(){
