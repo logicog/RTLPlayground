@@ -11,7 +11,7 @@ All translation logic lives at the top of `html/app.js`:
 - A `LANG` object with one sub-object per language (`en`, `ja`, `zh`)
 - Language auto-detection (browser language, overridden by the
   `rtl_lang` key in `localStorage`, which the language selector in the
-  page header writes)
+  System section writes)
 - `t(key, vars)` looks up a translated string; `{name}` placeholders in
   the string are replaced from `vars`, e.g. `t("v_del_q", {n: vid})`
 - `i18nApply()` applies the dictionary to the static markup once at load

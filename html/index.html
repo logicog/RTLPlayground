@@ -181,7 +181,6 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   main{padding:14px 12px 40px}
   #top{padding:8px 10px;gap:7px}
   #ttitle{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #themeSel{max-width:96px}
   #dirty{padding:2px 7px}
 }
 </style>
@@ -218,19 +217,6 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
     <span id="ttitle"></span>
     <span id="dirty" data-i18n="hdr_dirty" data-i18n-t="hdr_dirty_t">unsaved changes</span>
     <button class="ctl pri" id="saveBtn" data-i18n="hdr_save" data-i18n-t="hdr_save_t">Save to flash</button>
-    <select class="ctl" id="langSel" data-i18n-t="sy_lang">
-      <option value="en">English</option>
-      <option value="ja">日本語</option>
-      <option value="zh">中文</option>
-    </select>
-    <select class="ctl" id="themeSel">
-      <option value="auto" data-i18n="th_auto">Theme: System</option>
-      <option value="auto-sel" data-i18n="th_auto_sel">Theme: System (Selenized)</option>
-      <option value="light" data-i18n="th_light">Light</option>
-      <option value="dark" data-i18n="th_dark">Dark</option>
-      <option value="sel-light" data-i18n="th_sel_light">Selenized Light</option>
-      <option value="sel-dark" data-i18n="th_sel_dark">Selenized Dark</option>
-    </select>
   </header>
 
   <main>
@@ -403,6 +389,24 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
             <button class="ctl pri" id="sy-send" data-i18n="sy_send">Send</button>
           </div>
           <pre class="cfg" id="sy-cout" style="margin-top:10px;min-height:70px;max-height:180px;overflow:auto"></pre>
+        </div>
+        <div class="card"><h2 data-i18n="sy_display">Display</h2>
+          <label class="row"><span class="lb" data-i18n="sy_lang">Language</span>
+            <select class="in" id="langSel">
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="zh">中文</option>
+            </select></label>
+          <label class="row"><span class="lb" data-i18n="sy_theme">Theme</span>
+            <select class="in" id="themeSel">
+              <option value="auto" data-i18n="th_auto">System</option>
+              <option value="auto-sel" data-i18n="th_auto_sel">System (Selenized)</option>
+              <option value="light" data-i18n="th_light">Light</option>
+              <option value="dark" data-i18n="th_dark">Dark</option>
+              <option value="sel-light" data-i18n="th_sel_light">Selenized Light</option>
+              <option value="sel-dark" data-i18n="th_sel_dark">Selenized Dark</option>
+            </select></label>
+          <p class="small mut" data-i18n="sy_display_note">Stored in this browser only.</p>
         </div>
       </div>
       <div class="card" style="margin-top:16px"><h2><span data-i18n="sy_startup">Startup configuration</span>
