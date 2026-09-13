@@ -629,7 +629,7 @@ function calRx(val,cal){
   return v.getFloat32(0)*Math.pow(val,4)+v.getFloat32(4)*Math.pow(val,3)
     +v.getFloat32(8)*Math.pow(val,2)+v.getFloat32(12)*val+v.getFloat32(16);
 }
-function dBm(mw){return 10*Math.log10(mw)}
+function dBm(mw){return 10*Math.log10(Math.max(mw,1e-4))}
 function portRows(p){
   var rows=[[t("c_port"),String(p.portNum)],[t("c_type"),p.isSFP?"SFP":"RJ45"]];
   if(p.name)rows.push([t("c_name"),p.name]);
