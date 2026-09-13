@@ -32,7 +32,7 @@
 extern __code const struct machine machine;
 extern __xdata bool stp_enabled;
 extern __code const uint8_t log_to_phys_port[9];
-extern __xdata uint8_t lldp_enabled;
+extern __xdata bool lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
