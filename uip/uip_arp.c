@@ -252,7 +252,7 @@ uip_arp_ipin(void) __banked
      (uip_hostaddr[1] & uip_netmask[1])) {
     return;
   }
-  uip_arp_update(IPBUF->srcipaddr, &(IPBUF->ethhdr.src));
+  uip_arp_update(IPBUF->srcipaddr, &(BUF->ethhdr.src));
   
   return;
 }
