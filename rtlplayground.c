@@ -35,7 +35,6 @@ extern __xdata uint32_t flash_size;
 extern __xdata uint16_t crc_value;
 __xdata struct machine_runtime machine_detected;
 void crc16_bank1(__xdata uint8_t *v) __naked;
-void flash_default_config(void);
 
 // See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 115200

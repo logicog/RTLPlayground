@@ -189,4 +189,5 @@ bool gpio_pin_test(uint8_t pin);
 void set_sys_led_state(uint8_t state);
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
+void flash_default_config(void);
 #endif
