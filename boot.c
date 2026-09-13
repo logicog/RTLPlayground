@@ -398,8 +398,8 @@ void setup_i2c(void) __banked
 	reg_read_m(RTL837X_PIN_MUX_1);
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
 		uint8_t i2c = machine.sfp_port[sfp].i2c;
-		uint8_t scl_bus = (i2c >> 5) & 0x03;
-		uint8_t sda_bus = (i2c >> 2) & 0x07;
+		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & 0x03;
+		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & 0x07;
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
 		switch (scl_bus) {
 			case 3:

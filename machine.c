@@ -6,8 +6,8 @@
 #include "rtl837x_common.h"
 
 #define I2CBUS(sda, scl) \
-    ((uint8_t)((I2C_BUS_FROM_SCL_PIN(scl) << 5) | \
-                     (I2C_BUS_FROM_SDA_PIN(sda) << 2)))
+    ((uint8_t)((I2C_BUS_FROM_SCL_PIN(scl) << RTL837X_REG_I2C_SCL_SHIFT) | \
+                     (I2C_BUS_FROM_SDA_PIN(sda) << RTL837X_REG_I2C_SDA_SHIFT)))
 
 #define I2C_BUS_FROM_SDA_PIN(sda_pin) \
 	((sda_pin) == GPIO47_I2C_SDA0 ? (uint8_t)0 : \
