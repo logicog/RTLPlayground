@@ -542,8 +542,10 @@ Poller.prototype.tick=function(){
   run.then(function(){ if(self.on)self.t=setTimeout(function(){self.tick()},self.ms); });
 };
 
+function byPort(a){return a.sort(function(x,y){return x.portNum-y.portNum})}
 function pollStatus(){
   return getJSON("/status.json").then(function(s){
+    byPort(s);
     var now=Date.now();
     if(!S.n){
       S.n=s.length;
@@ -852,6 +854,7 @@ function stpPortVals(pt){
 }
 function stpLoad(){
   return getJSON("/stp.json").then(function(s){
+    s.ports.sort(function(a,b){return a.p-b.p});
     if(!stpRows)stpBuild(s.ports);
     stpCur=s;
     var en=$("stpen");
@@ -1391,7 +1394,7 @@ function eeeFlags(bits){
 function eeeLoad(){
   return getJSON("/eee.json").then(function(s){
     var tb=$("etable").tBodies[0];tb.innerHTML="";
-    s.forEach(function(p){
+    byPort(s).forEach(function(p){
       var tr=tb.insertRow();
       tr.insertCell().textContent=p.portNum+(p.isSFP?" (SFP)":"");
       if(p.isSFP){
@@ -1419,7 +1422,7 @@ tabHooks.eee={enter:function(){eeePoller.start()},leave:function(){eeePoller.sto
 function bwLoad(){
   return getJSON("/bandwidth.json").then(function(s){
     var tb=$("btable").tBodies[0];tb.innerHTML="";
-    s.forEach(function(p){
+    byPort(s).forEach(function(p){
       var n=p.portNum;
       var iOn=!!Number(p.iLimited),eOn=!!Number(p.eLimited);
       var iM=(parseInt(p.iBW,16)*16/1000),eM=(parseInt(p.eBW,16)*16/1000);
