@@ -221,17 +221,17 @@ int addidx(const char *name, int addr, int len)
 /*
  * Replaces calls of the type #{function} in .html files being added
  * It is assumed that the possibly expanded string will fit into the buffer
- * Returns the new length of the string
+ * Takes the length of the data and returns its new length
  */
-int replaceCalls(int pos)
+int replaceCalls(int pos, int len)
 {
 	int i = 0;
 	char function_buf[256];
 
-	while (buffer[pos + i]) {
-		if ((buffer[pos + i]) == '#' && (buffer[pos + i + 1] == '{')) {
+	while (i < len) {
+		if (buffer[pos + i] == '#' && i + 1 < len && buffer[pos + i + 1] == '{') {
 			int j = 2;
-			while (buffer[pos + i + j]) {
+			while (i + j < len) {
 				if (buffer[pos + i + j] == '}')
 					break;
 				function_buf[j - 2] = buffer[pos + i + j];
@@ -244,12 +244,13 @@ int replaceCalls(int pos)
 
 			}
 			function_buf[j - 2] = '\0';
-			if (!buffer[pos + i + j])
-				return i + j;
+			if (i + j >= len)
+				return len;
 			// Because the buffers overlap we cannot use strcpy
-			memmove(&buffer[pos + i + 5], &buffer[pos + i + j], strlen(&buffer[pos + i + j]) + 1);
+			memmove(&buffer[pos + i + 5], &buffer[pos + i + j], len - (i + j));
 			sprintf(&buffer[pos + i + 2], "%03d", callNum);
 			buffer[pos + i + 5] = '}';
+			len -= j - 5;
 			i += 6;
 			fbuf_p += snprintf(&fbuf[fbuf_p], DEF_SIZE - fbuf_p, "  %s,\n", function_buf);
 			xbuf_p += snprintf(&xbuf[xbuf_p], DEF_SIZE - xbuf_p, "extern uint16_t %s(void);\n", function_buf);
@@ -258,7 +259,7 @@ int replaceCalls(int pos)
 		i++;
 	}
 
-	return strlen(&buffer[pos]);
+	return len;
 }
 
 
@@ -356,6 +357,7 @@ int main(int argc, char **argv)
 				continue;
 
 			size_t data_read = addfile(pathbuffer, addr);
+			size_t file_len = data_read;
 			if (data_read) {
 			if (arguments.add_zero) {
 				/* NUL-terminate the data so the file table and the
@@ -367,7 +369,7 @@ int main(int argc, char **argv)
 				printf("Data inserted from %s at 0x%x, size: %ld\n", pathbuffer, addr, data_read);
 			}
 			int old_len = data_read;
-			data_read = replaceCalls(addr);
+			data_read = replaceCalls(addr, file_len);
 			if (old_len > data_read)
 				memset(buffer + addr + data_read, 0, old_len - data_read);
 			if (arguments.gzip)
