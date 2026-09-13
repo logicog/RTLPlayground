@@ -810,7 +810,7 @@ function applyPort(i){
 }
 tabHooks.ports={
   enter:function(){statusPoller.start();needPorts(function(){buildPorts();portsMacs()})},
-  leave:function(){statusPoller.stop()},
+  leave:function(){statusPoller.stop();l2Gen++},
   status:portsStatus,
 };
 
@@ -1207,11 +1207,12 @@ tabHooks.vlan={
   enter:function(){needPorts(function(){buildVlanEdit();vlanRefresh().catch(function(){})})},
 };
 
-var l2Rows=[],l2SortCol="pport",l2SortDir=1;
+var l2Rows=[],l2SortCol="pport",l2SortDir=1,l2Gen=0;
 function l2Load(){
-  var seen={},all=[],idx=0,guard=0;
+  var seen={},all=[],idx=0,guard=0,gen=++l2Gen;
   function step(){
     return getJSON("/l2.json?idx="+idx).then(function(s){
+      if(gen!==l2Gen)throw new Error("stale");
       if(!s.length)return all;
       var wrapped=false;
       s.forEach(function(e){
@@ -1245,7 +1246,7 @@ function l2Fetch(){
   return l2Load().then(function(all){
     l2Rows=all;
     l2Render();
-  }).catch(function(){$("l2count").textContent=t("l2_failed")});
+  }).catch(function(e){if(e.message!=="stale")$("l2count").textContent=t("l2_failed")});
 }
 function l2Render(){
   var f=$("l2filter").value.toLowerCase();
@@ -1293,7 +1294,7 @@ $("l2flush").addEventListener("click",function(){
     postCmd("l2 forget").then(function(){setTimeout(l2Fetch,500)}).catch(function(){});
   });
 });
-tabHooks.l2={enter:function(){needPorts(function(){l2Fetch()})}};
+tabHooks.l2={enter:function(){needPorts(function(){l2Fetch()})},leave:function(){l2Gen++}};
 
 function buildMirror(){
   var sel=$("mport");
