@@ -69,10 +69,10 @@ void lldp_send(void) __banked __reentrant
     p[len++] = LLDP_CHASSIS_ID_TLV_LENGTH;
     p[len++] = LLDP_CHASSIS_ID_TLV_SUBTYPE;
 
-    for (uint8_t i = 0; i < LLDP_MAC_ADDR_LEN; i++)
+    for (uint8_t i = 0; i < MAC_ADDR_LEN; i++)
     	p[len + i] = uip_ethaddr.addr[i];
 
-	len += LLDP_MAC_ADDR_LEN;
+	len += MAC_ADDR_LEN;
 
     //Port ID
     p[len++] = LLDP_TYPE(LLDP_PORT_ID_TLV_TYPE);
@@ -108,7 +108,7 @@ void lldp_send(void) __banked __reentrant
      *     EtherType (2 bytes)
      *     payload   len
      */
-    uip_len = LLDP_MAC_ADDR_LEN + LLDP_MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + len;
+    uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + len;
 
     for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
 
@@ -121,15 +121,8 @@ void lldp_send(void) __banked __reentrant
 
 void lldp_set_addresses(void) __banked {
     // LLDP destination multicast addr: 01:80:c2:00:00:0e
-    LLDP_O->dst.addr[0] = 0x01;
-    LLDP_O->dst.addr[1] = 0x80;
-    LLDP_O->dst.addr[2] = 0xc2;
-    LLDP_O->dst.addr[3] = 0x00;
-    LLDP_O->dst.addr[4] = 0x00;
-    LLDP_O->dst.addr[5] = 0x0e;
-
-    for (uint8_t i = 0; i < LLDP_MAC_ADDR_LEN; i++)
-        LLDP_O->src.addr[i] = uip_ethaddr.addr[i];
+    memcpyc(LLDP_O->dst.addr, "\x01\x80\xc2\x00\x00\x0e", MAC_ADDR_LEN);
+    memcpy(LLDP_O->src.addr, uip_ethaddr.addr, MAC_ADDR_LEN);
 }
 
 void lldp_set_rtl_wrapper(void) __banked {
