@@ -398,10 +398,10 @@ void setup_i2c(void) __banked
 	reg_read_m(RTL837X_PIN_MUX_1);
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
 		uint8_t i2c = machine.sfp_port[sfp].i2c;
-		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & 0x07;
+		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT);
 		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & 0x07;
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
-		switch (scl_bus) {
+		switch (scl_bus & 0x03) {
 			case 3:
 				// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
 				sfr_mask_data(0, 0x60, 0x40);
@@ -420,8 +420,6 @@ void setup_i2c(void) __banked
 				sfr_mask_data(0, 0x80, 0x80);
 				sfr_mask_data(1, 0x01, 0x00);
 				break;
-			default:
-				print_string("Invalid SCL bus number: "); print_byte(scl_bus); write_char('\n');
 		}
 
 		switch (sda_bus) {
@@ -445,8 +443,6 @@ void setup_i2c(void) __banked
 				// Bit 9-10 0b01 -> SDA
 				sfr_mask_data(1, 0x06, 0x02);
 				break;
-			default:
-				print_string("Invalid SDA bus number: "); print_byte(sda_bus); write_char('\n');
 		}
 	}
 	reg_write_m(RTL837X_PIN_MUX_1);	
