@@ -30,7 +30,7 @@ void lldp_tick(void) __banked;
 void lldp_send(void) __banked;
 void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
-void lldp_sysname(uint8_t *p, uint16_t *len) __banked;
-void lldp_sysdesc(uint8_t *p, uint16_t *len) __banked;
+uint8_t lldp_sysname(__xdata uint8_t *p) __banked;
+uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked;
 
 #endif
