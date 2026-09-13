@@ -43,6 +43,7 @@ a{color:var(--ac);text-decoration:none}
 }
 #brand{display:flex;align-items:center;gap:9px;padding:16px 16px 12px;font-weight:650;font-size:15px}
 #brand svg{flex:none;stroke:var(--ac)}
+#brand span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #navlist{list-style:none;padding:4px 8px;overflow-y:auto;flex:1}
 #navlist li{
   display:flex;align-items:center;gap:9px;padding:7px 10px;margin:1px 0;
@@ -71,7 +72,7 @@ select.ctl,button.ctl{
 button.pri{background:var(--ac);color:var(--acfg);border-color:transparent;font-weight:600}
 button.pri:hover,button.ctl:hover{filter:brightness(1.07)}
 button:disabled{opacity:.45;cursor:default;filter:none}
-main{padding:18px 20px 40px;max-width:1100px;width:100%}
+main{padding:18px 20px 40px;max-width:1400px;width:100%}
 section.tab{display:none}
 section.tab.act{display:block}
 .card{
@@ -97,7 +98,7 @@ input.in,select.in,textarea.in{
   background:var(--bg);border:1px solid var(--bd);border-radius:7px;padding:5px 8px;outline:none;
 }
 input.in:focus,select.in:focus,textarea.in:focus{border-color:var(--ac)}
-input.in.sm{width:70px}
+input.in.sm{width:7em}
 label.row{display:flex;align-items:center;gap:10px;margin:8px 0}
 label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 .switch{position:relative;display:inline-block;width:34px;height:19px;flex:none}

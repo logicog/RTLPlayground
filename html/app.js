@@ -687,7 +687,7 @@ function renderInfo(){
     if(v==null||v==="")return;
     tb.appendChild(h("tr",null,[h("td",{class:"mut",text:t(r[0])}),h("td",{class:"mono",text:String(v)})]));
   });
-  if(S.info.hostname)$("brandname").textContent=S.info.hostname;
+  if(S.info.hostname)$("brandname").textContent=$("brandname").title=S.info.hostname;
   if(S.info.sw_ver)$("fver").textContent="RTLPlayground "+S.info.sw_ver;
 }
 function pollInfo(){
