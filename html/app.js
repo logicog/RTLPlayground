@@ -1091,18 +1091,21 @@ function vlanRefresh(){
     tb.innerHTML="";
     var p=Promise.resolve();
     vl.forEach(function(v){
-      p=p.then(function(){return getJSON("/vlan.json?vid="+v.id)}).then(function(d){
-        var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
-        var pv=parseInt(d.pvid,16)&0x3ff;
+      p=p.then(function(){return getJSON("/vlan.json?vid="+v.id).catch(function(){return null})}).then(function(d){
         var tr=tb.insertRow();
         tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),onclick:function(e){
           e.preventDefault();$("vvid").value=v.id;vlanLoad();
         }}));
         tr.insertCell().textContent=v.name||"";
-        tr.insertCell().textContent=rangeStr(maskToPorts(mem));
-        tr.insertCell().textContent=rangeStr(maskToPorts(mem&~unt));
-        tr.insertCell().textContent=rangeStr(maskToPorts(unt));
-        tr.insertCell().textContent=rangeStr(maskToPorts(pv));
+        if(!d){for(var c=0;c<4;c++)tr.insertCell().textContent="?";}
+        else{
+          var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
+          var pv=parseInt(d.pvid,16)&0x3ff;
+          tr.insertCell().textContent=rangeStr(maskToPorts(mem));
+          tr.insertCell().textContent=rangeStr(maskToPorts(mem&~unt));
+          tr.insertCell().textContent=rangeStr(maskToPorts(unt));
+          tr.insertCell().textContent=rangeStr(maskToPorts(pv));
+        }
         var del=tr.insertCell();
         if(v.id!==1)del.appendChild(h("button",{class:"ctl",text:"\u2715",title:t("v_del_t"),onclick:function(){
           confirmModal(t("v_del_q",{n:v.id}),t("v_del_d"),function(){
