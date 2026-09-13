@@ -1655,28 +1655,24 @@ function mergeConf(base,texts){
   return conf;
 }
 function writeConfig(txt,title){
-  txt=txt.replace(/\r\n/g,"\n");
-  if(txt&&txt.slice(-1)!=="\n")txt+="\n";
-  var bytes=new Blob([txt]).size;
-  var lines=txt.split("\n").filter(function(l){return l.trim()});
-  var unknown=lines.filter(function(l){return!isConfCmd(l.trim().replace(/\s+/g," "))});
-  var body=h("div");
-  body.appendChild(h("p",{class:"small mut",text:t("cw_info",{n:bytes})}));
-  if(bytes>2048){
-    body.appendChild(h("p",{class:"small",style:"color:var(--bad)",text:t("cw_toolarge")}));
-    modal(title,body,[h("button",{class:"ctl",text:t("c_close"),onclick:closeModal})]);
-    return;
+  var info=h("p",{class:"small mut"}),warn=h("p",{class:"small"});
+  var ed=h("textarea",{class:"cfg",spellcheck:"false",placeholder:t("cw_empty"),style:"min-height:45vh"});
+  ed.value=txt.replace(/\r\n/g,"\n");
+  var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){closeModal();doWriteConfig(cfgText(ed.value))}});
+  function refresh(){
+    var v=cfgText(ed.value),bytes=new Blob([v]).size;
+    var unknown=v.split("\n").filter(function(l){return l.trim()&&!isConfCmd(l.trim().replace(/\s+/g," "))});
+    info.textContent=t("cw_info",{n:bytes});
+    ok.disabled=bytes>2048;
+    warn.style.color=ok.disabled?"var(--bad)":"var(--warn)";
+    warn.textContent=ok.disabled?t("cw_toolarge"):(unknown.length?t("cw_unknown")+unknown.join(" | "):"");
   }
-  if(unknown.length)
-    body.appendChild(h("p",{class:"small",style:"color:var(--warn)",text:t("cw_unknown")+unknown.join(" | ")}));
-  body.appendChild(h("pre",{class:"cfg",text:txt||t("cw_empty")}));
-  modal(title,body,[
-    h("button",{class:"ctl",text:t("c_cancel"),onclick:closeModal}),
-    h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){
-      closeModal();
-      doWriteConfig(txt);
-    }}),
-  ]);
+  ed.addEventListener("input",refresh);refresh();
+  modal(title,h("div",null,[info,warn,ed]),[h("button",{class:"ctl",text:t("c_cancel"),onclick:closeModal}),ok]);
+}
+function cfgText(txt){
+  txt=txt.replace(/\r\n/g,"\n");
+  return txt&&txt.slice(-1)!=="\n"?txt+"\n":txt;
 }
 function doWriteConfig(txt){
   var form=new FormData();
