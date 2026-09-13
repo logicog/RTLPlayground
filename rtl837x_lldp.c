@@ -13,7 +13,7 @@
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
 
-uint8_t lldp_seconds;
+__xdata uint8_t lldp_seconds;
 
 void lldp_init(void) __banked
 {
