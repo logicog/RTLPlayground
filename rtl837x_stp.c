@@ -996,7 +996,7 @@ void stp_parse(void) __banked __reentrant
 	if (cmd_words_len < 3)
 		goto err;
 
-	if (cmd_compare(1, "ent") || cmd_compare(1, "lag")) {
+	if (cmd_compare(1, "port") || cmd_compare(1, "lag")) {
 		stp_lag_map();
 		if (cmd_words_len < 4)
 			goto err;
@@ -1134,5 +1134,5 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
-	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | ent <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
+	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
 }
