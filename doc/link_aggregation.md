@@ -249,11 +249,12 @@ ways: a mask without the CPU bit freezes the receive counters, a CPU only mask
 delivers with no egress on any port.
 
 Lookups are IVL on this chip, so an entry made for VID 0 is never matched and one
-entry is needed per PVID among the candidate ports, since untagged LACPDUs
-classify into the ingress port's PVID. Entries for stale VIDs are left behind,
-which is harmless because they only steer slow-protocol frames to the CPU, and
-the lookup table is volatile so a reboot clears them. Changing a port's PVID
-after LACP is configured needs `lacp off` then `lacp on` to refresh them.
+entry is needed per PVID over all front panel ports, since untagged LACPDUs
+classify into the ingress port's PVID and the forward action is not limited to
+the LACP ports. Entries for stale VIDs are left behind, which is harmless
+because they only steer slow-protocol frames to the CPU, and the lookup table is
+volatile so a reboot clears them. The entries are rewritten after the startup
+configuration has been replayed and whenever a pvid is set from the console.
 
 The entry itself is written through the same SMI layout as any L2 multicast
 entry:

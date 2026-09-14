@@ -354,7 +354,8 @@ int main(int argc, char **argv)
 	 * a LAG is configured. Both member ports share a PVID here, so the entry
 	 * is written once: the address is per-VLAN, not per-port. */
 	hw_writes_reset();
-	hw_pvid[0] = hw_pvid[1] = 2;
+	for (int i = 0; i < 10; i++)
+		hw_pvid[i] = 2;
 	lacp_lag_set(0, 0x0003);
 	CHECK(hw_tbl_ops == 1
 	      && hw_writes >= 4
@@ -378,6 +379,19 @@ int main(int argc, char **argv)
 	hw_pvid[1] = 20;
 	lacp_lag_set(0, 0x0003);
 	CHECK(hw_tbl_ops == 2, "T15 two PVIDs among members: one entry per VLAN");
+
+	/* T15b: a port outside the LAG on a PVID of its own is covered too, since
+	 * the forward action is not limited to the LACP ports. And a pvid change
+	 * after the fact is picked up by the refresh, not only by reconfiguring. */
+	hw_writes_reset();
+	hw_pvid[5] = 30;
+	lacp_fdb_refresh();
+	int covered = hw_tbl_ops == 3;
+	lacp_lag_set(0, 0);
+	hw_writes_reset();
+	lacp_fdb_refresh();
+	CHECK(covered && hw_tbl_ops == 0,
+	      "T15b non-member PVID covered on refresh, refresh is a no-op while off");
 
 	/* T16: the partner changes one cable at a time. Port 1 starts hearing B
 	 * while port 0 still hears A, then A goes quiet and B appears on port 0

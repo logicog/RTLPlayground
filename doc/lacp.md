@@ -56,7 +56,10 @@ On its own that also floods the frame to every other port in the VLAN, which
 leaks a neighbour's LACPDUs to hosts that must not see them and, with two bonds
 on one switch, poisons both. So the forward is constrained: `lacp_setup()`
 writes a **static L2 multicast entry for `01:80:C2:00:00:02` whose member mask
-is the CPU port only**, one entry per distinct pvid among the candidate ports.
+is the CPU port only**, one entry per distinct pvid over all front panel ports.
+The forward action applies to the address on every port, so a port outside the
+LACP groups needs its pvid covered as well; a LACPDU arriving there would
+otherwise miss the lookup and be flooded through its VLAN.
 The forward lookup hits that entry instead of the VLAN flood mask, so the frames
 reach the CPU and nowhere else.
 
@@ -217,7 +220,8 @@ the dead member.
 * No Churn Detection machines and no Marker protocol.
 * Coupled Mux: collecting and distributing are enabled together.
 * One aggregator per group.
-* The static FDB steering entries are written at configuration time, so
-  changing a port's pvid while LACP is running needs `lacp off` and `lacp on`
-  to refresh them.
+* The static FDB steering entries are rewritten when a group is configured,
+  after the startup configuration has been replayed and on every `pvid`
+  command; a pvid changed by any other route is not covered until one of
+  those happens.
 * Member compatibility is not validated; see #377.
