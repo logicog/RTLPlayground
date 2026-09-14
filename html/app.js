@@ -427,6 +427,7 @@ var CONF_CMDS=[
   /^ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^ip\s+dhcp$/,
   /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,/^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,/^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^syslog\s+port\s+\d{1,5}$/,
+  /^session\s+\d{1,5}$/,
   /^passwd\s+\S+$/,/^hostname\s+\S{1,23}$/,
   /^vlan\s+\d{1,4}\s+d$/,/^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}t?)+$/,
@@ -1612,7 +1613,7 @@ tabHooks.system={enter:sysLoad};
 
 var CONF_OVERWRITE=[
   /^ip\b/,/^gw\b/,/^netmask\b/,/^hostname\b/,
-  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,
+  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,/^session\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,/^ingress\b/,
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,

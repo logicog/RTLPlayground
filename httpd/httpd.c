@@ -12,7 +12,11 @@
 #include "debug.h"
 
 #define SESSION_ID_LENGTH 12
-#define SESSION_TIMEOUT 200
+#define SESSION_TIMEOUT_DEFAULT 200
+
+/* Seconds of inactivity after which a session cookie stops validating.
+ * Configurable with the "session" command, see cmd_parser.c. */
+__xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 
 #define CMARK_S 6
 
@@ -341,7 +345,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 	read_reg_timer(&now);
 
 	if (session) {
-		if (now - last_session_use > SESSION_TIMEOUT) {
+		if (now - last_session_use > session_timeout) {
 			dbg_string("Session expired\n");
 		} else {
 			if (is_word_x(session, session_id)) {
