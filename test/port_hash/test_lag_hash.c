@@ -13,6 +13,7 @@
 /* register defs (mirror rtl837x_regs.h) */
 #define RTL837X_TRK_MBR_CTRL_BASE  0x4f38
 #define RTL837X_TRK_HASH_CTRL_BASE 0x4f48
+#define LAG_HASH_SOURCE_PORT_NUMBER 0x01
 #define LAG_HASH_L2_SMAC 0x02
 #define LAG_HASH_L2_DMAC 0x04
 #define LAG_HASH_L3_SIP  0x08
@@ -20,6 +21,7 @@
 #define LAG_HASH_L4_SPORT 0x20
 #define LAG_HASH_L4_DPORT 0x40
 #define LAG_HASH_DEFAULT (LAG_HASH_L2_SMAC|LAG_HASH_L2_DMAC|LAG_HASH_L3_SIP|LAG_HASH_L3_DIP|LAG_HASH_L4_SPORT|LAG_HASH_L4_DPORT)
+#define LAG_HASH_RESET (LAG_HASH_SOURCE_PORT_NUMBER|LAG_HASH_L2_SMAC|LAG_HASH_L2_DMAC|LAG_HASH_L3_SIP|LAG_HASH_L3_DIP|LAG_HASH_L4_SPORT)
 
 uint8_t SFR_DATA_24, SFR_DATA_16, SFR_DATA_8, SFR_DATA_0;
 uint8_t sfr_data[4];
@@ -56,6 +58,11 @@ int main(void){
   reg_store[RTL837X_TRK_HASH_CTRL_BASE+(1<<2)] = 0x06;   /* lag1 already L2 */
   port_lag_members_set(1, 0x00c0);
   CK(reg_store[RTL837X_TRK_HASH_CTRL_BASE+(1<<2)]==0x06, "guard: preset lag1 hash 0x06 preserved");
+  /* the chip's reset value counts as unset and is replaced by the default */
+  memset(reg_store,0,sizeof(reg_store));
+  reg_store[RTL837X_TRK_HASH_CTRL_BASE+(2<<2)] = LAG_HASH_RESET;
+  port_lag_members_set(2, 0x0003);
+  CK(reg_store[RTL837X_TRK_HASH_CTRL_BASE+(2<<2)]==LAG_HASH_DEFAULT, "reset value 0x%02x replaced by default on lag2", LAG_HASH_RESET);
   printf(fails? "\n=== FAIL (%d) ===\n" : "\n=== ALL PASS ===\n", fails);
   return fails?1:0;
 }

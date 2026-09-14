@@ -34,15 +34,24 @@ $(BUILDDIR):
 $(BUILDDIR)/test_cmd_editor: test_cmd_editor.c support.c $(SRCROOT)/cmd_editor.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
+# Sandboxes with a Makefile of their own; each fails the run when it fails.
+SUBTESTS = lacp port_hash
+
 run: $(TESTS)
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
 		echo; \
 	done; \
+	for d in $(SUBTESTS); do \
+		echo "=== $$d ==="; \
+		$(MAKE) -C $$d test || fail=1; \
+		echo; \
+	done; \
 	if [ $$fail -ne 0 ]; then echo "TESTS FAILED"; exit 1; else echo "ALL TESTS PASSED"; fi
 
 clean:
 	rm -rf $(BUILDDIR)
+	@for d in $(SUBTESTS); do $(MAKE) -C $$d clean; done
 
 .PHONY: all run clean
