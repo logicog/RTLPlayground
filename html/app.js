@@ -2,7 +2,7 @@
 var LANG={
 en:{
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
-nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_lag:"LAG",nav_eee:"EEE",
+nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_isolate:"Isolation",nav_lag:"LAG",nav_eee:"EEE",
 nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",
 hdr_dirty:"unsaved changes",hdr_dirty_t:"Running config differs from startup config",
 hdr_save:"Save to flash",hdr_save_t:"Persist running configuration to flash",
@@ -62,6 +62,9 @@ l2_learned:"learned",l2_loading:"loading...",l2_failed:"load failed",l2_entries:
 l2_del_t:"Delete entry",l2_flush_q:"Flush all learned MAC entries?",
 m_title:"Port mirroring",m_active:"active",m_monitor:"Monitor port",m_mirror:"Mirror",m_both:"Both",
 m_note:"Both = mirror RX and TX of the port to the monitor port.",m_none:"Select at least one mirrored port",
+iso_title:"Port isolation",iso_from:"From port",iso_to:"To port",iso_all:"Allow all",
+iso_intro:"A frame entering a port may only leave through the ports ticked in its row. Isolation is decided before forwarding, so a port that is not ticked is unreachable directly, whatever the address table says.",
+iso_legend:"The cell of the port itself is always allowed. A port number in red marks a port that is not fully open.",
 lag_hash:"Hash:",lag_note:"A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.",
 lag_clear_q:"Clear LAG {n}?",lag_clear_d:"All member ports return to normal operation.",
 e_title:"Energy Efficient Ethernet",e_adv:"Advertised",e_lp:"Link partner",e_active:"Active",e_enable:"Enable",
@@ -503,6 +506,7 @@ var TABS=[
   {id:"vlan",  icon:"M12 3v6M12 9l-7 5M12 9l7 5M5 14v5M19 14v5M3 21h4M17 21h4"},
   {id:"l2",    icon:"M4 5h16M4 12h16M4 19h10"},
   {id:"mirror",icon:"M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4"},
+  {id:"isolate",icon:"M4 4h6v6H4zM14 14h6v6h-6zM14 4h6v6h-6zM4 14h6v6H4z"},
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
@@ -1349,6 +1353,76 @@ $("moff").addEventListener("click",function(){
   postCmd("mirror off").then(mirrorLoad).catch(function(){});
 });
 tabHooks.mirror={enter:function(){needPorts(function(){buildMirror();mirrorLoad().catch(function(){})})}};
+
+var isoAllow=[];
+function isoBox(r,c){return $("iso"+r+"_"+c)}
+function isoMark(){
+  for(var r=1;r<=S.n;r++){
+    var full=true;
+    for(var c=1;c<=S.n+1;c++){var b=isoBox(r,c);if(b&&!b.checked)full=false;}
+    $("isoh"+r).style.color=full?"":"var(--bad)";
+  }
+}
+function isoTouch(){$("isotbl").dataset.dirty="1";isoMark()}
+function isoTh(row,txt,attrs){var e=h("th",attrs);e.textContent=txt;row.appendChild(e);return e}
+function buildIso(){
+  var tb=$("isotbl");
+  if(tb.tBodies[0].rows.length)return;
+  var h1=tb.tHead.insertRow(),h2=tb.tHead.insertRow();
+  isoTh(h1,t("iso_from"),{rowspan:"2"});isoTh(h1,t("iso_to"),{colspan:String(S.n),style:"text-align:center"});isoTh(h1,"CPU",{rowspan:"2"});
+  for(var c=1;c<=S.n;c++)isoTh(h2,String(c),{style:"text-align:center"});
+  for(var r=1;r<=S.n;r++){
+    var tr=tb.tBodies[0].insertRow();
+    isoTh(tr,String(r),{id:"isoh"+r});
+    for(c=1;c<=S.n+1;c++){
+      var td=tr.insertCell();
+      td.style.textAlign="center";
+      if(r===c){td.className="mut";td.textContent="\u2022";continue;}
+      td.appendChild(h("input",{type:"checkbox",id:"iso"+r+"_"+c,onchange:isoTouch}));
+    }
+  }
+}
+function isoLoad(){
+  return getJSON("/isolation.json").then(function(s){
+    isoAllow=s;
+    if($("isotbl").dataset.dirty)return;
+    s.forEach(function(e){
+      var m=parseInt(e.allow,16);
+      for(var c=1;c<=S.n;c++){var b=isoBox(e.portNum,c);if(b)b.checked=!!((m>>S.physToLog[c-1])&1);}
+      var cpu=isoBox(e.portNum,S.n+1);
+      if(cpu)cpu.checked=!!(m&0x200);
+    });
+    isoMark();
+  });
+}
+function isoMask(r){
+  var m=0;
+  for(var c=1;c<=S.n;c++){var b=isoBox(r,c);if(r===c||(b&&b.checked))m|=1<<S.physToLog[c-1];}
+  var cpu=isoBox(r,S.n+1);
+  if(cpu&&cpu.checked)m|=0x200;
+  return m;
+}
+$("isoapply").addEventListener("click",function(){
+  var cmds=[];
+  for(var r=1;r<=S.n;r++){
+    var cur=-1;
+    isoAllow.forEach(function(e){if(e.portNum===r)cur=parseInt(e.allow,16)});
+    if(isoMask(r)===cur)continue;
+    var cmd="isolate "+r;
+    for(var c=1;c<=S.n;c++){var b=isoBox(r,c);if(r===c||(b&&b.checked))cmd+=" "+c;}
+    var cpu=isoBox(r,S.n+1);
+    if(cpu&&cpu.checked)cmd+=" 0";
+    cmds.push(cmd);
+  }
+  delete $("isotbl").dataset.dirty;
+  if(!cmds.length){isoLoad().catch(function(){});return;}
+  postCmds(cmds).then(isoLoad).catch(function(){});
+});
+$("isoall").addEventListener("click",function(){
+  for(var r=1;r<=S.n;r++)for(var c=1;c<=S.n+1;c++){var b=isoBox(r,c);if(b)b.checked=true;}
+  isoTouch();
+});
+tabHooks.isolate={enter:function(){needPorts(function(){buildIso();isoLoad().catch(function(){})})}};
 
 var HASHF=["spa","smac","dmac","sip","dip","sport","dport"];
 function buildLag(){
