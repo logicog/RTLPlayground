@@ -50,7 +50,7 @@ __xdata uip_ipaddr_t server;
 #define DHCP_PARAM_DNS		6
 #define DHCP_END		255
 
-#pragma codeseg BANK2
+#pragma codeseg BANK3
 #pragma constseg BANK2
 
 struct dhcp_pkt {
