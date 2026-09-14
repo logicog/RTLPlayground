@@ -296,7 +296,7 @@ int main(int argc, char **argv)
 
 	/* T7: expiry - partner silent past the short timeout: trunk drains,
 	 * aggregator identity is released */
-	ticks(4 * 0x0300 + 64);		/* > LACP_SHORT_TIMEOUT work-ticks */
+	ticks(4 * LACP_SHORT_TIMEOUT + 64);	/* past the short timeout */
 	CHECK(hw_members == 0 && lacp_agg_valid[0] == 0,
 	      "T7 expiry: members drop to 0 and aggregator is released");
 

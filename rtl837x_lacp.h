@@ -91,8 +91,8 @@ extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];/* trunk members we las
  * an aggregate that works but never stops churning. */
 #define LACP_FAST_PERIODIC	0x0032	/* fast TX ~1 s, worst ~1.6 s; partner expires at 3 s  */
 #define LACP_SLOW_PERIODIC	0x05dc	/* slow TX ~30 s, worst ~48 s; partner expires at 90 s */
-#define LACP_SHORT_TIMEOUT	0x0300	/* we drop a silent partner after 6-9 s  */
-#define LACP_LONG_TIMEOUT	0x5a00	/* long-timeout variant, after 3-5 min   */
+#define LACP_SHORT_TIMEOUT	0x00c8	/* silent partner dropped after 4 s   (802.3ad: 3 s)  */
+#define LACP_LONG_TIMEOUT	0x1770	/* long-timeout variant, after 120 s  (802.3ad: 90 s) */
 
 /* Per-port LACP receive-machine state (802.3ad 43.4.12) */
 #define LACP_RX_INITIALIZE	0
