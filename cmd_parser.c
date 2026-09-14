@@ -1834,8 +1834,10 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "stp")) {
 			stp_parse();
+#ifdef HEALTH
 		} else if (cmd_compare(0, "health")) {
 			health_show();
+#endif
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
@@ -2029,6 +2031,7 @@ void execute_commands(__xdata uint8_t *p) __banked {
 	};
 }
 
+#ifdef HEALTH
 /*
  * Health instrumentation. The counters live in xdata and are fed from the
  * main loop through the banked entry points below; the "health" command
@@ -2184,3 +2187,4 @@ void health_show(void) __banked
 	print_short(management_vlan);
 	write_char('\n');
 }
+#endif

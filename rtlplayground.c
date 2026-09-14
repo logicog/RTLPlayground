@@ -999,7 +999,7 @@ void handle_rx(void)
 			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
 			return;
 		}
-		health_rx_frames++;
+		health_rx_frame();
 
 #ifdef RXTXDBG
 		print_string("\n<< ");
