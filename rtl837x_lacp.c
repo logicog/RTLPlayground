@@ -432,14 +432,18 @@ void lacp_timers(void) __banked
 			lacp_send(i);
 	}
 
-	/* Release each LAG's aggregator identity once none of its ports has fresh
-	 * partner info, so a re-cabled setup can elect a new partner (43.4.14). */
+	/* Release each LAG's aggregator identity once none of its ports still
+	 * hears the elected partner, so a re-cabled setup can elect a new one
+	 * (43.4.14). A port that is CURRENT with some other system must not keep
+	 * the old identity alive: it would never be selected, and neither would
+	 * the rest of the LAG once it moves to that system too. */
 	for (uint8_t lag = 0; lag < LACP_NUM_LAGS; lag++) {
 		if (!lacp_agg_valid[lag])
 			continue;
 		uint8_t any_current = 0;
 		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-			if (lacp_port_lag[i] == lag && lacp_rx_state[i] == LACP_RX_CURRENT) {
+			if (lacp_port_lag[i] == lag && lacp_rx_state[i] == LACP_RX_CURRENT
+			    && lacp_sys_eq(lacp_partner_sys[i], lacp_agg_sys[lag])) {
 				any_current = 1;
 				break;
 			}
