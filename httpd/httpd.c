@@ -866,7 +866,6 @@ void httpd_appcall(void)
 			o_idx += uip_mss();
 		} else {
 			slen = 0;
-			o_idx += slen;
 		}
 
 		s->tstate = TSTATE_ACKED;
@@ -887,7 +886,8 @@ void httpd_appcall(void)
 			flash_region.addr = cont_addr;
 			flash_region.len = slen;
 			flash_read_bulk(outbuf);
-			uip_send(outbuf, slen);
+			o_idx = 0;
+			uip_send(outbuf + o_idx, slen);
 			cont_len -= slen;
 			cont_addr += slen;
 			s->tstate = TSTATE_TX;
