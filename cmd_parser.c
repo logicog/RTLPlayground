@@ -17,6 +17,7 @@
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
+#include "sflow.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -1735,6 +1736,8 @@ void cmd_parser(void) __banked
 			parse_mtu();
 		} else if (cmd_compare(0, "syslog")) {
 			parse_syslog();
+		} else if (cmd_compare(0, "sflow")) {
+			sflow_parse();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
