@@ -440,10 +440,10 @@ var CONF_CMDS=[
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
   /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
   /^stp\s+version\s+(rstp|stp)$/,
-  /^stp\s+port\s+\d{1,2}\s+(on|off)$/,/^stp\s+port\s+\d{1,2}\s+edge\s+(on|off|auto)$/,
-  /^stp\s+port\s+\d{1,2}\s+cost\s+\d{1,9}$/,/^stp\s+port\s+\d{1,2}\s+prio\s+\d{1,3}$/,
-  /^stp\s+port\s+\d{1,2}\s+guard\s+(none|bpdu|root)$/,/^stp\s+port\s+\d{1,2}\s+filter\s+(on|off)$/,
-  /^stp\s+port\s+\d{1,2}\s+p2p\s+(auto|on|off)$/,
+  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(on|off)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+edge\s+(on|off|auto)$/,
+  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+cost\s+\d{1,9}$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+prio\s+\d{1,3}$/,
+  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
+  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
 ];
@@ -815,7 +815,7 @@ tabHooks.ports={
 };
 
 var STP_PF={EN:1,ADMEDGE:2,AUTOEDGE:4,BPDUG:8,ROOTG:16,FILTER:32,OPEREDGE:64,TRIP:128};
-var stpRows=0,stpCur=null;
+var stpSig="",stpCur=null;
 function stpSel(id,opts){
   var s=h("select",{class:"in",id:id,onchange:stpTouch});
   opts.forEach(function(o){s.appendChild(h("option",{value:o[0],text:o[1]}))});
@@ -826,12 +826,16 @@ function fmtBridge(hex){
   if(!hex||hex.length<16)return"-";
   return parseInt(hex.slice(0,4),16)+" / "+hex.slice(4).replace(/(..)(?=.)/g,"$1:");
 }
+function stpKey(pt){return pt.lag?"L"+pt.lag:String(pt.p)}
+function stpName(pt){return pt.lag?"LAG"+pt.lag+" ("+maskToPorts(pt.mbr).join(",")+")":String(pt.p)}
+function stpPre(k){return k.charAt(0)==="L"?"stp lag "+k.slice(1)+" ":"stp port "+k+" "}
 function stpBuild(ports){
   var tb=$("stpcfg").tBodies[0],st=$("stpstat").tBodies[0];
+  tb.innerHTML="";st.innerHTML="";
   ports.forEach(function(pt){
-    var p=pt.p;
+    var p=stpKey(pt);
     var tr=tb.insertRow();
-    tr.insertCell().textContent=p;
+    tr.insertCell().textContent=stpName(pt);
     var sw=h("label",{class:"switch"},[h("input",{type:"checkbox",id:"sten"+p,onchange:stpTouch}),h("i")]);
     tr.insertCell().appendChild(sw);
     tr.insertCell().appendChild(stpSel("sted"+p,[["auto",t("c_auto")],["on",t("c_on")],["off",t("c_offc")]]));
@@ -844,10 +848,9 @@ function stpBuild(ports){
     tr.insertCell().appendChild(stpSel("stpp"+p,[["auto",t("c_auto")],["on",t("c_on")],["off",t("c_offc")]]));
     tr.insertCell().appendChild(h("button",{class:"ctl",text:t("c_apply"),onclick:function(){stpApplyPort(p)}}));
     var sr=st.insertRow();
-    sr.insertCell().textContent=p;
+    sr.insertCell().textContent=stpName(pt);
     ["ro","st","db","dp","dc","oe","op"].forEach(function(k){sr.insertCell().id="st"+k+p});
   });
-  stpRows=ports.length;
 }
 function stpPortVals(pt){
   var f=pt.f;
@@ -862,8 +865,9 @@ function stpPortVals(pt){
 }
 function stpLoad(){
   return getJSON("/stp.json").then(function(s){
-    s.ports.sort(function(a,b){return a.p-b.p});
-    if(!stpRows)stpBuild(s.ports);
+    s.ports.sort(function(a,b){return((a.lag||0)-(b.lag||0))||(a.p-b.p)});
+    var sig=s.ports.map(function(pt){return stpKey(pt)+":"+(pt.mbr||0)}).join();
+    if(sig!==stpSig){stpSig=sig;stpBuild(s.ports);}
     stpCur=s;
     var en=$("stpen");
     if(document.activeElement!==en)en.checked=!!s.on;
@@ -885,7 +889,7 @@ function stpLoad(){
       $("stpfwd").value=s.fwd;$("stptxhold").value=s.txhold;
     }
     s.ports.forEach(function(pt){
-      var p=pt.p;
+      var p=stpKey(pt);
       var trip=(pt.f&STP_PF.TRIP)?" "+badge(t("stp_trip"),"bad"):"";
       $("stro"+p).textContent=s.on&&pt.role?t("stp_r"+pt.role):"-";
       $("stst"+p).innerHTML=s.on?badge(t("stp_s"+pt.st),pt.st===3?"ok":"")+trip:"-";
@@ -904,12 +908,12 @@ function stpLoad(){
 }
 function stpApplyPort(p){
   var cur=null;
-  (stpCur?stpCur.ports:[]).forEach(function(pt){if(pt.p===p)cur=stpPortVals(pt)});
+  (stpCur?stpCur.ports:[]).forEach(function(pt){if(stpKey(pt)===p)cur=stpPortVals(pt)});
   var cost=parseInt($("stco"+p).value,10);
   if(isNaN(cost)||cost<0||cost>200000000){toast(t("stp_cost_err"),"err");return;}
   var w={en:$("sten"+p).checked,edge:$("sted"+p).value,cost:cost,prio:$("stpr"+p).value,
     guard:$("stgu"+p).value,filter:$("stfi"+p).value,p2p:$("stpp"+p).value};
-  var cmds=[],pre="stp port "+p+" ";
+  var cmds=[],pre=stpPre(p);
   if(!cur||w.edge!==cur.edge)cmds.push(pre+"edge "+w.edge);
   if(!cur||w.cost!==cur.cost)cmds.push(pre+"cost "+w.cost);
   if(!cur||w.prio!==cur.prio)cmds.push(pre+"prio "+w.prio);
@@ -1615,10 +1619,10 @@ var CONF_OVERWRITE=[
   /^eee\s+\d{1,2}\b/,/^eee\b/,/^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
-  /^stp\s+port\s+\d{1,2}\s+(edge|cost|prio|guard|filter|p2p)\b/,
+  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+port\s+\d{1,2})\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
