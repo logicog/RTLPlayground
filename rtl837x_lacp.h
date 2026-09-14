@@ -19,6 +19,8 @@ void lacp_show(void) __banked;		/* "lacp show" - per-port state + RX counters */
  * ports == 0 removes the LAG from LACP management. Enables the engine on first
  * LACP LAG and tears it down when the last one goes away. */
 void lacp_lag_set(uint8_t lag, uint16_t ports) __banked;
+/* Rewrite the CPU-steering L2 entries for the current PVIDs (no-op while off). */
+void lacp_fdb_refresh(void) __banked;
 
 /*
  * Per-LAG LACP: each of the 4 hardware trunk groups (0-3) can independently run

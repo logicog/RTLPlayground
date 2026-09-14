@@ -350,22 +350,29 @@ static void lacp_fdb_set(void)
 	} while ((sfr_data[3] & TBL_EXECUTE) && ++lacp_fdb_guard);
 }
 
-/* Refresh the CPU-steering entries after a LACP topology change: one entry
- * per distinct PVID over all LACP candidate ports. Config-time only. */
+/* Write the CPU-steering entries: one per distinct PVID over every front
+ * panel port. RMA forward applies to the address on all ports, so a port
+ * outside the LACP LAGs needs its PVID covered as well, or a LACPDU arriving
+ * there misses the lookup and is flooded through its VLAN. */
 static void lacp_fdb_update(void)
 {
 	for (lacp_fdb_i = machine.min_port; lacp_fdb_i <= machine.max_port; lacp_fdb_i++) {
-		if (lacp_port_lag[lacp_fdb_i] == LACP_LAG_NONE)
-			continue;
 		lacp_fdb_vid = port_pvid_get(lacp_fdb_i);
 		for (lacp_fdb_j = machine.min_port; lacp_fdb_j < lacp_fdb_i; lacp_fdb_j++) {
-			if (lacp_port_lag[lacp_fdb_j] != LACP_LAG_NONE
-			    && port_pvid_get(lacp_fdb_j) == lacp_fdb_vid)
+			if (port_pvid_get(lacp_fdb_j) == lacp_fdb_vid)
 				goto next_port;		/* this PVID is already written */
 		}
 		lacp_fdb_set();
 next_port:	;
 	}
+}
+
+/* Called after the startup config has been replayed and after a pvid change,
+ * so the entries match the PVIDs the ports actually have. */
+void lacp_fdb_refresh(void) __banked
+{
+	if (lacpEnabled)
+		lacp_fdb_update();
 }
 
 

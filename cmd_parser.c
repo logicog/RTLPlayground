@@ -1856,8 +1856,10 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
+			{
 				port_pvid_set(atoi_results_u8, atoi_results_short);
-			else
+				lacp_fdb_refresh();
+			} else
 				print_string("Error: pvid <port> <1-4094>\n");
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
