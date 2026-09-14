@@ -23,3 +23,5 @@ jobs:
         run: make machine_check
       - name: Make project
         run: make MACHINE="KP_9000_6XHML_X2"
+      - name: Make project with the health instrumentation
+        run: make clean && make MACHINE="KP_9000_6XHML_X2" HEALTH=1
