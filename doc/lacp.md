@@ -157,10 +157,12 @@ receive-machine state.
 
 ## LACP configuration via the Web Interface
 
-The LAG page has an LACP section: the engine toggle, and a table with one row
-per port showing its group, actor and partner state and receive state. It reads
-`/lacp.json` every two seconds. Trunk membership itself is shown by the existing
-LAG table, which reads the hardware registers, so the two can be compared.
+Each group on the LAG page has a Static/LACP mode next to its member ports;
+for an LACP group it shows the elected aggregator and the active members. Below
+the groups a table has one row per LACP port with its group, actor and partner
+state, receive state, LACPDU count and partner system. The page reads
+`/lacp.json` every three seconds while it is open. The member checkboxes of a
+static group come from the hardware registers in `/lag.json`.
 
 ## A test with a Linux 802.3ad bond
 
