@@ -19,6 +19,10 @@ ifeq ($(MACHINE),)
 else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
+# Health instrumentation and the "health" console command: HEALTH=1 gmake ...
+ifneq ($(HEALTH),)
+	CC_FLAGS += -DHEALTH
+endif
 
 ifeq ($(CI),1)
 	CC_FLAGS += --Werror

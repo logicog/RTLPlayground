@@ -20,6 +20,17 @@ tcp st 00 tmr 00 rtx 00 rto 00 len 0x0000 mss 0x05b4
 httpd left 0x0000 entry 00 stp 01 mvlan 0x0002
 ```
 
+The instrumentation is not part of a default build. It costs about 1.1 kB
+of bank 2, a few bytes of xdata and seven banked calls per main-loop pass,
+which is nothing a user needs unless they are chasing a problem, so it is
+switched on at build time:
+
+```
+make MACHINE=SWTGW218AS HEALTH=1
+```
+
+Without it the hooks compile to nothing and `health` is not a command.
+
 All figures are raw hex. The counters are cumulative: take two dumps a known
 time apart and the differences give the rates.
 
