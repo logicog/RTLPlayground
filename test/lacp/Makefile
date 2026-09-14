@@ -9,7 +9,9 @@ CFLAGS = -std=c11 -Wall -Wextra -Wno-unknown-pragmas \
          -D__xdata= -D__code= -D__banked= -D__reentrant= \
          -Ishim -I../..
 
-all: build/lacp_sim
+all: test
+
+test: build/lacp_sim
 	./build/lacp_sim
 
 verbose: build/lacp_sim
@@ -23,4 +25,4 @@ build/lacp_sim: lacp_sim.c ../../rtl837x_lacp.c ../../rtl837x_lacp.h shim/*.h
 clean:
 	rm -rf build
 
-.PHONY: all verbose clean
+.PHONY: all test verbose clean
