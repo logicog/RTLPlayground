@@ -12,6 +12,11 @@ sflow off
 sflow                         # show the settings and the datagrams sent
 ```
 
+The same settings are on the sFlow page of the web interface, which also shows
+whether the agent is sending and how many datagrams went out. Settings made
+there, like those typed on the console, are kept only once the configuration
+is saved.
+
 `sflow on` may come before `sflow collector` in the saved configuration: the
 agent starts as soon as both are set.
 
