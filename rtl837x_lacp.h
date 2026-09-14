@@ -10,10 +10,8 @@
 
 void lacp_init(void) __banked;		/* boot init: clear per-LAG state */
 void lacp_in(void) __banked;
-void lacp_setup(void) __banked;
 void lacp_timers(void) __banked;
 void lacp_off(void) __banked;
-void lacp_cmd(uint8_t on) __banked;	/* "lacp on|off" master engine handler */
 void lacp_show(void) __banked;		/* "lacp show" - per-port state + RX counters */
 /* Assign a candidate-port mask to a LACP-mode LAG (`lag <n> lacp <ports>`).
  * ports == 0 removes the LAG from LACP management. Enables the engine on first

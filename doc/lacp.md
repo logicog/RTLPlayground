@@ -54,7 +54,7 @@ What does work is `FORWARD`, because the CPU port is in the forwarding domain,
 so a forwarded frame lands in the NIC receive ring the firmware already polls.
 On its own that also floods the frame to every other port in the VLAN, which
 leaks a neighbour's LACPDUs to hosts that must not see them and, with two bonds
-on one switch, poisons both. So the forward is constrained: `lacp_setup()`
+on one switch, poisons both. So the forward is constrained: `lacp_lag_set()`
 writes a **static L2 multicast entry for `01:80:C2:00:00:02` whose member mask
 is the CPU port only**, one entry per distinct pvid over all front panel ports.
 The forward action applies to the address on every port, so a port outside the
@@ -121,9 +121,7 @@ same capture shows no expiry at all and both churn states read `none`.
 
 ```
 void lacp_init(void) __banked;	/* boot init: clear per-LAG state */
-void lacp_setup(void) __banked;
 void lacp_off(void) __banked;
-void lacp_cmd(uint8_t on) __banked;	/* "lacp on|off" master engine handler */
 void lacp_lag_set(uint8_t lag, uint16_t ports) __banked;
 void lacp_in(void) __banked;
 void lacp_timers(void) __banked;
@@ -144,12 +142,12 @@ lag 1 lacp off      # group 1 goes back to static (so does "lag 1 lacp")
 lag 1 7 8           # plain static aggregation, no protocol
 ```
 
-The engine itself is switched separately, so a configuration can be prepared
-before the protocol starts:
+The protocol starts with the first group put under LACP and stops when the
+last one is taken out; there is no separate switch for it. Two commands act on
+the whole engine:
 
 ```
-lacp on
-lacp off
+lacp off            # every group back to static, protocol stopped
 lacp show
 ```
 
@@ -182,7 +180,6 @@ On the switch, with those two ports as the group:
 
 ```
 lag 1 lacp 7 8
-lacp on
 ```
 
 `lacp show` should then give both ports an actor state of `0x3f`, which is
