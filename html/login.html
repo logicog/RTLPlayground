@@ -1,30 +1,101 @@
 <!DOCTYPE html>
 <html>
-  <title data-i18n="login_title">RTL Switch Login</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="/main.js"></script>
-  <script>
-    function removeNote() {
-      document.getElementById("incorrect").innerHTML = "";
-    }
-    window.addEventListener("load", function() {
-      if (document.referrer.endsWith("login.html"))
-        document.getElementById("incorrect").innerHTML = t('login_wrong');
-    });
-  </script>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Switch Login</title>
+<style>
+:root{
+  --bg:#f4f6f8;--panel:#ffffff;--bd:#d7dde4;--fg:#1a222c;--fg2:#5c6773;
+  --ac:#0969da;--acfg:#ffffff;--bad:#cf222e;
+}
+:root[data-theme="dark"]{
+  --bg:#0e1116;--panel:#161b22;--bd:#2c333c;--fg:#e6edf3;--fg2:#8d96a0;
+  --ac:#4c8ef7;--acfg:#ffffff;--bad:#f85149;
+}
+:root[data-theme="sel-dark"]{
+  --bg:#103c48;--panel:#184956;--bd:#2d5b69;--fg:#adbcbc;--fg2:#72898f;
+  --ac:#4695f7;--acfg:#ffffff;--bad:#fa5750;
+}
+:root[data-theme="sel-light"]{
+  --bg:#fbf3db;--panel:#ece3cc;--bd:#d5cdb6;--fg:#53676d;--fg2:#909995;
+  --ac:#0072d4;--acfg:#ffffff;--bad:#d2212d;
+}
+*{box-sizing:border-box;margin:0}
+body{
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--fg);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+}
+.card{
+  background:var(--panel);border:1px solid var(--bd);border-radius:12px;
+  padding:36px 32px;width:min(360px,92vw);
+  box-shadow:0 8px 30px rgba(0,0,0,.12);
+}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+h1{font-size:19px;font-weight:650}
+p.sub{color:var(--fg2);font-size:13px;margin-bottom:24px}
+label{display:block;font-size:13px;color:var(--fg2);margin-bottom:6px}
+input[type=password]{
+  width:100%;padding:10px 12px;font-size:15px;color:var(--fg);
+  background:var(--bg);border:1px solid var(--bd);border-radius:8px;outline:none;
+}
+input[type=password]:focus{border-color:var(--ac)}
+button{
+  width:100%;margin-top:18px;padding:10px;font-size:15px;font-weight:600;
+  color:var(--acfg);background:var(--ac);border:0;border-radius:8px;cursor:pointer;
+}
+button:hover{filter:brightness(1.1)}
+#err{color:var(--bad);font-size:13px;min-height:20px;margin-top:14px;text-align:center}
+</style>
+<script>
+(function(){
+  var pref;
+  try{pref=localStorage.getItem("theme")||"auto";}catch(e){pref="auto";}
+  var dark=window.matchMedia("(prefers-color-scheme: dark)").matches;
+  var t=pref;
+  if(pref==="auto")t=dark?"dark":"light";
+  if(pref==="auto-sel")t=dark?"sel-dark":"sel-light";
+  document.documentElement.dataset.theme=t;
+})();
+</script>
 </head>
-
-<body class="login_page">
-  <div class = "center">
-  <h1 data-i18n="login_heading"> RTL Switch Login</h1>
-  <form method="post" action="login">
-  <div class="txt_field">
-    <input name="pwd" type="password" autocomplete="current-password" onclick="removeNote()" required />
-    <span></span>
-    <label data-i18n="login_password">Password</label>
+<body>
+<div class="card">
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="2">
+      <rect x="2" y="7" width="20" height="10" rx="2"/>
+      <path d="M6 11v2M10 11v2M14 11v2M18 11v2"/>
+    </svg>
+    <h1 id="hn">Switch Login</h1>
   </div>
-  <input type="submit" data-i18n="login_login" value="Login"/>
-  <h3 id="incorrect" style="margin-top: 5em;"></h3>
+  <p class="sub" id="sub">RTLPlayground management interface</p>
+  <form method="post" action="login">
+    <label for="pwd" id="lp">Password</label>
+    <input id="pwd" name="pwd" type="password" autocomplete="current-password" autofocus required
+           oninput="document.getElementById('err').textContent=''">
+    <button type="submit" id="lb">Sign in</button>
+    <div id="err"></div>
   </form>
+</div>
+<script>
+(function(){
+  var L={
+    en:["Switch Login","RTLPlayground management interface","Password","Sign in","Wrong password, try again."],
+    ja:["スイッチ ログイン","RTLPlayground 管理インターフェース","パスワード","ログイン","パスワードが違います。もう一度お試しください。"],
+    zh:["交换机登录","RTLPlayground 管理界面","密码","登录","密码错误，请重试。"]
+  };
+  var l=null;
+  try{l=localStorage.getItem("rtl_lang");}catch(e){}
+  if(!L[l])l=(navigator.language||"en").slice(0,2);
+  var s=L[l]||L.en;
+  document.title=s[0];
+  document.getElementById("hn").textContent=s[0];
+  document.getElementById("sub").textContent=s[1];
+  document.getElementById("lp").textContent=s[2];
+  document.getElementById("lb").textContent=s[3];
+  if(document.referrer.endsWith("login.html"))document.getElementById("err").textContent=s[4];
+})();
+</script>
 </body>
 </html>
