@@ -299,11 +299,9 @@ void send_vlan(uint16_t vlan)
 bool send_counters(uint8_t phys_port)
 {
 	uint8_t phys_port_idx = phys_port - 1;
-	if (phys_port_idx > 8)
+	if (phys_port_idx > (machine.max_port - machine.min_port))
 		goto err;
 	uint8_t log_port = machine.phys_to_log_port[phys_port_idx];
-	if (log_port == 0)
-		goto err;
 
 	dbg_string("send_counters called: "); dbg_byte(phys_port_idx); dbg_char('\n');
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -609,17 +607,43 @@ void send_stp(void)
 	slen += strtox(outbuf + slen, "\",\"weRoot\":");
 	bool_to_html(stp_root_port == 0xff ? 1 : 0);
 	slen += strtox(outbuf + slen, ",\"rootPort\":");
-	itoa_html(stp_root_port == 0xff ? 0 : machine.log_to_phys_port[stp_root_port]);
+	j = stp_root_port;
+	if (j != 0xff && j >= STP_LAG_BASE) {
+		j = 0;
+		while (j < STP_LAG_BASE && !((stp_lag_mask[stp_root_port - STP_LAG_BASE] >> j) & 1))
+			j++;
+		if (j >= STP_LAG_BASE)
+			j = 0;
+	}
+	itoa_html(j == 0xff ? 0 : machine.log_to_phys_port[j]);
 	slen += strtox(outbuf + slen, ",\"tc\":\"");
 	byte_to_html(stp_tc_count >> 8);
 	byte_to_html(stp_tc_count);
 	slen += strtox(outbuf + slen, "\",\"ports\":[");
 	reg_read_m(RTL837X_MSTP_STATES);
-	for (i = machine.min_port; i <= machine.max_port; i++) {
+	for (i = 0; i < STP_ENTITIES; i++) {
+		if (i < STP_LAG_BASE && (i < machine.min_port || i > machine.max_port))
+			continue;
+		if (i < STP_LAG_BASE && stp_ent_of[i] != i)
+			continue;
+		if (i >= STP_LAG_BASE && !stp_lag_mask[i - STP_LAG_BASE])
+			continue;
 		slen += strtox(outbuf + slen, "{\"p\":");
-		itoa_html(machine.log_to_phys_port[i]);
+		itoa_html(i < STP_LAG_BASE ? machine.log_to_phys_port[i] : 0);
+		slen += strtox(outbuf + slen, ",\"lag\":");
+		itoa_html(i < STP_LAG_BASE ? 0 : i - STP_LAG_BASE + 1);
+		slen += strtox(outbuf + slen, ",\"mbr\":");
+		itoa16_html(i < STP_LAG_BASE ? 0 : stp_lag_mask[i - STP_LAG_BASE]);
 		slen += strtox(outbuf + slen, ",\"st\":");
-		st = (sfr_data[3 - (i >> 2)] >> ((i << 1) & 0x7)) & 0x3;
+		j = i;
+		if (i >= STP_LAG_BASE) {
+			j = 0;
+			while (j < STP_LAG_BASE && !((stp_lag_mask[i - STP_LAG_BASE] >> j) & 1))
+				j++;
+			if (j >= STP_LAG_BASE)
+				j = 0;
+		}
+		st = (sfr_data[3 - (j >> 2)] >> ((j << 1) & 0x7)) & 0x3;
 		itoa_html(st);
 		slen += strtox(outbuf + slen, ",\"role\":");
 		if (!(stp_pflags[i] & STP_PF_ENABLED) || (stp_pflags[i] & STP_PF_TRIPPED))
@@ -658,6 +682,8 @@ void send_stp(void)
 	slen -= 1; // remove comma
 	slen += strtox(outbuf + slen, "]}");
 }
+
+
 
 
 void send_eee(void)

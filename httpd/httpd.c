@@ -89,7 +89,7 @@ __xdata uint32_t last_session_use;
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
-void crc16(__xdata uint8_t *v) __naked;
+void crc16_bank1(__xdata uint8_t *v) __naked;
 
 
 inline uint8_t is_separator(uint8_t c)
@@ -101,10 +101,11 @@ inline uint8_t is_separator(uint8_t c)
 void httpd_init(void) __banked
 {
 	config_upload = 0; // xdata is not zeroed by the startup code
-	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	// Start listening to port 80
 	uip_listen(HTONS(80));
-	s->tstate = TSTATE_CLOSED;
+	// Not through uip_conn: it only points at a connection while uIP is
+	// handling one, and nothing has set it yet at init time.
+	uip_conns[0].appstate.tstate = TSTATE_CLOSED;
 	fw_reset_pending = 0; // xdata is not zeroed by the startup code
 }
 
@@ -517,7 +518,7 @@ uint8_t stream_upload(void)
 		if (upload_settings.p[upload_settings.bptr] == boundary[bindex]) {
 			if (!bindex)
 				crc_final = crc_value;
-			crc16(upload_settings.p + upload_settings.bptr);
+			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			upload_settings.bptr++;
 			bindex++;
 		} else {
@@ -526,7 +527,7 @@ uint8_t stream_upload(void)
 				write_len += bindex;
 				bindex = 0;
 			}
-			crc16(upload_settings.p + upload_settings.bptr);
+			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
@@ -1012,7 +1013,7 @@ void httpd_appcall(void)
 			if (!authenticated && !(f_data[entry].start == FDATA_START_login_html 
 						|| f_data[entry].start == FDATA_START_port_svg 
 						|| f_data[entry].start == FDATA_START_sfp_svg
-						|| f_data[entry].start == FDATA_START_i18n_js
+						|| f_data[entry].start == FDATA_START_main_js
 						|| f_data[entry].start == FDATA_START_style_css)) {
 				send_to_login();
 				goto do_send;
@@ -1030,7 +1031,10 @@ void httpd_appcall(void)
 			 * response; without advertising it a browser reuses the socket
 			 * from its keep-alive pool and the next request hits the already
 			 * closed connection (a POST is then dropped without a retry). */
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\nCache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
+			slen += strtox(outbuf + slen, "; charset=UTF-8\r\n");
+			if (f_data[entry].gzip)
+				slen += strtox(outbuf + slen, "Content-Encoding: gzip\r\n");
+			slen += strtox(outbuf + slen, "Cache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {

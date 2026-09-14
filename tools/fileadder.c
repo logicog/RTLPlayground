@@ -11,6 +11,7 @@
 #include <string.h>
 #include <argp.h>
 #include <stdbool.h>
+#include <zlib.h>
 
 #define OFFSET 2
 
@@ -33,6 +34,7 @@ int fbuf_p;
 int xbuf_p;
 bool addsDir = false;
 int callNum = 0;
+struct arguments arguments;
 
 const char *argp_program_version = "fileadder 0.1";
 const char *argp_program_bug_address = "<git@logicog.de>";
@@ -45,6 +47,7 @@ static struct argp_option options[] = {
     { "address", 'a', "SIZE", 0, "Address where data is placed, default is 0x1000000 if option is used, otherwise 0x1fd000"},
     { "prefix", 'p', "FILE", 0, "Prefix for header and index file generation"},
     { "bank", 'b', "BANKNAME", 0, "Generate #pragma with given bank-name"},
+    { "gzip", 'z', 0, 0, "gzip-compress the added files"},
     { 0 }
 };
 
@@ -57,6 +60,7 @@ struct arguments {
 	char *bank;
 	bool overwrite;
 	bool add_zero;
+	bool gzip;
 };
 
 
@@ -85,6 +89,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		break;
 	case 'b':
 		arguments->bank = arg? arg : "BANK1";
+		break;
+	case 'z':
+		arguments->gzip = true;
 		break;
 	default:
 		return ARGP_ERR_UNKNOWN;
@@ -115,6 +122,47 @@ int addfile(const char *name, int addr)
 	close(dataptr);
 
 	return data_read;
+}
+
+
+/*
+ * gzip-compresses the data at buffer[addr] in place (gzip format, as
+ * expected by the Content-Encoding: gzip header the httpd serves it
+ * with).  Returns the compressed size.
+ */
+int gzipBuffer(int addr, int len)
+{
+	uLong bound = compressBound(len);
+	unsigned char *out = malloc(bound);
+	if (!out) {
+		perror("malloc");
+		return 0;
+	}
+
+	z_stream zs;
+	memset(&zs, 0, sizeof(zs));
+	if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
+			 Z_DEFAULT_STRATEGY) != Z_OK) {
+		fprintf(stderr, "gzip: deflateInit2 failed\n");
+		free(out);
+		return 0;
+	}
+	zs.next_in = (Bytef *)&buffer[addr];
+	zs.avail_in = len;
+	zs.next_out = out;
+	zs.avail_out = bound;
+	if (deflate(&zs, Z_FINISH) != Z_STREAM_END) {
+		fprintf(stderr, "gzip: deflate failed\n");
+		deflateEnd(&zs);
+		free(out);
+		return 0;
+	}
+	int out_len = zs.total_out;
+	deflateEnd(&zs);
+
+	memcpy(&buffer[addr], out, out_len);
+	free(out);
+	return out_len;
 }
 
 
@@ -164,26 +212,26 @@ int addidx(const char *name, int addr, int len)
 
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "#define FDATA_START_%s 0x%x\n", s, addr);
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "#define FDATA_SIZE_%s %d\n", s, len);
-	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/%s\", FDATA_START_%s, FDATA_SIZE_%s, %s},\n", name, s, s, getMime(name));
+	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/%s\", FDATA_START_%s, FDATA_SIZE_%s, %s, %d},\n", name, s, s, getMime(name), arguments.gzip? 1 : 0);
 	if (!strcmp(name, "index.html"))
-		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/\", FDATA_START_%s, FDATA_SIZE_%s, mime_HTML},\n", s, s);
+		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/\", FDATA_START_%s, FDATA_SIZE_%s, mime_HTML, %d},\n", s, s, arguments.gzip? 1 : 0);
 	return 0;
 }
 
 /*
  * Replaces calls of the type #{function} in .html files being added
  * It is assumed that the possibly expanded string will fit into the buffer
- * Returns the new length of the string
+ * Takes the length of the data and returns its new length
  */
-int replaceCalls(int pos)
+int replaceCalls(int pos, int len)
 {
 	int i = 0;
 	char function_buf[256];
 
-	while (buffer[pos + i]) {
-		if ((buffer[pos + i]) == '#' && (buffer[pos + i + 1] == '{')) {
+	while (i < len) {
+		if (buffer[pos + i] == '#' && i + 1 < len && buffer[pos + i + 1] == '{') {
 			int j = 2;
-			while (buffer[pos + i + j]) {
+			while (i + j < len) {
 				if (buffer[pos + i + j] == '}')
 					break;
 				function_buf[j - 2] = buffer[pos + i + j];
@@ -196,12 +244,13 @@ int replaceCalls(int pos)
 
 			}
 			function_buf[j - 2] = '\0';
-			if (!buffer[pos + i + j])
-				return i + j;
+			if (i + j >= len)
+				return len;
 			// Because the buffers overlap we cannot use strcpy
-			memmove(&buffer[pos + i + 5], &buffer[pos + i + j], strlen(&buffer[pos + i + j]) + 1);
+			memmove(&buffer[pos + i + 5], &buffer[pos + i + j], len - (i + j));
 			sprintf(&buffer[pos + i + 2], "%03d", callNum);
 			buffer[pos + i + 5] = '}';
+			len -= j - 5;
 			i += 6;
 			fbuf_p += snprintf(&fbuf[fbuf_p], DEF_SIZE - fbuf_p, "  %s,\n", function_buf);
 			xbuf_p += snprintf(&xbuf[xbuf_p], DEF_SIZE - xbuf_p, "extern uint16_t %s(void);\n", function_buf);
@@ -210,13 +259,12 @@ int replaceCalls(int pos)
 		i++;
 	}
 
-	return strlen(&buffer[pos]);
+	return len;
 }
 
 
 int main(int argc, char **argv)
 {
-	struct arguments arguments;
 	int arg_index;
 	char tmpfilename[] = "image_XXXXXX";
 	struct stat s;
@@ -227,6 +275,7 @@ int main(int argc, char **argv)
 	arguments.overwrite = true;
 	arguments.prefix = 0;
 	arguments.bank = NULL;
+	arguments.gzip = false;
 
 	argp_parse(&argp, argc, argv, 0, &arg_index, &arguments);
 	if (!arg_index)
@@ -269,7 +318,7 @@ int main(int argc, char **argv)
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "#include <stdint.h>\n\n");
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p,
 			     "typedef enum mime_type_e {\n  mime_HTML = 0,\n  mime_SVG,\n  mime_ICO,\n  mime_PNG,\n  mime_JS,\n  mime_CSS,\n  mime_TXT\n} mime_type_t;\n\n");
-	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "struct f_data {\n  __code char *file;\n  uint32_t start;\n  uint16_t len;\n  mime_type_t mime;\n};\n\n");
+	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "struct f_data {\n  __code char *file;\n  uint32_t start;\n  uint16_t len;\n  mime_type_t mime;\n  uint8_t gzip;\n};\n\n");
 	// defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "typedef uint16_t (* fcall_ptr)(void);\n\n");
 
 	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "// This file is automatically generated, do not edit!\n\n");
@@ -308,17 +357,23 @@ int main(int argc, char **argv)
 				continue;
 
 			size_t data_read = addfile(pathbuffer, addr);
+			size_t file_len = data_read;
 			if (data_read) {
-				if (arguments.add_zero) {
-					buffer[addr + data_read + 1] = '\0';
-					data_read++;
-				}
+			if (arguments.add_zero) {
+				/* NUL-terminate the data so the file table and the
+				 * strlen()-based size computation are deterministic
+				 * (the buffer past the file is otherwise uninitialised) */
+				buffer[addr + data_read] = '\0';
+				data_read++;
+			}
 				printf("Data inserted from %s at 0x%x, size: %ld\n", pathbuffer, addr, data_read);
 			}
 			int old_len = data_read;
-			data_read = replaceCalls(addr);
+			data_read = replaceCalls(addr, file_len);
 			if (old_len > data_read)
 				memset(buffer + addr + data_read, 0, old_len - data_read);
+			if (arguments.gzip)
+				data_read = gzipBuffer(addr, data_read);
 			addidx(in_file->d_name, addr, data_read);
 			addr += data_read;
 		}

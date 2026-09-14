@@ -4,6 +4,9 @@
 
 ## Added
 
+- Web UI
+  - Compress the embedded assets (minify + gzip) and switch to a single-page layout. #315
+
 ## Changed
 
 ## Fixed

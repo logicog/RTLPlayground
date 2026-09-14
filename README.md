@@ -59,7 +59,7 @@ device simulator is provided, which runs entirely under Linux as a local webserv
 Install the following particular build requisites (Debian 12/13), note that Ubuntu 24.04
 still has an older version of sdcc, but you will need sdcc version 4.5 for the code to compile:
 ```
-sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev
+sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev
 ```
 
 <details>
@@ -175,7 +175,7 @@ Header checksum is: 0x5a1
 ## (3) Sandbox Usage with Ghidra (optional)
 
 You can play with the image using ghidra or flash real Switch Hardware. For
-ghidra see this information about [Ghidra images](ghidra.md).
+ghidra see this information about [Ghidra images](doc/ghidra.md).
 
 ## (4) Installation through the Web interface (software way)
 
