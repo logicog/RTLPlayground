@@ -1860,8 +1860,10 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "lacp")) {
 			if (cmd_compare(1, "show"))
 				lacp_show();
+			else if (cmd_compare(1, "off"))
+				lacp_off();
 			else
-				lacp_cmd(cmd_compare(1, "on"));
+				cmd_error("lacp (show | off); a group starts LACP with: lag <1-4> lacp <port>...\n");
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)

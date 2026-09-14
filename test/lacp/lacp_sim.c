@@ -234,7 +234,7 @@ int main(int argc, char **argv)
 		hw_isolation[i] = 0x3ff;
 
 	/* T1: enable announces on every port with sane field contents */
-	lacp_cmd(1);
+	lacp_lag_set(0, 0x00ff);
 	ticks(8);
 	int all_tx = 1, sane = 1;
 	for (int i = machine.min_port; i <= machine.max_port; i++) {
@@ -310,7 +310,7 @@ int main(int argc, char **argv)
 	      "T8 re-election: new partner system forms a fresh aggregate");
 
 	/* T9: lacp off clears the trunk */
-	lacp_cmd(0);
+	lacp_off();
 	CHECK(hw_members == 0 && lacpEnabled == 0, "T9 disable: trunk cleared");
 
 	/* ---- per-LAG scenarios: two independent aggregators ---- */

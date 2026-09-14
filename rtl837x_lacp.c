@@ -177,9 +177,6 @@ static uint8_t lacp_mux_machine(uint8_t port)
 
 #define port_bit(p) (((uint8_t)1) << (p))
 
-/* All front-panel ports of the detected chip (platform knowledge, one place) */
-#define LACP_PMASK_PORTS (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6)
-
 
 /* Build and emit one LACPDU out physical port `port` (802.3ad 43.4.2). */
 void lacp_send(uint8_t port) __banked
@@ -579,15 +576,8 @@ void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
 }
 
 
-/* Legacy "lacp on": one aggregator on LAG 0 spanning every port (the pre-
- * per-LAG behaviour). Explicit "lag <n> lacp <ports>" is the per-LAG path. */
-void lacp_setup(void) __banked
-{
-	lacp_lag_set(0, LACP_PMASK_PORTS);
-}
-
-
-/* "lacp off": remove every LACP LAG (releases their trunks, stops the engine). */
+/* "lacp off": remove every LACP LAG (releases their trunks, stops the engine).
+ * There is no "lacp on": the engine comes up with the first "lag <n> lacp". */
 void lacp_off(void) __banked
 {
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++)
@@ -627,19 +617,5 @@ void lacp_show(void) __banked
 		for (uint8_t j = 0; j < 6; j++)
 			print_byte(lacp_partner_sys[i][j]);
 		write_char('\n');
-	}
-}
-
-
-/* "lacp on|off" command handler (kept in the module with the rest of LACP). */
-void lacp_cmd(uint8_t on) __banked
-{
-	/* lacpEnabled is owned by lacp_engine_on()/off(), driven from lacp_lag_set() */
-	if (on) {
-		print_string("LACP enabled\n");
-		lacp_setup();
-	} else {
-		print_string("LACP disabled\n");
-		lacp_off();
 	}
 }
