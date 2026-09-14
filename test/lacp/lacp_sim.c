@@ -379,6 +379,34 @@ int main(int argc, char **argv)
 	lacp_lag_set(0, 0x0003);
 	CHECK(hw_tbl_ops == 2, "T15 two PVIDs among members: one entry per VLAN");
 
+	/* T16: the partner changes one cable at a time. Port 1 starts hearing B
+	 * while port 0 still hears A, then A goes quiet and B appears on port 0
+	 * too. The aggregator must let go of A once no port hears it, even though
+	 * port 1 was CURRENT the whole time, or the LAG never aggregates with B. */
+	lacp_lag_set(0, 0);
+	lacp_lag_set(0, 0x0003);
+	ticks(8);
+	for (int r = 0; r < 3; r++) {
+		partner_frame(0, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		partner_frame(1, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		ticks(8);
+	}
+	for (int t = 0; t < 40; t++) {		/* port 1 moved to B, port 0 still on A */
+		partner_frame(0, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		partner_frame(1, SYS_B, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		ticks(4 * 40);
+	}
+	int stayed_out = hw_members == 0x0001 && !(lacp_actor_state[1] & P_SYNC);
+	for (int t = 0; t < 60; t++)		/* port 0 unplugged from A, past the short timeout */
+		{ partner_frame(1, SYS_B, P_ACT|P_AGG|P_TO|P_SYNC, 1); ticks(4 * 40); }
+	for (int t = 0; t < 40; t++) {		/* port 0 now on B as well */
+		partner_frame(0, SYS_B, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		partner_frame(1, SYS_B, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		ticks(4 * 40);
+	}
+	CHECK(stayed_out && hw_members == 0x0003 && !memcmp(lacp_agg_sys[0], SYS_B, 6),
+	      "T16 re-cabling one port at a time: aggregator moves from A to B");
+
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
 	return failures ? 1 : 0;
