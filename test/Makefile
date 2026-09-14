@@ -12,9 +12,12 @@ CC       = gcc
 SRCROOT  = ..
 # -include shim first so __xdata/__code/__banked vanish before any firmware header.
 CFLAGS   = -std=gnu11 -g -O1 -Wall -Wextra -Wno-unused-parameter -Wno-unknown-pragmas \
-           -Wno-builtin-declaration-mismatch -DRTLP_HOST_TEST \
+           -DRTLP_HOST_TEST \
            -fsanitize=address,undefined -fno-omit-frame-pointer \
            -include sdcc_shim.h -I. -I$(SRCROOT) -I$(SRCROOT)/httpd -I$(SRCROOT)/uip
+ifeq ($(findstring clang,$(shell $(CC) --version 2>/dev/null)),)
+CFLAGS  += -Wno-builtin-declaration-mismatch
+endif
 LDFLAGS  = -fsanitize=address,undefined
 
 BUILDDIR = build

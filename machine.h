@@ -74,7 +74,7 @@ struct sfp_port
 	i2c_bus_t i2c;
 };
 
-typedef struct machine {
+struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
 	// Lowest logical port number
@@ -102,7 +102,7 @@ typedef struct machine {
 	uint32_t mac_flash_offset;
 };
 
-typedef struct machine_runtime
+struct machine_runtime
 {
 	uint8_t isRTL8373 : 1;
 	uint8_t isN : 1;
