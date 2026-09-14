@@ -331,6 +331,18 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       </div>
     </section>
 
+    <section class="tab" id="tab-isolate">
+      <div class="card"><h2 data-i18n="iso_title">Port isolation</h2>
+        <p class="small mut" style="margin-bottom:10px" data-i18n="iso_intro">A frame entering a port may only leave through the ports ticked in its row.</p>
+        <div class="scrollx"><table class="t" id="isotbl" style="width:auto"><thead></thead><tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:6px" data-i18n="iso_legend">The cell of the port itself is always allowed.</p>
+        <div style="display:flex;gap:12px;margin-top:10px">
+          <button class="ctl pri" id="isoapply" data-i18n="c_apply">Apply</button>
+          <button class="ctl" id="isoall" data-i18n="iso_all">Allow all</button>
+        </div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-lag">
       <div id="lagwrap" class="grid2"></div>
       <p class="small mut" style="margin-top:10px" data-i18n="lag_note">A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.</p>
