@@ -92,8 +92,8 @@ mismatch should be rejected or applied to the whole group.
 ```
 #define LACP_FAST_PERIODIC	0x0032	/* fast TX ~1 s, worst ~1.6 s; partner expires at 3 s  */
 #define LACP_SLOW_PERIODIC	0x05dc	/* slow TX ~30 s, worst ~48 s; partner expires at 90 s */
-#define LACP_SHORT_TIMEOUT	0x0300	/* we drop a silent partner after 6-9 s  */
-#define LACP_LONG_TIMEOUT	0x5a00	/* long-timeout variant, after 3-5 min   */
+#define LACP_SHORT_TIMEOUT	0x00c8	/* silent partner dropped after 4 s   (802.3ad: 3 s)  */
+#define LACP_LONG_TIMEOUT	0x1770	/* long-timeout variant, after 120 s  (802.3ad: 90 s) */
 ```
 
 One unit is one call of `lacp_timers()`, measured at 50 Hz on a SWTGW218AS: 50
@@ -116,6 +116,11 @@ and reporting our SYNC as cleared. Since a received actor state is recorded
 verbatim as the partner state and sent back out, the flap was visible from both
 ends, and the bond's churn machines never settled. With the periods above, the
 same capture shows no expiry at all and both churn states read `none`.
+
+Our own timeouts sit one period above the standard's 3 s and 90 s, which
+absorbs a single lost LACPDU plus the tick jitter. A partner whose LACP has
+stopped while its link stayed up is out of the trunk after that; anything
+longer keeps hashing traffic onto a member that no longer agrees to carry it.
 
 ## LACP API
 
