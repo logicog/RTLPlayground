@@ -344,6 +344,7 @@ netmask zzz.zzz.zzz.zzz = Network mask of the switch
 port x name xxx         = Name xxx the port number x
 port z 1g               = Set 1g speed for port z
 igmp on/off             = Turn IGMP on or off
+session xxxx            = Web session timeout in seconds (default 200)
 ```
 [To be continue]
 
