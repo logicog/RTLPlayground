@@ -226,6 +226,8 @@ void mstp_show(void) __banked
 		write_char('\n');
 	}
 	for (mstp_msti = 1; mstp_msti <= MSTP_MSTIS; mstp_msti++) {
+		if (!((mstp_used >> mstp_msti) & 1))
+			continue;
 		md5_g = 0;
 		for (mstp_lo = 1; mstp_lo <= MSTP_VID_MAX; mstp_lo++) {
 			if (mstp_get(mstp_lo) != mstp_msti)
