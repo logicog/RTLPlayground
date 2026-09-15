@@ -45,6 +45,7 @@
 // #define MACHINE_FG_4GT_2SX_V2_0
 // #define MACHINE_FG_8GT_1SX
 // #define MACHINE_POE_2G080110GS
+// #define MACHINE_HASIVO_S600W_4GT_2XGT_SE
 
 typedef struct {
 	// GPIO pins for SDA/SCL
@@ -77,6 +78,7 @@ struct sfp_port
 struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
+	uint8_t sys_led_mode;
 	// Lowest logical port number
 	uint8_t min_port;
 	// Highest logical port number

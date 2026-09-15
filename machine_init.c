@@ -117,6 +117,13 @@ void machine_custom_init(void) __banked
 	REG_SET(RTL837X_REG_LED_GLB_IO_EN, 0x7624155b);
 }
 
+#elif defined MACHINE_HASIVO_S600W_4GT_2XGT_SE
+void machine_custom_init(void) __banked
+{
+    // For this device, the reset button triggers this input
+    gpio_input_setup(GPIO54_ACL_BIT2_EN);
+}
+
 #else
 void machine_custom_init(void) __banked { }
 #endif
