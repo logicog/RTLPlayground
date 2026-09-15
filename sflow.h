@@ -2,6 +2,7 @@
 #define _SFLOW_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define SFLOW_PORT_DEFAULT	6343
 #define SFLOW_INTERVAL_DEFAULT	20
@@ -9,7 +10,7 @@
 struct uip_udp_conn;
 
 struct sflow_state {
-	uint8_t enabled;
+	bool enabled;
 	uint8_t collector[4];
 	uint16_t port;
 	uint16_t interval;	/* seconds between two samples of one port */

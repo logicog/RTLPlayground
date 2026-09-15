@@ -160,7 +160,7 @@ void sflow_init(void) __banked
 
 void sflow_start(void) __banked
 {
-	sflow_state.enabled = 1;
+	sflow_state.enabled = true;
 	if (sflow_state.conn)
 		return;
 	if (!(sflow_state.collector[0] | sflow_state.collector[1] | sflow_state.collector[2] | sflow_state.collector[3]))

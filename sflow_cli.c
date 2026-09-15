@@ -15,9 +15,6 @@ extern __xdata uint8_t cmd_words_len;
 extern __xdata uint8_t cmd_words_b[15];
 extern __xdata uint8_t ip[4];
 extern __xdata uint16_t atoi_results_short;
-uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd);
-uint8_t atoi_short(uint8_t idx);
-uint8_t parse_ip(uint8_t idx);
 
 
 void sflow_parse(void) __banked __reentrant
@@ -41,7 +38,7 @@ void sflow_parse(void) __banked __reentrant
 		return;
 	}
 	if (cmd_compare(1, "off")) {
-		sflow_state.enabled = 0;
+		sflow_state.enabled = false;
 		sflow_stop();
 		return;
 	}
@@ -49,10 +46,7 @@ void sflow_parse(void) __banked __reentrant
 		if (cmd_words_len >= 4 && (!atoi_short(cmd_words_b[3]) || !atoi_results_short))
 			goto err;
 		sflow_stop();
-		sflow_state.collector[0] = ip[0];
-		sflow_state.collector[1] = ip[1];
-		sflow_state.collector[2] = ip[2];
-		sflow_state.collector[3] = ip[3];
+		memcpy(sflow_state.collector, ip, 4);
 		sflow_state.port = cmd_words_len >= 4 ? atoi_results_short : SFLOW_PORT_DEFAULT;
 		if (sflow_state.enabled)
 			sflow_start();
