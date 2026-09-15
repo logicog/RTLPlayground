@@ -736,7 +736,7 @@ var TABS=[
   {id:"l2",    icon:"M4 5h16M4 12h16M4 19h10"},
   {id:"mirror",icon:"M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4"},
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
-  {id:"lldp",  icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
+  {id:"lldp",  icon:"M7 12h6"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
   {id:"system",icon:"M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"},
