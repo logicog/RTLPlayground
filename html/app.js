@@ -1646,8 +1646,21 @@ tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagLoad().catch(f
 function lldpLoad(){
   return getJSON("/lldp.json").then(function(s){
     $("lldp_en").checked=s.on;
-    
-  }).catch(function(){});
+    var tb=$("lldp_table").tBodies[0];tb.innerHTML="";
+    var x=1;
+    s.port_status.forEach(function(e){
+      var tr = tb.insertRow();
+      tr.insertCell().textContent="Port "+(x++);
+      var sw=h("label",{class:"switch"},[
+        h("input",{type:"checkbox",onchange:function(){
+          postCmd("port TODO lldp "+(this.checked?"permit":"block"))
+            .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
+        }}),h("i")]);
+
+      sw.firstChild.checked=e;
+      tr.insertCell().appendChild(sw);
+    });
+  }).catch(function(e){console.log("ERROR!"); console.log(e)});
 }
 
 $("lldp_en").addEventListener("change",function(){
