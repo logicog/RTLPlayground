@@ -1941,8 +1941,10 @@ void stp_setup(void) __banked
 
 	/* Take BPDUs to the CPU only - we are a participating bridge now. */
 	stp_hw_msti = 0;
-	if (stp_rstp == STP_VER_MSTP)
+	if (stp_rstp == STP_VER_MSTP) {
 		stp_hw_msti = 1;
+		mstp_digest_now();
+	}
 	stp_fdb_update(PMASK_CPU);
 }
 
@@ -1998,6 +2000,7 @@ void stp_mstp_changed(void) __banked
 {
 	if (!stp_enabled || stp_rstp != STP_VER_MSTP)
 		return;
+	mstp_digest_now();
 	stp_rsel = stp_trees;
 	stp_trees_update();
 	stp_st = 0;
