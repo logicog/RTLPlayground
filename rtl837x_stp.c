@@ -1066,7 +1066,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 		MST_O[0] = (MST_V3_FIXED + ((uint16_t)stp_mn << 4)) >> 8;
 		MST_O[1] = MST_V3_FIXED + (stp_mn << 4);
 		STP_O->msg_len = HTONS(BPDU_LEN_MST + ((uint16_t)stp_mn << 4));
-		uip_len = (MST_O - (__xdata uint8_t *)STP_O) + 66 + ((uint16_t)stp_mn << 4);
+		uip_len = (uint16_t)(MST_O - (__xdata uint8_t *)STP_O) + 66 + ((uint16_t)stp_mn << 4);
 	}
 	tcpip_output();
 }
