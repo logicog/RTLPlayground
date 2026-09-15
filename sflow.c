@@ -19,8 +19,6 @@ extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
 
-#define SFLOW_P		((__xdata uint8_t *)uip_appdata)
-
 #define CNT_LOW		0	/* 32-bit counter in STAT_V_LOW */
 #define CNT_HIGH	1	/* 32-bit counter in STAT_V_HIGH */
 #define CNT_WIDE	2	/* 64-bit counter, STAT_V_HIGH then STAT_V_LOW */
@@ -30,7 +28,7 @@ __xdata struct sflow_state sflow_state;
 __xdata uip_ipaddr_t sflow_ip;
 __xdata uint32_t sflow_gap;
 __xdata uint32_t sflow_sample_seq[10];
-__xdata uint16_t sflow_len;
+__xdata uint8_t * __xdata sflow_p;	/* next byte of the datagram being built */
 __xdata uint8_t  sflow_port;
 
 /* MIB counter index and part for each counter field of the sFlow records */
@@ -54,19 +52,28 @@ static __code const uint32_t sflow_speed[16] = {
 
 static void sflow_put32(uint32_t v) __reentrant
 {
-	SFLOW_P[sflow_len] = v >> 24;
-	SFLOW_P[sflow_len + 1] = v >> 16;
-	SFLOW_P[sflow_len + 2] = v >> 8;
-	SFLOW_P[sflow_len + 3] = v;
-	sflow_len += 4;
+	*sflow_p++ = v >> 24;
+	*sflow_p++ = v >> 16;
+	*sflow_p++ = v >> 8;
+	*sflow_p++ = v;
+}
+
+
+/* A small constant: three zero bytes and the value. */
+static void sflow_put8(uint8_t v) __reentrant
+{
+	*sflow_p++ = 0;
+	*sflow_p++ = 0;
+	*sflow_p++ = 0;
+	*sflow_p++ = v;
 }
 
 
 static void sflow_put_reg(uint16_t reg) __reentrant
 {
 	reg_read_m(reg);
-	memcpy(SFLOW_P + sflow_len, sfr_data, 4);
-	sflow_len += 4;
+	memcpy(sflow_p, sfr_data, 4);
+	sflow_p += 4;
 }
 
 
@@ -98,39 +105,39 @@ static void sflow_sample(void) __reentrant
 	speed = (sflow_port & 1) ? speed >> 4 : speed & 0xf;
 	speed = up ? (speed & 7) << 1 : 6;
 
-	sflow_len = 0;
-	sflow_put32(5);
-	sflow_put32(1);
-	memcpy(SFLOW_P + sflow_len, uip_hostaddr, 4);
-	sflow_len += 4;
-	sflow_put32(0);
+	sflow_p = uip_appdata;
+	sflow_put8(5);
+	sflow_put8(1);
+	memcpy(sflow_p, uip_hostaddr, 4);
+	sflow_p += 4;
+	sflow_put8(0);
 	sflow_put32(++sflow_state.seq);
 	sflow_put32(ticks * (1000 / SYS_TICK_HZ));
-	sflow_put32(1);
+	sflow_put8(1);
 
-	sflow_put32(2);
-	sflow_put32(168);
+	sflow_put8(2);
+	sflow_put8(168);
 	sflow_put32(++sflow_sample_seq[sflow_port]);
-	sflow_put32(machine.log_to_phys_port[sflow_port]);
-	sflow_put32(2);
+	sflow_put8(machine.log_to_phys_port[sflow_port]);
+	sflow_put8(2);
 
-	sflow_put32(1);
-	sflow_put32(88);
-	sflow_put32(machine.log_to_phys_port[sflow_port]);
-	sflow_put32(6);
+	sflow_put8(1);
+	sflow_put8(88);
+	sflow_put8(machine.log_to_phys_port[sflow_port]);
+	sflow_put8(6);
 	sflow_put32(sflow_speed[speed]);
 	sflow_put32(sflow_speed[speed + 1]);
-	sflow_put32(0);
-	sflow_put32(up ? 3 : 1);
+	sflow_put8(0);
+	sflow_put8(up ? 3 : 1);
 	sflow_put_table(sflow_if_in, sizeof(sflow_if_in) / 2);
 	sflow_put_table(sflow_if_out, sizeof(sflow_if_out) / 2);
-	sflow_put32(1);
+	sflow_put8(1);
 
-	sflow_put32(2);
-	sflow_put32(52);
+	sflow_put8(2);
+	sflow_put8(52);
 	sflow_put_table(sflow_ether, sizeof(sflow_ether) / 2);
 
-	uip_udp_send(sflow_len);
+	uip_udp_send(sflow_p - (__xdata uint8_t *)uip_appdata);
 }
 
 
