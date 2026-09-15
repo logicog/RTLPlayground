@@ -1338,11 +1338,14 @@ void stp_in(void) __banked
 	if (!(stp_pflags[port] & STP_PF_ENABLED) || (stp_pflags[port] & STP_PF_FILTER))
 		return;
 
-	/* BPDU guard: an edge-facing port must never see a BPDU - shut it down. */
+	/* BPDU guard: an edge-facing port must never see a BPDU - shut it down.
+	 * The port leaves the region's trees first: an internal port only takes
+	 * the state of the tree being worked on, and this has to reach all. */
 	if (stp_pflags[port] & STP_PF_BPDUGUARD) {
 		print_string("STP: BPDU guard tripped, disabling port ");
 		print_port_nl(port);
 		stp_pflags[port] |= STP_PF_TRIPPED;
+		stp_internal_update(port, 0);
 		stp_state_set(port, 0b00);
 		stp_tc_count++;
 		return;
@@ -1433,6 +1436,7 @@ void stp_in(void) __banked
 	    && cmpBytes((__xdata uint8_t *)&stp_msg.root, (__xdata uint8_t *)&RV.root, 8) < 0) {
 		print_string("STP: root guard blocking port ");
 		print_port_nl(port);
+		stp_internal_update(port, 0);
 		stp_state_set(port, 0b01);
 		port_timers[PT(port)] = FWD_TICKS;
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
@@ -1951,6 +1955,10 @@ void stp_off(void) __banked
 
 void stp_port_admin(uint8_t port, uint8_t on) __banked
 {
+	/* Either way the port starts over outside the region: a port with STP
+	 * off must not keep an internal bit that a later instance would turn
+	 * into a listen period nobody ends. */
+	stp_internal_update(port, 0);
 	for (stp_tt = 0; stp_tt < STP_TREES; stp_tt++) {
 		if (!((stp_trees >> stp_tt) & 1))
 			continue;
