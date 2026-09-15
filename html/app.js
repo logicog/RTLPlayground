@@ -891,7 +891,7 @@ function stpCnt(c){
     $("scage"+p).textContent=!v[0]?"-":(age===0xffff?">":"")+Math.floor(age/c.hz);
   });
 }
-var mstCur={},mstSig="",mstTick=0;
+var mstCur={},mstSig="";
 function stpText(cmd){return api("/cmd",{method:"POST",body:cmd}).then(function(r){return r.ok?r.body:""})}
 function mstLoad(){
   return stpText("stp mstp").then(function(tx){
@@ -974,7 +974,7 @@ function stpLoad(){
       $("stpr"+p).value=v.prio;$("stgu"+p).value=v.guard;$("stfi"+p).value=v.filter;$("stpp"+p).value=v.p2p;
     });
     var more=Promise.resolve();
-    if(mstCur.region===undefined||(s.rstp===2&&!(mstTick++%3)))more=more.then(mstLoad);
+    if(mstCur.region===undefined)more=more.then(mstLoad);
     if($("stpcntd").open)more=more.then(function(){return getJSON("/stpcnt.json").then(stpCnt)});
     return more;
   }).catch(function(){});
@@ -1712,7 +1712,9 @@ var CONF_OVERWRITE=[
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
   /^eee\s+\d{1,2}\b/,/^eee\b/,/^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
-  /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
+  /^stp\s+(prio|hello|maxage|fwd|txhold|version|maxhops|pathcost|bpdu|region|revision)\b/,
+  /^stp\s+msti\s+\d{1,2}\s+(vlan|prio)\b/,
+  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+msti\s+\d{1,2}\s+(cost|prio)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,
 ];
@@ -1727,6 +1729,7 @@ function mergeConf(base,texts){
       var m;
       if((m=line.match(/^vlan (\d{1,4}) d$/))){drop(new RegExp("^vlan "+m[1]+"( |$)"));return;}
       if((m=line.match(/^lag (\d) d$/))){drop(new RegExp("^lag(hash)? "+m[1]+"( |$)"));return;}
+      if((m=line.match(/^stp msti (\d{1,2}) vlan none$/))){drop(new RegExp("^stp msti "+m[1]+" vlan( |$)"));return;}
       if(line==="mirror off"){drop(/^mirror /);return;}
       if(!isConfCmd(line))return;
       if((m=line.match(/^bw (in|out) (\d{1,2}) (\S+)$/))){
