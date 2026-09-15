@@ -3,7 +3,7 @@ var LANG={
 en:{
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
 nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_lag:"LAG",nav_eee:"EEE",
-nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",
+nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware", nav_lldp:"LLDP",
 hdr_dirty:"unsaved changes",hdr_dirty_t:"Running config differs from startup config",
 hdr_save:"Save to flash",hdr_save_t:"Persist running configuration to flash",
 th_auto:"System",th_auto_sel:"System (Selenized)",sy_display:"Display",sy_theme:"Theme",sy_display_note:"Stored in this browser only.",th_light:"Light",th_dark:"Dark",
@@ -40,6 +40,7 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
+lldp_enabled: "LLDP Enabled", lldp_title: "Service Status",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -71,7 +72,7 @@ bw_title:"Bandwidth limits",bw_h:"Mbit/s, 0.016-10000",bw_in:"Ingress limit",bw_
 bw_exceed:"When exceeded",bw_fc:"Flow control",bw_drop:"Drop",
 bw_in_err:"Ingress limit must be 0.016-10000 Mbit/s",bw_out_err:"Egress limit must be 0.016-10000 Mbit/s",
 sy_network:"Network",sy_dhcp:"Use DHCP",sy_dhcp_t:"Request address via DHCP",sy_services:"Services",
-sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",sy_lldp:"LLDP",
+sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",
 sy_sesstmo:"Session timeout (s)",sy_sesstmo_err:"Session timeout must be 1-65535 s",
 sy_services_note:"Service state reflects the startup config; runtime state is not readable.",
 sy_password:"Admin password",sy_newpw:"New password",sy_repeat:"Repeat",sy_pwapply:"Change password",
@@ -735,6 +736,7 @@ var TABS=[
   {id:"l2",    icon:"M4 5h16M4 12h16M4 19h10"},
   {id:"mirror",icon:"M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4"},
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
+  {id:"lldp",  icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
   {id:"system",icon:"M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"},
@@ -1640,6 +1642,23 @@ function lagApply(g){
 }
 tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagLoad().catch(function(){})})}};
 
+
+function lldpLoad(){
+  return getJSON("/lldp.json").then(function(s){
+    $("lldp_en").checked=s.on;
+    
+  }).catch(function(){});
+}
+
+$("lldp_en").addEventListener("change",function(){
+  var el=this;
+  postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+});
+
+
+tabHooks.lldp={enter:lldpLoad};
+
+
 function eeeFlags(bits){
   var b=parseInt(bits,2);
   return["100M","1G","2.5G"].map(function(s,i){
@@ -1751,13 +1770,10 @@ function cfgParseKnown(txt){
     l=l.trim();
     if(/^igmp on$/.test(l))igmp=true;
     if(/^igmp off$/.test(l))igmp=false;
-    if(/^lldp on$/.test(l))lldp=true;
-    if(/^lldp off$/.test(l))lldp=false;
     if(/^syslog on$/.test(l))syslog=true;
     if(/^syslog off$/.test(l))syslog=false;
   });
   $("sy-igmp").checked=igmp;
-  $("sy-lldp").checked=lldp;
   $("sy-syslog").checked=syslog;
 }
 $("sy-apply").addEventListener("click",function(){
@@ -1784,10 +1800,6 @@ $("sy-dhcp").addEventListener("click",function(){
 $("sy-igmp").addEventListener("change",function(){
   var el=this;
   postCmd("igmp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
-});
-$("sy-lldp").addEventListener("change",function(){
-  var el=this;
-  postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
 $("sy-syslog").addEventListener("change",function(){
   var cmds=[],el=this;
