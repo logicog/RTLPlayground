@@ -333,6 +333,11 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
 
     <section class="tab" id="tab-lag">
       <div id="lagwrap" class="grid2"></div>
+      <div class="card" style="margin-top:14px"><h2 data-i18n="lacp_heading">LACP (802.3ad)</h2>
+        <div class="scrollx"><table class="t" id="lacptbl">
+          <thead><tr><th data-i18n="c_port">Port</th><th>LAG</th><th data-i18n="lacp_actor">Actor</th><th data-i18n="lacp_partner">Partner</th><th data-i18n="lacp_rxstate">RX state</th><th data-i18n="lacp_rx">LACPDUs received</th><th data-i18n="lacp_psys">Partner system</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
       <p class="small mut" style="margin-top:10px" data-i18n="lag_note">A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.</p>
     </section>
 
