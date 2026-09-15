@@ -1,4 +1,4 @@
-# Spanning Tree (STP / RSTP)
+# Spanning Tree (STP / RSTP / MSTP)
 
 The switch can take part in a spanning tree (IEEE 802.1D / 802.1w) so that
 redundant links between bridges are blocked instead of forming a loop. The
@@ -6,7 +6,8 @@ implementation elects a root bridge from the BPDUs it receives, picks the
 cheapest path to it as the root port, blocks ports on which a better bridge is
 already designated, promotes ports to forwarding once their listen period
 expires, drops information a neighbour stopped sending, and blocks a port on
-which it sees its own BPDU.
+which it sees its own BPDU. With MSTP (IEEE 802.1Q) groups of VLANs get
+spanning trees of their own inside an MST region.
 
 STP can be enabled and controlled via the web interface or the command line,
 as follows:
@@ -234,6 +235,58 @@ the lowest member that has a link and carry the group's own port id, and a
 BPDU received on any member belongs to the group. Losing one member of a live
 LAG is not a topology change; the group only goes down with its last link.
 
+## MSTP
+
+`stp version mstp` runs the Multiple Spanning Tree Protocol of IEEE 802.1Q.
+Bridges with the same region name, revision and VLAN to instance table form
+an MST region. Inside it every instance with VLANs has a spanning tree of its
+own, so the VLANs of different instances can use different links. Towards
+bridges outside the region, RSTP and STP bridges included, the whole region
+behaves as one bridge of the common spanning tree (CIST).
+
+```
+stp version mstp
+stp region lab                 # up to 32 characters, no spaces
+stp revision 1
+stp msti 1 vlan 10-19,100      # the VLANs of instance 1; none gives them back
+stp msti 2 vlan 20-29
+stp msti 1 prio 1              # bridge priority in instance 1, times 4096
+stp port 9 msti 2 cost 2000    # port path cost in instance 2, 0 = automatic
+stp port 9 msti 2 prio 64      # port priority in instance 2
+stp maxhops 20                 # 6-40, how far information travels in the region
+stp mstp                       # region, hop count, digest, VLANs of each instance
+stp msti 1                     # the tree of instance 1
+```
+
+Instances 1 to 15 are supported, as many as the switch keeps port states for.
+A VLAN not given to an instance belongs to the CIST, and an instance without
+VLANs does not run. The configuration digest, which tells one region from
+another, is worked out one MD5 block per timer tick while STP runs, about
+2.6 s after every change of the table; until then BPDUs carry the previous
+digest.
+
+A port whose neighbour is in the same region is internal. It carries the
+instance trees with their own roles, states, proposals, agreements and
+topology changes, and the remaining hops count limits how far information
+travels instead of the message age. A port towards another region, or towards
+an RSTP or STP bridge, is a boundary port: every instance takes the CIST role
+and state there, and the CIST root port shows as a master port of each
+instance.
+
+The switch keeps a port state register for every instance
+(`RTL837X_MSTP_STATES + 4 * instance`) and the instance of a VLAN in bits
+20-23 of its VLAN table entry. The firmware writes the instance of every VLAN
+when STP starts in MSTP mode, when the table changes while it runs and when a
+VLAN is created, and gives every VLAN back to the CIST when STP stops or
+leaves MSTP. Switching to or from MSTP while STP runs restarts it; switching
+between STP and RSTP does not.
+
+The region name, revision and hop count are with the bridge settings of the
+Spanning Tree page, and its MST instances card lists the VLANs of each
+instance and shows its tree. `stp status`, `stp mstp` and `stp msti <n>` only
+show state and are not kept in the command history, so a page that polls them
+does not push saved settings out of it.
+
 ## Status
 
 The Spanning Tree page shows the elected root (priority and MAC), the path cost
@@ -267,7 +320,9 @@ LLC header included.
 
 ## Limitations
 
-* One spanning-tree instance; no MSTP, no per-VLAN trees.
+* No per-VLAN trees; MSTP groups VLANs into at most 15 instances.
+* Edge, guard, filter and point-to-point settings belong to the port and
+  apply in every instance; path cost and priority can be set per instance.
 * A backup port, one that hears the BPDUs of another port of this switch,
   is blocked and reported as Backup, but keeps sending BPDUs: loop detection
   on that segment relies on them.

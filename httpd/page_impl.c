@@ -579,7 +579,7 @@ void send_stp(void)
 	slen += strtox(outbuf + slen, "{\"on\":");
 	bool_to_html(stp_enabled);
 	slen += strtox(outbuf + slen, ",\"rstp\":");
-	bool_to_html(stp_rstp);
+	itoa_html(stp_rstp);
 	slen += strtox(outbuf + slen, ",\"prio\":");
 	itoa_html(stp_prio >> 4);
 	slen += strtox(outbuf + slen, ",\"hello\":");
@@ -601,19 +601,17 @@ void send_stp(void)
 	slen += strtox(outbuf + slen, ",\"rFwd\":");
 	itoa_html(stp_root_port == 0xff ? stp_fwddelay_s : stp_root_fwd);
 	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
-	byte_to_html(root_bridge.prio);
-	byte_to_html(root_bridge.ext);
+	byte_to_html(stp_rv[0].root.prio);
+	byte_to_html(stp_rv[0].root.ext);
 	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
 	for (j = 0; j < 6; j++)
-		byte_to_html(root_bridge.mac[j]);
+		byte_to_html(stp_rv[0].root.mac[j]);
 	slen += strtox(outbuf + slen, "\",\"myMac\":\"");
 	for (j = 0; j < 6; j++)
 		byte_to_html(uip_ethaddr.addr[j]);
 	slen += strtox(outbuf + slen, "\",\"cost\":\"");
-	byte_to_html(root_bridge_cost >> 24);
-	byte_to_html(root_bridge_cost >> 16);
-	byte_to_html(root_bridge_cost >> 8);
-	byte_to_html(root_bridge_cost);
+	for (j = 0; j < 4; j++)
+		byte_to_html(stp_rv[0].ext[j]);
 	slen += strtox(outbuf + slen, "\",\"weRoot\":");
 	bool_to_html(stp_root_port == 0xff ? 1 : 0);
 	slen += strtox(outbuf + slen, ",\"tc\":\"");
@@ -643,21 +641,23 @@ void send_stp(void)
 		itoa_html((stp_link_prev >> i) & 1);
 		slen += strtox(outbuf + slen, ",\"lg\":");
 		itoa_html((stp_legacy >> i) & 1);
-		dsg = stp_dpid[i] && stp_info_while[i];
+		dsg = stp_info_while[i] != 0;
 		slen += strtox(outbuf + slen, ",\"db\":\"");
 		if (dsg) {
-			pi_prio = stp_dbridge[i].prio; pi_ext = stp_dbridge[i].ext;
-			pi_mac = stp_dbridge[i].mac;
+			pi_prio = stp_pv[i].dbr.prio; pi_ext = stp_pv[i].dbr.ext;
+			pi_mac = stp_pv[i].dbr.mac;
 		} else {
 			pi_prio = stp_prio; pi_ext = 0;
 			pi_mac = uip_ethaddr.addr;
 		}
 		bridge_to_html();
 		slen += strtox(outbuf + slen, "\",\"dp\":\"");
-		byte_to_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[i]);
-		byte_to_html(dsg ? stp_dpid[i] : (i + 1));
+		byte_to_html(dsg ? stp_pv[i].dpid[0] : stp_pprio[i]);
+		byte_to_html(dsg ? stp_pv[i].dpid[1] : (i + 1));
 		slen += strtox(outbuf + slen, "\",\"dc\":\"");
-		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
+		pi_mac = dsg ? stp_pv[i].ext : stp_rv[0].ext;
+		for (j = 0; j < 4; j++)
+			byte_to_html(pi_mac[j]);
 		slen += strtox(outbuf + slen, "\"},");
 	}
 	slen -= 1; // remove comma

@@ -8,6 +8,7 @@
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_available;
 extern __xdata uint8_t err_status;
+extern __xdata uint8_t cmd_quiet;
 
 void cmd_tokenize(void) __banked;
 void cmd_parser(void) __banked;

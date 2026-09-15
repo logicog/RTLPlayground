@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_mstp.h"
 #include "machine.h"
 
 #pragma codeseg BANK2
@@ -16,15 +17,64 @@ extern __xdata uint8_t cmd_words_len;
 extern __xdata uint8_t cmd_words_b[15];
 uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd);
 uint8_t atoi_byte(uint8_t idx);
+uint8_t atoi_short(uint8_t idx);
+extern __xdata uint16_t atoi_results_short;
 uint8_t cmd_parse_port_separator(uint8_t idx);
 extern __xdata uint8_t atoi_results_u8;
 extern __xdata char save_cmd;
 extern __xdata uint8_t err_status;
+extern __xdata uint8_t cmd_quiet;
 
 #define TIMES_OK(h, m, f)	((uint16_t)2 * ((f) - 1) >= (m) && (m) >= (uint16_t)2 * ((h) + 1))
 
 __xdata uint32_t stp_cli_cost;
 __xdata uint8_t  stp_cli_val;
+__xdata uint8_t  stp_cli_i;
+__xdata uint8_t  stp_cli_n;
+
+
+static uint8_t stp_cli_vlans(uint8_t apply) __reentrant
+{
+	stp_cli_i = cmd_words_b[4];
+	for (;;) {
+		stp_cli_n = atoi_short(stp_cli_i);
+		if (!stp_cli_n)
+			return 0;
+		stp_cli_i += stp_cli_n;
+		mstp_lo = mstp_hi = atoi_results_short;
+		if (cmd_buffer[stp_cli_i] == '-') {
+			stp_cli_n = atoi_short(++stp_cli_i);
+			if (!stp_cli_n)
+				return 0;
+			stp_cli_i += stp_cli_n;
+			mstp_hi = atoi_results_short;
+		}
+		if (!mstp_lo || mstp_hi > MSTP_VID_MAX || mstp_lo > mstp_hi)
+			return 0;
+		if (apply)
+			mstp_vids_set();
+		if (cmd_buffer[stp_cli_i] != ',')
+			break;
+		stp_cli_i++;
+	}
+	return !cmd_buffer[stp_cli_i] || cmd_buffer[stp_cli_i] == ' ';
+}
+
+
+static uint8_t stp_cli_cost_word(uint8_t w) __reentrant
+{
+	stp_cli_i = cmd_words_b[w];
+	stp_cli_cost = 0;
+	if (cmd_buffer[stp_cli_i] < '0' || cmd_buffer[stp_cli_i] > '9')
+		return 0;
+	while (cmd_buffer[stp_cli_i] >= '0' && cmd_buffer[stp_cli_i] <= '9') {
+		stp_cli_cost = stp_cli_cost * 10 + (cmd_buffer[stp_cli_i] - '0');
+		if (stp_cli_cost > 200000000UL)
+			return 0;
+		stp_cli_i++;
+	}
+	return 1;
+}
 
 
 void stp_parse(void) __banked __reentrant
@@ -44,11 +94,17 @@ void stp_parse(void) __banked __reentrant
 		return;
 	}
 	if (cmd_compare(1, "status")) {
+		cmd_quiet = 1;
 		stp_status();
 		return;
 	}
 	if (cmd_compare(1, "clear")) {
 		stp_counters_clear();
+		return;
+	}
+	if (cmd_compare(1, "mstp")) {
+		cmd_quiet = 1;
+		mstp_show();
 		return;
 	}
 	if (cmd_words_len < 3)
@@ -73,6 +129,25 @@ void stp_parse(void) __banked __reentrant
 				err_status = ERR_INVALID_ARGUMENT;
 				return;
 			}
+		}
+		if (cmd_compare(3, "msti")) {
+			stp_cli_n = atoi_byte(cmd_words_b[4]);
+			if (cmd_words_len != 7 || !stp_cli_n || cmd_buffer[cmd_words_b[4] + stp_cli_n] != ' '
+			    || !atoi_results_u8 || atoi_results_u8 > MSTP_MSTIS)
+				goto err;
+			port += atoi_results_u8 * STP_ENTITIES;
+			if (cmd_compare(5, "cost")) {
+				if (!stp_cli_cost_word(6))
+					goto err;
+				stp_pcost[port] = stp_cli_cost;
+			} else if (cmd_compare(5, "prio")) {
+				if (!atoi_byte(cmd_words_b[6]) || atoi_results_u8 > 240 || (atoi_results_u8 & 0x0f))
+					goto err;
+				stp_pprio[port] = atoi_results_u8;
+			} else {
+				goto err;
+			}
+			return;
 		}
 		if (cmd_words_len < 5 && !cmd_compare(3, "on") && !cmd_compare(3, "off")
 		    && !cmd_compare(3, "mcheck"))
@@ -103,18 +178,7 @@ void stp_parse(void) __banked __reentrant
 			else if (!cmd_compare(4, "off"))
 				goto err;
 		} else if (cmd_compare(3, "cost")) {
-			/* raw 802.1D value, 0..200000000; 0 = auto (speed-based) */
-			stp_cli_cost = 0;
-			{
-			__xdata uint8_t *cp = &cmd_buffer[cmd_words_b[4]];
-			if (*cp < '0' || *cp > '9')
-				goto err;
-			while (*cp >= '0' && *cp <= '9') {
-				stp_cli_cost = stp_cli_cost * 10 + (*cp - '0');
-				cp++;
-			}
-			}
-			if (stp_cli_cost > 200000000UL)
+			if (!stp_cli_cost_word(4))
 				goto err;
 			stp_pcost[port] = stp_cli_cost;
 		} else if (cmd_compare(3, "p2p")) {
@@ -153,14 +217,73 @@ void stp_parse(void) __banked __reentrant
 		return;
 	}
 
+	if (cmd_compare(1, "region")) {
+		for (stp_cli_i = 0; stp_cli_i <= MSTP_NAME_LEN; stp_cli_i++) {
+			stp_cli_n = cmd_buffer[cmd_words_b[2] + stp_cli_i];
+			if (!stp_cli_n || stp_cli_n == ' ')
+				break;
+		}
+		if (stp_cli_i > MSTP_NAME_LEN || cmd_words_len != 3)
+			goto err;
+		for (stp_cli_n = 0; stp_cli_n < stp_cli_i; stp_cli_n++)
+			mstp_region[stp_cli_n] = cmd_buffer[cmd_words_b[2] + stp_cli_n];
+		mstp_region[stp_cli_i] = 0;
+		return;
+	}
+	if (cmd_compare(1, "revision")) {
+		stp_cli_n = atoi_short(cmd_words_b[2]);
+		if (!stp_cli_n || cmd_words_len != 3 || cmd_buffer[cmd_words_b[2] + stp_cli_n])
+			goto err;
+		mstp_revision = atoi_results_short;
+		return;
+	}
+	if (cmd_compare(1, "msti")) {
+		stp_cli_n = atoi_byte(cmd_words_b[2]);
+		if (!stp_cli_n || !atoi_results_u8 || atoi_results_u8 > MSTP_MSTIS
+		    || (cmd_buffer[cmd_words_b[2] + stp_cli_n] && cmd_buffer[cmd_words_b[2] + stp_cli_n] != ' '))
+			goto err;
+		mstp_msti = atoi_results_u8;
+		if (cmd_words_len == 3) {
+			cmd_quiet = 1;
+			stp_tree_status(mstp_msti);
+			return;
+		}
+		if (cmd_words_len != 5)
+			goto err;
+		if (cmd_compare(3, "prio")) {
+			stp_cli_n = atoi_byte(cmd_words_b[4]);
+			if (!stp_cli_n || cmd_buffer[cmd_words_b[4] + stp_cli_n] || atoi_results_u8 > 15)
+				goto err;
+			stp_bprio[mstp_msti] = atoi_results_u8 << 4;
+			stp_tree_prio(mstp_msti);
+			return;
+		}
+		if (!cmd_compare(3, "vlan"))
+			goto err;
+		if (!cmd_compare(4, "none") && !stp_cli_vlans(0))
+			goto err;
+		mstp_msti_clear();
+		if (!cmd_compare(4, "none"))
+			stp_cli_vlans(1);
+		stp_mstp_changed();
+		return;
+	}
+
 	if (!atoi_byte(cmd_words_b[2])) {
 		if (cmd_compare(1, "version")) {
 			if (cmd_compare(2, "rstp"))
-				stp_rstp = 1;
+				stp_cli_n = 1;
 			else if (cmd_compare(2, "stp"))
-				stp_rstp = 0;
+				stp_cli_n = 0;
+			else if (cmd_compare(2, "mstp"))
+				stp_cli_n = STP_VER_MSTP;
 			else
 				goto err;
+			stp_cli_i = stp_rstp;
+			stp_rstp = stp_cli_n;
+			if (stp_enabled && stp_cli_i != stp_cli_n
+			    && (stp_cli_i == STP_VER_MSTP || stp_cli_n == STP_VER_MSTP))
+				stp_setup();
 			return;
 		}
 		if (cmd_compare(1, "pathcost")) {
@@ -214,6 +337,10 @@ void stp_parse(void) __banked __reentrant
 		if (stp_cli_val < 1 || stp_cli_val > 10)
 			goto err;
 		stp_txhold = stp_cli_val;
+	} else if (cmd_compare(1, "maxhops")) {
+		if (stp_cli_val < 6 || stp_cli_val > 40)
+			goto err;
+		stp_maxhops = stp_cli_val;
 	} else {
 		goto err;
 	}
@@ -224,5 +351,5 @@ times:
 	return;
 err:
 	err_status = ERR_INVALID_ARGUMENT;
-	print_string("Error: stp on|off|status|clear | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | pathcost long|short | bpdu filter|flood | port <1-9>|lag <1-4> on|off|mcheck|edge|cost|prio|guard|filter ...\n");
+	print_string("Error: stp on|off|status|clear | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | maxhops <6-40> | version rstp|stp|mstp | region <name> | revision <n> | msti <1-15> [prio <0-15>|vlan <list>|none] | mstp | pathcost long|short | bpdu filter|flood | port <1-9>|lag <1-4> [msti <1-15>] on|off|mcheck|edge|cost|prio|guard|filter ...\n");
 }
