@@ -582,7 +582,7 @@ static void bridge_to_html(void)
 
 void send_stp(void)
 {
-	uint8_t i, j, st, dsg;
+	static __xdata uint8_t i, j, st, dsg;
 
 	dbg_string("send_stp called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -601,6 +601,16 @@ void send_stp(void)
 	itoa_html(stp_fwddelay_s);
 	slen += strtox(outbuf + slen, ",\"txhold\":");
 	itoa_html(stp_txhold);
+	slen += strtox(outbuf + slen, ",\"pcs\":");
+	itoa_html(stp_pcost_short);
+	slen += strtox(outbuf + slen, ",\"bh\":");
+	itoa_html(stp_bpdu_filter);
+	slen += strtox(outbuf + slen, ",\"tcs\":\"");
+	pi_u32 = stp_tc_secs; u32hex_html();
+	slen += strtox(outbuf + slen, "\",\"rMaxage\":");
+	itoa_html(stp_root_port == 0xff ? stp_maxage_s : stp_root_maxage);
+	slen += strtox(outbuf + slen, ",\"rFwd\":");
+	itoa_html(stp_root_port == 0xff ? stp_fwddelay_s : stp_root_fwd);
 	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
 	byte_to_html(root_bridge.prio);
 	byte_to_html(root_bridge.ext);
@@ -617,54 +627,21 @@ void send_stp(void)
 	byte_to_html(root_bridge_cost);
 	slen += strtox(outbuf + slen, "\",\"weRoot\":");
 	bool_to_html(stp_root_port == 0xff ? 1 : 0);
-	slen += strtox(outbuf + slen, ",\"rootPort\":");
-	j = stp_root_port;
-	if (j != 0xff && j >= STP_LAG_BASE) {
-		j = 0;
-		while (j < STP_LAG_BASE && !((stp_lag_mask[stp_root_port - STP_LAG_BASE] >> j) & 1))
-			j++;
-		if (j >= STP_LAG_BASE)
-			j = 0;
-	}
-	itoa_html(j == 0xff ? 0 : machine.log_to_phys_port[j]);
 	slen += strtox(outbuf + slen, ",\"tc\":\"");
 	byte_to_html(stp_tc_count >> 8);
 	byte_to_html(stp_tc_count);
 	slen += strtox(outbuf + slen, "\",\"ports\":[");
-	reg_read_m(RTL837X_MSTP_STATES);
 	for (i = 0; i < STP_ENTITIES; i++) {
-		if (i < STP_LAG_BASE && (i < machine.min_port || i > machine.max_port))
-			continue;
-		if (i < STP_LAG_BASE && stp_ent_of[i] != i)
-			continue;
-		if (i >= STP_LAG_BASE && !stp_lag_mask[i - STP_LAG_BASE])
+		j = stp_ent_id(i);
+		if (!j)
 			continue;
 		slen += strtox(outbuf + slen, "{\"p\":");
-		itoa_html(i < STP_LAG_BASE ? machine.log_to_phys_port[i] : 0);
-		slen += strtox(outbuf + slen, ",\"lag\":");
-		itoa_html(i < STP_LAG_BASE ? 0 : i - STP_LAG_BASE + 1);
-		slen += strtox(outbuf + slen, ",\"mbr\":");
-		itoa16_html(i < STP_LAG_BASE ? 0 : stp_lag_mask[i - STP_LAG_BASE]);
+		itoa_html(j);
 		slen += strtox(outbuf + slen, ",\"st\":");
-		j = i;
-		if (i >= STP_LAG_BASE) {
-			j = 0;
-			while (j < STP_LAG_BASE && !((stp_lag_mask[i - STP_LAG_BASE] >> j) & 1))
-				j++;
-			if (j >= STP_LAG_BASE)
-				j = 0;
-		}
-		st = (sfr_data[3 - (j >> 2)] >> ((j << 1) & 0x7)) & 0x3;
+		st = stp_port_state(i);
 		itoa_html(st);
 		slen += strtox(outbuf + slen, ",\"role\":");
-		if (!(stp_pflags[i] & STP_PF_ENABLED) || (stp_pflags[i] & STP_PF_TRIPPED))
-			itoa_html(0);
-		else if (i == stp_root_port)
-			itoa_html(1);
-		else if (st == 3)
-			itoa_html(2);
-		else
-			itoa_html(3);
+		itoa_html(stp_port_role(i));
 		slen += strtox(outbuf + slen, ",\"f\":");
 		itoa_html(stp_pflags[i]);
 		slen += strtox(outbuf + slen, ",\"pc\":\"");
@@ -673,7 +650,11 @@ void send_stp(void)
 		itoa_html(stp_pprio[i]);
 		slen += strtox(outbuf + slen, ",\"p2\":");
 		itoa_html(stp_pp2p[i]);
-		dsg = stp_dpid[i] && stp_bpdu_age[i] < (uint16_t)stp_maxage_s * STP_HZ;
+		slen += strtox(outbuf + slen, ",\"lk\":");
+		itoa_html((stp_link_prev >> i) & 1);
+		slen += strtox(outbuf + slen, ",\"lg\":");
+		itoa_html((stp_legacy >> i) & 1);
+		dsg = stp_dpid[i] && stp_info_while[i];
 		slen += strtox(outbuf + slen, ",\"db\":\"");
 		if (dsg) {
 			pi_prio = stp_dbridge[i].prio; pi_ext = stp_dbridge[i].ext;
@@ -695,6 +676,36 @@ void send_stp(void)
 }
 
 
+void send_stp_counters(void)
+{
+	uint8_t i, j;
+
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(stp_enabled);
+	slen += strtox(outbuf + slen, ",\"hz\":");
+	itoa_html(STP_HZ);
+	slen += strtox(outbuf + slen, ",\"tc\":\"");
+	byte_to_html(stp_tc_count >> 8);
+	byte_to_html(stp_tc_count);
+	slen += strtox(outbuf + slen, "\",\"ports\":[");
+	for (i = 0; i < STP_ENTITIES; i++) {
+		j = stp_ent_id(i);
+		if (!j)
+			continue;
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(j);
+		slen += strtox(outbuf + slen, ",\"c\":\"");
+		for (j = 0; j < STP_CNT_N; j++) {
+			pi_u32 = stp_cnt[j][i]; u32hex_html();
+		}
+		byte_to_html(stp_bpdu_age[i] >> 8);
+		byte_to_html(stp_bpdu_age[i]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1;
+	slen += strtox(outbuf + slen, "]}");
+}
 
 
 void send_eee(void)
