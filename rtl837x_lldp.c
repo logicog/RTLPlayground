@@ -14,6 +14,7 @@ extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
 
 __xdata uint8_t lldp_seconds;
+__xdata uint16_t lldp_port_status = 0xffff;
 
 void lldp_init(void) __banked
 {
@@ -109,10 +110,12 @@ void lldp_send(void) __banked __reentrant
 
     for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
 
-        LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
-        LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
+        if ((1 << machine.log_to_phys_port[port]) & lldp_port_status) {
+            LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
+            LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 
-        tcpip_output();
+            tcpip_output();
+        }
     }
 }
 
