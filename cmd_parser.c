@@ -861,6 +861,7 @@ void parse_port(void)
 		print_string("\nUsage:" \
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
+					 "\nport <port> lldp [block|permit]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
 	}
@@ -943,6 +944,14 @@ void parse_port(void)
 		else
 			phy_settings.duplex = PHY_DUPLEX_HALF;
 		phy_set_duplex();
+	} else if (cmd_compare(2, "lldp")) {
+		if (cmd_compare(3, "block")){
+			lldp_port_status &= ~(1 << phy_settings.port);
+		} else if (cmd_compare(3, "permit")) {
+			lldp_port_status |= 1 << phy_settings.port;
+		} else {
+			print_string ("Unknown port <port> lldp [block|permit] command\n");
+		}
 	} else {
 		print_string("Unknown port command\n");
 	}
