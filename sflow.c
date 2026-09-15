@@ -98,8 +98,8 @@ static void sflow_sample(void) __reentrant
 {
 	uint8_t speed, up;
 
-	reg_read_m(RTL837X_REG_LINKS_STS);
-	up = ((sfr_data[1] | ((uint16_t)sfr_data[2] << 8)) >> sflow_port) & 1;
+	reg_read(RTL837X_REG_LINKS_STS);
+	up = ((SFR_DATA_16 | ((uint16_t)SFR_DATA_8 << 8)) >> sflow_port) & 1;
 	reg_read_m(sflow_port >= 8 ? RTL837X_REG_LINKS_89 : RTL837X_REG_LINKS);
 	speed = sfr_data[3 - ((sflow_port & 7) >> 1)];
 	speed = (sflow_port & 1) ? speed >> 4 : speed & 0xf;
