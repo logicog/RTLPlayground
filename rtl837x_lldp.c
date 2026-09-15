@@ -112,7 +112,7 @@ void lldp_send(void) __banked __reentrant
 
         if ((1 << machine.log_to_phys_port[port]) & lldp_port_status) {
             LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
-            LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
+            LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << machine.log_to_phys_port[port]);
 
             tcpip_output();
         }
