@@ -1525,6 +1525,10 @@ static void stp_ent_reset(uint8_t e) __reentrant
 	stp_link_prev = (stp_link_prev & ~stp_ent_bit) | (stp_link_now & stp_ent_bit);
 	stp_pflags[e] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
 	stp_bpdu_age[e] = 0;
+	stp_rxage[e] = 0;
+	stp_rxmaxage[e] = stp_maxage_s;
+	stp_rxhello[e] = stp_hello_s;
+	stp_rxfwd[e] = stp_fwddelay_s;
 	stp_tx_budget[e] = stp_txhold;
 	stp_mdelay[e] = STP_MIGRATE;
 	port_hello[e] = (uint16_t)stp_hello_s * STP_HZ;
