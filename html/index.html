@@ -291,6 +291,14 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_crx">BPDUs received</th><th data-i18n="stp_ctx">BPDUs sent</th><th data-i18n="stp_ctrx">TC received</th><th data-i18n="stp_cttx">TC sent</th><th data-i18n="stp_cage">Last BPDU [s]</th></tr></thead>
           <tbody></tbody></table></div></details>
       </div>
+      <div class="card"><h2><span data-i18n="rl_title">Loop detection</span> <span class="hint" data-i18n="rl_h">RLDP</span></h2>
+        <label class="row"><span class="lb" data-i18n="c_enabled">Enabled</span>
+          <span class="switch"><input type="checkbox" id="rlen"><i></i></span></label>
+        <div class="scrollx"><table class="t" id="rltable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="rl_check">Check</th><th data-i18n="c_state">State</th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="rl_note">Checked ports send test frames.</p>
+      </div>
     </section>
 
     <section class="tab" id="tab-stats">
