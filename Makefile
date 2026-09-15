@@ -61,6 +61,8 @@ SRCS = \
 	rtlplayground.c \
 	boot.c \
 	sfp.c \
+	sflow.c \
+	sflow_cli.c \
 	syslog.c \
 	udp_apps.c
 
