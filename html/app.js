@@ -70,6 +70,9 @@ e_idle:"idle",e_na:"n/a",
 bw_title:"Bandwidth limits",bw_h:"Mbit/s, 0.016-10000",bw_in:"Ingress limit",bw_out:"Egress limit",
 bw_exceed:"When exceeded",bw_fc:"Flow control",bw_drop:"Drop",
 bw_in_err:"Ingress limit must be 0.016-10000 Mbit/s",bw_out_err:"Egress limit must be 0.016-10000 Mbit/s",
+sc_title:"Storm control",sc_h:"per port and traffic type, empty = off",sc_bcast:"Broadcast",sc_mcast:"Multicast",
+sc_ucast:"Unknown unicast",sc_umcast:"Unknown multicast",sc_err:"Storm limit must be 1-1048575 pps or 16-10000000 kbit/s",
+sc_note:"Frames of a type above its limit are dropped where they enter the switch. kbit/s limits are rounded down to steps of 16 kbit/s.",
 sy_network:"Network",sy_dhcp:"Use DHCP",sy_dhcp_t:"Request address via DHCP",sy_services:"Services",
 sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",
 sy_services_note:"Service state reflects the startup config; runtime state is not readable.",
@@ -446,6 +449,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
+  /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -1486,7 +1490,61 @@ function bwApply(n){
   }else cmds.push("bw out "+n+" off");
   postCmds(cmds).then(bwLoad).catch(function(){});
 }
-tabHooks.bw={enter:function(){needPorts(function(){bwLoad().catch(function(){})})}};
+var SC_TYPES=["bcast","mcast","ucast","umcast"],scSig="";
+function scLoad(){
+  return getJSON("/storm.json").then(function(s){
+    var tb=$("sctable").tBodies[0];
+    byPort(s);
+    var sig=s.map(function(p){return p.portNum}).join();
+    if(sig!==scSig){
+      scSig=sig;tb.innerHTML="";
+      s.forEach(function(p){
+        var n=p.portNum,tr=tb.insertRow();
+        tr.id="scr"+n;
+        tr.addEventListener("input",function(){tr.dataset.dirty="1"});
+        tr.addEventListener("change",function(){tr.dataset.dirty="1"});
+        tr.insertCell().textContent=n;
+        SC_TYPES.forEach(function(ty){
+          tr.insertCell().appendChild(h("span",{style:"display:flex;gap:4px"},[
+            h("input",{class:"in sm",id:"scv"+ty+n,type:"number",min:"1",step:"1"}),
+            h("select",{class:"in",id:"scu"+ty+n},[
+              h("option",{value:"pps",text:"pps"}),
+              h("option",{value:"kbps",text:"kbit/s"}),
+            ]),
+          ]));
+        });
+        tr.insertCell().appendChild(h("button",{class:"ctl",text:t("c_apply"),onclick:function(){scApply(n)}}));
+      });
+    }
+    s.forEach(function(p){
+      var n=p.portNum;
+      if($("scr"+n).dataset.dirty)return;
+      SC_TYPES.forEach(function(ty,k){
+        var on=p.en.charAt(k)==="1",pps=p.pps.charAt(k)==="1",raw=parseInt(p.rate.substr(k*6,6),16);
+        var inp=$("scv"+ty+n),sel=$("scu"+ty+n);
+        inp.value=on?(pps?raw:raw*16):"";
+        sel.value=on&&!pps?"kbps":"pps";
+        inp.dataset.cur=on?inp.value+" "+sel.value:"off";
+      });
+    });
+  });
+}
+function scApply(n){
+  var cmds=[];
+  for(var k=0;k<SC_TYPES.length;k++){
+    var ty=SC_TYPES[k],inp=$("scv"+ty+n),u=$("scu"+ty+n).value,v=inp.value.trim(),want="off";
+    if(v!==""&&v!=="0"){
+      var x=Number(v);
+      if(!Number.isInteger(x)||x<1||(u==="pps"&&x>1048575)||(u==="kbps"&&(x<16||x>10000000))){toast(t("sc_err"),"err");return;}
+      want=x+" "+u;
+    }
+    if(want!==inp.dataset.cur)cmds.push("storm "+n+" "+ty+" "+want);
+  }
+  delete $("scr"+n).dataset.dirty;
+  if(!cmds.length)return;
+  postCmds(cmds).then(scLoad).catch(function(){});
+}
+tabHooks.bw={enter:function(){needPorts(function(){bwLoad().then(scLoad).catch(function(){})})}};
 
 var IPRE=/^(\d{1,3}\.){3}\d{1,3}$/;
 function okIp(s){
@@ -1620,7 +1678,7 @@ var CONF_OVERWRITE=[
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
-  /^igmp\b/,/^mtu\s+\d{1,2}\b/,
+  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
 var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
