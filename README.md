@@ -359,4 +359,5 @@ The following documents give further documentation on specific features of the R
 - [SFP+ ports](doc/sfp.md) 
 - [Trunking aka. port aggregation](doc/trunking.md)
 - [VLAN](doc/vlan.md)
+- [Storm control](doc/storm_control.md)
 - [Modifications and Flash replacement](doc/mods.md)
