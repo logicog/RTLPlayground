@@ -1420,7 +1420,7 @@ function lldpLoad(){
     S.ports.forEach(function(p){
       var r=tb.rows[p.portNum-1];
       if(!r)return;
-      r.cells[0].textContent=p.portNum;
+      r.cells[0].textContent=p.portNum+(p.isSFP?" (SFP)":"");
       r.cells[1].textContent=p.name||"";
       var sw=h("label",{class:"switch"},[
         h("input",{type:"checkbox",onchange:function(){
