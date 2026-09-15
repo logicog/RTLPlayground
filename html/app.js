@@ -435,6 +435,7 @@ var CONF_CMDS=[
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
+  /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
   /^eee(\s+\d{1,2})?\s+(on|off)$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
@@ -445,7 +446,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+cost\s+\d{1,9}$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+prio\s+\d{1,3}$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
-  /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
+  /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,/^lldp\s+(on|off)$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
 ];
 function isConfCmd(line){
