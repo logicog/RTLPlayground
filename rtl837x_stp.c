@@ -145,6 +145,7 @@ __xdata uint8_t  stp_mdelay[STP_ENTITIES];		/* ticks before the port may change 
 __xdata uint8_t  stp_i;
 __xdata uint32_t stp_cost_scratch;
 __xdata uint8_t  stp_t;			/* tree being worked on, 0 = CIST */
+__xdata uint8_t  stp_tsave;		/* tree to come back to after a detour through the CIST */
 __xdata uint8_t  stp_tb;			/* stp_t * STP_ENTITIES: first index of the tree in per-port arrays */
 __xdata uint8_t  stp_loop_peer;		/* the other own port seen on a looped segment */
 __xdata uint8_t  stp_ent_of[STP_PORTS];		/* entity a port answers to: itself, or STP_LAG_BASE + lag */
@@ -645,11 +646,25 @@ static uint8_t stp_tc_prop(uint8_t from) __reentrant
 {
 	stp_armed = 0;
 	for (stp_k = 0; stp_k < STP_ENTITIES; stp_k++) {
-		if (stp_k == from || !stp_ent_active(stp_k) || stp_tcwhile[PT(stp_k)] || stp_state_get(stp_k) != 0b11)
-			continue;
-		if (stp_t && !((stp_internal >> stp_k) & 1))
+		if (stp_k == from || !stp_ent_active(stp_k) || stp_state_get(stp_k) != 0b11)
 			continue;
 		if (!(stp_pflags[stp_k] & STP_PF_ENABLED) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
+			continue;
+		if (stp_t && !((stp_internal >> stp_k) & 1)) {
+			/* A boundary port carries the instance's VLANs in its CIST
+			 * state, so it is flushed like any other port of the tree,
+			 * and the change leaves the region in the CIST (13.27). */
+			if (stp_tcwhile[stp_k])
+				continue;
+			stp_forget(stp_k);
+			stp_tsave = stp_t;
+			stp_tree(0);
+			stp_new_tc_while(stp_k);
+			stp_tree(stp_tsave);
+			stp_armed = 1;
+			continue;
+		}
+		if (stp_tcwhile[PT(stp_k)])
 			continue;
 		stp_forget(stp_k);
 		stp_new_tc_while(stp_k);
@@ -1427,7 +1442,8 @@ void stp_in(void) __banked
 		stp_tcwhile[PT(port)] = 0;
 	if ((STP_I->flags & BPDU_FLAG_TC) && !((ALT >> port) & 1) && stp_tc_prop(port))
 		stp_tc_count++;
-	if ((STP_I->flags & BPDU_FLAG_TC) && stp_trees != 1 && !((stp_internal >> port) & 1))
+	if ((STP_I->flags & BPDU_FLAG_TC) && stp_trees != 1 && !((stp_internal >> port) & 1)
+	    && !((ALT >> port) & 1))
 		stp_tc_instances(port);
 
 	if ((stp_pflags[port] & STP_PF_ROOTGUARD)
