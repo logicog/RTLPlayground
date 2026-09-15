@@ -15,6 +15,8 @@
 #include "uip.h"
 #include "machine.h"
 
+extern __xdata uint8_t err_status;
+
 // All entry points are __banked and nothing here runs from an interrupt,
 // so the module does not need to stay in the resident bank
 #pragma codeseg BANK2
@@ -1134,5 +1136,6 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
+	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
 }
