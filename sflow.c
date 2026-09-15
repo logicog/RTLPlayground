@@ -145,12 +145,8 @@ void sflow_interval(uint16_t seconds) __banked __reentrant
 
 void sflow_init(void) __banked
 {
-	sflow_state.enabled = 0;
-	sflow_state.collector[0] = sflow_state.collector[1] = 0;
-	sflow_state.collector[2] = sflow_state.collector[3] = 0;
+	memset((__xdata uint8_t *)&sflow_state, 0, sizeof(sflow_state));
 	sflow_state.port = SFLOW_PORT_DEFAULT;
-	sflow_state.seq = 0;
-	sflow_state.conn = 0;
 	sflow_interval(SFLOW_INTERVAL_DEFAULT);
 }
 
