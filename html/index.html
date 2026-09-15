@@ -249,7 +249,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <span class="switch"><input type="checkbox" id="stpen"><i></i></span></label>
         <p class="small mono" id="stpids">-</p>
         <div id="stpbridge" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
-          <label><span class="small mut" data-i18n="stp_version">Version</span><br><select class="in" id="stpver"><option value="rstp">RSTP</option><option value="stp" data-i18n="stp_v_stp">STP compatible</option></select></label>
+          <label><span class="small mut" data-i18n="stp_version">Version</span><br><select class="in" id="stpver"><option value="rstp">RSTP</option><option value="stp" data-i18n="stp_v_stp">STP compatible</option><option value="mstp">MSTP</option></select></label>
           <label><span class="small mut" data-i18n="stp_pcs">Path cost</span><br><select class="in" id="stppcs"><option value="long" data-i18n="stp_pcs_long">Long (32 bit)</option><option value="short" data-i18n="stp_pcs_short">Short (16 bit)</option></select></label>
           <label><span class="small mut" data-i18n="stp_bh">BPDUs while disabled</span><br><select class="in" id="stpbh"><option value="flood" data-i18n="stp_bh_flood">Flood</option><option value="filter" data-i18n="stp_bh_filter">Filter</option></select></label>
           <label><span class="small mut" data-i18n="stp_prio">Bridge priority</span><br><select class="in" id="stpprio"></select></label>
@@ -257,6 +257,9 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <label><span class="small mut" data-i18n="stp_maxage">Max age [s]</span><br><input class="in sm" id="stpmaxage" type="number" min="6" max="40"></label>
           <label><span class="small mut" data-i18n="stp_fwd">Forward delay [s]</span><br><input class="in sm" id="stpfwd" type="number" min="4" max="30"></label>
           <label><span class="small mut" data-i18n="stp_txhold">TX hold</span><br><input class="in sm" id="stptxhold" type="number" min="1" max="10"></label>
+          <label><span class="small mut" data-i18n="stp_region">Region name</span><br><input class="in" id="stpregion" type="text" maxlength="32" style="width:12em"></label>
+          <label><span class="small mut" data-i18n="stp_rev">Revision</span><br><input class="in sm" id="stprev" type="number" min="0" max="65535"></label>
+          <label><span class="small mut" data-i18n="stp_hops">Max hops</span><br><input class="in sm" id="stphops" type="number" min="6" max="40"></label>
         </div>
         <div style="margin-top:10px"><button class="ctl pri" id="stpbapply" data-i18n="stp_bridge_apply">Apply bridge settings</button></div>
         <p class="small mut" style="margin-top:8px" data-i18n="stp_prio_note">Lower priority wins the root election (default 8 = 32768). Settings apply immediately; use Save to flash to keep them.</p>
@@ -271,6 +274,23 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <div class="scrollx"><table class="t" id="stpstat">
           <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_role">Role</th><th data-i18n="c_state">State</th><th data-i18n="stp_db">Designated bridge</th><th data-i18n="stp_dp">Designated port</th><th data-i18n="stp_dc">Designated cost</th><th data-i18n="stp_oedge">Oper. edge</th><th data-i18n="stp_op2p">Oper. P2P</th><th data-i18n="stp_proto">Protocol</th><th></th></tr></thead>
           <tbody></tbody></table></div>
+      </div>
+      <div class="card"><h2><span data-i18n="mst_title">MST instances</span> <span class="hint mono" id="mstdigest"></span></h2>
+        <div class="scrollx"><table class="t" id="msttbl">
+          <thead><tr><th data-i18n="mst_inst">Instance</th><th data-i18n="mst_vlans">VLANs</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+          <label><span class="small mut" data-i18n="mst_inst">Instance</span><br><input class="in sm" id="mstnew" type="number" min="1" max="15"></label>
+          <label><span class="small mut" data-i18n="mst_vlans">VLANs</span><br><input class="in" id="mstnewv" type="text" placeholder="10-19,100" style="width:12em"></label>
+          <button class="ctl" id="mstset" data-i18n="c_apply">Apply</button>
+        </div>
+        <p class="small mut" style="margin-top:8px" data-i18n="mst_note">Instances run while spanning tree is on in MSTP mode.</p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+          <label><span class="small mut" data-i18n="mst_inst">Instance</span><br><select class="in" id="mstshow"></select></label>
+          <label><span class="small mut" data-i18n="stp_prio">Bridge priority</span><br><select class="in" id="mstprio"></select></label>
+          <button class="ctl" id="mstprioset" data-i18n="c_apply">Apply</button>
+        </div>
+        <pre class="small mono" id="msttree" style="margin-top:10px"></pre>
       </div>
       <div class="card"><details id="stpcntd"><summary><h2 style="display:inline" data-i18n="stp_cnt">Counters</h2></summary>
         <div class="scrollx"><table class="t" id="stpcnt">

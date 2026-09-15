@@ -42,7 +42,10 @@ stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwardin
 stp_cost_err:"Path cost must be 0-200000000",
 stp_pcs:"Path cost",stp_pcs_long:"Long (32 bit)",stp_pcs_short:"Short (16 bit)",
 stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
-stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
+stp_r4:"Backup",stp_region:"Region name",stp_rev:"Revision",stp_hops:"Max hops",
+mst_title:"MST instances",mst_digest:"digest",mst_inst:"Instance",mst_vlans:"VLANs",mst_n_err:"Instance must be 1-15",
+mst_note:"Instances run while spanning tree is on in MSTP mode. A VLAN not given to an instance belongs to the CIST. Bridges of one region need the same region name, revision and VLANs per instance.",
+stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
 stp_mcheck:"Check",stp_mcheck_t:"Send RST BPDUs again to find out whether the neighbour still needs 802.1D",
 stp_cnt:"Counters",stp_crx:"BPDUs received",stp_ctx:"BPDUs sent",stp_ctrx:"TC received",stp_cttx:"TC sent",stp_cage:"Last BPDU [s]",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
@@ -443,8 +446,11 @@ var CONF_CMDS=[
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
-  /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
-  /^stp\s+version\s+(rstp|stp)$/,/^stp\s+pathcost\s+(long|short)$/,/^stp\s+bpdu\s+(filter|flood)$/,
+  /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold|maxhops)\s+\d{1,2}$/,
+  /^stp\s+region\s+\S{1,32}$/,/^stp\s+revision\s+\d{1,5}$/,
+  /^stp\s+msti\s+\d{1,2}\s+vlan\s+(none|[\d,-]+)$/,/^stp\s+msti\s+\d{1,2}\s+prio\s+\d{1,2}$/,
+  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+msti\s+\d{1,2}\s+(cost\s+\d{1,9}|prio\s+\d{1,3})$/,
+  /^stp\s+version\s+(rstp|stp|mstp)$/,/^stp\s+pathcost\s+(long|short)$/,/^stp\s+bpdu\s+(filter|flood)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(on|off)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+edge\s+(on|off|auto)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+cost\s+\d{1,9}$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+prio\s+\d{1,3}$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
@@ -885,6 +891,41 @@ function stpCnt(c){
     $("scage"+p).textContent=!v[0]?"-":(age===0xffff?">":"")+Math.floor(age/c.hz);
   });
 }
+var mstCur={},mstSig="",mstTick=0;
+function stpText(cmd){return api("/cmd",{method:"POST",body:cmd}).then(function(r){return r.ok?r.body:""})}
+function mstLoad(){
+  return stpText("stp mstp").then(function(tx){
+    var m=tx.match(/MSTP region "([^"]*)" revision (\d+) hops (\d+)/);
+    if(!m)return;
+    mstCur={region:m[1],rev:m[2],hops:m[3]};
+    if(!$("stpbridge").dataset.dirty){$("stpregion").value=m[1];$("stprev").value=m[2];$("stphops").value=m[3];}
+    var d=tx.match(/^digest (\S+)$/m);
+    $("mstdigest").textContent=d?t("mst_digest")+" "+d[1]:"";
+    var list=[],re=/^MSTI (\d+) vlan (.*)$/gm,x;
+    while((x=re.exec(tx)))list.push([x[1],x[2]]);
+    var sel=$("mstshow"),sig=list.map(function(e){return e.join(":")}).join();
+    if(sig!==mstSig){
+      mstSig=sig;
+      var tb=$("msttbl").tBodies[0],keep=sel.value;
+      tb.innerHTML="";sel.innerHTML="";
+      list.forEach(function(e){
+        var tr=tb.insertRow();
+        tr.insertCell().textContent=e[0];tr.insertCell().textContent=e[1];
+        tr.insertCell().appendChild(h("button",{class:"ctl",text:t("c_delete"),
+          onclick:function(){postCmd("stp msti "+e[0]+" vlan none").then(mstLoad).catch(function(){})}}));
+        sel.appendChild(h("option",{value:e[0],text:e[0]}));
+      });
+      if(keep&&sel.querySelector('option[value="'+keep+'"]'))sel.value=keep;
+    }
+    if(!sel.value){$("msttree").textContent="";return;}
+    return stpText("stp msti "+sel.value).then(function(s){
+      $("msttree").textContent=s.trim();
+      var p=s.match(/^bridge\s+([0-9a-f]{2})/m);
+      if(p&&!$("mstprio").dataset.dirty)$("mstprio").value=String(parseInt(p[1],16)>>4);
+    });
+  });
+}
+function stpVer(s){return s.rstp===2?"mstp":(s.rstp?"rstp":"stp")}
 function stpLoad(){
   return getJSON("/stp.json").then(function(s){
     s.ports.forEach(stpEnt);
@@ -908,7 +949,7 @@ function stpLoad(){
     $("stpids").textContent=msg;
     var bc=$("stpbridge");
     if(!bc.dataset.dirty){
-      $("stpver").value=s.rstp?"rstp":"stp";
+      $("stpver").value=stpVer(s);
       $("stppcs").value=s.pcs?"short":"long";$("stpbh").value=s.bh?"filter":"flood";
       $("stpprio").value=String(s.prio);
       $("stphello").value=s.hello;$("stpmaxage").value=s.maxage;
@@ -924,7 +965,7 @@ function stpLoad(){
       $("stdc"+p).textContent=s.on?parseInt(pt.dc,16):"-";
       $("stoe"+p).textContent=s.on?t((pt.f&STP_PF.OPEREDGE)?"c_yes":"c_no"):"-";
       $("stop"+p).textContent=s.on?t(pt.p2===2?"c_no":"c_yes"):"-";
-      $("stpv"+p).textContent=s.on&&pt.role?(s.rstp&&!pt.lg?"RSTP":"STP"):"-";
+      $("stpv"+p).textContent=s.on&&pt.role?(s.rstp&&!pt.lg?(s.rstp===2?"MSTP":"RSTP"):"STP"):"-";
       $("stmc"+p).disabled=!(s.on&&pt.role&&s.rstp);
       var row=$("sten"+p).closest("tr");
       if(row.dataset.dirty)return;
@@ -932,7 +973,10 @@ function stpLoad(){
       $("sten"+p).checked=v.en;$("sted"+p).value=v.edge;$("stco"+p).value=v.cost;
       $("stpr"+p).value=v.prio;$("stgu"+p).value=v.guard;$("stfi"+p).value=v.filter;$("stpp"+p).value=v.p2p;
     });
-    if($("stpcntd").open)return getJSON("/stpcnt.json").then(stpCnt);
+    var more=Promise.resolve();
+    if(mstCur.region===undefined||(s.rstp===2&&!(mstTick++%3)))more=more.then(mstLoad);
+    if($("stpcntd").open)more=more.then(function(){return getJSON("/stpcnt.json").then(stpCnt)});
+    return more;
   }).catch(function(){});
 }
 function stpApplyPort(p){
@@ -958,7 +1002,11 @@ $("stpbridge").addEventListener("change",function(){this.dataset.dirty="1"});
 $("stpbapply").addEventListener("click",function(){
   var s=stpCur||{},cmds=[];
   var ver=$("stpver").value,prio=$("stpprio").value;
-  if(ver!==(s.rstp?"rstp":"stp"))cmds.push("stp version "+ver);
+  [["stpregion","region","region"],["stprev","revision","rev"],["stphops","maxhops","hops"]].forEach(function(f){
+    var v=$(f[0]).value.replace(/\s+/g,"");
+    if(mstCur[f[2]]!==undefined&&v!==mstCur[f[2]])cmds.push("stp "+f[1]+" "+v);
+  });
+  if(ver!==stpVer(s))cmds.push("stp version "+ver);
   if(prio!==String(s.prio))cmds.push("stp prio "+prio);
   if($("stppcs").value!==(s.pcs?"short":"long"))cmds.push("stp pathcost "+$("stppcs").value);
   if($("stpbh").value!==(s.bh?"filter":"flood"))cmds.push("stp bpdu "+$("stpbh").value);
@@ -968,7 +1016,7 @@ $("stpbapply").addEventListener("click",function(){
   });
   delete $("stpbridge").dataset.dirty;
   if(!cmds.length)return;
-  postCmds(cmds).then(stpLoad).catch(function(){});
+  postCmds(cmds).then(mstLoad).then(stpLoad).catch(function(){});
 });
 $("stpen").addEventListener("change",function(){
   var el=this,want=el.checked;
@@ -977,9 +1025,23 @@ $("stpen").addEventListener("change",function(){
     function(){postCmd("stp "+(want?"on":"off")).then(stpLoad).catch(function(){})});
 });
 (function(){
-  var sel=$("stpprio");
-  for(var i=0;i<16;i++)sel.appendChild(h("option",{value:String(i),text:i+" ("+(i*4096)+")"}));
+  ["stpprio","mstprio"].forEach(function(id){
+    for(var i=0;i<16;i++)$(id).appendChild(h("option",{value:String(i),text:i+" ("+(i*4096)+")"}));
+  });
 })();
+$("mstset").addEventListener("click",function(){
+  var n=parseInt($("mstnew").value,10),v=$("mstnewv").value.replace(/\s+/g,"");
+  if(!(n>=1&&n<=15)){toast(t("mst_n_err"),"err");return;}
+  postCmd("stp msti "+n+" vlan "+(v||"none")).then(mstLoad).catch(function(){});
+});
+$("mstshow").addEventListener("change",function(){delete $("mstprio").dataset.dirty;mstLoad()});
+$("mstprio").addEventListener("change",function(){this.dataset.dirty="1"});
+$("mstprioset").addEventListener("click",function(){
+  var n=$("mstshow").value;
+  if(!n)return;
+  delete $("mstprio").dataset.dirty;
+  postCmd("stp msti "+n+" prio "+$("mstprio").value).then(mstLoad).catch(function(){});
+});
 $("stpcntd").addEventListener("toggle",function(){if(this.open)stpLoad()});
 var stpPoller=new Poller(stpLoad,3000);
 tabHooks.stp={enter:function(){stpPoller.start()},leave:function(){stpPoller.stop()}};

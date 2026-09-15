@@ -42,6 +42,8 @@ void print_short(uint16_t v);
 void print_long(uint32_t v);
 void write_char(char c);
 void itoa(uint8_t v);
+void itoa_short(uint16_t v);
+void print_string_x(char *s);
 void print_reg(uint16_t reg);
 void reg_read_m(uint16_t addr);
 void reg_write_m(uint16_t addr);
