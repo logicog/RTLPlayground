@@ -3,7 +3,7 @@ var LANG={
 en:{
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
 nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_lag:"LAG",nav_eee:"EEE",
-nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",
+nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",nav_lldp:"LLDP",
 hdr_dirty:"unsaved changes",hdr_dirty_t:"Running config differs from startup config",
 hdr_save:"Save to flash",hdr_save_t:"Persist running configuration to flash",
 th_auto:"System",th_auto_sel:"System (Selenized)",sy_display:"Display",sy_theme:"Theme",sy_display_note:"Stored in this browser only.",th_light:"Light",th_dark:"Dark",
@@ -40,6 +40,7 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
+lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -434,6 +435,7 @@ var CONF_CMDS=[
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
+  /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
   /^eee(\s+\d{1,2})?\s+(on|off)$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
@@ -444,7 +446,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+cost\s+\d{1,9}$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+prio\s+\d{1,3}$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
-  /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
+  /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,/^lldp\s+(on|off)$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
 ];
 function isConfCmd(line){
@@ -504,6 +506,7 @@ var TABS=[
   {id:"l2",    icon:"M4 5h16M4 12h16M4 19h10"},
   {id:"mirror",icon:"M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4"},
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
+  {id:"lldp",  icon:"M11 12a1 1 0 002 0 1 1 0 00-2 0M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
   {id:"system",icon:"M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"},
@@ -1401,6 +1404,44 @@ function lagApply(g){
 }
 tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagLoad().catch(function(){})})}};
 
+
+function lldpLoad(){
+  return getJSON("/lldp.json").then(function(s){
+    $("lldp_en").checked=s.on;
+    var tb=$("lldp_table").tBodies[0];tb.innerHTML="";
+    if(tb.rows.length!==S.n){
+      tb.innerHTML="";
+      for(var i=0;i<S.n;i++)(function(i){
+        var tr=tb.insertRow();
+        tr.insertCell();
+        tr.insertCell();
+        tr.insertCell();
+      })(i);
+    }
+    S.ports.forEach(function(p){
+      var r=tb.rows[p.portNum-1];
+      if(!r)return;
+      r.cells[0].textContent=p.portNum+(p.isSFP?" (SFP)":"");
+      r.cells[1].textContent=p.name||"";
+      var sw=h("label",{class:"switch"},[
+        h("input",{type:"checkbox",onchange:function(){
+          postCmd("port "+p.portNum+" lldp "+(this.checked?"permit":"block"))
+            .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
+        }}),h("i")]);
+      sw.firstChild.checked=s.port_status[p.portNum-1];
+      r.cells[2].appendChild(sw);
+    });
+  }).catch(function(e){console.log("ERROR!"); console.log(e)});
+}
+
+$("lldp_en").addEventListener("change",function(){
+  var el=this;
+  postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+});
+
+tabHooks.lldp={enter:needPorts(lldpLoad)};
+
+
 function eeeFlags(bits){
   var b=parseInt(bits,2);
   return["100M","1G","2.5G"].map(function(s,i){
@@ -1506,7 +1547,7 @@ function sysLoad(){
   cfgReload();
 }
 function cfgParseKnown(txt){
-  var igmp=false,syslog=false;
+  var igmp=false,lldp=false,syslog=false;
   txt.split(/\r?\n/).forEach(function(l){
     l=l.trim();
     if(/^igmp on$/.test(l))igmp=true;
