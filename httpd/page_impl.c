@@ -3,6 +3,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_rldp.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_pins.h"
@@ -775,6 +776,38 @@ void send_bandwidth(void)
 		else
 			char_to_html(']');
 	}
+}
+
+
+void send_rldp(void)
+{
+	__xdata uint8_t i, st0, st1, looped;
+
+	reg_read_m(RTL837X_RLDP_LOOP_STATE);
+	st0 = sfr_data[3];
+	st1 = sfr_data[2];
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	slen += strtox(outbuf + slen, "{\"on\":");
+	char_to_html(rldp_on ? '1' : '0');
+	slen += strtox(outbuf + slen, ",\"ports\":[");
+	for (i = machine.min_port; i <= machine.max_port; i++) {
+		if (i < 8)
+			looped = (st0 >> i) & 1;
+		else
+			looped = (st1 >> (i - 8)) & 1;
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"en\":");
+		char_to_html(((rldp_off_mask >> i) & 1) ? '0' : '1');
+		slen += strtox(outbuf + slen, ",\"loop\":");
+		char_to_html(looped ? '1' : '0');
+		slen += strtox(outbuf + slen, ",\"blk\":");
+		itoa_html(rldp_block[i]);
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+	}
+	slen += strtox(outbuf + slen, "]}");
 }
 
 
