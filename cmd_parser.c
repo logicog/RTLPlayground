@@ -946,9 +946,9 @@ void parse_port(void)
 		phy_set_duplex();
 	} else if (cmd_compare(2, "lldp")) {
 		if (cmd_compare(3, "block")){
-			lldp_port_status &= ~(1 << phy_settings.port);
+			lldp_physical_port_status &= ~(1 << phy_settings.port);
 		} else if (cmd_compare(3, "permit")) {
-			lldp_port_status |= 1 << phy_settings.port;
+			lldp_physical_port_status |= 1 << phy_settings.port;
 		} else {
 			print_string ("Unknown port <port> lldp [block|permit] command\n");
 		}
