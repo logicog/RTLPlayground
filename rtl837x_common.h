@@ -54,6 +54,7 @@ extern __xdata uint8_t sbuf[SBUF_SIZE];
 #define ERR_OK			0
 #define ERR_TOO_MANY_ARGUMENTS	1
 #define ERR_CMD_TOO_LONG	2
+#define ERR_INVALID_ARGUMENT	3
 
 // For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
 // the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,

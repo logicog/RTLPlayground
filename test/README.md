@@ -35,6 +35,7 @@ fires — so it drops straight into CI.
 | Test binary | TU under test | Findings exercised |
 |-------------|---------------|--------------------|
 | `test_cmd_editor` | `cmd_editor.c` | **C4** — full-line hang + `cmd_buffer` 1-byte overflow; basic entry & backspace regressions |
+| `stp/` | `rtl837x_stp.c`, `rtl837x_stp_cli.c`, `rtl837x_mstp.c` | RSTP and MSTP against simulated neighbours: roles, timers, proposals, topology changes, regions, instances, the digest |
 
 ## Adding a test for another module
 1. Write `test_<module>.c` with `main()` driving the module's entry points and
