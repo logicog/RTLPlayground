@@ -22,6 +22,7 @@ void mstp_vids_set(void) __banked;
 void mstp_msti_clear(void) __banked;
 uint8_t mstp_vid_msti(uint16_t vid) __banked;
 void mstp_digest_step(void) __banked;
+void mstp_digest_now(void) __banked;
 void mstp_show(void) __banked;
 
 #endif

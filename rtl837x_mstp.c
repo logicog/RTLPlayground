@@ -31,6 +31,12 @@ __xdata uint16_t mstp_count[16];	/* VLANs mapped to each instance */
 
 #define BLK	((__xdata uint8_t *)mstp_blk)
 
+/* Digest of the table that maps every VLAN to the CIST, as computed once. */
+static __code const uint8_t mstp_digest_empty[16] = {
+	0xac, 0x36, 0x17, 0x7f, 0x50, 0x28, 0x3c, 0xd4,
+	0xb8, 0x38, 0x21, 0xd8, 0xab, 0x26, 0xde, 0x62
+};
+
 static __code const uint8_t mstp_key[16] = {
 	0x13, 0xac, 0x06, 0xa6, 0x2e, 0x47, 0xfd, 0x51,
 	0xf9, 0x5d, 0x2b, 0xa2, 0x43, 0xcd, 0x03, 0x46
@@ -94,7 +100,19 @@ void mstp_defaults(void) __banked
 	mstp_used = 0;
 	mstp_region[0] = 0;
 	mstp_revision = 0;
-	mstp_dg_step = 0;
+	for (md5_i = 0; md5_i < 16; md5_i++)
+		mstp_digest[md5_i] = mstp_digest_empty[md5_i];
+	mstp_dg_step = MSTP_DG_DONE;
+}
+
+
+/* Finish the digest before it goes into a BPDU or decides a region match.
+ * 132 blocks at once; the incremental steps only pick up the leftovers of a
+ * table change made while STP was off. */
+void mstp_digest_now(void) __banked
+{
+	while (mstp_dg_step < MSTP_DG_DONE)
+		mstp_digest_step();
 }
 
 
