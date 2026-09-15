@@ -221,8 +221,6 @@ void flash_read_jedecid(void)
  */
 void flash_read_bulk(__xdata uint8_t *dst)
 {
-	short status;
-
 	if (!flash_region.len)
 		return;
 
