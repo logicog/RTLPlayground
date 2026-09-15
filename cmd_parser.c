@@ -1901,7 +1901,7 @@ void cmd_parser(void) __banked
 		}
 
 
-		if (save_cmd && cmd_words_len) {
+		if (save_cmd && cmd_words_len && err_status == ERR_OK) {
 			// Find end of the cmd-buffer, looking for the NUL-byte.
 			uint8_t i = cmd_words_b[cmd_words_len - 1];
 			do {

@@ -74,7 +74,8 @@ SRCS += \
 	rtl837x_phy.c \
 	rtl837x_pins.c\
 	rtl837x_port.c \
-	rtl837x_stp.c
+	rtl837x_stp.c \
+	rtl837x_stp_cli.c
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c
