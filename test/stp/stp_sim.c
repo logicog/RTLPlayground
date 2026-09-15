@@ -2310,6 +2310,157 @@ static void scen_msti_legacy_tcn(void)
 	check(stp_tcwhile[STP_ENTITIES + 5] != 0, "a TCN on a boundary port starts a change in the instance");
 }
 
+extern __xdata uint8_t stp_rxhello[STP_ENTITIES];
+
+static void converge_internal_root_on_8(void)
+{
+	/* B on port 9 (index 8): CIST root ROOT_MAC, B is regional root, MSTI 1 root is PEER */
+	struct sim_bpdu b = root_on(8);
+	for (int i = 0; i < 40; i++) {
+		sim_nrec = 0;
+		sim_rec(1, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+		mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+		secs(1);
+	}
+	sim_nrec = 0;
+}
+
+static void scen_guards_all_trees(void)
+{
+	printf("76. a guard on an internal port acts in every tree\n");
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	converge_internal_root_on_8();
+	check(((stp_internal >> 8) & 1) && stp_root_port == 8 && stp_rport[1] == 8
+	      && port_state(8) == 3 && tree_state(1, 8) == 3, "port 9 internal, root in CIST and MSTI 1, forwarding in both");
+	sim_cmd("stp port 9 guard bpdu");
+	struct sim_bpdu b = root_on(8);
+	sim_rec(1, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	sim_nrec = 0;
+	check(port_state(8) == 0, "BPDU guard disables the port in the CIST");
+	check(tree_state(1, 8) == 0, "and in MSTI 1");
+	secs(40);
+	check(tree_state(1, 8) == 0, "and it stays that way");
+
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	converge_internal_root_on_8();
+	sim_cmd("stp port 9 guard root");
+	for (int i = 0; i < 40; i++) {
+		sim_nrec = 0;
+		sim_rec(1, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+		mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+		secs(1);
+	}
+	sim_nrec = 0;
+	check(port_state(8) == 1, "root guard holds the port discarding in the CIST");
+	check(tree_state(1, 8) == 1, "and in MSTI 1");
+}
+
+static void scen_port_off_new_instance(void)
+{
+	printf("77. a port with STP off forwards in an instance started later\n");
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	converge_internal_root_on_8();
+	sim_cmd("stp port 9 off");
+	check(port_state(8) == 3 && tree_state(1, 8) == 3, "a port with STP off forwards in every tree");
+	sim_cmd("stp msti 2 vlan 20");
+	check(tree_state(2, 8) == 3, "and in the new instance");
+	secs(60);
+	check(tree_state(2, 8) == 3, "also a minute later");
+	links_set(1 << 3);
+	secs(2);
+	links_set((1 << 3) | (1 << 8));
+	secs(40);
+	check(tree_state(2, 8) == 3, "and after a link bounce");
+}
+
+static void scen_msti_info_from_root_role(void)
+{
+	printf("78. instance information from a neighbour whose CIST port is a root port\n");
+	memset(stp_rxhello, 0, STP_ENTITIES);	/* as after boot: no designated CIST information heard yet */
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	/* B: we are its CIST root and regional root; in MSTI 1 it is designated and the regional root */
+	struct sim_bpdu b = root_on(8);
+	b.root_prio = 0x80;
+	memcpy(b.root_mac, uip_ethaddr.addr, 6);
+	b.root_cost = 20000;
+	b.br_prio = 0x80;
+	memcpy(b.br_mac, uip_ethaddr.addr, 6);
+	b.flags = 0x38;
+	for (int i = 0; i < 10; i++) {
+		sim_nrec = 0;
+		sim_rec(1, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+		mst_bpdu_in(&b, "lab", 20000, PEER_MAC, 0x80, 19, NULL);
+		secs(1);
+	}
+	sim_nrec = 0;
+	check((stp_internal >> 8) & 1, "the port is internal");
+	check(stp_info_while[STP_ENTITIES + 8] != 0, "the instance information is fresh");
+	check(stp_rport[1] == 8, "MSTI 1 takes the neighbour as regional root through port 9");
+}
+
+static void scen_msti_tc_boundary(void)
+{
+	printf("79. a topology change in an instance flushes its boundary ports\n");
+	mstp_setup();
+	for (uint16_t v = 2; v <= 40; v++)
+		sim_vlan[v] = 0x02000000 | 0x3ff;
+	links_set((1 << 3) | (1 << 4) | (1 << 8));
+	sim_cmd("stp msti 1 vlan 10");
+	sim_cmd("stp msti 2 vlan 20");
+	secs(2);
+	struct sim_bpdu b = root_on(8);
+	/* An RSTP bridge outside the region on port 5, inferior to us: the port
+	 * is a designated boundary port, not an edge. */
+	struct sim_bpdu d = root_on(4);
+	d.root_prio = 0x80;
+	d.br_prio = 0x80;
+	memcpy(d.br_mac, THIRD_MAC, 6);
+	d.root_cost = 200000;
+	d.flags = 0x0c;
+	for (int i = 0; i < 40; i++) {
+		sim_nrec = 0;
+		sim_rec(1, 0x3c | (0b11 << 2), 0x40, ROOT_MAC, 0, 0x40, 0x80, 20);
+		sim_rec(2, 0x3c | (0b11 << 2), 0x40, ROOT_MAC, 0, 0x40, 0x80, 20);
+		mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+		sim_nrec = 0;
+		bpdu_in(&d);
+		secs(1);
+	}
+	check(tree_state(2, 4) == 3 && !((stp_internal >> 4) & 1) && !(stp_pflags[4] & STP_PF_OPEREDGE),
+	      "port 5 is a forwarding boundary port of MSTI 2");
+	memset(flush_count, 0, sizeof(flush_count));
+	sim_nrec = 0;
+	sim_rec(1, 0x3c | (0b11 << 2), 0x40, ROOT_MAC, 0, 0x40, 0x80, 20);
+	sim_rec(2, 0x3d | (0b11 << 2), 0x40, ROOT_MAC, 0, 0x40, 0x80, 20);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	sim_nrec = 0;
+	check(flush_count[4] > 0, "a change in MSTI 2 alone flushes the boundary port");
+	check(stp_tcwhile[4] != 0, "and sends it on in the CIST");
+	check(flush_count[8] == 0, "the port it came in on is left alone");
+}
+
+static void scen_digest_at_once(void)
+{
+	printf("80. the digest is current the moment the table changes\n");
+	mstp_setup();
+	check(mstp_dg_step == MSTP_DG_DONE && digest_is("ac36177f50283cd4b83821d8ab26de62"),
+	      "the empty table's digest is known without computing it");
+	sim_cmd("stp msti 1 vlan 10-20,30");
+	sim_cmd("stp msti 2 vlan 15");
+	check(mstp_dg_step == MSTP_DG_DONE && digest_is("17cfd7ae0de29b9d28331b5b2d07b640"),
+	      "a change while MSTP runs is worked out before the command returns");
+	sim_cmd("stp off");
+	sim_cmd("stp msti 1 vlan none");
+	check(mstp_dg_step < MSTP_DG_DONE, "a change while STP is off waits");
+	sim_cmd("stp on");
+	check(mstp_dg_step == MSTP_DG_DONE, "and is finished when STP starts");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2388,6 +2539,11 @@ int main(int argc, char **argv)
 	scen_msti_legacy_tcn();
 	scen_msti_sync_master();
 	scen_version_switch();
+	scen_guards_all_trees();
+	scen_port_off_new_instance();
+	scen_msti_info_from_root_role();
+	scen_msti_tc_boundary();
+	scen_digest_at_once();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
