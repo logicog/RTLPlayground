@@ -3,7 +3,9 @@ CFLAGS = -std=c11 -Wall -Wextra -Wno-unknown-pragmas \
          -D__xdata= -D__code= -D__banked= -D__reentrant= \
          -Ishim -I../..
 
-all: build/stp_sim
+all: test
+
+test: build/stp_sim
 	./build/stp_sim
 
 verbose: build/stp_sim
@@ -19,4 +21,4 @@ build/stp_sim: stp_sim.c ../../rtl837x_stp.c ../../rtl837x_stp_cli.c ../../rtl83
 clean:
 	rm -rf build
 
-.PHONY: all verbose clean
+.PHONY: all test verbose clean
