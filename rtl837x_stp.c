@@ -163,8 +163,8 @@ __xdata uint8_t  stp_lag;
 
 #define STP_EDGE_DELAY	(3 * STP_HZ)	/* auto-edge: forward after 3 s without BPDU */
 
-#define MAXAGE_S	(ROOT_PORT == 0xff ? stp_maxage_s : stp_root_maxage)
-#define FWD_S		(ROOT_PORT == 0xff ? stp_fwddelay_s : stp_root_fwd)
+#define MAXAGE_S	(stp_rport[0] == 0xff ? stp_maxage_s : stp_root_maxage)
+#define FWD_S		(stp_rport[0] == 0xff ? stp_fwddelay_s : stp_root_fwd)
 #define FWD_TICKS	((uint16_t)FWD_S * STP_HZ)
 #define P2P(i)		(stp_pp2p[i] != 2)
 #define SEND_RSTP(i)	(stp_rstp && !((stp_legacy >> (i)) & 1))
