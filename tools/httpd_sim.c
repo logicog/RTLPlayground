@@ -454,6 +454,15 @@ void send_mtu(int s)
 	json_object_put(mtus);
 }
 
+void send_lldp(int s)
+{
+	char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	char *body = "{\"on\": true, \"port_status\":[true,true,true,true,true,true,true,false,false]}";
+	write(s, header, strlen(header));
+	write(s, body, strlen(body));
+}
 
 void send_cmd_log(int s)
 {
@@ -467,7 +476,6 @@ void send_cmd_log(int s)
 		printf("%d: %s\n", i, cmd_history[i]);
 	}
 }
-
 
 void send_config(int s)
 {
@@ -700,6 +708,13 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_vlan(new_socket, vlan);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/lldp.json", 10)) {
+					printf("LLDP request");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_lldp(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/cmd_log", 8)) {
 					printf("Request cmd_log\n");
