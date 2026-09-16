@@ -344,7 +344,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 
 	read_reg_timer(&now);
 
-	if (session) {
+	if (session && session_id[0]) {
 		if (now - last_session_use > session_timeout) {
 			dbg_string("Session expired\n");
 		} else {
