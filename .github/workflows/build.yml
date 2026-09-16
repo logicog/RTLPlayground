@@ -3,6 +3,7 @@ name: Build firmware
 on:
   push:
     branches: ['**']
+  pull_request:
 
 jobs:
   build:
