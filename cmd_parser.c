@@ -440,6 +440,14 @@ static void cmd_error(__code const char *msg)
 // re-registers the static L2 management entry so the change applies without a
 // reboot. As a regular command a "mac ..." line in the startup config applies
 // on every boot (execute_config runs before the final static L2 entry).
+static uint8_t name_char(uint8_t c)
+{
+	if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
+		return '.';
+	return c;
+}
+
+
 void parse_mac_cmd(void)
 {
 	if (cmd_words_len == 1) {
@@ -627,7 +635,7 @@ void parse_vlan(void)
 				*vlan_str++ = hex[(vlan_settings.vlan >> 4) & 0xf] ;
 				*vlan_str++ = hex[vlan_settings.vlan & 0xf];
 				while(!cmd_is_space_or_nul(pos)) {
-					uint8_t c = cmd_buffer[pos++];
+					uint8_t c = name_char(cmd_buffer[pos++]);
 					write_char(c);
 					*vlan_str++ = c;
 				}
@@ -889,7 +897,7 @@ void parse_port(void)
 	} else if (cmd_compare(2, "name")) {
 		uint8_t i = 0;
 		while ( (i < PORT_NAME_SIZE-1) && (cmd_buffer[cmd_words_b[3] + i] != NUL) ) {
-			port_names[phy_settings.port][i] = cmd_buffer[cmd_words_b[3] + i];
+			port_names[phy_settings.port][i] = name_char(cmd_buffer[cmd_words_b[3] + i]);
 			i++;
 		}
 		port_names[phy_settings.port][i] = NUL;
@@ -1831,9 +1839,7 @@ void cmd_parser(void) __banked
 					uint8_t c = *hp++;
 					if (c == NUL || c == '\r' || c == '\n')
 						break;
-					if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
-						c = '.';
-					*dst++ = c;
+					*dst++ = name_char(c);
 				}
 				*dst = NUL;
 			} else {
