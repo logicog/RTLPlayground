@@ -71,8 +71,9 @@ bw_title:"Bandwidth limits",bw_h:"Mbit/s, 0.016-10000",bw_in:"Ingress limit",bw_
 bw_exceed:"When exceeded",bw_fc:"Flow control",bw_drop:"Drop",
 bw_in_err:"Ingress limit must be 0.016-10000 Mbit/s",bw_out_err:"Egress limit must be 0.016-10000 Mbit/s",
 sy_network:"Network",sy_dhcp:"Use DHCP",sy_dhcp_t:"Request address via DHCP",sy_services:"Services",
-sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",
-sy_services_note:"Service state reflects the startup config; runtime state is not readable.",
+  sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",sy_sesstmo:"Session timeout (s)",
+  sy_services_note:"Service state reflects the startup config; runtime state is not readable.",
+  sy_sesstmo_err:"Session timeout must be 1-65535 s",
 sy_password:"Admin password",sy_newpw:"New password",sy_repeat:"Repeat",sy_pwapply:"Change password",
 sy_pw_note:"Takes effect immediately; save to flash to keep it after reboot.",sy_console:"Console",
 sy_cmd:"CLI command...",sy_send:"Send",sy_startup:"Startup configuration",sy_replayed:"replayed on every boot",
@@ -182,8 +183,9 @@ bw_title:"帯域制限",bw_h:"Mbit/s、0.016〜10000",bw_in:"入力制限",bw_ou
 bw_exceed:"超過時の動作",bw_fc:"フロー制御",bw_drop:"破棄",
 bw_in_err:"入力制限は 0.016〜10000 Mbit/s の範囲で指定してください",bw_out_err:"出力制限は 0.016〜10000 Mbit/s の範囲で指定してください",
 sy_network:"ネットワーク",sy_dhcp:"DHCP を使用",sy_dhcp_t:"DHCP でアドレスを取得",sy_services:"サービス",
-sy_igmp:"IGMP スヌーピング",sy_sysip:"サーバー IP",sy_server:"サーバー",sy_port:"ポート",
-sy_services_note:"サービスの状態は起動設定を反映しています。実行時の状態は読み取れません。",
+  sy_igmp:"IGMP スヌーピング",sy_sysip:"サーバー IP",sy_server:"サーバー",sy_port:"ポート",sy_sesstmo:"セッションタイムアウト (秒)",
+  sy_services_note:"サービスの状態は起動設定を反映しています。実行時の状態は読み取れません。",
+  sy_sesstmo_err:"セッションタイムアウトは 1〜65535 秒で指定してください",
 sy_password:"管理者パスワード",sy_newpw:"新しいパスワード",sy_repeat:"再入力",sy_pwapply:"パスワードを変更",
 sy_pw_note:"即時に反映されます。再起動後も保持するにはフラッシュに保存してください。",sy_console:"コンソール",
 sy_cmd:"CLI コマンド...",sy_send:"送信",sy_startup:"起動設定",sy_replayed:"起動のたびに再実行されます",
@@ -293,8 +295,9 @@ bw_title:"带宽限制",bw_h:"Mbit/s，0.016-10000",bw_in:"入方向限速",bw_o
 bw_exceed:"超限动作",bw_fc:"流量控制",bw_drop:"丢弃",
 bw_in_err:"入方向限速范围为 0.016-10000 Mbit/s",bw_out_err:"出方向限速范围为 0.016-10000 Mbit/s",
 sy_network:"网络",sy_dhcp:"使用 DHCP",sy_dhcp_t:"通过 DHCP 获取地址",sy_services:"服务",
-sy_igmp:"IGMP 侦听",sy_sysip:"服务器 IP",sy_server:"服务器",sy_port:"端口",
-sy_services_note:"服务状态反映启动配置；运行时状态无法读取。",
+  sy_igmp:"IGMP 侦听",sy_sysip:"服务器 IP",sy_server:"服务器",sy_port:"端口",sy_sesstmo:"会话超时（秒）",
+  sy_services_note:"服务状态反映启动配置；运行时状态无法读取。",
+  sy_sesstmo_err:"会话超时必须为 1-65535 秒",
 sy_password:"管理员密码",sy_newpw:"新密码",sy_repeat:"重复输入",sy_pwapply:"修改密码",
 sy_pw_note:"立即生效；如需重启后保留请保存到 Flash。",sy_console:"控制台",
 sy_cmd:"CLI 命令...",sy_send:"发送",sy_startup:"启动配置",sy_replayed:"每次启动时重新执行",
@@ -1503,6 +1506,7 @@ function sysLoad(){
     var sl=(S.info.syslog_server||"").split(":");
     if(sl[0]&&sl[0]!=="0.0.0.0")$("sy-sysip").value=sl[0];
     if(sl[1])$("sy-sysport").value=sl[1];
+    if(S.info.session_timeout)$("sy-sesstmo").value=S.info.session_timeout;
   }).catch(function(){});
   cfgReload();
 }
@@ -1554,6 +1558,11 @@ $("sy-syslog").addEventListener("change",function(){
     cmds.push("syslog on");
   }else cmds.push("syslog off");
   postCmds(cmds).catch(function(){});
+});
+$("sy-sesstmo").addEventListener("change",function(){
+  var v=+this.value;
+  if(!(v>=1&&v<=65535)){toast(t("sy_sesstmo_err"),"err");sysLoad();return;}
+  postCmd("session "+v).catch(function(){sysLoad()});
 });
 $("sy-pwapply").addEventListener("click",function(){
   var a=$("sy-pw1").value,b=$("sy-pw2").value;

@@ -28,6 +28,7 @@ extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 extern __xdata uint16_t management_vlan;
+extern __xdata uint16_t session_timeout;
 extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
@@ -229,7 +230,9 @@ void send_basic_info(void)
 	itoa_html(syslog_state.server_ip[2]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[3]); char_to_html(':');
 	itoa16_html(syslog_state.server_port);
-	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
+	slen += strtox(outbuf + slen, "\",\"session_timeout\":");
+	itoa16_html(session_timeout);
+	slen += strtox(outbuf + slen, ",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[2]); char_to_html(':');
