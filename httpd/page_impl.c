@@ -100,12 +100,14 @@ void itoa_html(uint8_t v)
 	char_to_html('0' + (v % 10));
 }
 
-void itoa16_html(uint16_t v) /* sufficient for VLAN IDs (max 4094) */
+void itoa16_html(uint16_t v) /* up to five digits (65535) */
 {
 	uint8_t print_zeros = 0;
 	uint8_t d;
-	d = v / 1000;
+	d = v / 10000;
 	if (d) { char_to_html('0' + d); print_zeros = 1; }
+	d = (v / 1000) % 10;
+	if (d || print_zeros) { char_to_html('0' + d); print_zeros = 1; }
 	d = (v / 100) % 10;
 	if (d || print_zeros) { char_to_html('0' + d); print_zeros = 1; }
 	d = (v / 10) % 10;

@@ -668,6 +668,8 @@ static void run_login_body(__xdata uint8_t *body)
 				      "Set-Cookie: session=");
 		for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
 			outbuf[slen++] = session_id[i];
+		slen += strtox(outbuf + slen, "; Max-Age=");
+		itoa16_html(session_timeout);
 		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 	} else {
 		dbg_string("Password invalid!\n");
