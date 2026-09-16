@@ -16,8 +16,16 @@ extern __xdata struct uip_eth_addr uip_ethaddr;
 __xdata uint8_t rldp_on;
 __xdata uint16_t rldp_off_mask;
 __xdata uint8_t rldp_block[10];
+__xdata uint8_t rldp_level[10];
 __xdata uint16_t rldp_fwd_mask;
 __xdata uint16_t rldp_tx_mask;
+
+
+static uint8_t rldp_link(uint8_t port)
+{
+	reg_read_m(RTL837X_REG_LINKS_STS);
+	return (sfr_data[(port >> 3) + 1] >> (port & 7)) & 1;
+}
 
 
 static void rldp_mac(uint8_t port, __xdata uint8_t on)
@@ -91,8 +99,10 @@ void rldp_init(void) __banked
 	rldp_off_mask = 0;
 	rldp_fwd_mask = 0;
 	rldp_tx_mask = 0xffff;
-	for (p = 0; p < 10; p++)
+	for (p = 0; p < 10; p++) {
 		rldp_block[p] = 0;
+		rldp_level[p] = 0;
+	}
 	rldp_apply();
 }
 
@@ -115,8 +125,10 @@ void rldp_enable(uint8_t on) __banked
 		reg_write_m(RTL837X_RLDP_MAGIC1);
 		rldp_read_fwd();
 	} else {
-		for (p = machine.min_port; p <= machine.max_port; p++)
+		for (p = machine.min_port; p <= machine.max_port; p++) {
 			rldp_open(p);
+			rldp_level[p] = 0;
+		}
 	}
 	rldp_apply();
 }
@@ -129,6 +141,7 @@ void rldp_port(uint8_t port, __xdata uint8_t on) __banked
 	} else {
 		rldp_off_mask |= ((uint16_t)1) << port;
 		rldp_open(port);
+		rldp_level[port] = 0;
 	}
 	rldp_apply();
 }
@@ -147,6 +160,12 @@ void rldp_tick(void) __banked
 
 	for (p = machine.min_port; p <= machine.max_port; p++) {
 		if (rldp_block[p]) {
+			if (!rldp_link(p)) {
+				rldp_level[p] = 0;
+				rldp_block[p] = 1;
+				rldp_open(p);
+				continue;
+			}
 			if (!--rldp_block[p]) {
 				rldp_block[p] = 1;
 				rldp_open(p);
@@ -157,7 +176,7 @@ void rldp_tick(void) __banked
 			looped = (st0 >> p) & 1;
 		else
 			looped = (st1 >> (p - 8)) & 1;
-		if (!looped || !((rldp_tx_mask >> p) & 1))
+		if (!looped || !((rldp_tx_mask >> p) & 1) || !rldp_link(p))
 			continue;
 
 		reg_read_m(RTL837X_RLDP_LOOPPAIR + ((p >> 3) << 2));
@@ -170,7 +189,9 @@ void rldp_tick(void) __banked
 		if (pair > p && !((rldp_off_mask >> pair) & 1))
 			continue;
 
-		rldp_block[p] = RLDP_BLOCK_SECS;
+		rldp_block[p] = RLDP_BLOCK_SECS << rldp_level[p];
+		if (rldp_level[p] < RLDP_BLOCK_MAX_SHIFT)
+			rldp_level[p]++;
 		rldp_mac(p, 0);
 		print_string("rldp: loop on port ");
 		write_char('0' + machine.log_to_phys_port[p]);

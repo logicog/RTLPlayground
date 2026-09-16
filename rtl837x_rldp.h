@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define RLDP_BLOCK_SECS	60
+#define RLDP_BLOCK_MAX_SHIFT	2
 
 extern __xdata uint8_t rldp_on;
 extern __xdata uint16_t rldp_off_mask;
