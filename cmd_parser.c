@@ -426,19 +426,20 @@ err:
 	return 0;
 }
 
+static void cmd_error(__code const char *msg)
+{
+	err_status = ERR_INVALID_ARGUMENT;
+	print_string("Error: ");
+	print_string(msg);
+}
+
+
 // Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
 // the current one with a bare "mac"). Refuses blank/multicast/locally
 // administered/all-zero-OUI addresses so the running MAC stays reachable, and
 // re-registers the static L2 management entry so the change applies without a
 // reboot. As a regular command a "mac ..." line in the startup config applies
 // on every boot (execute_config runs before the final static L2 entry).
-static void cmd_error(__code const char *msg)
-{
-	err_status = ERR_INVALID_ARGUMENT;
-	print_string(msg);
-}
-
-
 void parse_mac_cmd(void)
 {
 	if (cmd_words_len == 1) {
@@ -448,11 +449,11 @@ void parse_mac_cmd(void)
 		return;
 	}
 	if (cmd_words_len != 2 || !parse_mac(cmd_words_b[1])) {
-		cmd_error("Error: mac [<aa:bb:cc:dd:ee:ff>]\n");
+		cmd_error("mac [<aa:bb:cc:dd:ee:ff>]\n");
 		return;
 	}
 	if ((mac_parse_result[0] & 0x03) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
-		cmd_error("refusing: must be unicast, globally administered\n");
+		cmd_error("the MAC must be unicast and globally administered\n");
 		return;
 	}
 	if (memcmp(mac_parse_result, uip_ethaddr.addr, 6) == 0) {
@@ -530,7 +531,7 @@ void parse_lag(void)
 	port_lag_members_set(group, members);
 	return;
 err:
-	cmd_error("Error: lag (show | <1-4> (d | <port>...))\n");
+	cmd_error("lag (show | <1-4> (d | <port>...))\n");
 }
 
 
@@ -572,7 +573,7 @@ void parse_lag_hash(void)
 	port_lag_hash_set(group, hash);
 	return;
 err:
-	cmd_error("Error: laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
+	cmd_error("laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
 }
 
 
@@ -670,7 +671,7 @@ void parse_vlan(void)
 	}
 	return;
 err:
-	cmd_error("Error: vlan (<vlan-id>|show) [port][t]...\n");
+	cmd_error("vlan (<vlan-id>|show) [port][t]...\n");
 }
 
 
@@ -721,7 +722,7 @@ void parse_isolate(void)
 	return;
 
 err:
-	cmd_error("Error: isolate <port> [show|off] [port]...\n");
+	cmd_error("isolate <port> [show|off] [port]...\n");
 }
 
 
@@ -758,7 +759,7 @@ void parse_ingress(void)
 		// Setting mode for all ports at once
 		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
 			if (!port_ingress_filter(log_port, mode)) {
-				cmd_error("Error setting ingress filter for port "); print_phys_port(log_port); write_char('\n');
+				cmd_error("cannot set the ingress filter for port "); print_phys_port(log_port); write_char('\n');
 				return;
 			}
 			print_string("All ports ingress filter set to: ");
@@ -780,7 +781,7 @@ void parse_ingress(void)
 				goto err;
 			}
 			if (!port_ingress_filter(log_port, mode)) {
-				cmd_error("Error setting ingress filter for port "); print_phys_port(log_port); write_char('\n');
+				cmd_error("cannot set the ingress filter for port "); print_phys_port(log_port); write_char('\n');
 				return;
 			}
 			print_string("Port "); print_phys_port(log_port);
@@ -790,7 +791,7 @@ void parse_ingress(void)
 	}
 	return;
 err:
-	cmd_error("Error: ingress [p]<u/t/a>...\n");
+	cmd_error("ingress [p]<u/t/a>...\n");
 }
 
 void parse_mirror(void)
@@ -1105,7 +1106,7 @@ void parse_regget(void)
 	return;
 
 err:
-	cmd_error("usage: regget <hexvalue>\n\tlike: regget 0BB0 or regget 0c");
+	cmd_error("regget <hexvalue>\n\tlike: regget 0BB0 or regget 0c");
 	return;
 }
 
@@ -1152,7 +1153,7 @@ void parse_regset(void)
 	return;
 
 err:
-	cmd_error("usage: regset <hexvalue> <hexvalue>\n\tlike regset 0b abcd1234.");
+	cmd_error("regset <hexvalue> <hexvalue>\n\tlike regset 0b abcd1234.");
 }
 
 
@@ -1195,7 +1196,7 @@ void parse_sdsget(void)
 	return;
 
 err:
-	cmd_error("usage: sdsget <sds-id> <hex:page> <hex:reg>\n");
+	cmd_error("sdsget <sds-id> <hex:page> <hex:reg>\n");
 	return;
 }
 
@@ -1251,7 +1252,7 @@ void parse_sdsset(void)
 	return;
 
 err:
-	cmd_error("usage: sdsset <sds-id> <hex:page> <hex:reg> <hex:val>\n");
+	cmd_error("sdsset <sds-id> <hex:page> <hex:reg> <hex:val>\n");
 	return;
 }
 
@@ -1300,7 +1301,7 @@ void parse_phyget(void)
 	return;
 
 err:
-	cmd_error("usage: phyget <phy-id> <dev-id> <hex:reg>\n");
+	cmd_error("phyget <phy-id> <dev-id> <hex:reg>\n");
 	return;
 }
 
@@ -1360,7 +1361,7 @@ void parse_physet(void)
 	return;
 
 err:
-	cmd_error("usage: physet <phy-id> <dev-id> <hex:reg> <hex:val>\n");
+	cmd_error("physet <phy-id> <dev-id> <hex:reg> <hex:val>\n");
 	return;
 }
 
@@ -1529,7 +1530,7 @@ void parse_bw(void)
 	return;
 
 err:
-	cmd_error("usage: bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
+	cmd_error("bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
 }
 
 void parse_syslog(void)
@@ -1594,9 +1595,9 @@ void parse_syslog(void)
 	}
 	else
 	{
-		cmd_error("Error: syslog [on|off|ip [ip-address]|port [number]]\n");
-		print_string("  on/off enables or disables syslog, ip sets the syslog server IP address,\n");
-		print_string("  port sets the destination UDP port (default 514)\n");
+		cmd_error("syslog [on|off|ip [ip-address]|port [number]]\n"
+			  "  on/off enables or disables syslog, ip sets the syslog server IP address,\n"
+			  "  port sets the destination UDP port (default 514)\n");
 	}
 }
 
@@ -1811,7 +1812,7 @@ void cmd_parser(void) __banked
 			else if (cmd_compare(1, "show"))
 				igmp_show();
 			else {
-				cmd_error("Error: igmp on|off|show\n");
+				cmd_error("igmp on|off|show\n");
 			}
 		} else if (cmd_compare(0, "mac")) {
 			parse_mac_cmd();
@@ -1836,7 +1837,7 @@ void cmd_parser(void) __banked
 				}
 				*dst = NUL;
 			} else {
-				cmd_error("Error: hostname [name] - the name must not contain spaces\n");
+				cmd_error("hostname [name] - the name must not contain spaces\n");
 			}
 		} else if (cmd_compare(0, "stp")) {
 			stp_parse();
@@ -1845,7 +1846,7 @@ void cmd_parser(void) __banked
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
 				port_pvid_set(atoi_results_u8, atoi_results_short);
 			else {
-				cmd_error("Error: pvid <port> <1-4094>\n");
+				cmd_error("pvid <port> <1-4094>\n");
 			}
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
