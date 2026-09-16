@@ -225,7 +225,7 @@ void rldp_show(void) __banked
 			looped = (st0 >> p) & 1;
 		else
 			looped = (st1 >> (p - 8)) & 1;
-		if (looped)
+		if (looped && rldp_on && rldp_link(p))
 			print_string(" loop");
 		if (rldp_block[p]) {
 			print_string(" blocked ");
@@ -264,6 +264,11 @@ void rldp_json(void) __banked
 			rj_loop = (rj_st0 >> rj_i) & 1;
 		else
 			rj_loop = (rj_st1 >> (rj_i - 8)) & 1;
+		if (rj_loop) {
+			reg_read_m(RTL837X_REG_LINKS_STS);
+			if (!rldp_on || !((sfr_data[(rj_i / 8) + 1] >> (rj_i % 8)) & 1))
+				rj_loop = 0;
+		}
 		slen += strtox(outbuf + slen, "{\"portNum\":");
 		rj_num(machine.log_to_phys_port[rj_i]);
 		slen += strtox(outbuf + slen, ",\"en\":");
