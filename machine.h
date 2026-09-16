@@ -46,6 +46,9 @@
 // #define MACHINE_FG_8GT_1SX
 // #define MACHINE_LIANGUO_HYWS_SGT0108S
 // #define MACHINE_POE_2G080110GS
+// ONT-S207CW-62TS-SE: Identical to PCB-SWTG024AS-A-2.0.1 (RTL8372N, 4x2.5G + 2x10G SFP+)
+// Use MACHINE_PCB_SWTG024AS_A_2_0_1 for ONT-S207CW-62TS-SE
+// See doc/devices/ONT-S207CW-62TS-SE.md for configuration details
 
 typedef struct {
 	// GPIO pins for SDA/SCL
