@@ -216,7 +216,7 @@ void rldp_show(void) __banked
 			looped = (st0 >> p) & 1;
 		else
 			looped = (st1 >> (p - 8)) & 1;
-		if (looped)
+		if (looped && rldp_on && rldp_link(p))
 			print_string(" loop");
 		if (rldp_block[p]) {
 			print_string(" blocked ");
