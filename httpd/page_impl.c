@@ -795,6 +795,11 @@ void send_rldp(void)
 			looped = (st0 >> i) & 1;
 		else
 			looped = (st1 >> (i - 8)) & 1;
+		if (looped) {
+			reg_read_m(RTL837X_REG_LINKS_STS);
+			if (!rldp_on || !((sfr_data[(i / 8) + 1] >> (i % 8)) & 1))
+				looped = 0;
+		}
 		slen += strtox(outbuf + slen, "{\"portNum\":");
 		itoa_html(machine.log_to_phys_port[i]);
 		slen += strtox(outbuf + slen, ",\"en\":");
