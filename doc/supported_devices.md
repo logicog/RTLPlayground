@@ -24,6 +24,8 @@ The following devices have been tested and are fully working:
 | Mokerlink| 2G040210GSM     | Yes     | [2M-PCB43-V1.1](devices/2M-PCB43-V1.1.md)                                 |       | 4 + 2 |
 | Mokerlink| ZX-SWTGW218AS   | Yes     | [SWTG118AS-V2.0-16029](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | MokerLink| POE-2G080110GS  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1_1.md)                           | 4M    | 8 + 1 |
+| Binardat | 2G06-04210GSM    | No      | [PCB-SWTG024AS-A-2.0.1](devices/ONT-S207CW-62TS-SE.md)                 | 0.5M  | 4 + 2 |
+| ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/ONT-S207CW-62TS-SE.md)                 | 0.5M  | 4 + 2 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                             | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                       | 1M    | 8 + 1 |
 | SiscoLink | SL-G0402F      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
