@@ -1182,6 +1182,7 @@ __code const struct machine machine = {
 			0
 		},
 	},
+};
 #elif defined MACHINE_POE_2G080110GS
 __code const struct machine machine = {
 	.machine_name = "MokerLink POE-2G080110GS",

@@ -44,6 +44,7 @@
 // #define MACHINE_SWTG024AS_V2_0
 // #define MACHINE_FG_4GT_2SX_V2_0
 // #define MACHINE_FG_8GT_1SX
+// #define MACHINE_LIANGUO_HYWS_SGT0108S
 // #define MACHINE_POE_2G080110GS
 
 typedef struct {
@@ -74,7 +75,7 @@ struct sfp_port
 	i2c_bus_t i2c;
 };
 
-typedef struct machine {
+struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
 	// Lowest logical port number
@@ -102,7 +103,7 @@ typedef struct machine {
 	uint32_t mac_flash_offset;
 };
 
-typedef struct machine_runtime
+struct machine_runtime
 {
 	uint8_t isRTL8373 : 1;
 	uint8_t isN : 1;
