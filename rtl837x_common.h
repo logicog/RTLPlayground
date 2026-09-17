@@ -54,6 +54,7 @@ extern __xdata uint8_t sbuf[SBUF_SIZE];
 #define ERR_OK			0
 #define ERR_TOO_MANY_ARGUMENTS	1
 #define ERR_CMD_TOO_LONG	2
+#define ERR_INVALID_ARGUMENT	3
 
 // For RX data, a propriatary RTL FRAME is inserted. Instead of 0x0800 for IPv4,
 // the RTL_FRAME_TAG_ID is used as part of an 8-byte tag. When VLAN is activated,
@@ -134,9 +135,9 @@ extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
 // Headers for calls in the common code area (HOME/BANK0)
-void print_string_no_syslog(__code char *p);
-void print_string_newline_no_syslog(__code char *p);
-void print_string(__code char *p);
+void print_string_no_syslog(__code const char *p);
+void print_string_newline_no_syslog(__code const char *p);
+void print_string(__code const char *p);
 void print_string_x(__xdata char *p);
 void print_long(uint32_t a);
 void print_short(uint16_t a);
