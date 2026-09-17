@@ -303,19 +303,19 @@ void itoa_short(uint16_t v)
 }
 
 
-void print_string(__code char *p)
+void print_string(__code const char *p)
 {
 	while (*p)
 		write_char(*p++);
 }
 
-void print_string_no_syslog(__code char *p)
+void print_string_no_syslog(__code const char *p)
 {
 	while (*p)
 		write_char_no_syslog(*p++);
 }
 
-void print_string_newline_no_syslog(__code char *p)
+void print_string_newline_no_syslog(__code const char *p)
 {
 	write_char_no_syslog('\n');
 	print_string_no_syslog(p);

@@ -2,15 +2,15 @@
 A Playground for Firmware development for advanced user of RTL8372/RTL8373 based 2.5GBit Switches.
 
 For each hardware configuration of these devices, there is usually a managed and an
-umanaged version sold, with mostly identical hardware. The aim is to provide management
+unmanaged version sold, with mostly identical hardware. The aim is to provide management
 features also for unmanaged devices with additional features such as Management VLAN,
-dhcp servers, multi-language support, IPv6 and TLS-encrypted web-pages. At present, however
+DHCP servers, multi-language support, IPv6 and TLS-encrypted web-pages. At present, however
 only the following features are provided:
 - A modern web-interface with mouse-over to display further information
 - A serial console interface to configure all features
 - IGMP to configure Multicast streaming
-- Port configuration showing detailed informtion about own and Link-partner advertised
-  Speed settins and configuration of these settings on the local side
+- Port configuration showing detailed information about own and Link-partner advertised
+  Speed settings and configuration of these settings on the local side
 - Per-port configuration of frame sizes (MTUs) for Jumbo-Frame support or limiting MTUs
   for particular devices
 - EEE (Energy Efficient Ethernet) can be configured per-port. Detailed information is
@@ -25,7 +25,7 @@ only the following features are provided:
 - Firmware updates via the web
 - Installation as a firmware upgrade from the original web-interface
 
-<img width="1420" height="623" alt="GUI" src="doc/images/gui.png" />
+<img width="1673" height="977" alt="GUI" src="doc/images/gui.png" />
 
 While the firmware provides already considerable improvements over the original managed firmware,
 the firmware still lacks support for the proprietary loop prevention
@@ -37,7 +37,7 @@ a backup of the original flash content via a SOIC clamp such as also used for BI
 backups and can re-install that firmware in case something is wrong. For this no soldering
 skills are necessary.
 
-The firmware supports all hardware featues of devices with
+The firmware supports all hardware features of devices with
 - 4 2.5GBit ports + 2 SFP+ ports
 - 5 2.5GBIT + 1 SFP+ port
 - 8 2.5GBit + 1 SFP+ port
@@ -131,7 +131,7 @@ rtlplayground-v0.1.0-12c98ba-dirty-LIANGUO_ZX_SWTGW215AS.bin
 
 > [!CAUTION]
 > This image can be flashed directly to the chip OR through the firmware update/upgrade
-> interface of RTLPlaygound interface
+> interface of RTLPlayground interface
 
 ## (2) Compiling for OEM running device with management options (web upgrade)
 
@@ -179,7 +179,7 @@ ghidra see this information about [Ghidra images](doc/ghidra.md).
 
 ## (4) Installation through the Web interface (software way)
 
-Managed switches (OEM firmware of RTLplaygroud firmware) can be upgraded via the web interface.
+Managed switches (OEM firmware of RTLplayground firmware) can be upgraded via the web interface.
 Unmanaged switch cannot be flashed this way (see 5).
 
 Go to "Firmware update" tab, select the correct file.
@@ -190,7 +190,7 @@ Go to "Firmware update" tab, select the correct file.
 
 > [!CAUTION]
 > Check one more time that your device matches the machine type before flashing.
-> Be shure you have a backup of the original firmware before diving in RTLPlaygroung.
+> Be sure you have a backup of the original firmware before diving in RTLPlayground.
 
 Finally, push the Upload File Button and you're done !
 
@@ -198,7 +198,7 @@ Finally, push the Upload File Button and you're done !
 ## (5) Flashing the ROM directly (hardware way, but also only way to rescue)
 
 This procedure is the only way to flash unmanaged switches, if the ROM chip is large enough.
-This is also the only way to unbrick your device if something went wroong.
+This is also the only way to unbrick your device if something went wrong.
 
 > [!IMPORTANT]
 > You need a SOIC-8 clip to flash the ROM chip directly onboard.
@@ -218,7 +218,7 @@ This is also the only way to unbrick your device if something went wroong.
 - ERASE THE ROM (BLANK) !
 - Load the firmware into IMSProg.
 - Flash is to the ROM chip.
-- Disconect the clip from the ROM chip.
+- Disconnect the clip from the ROM chip.
 - You're done, ready for the first boot.
 
 ## (6) Connecting a serial interface (optional)
@@ -233,7 +233,7 @@ When you power up the switch, the device will perform some examples and provide 
 ## (8) The web-interface
 
 The web-interface can be reached under the [default 192.168.10.247](http://192.168.10.247) unless you
-specified an IP adress in the config.txt before compilation.
+specified an IP address in the config.txt before compilation.
 
 > [!TIP]
 > The default password is `1234`.
@@ -333,13 +333,13 @@ While in compilation part, you might write directly to config.txt file before ma
 nano config.txt
 ```
 
-If you want to modify settings after the flash is done, go to the Advanced Settings tab in System Settings
+If you want to modify settings after the flash is done, go to the System tab and find the Startup Configuration.
 
-<img width="1085" height="646" alt="ADVANCED SETTINGS" src="doc/images/advanced_settings.png" />
+<img width="1673" height="978" alt="ADVANCED SETTINGS" src="doc/images/advanced_settings.png" />
 
 ```
-ip xxx.xxx.xxx.xxx      = IP adress of the switch
-gw yyy.yyy.yyy.yyy      = IP adress of the gateway
+ip xxx.xxx.xxx.xxx      = IP address of the switch
+gw yyy.yyy.yyy.yyy      = IP address of the gateway
 netmask zzz.zzz.zzz.zzz = Network mask of the switch 
 port x name xxx         = Name xxx the port number x
 port z 1g               = Set 1g speed for port z
