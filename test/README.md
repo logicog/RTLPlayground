@@ -25,7 +25,7 @@ fires — so it drops straight into CI.
   fetches a MIB counter on `STAT_GET` and drops entries on `L2_TBL_FLUSH_CTRL`.
   Nothing ever reports busy, so a polling loop runs once. The header states the
   VLAN and L2 entry layouts independently of the firmware, so a test can hold
-  what `rtl837x_port.c` writes against an independent statement of the layout.
+  what `rtl837x_port.c` writes against what `page_impl.c` reads.
 - **`env_tables.c`** carries the globals and leaf calls those two modules link
   against; **`stub/`** stands in for the two headers only a firmware build
   generates, so the harness needs no SDCC build first.
@@ -46,6 +46,7 @@ fires — so it drops straight into CI.
 |-------------|---------------|--------------------|
 | `test_cmd_editor` | `cmd_editor.c` | **C4** — full-line hang + `cmd_buffer` 1-byte overflow; basic entry & backspace regressions |
 | `test_port_tables` | `rtl837x_port.c` | VLAN entry layout and round trip, PVID register sharing, static multicast and management entries, per-port flush, trunk membership and hash seed |
+| `test_page_json` | `httpd/page_impl.c` + `rtl837x_port.c` | `/vlan.json`, `/vlanlist`, `/l2.json` (walk, wrap marker, paging inside `outbuf`), 64-bit counters in `/status.json` and `/counters.json` |
 
 ## Adding a test for another module
 1. Write `test_<module>.c` with `main()` driving the module's entry points and
