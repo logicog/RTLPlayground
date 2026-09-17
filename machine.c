@@ -1253,13 +1253,15 @@ __code const struct machine machine = {
 
 	.led_sets = {
 		{
+			/* LED0 = RJ45: Amber LED: 2.5G */
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+			/* LED1 = RJ45: Green LED: 10M / 100M / 1000M */
 			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
 			0,
 			0
 		},
 		{
-			/* SFP+ LED mapping retained from the working SWTGW218AS base. */
+			/* SFP+ single Green LED. */
 			LEDS_10G | LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
 			0,
 			0,
