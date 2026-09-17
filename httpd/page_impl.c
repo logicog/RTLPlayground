@@ -175,6 +175,20 @@ void reg_to_html_long(uint16_t reg)
 }
 
 
+/* The 64-bit counter of the last STAT_GET as one number: the low word keeps
+ * its leading zeros whenever the high word is set. */
+void counter_to_html(void)
+{
+	reg_read_m(RTL837X_STAT_V_HIGH);
+	if (sfr_data[0] | sfr_data[1] | sfr_data[2] | sfr_data[3]) {
+		sfr_data_to_html();
+		reg_to_html_long(RTL837X_STAT_V_LOW);
+	} else {
+		reg_to_html(RTL837X_STAT_V_LOW);
+	}
+}
+
+
 void send_sfp_info(uint8_t sfp)
 {
 	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
@@ -311,8 +325,7 @@ bool send_counters(uint8_t phys_port)
 	for (uint8_t counter = 0; counter < 0x37; counter++) {
 		STAT_GET(counter, log_port);
 		slen += strtox(outbuf + slen, "\"0x");
-		reg_to_html(RTL837X_STAT_V_HIGH);
-		reg_to_html_long(RTL837X_STAT_V_LOW);
+		counter_to_html();
 		char_to_html('\"');
 		if (counter != 0x36)
 			char_to_html(',');
@@ -914,8 +927,7 @@ void send_status(void)
 
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		slen += strtox(outbuf + slen, ",\"txG\":\"0x");
-		reg_to_html(RTL837X_STAT_V_HIGH);
-		reg_to_html(RTL837X_STAT_V_LOW);
+		counter_to_html();
 
 		slen += strtox(outbuf + slen, "\",\"txB\":\"0x");
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
@@ -923,8 +935,7 @@ void send_status(void)
 
 		slen += strtox(outbuf + slen, "\",\"rxG\":\"0x");
 		STAT_GET(STAT_COUNTER_RX_PKTS, i);
-		reg_to_html(RTL837X_STAT_V_HIGH);
-		reg_to_html(RTL837X_STAT_V_LOW);
+		counter_to_html();
 
 		slen += strtox(outbuf + slen, "\",\"rxB\":\"0x");
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
