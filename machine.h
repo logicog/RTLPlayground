@@ -46,9 +46,10 @@
 // #define MACHINE_FG_8GT_1SX
 // #define MACHINE_LIANGUO_HYWS_SGT0108S
 // #define MACHINE_POE_2G080110GS
-// ONT-S207CW-62TS-SE: Identical to PCB-SWTG024AS-A-2.0.1 (RTL8372N, 4x2.5G + 2x10G SFP+)
-// Use MACHINE_PCB_SWTG024AS_A_2_0_1 for ONT-S207CW-62TS-SE
-// See doc/devices/ONT-S207CW-62TS-SE.md for configuration details
+// ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM: Identical PCB-SWTG024AS-A-2.0.1
+// RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
+// Use MACHINE_PCB_SWTG024AS_A_2_0_1 for both devices
+// See doc/devices/SWTG024AS.md section "PCB-SWTG024AS-A-2.0.1 Variant" for details
 
 typedef struct {
 	// GPIO pins for SDA/SCL

@@ -864,8 +864,9 @@ __code const struct machine machine = {
 
 
 #elif defined MACHINE_PCB_SWTG024AS_A_2_0_1
-// NOTE: ONT-S207CW-62TS-SE uses this same configuration
-// See doc/devices/ONT-S207CW-62TS-SE.md for details
+// NOTE: ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM use this same configuration
+// Both devices share identical PCB (PCB-SWTG024AS-A-2.0.1) with RTL8372N CPU
+// See doc/devices/SWTG024AS.md section "PCB-SWTG024AS-A-2.0.1 Variant" for details
 __code const struct machine machine = {
     .machine_name = "PCB-SWTG024AS-A-2.0.1",
     .isRTL8373 = 0,
