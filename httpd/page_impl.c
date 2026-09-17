@@ -70,6 +70,13 @@ void char_to_html(char c)
 }
 
 
+static void str_x_to_html(__xdata const char *s)
+{
+	while (*s)
+		outbuf[slen++] = *s++;
+}
+
+
 void json_char_to_html(uint8_t c)
 {
 	if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
@@ -872,14 +879,11 @@ void send_status(void)
 					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
-					json_char_to_html(sfp_module_vendor[sfp][s]);
+				str_x_to_html(sfp_module_vendor[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
-					json_char_to_html(sfp_module_model[sfp][s]);
+				str_x_to_html(sfp_module_model[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
-					json_char_to_html(sfp_module_serial[sfp][s]);
+				str_x_to_html(sfp_module_serial[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");
