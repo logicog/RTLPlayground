@@ -1996,6 +1996,16 @@ void stp_port_admin(uint8_t port, uint8_t on) __banked
 }
 
 
+void stp_region_changed(void) __banked
+{
+	if (!stp_enabled || stp_rstp != STP_VER_MSTP)
+		return;
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++)
+		stp_internal_update(stp_i, 0);
+	stp_newinfo |= stp_link_now;
+}
+
+
 void stp_mstp_changed(void) __banked
 {
 	if (!stp_enabled || stp_rstp != STP_VER_MSTP)

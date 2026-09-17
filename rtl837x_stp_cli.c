@@ -228,6 +228,7 @@ void stp_parse(void) __banked __reentrant
 		for (stp_cli_n = 0; stp_cli_n < stp_cli_i; stp_cli_n++)
 			mstp_region[stp_cli_n] = cmd_buffer[cmd_words_b[2] + stp_cli_n];
 		mstp_region[stp_cli_i] = 0;
+		stp_region_changed();
 		return;
 	}
 	if (cmd_compare(1, "revision")) {
@@ -235,6 +236,7 @@ void stp_parse(void) __banked __reentrant
 		if (!stp_cli_n || cmd_words_len != 3 || cmd_buffer[cmd_words_b[2] + stp_cli_n])
 			goto err;
 		mstp_revision = atoi_results_short;
+		stp_region_changed();
 		return;
 	}
 	if (cmd_compare(1, "msti")) {

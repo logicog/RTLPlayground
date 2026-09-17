@@ -18,6 +18,7 @@ uint8_t stp_ent_id(uint8_t e) __banked;
 void stp_lag_map(void) __banked;
 void stp_counters_clear(void) __banked __reentrant;
 void stp_mstp_changed(void) __banked;
+void stp_region_changed(void) __banked;
 void stp_tree_status(uint8_t t) __banked;
 void stp_tree_prio(uint8_t t) __banked;
 void stp_vlan_new(void) __banked;

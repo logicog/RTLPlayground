@@ -2461,6 +2461,29 @@ static void scen_digest_at_once(void)
 	check(mstp_dg_step == MSTP_DG_DONE, "and is finished when STP starts");
 }
 
+static void scen_region_changed(void)
+{
+	printf("81. a new region name gives up the old boundary at once\n");
+	mstp_setup();
+	links_set((1 << 3) | (1 << 8));
+	sim_cmd("stp msti 1 vlan 10");
+	struct sim_bpdu b = root_on(8);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	check((stp_internal >> 8) & 1, "the neighbour shares our region");
+	memset(tx_frames, 0, sizeof(tx_frames));
+	sim_cmd("stp region other");
+	check(!((stp_internal >> 8) & 1), "renaming the region drops the port out of it");
+	check(tree_state(1, 8) == port_state(8),
+	      "the port carries its CIST state in the instance, so nothing stops forwarding");
+	secs(1);
+	check(tx_frames[3] > 0 && !memcmp(last_mst[3] + 3, "other\0\0\0", 8),
+	      "and the new name goes out without waiting for a change of its own");
+	mst_bpdu_in(&b, "other", 0, ROOT_MAC, 0x40, 20, NULL);
+	check((stp_internal >> 8) & 1, "a neighbour with the new name is internal again");
+	sim_cmd("stp revision 5");
+	check(!((stp_internal >> 8) & 1), "a new revision gives up the boundary too");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2544,6 +2567,7 @@ int main(int argc, char **argv)
 	scen_msti_info_from_root_role();
 	scen_msti_tc_boundary();
 	scen_digest_at_once();
+	scen_region_changed();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
