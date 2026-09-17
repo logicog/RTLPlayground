@@ -180,7 +180,7 @@ void reg_to_html_long(uint16_t reg)
 void counter_to_html(void)
 {
 	reg_read_m(RTL837X_STAT_V_HIGH);
-	if (sfr_data[0] | sfr_data[1] | sfr_data[2] | sfr_data[3]) {
+	if (SFR_DATA_24 | SFR_DATA_16 | SFR_DATA_8 | SFR_DATA_0) {
 		sfr_data_to_html();
 		reg_to_html_long(RTL837X_STAT_V_LOW);
 	} else {
@@ -445,8 +445,6 @@ void l2_delete(uint16_t idx)
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	dbg_string("L2 DELETE\n");
 	dbg_short(idx);
-	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
-
 	do {
 		reg_read(RTL837X_TBL_CTRL);
 	} while (SFR_DATA_0 & TBL_EXECUTE);
