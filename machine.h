@@ -55,6 +55,31 @@ typedef struct {
 } i2c_bus_t;
 
 #define IS_PHYS_PORT_INVALID(port) ((int8_t)(port) == -1)
+// Port/MAC/SDS is a SFP cage
+#define IS_SFP (0x80)
+// Port/MAC/SDS is wired to a external phy.
+#define IS_EPHY (0x40)
+// Port/MAC/SDS to a other SOC, only need a fixed like setting
+#define IS_FIXED_LINK (0x20)
+#define SFP_PORT_SETTINGS (0x10)
+#define MAC_MASK (0x0F)
+
+#define IS_SFP1 (IS_SFP)
+#define IS_SFP2 (IS_SFP | SFP_PORT_SETTINGS)
+#define IS_EPHY1 (IS_EPHY)
+#define IS_EPHY2 (IS_EPHY | SFP_PORT_SETTINGS)
+
+typedef union {
+    uint8_t value;
+    struct {
+		// LSB
+        uint8_t mac             : 4;
+        uint8_t sds_sfp_setting : 1;
+        uint8_t is_sfp_cage     : 1;
+        uint8_t attached_to_phy : 1;
+        uint8_t is_fixed_link   : 1;
+    } bits;
+} log_port_value_t;
 
 #define LED_27 1
 // SYSTEM LED
@@ -86,8 +111,8 @@ struct machine {
 	uint8_t max_port;
 	uint8_t n_sfp;
 	uint8_t n_10g;
+	// See struct log_port
 	uint8_t log_to_phys_port[9];
-	uint8_t is_sfp[9];  // 0 for non-SFP ports 1 or 2 for the I2C port number
 	// sfp_port[0] is the first SFP-port from the left on the device, sfp_port[1] the next if present 
 	struct sfp_port sfp_port[2];
 	uint8_t reset_pin;

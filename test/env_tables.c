@@ -136,4 +136,4 @@ uint8_t  stp_prio = 0x80, stp_root_port = 0xff, stp_rstp = 1, stp_txhold = 6;
 /* ---- SFP: no module present, reads fail ---- */
 uint8_t sfp_buf[16];
 bool    sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) { (void)slot; (void)reg; (void)len; return false; }
-void    print_phys_port(uint8_t port) { itoa_short(machine.log_to_phys_port[port]); }
+void    print_phys_port(uint8_t port) { itoa_short(machine.log_to_phys_port[port] & MAC_MASK); }

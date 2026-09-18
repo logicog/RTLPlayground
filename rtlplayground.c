@@ -868,7 +868,7 @@ void print_reg(uint16_t reg)
 void print_phys_port(uint8_t port)
 {
 	if (port < CPU_PORT)
-		write_char(machine.log_to_phys_port[port] + '0');
+		write_char((machine.log_to_phys_port[port] & MAC_MASK) + '0');
 	else if (port == CPU_PORT)
 		print_string("CPU");
 	else {
