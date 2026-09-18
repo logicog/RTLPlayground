@@ -16,6 +16,7 @@
 #include "syslog.h"
 #include "rtl837x_phy.h"
 #include "support.h"
+#include "rtl837x_lacp.h"
 
 /* ---- console: everything lands in out_buf (support.c) ---- */
 void print_byte(uint8_t v)
@@ -121,3 +122,18 @@ uint8_t  stp_prio = 0x80, stp_root_port = 0xff, stp_rstp = 1, stp_txhold = 6;
 uint8_t sfp_buf[16];
 bool    sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) { (void)slot; (void)reg; (void)len; return false; }
 void    print_phys_port(uint8_t port) { itoa_short(machine.log_to_phys_port[port]); }
+
+uint8_t  lacpEnabled;
+uint8_t  lacp_actor_state[10];
+uint8_t  lacp_partner_state[10];
+uint8_t  lacp_rx_state[10];
+uint8_t  lacp_partner_sys[10][6];
+uint16_t lacp_rx_count[10];
+uint8_t  lacp_port_lag[10] = {
+	LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE,
+	LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE,
+};
+uint16_t lacp_lag_ports[LACP_NUM_LAGS];
+uint8_t  lacp_agg_sys[LACP_NUM_LAGS][6];
+uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
+uint16_t lacp_members_last[LACP_NUM_LAGS];
