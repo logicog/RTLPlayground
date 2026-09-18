@@ -244,12 +244,9 @@ uint8_t atoi_short(uint8_t idx)
  * Store the value in atoi_results_u8.
  */
 uint8_t cmd_parse_port(uint8_t idx) {
-	uint8_t port = cmd_buffer[idx] - '0' - 1;
-	if (port > 8)
-		return 0;
-
-	port = machine.phys_to_log_port[port];
-	if (port < machine.min_port || port > machine.max_port)
+	uint8_t port = cmd_buffer[idx] - '0';
+	port = phys_to_log_port(port);
+	if (IS_PHYS_PORT_INVALID(port))
 		return 0;
 
 	atoi_results_u8 = port;

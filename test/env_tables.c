@@ -62,9 +62,25 @@ const struct machine machine = {
 	.max_port = 8,
 	.n_sfp = 0,
 	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
-	.phys_to_log_port = { 0, 1, 2, 3, 4, 5, 6, 7, 8 },
 };
 struct machine_runtime machine_detected = { .isRTL8373 = 1 };
+
+/* Looks-up the logical port. The index into machine.log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6}, is equal the logical port.
+ * Returns the positive number when found
+ * Returns -1 when not found
+ */
+int8_t phys_to_log_port(uint8_t phys_port) {
+	uint8_t port = machine.min_port;
+	uint8_t port_max = machine.max_port;
+
+	do {
+		if (machine.log_to_phys_port[port] == phys_port)
+			return (int8_t)port;
+		port++;
+	} while(port <= port_max);
+
+	return -1;
+}
 
 /* ---- firmware state the modules read or write ---- */
 uint8_t  outbuf[TCP_OUTBUF_SIZE];

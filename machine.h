@@ -54,6 +54,7 @@ typedef struct {
 	uint8_t scl;
 } i2c_bus_t;
 
+#define IS_PHYS_PORT_INVALID(port) ((int8_t)(port) == -1)
 
 #define LED_27 1
 // SYSTEM LED
@@ -86,7 +87,6 @@ struct machine {
 	uint8_t n_sfp;
 	uint8_t n_10g;
 	uint8_t log_to_phys_port[9];
-	uint8_t phys_to_log_port[9]; // Starts at 0 for port 1
 	uint8_t is_sfp[9];  // 0 for non-SFP ports 1 or 2 for the I2C port number
 	// sfp_port[0] is the first SFP-port from the left on the device, sfp_port[1] the next if present 
 	struct sfp_port sfp_port[2];
@@ -111,5 +111,6 @@ struct machine_runtime
 };
 
 void machine_custom_init(void) __banked;
+int8_t phys_to_log_port(uint8_t phys_port);
 
 #endif
