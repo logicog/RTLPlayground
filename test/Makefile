@@ -11,7 +11,7 @@
 CC       = gcc
 SRCROOT  = ..
 # -include shim first so __xdata/__code/__banked vanish before any firmware header.
-CFLAGS   = -std=gnu11 -g -O1 -Wall -Wextra -Wno-unused-parameter -Wno-unknown-pragmas \
+CFLAGS   = -std=gnu11 -g -O1 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unknown-pragmas \
            -Wno-pointer-sign \
            -DRTLP_HOST_TEST \
            -fsanitize=address,undefined -fno-omit-frame-pointer \

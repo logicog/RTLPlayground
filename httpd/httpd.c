@@ -348,8 +348,9 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 			if (is_word_x(session, session_id)) {
 				authenticated = 1;
 				last_session_use = now;
-			} else
+			} else {
 				dbg_string("Invalid session cookie!\n");
+			}
 		}
 	}
 	return p;
