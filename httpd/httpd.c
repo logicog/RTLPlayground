@@ -902,8 +902,9 @@ void httpd_appcall(void)
 			reset_chip();
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
-		// Check here maxupload by subtracting uip_len and close socekt if fails!
-		if (max_upload - uip_len > 0) {
+		if (config_upload || uip_len <= max_upload) {
+			if (!config_upload)
+				max_upload -= uip_len;
 			upload_settings.p = uip_appdata;
 			upload_settings.bptr = 0;
 			upload_settings.plen = uip_len;
