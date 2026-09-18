@@ -6,6 +6,7 @@ The following devices have been tested and are fully working:
 | Ampcom   | WAM902-SWTG018AS| No      | [SWTG018AS-A V2.0](devices/SWTG018AS_A_V2_0.md)                           |       | 8 + 1 |
 | Davuaz   | Da-K6501W       | No      | [PCB-K0501W-V2.0](devices/K0501W_V2_0.md)                                 |       | 5 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/FNS-1200P.md)                               | 2M    | 4 + 2 |
+| Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                             | 4M    | 8 + 1 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V2.0](devices/PCB-K0402WS-V2.0.md)                           | 2M    | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-KO801W-V2.0](devices/HI-K0801WS.md)                                  |       | 8 + 1 |
@@ -21,9 +22,11 @@ The following devices have been tested and are fully working:
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3_1.md)                                 | 2M    | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 0.5M  | 4 + 2 |
 | Lianguo  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0 / PCB-SWTG115AS-V2.1](devices/SWTGW215AS.md)          | 2M    | 5 + 1 |
+| Lianguo  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/HYWS-SGT0108S.md)                                | 0.5M  | 8 + 1 |
 | Mokerlink| 2G040210GSM     | Yes     | [2M-PCB43-V1.1](devices/2M-PCB43-V1.1.md)                                 |       | 4 + 2 |
 | Mokerlink| ZX-SWTGW218AS   | Yes     | [SWTG118AS-V2.0-16029](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | MokerLink| POE-2G080110GS  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1_1.md)                           | 4M    | 8 + 1 |
+| Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                             | 4M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                             | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                       | 1M    | 8 + 1 |
 | SiscoLink | SL-G0402F      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
@@ -33,7 +36,6 @@ The following devices have been tested and are fully working:
 | Xikestore| SKS3200M-4GPY2XF| Yes     | [SWTG024AS-v1.0](devices/SWTG024AS.md)                                    |       | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
-| Lianguo  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/HYWS-SGT0108S.md)                                | 0.5M  | 8 + 1 |
 
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label
