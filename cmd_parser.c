@@ -434,12 +434,6 @@ static void cmd_error(__code const char *msg)
 }
 
 
-// Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
-// the current one with a bare "mac"). Refuses blank/multicast/locally
-// administered/all-zero-OUI addresses so the running MAC stays reachable, and
-// re-registers the static L2 management entry so the change applies without a
-// reboot. As a regular command a "mac ..." line in the startup config applies
-// on every boot (execute_config runs before the final static L2 entry).
 static uint8_t name_char(uint8_t c)
 {
 	if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
@@ -448,6 +442,12 @@ static uint8_t name_char(uint8_t c)
 }
 
 
+// Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
+// the current one with a bare "mac"). Refuses blank/multicast/locally
+// administered/all-zero-OUI addresses so the running MAC stays reachable, and
+// re-registers the static L2 management entry so the change applies without a
+// reboot. As a regular command a "mac ..." line in the startup config applies
+// on every boot (execute_config runs before the final static L2 entry).
 void parse_mac_cmd(void)
 {
 	if (cmd_words_len == 1) {
