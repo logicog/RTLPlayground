@@ -533,13 +533,18 @@ TABS.forEach(function(tb){
 });
 $("burger").addEventListener("click",function(){$("nav").classList.toggle("open")});
 
+var IDLE_STOP_MS=600000,lastInput=Date.now();
+["mousemove","mousedown","keydown","touchstart","wheel"].forEach(function(ev){
+  addEventListener(ev,function(){lastInput=Date.now()},{passive:true});
+});
 function Poller(fn,ms){this.fn=fn;this.ms=ms;this.on=false;this.t=null}
 Poller.prototype.start=function(){if(this.on)return;this.on=true;this.tick()};
 Poller.prototype.stop=function(){this.on=false;clearTimeout(this.t)};
 Poller.prototype.tick=function(){
   var self=this;
   if(!self.on)return;
-  var run=document.hidden?Promise.resolve():Promise.resolve().then(self.fn).catch(function(){});
+  var quiet=document.hidden||Date.now()-lastInput>IDLE_STOP_MS;
+  var run=quiet?Promise.resolve():Promise.resolve().then(self.fn).catch(function(){});
   run.then(function(){ if(self.on)self.t=setTimeout(function(){self.tick()},self.ms); });
 };
 
