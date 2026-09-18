@@ -559,7 +559,7 @@ static void handle_config_fragment(__xdata uint8_t *p)
 	__xdata uint16_t frag_len;
 	uint8_t taken;
 
-	frag_len = uip_len - (p - uip_appdata);
+	frag_len = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 		print_string("Configuration too large, aborting.\n");
 		config_upload = 0;
@@ -589,7 +589,7 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint16_t frag_len, payload_start;
 
-	frag_len = uip_len - (p - uip_appdata);
+	frag_len = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 		print_string("Firmware upload header too large, aborting.\n");
 		config_upload = 0;
@@ -684,7 +684,7 @@ static uint8_t post_body_take(__xdata uint8_t *p)
 		send_bad_request();
 		return 0;
 	}
-	have = uip_len - (p - uip_appdata);
+	have = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (have >= content_length) {
 		p[content_length] = NUL;
 		return 1;
