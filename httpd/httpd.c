@@ -750,6 +750,10 @@ void handle_post(void)
 			return;
 		}
 		if (is_word(request_path, "upload")) {
+			if (!authenticated) {
+				send_unauthorized();
+				return;
+			}
 			if (flash_size < FIRMWARE_UPLOAD_START*2)
 			{
 				print_string("Flash too small for firmware upload!\n");
