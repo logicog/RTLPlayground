@@ -126,6 +126,8 @@
 #define RTL837X_REG_I2C_CTRL2		0x041c
 #define RTL837X_REG_I2C_IN		0x0420
 #define RTL837X_REG_I2C_OUT		0x0424
+#define RTL837X_REG_I2C_SCL_SHIFT 5
+#define RTL837X_REG_I2C_SDA_SHIFT 2
 
 /*
  * NIC Related registers
