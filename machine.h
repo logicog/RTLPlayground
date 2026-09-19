@@ -47,6 +47,7 @@
 // #define MACHINE_LIANGUO_HYWS_SGT0108S
 // #define MACHINE_POE_2G080110GS
 // #define MACHINE_PB_2132
+// #define MACHINE_HASIVO_S600W_4GT_2XGT_SE
 
 typedef struct {
 	// GPIO pins for SDA/SCL
