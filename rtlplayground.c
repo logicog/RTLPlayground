@@ -1646,6 +1646,7 @@ void main(void)
 	}
 	if (machine_detected.isRTL8373) {
 		rtl8224_enable();  // Power on the RTL8224
+		print_string("RTL8224 reset done\n");
 	}
 
 	// Print SW version
