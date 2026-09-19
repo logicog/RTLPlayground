@@ -184,7 +184,7 @@ static bool sfp_module_read(uint8_t sfp)
 		return false;
 
 	sfp_apply_quirks(sfp);
-	sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
+	sds_config(sfp, sfp_rate_to_sds_config(rate));
 
 	return true;
 }

@@ -64,17 +64,12 @@ typedef struct {
 #define SFP_PORT_SETTINGS (0x10)
 #define MAC_MASK (0x0F)
 
-#define IS_SFP1 (IS_SFP)
-#define IS_SFP2 (IS_SFP | SFP_PORT_SETTINGS)
-#define IS_EPHY1 (IS_EPHY)
-#define IS_EPHY2 (IS_EPHY | SFP_PORT_SETTINGS)
-
 typedef union {
     uint8_t value;
     struct {
 		// LSB
         uint8_t mac             : 4;
-        uint8_t sds_sfp_setting : 1;
+        uint8_t reserved 		: 1;
         uint8_t is_sfp_cage     : 1;
         uint8_t attached_to_phy : 1;
         uint8_t is_fixed_link   : 1;
@@ -98,7 +93,6 @@ struct sfp_port
 	uint8_t pin_detect; // gpio number 0-63, 0xFF = don't have it?
 	uint8_t pin_los; // gpio number 0-63, 0xFF = don't have it?
 	uint8_t pin_tx_disable; // gpio number 0-63, 0xFF = not present
-	uint8_t sds;
 	i2c_bus_t i2c;
 };
 
@@ -139,3 +133,4 @@ void machine_custom_init(void) __banked;
 int8_t phys_to_log_port(uint8_t phys_port);
 
 #endif
+
