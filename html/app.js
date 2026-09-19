@@ -728,6 +728,7 @@ tabHooks.dash={
 var SPEEDS=[["auto","c_auto"],["2g5","2.5G"],["1g","1G"],["100m full","100M full"],
   ["100m half","100M half"],["10m full","10M full"],["10m half","10M half"]];
 var SFPRATES=[["auto","c_auto"],["10g","10G"],["2g5","2.5G"],["1g","1G"],["100m","100M"]];
+var ADVSEL={63:"auto",31:"auto",32:"2g5",16:"1g",8:"100m full",4:"100m half",2:"10m full",1:"10m half"};
 function speedLabel(s){
   if(s==="c_auto")return t("c_auto");
   return s.replace(" full"," "+t("c_full")).replace(" half"," "+t("c_half"));
@@ -790,6 +791,8 @@ function portsStatus(){
   S.ports.forEach(function(p){
     var i=p.portNum-1,el=$("plink"+i);
     if(el)el.innerHTML=linkBadge(p);
+    var sel=$("pspd"+i),v=p.isSFP?0:ADVSEL[parseInt(p.adv,2)];
+    if(sel&&v&&document.activeElement!==sel)sel.value=v;
   });
 }
 function applyPort(i){
