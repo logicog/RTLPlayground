@@ -426,6 +426,22 @@ err:
 	return 0;
 }
 
+static void cmd_error(__code const char *msg)
+{
+	err_status = ERR_INVALID_ARGUMENT;
+	print_string("Error: ");
+	print_string(msg);
+}
+
+
+static uint8_t name_char(uint8_t c)
+{
+	if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
+		return '.';
+	return c;
+}
+
+
 // Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
 // the current one with a bare "mac"). Refuses blank/multicast/locally
 // administered/all-zero-OUI addresses so the running MAC stays reachable, and
@@ -441,11 +457,11 @@ void parse_mac_cmd(void)
 		return;
 	}
 	if (cmd_words_len != 2 || !parse_mac(cmd_words_b[1])) {
-		print_string("Error: mac [<aa:bb:cc:dd:ee:ff>]\n");
+		cmd_error("mac [<aa:bb:cc:dd:ee:ff>]\n");
 		return;
 	}
 	if ((mac_parse_result[0] & 0x03) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
-		print_string("refusing: must be unicast, globally administered\n");
+		cmd_error("the MAC must be unicast and globally administered\n");
 		return;
 	}
 	if (memcmp(mac_parse_result, uip_ethaddr.addr, 6) == 0) {
@@ -523,7 +539,7 @@ void parse_lag(void)
 	port_lag_members_set(group, members);
 	return;
 err:
-	print_string("Error: lag (show | <1-4> (d | <port>...))\n");
+	cmd_error("lag (show | <1-4> (d | <port>...))\n");
 }
 
 
@@ -565,7 +581,7 @@ void parse_lag_hash(void)
 	port_lag_hash_set(group, hash);
 	return;
 err:
-	print_string("Error: laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
+	cmd_error("laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
 }
 
 
@@ -619,7 +635,7 @@ void parse_vlan(void)
 				*vlan_str++ = hex[(vlan_settings.vlan >> 4) & 0xf] ;
 				*vlan_str++ = hex[vlan_settings.vlan & 0xf];
 				while(!cmd_is_space_or_nul(pos)) {
-					uint8_t c = cmd_buffer[pos++];
+					uint8_t c = name_char(cmd_buffer[pos++]);
 					write_char(c);
 					*vlan_str++ = c;
 				}
@@ -663,7 +679,7 @@ void parse_vlan(void)
 	}
 	return;
 err:
-	print_string("Error: vlan (<vlan-id>|show) [port][t]...\n");
+	cmd_error("vlan (<vlan-id>|show) [port][t]...\n");
 }
 
 
@@ -714,7 +730,7 @@ void parse_isolate(void)
 	return;
 
 err:
-	print_string("Error: isolate <port> [show|off] [port]...\n");
+	cmd_error("isolate <port> [show|off] [port]...\n");
 }
 
 
@@ -751,7 +767,7 @@ void parse_ingress(void)
 		// Setting mode for all ports at once
 		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
 			if (!port_ingress_filter(log_port, mode)) {
-				print_string("Error setting ingress filter for port "); print_phys_port(log_port); write_char('\n');
+				cmd_error("cannot set the ingress filter for port "); print_phys_port(log_port); write_char('\n');
 				return;
 			}
 			print_string("All ports ingress filter set to: ");
@@ -762,18 +778,18 @@ void parse_ingress(void)
 			idx = cmd_words_b[w];
 			uint8_t ret = cmd_parse_port(idx);
 			if (ret != 1) {
-				print_string("Invalid physical port number\n");
+				cmd_error("Invalid physical port number\n");
 				continue;
 			}
 			log_port = atoi_results_u8;
 			idx += ret;
 
 			if (!vlan_ingress_mode_parse(cmd_buffer[idx++], &mode) || !cmd_is_space_or_nul(idx)) {
-				print_string("Invalid ingress mode for port "); print_phys_port(log_port); print_string(" in ingress command\n");
+				cmd_error("Invalid ingress mode for port "); print_phys_port(log_port); print_string(" in ingress command\n");
 				goto err;
 			}
 			if (!port_ingress_filter(log_port, mode)) {
-				print_string("Error setting ingress filter for port "); print_phys_port(log_port); write_char('\n');
+				cmd_error("cannot set the ingress filter for port "); print_phys_port(log_port); write_char('\n');
 				return;
 			}
 			print_string("Port "); print_phys_port(log_port);
@@ -783,7 +799,7 @@ void parse_ingress(void)
 	}
 	return;
 err:
-	print_string("Error: ingress [p]<u/t/a>...\n");
+	cmd_error("ingress [p]<u/t/a>...\n");
 }
 
 void parse_mirror(void)
@@ -848,7 +864,7 @@ void parse_mirror(void)
 	return;
 
 err:
-	print_string("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
+	cmd_error("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
 	return;
 }
 
@@ -856,7 +872,7 @@ err:
 void parse_port(void)
 {
 	if (cmd_words_len < 3) {
-		print_string("\nUsage:" \
+		cmd_error("\nUsage:" \
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
 					 "\nport <port> name [custom port name]\n");
@@ -864,7 +880,7 @@ void parse_port(void)
 	}
 
 	if (cmd_parse_port_separator(cmd_words_b[1]) == 0) {
-		print_string("Invalid port number\n");
+		cmd_error("Invalid port number\n");
 		return;
 	}
 	phy_settings.port = atoi_results_u8;
@@ -881,7 +897,7 @@ void parse_port(void)
 	} else if (cmd_compare(2, "name")) {
 		uint8_t i = 0;
 		while ( (i < PORT_NAME_SIZE-1) && (cmd_buffer[cmd_words_b[3] + i] != NUL) ) {
-			port_names[phy_settings.port][i] = cmd_buffer[cmd_words_b[3] + i];
+			port_names[phy_settings.port][i] = name_char(cmd_buffer[cmd_words_b[3] + i]);
 			i++;
 		}
 		port_names[phy_settings.port][i] = NUL;
@@ -942,7 +958,7 @@ void parse_port(void)
 			phy_settings.duplex = PHY_DUPLEX_HALF;
 		phy_set_duplex();
 	} else {
-		print_string("Unknown port command\n");
+		cmd_error("Unknown port command\n");
 	}
 }
 
@@ -970,7 +986,7 @@ void parse_mtu(void)
 	print_byte(p);
 
 	if (atoi_short(cmd_words_b[2]) == 0 || atoi_results_short < 64 || atoi_results_short > 0x3fff) {
-		print_string("MTU must be 64..16383\n");
+		cmd_error("MTU must be 64..16383\n");
 		return;
 	}
 	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (atoi_results_short >> 10) & 0xf, (atoi_results_short >> 2) & 0xff,
@@ -979,7 +995,7 @@ void parse_mtu(void)
 	return;
 
 err:
-	print_string("mtu [port] [size]\n");
+	cmd_error("mtu [port] [size]\n");
 	return;
 }
 
@@ -1036,11 +1052,11 @@ void parse_sfp(void)
 	idx += ret;
 	slot = atoi_results_u8 - 1;
 	if (ret == 0 || !cmd_is_space(idx) || slot > 1) {
-		print_string("Illegal SFP slot number\n");
+		cmd_error("Illegal SFP slot number\n");
 		return;
 	}
 	if (slot >= machine.n_sfp) {
-		print_string("SFP slot not present\n");
+		cmd_error("SFP slot not present\n");
 		return;
 	}
 
@@ -1066,7 +1082,7 @@ void parse_sfp(void)
 	handle_sfp();
 	return;
 err:
-	print_string("\nUsage:\n\tsfp\n\tsfp [1|2] [1g|2g5|10g]\n");
+	cmd_error("\nUsage:\n\tsfp\n\tsfp [1|2] [1g|2g5|10g]\n");
 }
 
 
@@ -1098,7 +1114,7 @@ void parse_regget(void)
 	return;
 
 err:
-	print_string("usage: regget <hexvalue>\n\tlike: regget 0BB0 or regget 0c");
+	cmd_error("regget <hexvalue>\n\tlike: regget 0BB0 or regget 0c");
 	return;
 }
 
@@ -1145,7 +1161,7 @@ void parse_regset(void)
 	return;
 
 err:
-	print_string("usage: regset <hexvalue> <hexvalue>\n\tlike regset 0b abcd1234.");
+	cmd_error("regset <hexvalue> <hexvalue>\n\tlike regset 0b abcd1234.");
 }
 
 
@@ -1188,7 +1204,7 @@ void parse_sdsget(void)
 	return;
 
 err:
-	print_string("usage: sdsget <sds-id> <hex:page> <hex:reg>\n");
+	cmd_error("sdsget <sds-id> <hex:page> <hex:reg>\n");
 	return;
 }
 
@@ -1244,7 +1260,7 @@ void parse_sdsset(void)
 	return;
 
 err:
-	print_string("usage: sdsset <sds-id> <hex:page> <hex:reg> <hex:val>\n");
+	cmd_error("sdsset <sds-id> <hex:page> <hex:reg> <hex:val>\n");
 	return;
 }
 
@@ -1293,7 +1309,7 @@ void parse_phyget(void)
 	return;
 
 err:
-	print_string("usage: phyget <phy-id> <dev-id> <hex:reg>\n");
+	cmd_error("phyget <phy-id> <dev-id> <hex:reg>\n");
 	return;
 }
 
@@ -1353,7 +1369,7 @@ void parse_physet(void)
 	return;
 
 err:
-	print_string("usage: physet <phy-id> <dev-id> <hex:reg> <hex:val>\n");
+	cmd_error("physet <phy-id> <dev-id> <hex:reg> <hex:val>\n");
 	return;
 }
 
@@ -1388,7 +1404,7 @@ void parse_passwd(void)
 		passwd[j] = NUL;
 		return;
 	}
-	print_string("Missing password\n");
+	cmd_error("Missing password\n");
 }
 
 
@@ -1412,7 +1428,7 @@ void parse_eee(void)
 		} else if (cmd_is_space_or_nul(idx)) {
 			// Word 2 is a port number
 			if (cmd_parse_port_separator(idx) == 0) {
-				print_string("Speed word invalid, use: [100m|1g|2g5]\n");
+				cmd_error("Speed word invalid, use: [100m|1g|2g5]\n");
 				return;
 			}
 			port = atoi_results_u8;
@@ -1431,7 +1447,7 @@ void parse_eee(void)
 			speed = EEE_2G5;
 		else 
 		{
-			print_string("Speed word invalid, use: [100m|1g|2g5]\n");
+			cmd_error("Speed word invalid, use: [100m|1g|2g5]\n");
 			return;
 		}
 	}
@@ -1451,7 +1467,7 @@ void parse_eee(void)
 		else
 			port_eee_status_all();
 	} else {
-		print_string("eee [on|off|status] [port] [100m|1g|2g5]\n");
+		cmd_error("eee [on|off|status] [port] [100m|1g|2g5]\n");
 	}
 }
 
@@ -1522,7 +1538,7 @@ void parse_bw(void)
 	return;
 
 err:
-	print_string("usage: bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
+	cmd_error("bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
 }
 
 void parse_syslog(void)
@@ -1560,7 +1576,7 @@ void parse_syslog(void)
 			if (was_enabled)
 				syslog_start();
 		} else {
-			print_string("Invalid IP address\n");
+			cmd_error("Invalid IP address\n");
 		}
 	} else if (cmd_compare(1, "port")) {
 		if (cmd_words_len < 3) { // no additional argument -> print current port
@@ -1571,7 +1587,7 @@ void parse_syslog(void)
 		/* atoi_short() returns zero for no digits and for a value past
 		 * 65535; port zero is not a port either, so both tests are needed. */
 		if (!atoi_short(cmd_words_b[2]) || !atoi_results_short) {
-			print_string("Invalid port\n");
+			cmd_error("Invalid port\n");
 			return;
 		}
 		/* The port is frozen into the connection by uip_udp_new(), so
@@ -1587,9 +1603,9 @@ void parse_syslog(void)
 	}
 	else
 	{
-		print_string("Error: syslog [on|off|ip [ip-address]|port [number]]\n");
-		print_string("  on/off enables or disables syslog, ip sets the syslog server IP address,\n");
-		print_string("  port sets the destination UDP port (default 514)\n");
+		cmd_error("syslog [on|off|ip [ip-address]|port [number]]\n"
+			  "  on/off enables or disables syslog, ip sets the syslog server IP address,\n"
+			  "  port sets the destination UDP port (default 514)\n");
 	}
 }
 
@@ -1757,7 +1773,7 @@ void cmd_parser(void) __banked
 					print_string("Setting ip: ");
 					print_ip(ip); write_char('\n');
 				} else {
-					print_string("Invalid IP address\n" \
+					cmd_error("Invalid IP address\n" \
 								 "Error: ip [<ip-address>|dhcp]\n" \
 								 "  The dhcp option enables the dhcp client, calling ip without options prints the current IP\n" \
 								 "  Calling with a valid IP address will stop any ongoing dhcp client and set the IP address\n");
@@ -1773,7 +1789,7 @@ void cmd_parser(void) __banked
 					print_string("Setting gw: ");
 					print_ip(ip); write_char('\n');
 				} else {
-					print_string("Invalid IP address\n" \
+					cmd_error("Invalid IP address\n" \
 								 "Error: gw <ip-address>\n");
 				}
 			}
@@ -1787,7 +1803,7 @@ void cmd_parser(void) __banked
 					print_string("Setting netmask: ");
 					print_ip(ip); write_char('\n');
 				} else {
-					print_string("Invalid IP address\n");
+					cmd_error("Invalid IP address\n");
 				}
 			}
 			write_char('\n');
@@ -1803,8 +1819,9 @@ void cmd_parser(void) __banked
 				igmp_setup();
 			else if (cmd_compare(1, "show"))
 				igmp_show();
-			else
-				print_string("Error: igmp on|off|show\n");
+			else {
+				cmd_error("igmp on|off|show\n");
+			}
 		} else if (cmd_compare(0, "mac")) {
 			parse_mac_cmd();
 		} else if (cmd_compare(0, "hostname")) {
@@ -1822,13 +1839,11 @@ void cmd_parser(void) __banked
 					uint8_t c = *hp++;
 					if (c == NUL || c == '\r' || c == '\n')
 						break;
-					if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
-						c = '.';
-					*dst++ = c;
+					*dst++ = name_char(c);
 				}
 				*dst = NUL;
 			} else {
-				print_string("Error: hostname [name] - the name must not contain spaces\n");
+				cmd_error("hostname [name] - the name must not contain spaces\n");
 			}
 		} else if (cmd_compare(0, "stp")) {
 			stp_parse();
@@ -1836,8 +1851,9 @@ void cmd_parser(void) __banked
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
 				port_pvid_set(atoi_results_u8, atoi_results_short);
-			else
-				print_string("Error: pvid <port> <1-4094>\n");
+			else {
+				cmd_error("pvid <port> <1-4094>\n");
+			}
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
 		} else if (cmd_compare(0, "isolate")) {
@@ -1897,11 +1913,11 @@ void cmd_parser(void) __banked
 			parse_ingress();
 		}
 		else {
-			print_string("Unknown command\n");
+			cmd_error("Unknown command\n");
 		}
 
 
-		if (save_cmd && cmd_words_len) {
+		if (save_cmd && cmd_words_len && err_status == ERR_OK) {
 			// Find end of the cmd-buffer, looking for the NUL-byte.
 			uint8_t i = cmd_words_b[cmd_words_len - 1];
 			do {
@@ -1995,6 +2011,7 @@ config_done:
 // If a command is too long or can't be tokenized, remaining commands are not executed
 // Returns the status via `err_status`-variable.
 void execute_commands(__xdata uint8_t *p) __banked {
+	__xdata uint8_t failed = ERR_OK;
 	err_status = ERR_OK;
 	uint8_t cmd_idx = 0;
 	while (1) {
@@ -2005,9 +2022,13 @@ void execute_commands(__xdata uint8_t *p) __banked {
 				if (err_status != ERR_OK)
 					return;
 				cmd_parser();
+				if (failed == ERR_OK)
+					failed = err_status;
 			}
-			if (*p == 0)
+			if (*p == 0) {
+				err_status = failed;
 				return;
+			}
 			cmd_idx = 0;
 		} else {
 			if (cmd_idx < (CMD_BUF_SIZE - 1)) {

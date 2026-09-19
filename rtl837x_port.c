@@ -102,9 +102,9 @@ static void port_pvid_write(uint8_t port, __xdata uint16_t pvid)
 
 	reg_read_m(reg);
 	if (port & 0x1) {
-		REG_WRITE(reg, sfr_data[0], pvid >> 4, sfr_data[2] & 0x0f | (pvid << 4), sfr_data[3]);
+		REG_WRITE(reg, sfr_data[0], pvid >> 4, (sfr_data[2] & 0x0f) | (pvid << 4), sfr_data[3]);
 	} else {
-		REG_WRITE(reg, sfr_data[0], sfr_data[1], sfr_data[2] & 0xf0 | (pvid >> 8), pvid);
+		REG_WRITE(reg, sfr_data[0], sfr_data[1], (sfr_data[2] & 0xf0) | (pvid >> 8), pvid);
 	}
 }
 
@@ -285,7 +285,7 @@ void vlan_setup(void) __banked
 #endif
 		reg_read_m(reg);
 		if (i & 0x1) {
-			REG_WRITE(reg, sfr_data[0], 0, sfr_data[2] & 0x0f | 0x10, sfr_data[3]);
+			REG_WRITE(reg, sfr_data[0], 0, (sfr_data[2] & 0x0f) | 0x10, sfr_data[3]);
 		} else {
 			REG_WRITE(reg, sfr_data[0], sfr_data[1], sfr_data[2] & 0xf0, 0x01);
 		}
@@ -758,7 +758,7 @@ void port_eee_enable_all(__xdata uint8_t speed) __banked
 			port_eee_enable(i, speed);
 		} else {
 			if (speed & EEE_10G)
-				port_eee_enable(i, speed & EEE_NORESET | EEE_2G5);
+				port_eee_enable(i, (speed & EEE_NORESET) | EEE_2G5);
 			else
 				port_eee_enable(i, speed);
 		}
@@ -899,7 +899,7 @@ void vlan_dump(void) __banked
 /** Set the ingress VLAN filtering */
 bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
+	if (port < machine.min_port || (port > machine.max_port && port != CPU_PORT)) {
 		return false;
 	}
 	if (enabled)
@@ -913,7 +913,7 @@ bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
 /** Get the ingress VLAN filtering status */
 bool port_ingress_vlan_filter_get(uint8_t port) __banked
 {
-	if (port < machine.min_port || port > machine.max_port && port != CPU_PORT) {
+	if (port < machine.min_port || (port > machine.max_port && port != CPU_PORT)) {
 		return false;
 	}
 

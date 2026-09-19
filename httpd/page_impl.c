@@ -70,6 +70,21 @@ void char_to_html(char c)
 }
 
 
+static void str_x_to_html(__xdata const char *s)
+{
+	while (*s)
+		outbuf[slen++] = *s++;
+}
+
+
+void json_char_to_html(uint8_t c)
+{
+	if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
+		c = '.';
+	outbuf[slen++] = c;
+}
+
+
 //  Convert uint8_t to ascii HEX char.
 void byte_to_html(uint8_t val)
 {
@@ -175,6 +190,20 @@ void reg_to_html_long(uint16_t reg)
 }
 
 
+/* The 64-bit counter of the last STAT_GET as one number: the low word keeps
+ * its leading zeros whenever the high word is set. */
+void counter_to_html(void)
+{
+	reg_read_m(RTL837X_STAT_V_HIGH);
+	if (SFR_DATA_24 | SFR_DATA_16 | SFR_DATA_8 | SFR_DATA_0) {
+		sfr_data_to_html();
+		reg_to_html_long(RTL837X_STAT_V_LOW);
+	} else {
+		reg_to_html(RTL837X_STAT_V_LOW);
+	}
+}
+
+
 void send_sfp_info(uint8_t sfp)
 {
 	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
@@ -184,8 +213,8 @@ void send_sfp_info(uint8_t sfp)
 		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
 			continue;
 		uint8_t c = sfp_buf[i & 0xf];
-		if (c && c != 0xa0) // a0 is the byte read from a non-existant I2C EEPROM
-			char_to_html(c);
+		if (c)
+			json_char_to_html(c);
 	}
 }
 
@@ -279,7 +308,7 @@ void send_vlan(uint16_t vlan)
 		dbg_string("VLAN has no name\n");
 	} else {
 		while(vlan_names[n] && vlan_names[n] != ' ')
-			char_to_html(vlan_names[n++]);
+			json_char_to_html(vlan_names[n++]);
 	}
 	slen += strtox(outbuf + slen, "\",\"pvid\":\"0x");
 	uint16_t pvid_mask = 0;
@@ -311,8 +340,7 @@ bool send_counters(uint8_t phys_port)
 	for (uint8_t counter = 0; counter < 0x37; counter++) {
 		STAT_GET(counter, log_port);
 		slen += strtox(outbuf + slen, "\"0x");
-		reg_to_html(RTL837X_STAT_V_HIGH);
-		reg_to_html_long(RTL837X_STAT_V_LOW);
+		counter_to_html();
 		char_to_html('\"');
 		if (counter != 0x36)
 			char_to_html(',');
@@ -432,8 +460,6 @@ void l2_delete(uint16_t idx)
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	dbg_string("L2 DELETE\n");
 	dbg_short(idx);
-	__xdata uint8_t entries_left = L2_MAX_TRANSFER;
-
 	do {
 		reg_read(RTL837X_TBL_CTRL);
 	} while (SFR_DATA_0 & TBL_EXECUTE);
@@ -814,7 +840,7 @@ void send_status(void)
 		itoa_html(i);
 		slen += strtox(outbuf + slen, ",\"name\":\"");
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
-			char_to_html(port_names[i][j]);
+			json_char_to_html(port_names[i][j]);
 		}
 		slen += strtox(outbuf + slen, "\"");
 
@@ -853,14 +879,11 @@ void send_status(void)
 					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_vendor[sfp][s];
+				str_x_to_html(sfp_module_vendor[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_model[sfp][s];
+				str_x_to_html(sfp_module_model[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_serial[sfp][s];
+				str_x_to_html(sfp_module_serial[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");
@@ -914,8 +937,7 @@ void send_status(void)
 
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		slen += strtox(outbuf + slen, ",\"txG\":\"0x");
-		reg_to_html(RTL837X_STAT_V_HIGH);
-		reg_to_html(RTL837X_STAT_V_LOW);
+		counter_to_html();
 
 		slen += strtox(outbuf + slen, "\",\"txB\":\"0x");
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
@@ -923,8 +945,7 @@ void send_status(void)
 
 		slen += strtox(outbuf + slen, "\",\"rxG\":\"0x");
 		STAT_GET(STAT_COUNTER_RX_PKTS, i);
-		reg_to_html(RTL837X_STAT_V_HIGH);
-		reg_to_html(RTL837X_STAT_V_LOW);
+		counter_to_html();
 
 		slen += strtox(outbuf + slen, "\",\"rxB\":\"0x");
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
@@ -1034,7 +1055,7 @@ void send_vlanlist(void)
 		n = vlan_name(i);
 		if (n != 0xffff) {
 			while (vlan_names[n] && vlan_names[n] != ' ')
-				char_to_html(vlan_names[n++]);
+				json_char_to_html(vlan_names[n++]);
 		}
 
 		slen += strtox(outbuf + slen, "\"}");
