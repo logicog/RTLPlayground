@@ -132,6 +132,23 @@ void string_to_html(__code char *s)
 	while (*s) char_to_html(*s++);
 }
 
+static void temp_to_html(void)
+{
+	int16_t v;
+
+	reg_read(RTL837X_TM_RESULT);
+	v = SFR_DATA_U16;
+	if (v < 0) {
+		char_to_html('-');
+		v = -v;
+	}
+	itoa_html(v >> 7);
+	char_to_html('.');
+	itoa_html(((v & 0x7f) * 10) >> 7);
+	char_to_html(' ');
+	char_to_html('C');
+}
+
 uint16_t stat_content(void)
 {
 	dbg_string("stat_content called\n");
@@ -277,6 +294,8 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, BUILD_DATE);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
+	slen += strtox(outbuf + slen, "\",\"chip_temp\":\"");
+	temp_to_html();
 	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
 

@@ -1165,6 +1165,32 @@ err:
 }
 
 
+static void print_temperature(uint16_t reg)
+{
+	int16_t v;
+
+	reg_read(reg);
+	v = SFR_DATA_U16;
+	if (v < 0) {
+		write_char('-');
+		v = -v;
+	}
+	itoa(v >> 7);
+	write_char('.');
+	itoa(((v & 0x7f) * 10) >> 7);
+	print_string(" C\n");
+}
+
+
+void parse_temp(void)
+{
+	print_string("\nChip temperature: ");
+	print_temperature(RTL837X_TM_RESULT);
+	print_string("At power-on:      ");
+	print_temperature(RTL837X_TM_RESULT_POWERON);
+}
+
+
 void parse_sdsget(void)
 {
 	__xdata uint8_t sds_id, page, reg, hex_size;
@@ -1889,6 +1915,8 @@ void cmd_parser(void) __banked
 			parse_eee();
 		} else if (cmd_compare(0, "bw")) {
 			parse_bw();
+		} else if (cmd_compare(0, "temp")) {
+			parse_temp();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "time")) {
