@@ -1619,7 +1619,7 @@ var CONF_OVERWRITE=[
   /^ip\b/,/^gw\b/,/^netmask\b/,/^hostname\b/,
   /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
-  /^pvid\s+\d{1,2}\b/,/^ingress\b/,
+  /^pvid\s+\d{1,2}\b/,
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
   /^eee\s+\d{1,2}\b/,/^eee\b/,/^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
@@ -1640,6 +1640,21 @@ function mergeConf(base,texts){
       if((m=line.match(/^lag (\d) d$/))){drop(new RegExp("^lag(hash)? "+m[1]+"( |$)"));return;}
       if(line==="mirror off"){drop(/^mirror /);return;}
       if(!isConfCmd(line))return;
+      if((m=line.match(/^ingress (.+)$/))){
+        if(/^[tua]$/.test(m[1])){drop(/^ingress /);conf.push(line);return;}
+        var ports={},order=[],last=-1;
+        conf.forEach(function(c,i){if(/^ingress [tua]$/.test(c))last=i;});
+        conf.forEach(function(c,i){
+          var cm=c.match(/^ingress (.+)$/);
+          if(!cm||/^[tua]$/.test(cm[1])||i<last)return;
+          cm[1].split(" ").forEach(function(tk){var n=tk.slice(0,-1);if(!(n in ports))order.push(n);ports[n]=tk;});
+        });
+        m[1].split(" ").forEach(function(tk){var n=tk.slice(0,-1);if(!(n in ports))order.push(n);ports[n]=tk;});
+        conf=conf.filter(function(c){var cm=c.match(/^ingress (.+)$/);return!cm||/^[tua]$/.test(cm[1])});
+        order.sort(function(a,b){return a-b});
+        conf.push("ingress "+order.map(function(n){return ports[n]}).join(" "));
+        return;
+      }
       if((m=line.match(/^bw (in|out) (\d{1,2}) (\S+)$/))){
         var pre="^bw "+m[1]+" "+m[2]+" ";
         if(m[1]==="out"||m[3]==="off")drop(new RegExp(pre));
@@ -1667,11 +1682,11 @@ function mergeConf(base,texts){
   });
   return conf;
 }
-function writeConfig(txt,title){
+function writeConfig(txt,title,fromLog){
   var info=h("p",{class:"small mut"}),warn=h("p",{class:"small"});
   var ed=h("textarea",{class:"cfg",spellcheck:"false",placeholder:t("cw_empty"),style:"min-height:45vh"});
   ed.value=txt.replace(/\r\n/g,"\n");
-  var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){closeModal();doWriteConfig(cfgText(ed.value))}});
+  var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){closeModal();doWriteConfig(cfgText(ed.value),fromLog)}});
   function refresh(){
     var v=cfgText(ed.value),bytes=new Blob([v]).size;
     var unknown=v.split("\n").filter(function(l){return l.trim()&&!isConfCmd(l.trim().replace(/\s+/g," "))});
@@ -1687,7 +1702,7 @@ function cfgText(txt){
   txt=txt.replace(/\r\n/g,"\n");
   return txt&&txt.slice(-1)!=="\n"?txt+"\n":txt;
 }
-function doWriteConfig(txt){
+function doWriteConfig(txt,fromLog){
   var form=new FormData();
   form.append("configuration",new Blob([txt],{type:"application/octet-stream"}),"config.txt");
   toast(t("cw_writing"));
@@ -1697,9 +1712,10 @@ function doWriteConfig(txt){
   }).then(function(back){
     back=back.replace(/\0[\s\S]*$/,"").replace(/\r\n/g,"\n").trim();
     if(back!==txt.trim())throw new Error(t("cw_verify_fail"));
-    return api("/cmd_log_clear").catch(function(){});
-  }).then(function(){
-    setDirty(false);
+    if(!fromLog)return false;
+    return api("/cmd_log_clear").then(function(){return true},function(){return true});
+  }).then(function(cleared){
+    if(cleared)setDirty(false);
     $("cfgedit").value=txt;cfgBytes();cfgParseKnown(txt);
     toast(t("cw_saved"),"ok");
   }).catch(function(e){toast(e.message||String(e),"err")});
@@ -1710,9 +1726,9 @@ $("saveBtn").addEventListener("click",function(){
     getText("/config").catch(function(){return""}),
     getText("/cmd_log").catch(function(){return""}),
   ]).then(function(r){
-    var cur=r[0].replace(/\0[\s\S]*$/,"");
-    var merged=mergeConf([],[cur,r[1].replace(/\0[\s\S]*$/,"")]);
-    writeConfig(merged.join("\n"),t("cw_save_title"));
+    var cur=r[0].replace(/\0[\s\S]*$/,"").split(/\r?\n/).map(function(l){return l.trim().replace(/\s+/g," ")}).filter(Boolean);
+    var merged=mergeConf(cur,[r[1].replace(/\0[\s\S]*$/,"")]);
+    writeConfig(merged.join("\n"),t("cw_save_title"),true);
   });
 });
 

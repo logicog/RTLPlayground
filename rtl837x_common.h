@@ -98,7 +98,7 @@ struct vlan_tag {
 #define FIRMWARE_UPLOAD_START 0x80000
 
 // Constants for the circular command buffer, the size must be 2^n
-#define CMD_HISTORY_SIZE 0x400
+#define CMD_HISTORY_SIZE 0x800
 #define CMD_HISTORY_MASK (CMD_HISTORY_SIZE - 1)
 
 enum sfp_speeds {
