@@ -14,6 +14,7 @@
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
+#include "rtl837x_storm.h"
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
@@ -1541,6 +1542,63 @@ err:
 	cmd_error("bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
 }
 
+static __code char * __code storm_types[STORM_TYPES] = { "bcast", "mcast", "ucast", "umcast" };
+
+void parse_storm(void) __reentrant
+{
+	static __xdata uint8_t port, type, d;
+	static __xdata uint32_t rate;
+	static __xdata uint8_t * __xdata p;
+
+	if (cmd_words_len == 1) {
+		storm_show();
+		return;
+	}
+	if (cmd_words_len < 4 || cmd_parse_port_separator(cmd_words_b[1]) == 0)
+		goto err;
+	port = atoi_results_u8;
+
+	for (type = 0; type < STORM_TYPES; type++) {
+		if (cmd_compare(2, storm_types[type]))
+			break;
+	}
+	if (type == STORM_TYPES)
+		goto err;
+
+	if (cmd_words_len == 4 && cmd_compare(3, "off")) {
+		storm_off(port, type);
+		return;
+	}
+	if (cmd_words_len != 5)
+		goto err;
+
+	rate = 0;
+	p = &cmd_buffer[cmd_words_b[3]];
+	do {
+		d = *p++ - '0';
+		if (d > 9 || rate > 99999999)
+			goto err;
+		rate = (rate << 3) + (rate << 1) + d;
+	} while (*p != ' ' && *p != NUL);
+
+	if (cmd_compare(4, "pps")) {
+		if (!rate || rate > 0xfffff)
+			goto err;
+		storm_set(port, type, rate, 1);
+	} else if (cmd_compare(4, "kbps")) {
+		rate >>= 4;
+		if (!rate || rate > 625000)
+			goto err;
+		storm_set(port, type, rate, 0);
+	} else {
+		goto err;
+	}
+	return;
+
+err:
+	print_string("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
+}
+
 void parse_syslog(void)
 {
 	if (cmd_words_len < 2) // no argument -> print status
@@ -1889,6 +1947,8 @@ void cmd_parser(void) __banked
 			parse_eee();
 		} else if (cmd_compare(0, "bw")) {
 			parse_bw();
+		} else if (cmd_compare(0, "storm")) {
+			parse_storm();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "time")) {
