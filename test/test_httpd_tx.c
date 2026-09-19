@@ -26,6 +26,7 @@
 #include "httpd.h"
 #include "uip.h"
 #include "rtl837x_common.h"
+#include "rtl837x_regs.h"
 #include "rtl837x_flash.h"
 #include "page_impl.h"
 #include "html_data.h"
@@ -71,6 +72,7 @@ uint16_t crc_value;
 uint8_t *HTTP_RESPONCE_TXT = (uint8_t *)"HTTP/1.1 200 OK\r\n\r\n";
 uint32_t flash_size = 0x80000;
 uint8_t flash_buf[FLASH_BUF_SIZE];
+uint8_t rx_headers[16];
 struct flash_region_t flash_region;
 
 char *mime_strings[] = { "text/html", "image/svg+xml", "image/x-icon",
@@ -455,6 +457,38 @@ static void scenario_rexmit_after_shrink(void)
 	CHECK(same, "retransmission: the repeat carries the same bytes");
 }
 
+static void scenario_bad_l4_checksum(void)
+{
+	uip_stats_t chkerr_before;
+	uint32_t seq_before;
+	int len_before;
+
+	session_start(MSS_FULL);
+
+	chkerr_before = uip_stat.tcp.chkerr;
+	len_before = stream_len;
+	seq_before = cli_seq;
+
+	rx_headers[1] = RX_TAG_L4_CSUM_BAD;
+	request_file(MSS_FULL);
+	rx_headers[1] = 0;
+	cli_seq = seq_before;
+
+	CHECK(uip_stat.tcp.chkerr == chkerr_before + 1,
+	      "bad checksum: the segment is counted as a checksum error");
+	CHECK(stream_len == len_before,
+	      "bad checksum: the request draws no reply");
+
+	request_file(MSS_FULL);
+	drain(MSS_FULL);
+	report("bad checksum");
+
+	CHECK(body_offset() >= 0,
+	      "bad checksum control: the same request with a good flag is served");
+	CHECK(first_body_mismatch() == -1,
+	      "bad checksum control: the file that follows is intact");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -465,6 +499,7 @@ int main(int argc, char **argv)
 	scenario_shrinking_window();
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
+	scenario_bad_l4_checksum();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
