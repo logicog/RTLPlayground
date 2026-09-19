@@ -1615,7 +1615,12 @@ void main(void)
 	// Flash controller should be initialized before any code in other banks is being fetched
 	// See this issue: https://github.com/logicog/RTLPlayground/issues/70
 	print_string("\nInitializing Flash controller\n");
+#ifdef FLASH_SIO_ONLY
+	flash_init(0);
+	print_string("Flash: single IO\n");
+#else
 	flash_init(1);
+#endif
 
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)

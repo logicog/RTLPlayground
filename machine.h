@@ -72,6 +72,11 @@ struct sfp_port
 	uint8_t i2c;
 };
 
+#ifdef MACHINE_LINKSYS_LN2308
+// Dual-IO flash reads leave the LN2308 rebooting/crashing after the first banked call; use single IO
+#define FLASH_SIO_ONLY 1
+#endif
+
 struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
