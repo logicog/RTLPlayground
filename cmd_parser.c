@@ -244,12 +244,9 @@ uint8_t atoi_short(uint8_t idx)
  * Store the value in atoi_results_u8.
  */
 uint8_t cmd_parse_port(uint8_t idx) {
-	uint8_t port = cmd_buffer[idx] - '0' - 1;
-	if (port > 8)
-		return 0;
-
-	port = machine.phys_to_log_port[port];
-	if (port < machine.min_port || port > machine.max_port)
+	uint8_t port = cmd_buffer[idx] - '0';
+	port = phys_to_log_port(port);
+	if (IS_PHYS_PORT_INVALID(port))
 		return 0;
 
 	atoi_results_u8 = port;
@@ -891,7 +888,7 @@ void parse_port(void)
 	if (cmd_compare(2, "show")) {
 		print_string("Name: ");
 		print_string_x(port_names[phy_settings.port]);
-		if (!machine.is_sfp[phy_settings.port]) {
+		if ((machine.log_to_phys_port[phy_settings.port] & IS_SFP) == 0) {
 			phy_show(phy_settings.port);
 		}
 	} else if (cmd_compare(2, "name")) {
@@ -904,7 +901,7 @@ void parse_port(void)
 		print_string("\nName set to: \"");
 		print_string_x(port_names[phy_settings.port]);
 		print_string("\"\n");
-	} else if (machine.is_sfp[phy_settings.port]) {
+	} else if (machine.log_to_phys_port[phy_settings.port] & IS_SFP) {
 		print_string(" is SFP no PHY information available.\n");
 	} else if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
@@ -1024,13 +1021,21 @@ bool sfp_print_measurements(uint8_t sfp)
 void parse_sfp(void)
 {
 	uint8_t slot;
+	uint8_t port;
+	uint8_t port_data;
 
 	if (cmd_words_len != 1 && cmd_words_len != 3)
 		goto err;
 
 	if (cmd_words_len == 1) {
-		for (slot = 0; slot < machine.n_sfp; slot++) {
-			print_string("\nSlot "); write_char('1' + slot);
+		for (slot = 0; slot < 2; slot++) {
+			uint8_t port = slot ? MAC_SDS1 : MAC_SDS0;
+
+			uint8_t port_data = machine.log_to_phys_port[port];
+			if ((port_data & IS_SFP) == 0)
+				continue;
+
+			print_string("\nPort "); print_phys_port(port);
 			if (gpio_pin_test(machine.sfp_port[slot].pin_detect)) {
 				print_string(" - empty\n");
 				continue;
@@ -1047,18 +1052,20 @@ void parse_sfp(void)
 		}
 		return;
 	}
-	uint8_t idx = cmd_words_b[1];
-	uint8_t ret = atoi_byte(idx);
-	idx += ret;
-	slot = atoi_results_u8 - 1;
-	if (ret == 0 || !cmd_is_space(idx) || slot > 1) {
+	uint8_t ret = cmd_parse_port_separator(cmd_words_b[1]);
+	port = atoi_results_u8;
+	if (ret == 0) {
 		cmd_error("Illegal SFP slot number\n");
 		return;
 	}
-	if (slot >= machine.n_sfp) {
-		cmd_error("SFP slot not present\n");
+
+	port_data = machine.log_to_phys_port[port];
+	if ((port_data & IS_SFP) == 0) {
+		cmd_error("This is not SFP port\n");
 		return;
 	}
+
+	slot = (port == MAC_SDS1);
 
 	if (cmd_compare(2, "10g")) {
 		print_string(" 10G\n");
@@ -1082,7 +1089,7 @@ void parse_sfp(void)
 	handle_sfp();
 	return;
 err:
-	cmd_error("\nUsage:\n\tsfp\n\tsfp [1|2] [1g|2g5|10g]\n");
+	cmd_error("Usage:\n\ttsfp [<PORT> [1g|2g5|10g]]\n");
 }
 
 

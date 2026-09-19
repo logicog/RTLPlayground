@@ -2,6 +2,7 @@
 #define _MACHINE_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * Select your machine type below
@@ -54,6 +55,33 @@ typedef struct {
 	uint8_t scl;
 } i2c_bus_t;
 
+// Port/Mac not used/connected, MAC value = 0x0f and flags are zero.
+#define NOP (0x0F)
+#define IS_PHYS_PORT_INVALID(port) (port == NOP)
+// Port/MAC/SDS is a SFP cage
+#define IS_SFP (0x80)
+// Port/MAC/SDS is wired to a external phy.
+#define IS_EPHY (0x40)
+// Port/MAC/SDS to a other SOC, only need a fixed like setting
+#define IS_FIXED_LINK (0x20)
+#define SFP_PORT_SETTINGS (0x10)
+#define MAC_MASK (0x0F)
+
+// SDSx in on PORT/MACx
+#define MAC_SDS0 (3)
+#define MAC_SDS1 (8)
+
+typedef union {
+    uint8_t value;
+    struct {
+		// LSB
+        uint8_t mac             : 4;
+        uint8_t reserved 		: 1;
+        uint8_t is_sfp_cage     : 1;
+        uint8_t attached_to_phy : 1;
+        uint8_t is_fixed_link   : 1;
+    } bits;
+} log_port_value_t;
 
 #define LED_27 1
 // SYSTEM LED
@@ -72,7 +100,6 @@ struct sfp_port
 	uint8_t pin_detect; // gpio number 0-63, 0xFF = don't have it?
 	uint8_t pin_los; // gpio number 0-63, 0xFF = don't have it?
 	uint8_t pin_tx_disable; // gpio number 0-63, 0xFF = not present
-	uint8_t sds;
 	i2c_bus_t i2c;
 };
 
@@ -83,12 +110,18 @@ struct machine {
 	uint8_t min_port;
 	// Highest logical port number
 	uint8_t max_port;
-	uint8_t n_sfp;
 	uint8_t n_10g;
+	// See struct log_port
+	// - UPPER NIBBLE are the flags
+	// - LOWER NIBBLE is the phy port, port number 15 is unused, but also the FLAGS must be zero!
+	//   So use the `NOP` define!
 	uint8_t log_to_phys_port[9];
-	uint8_t phys_to_log_port[9]; // Starts at 0 for port 1
-	uint8_t is_sfp[9];  // 0 for non-SFP ports 1 or 2 for the I2C port number
-	// sfp_port[0] is the first SFP-port from the left on the device, sfp_port[1] the next if present 
+	// sfp_port[0] is directly linked to MAC 3 / SDS0 (MAC_SDS0)
+	// sfp_port[1] is directly linked to MAC 8 / SDS1 (MAC_SDS1)
+	// sfp_port struct holds the settings for the devices connected to the SDSx-port.
+	// - In case of SFP-CAGE, i2c-setting, gpio to detect the device etc.
+	// - In case of external PHY, MDIO-address, max-linkspeed etc.
+	// - In case of fixed-link, linkspeed.
 	struct sfp_port sfp_port[2];
 	uint8_t reset_pin;
 	struct high_leds high_leds;
@@ -111,5 +144,8 @@ struct machine_runtime
 };
 
 void machine_custom_init(void) __banked;
+int8_t phys_to_log_port(uint8_t phys_port);
+bool is_slot_sfp(uint8_t slot);
 
 #endif
+

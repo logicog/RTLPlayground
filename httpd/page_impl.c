@@ -280,16 +280,19 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
 
-	if (machine.n_sfp) {
+
+	/* TODO: Now mimics the old situation, need to replace with other solution. */
+	bool sds0_is_sfp = is_slot_sfp(0);
+	bool sds1_is_sfp = is_slot_sfp(1);
+	if (sds0_is_sfp || sds1_is_sfp) {
 		slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
-		send_sfp_info(0);
-		if (machine.n_sfp == 2) {
+		send_sfp_info(!sds0_is_sfp);
+		if (sds0_is_sfp && sds1_is_sfp) {
 			slen += strtox(outbuf + slen, "\",\"sfp_slot_1\":\"");
 			send_sfp_info(1);
 		}
 	}
 	char_to_html('"');
-
 	char_to_html('}');
 }
 
@@ -327,10 +330,9 @@ void send_vlan(uint16_t vlan)
  */
 bool send_counters(uint8_t phys_port)
 {
-	uint8_t phys_port_idx = phys_port - 1;
-	if (phys_port_idx > (machine.max_port - machine.min_port))
+	uint8_t log_port = phys_to_log_port(phys_port);
+	if (IS_PHYS_PORT_INVALID(log_port))
 		goto err;
-	uint8_t log_port = machine.phys_to_log_port[phys_port_idx];
 
 	dbg_string("send_counters called: "); dbg_byte(phys_port_idx); dbg_char('\n');
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -524,7 +526,7 @@ void send_mirror(void)
 	} else {
 		slen += strtox(outbuf + slen, "{\"enabled\":0,\"mPort\":");
 	}
-	itoa_html(machine.log_to_phys_port[mPort >> 1]);
+	itoa_html(machine.log_to_phys_port[mPort >> 1] & MAC_MASK);
 
 	reg_read_m(RTL837x_MIRROR_CONF);
 	uint16_t m = sfr_data[0];
@@ -641,7 +643,7 @@ void send_stp(void)
 		if (j >= STP_LAG_BASE)
 			j = 0;
 	}
-	itoa_html(j == 0xff ? 0 : machine.log_to_phys_port[j]);
+	itoa_html(j == 0xff ? 0 : (machine.log_to_phys_port[j] & MAC_MASK));
 	slen += strtox(outbuf + slen, ",\"tc\":\"");
 	byte_to_html(stp_tc_count >> 8);
 	byte_to_html(stp_tc_count);
@@ -655,7 +657,7 @@ void send_stp(void)
 		if (i >= STP_LAG_BASE && !stp_lag_mask[i - STP_LAG_BASE])
 			continue;
 		slen += strtox(outbuf + slen, "{\"p\":");
-		itoa_html(i < STP_LAG_BASE ? machine.log_to_phys_port[i] : 0);
+		itoa_html(i < STP_LAG_BASE ? (machine.log_to_phys_port[i] & MAC_MASK) : 0);
 		slen += strtox(outbuf + slen, ",\"lag\":");
 		itoa_html(i < STP_LAG_BASE ? 0 : i - STP_LAG_BASE + 1);
 		slen += strtox(outbuf + slen, ",\"mbr\":");
@@ -723,9 +725,11 @@ void send_eee(void)
 	char_to_html('[');
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
-		itoa_html(machine.log_to_phys_port[i]);
 
-		if (machine.is_sfp[i]) {
+		uint8_t port_data = machine.log_to_phys_port[i];
+		itoa_html(port_data & MAC_MASK);
+
+		if (port_data & IS_SFP) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1");
 		} else {
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"eee\":\"");
@@ -768,7 +772,7 @@ void send_bandwidth(void)
 	char_to_html('[');
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
-		itoa_html(machine.log_to_phys_port[i]);
+		itoa_html(machine.log_to_phys_port[i] & MAC_MASK);
 		slen += strtox(outbuf + slen, ",\"iLimited\":");
 		reg_read_m(RTL837X_IGBW_PORT_CTRL + i * 4);
 		if (sfr_data[1] & 0x10)
@@ -811,7 +815,7 @@ void send_mtu(void)
 	char_to_html('[');
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
-		itoa_html(machine.log_to_phys_port[i]);
+		itoa_html(machine.log_to_phys_port[i] & MAC_MASK);
 		slen += strtox(outbuf + slen, ",\"mtu\":\"0x");
 		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
 		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
@@ -835,7 +839,7 @@ void send_status(void)
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
-		itoa_html(machine.log_to_phys_port[i]);
+		itoa_html(machine.log_to_phys_port[i] & MAC_MASK);
 		slen += strtox(outbuf + slen, ",\"logPort\":");
 		itoa_html(i);
 		slen += strtox(outbuf + slen, ",\"name\":\"");
@@ -844,8 +848,9 @@ void send_status(void)
 		}
 		slen += strtox(outbuf + slen, "\"");
 
-		if (machine.is_sfp[i]) {
-			uint8_t sfp = machine.is_sfp[i] - 1;
+		uint8_t port_data = machine.log_to_phys_port[i];
+		if (port_data & IS_SFP) {
+			uint8_t sfp = port_data & SFP_PORT_SETTINGS ? 1 : 0;
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
 				bool_to_html(1);

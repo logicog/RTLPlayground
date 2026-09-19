@@ -493,14 +493,17 @@ void port_stats_print(void) __banked
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		print_phys_port(i); write_char('\t');
 
-		if (!machine.is_sfp[i]) {
+		uint8_t port_data = machine.log_to_phys_port[i];
+
+		if ((port_data & (IS_SFP | IS_EPHY)) == 0x00) {
 			phy_read(i, PHY_MMD31, 0xa610);
 			if (SFR_DATA_8 == 0x20)
 				print_string("On\t");
 			else
 				print_string("Off\t");
 		} else {  // An SFP Module
-			if (!gpio_pin_test(machine.sfp_port[machine.is_sfp[i]-1].pin_detect)) {
+			uint8_t sfp_settings_idx = port_data & SFP_PORT_SETTINGS ? 1 : 0;
+			if (!gpio_pin_test(machine.sfp_port[sfp_settings_idx].pin_detect)) {
 				print_string("SFP IN\t");
 			} else {
 				print_string("NO SFP\t");
@@ -588,7 +591,7 @@ uint16_t port_isolation_get(uint8_t port) __banked
 void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 {
 
-	if (machine.is_sfp[port])
+	if (machine.log_to_phys_port[port] & (IS_SFP | IS_EPHY))
 	{
 		print_string("EEE can't be enabled for SFP port "); print_byte(port); print_string("\n");
 		return;
@@ -651,7 +654,7 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 
 void port_eee_disable(uint8_t port) __banked
 {
-	if (machine.is_sfp[port])
+	if (machine.log_to_phys_port[port] & (IS_SFP | IS_EPHY))
 		return;
 
 	print_string("EEE off for "); print_byte(port); write_char('\n');
@@ -668,7 +671,7 @@ void port_eee_status(uint8_t port) __banked
 {
 	print_string("Port: "); print_phys_port(port);
 	print_string(": ");
-	if (machine.is_sfp[port]) {
+	if (machine.log_to_phys_port[port] & IS_SFP) {
 		print_string("SFP\n");
 		return;
 	}
