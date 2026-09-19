@@ -151,6 +151,7 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) $(VERSION_HEADER) create_build_dir
 
 .PHONY:
+machine_check: SHELL := /bin/bash
 machine_check:
 	@mkdir -p $(BUILDDIR)/tmp
 	@set -eo pipefail; \
