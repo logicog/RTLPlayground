@@ -3,7 +3,10 @@ var LANG={
 en:{
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
 nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_lag:"LAG",nav_eee:"EEE",
-nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",
+nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",nav_sflow:"sFlow",
+sf_title:"sFlow",sf_h:"counter samples, version 5",sf_ip:"Collector address",sf_port:"Collector port",sf_int:"Counter interval [s]",
+sf_sending:"Sending",sf_sent:"Datagrams sent",sf_wait:"waiting for a collector address",sf_ip_err:"Enter the IPv4 address of the collector",
+sf_note:"Each datagram carries the counters of one port, and the ports take turns within the interval. Settings apply immediately; use Save to flash to keep them.",
 hdr_dirty:"unsaved changes",hdr_dirty_t:"Running config differs from startup config",
 hdr_save:"Save to flash",hdr_save_t:"Persist running configuration to flash",
 th_auto:"System",th_auto_sel:"System (Selenized)",sy_display:"Display",sy_theme:"Theme",sy_display_note:"Stored in this browser only.",th_light:"Light",th_dark:"Dark",
@@ -427,6 +430,7 @@ var CONF_CMDS=[
   /^ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^ip\s+dhcp$/,
   /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,/^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,/^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^syslog\s+port\s+\d{1,5}$/,
+  /^sflow\s+(on|off)$/,/^sflow\s+collector\s+(\d{1,3}\.){3}\d{1,3}(\s+\d{1,5})?$/,/^sflow\s+interval\s+\d{1,4}$/,
   /^passwd\s+\S+$/,/^hostname\s+\S{1,23}$/,
   /^vlan\s+\d{1,4}\s+d$/,/^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}t?)+$/,
@@ -506,6 +510,7 @@ var TABS=[
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
+  {id:"sflow", icon:"M2 12h4l3-8 4 16 3-8h6"},
   {id:"system",icon:"M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"},
   {id:"fw",    icon:"M12 3v12M8 11l4 4 4-4M4 19h16"},
 ];
@@ -1618,9 +1623,36 @@ $("cfgwrite").addEventListener("click",function(){
 });
 tabHooks.system={enter:sysLoad};
 
+var sfDirty=false;
+function sfLoad(){
+  return api("/cmd",{method:"POST",body:"sflow"}).then(function(r){
+    var m=(r.body||"").match(/sFlow (on|off), collector ([\d.]+):(\d+), interval (\d+) s, datagrams (\S+)/);
+    if(!m)return;
+    var on=m[1]==="on",conf=m[2]!=="0.0.0.0";
+    $("sfstate").innerHTML=on?(conf?badge(t("c_yes"),"ok"):badge(t("sf_wait"))):badge(t("c_no"));
+    $("sfsent").textContent=parseInt(m[5],16);
+    if(sfDirty)return;
+    $("sfen").checked=on;$("sfip").value=conf?m[2]:"";$("sfport").value=m[3];$("sfint").value=m[4];
+  }).catch(function(){});
+}
+["sfen","sfip","sfport","sfint"].forEach(function(id){
+  ["input","change"].forEach(function(ev){$(id).addEventListener(ev,function(){sfDirty=true})});
+});
+$("sfapply").addEventListener("click",function(){
+  var ip=$("sfip").value.trim(),port=$("sfport").value.trim(),iv=$("sfint").value.trim();
+  if(!/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)||ip.split(".").some(function(x){return Number(x)>255})){toast(t("sf_ip_err"),"err");return;}
+  var cmds=["sflow collector "+ip+(port?" "+port:"")];
+  if(iv)cmds.push("sflow interval "+iv);
+  cmds.push("sflow "+($("sfen").checked?"on":"off"));
+  sfDirty=false;
+  postCmds(cmds).then(sfLoad).catch(function(){});
+});
+$("sfrefresh").addEventListener("click",function(){sfDirty=false;sfLoad()});
+tabHooks.sflow={enter:function(){sfDirty=false;sfLoad()}};
+
 var CONF_OVERWRITE=[
   /^ip\b/,/^gw\b/,/^netmask\b/,/^hostname\b/,
-  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,
+  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^sflow\s+collector\b/,/^sflow\s+interval\b/,/^passwd\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,/^ingress\b/,
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
@@ -1630,7 +1662,7 @@ var CONF_OVERWRITE=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(sflow)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}

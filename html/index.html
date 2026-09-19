@@ -353,6 +353,23 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       </div>
     </section>
 
+    <section class="tab" id="tab-sflow">
+      <div class="card"><h2><span data-i18n="sf_title">sFlow</span> <span class="hint" data-i18n="sf_h">counter samples, version 5</span></h2>
+        <label class="row"><span class="lb" data-i18n="c_enabled">Enabled</span>
+          <span class="switch"><input type="checkbox" id="sfen"><i></i></span></label>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+          <label><span class="small mut" data-i18n="sf_ip">Collector address</span><br><input class="in" id="sfip" type="text" style="width:10em"></label>
+          <label><span class="small mut" data-i18n="sf_port">Collector port</span><br><input class="in sm" id="sfport" type="number" min="1" max="65535"></label>
+          <label><span class="small mut" data-i18n="sf_int">Counter interval [s]</span><br><input class="in sm" id="sfint" type="number" min="1" max="3600"></label>
+        </div>
+        <div style="margin-top:10px"><button class="ctl pri" id="sfapply" data-i18n="c_apply">Apply</button></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="sf_note">Each datagram carries the counters of one port, and the ports take turns within the interval.</p>
+      </div>
+      <div class="card"><h2><span data-i18n="c_state">State</span> <button class="ctl" id="sfrefresh" data-i18n="c_refresh">Refresh</button></h2>
+        <label class="row"><span class="lb" data-i18n="sf_sending">Sending</span><span id="sfstate">-</span></label>
+        <label class="row"><span class="lb" data-i18n="sf_sent">Datagrams sent</span><span class="mono" id="sfsent">-</span></label>
+      </div>
+    </section>
     <section class="tab" id="tab-system">
       <div class="grid2">
         <div class="card"><h2 data-i18n="sy_network">Network</h2>
