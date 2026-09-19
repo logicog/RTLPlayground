@@ -78,7 +78,6 @@ struct sfp_port
 typedef struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
-	uint8_t sys_led_mode;
 	// Lowest logical port number
 	uint8_t min_port;
 	// Highest logical port number

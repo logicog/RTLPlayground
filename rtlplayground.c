@@ -1141,11 +1141,7 @@ void handle_button(void)
 			else
 			{
 				print_string("Short button press detected; no action.\n");
-				if (machine.sys_led_mode) {
-					set_sys_led_state(machine.sys_led_mode);
-				} else {
-					set_sys_led_state(SYS_LED_ON);
-				}
+				set_sys_led_state(SYS_LED_ON);
 			}
 		}
 		else
@@ -1751,11 +1747,7 @@ void main(void)
 	print_cmd_prompt();
 	idle_ready = 1;
 
-	if (machine.sys_led_mode) {
-		set_sys_led_state(machine.sys_led_mode);
-	} else {
-		set_sys_led_state(SYS_LED_ON);
-	}
+	set_sys_led_state(SYS_LED_ON);
 
 	cmd_editor_init();
 
