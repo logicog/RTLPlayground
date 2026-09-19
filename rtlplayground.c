@@ -1213,7 +1213,8 @@ void idle(void)
 		print_byte(linkbits_last[2]); print_byte(linkbits_last[3]);
 		print_string(">\n");
 		linkbits_last_p89 = linkbits_p89;
-		if (!machine_detected.isRTL8373 && machine.n_sfp != 2) {
+		uint8_t n_sfp = is_slot_sfp(0) + is_slot_sfp(1);
+		if (!machine_detected.isRTL8373 && n_sfp != 2) {
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);

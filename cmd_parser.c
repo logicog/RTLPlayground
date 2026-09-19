@@ -1026,7 +1026,10 @@ void parse_sfp(void)
 		goto err;
 
 	if (cmd_words_len == 1) {
-		for (slot = 0; slot < machine.n_sfp; slot++) {
+		for (slot = 0; slot < 2; slot++) {
+			if (!is_slot_sfp(slot))
+				continue;
+
 			print_string("\nSlot "); write_char('1' + slot);
 			if (gpio_pin_test(machine.sfp_port[slot].pin_detect)) {
 				print_string(" - empty\n");
@@ -1052,8 +1055,9 @@ void parse_sfp(void)
 		cmd_error("Illegal SFP slot number\n");
 		return;
 	}
-	if (slot >= machine.n_sfp) {
-		cmd_error("SFP slot not present\n");
+
+	if (!is_slot_sfp(slot)) {
+		cmd_error("This is not SFP port\n");
 		return;
 	}
 

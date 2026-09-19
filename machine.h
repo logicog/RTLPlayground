@@ -2,6 +2,7 @@
 #define _MACHINE_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * Select your machine type below
@@ -64,6 +65,10 @@ typedef struct {
 #define SFP_PORT_SETTINGS (0x10)
 #define MAC_MASK (0x0F)
 
+// SDSx in on PORT/MACx
+#define MAC_SDS0 (3)
+#define MAC_SDS1 (8)
+
 typedef union {
     uint8_t value;
     struct {
@@ -103,7 +108,6 @@ struct machine {
 	uint8_t min_port;
 	// Highest logical port number
 	uint8_t max_port;
-	uint8_t n_sfp;
 	uint8_t n_10g;
 	// See struct log_port
 	uint8_t log_to_phys_port[9];
@@ -131,6 +135,7 @@ struct machine_runtime
 
 void machine_custom_init(void) __banked;
 int8_t phys_to_log_port(uint8_t phys_port);
+bool is_slot_sfp(uint8_t slot);
 
 #endif
 

@@ -142,7 +142,9 @@ void sfp_apply_quirks(uint8_t sfp) __banked __reentrant
 /* Inititalize SFP GPIOs */
 void setup_sfp_gpio(void) __banked
 {
-	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+	for (uint8_t sfp = 0; sfp < 2; sfp++) {
+		if (!is_slot_sfp(sfp))
+			continue;
 		gpio_input_setup(machine.sfp_port[sfp].pin_detect);
 		gpio_input_setup(machine.sfp_port[sfp].pin_los);
 		gpio_output_setup(machine.sfp_port[sfp].pin_tx_disable, 0);
@@ -194,7 +196,10 @@ static bool sfp_module_read(uint8_t sfp)
 
 void handle_sfp(void) __banked
 {
-	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+	for (uint8_t sfp = 0; sfp < 2; sfp++) {
+		if (!is_slot_sfp(sfp))
+			continue;
+
 		if (!gpio_pin_test(machine.sfp_port[sfp].pin_detect)) {
 			if (sfp_pins_last & (0x1 << (sfp << 2))) {
 				sfp_pins_last &= ~(0x01 << (sfp << 2));

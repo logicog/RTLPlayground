@@ -60,7 +60,6 @@ const struct machine machine = {
 	.machine_name = "HOSTTEST",
 	.min_port = 0,
 	.max_port = 8,
-	.n_sfp = 0,
 	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
 };
 struct machine_runtime machine_detected = { .isRTL8373 = 1 };
@@ -81,6 +80,14 @@ int8_t phys_to_log_port(uint8_t phys_port) {
 
 	return -1;
 }
+
+/* return a bool is a slot is a marked as SFP-port. */
+bool is_slot_sfp(uint8_t slot) {
+	uint8_t mac = slot ? MAC_SDS1 : MAC_SDS0;
+	uint8_t port = machine.log_to_phys_port[mac];
+	return (port & IS_SFP) != 0;
+}
+
 
 /* ---- firmware state the modules read or write ---- */
 uint8_t  outbuf[TCP_OUTBUF_SIZE];
