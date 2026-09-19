@@ -28,6 +28,7 @@ extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 extern __xdata uint16_t management_vlan;
+extern __xdata uint16_t session_timeout;
 extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
 extern __code uint8_t * __code hex;
@@ -114,12 +115,14 @@ void itoa_html(uint8_t v)
 	char_to_html('0' + (v % 10));
 }
 
-void itoa16_html(uint16_t v) /* sufficient for VLAN IDs (max 4094) */
+void itoa16_html(uint16_t v) /* up to five digits (65535) */
 {
 	uint8_t print_zeros = 0;
 	uint8_t d;
-	d = v / 1000;
+	d = v / 10000;
 	if (d) { char_to_html('0' + d); print_zeros = 1; }
+	d = (v / 1000) % 10;
+	if (d || print_zeros) { char_to_html('0' + d); print_zeros = 1; }
 	d = (v / 100) % 10;
 	if (d || print_zeros) { char_to_html('0' + d); print_zeros = 1; }
 	d = (v / 10) % 10;
@@ -258,7 +261,9 @@ void send_basic_info(void)
 	itoa_html(syslog_state.server_ip[2]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[3]); char_to_html(':');
 	itoa16_html(syslog_state.server_port);
-	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
+	slen += strtox(outbuf + slen, "\",\"session_timeout\":");
+	itoa16_html(session_timeout);
+	slen += strtox(outbuf + slen, ",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[2]); char_to_html(':');

@@ -41,6 +41,8 @@ extern __xdata struct flash_region_t flash_region;
 
 extern __xdata char passwd[21];
 
+extern __xdata uint16_t session_timeout;
+
 extern __xdata struct dhcp_state dhcp_state;
 
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
@@ -1609,6 +1611,25 @@ void parse_syslog(void)
 	}
 }
 
+void parse_session(void)
+{
+	if (cmd_words_len >= 2) {
+		/* atoi_short() returns zero for no digits and for a value past
+		 * 65535; a zero-second timeout is not useful either, so both
+		 * tests are needed. */
+		if (!atoi_short(cmd_words_b[1]) || !atoi_results_short) {
+			print_string("Must be 1-65535 s\n");
+			return;
+		}
+		session_timeout = atoi_results_short;
+	}
+	/* Also the confirmation after setting: one message for both. */
+	print_string("Session timeout: ");
+	itoa_short(session_timeout);
+	print_string(" s\n");
+}
+
+
 // Parse command into words
 // cmd_words_len contains the number of words found.
 // cmd_words_b[] contains only start of a word offset.
@@ -1911,6 +1932,8 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "ingress")) {
 			parse_ingress();
+		} else if (cmd_compare(0, "session")) {
+			parse_session();
 		}
 		else {
 			cmd_error("Unknown command\n");

@@ -12,7 +12,11 @@
 #include "debug.h"
 
 #define SESSION_ID_LENGTH 12
-#define SESSION_TIMEOUT 200
+#define SESSION_TIMEOUT_DEFAULT 200
+
+/* Seconds of inactivity after which a session cookie stops validating.
+ * Configurable with the "session" command, see cmd_parser.c. */
+__xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 
 #define CMARK_S 6
 
@@ -342,7 +346,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 	read_reg_timer(&now);
 
 	if (session && session_id[0]) {
-		if (now - last_session_use > SESSION_TIMEOUT) {
+		if (now - last_session_use > session_timeout) {
 			dbg_string("Session expired\n");
 		} else {
 			if (is_word_x(session, session_id)) {
@@ -666,6 +670,8 @@ static void run_login_body(__xdata uint8_t *body)
 				      "Set-Cookie: session=");
 		for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
 			outbuf[slen++] = session_id[i];
+		slen += strtox(outbuf + slen, "; Max-Age=");
+		itoa16_html(session_timeout);
 		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 	} else {
 		dbg_string("Password invalid!\n");
