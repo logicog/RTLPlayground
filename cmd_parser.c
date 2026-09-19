@@ -1427,7 +1427,7 @@ void parse_eee(void)
 			speed_word = 2;
 		} else if (cmd_is_space_or_nul(idx)) {
 			// Word 2 is a port number
-			if (cmd_parse_port_separator(idx) == 0) {
+			if (cmd_parse_port_separator(cmd_words_b[2]) == 0) {
 				cmd_error("Speed word invalid, use: [100m|1g|2g5]\n");
 				return;
 			}
