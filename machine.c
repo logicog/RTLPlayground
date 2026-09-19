@@ -25,7 +25,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 5 | IS_SFP, 1, 2, 3, 4, 6 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 5 | IS_SFP, 1, 2, 3, 4, 6 | IS_SFP},
 	// Left SFP port (5)
 	.sfp_port[0].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[0].pin_los = GPIO10_LED10,
@@ -57,7 +57,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
 	/* .sfp_port[0] = EXTERNAL PHY */
 	.sfp_port[1].pin_detect = GPIO30_ACL_BIT3_EN,
 	.sfp_port[1].pin_los = GPIO37,
@@ -88,7 +88,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 
 	// Right SFP port
 	.sfp_port[0].pin_detect = GPIO37,
@@ -232,7 +232,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 	// Right SFP port (J2)
 	.sfp_port[0].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[0].pin_los = GPIO_NA,
@@ -269,7 +269,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 	// Right SFP port (J2)
 	.sfp_port[0].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[0].pin_los = GPIO_NA,
@@ -341,7 +341,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 5 | IS_SFP, 1, 2, 3, 4, 6 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 5 | IS_SFP, 1, 2, 3, 4, 6 | IS_SFP},
 	.sfp_port[0].pin_detect = GPIO30_ACL_BIT3_EN,
 	.sfp_port[0].pin_los = GPIO51_I2C_SDA2_UART1_RX,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
@@ -442,7 +442,7 @@ __code const struct machine machine = {
 	.mac_flash_offset = 0x1FC000,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
 	/* .sfp_port[0] = EXTERNAL PHY */
 	.sfp_port[1].pin_detect = GPIO30_ACL_BIT3_EN,
 	.sfp_port[1].pin_los = GPIO37,
@@ -492,7 +492,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 	.sfp_port[0].pin_detect = GPIO38,
 	.sfp_port[0].pin_los = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[0].pin_tx_disable = GPIO54_ACL_BIT2_EN,
@@ -526,7 +526,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 	
 	// Right SFP port
 	.sfp_port[0].pin_detect = GPIO37,
@@ -569,7 +569,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
 	/* .sfp_port[0] = EXTERNAL PHY */
 	.sfp_port[1].pin_detect = GPIO30_ACL_BIT3_EN,
 	.sfp_port[1].pin_los = GPIO37,
@@ -601,7 +601,7 @@ __code const struct machine machine = {
 	.min_port = 3,
 	.max_port = 8,
 	.n_10g = 1,
-	.log_to_phys_port = {0, 0, 0, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
 	/* .sfp_port[0] = EXTERNAL PHY */	
 	.sfp_port[1].pin_detect = GPIO38,
 	.sfp_port[1].pin_los = GPIO_NA,
@@ -640,7 +640,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 	// Right SFP port (6)
 	// LED pin 24
 	.sfp_port[0].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
@@ -733,7 +733,7 @@ __code const struct machine machine = {
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
-    .log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+    .log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 
     /* Right SFP (logical 3, SDS0): GPIO50=ModAbs, GPIO51=RX_LOS */
     .sfp_port[0].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
@@ -784,7 +784,7 @@ __code const struct machine machine = {
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
-    .log_to_phys_port = {0, 0, 0, 5 | IS_SFP, 1, 2, 3, 4, 6 | IS_SFP},
+    .log_to_phys_port = {NOP, NOP, NOP, 5 | IS_SFP, 1, 2, 3, 4, 6 | IS_SFP},
 
     // SFP port on SDS0 / logical port 3
     .sfp_port[0].pin_detect = GPIO37,
@@ -827,7 +827,7 @@ __code const struct machine machine = {
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
-    .log_to_phys_port = {0, 0, 0, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
+    .log_to_phys_port = {NOP, NOP, NOP, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
 	/* .sfp_port[0] = EXTERNAL PHY */
 	.sfp_port[1].pin_detect = GPIO38,
     .sfp_port[1].pin_los = GPIO_NA,
@@ -867,7 +867,7 @@ __code const struct machine machine = {
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
-    .log_to_phys_port = {0, 0, 0, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
+    .log_to_phys_port = {NOP, NOP, NOP, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_SFP},
 	/* .sfp_port[0] = EXTERNAL PHY */
 	.sfp_port[1].pin_detect = GPIO30_ACL_BIT3_EN,
     .sfp_port[1].pin_los = GPIO37,
@@ -908,7 +908,7 @@ __code const struct machine machine = {
 	.min_port = 3,
 	.max_port = 8,
 	.n_10g = 2,
-	.log_to_phys_port = {0, 0, 0, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_EPHY},
+	.log_to_phys_port = {NOP, NOP, NOP, 5 | IS_EPHY, 1, 2, 3, 4, 6 | IS_EPHY},
 	/* .sfp_port[0] = EXTERNAL PHY */
 	/* .sfp_port[1] = EXTERNAL PHY */
 	.reset_pin = GPIO48_I2C_SCL1,
@@ -943,7 +943,7 @@ __code const struct machine machine = {
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
-	.log_to_phys_port = {0, 0, 0, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
+	.log_to_phys_port = {NOP, NOP, NOP, 6 | IS_SFP, 1, 2, 3, 4, 5 | IS_SFP},
 	
 	// Right SFP port
 	.sfp_port[0].pin_detect = GPIO37,
@@ -1152,7 +1152,7 @@ __code const struct machine machine = {
 #endif
 
 
-/* Looks-up the logical port. The index into machine.log_to_phys_port = {0, 0, 0, 5 | IS_SFP2, 1, 2, 3, 4, 6 | IS_SFP2}, is equal the logical port.
+/* Looks-up the logical port. The index into machine.log_to_phys_port[] is equal to the logical port.
  * Returns the positive number when found
  * Returns -1 when not found
  */
@@ -1162,7 +1162,7 @@ int8_t phys_to_log_port(uint8_t phys_port) {
 
 	do {
 		log_port_value_t port_data = { .value = machine.log_to_phys_port[port] };
-		if (port_data.bits.mac == phys_port)
+		if (port_data.bits.mac == phys_port && port_data.value != NOP)
 			return (int8_t)port;
 		port++;
 	} while(port <= port_max);

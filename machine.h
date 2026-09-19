@@ -55,7 +55,9 @@ typedef struct {
 	uint8_t scl;
 } i2c_bus_t;
 
-#define IS_PHYS_PORT_INVALID(port) ((int8_t)(port) == -1)
+// Port/Mac not used/connected, MAC value = 0x0f and flags are zero.
+#define NOP (0x0F)
+#define IS_PHYS_PORT_INVALID(port) (port == NOP)
 // Port/MAC/SDS is a SFP cage
 #define IS_SFP (0x80)
 // Port/MAC/SDS is wired to a external phy.
@@ -110,8 +112,16 @@ struct machine {
 	uint8_t max_port;
 	uint8_t n_10g;
 	// See struct log_port
+	// - UPPER NIBBLE are the flags
+	// - LOWER NIBBLE is the phy port, port number 15 is unused, but also the FLAGS must be zero!
+	//   So use the `NOP` define!
 	uint8_t log_to_phys_port[9];
-	// sfp_port[0] is the first SFP-port from the left on the device, sfp_port[1] the next if present 
+	// sfp_port[0] is directly linked to MAC 3 / SDS0 (MAC_SDS0)
+	// sfp_port[1] is directly linked to MAC 8 / SDS1 (MAC_SDS1)
+	// sfp_port struct holds the settings for the devices connected to the SDSx-port.
+	// - In case of SFP-CAGE, i2c-setting, gpio to detect the device etc.
+	// - In case of external PHY, MDIO-address, max-linkspeed etc.
+	// - In case of fixed-link, linkspeed.
 	struct sfp_port sfp_port[2];
 	uint8_t reset_pin;
 	struct high_leds high_leds;
