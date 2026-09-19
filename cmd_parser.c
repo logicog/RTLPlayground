@@ -14,6 +14,7 @@
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
+#include "rtl837x_lldp.h"
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
@@ -29,6 +30,7 @@
 extern __code struct machine machine;
 extern __xdata bool stp_enabled;
 extern __code uint8_t log_to_phys_port[9];
+extern __xdata bool lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -875,6 +877,7 @@ void parse_port(void)
 		cmd_error("\nUsage:" \
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
+					 "\nport <port> lldp [block|permit]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
 	}
@@ -957,6 +960,14 @@ void parse_port(void)
 		else
 			phy_settings.duplex = PHY_DUPLEX_HALF;
 		phy_set_duplex();
+	} else if (cmd_compare(2, "lldp")) {
+		if (cmd_compare(3, "block")){
+			lldp_physical_port_status &= ~(1 << phy_settings.port);
+		} else if (cmd_compare(3, "permit")) {
+			lldp_physical_port_status |= 1 << phy_settings.port;
+		} else {
+			print_string ("Unknown port <port> lldp [block|permit] command\n");
+		}
 	} else {
 		cmd_error("Unknown port command\n");
 	}
@@ -1911,6 +1922,14 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "ingress")) {
 			parse_ingress();
+		} else if (cmd_compare(0, "lldp")) {
+			if (cmd_compare(1, "on")) {
+				print_string("LLDP enabled\n");
+				lldp_enabled = 1;
+			} else {
+				print_string("LLDP disabled\n");
+				lldp_enabled = 0;
+			}
 		}
 		else {
 			cmd_error("Unknown command\n");
