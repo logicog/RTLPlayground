@@ -377,8 +377,8 @@ void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 static uint8_t config_take(void)
 {
 	// #386: needs static, otherwise it still lands in SRAM/DSEG
-	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
-	__xdata uint8_t cfg_bl;
+	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last, cfg_i;
+	__xdata uint8_t cfg_bl, cfg_run;
 
 	cfg_bl = strlen_x(boundary);
 
@@ -420,6 +420,13 @@ static uint8_t config_take(void)
 				// the payload plus its terminator must fit the sector
 				if (cfg_end - cfg_body + 1 > CONFIG_LEN)
 					return 2;
+				cfg_run = 0;
+				for (cfg_i = cfg_body; cfg_i < cfg_end; cfg_i++) {
+					if (config_buf[cfg_i] == '\n')
+						cfg_run = 0;
+					else if (++cfg_run >= CMD_BUF_SIZE - 1)
+						return 2;
+				}
 				config_buf[cfg_end] = 0;
 				flash_region.addr = CONFIG_START;
 				flash_sector_erase();

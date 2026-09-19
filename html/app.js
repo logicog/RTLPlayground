@@ -90,6 +90,7 @@ sy_rebooting:"Rebooting, reconnect in about 20 s",sy_bytes:"bytes",
 cw_title:"Write this startup configuration?",cw_save_title:"Save running configuration to flash?",
 cw_info:"{n} / 2048 bytes, replayed line by line on every boot",
 cw_toolarge:"Too large: the config sector accepts at most 2048 bytes. Remove lines first.",
+cw_longline:"Line {n} is {m} bytes long: the switch can only replay lines up to 126 bytes and would skip it on boot, so the write is refused. Shorten it first.",
 cw_unknown:"Not in the known config grammar (will still be written): ",cw_empty:"(empty)",
 cw_writing:"Writing configuration...",cw_failed:"config write failed: HTTP {n}",
 cw_verify_fail:"Verification failed: flash content differs from what was sent. Command log NOT cleared.",
@@ -201,6 +202,7 @@ sy_rebooting:"再起動中です。約 20 秒後に再接続してください",
 cw_title:"この起動設定を書き込みますか?",cw_save_title:"実行中の設定をフラッシュに保存しますか?",
 cw_info:"{n} / 2048 バイト、起動のたびに 1 行ずつ実行されます",
 cw_toolarge:"サイズ超過: 設定セクタは最大 2048 バイトです。先に行を削除してください。",
+cw_longline:"{n} 行目は {m} バイトです: スイッチが起動時に実行できる行は 126 バイトまでで、この行は読み飛ばされるため、書き込みを拒否します。先に短くしてください。",
 cw_unknown:"既知の設定文法に含まれない行 (そのまま書き込まれます): ",cw_empty:"(空)",
 cw_writing:"設定を書き込み中...",cw_failed:"設定の書き込みに失敗しました: HTTP {n}",
 cw_verify_fail:"検証失敗: フラッシュの内容が送信内容と異なります。コマンドログは消去されていません。",
@@ -312,6 +314,7 @@ sy_rebooting:"正在重启，约 20 秒后重新连接",sy_bytes:"字节",
 cw_title:"写入此启动配置?",cw_save_title:"将运行配置保存到 Flash?",
 cw_info:"{n} / 2048 字节，每次启动时逐行执行",
 cw_toolarge:"过大: 配置扇区最多容纳 2048 字节。请先删除部分行。",
+cw_longline:"第 {n} 行有 {m} 字节: 交换机启动时只能执行不超过 126 字节的行，该行会被跳过，因此拒绝写入。请先缩短该行。",
 cw_unknown:"不属于已知配置语法的行 (仍会写入): ",cw_empty:"(空)",
 cw_writing:"正在写入配置...",cw_failed:"配置写入失败: HTTP {n}",
 cw_verify_fail:"校验失败: Flash 内容与发送内容不一致。命令日志未清除。",
@@ -1604,11 +1607,16 @@ function cfgReload(){
     cfgParseKnown(x);
   }).catch(function(){});
 }
+function cfgLongLine(v){
+  var ls=v.split("\n");
+  for(var i=0;i<ls.length;i++){var n=new Blob([ls[i]]).size;if(n>126)return{n:i+1,m:n};}
+  return null;
+}
 function cfgBytes(){
-  var n=new Blob([$("cfgedit").value]).size;
+  var v=$("cfgedit").value,n=new Blob([v]).size;
   var el=$("cfgbytes");
   el.textContent=n+" / 2048 "+t("sy_bytes");
-  el.style.color=n>2048?"var(--bad)":"";
+  el.style.color=(n>2048||cfgLongLine(v))?"var(--bad)":"";
   return n;
 }
 $("cfgedit").addEventListener("input",cfgBytes);
@@ -1676,12 +1684,12 @@ function writeConfig(txt,title){
   ed.value=txt.replace(/\r\n/g,"\n");
   var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){closeModal();doWriteConfig(cfgText(ed.value))}});
   function refresh(){
-    var v=cfgText(ed.value),bytes=new Blob([v]).size;
+    var v=cfgText(ed.value),bytes=new Blob([v]).size,long=cfgLongLine(v);
     var unknown=v.split("\n").filter(function(l){return l.trim()&&!isConfCmd(l.trim().replace(/\s+/g," "))});
     info.textContent=t("cw_info",{n:bytes});
-    ok.disabled=bytes>2048;
+    ok.disabled=bytes>2048||!!long;
     warn.style.color=ok.disabled?"var(--bad)":"var(--warn)";
-    warn.textContent=ok.disabled?t("cw_toolarge"):(unknown.length?t("cw_unknown")+unknown.join(" | "):"");
+    warn.textContent=bytes>2048?t("cw_toolarge"):long?t("cw_longline",long):(unknown.length?t("cw_unknown")+unknown.join(" | "):"");
   }
   ed.addEventListener("input",refresh);refresh();
   modal(title,h("div",null,[info,warn,ed]),[h("button",{class:"ctl",text:t("c_cancel"),onclick:closeModal}),ok]);

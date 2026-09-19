@@ -1962,6 +1962,7 @@ void execute_config(void) __banked
 	save_cmd = 0;
 
 	uint8_t cmd_idx = 0;
+	uint8_t skipping = 0;
 	do {
 		flash_region.addr = pos;
 		flash_region.len = FLASH_READ_BURST_SIZE;
@@ -1972,20 +1973,23 @@ void execute_config(void) __banked
 		do {
 			if (cmd_idx >= (CMD_BUF_SIZE - 1)) {
 				cmd_buffer[cmd_idx] = NUL;
-				print_string("ERROR: Command too long: ");
+				print_string("ERROR: Command too long, skipped: ");
 				print_string_x(cmd_buffer);
 				write_char('\n');
-				err_status = ERR_CMD_TOO_LONG;
-				goto config_done;
+				cmd_idx = 0;
+				skipping = 1;
 			}
 			c = flash_buf[cfg_idx++];
 			if (c == 0 || c == '\n') {
-				cmd_buffer[cmd_idx] = NUL;
-				if (cmd_idx) {
-					cmd_tokenize();
-					if (err_status != ERR_OK)
-						goto config_done;
-					cmd_parser();
+				if (skipping) {
+					skipping = 0;
+				} else {
+					cmd_buffer[cmd_idx] = NUL;
+					if (cmd_idx) {
+						cmd_tokenize();
+						if (err_status == ERR_OK)
+							cmd_parser();
+					}
 				}
 				if (c == 0)
 					goto config_done;
@@ -1993,8 +1997,10 @@ void execute_config(void) __banked
 				continue;
 			}
 
-			cmd_buffer[cmd_idx] = c;
-			cmd_idx++;
+			if (!skipping) {
+				cmd_buffer[cmd_idx] = c;
+				cmd_idx++;
+			}
 		} while (cfg_idx);
 
 		pages_left--;
