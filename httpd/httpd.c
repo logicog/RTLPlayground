@@ -779,7 +779,23 @@ void handle_post(void)
 		dbg_string("Multipart request\n");
 	}
 
-	if (is_word(request_path, "cmd")) {
+	if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
+		dbg_string("POST upload/config request\n");
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
+		if (!boundary[0]) {
+			dbg_string("Bad request, no boundary!\n");
+			send_bad_request();
+			return;
+		}
+		if (config_upload)
+			handle_config_fragment(p);
+		else
+			handle_firmware_fragment(p);
+		return;
+	} else if (is_word(request_path, "cmd")) {
 		p += 4;
 		if (!authenticated) {
 			send_unauthorized();
@@ -804,22 +820,6 @@ void handle_post(void)
 		if (!post_body_take(p))
 			return;
 		run_login_body(p);
-		return;
-	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
-		dbg_string("POST upload/config request\n");
-		if (!authenticated) {
-			send_unauthorized();
-			return;
-		}
-		if (!boundary[0]) {
-			dbg_string("Bad request, no boundary!\n");
-			send_bad_request();
-			return;
-		}
-		if (config_upload)
-			handle_config_fragment(p);
-		else
-			handle_firmware_fragment(p);
 		return;
 	} else {
 		send_not_found();
