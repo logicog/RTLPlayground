@@ -23,4 +23,4 @@ jobs:
       - name: Check if machine.c can be compiled for all machines
         run: make machine_check
       - name: Make project
-        run: make MACHINE="KP_9000_6XHML_X2"
+        run: make CI=1 MACHINE="KP_9000_6XHML_X2"
