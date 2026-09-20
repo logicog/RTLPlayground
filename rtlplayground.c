@@ -973,14 +973,19 @@ void tcpip_output(void)
 }
 
 
+#define RX_BUDGET 4
+
 void handle_rx(void)
 {
-	// Check the amount of data available on the NIC/ASIC side
-	reg_read_m(RTL837X_REG_NIC_RX_BUFF_DATA);
-	if (sfr_data[2] != 0 || sfr_data[3] != 0) {
-		reg_read_m(RTL837X_REG_CPU_RX_CURR_PKT);
-		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
-		ring_ptr |= sfr_data[3];
+	__xdata uint8_t budget = RX_BUDGET;
+
+	while (budget--) {
+		// Check the amount of data available on the NIC/ASIC side
+		reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+		if (!SFR_DATA_U16)
+			break;
+		reg_read(RTL837X_REG_CPU_RX_CURR_PKT);
+		uint16_t ring_ptr = SFR_DATA_U16;
 		ring_ptr <<= 3;
 		if (!nic_rx_header(ring_ptr)) {
 			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
