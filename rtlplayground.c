@@ -1162,7 +1162,9 @@ void handle_button(void)
 //
 void idle(void)
 {
-	PCON |= 1;
+	reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+	if (!SFR_DATA_U16)
+		PCON |= 1;
 	if (sec_counter >= SYS_TICK_HZ) {
 		sec_counter -= SYS_TICK_HZ;
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
