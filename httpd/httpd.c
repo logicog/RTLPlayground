@@ -37,6 +37,7 @@ __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 __xdata uint8_t entry;
 __xdata uint16_t slen;
 __xdata uint16_t o_idx;
+__xdata uint16_t sent_len;
 __xdata uint16_t len_left;
 __xdata uint16_t cont_len;
 __xdata uint32_t cont_addr;
@@ -347,8 +348,9 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 			if (is_word_x(session, session_id)) {
 				authenticated = 1;
 				last_session_use = now;
-			} else
+			} else {
 				dbg_string("Invalid session cookie!\n");
+			}
 		}
 	}
 	return p;
@@ -559,7 +561,7 @@ static void handle_config_fragment(__xdata uint8_t *p)
 	__xdata uint16_t frag_len;
 	uint8_t taken;
 
-	frag_len = uip_len - (p - uip_appdata);
+	frag_len = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 		print_string("Configuration too large, aborting.\n");
 		config_upload = 0;
@@ -589,7 +591,7 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint16_t frag_len, payload_start;
 
-	frag_len = uip_len - (p - uip_appdata);
+	frag_len = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 		print_string("Firmware upload header too large, aborting.\n");
 		config_upload = 0;
@@ -684,7 +686,7 @@ static uint8_t post_body_take(__xdata uint8_t *p)
 		send_bad_request();
 		return 0;
 	}
-	have = uip_len - (p - uip_appdata);
+	have = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (have >= content_length) {
 		p[content_length] = NUL;
 		return 1;
@@ -826,6 +828,13 @@ void handle_post(void)
 }
 
 
+static void tx_send(uint16_t len)
+{
+	sent_len = len;
+	uip_send(outbuf + o_idx, len);
+}
+
+
 void httpd_appcall(void)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
@@ -861,9 +870,9 @@ void httpd_appcall(void)
 		}
 	} else if (uip_acked() && s->tstate == TSTATE_TX) {
 		dbg_string("ACK\n");
-		if (slen > uip_mss()) {
-			slen -= uip_mss();
-			o_idx += uip_mss();
+		if (slen > sent_len) {
+			slen -= sent_len;
+			o_idx += sent_len;
 		} else {
 			slen = 0;
 		}
@@ -872,11 +881,11 @@ void httpd_appcall(void)
 
 		if (slen > uip_mss()) {
 			dbg_string("Sending A: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, uip_mss());
+			tx_send(uip_mss());
 			s->tstate = TSTATE_TX;
 		} else if (slen > 0) {
 			dbg_string("Sending B: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, slen);
+			tx_send(slen);
 			s->tstate = TSTATE_TX;
 		} else if (cont_len) {
 			dbg_string("CONT cont_len: "); dbg_short(cont_len);
@@ -887,7 +896,7 @@ void httpd_appcall(void)
 			flash_region.len = slen;
 			flash_read_bulk(outbuf);
 			o_idx = 0;
-			uip_send(outbuf + o_idx, slen);
+			tx_send(slen);
 			cont_len -= slen;
 			cont_addr += slen;
 			s->tstate = TSTATE_TX;
@@ -1045,24 +1054,20 @@ do_send:
 		o_idx = 0;
 		if (slen > uip_mss()) {
 			dbg_string("Sending a: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, uip_mss());
+			tx_send(uip_mss());
 			dbg_string("Sending a done\n");
 		} else {
 			dbg_string("Sending b: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, slen);
+			tx_send(slen);
 			dbg_string("Sending b done\n");
 		}
 		s->tstate = TSTATE_TX;
 	} else if (uip_rexmit()) { // Connection established, need to rexmit?
 		dbg_string("RETRANSMIT requested\n");
-		if (slen > uip_mss()) {
-			dbg_string("Sending C: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, uip_mss());
+		if (sent_len) {
+			dbg_string("Sending C: "); dbg_short(sent_len); dbg_char('\n');
+			tx_send(sent_len);
 			dbg_string("Sending C done\n");
-		} else if (slen > 0) {
-			dbg_string("Sending D: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, slen);
-			dbg_string("Sending D done\n");
 		}
 		s->tstate = TSTATE_TX;
 		uip_len = 0;

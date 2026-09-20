@@ -533,13 +533,18 @@ TABS.forEach(function(tb){
 });
 $("burger").addEventListener("click",function(){$("nav").classList.toggle("open")});
 
+var IDLE_STOP_MS=600000,lastInput=Date.now();
+["mousemove","mousedown","keydown","touchstart","wheel"].forEach(function(ev){
+  addEventListener(ev,function(){lastInput=Date.now()},{passive:true});
+});
 function Poller(fn,ms){this.fn=fn;this.ms=ms;this.on=false;this.t=null}
 Poller.prototype.start=function(){if(this.on)return;this.on=true;this.tick()};
 Poller.prototype.stop=function(){this.on=false;clearTimeout(this.t)};
 Poller.prototype.tick=function(){
   var self=this;
   if(!self.on)return;
-  var run=document.hidden?Promise.resolve():Promise.resolve().then(self.fn).catch(function(){});
+  var quiet=document.hidden||Date.now()-lastInput>IDLE_STOP_MS;
+  var run=quiet?Promise.resolve():Promise.resolve().then(self.fn).catch(function(){});
   run.then(function(){ if(self.on)self.t=setTimeout(function(){self.tick()},self.ms); });
 };
 
@@ -723,6 +728,7 @@ tabHooks.dash={
 var SPEEDS=[["auto","c_auto"],["2g5","2.5G"],["1g","1G"],["100m full","100M full"],
   ["100m half","100M half"],["10m full","10M full"],["10m half","10M half"]];
 var SFPRATES=[["auto","c_auto"],["10g","10G"],["2g5","2.5G"],["1g","1G"],["100m","100M"]];
+var ADVSEL={63:"auto",31:"auto",32:"2g5",16:"1g",8:"100m full",4:"100m half",2:"10m full",1:"10m half"};
 function speedLabel(s){
   if(s==="c_auto")return t("c_auto");
   return s.replace(" full"," "+t("c_full")).replace(" half"," "+t("c_half"));
@@ -785,6 +791,8 @@ function portsStatus(){
   S.ports.forEach(function(p){
     var i=p.portNum-1,el=$("plink"+i);
     if(el)el.innerHTML=linkBadge(p);
+    var sel=$("pspd"+i),v=p.isSFP?0:ADVSEL[parseInt(p.adv,2)];
+    if(sel&&v&&document.activeElement!==sel)sel.value=v;
   });
 }
 function applyPort(i){

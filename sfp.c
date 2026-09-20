@@ -88,7 +88,12 @@ bool sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t lengt
 		return false;
 
 	dst[length] = NUL;
-	memcpy(dst, sfp_buf, length);
+	for (uint8_t i = 0; i < length; i++) {
+		uint8_t c = sfp_buf[i];
+		if (c && (c < 0x20 || c > 0x7e || c == '"' || c == '\\'))
+			c = '.';
+		dst[i] = c;
+	}
 
 	while (length > 0 && dst[--length] == ' ')
 		dst[length] = NUL;

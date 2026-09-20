@@ -70,6 +70,21 @@ void char_to_html(char c)
 }
 
 
+static void str_x_to_html(__xdata const char *s)
+{
+	while (*s)
+		outbuf[slen++] = *s++;
+}
+
+
+void json_char_to_html(uint8_t c)
+{
+	if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
+		c = '.';
+	outbuf[slen++] = c;
+}
+
+
 //  Convert uint8_t to ascii HEX char.
 void byte_to_html(uint8_t val)
 {
@@ -198,8 +213,8 @@ void send_sfp_info(uint8_t sfp)
 		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
 			continue;
 		uint8_t c = sfp_buf[i & 0xf];
-		if (c && c != 0xa0) // a0 is the byte read from a non-existant I2C EEPROM
-			char_to_html(c);
+		if (c)
+			json_char_to_html(c);
 	}
 }
 
@@ -293,7 +308,7 @@ void send_vlan(uint16_t vlan)
 		dbg_string("VLAN has no name\n");
 	} else {
 		while(vlan_names[n] && vlan_names[n] != ' ')
-			char_to_html(vlan_names[n++]);
+			json_char_to_html(vlan_names[n++]);
 	}
 	slen += strtox(outbuf + slen, "\",\"pvid\":\"0x");
 	uint16_t pvid_mask = 0;
@@ -825,7 +840,7 @@ void send_status(void)
 		itoa_html(i);
 		slen += strtox(outbuf + slen, ",\"name\":\"");
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
-			char_to_html(port_names[i][j]);
+			json_char_to_html(port_names[i][j]);
 		}
 		slen += strtox(outbuf + slen, "\"");
 
@@ -864,14 +879,11 @@ void send_status(void)
 					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_vendor[sfp][s];
+				str_x_to_html(sfp_module_vendor[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_model[sfp][s];
+				str_x_to_html(sfp_module_model[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_serial[sfp][s];
+				str_x_to_html(sfp_module_serial[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");
@@ -1043,7 +1055,7 @@ void send_vlanlist(void)
 		n = vlan_name(i);
 		if (n != 0xffff) {
 			while (vlan_names[n] && vlan_names[n] != ' ')
-				char_to_html(vlan_names[n++]);
+				json_char_to_html(vlan_names[n++]);
 		}
 
 		slen += strtox(outbuf + slen, "\"}");

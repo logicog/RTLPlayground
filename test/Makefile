@@ -11,7 +11,7 @@
 CC       = gcc
 SRCROOT  = ..
 # -include shim first so __xdata/__code/__banked vanish before any firmware header.
-CFLAGS   = -std=gnu11 -g -O1 -Wall -Wextra -Wno-unused-parameter -Wno-unknown-pragmas \
+CFLAGS   = -std=gnu11 -g -O1 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unknown-pragmas \
            -Wno-pointer-sign \
            -DRTLP_HOST_TEST \
            -fsanitize=address,undefined -fno-omit-frame-pointer \
@@ -26,7 +26,8 @@ BUILDDIR = build
 # One binary per subsystem under test.
 TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_port_tables \
-        $(BUILDDIR)/test_page_json
+        $(BUILDDIR)/test_page_json \
+        $(BUILDDIR)/test_httpd_tx
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -47,6 +48,11 @@ $(BUILDDIR)/test_port_tables: test_port_tables.c $(TABLE_ENV) hw_mock.h | $(BUIL
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+# httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
+# this test carries the environment below them itself.
+$(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 run: $(TESTS)
