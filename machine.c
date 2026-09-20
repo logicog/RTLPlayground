@@ -914,64 +914,53 @@ __code const struct machine machine = {
 #elif defined MACHINE_ONT_S207CW_62TS_SE
 // ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM
 // RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
-// Physical ports: 1-4 = RJ45, 5-6 = SFP
-// Logical ports: 0-3 = RJ45 (phys 1-4), 4-5 = SFP (phys 5-6)
-// LED colors: RJ45 = Green@2.5G, Orange@1G/100M/10M; SFP = Green@10G, Orange@1G/2.5G
-// LED mux values extracted from original firmware
+// Using PCB-K0402WS-V3 config
 __code const struct machine machine = {
     .machine_name = "ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM",
     .isRTL8373 = 0,
     .mac_flash_offset = 0x1FC000,
-    .min_port = 0,
-    .max_port = 5,
+    .min_port = 3,
+    .max_port = 8,
     .n_sfp = 2,
-    .log_to_phys_port = {1, 2, 3, 4, 5, 6, 0, 0, 0},
-    .phys_to_log_port = {0, 1, 2, 3, 4, 5, 0, 0, 0},
-    .is_sfp = {0, 0, 0, 0, 1, 1, 0, 0, 0},
+    .log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
+    .phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
+    .is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
 
-    // SFP port on SDS0 / logical port 4 / physical port 5
-    .sfp_port[0].pin_detect = GPIO37,
+    // Left SFP port on SDS1 / logical port 8
+    .sfp_port[0].pin_detect = GPIO38,
     .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
-    .sfp_port[0].sds = 0,
-    .sfp_port[0].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[0].sds = 1,
+    .sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
 
-    // SFP port on SDS1 / logical port 5 / physical port 6
-    .sfp_port[1].pin_detect = GPIO38,
+    // Right SFP port on SDS0 / logical port 3
+    .sfp_port[1].pin_detect = GPIO37,
     .sfp_port[1].pin_los = GPIO_NA,
     .sfp_port[1].pin_tx_disable = GPIO_NA,
-    .sfp_port[1].sds = 1,
-    .sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[1].sds = 0,
+    .sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
 
     .reset_pin = GPIO_NA,
-    .high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
-    .port_led_set = { 0, 0, 0, 0, 1, 1, 0, 0, 0 },
-    /* LED Configuration:
-     * RJ45 ports (0-3, phys 1-4): SET0
-     *   LED0 (Green): 2.5G Link+Activity
-     *   LED1 (Orange): 1G/100M/10M Link+Activity
-     * SFP+ ports (4-5, phys 5-6): SET1
-     *   LED0 (Green): 10G Link+Activity
-     *   LED1 (Orange): 1G/2.5G Link+Activity
-     */
+    .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
+    .port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
     .led_sets = {
-        { // SET0: RJ45 Ports
-          LEDS_2G5 | LEDS_LINK | LEDS_ACT,                 // Green: 2.5G
-          LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT, // Orange: 1G/100M/10M
-          0,
-          0 },
-        { // SET1: SFP+ Ports
-          LEDS_10G | LEDS_LINK | LEDS_ACT,               // Green: 10G
-          LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,   // Orange: 1G/2.5G
-          0,
-          0 },
+        {
+            LEDS_2G5 | LEDS_LINK | LEDS_10M | LEDS_ACT,
+            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
+            LEDS_1G | LEDS_LINK,
+            0
+        },
+        {
+            LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK,
+            LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_ACT,
+            0,
+            0
+        },
     },
     .led_mux_custom = 1,
-    // LED mux configuration from original firmware
-    .led_mux = { 0x08, 0x14, 0x40, 0x40, 0x10, 0x37, 0xf3, 0x09,
-                0x12, 0x45, 0x43, 0x91, 0x19, 0x61, 0x65, 0x55,
-                0x1c, 0x79, 0xd6, 0x5a, 0x00, 0x02, 0x18, 0x1d,
-                0x00, 0x00, 0x00, 0x00 },
+    .led_mux = {
+        0x00,0x01,0x04,0x05,0x08,0x09,0x0c,0x3f,0x0d,0x10,0x11,0x0e,0x14,0x11,0x12,0x15,0x15,0x16,0x18,0x19,0x1a,0x19,0x1d,0x1e,0x1c,0x1d,0x20,0x21
+    },
 };
 
 #elif defined MACHINE_SWTG024AS_A_2_0_1_5C_1SFP

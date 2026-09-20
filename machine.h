@@ -40,13 +40,12 @@
 // #define MACHINE_HI_K0801WS
 // #define MACHINE_FNS1200P
 // #define MACHINE_PCB_SWTG024AS_A_2_0_1
-// #define MACHINE_ONT_S207CW_62TS_SE
+#define MACHINE_ONT_S207CW_62TS_SE
 // ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM
 // RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
 // Physical ports: 1-4 = RJ45, 5-6 = SFP
-// Logical ports: 0-3 = RJ45 (phys 1-4), 4-5 = SFP (phys 5-6)
-// LED colors: RJ45 = Green@2.5G, Orange@1G/100M/10M; SFP = Green@10G, Orange@1G/2.5G
-// LED mux: Original firmware values (0x08144040, 0x1037f309, ...)
+// Using PCB_SWTG024AS_A_2_0_1 config (all ports reliable, order was wrong)
+// Logical ports: 3-8, Port 3 = SFP (SDS0), Ports 4-7 = RJ45, Port 8 = SFP (SDS1)
 // #define MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
 // #define MACHINE_SWTG024AS_V2_0
 // #define MACHINE_FG_4GT_2SX_V2_0
