@@ -434,7 +434,7 @@ var CONF_CMDS=[
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
-  /^eee(\s+\d{1,2})?\s+(on|off)$/,
+  /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
@@ -1432,7 +1432,7 @@ function eeeLoad(){
       var on=parseInt(p.eee,2)!==0;
       var sw=h("label",{class:"switch"},[
         h("input",{type:"checkbox",onchange:function(){
-          postCmd("eee "+p.portNum+" "+(this.checked?"on":"off"))
+          postCmd("eee "+(this.checked?"on":"off")+" "+p.portNum)
             .then(function(){setTimeout(eeeLoad,300)}).catch(function(){});
         }}),h("i")]);
       sw.firstChild.checked=on;
@@ -1624,7 +1624,7 @@ var CONF_OVERWRITE=[
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,/^ingress\b/,
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
-  /^eee\s+\d{1,2}\b/,/^eee\b/,/^mirror\b/,
+  /^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
@@ -1641,6 +1641,11 @@ function mergeConf(base,texts){
       var m;
       if((m=line.match(/^vlan (\d{1,4}) d$/))){drop(new RegExp("^vlan "+m[1]+"( |$)"));return;}
       if((m=line.match(/^lag (\d) d$/))){drop(new RegExp("^lag(hash)? "+m[1]+"( |$)"));return;}
+      if((m=line.match(/^eee (on|off)(?: (\d{1,2}))?(?: (?:100m|1g|2g5))?$/))){
+        if(m[2])drop(new RegExp("^eee (on|off) "+m[2]+"\\b"));
+        else drop(/^eee /);
+        conf.push(line);return;
+      }
       if(line==="mirror off"){drop(/^mirror /);return;}
       if(!isConfCmd(line))return;
       if((m=line.match(/^bw (in|out) (\d{1,2}) (\S+)$/))){
