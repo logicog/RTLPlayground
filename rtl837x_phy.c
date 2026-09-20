@@ -20,7 +20,7 @@
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __code uint16_t bit_mask[16];
+extern __code const uint16_t bit_mask[16];
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 
@@ -33,7 +33,7 @@ __xdata struct phy_settings phy_settings;
 // Note: Adding `Swapping the RX for N-devices`-setting on the end of the array, didn't work.
 // Setting will apply but still no packets flow.
 // Settings are `0x2000, 0xc10c`,
-__code uint16_t rtl8224_sds0_setttings[42] = {
+__code const uint16_t rtl8224_sds0_setttings[42] = {
 	// SDS_DATA, SDS_CMD
 	0x4480, 0xc842,
 	0x0400, 0xc9c2,

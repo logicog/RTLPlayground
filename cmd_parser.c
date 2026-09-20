@@ -26,15 +26,15 @@
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __code struct machine machine;
+extern __code const struct machine machine;
 extern __xdata bool stp_enabled;
-extern __code uint8_t log_to_phys_port[9];
+extern __code const uint8_t log_to_phys_port[9];
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
 
-extern __code uint8_t * __code greeting;
-extern __code uint8_t * __code hex;
+extern __code const uint8_t * __code const greeting;
+extern __code const uint8_t * __code const hex;
 
 extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 extern __xdata struct flash_region_t flash_region;
@@ -105,7 +105,7 @@ inline uint8_t isnumber(uint8_t l)
 	return (l <= ('9'-'0'));
 }
 
-uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd)
+uint8_t cmd_compare(uint8_t start, __code const uint8_t * cmd)
 {
 	if (cmd_words_len == 0 || start > (cmd_words_len - 1)) {
 		return 0;

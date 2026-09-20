@@ -22,7 +22,7 @@ extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
 extern __xdata uint8_t tx_seq;
-extern __code uint8_t * __code hex;
+extern __code const uint8_t * __code const hex;
 
 
 

@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-extern __code uint8_t * __code HTTP_RESPONCE_TXT;
+extern __code const uint8_t * __code const HTTP_RESPONCE_TXT;
 
 bool send_counters(uint8_t phys_port);
 void send_status(void);
