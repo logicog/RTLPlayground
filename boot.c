@@ -398,10 +398,11 @@ void setup_i2c(void) __banked
 	reg_read_m(RTL837X_PIN_MUX_1);
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
 		uint8_t i2c = machine.sfp_port[sfp].i2c;
-		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT);
-		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & 0x07;
+		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & RTL837X_REG_I2C_SCL_MASK;
+		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & RTL837X_REG_I2C_SDA_MASK;
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
-		switch (scl_bus & 0x03) {
+		// `& RTL837X_REG_I2C_SCL_MASK` is needed to silens a compiler warning 110.
+		switch (scl_bus & RTL837X_REG_I2C_SCL_MASK) {
 			case 3:
 				// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
 				sfr_mask_data(0, 0x60, 0x40);
