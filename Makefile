@@ -20,6 +20,10 @@ else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
 
+ifeq ($(CI),1)
+	CC_FLAGS += --Werror
+endif
+
 BUILDDIR = output/$(MACHINE)
 VERSION_HEADER := version.h
 
