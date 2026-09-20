@@ -275,7 +275,7 @@ void leds_setup(void) __banked
 			reg_write_m(RTL837X_REG_LED3_0_SET1);
 		} else {
 			reg_read_m(RTL837X_REG_LED3_0_SET3);
-			sfr_data[3 - (set << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
+			sfr_data[3 - ((set - 2) << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
 			reg_write_m(RTL837X_REG_LED3_0_SET3);
 		}
 		lptr += 8;
@@ -291,7 +291,7 @@ void leds_setup(void) __banked
 			reg_write_m(RTL837X_REG_LED3_0_SET1);
 		} else {
 			reg_read_m(RTL837X_REG_LED3_0_SET3);
-			sfr_data[2 - (set << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
+			sfr_data[2 - ((set - 2) << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
 			reg_write_m(RTL837X_REG_LED3_0_SET3);
 		}
 		lptr += 8;
