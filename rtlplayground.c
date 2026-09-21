@@ -79,9 +79,9 @@ void crc16_bank1(__xdata uint8_t *v) __naked;
 
 __xdata uint8_t idle_ready;
 
-__code uint8_t ownIP[] = { 192, 168, 2, 2 };
-__code uint8_t gatewayIP[] = { 192, 168, 2, 22};
-__code uint8_t netmask[] = { 255, 255, 255, 0};
+__code const uint8_t ownIP[] = { 192, 168, 2, 2 };
+__code const uint8_t gatewayIP[] = { 192, 168, 2, 22};
+__code const uint8_t netmask[] = { 255, 255, 255, 0};
 
 __xdata struct uip_eth_addr uip_ethaddr;
 
@@ -108,8 +108,8 @@ extern __xdata uint8_t gpio_last_value[8];
 
 extern __xdata struct flash_region_t flash_region;
 
-__code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
-__code uint8_t * __code hex = "0123456789abcdef";
+__code const uint8_t * __code const greeting = "\nA minimal prompt to explore the RTL8372:\n";
+__code const uint8_t * __code const hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 
@@ -126,7 +126,7 @@ __xdata bool stp_enabled;
 __xdata uint8_t igmpEnabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
-__code uint16_t bit_mask[16] = {
+__code const uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
 	0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000, 0x8000
 };
@@ -349,7 +349,7 @@ int memcmp(__xdata const void *a, __xdata const void *b, uint16_t len)
 	return 0;
 }
 
-void memcpyc(__xdata uint8_t *dst, __code uint8_t *src, uint16_t len)
+void memcpyc(__xdata uint8_t *dst, __code const uint8_t *src, uint16_t len)
 {
 	while (len--)
 		*dst++ = *src++;
@@ -785,7 +785,7 @@ void nic_tx_packet(uint16_t ring_ptr)
  * Note that the address in the flash memory is not simply 0xbbaddr, because
  * the size of a bank is merely 0xc000.
  */
-uint8_t read_flash(uint8_t bank, __code uint8_t *addr)
+uint8_t read_flash(uint8_t bank, __code const uint8_t *addr)
 {
 	uint8_t v;
 	uint8_t current_bank = PSBANK;

@@ -39,12 +39,12 @@ __code enum sfp_quirk {
 };
 
 struct sfp_quirk_entry {
-	__code char *vendor; // Set vendor or model to 0 to act as wildcard
-	__code char *model;
+	__code const char *vendor; // Set vendor or model to 0 to act as wildcard
+	__code const char *model;
 	uint8_t quirks;
 };
 
-static __code struct sfp_quirk_entry sfp_quirk_table[] = {
+static __code const struct sfp_quirk_entry sfp_quirk_table[] = {
 	{ "QSFPTEK", "QT-SFP+-T", SFP_QUIRK_DDM },
 };
 

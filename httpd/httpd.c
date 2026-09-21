@@ -22,9 +22,9 @@
 extern volatile __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
 extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
-extern __code uint8_t * __code hex;
-extern __code struct f_data f_data[];
-extern __code char * __code mime_strings[];
+extern __code const uint8_t * __code const hex;
+extern __code const struct f_data f_data[];
+extern __code const char * __code const mime_strings[];
 extern __xdata struct flash_region_t flash_region;
 extern __xdata uint32_t flash_size;
 
@@ -127,7 +127,7 @@ uint8_t find_entry(__xdata uint8_t *e)
 }
 
 
-bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
+bool is_word(__xdata uint8_t *xdata_str_p, __code const uint8_t * __xdata code_str_p)
 {
 	uint8_t u, c;
 
@@ -149,7 +149,7 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 
 
 /* name must be lower-case, starting with the '\n' of the previous line's end */
-__xdata uint8_t *header_value(__xdata uint8_t *p, __code uint8_t *name)
+__xdata uint8_t *header_value(__xdata uint8_t *p, __code const uint8_t *name)
 {
 	uint8_t u, c;
 

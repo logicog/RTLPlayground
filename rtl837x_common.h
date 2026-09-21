@@ -183,13 +183,13 @@ uint16_t strlen(__code const char *s);
 uint16_t strcpy(__xdata uint8_t *dst, const char *s);
 char strcmp(__xdata const uint8_t *a, __code const uint8_t *b);
 #endif
-void memcpyc(__xdata uint8_t *dst, __code uint8_t *src, uint16_t len);
+void memcpyc(__xdata uint8_t *dst, __code const uint8_t *src, uint16_t len);
 uint16_t strlen_x(__xdata const char *s);
 uint16_t strtox(__xdata uint8_t *dst, __code const char *s);
 bool strstart(__xdata const uint8_t *a, __code const uint8_t *b);
 bool strstart_x(__xdata const uint8_t *a, __xdata const uint8_t *b);
 void tcpip_output(void);
-uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
+uint8_t read_flash(uint8_t bank, __code const uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(__xdata uint32_t * tmr);
 bool gpio_pin_test(uint8_t pin);
