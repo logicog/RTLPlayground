@@ -98,6 +98,7 @@
 #include "../rtl837x_regs.h"
 
 extern __xdata uint8_t rx_headers[16];
+extern volatile __xdata uint32_t ticks;
 
 /*---------------------------------------------------------------------------*/
 /* Variable definitions. */
@@ -243,6 +244,9 @@ __xdata struct uip_stats uip_stat;
 
 #if UIP_LOGGING == 1
 #define UIP_LOG(m) print_string_newline_no_syslog(m);
+#define FRAGDROP_WINDOW (5 * SYS_TICK_HZ)
+static __xdata u16_t fragdrop_mark;
+static __xdata u8_t fragdrop_count;
 #else
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
@@ -710,6 +714,17 @@ uip_process(u8_t flag) __banked
     /* Check if we were invoked because of the perodic timer fireing. */
   } else if(flag == UIP_TIMER) {
 //  print_string("T1\n");
+#if UIP_LOGGING == 1
+    if(fragdrop_count && (u16_t)ticks - fragdrop_mark >= FRAGDROP_WINDOW) {
+      print_string_no_syslog("ip: fragments dropped: ");
+      itoa_no_syslog(fragdrop_count);
+      if(fragdrop_count == 0xff)
+        write_char_no_syslog('+');
+      write_char_no_syslog('\n');
+      fragdrop_mark = (u16_t)ticks;
+      fragdrop_count = 0;
+    }
+#endif /* UIP_LOGGING == 1 */
 #if UIP_IDLE_TIMEOUT
     if(uip_connr == uip_conns) {
       uip_idle_age = 0;
@@ -915,7 +930,10 @@ uip_process(u8_t flag) __banked
 #else /* UIP_REASSEMBLY */
     UIP_STAT(++uip_stat.ip.drop);
     UIP_STAT(++uip_stat.ip.fragerr);
-    UIP_LOG("ip: fragment dropped.");
+#if UIP_LOGGING == 1
+    if(fragdrop_count != 0xff)
+      ++fragdrop_count;
+#endif /* UIP_LOGGING == 1 */
     goto drop;
 #endif /* UIP_REASSEMBLY */
   }

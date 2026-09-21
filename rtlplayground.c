@@ -277,6 +277,19 @@ void itoa(uint8_t v)
 }
 
 
+void itoa_no_syslog(uint8_t v)
+{
+	uint8_t t = (v / 100);
+	uint8_t print_zeros = t;
+	if (print_zeros)
+		write_char_no_syslog('0' + t);
+	t = (v / 10) % 10;
+	print_zeros |= t;
+	if (print_zeros)
+		write_char_no_syslog('0' + t);
+	write_char_no_syslog('0' + (v % 10));
+}
+
 /* Same as itoa(), one decade wider: enough for a port number. Kept separate
  * rather than widening itoa() itself, because every existing caller passes a
  * byte and would start paying for 16-bit divisions it does not need. */
