@@ -89,12 +89,13 @@ volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_tick_last;
-__xdata uint8_t tx_tick_last;
 __xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
 #define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
 #define STP_CATCH_UP 8
+#define SFP_TICK_STEP 10
+__xdata uint8_t sfp_tick_last;
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -137,6 +138,7 @@ __code const uint16_t bit_mask[16] = {
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
 volatile __bit link_irq;
+__xdata uint8_t idle_tick_last;
 // Last known state of the SFP detection/Loss of Signal pins
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
@@ -1083,9 +1085,6 @@ void handle_rx(void)
 
 void handle_tx(void)
 {
-	if (!TICKS_DUE(tx_tick_last, 1))
-		return;
-	tx_tick_last = (uint8_t)ticks;
 	for(uint8_t i = 0; i < UIP_CONNS; i++) {
 		uip_periodic(i);
 		if(uip_len > 0) {
@@ -1220,13 +1219,8 @@ void check_links(void)
 //
 // An idle function that sleeps for 1 tick and does all the house-keeping
 //
-void idle(void)
+static void handle_tick(void)
 {
-	reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
-	rx_seen = SFR_DATA_U16 != 0;
-	if (!rx_seen)
-		PCON |= 1;
-	health_loop_start();
 	if (sec_counter >= SYS_TICK_HZ) {
 		sec_counter -= SYS_TICK_HZ;
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
@@ -1269,27 +1263,14 @@ void idle(void)
 #endif
 	}
 
-	// Check for Link changes when the switch has reported one
-	if (link_irq) {
-		link_irq = 0;
-		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
-		EX0 = 1;
-		check_links();
-	}
-
 	health_phase(HEALTH_PH_LINK);
-
-	// Check for changes with SFP modules
-	handle_sfp();
+	if (TICKS_DUE(sfp_tick_last, SFP_TICK_STEP)) {
+		sfp_tick_last += SFP_TICK_STEP;
+		handle_sfp();
+	}
 	health_phase(HEALTH_PH_SFP);
-
-	// Check new Packets RX
-	handle_rx();
-	health_phase(HEALTH_PH_RX);
-	// Check UIP for packets to transmit
 	handle_tx();
 	health_phase(HEALTH_PH_TX);
-	// If STP protocol enabled, run its timers once per STP tick that has passed
 	if (stp_enabled) {
 		uint8_t n = STP_CATCH_UP;
 		while (n-- && TICKS_DUE(stp_tick_last, STP_TICK_STEP)) {
@@ -1298,7 +1279,29 @@ void idle(void)
 		}
 	}
 	health_phase(HEALTH_PH_STP);
-	// Check whether a command is waiting in the cmd_buffer and execute
+}
+
+
+void idle(void)
+{
+	reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+	rx_seen = SFR_DATA_U16 != 0;
+	if (!rx_seen)
+		PCON |= 1;
+	health_loop_start();
+	if (TICKS_DUE(idle_tick_last, 1)) {
+		idle_tick_last = (uint8_t)ticks;
+		handle_tick();
+	}
+	if (link_irq) {
+		link_irq = 0;
+		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
+		EX0 = 1;
+		check_links();
+	}
+	health_phase(HEALTH_PH_LINK);
+	handle_rx();
+	health_phase(HEALTH_PH_RX);
 	if (cmd_available) {
 		cmd_available = 0;
 		cmd_tokenize();
@@ -1622,6 +1625,8 @@ void main(void)
 {
 	ticks = 0;
 	stp_tick_last = (uint8_t)ticks;
+	idle_tick_last = (uint8_t)ticks;
+	sfp_tick_last = (uint8_t)ticks;
 	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
 
