@@ -95,7 +95,7 @@ bool sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t lengt
 		dst[i] = c;
 	}
 
-	while (length > 0 && dst[--length] == ' ')
+	while (length-- > 0 && (dst[length] == ' ' || dst[length] == NUL))
 		dst[length] = NUL;
 
 	return true;
