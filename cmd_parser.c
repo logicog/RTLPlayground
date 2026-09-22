@@ -17,6 +17,11 @@
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
+#include "telnetd.h"
+#include "sntp.h"
+#include "totp.h"
+#include "help.h"
+#include "cfgstore.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -1714,7 +1719,14 @@ void cmd_parser(void) __banked
 	print_byte(cmd_words_b[6]); write_char('\n');
 #endif
 	if (cmd_words_len >= 1) {
-		if (cmd_compare(0, "reset")) {
+		if (cmd_compare(0, "help")) {
+			help_print();
+		} else if (cmd_compare(0, "save")) {
+			if (cmd_words_len == 2 && cmd_compare(1, "show"))
+				cfgstore_show();
+			else
+				cfgstore_save();
+		} else if (cmd_compare(0, "reset")) {
 			print_string("\nRESET\n\n");
 			reset_chip();
 		} else if (cmd_compare(0, "sfp")) {
@@ -1822,6 +1834,93 @@ void cmd_parser(void) __banked
 			else {
 				cmd_error("igmp on|off|show\n");
 			}
+		} else if (cmd_compare(0, "telnet")) {
+			if (cmd_words_len == 1) {
+				print_string("Telnet: ");
+				print_string(telnet_state.enabled ? "enabled" : "disabled");
+				print_string(", bind: ");
+				if (telnet_state.bind[0] | telnet_state.bind[1]
+				    | telnet_state.bind[2] | telnet_state.bind[3])
+					print_ip(telnet_state.bind);
+				else
+					print_string("any");
+				print_string(", timeout: ");
+				itoa_short(telnet_state.idle_secs);
+				write_char('s');
+				if (telnet_state.conn)
+					print_string(", client connected");
+				write_char('\n');
+			} else if (cmd_compare(1, "on")) {
+				telnet_start();
+			} else if (cmd_compare(1, "off")) {
+				telnet_stop();
+			} else if (cmd_compare(1, "timeout")) {
+				if (cmd_words_len == 3 && atoi_short(cmd_words_b[2])
+				    && atoi_results_short >= 30) {
+					telnet_set_timeout(atoi_results_short);
+				} else {
+					cmd_error("telnet timeout <30-65535 seconds>\n");
+				}
+			} else if (cmd_compare(1, "bind")) {
+				if (cmd_words_len < 3) {
+					cmd_error("telnet bind <ip-address|any>\n");
+				} else if (cmd_compare(2, "any")) {
+					telnet_state.bind[0] = 0; telnet_state.bind[1] = 0;
+					telnet_state.bind[2] = 0; telnet_state.bind[3] = 0;
+					print_string("Telnet accepts connections on any local IP\n");
+				} else if (parse_ip(cmd_words_b[2]) != 0) {
+					telnet_state.bind[0] = ip[0]; telnet_state.bind[1] = ip[1];
+					telnet_state.bind[2] = ip[2]; telnet_state.bind[3] = ip[3];
+					print_string("Telnet bound to ");
+					print_ip(telnet_state.bind);
+					write_char('\n');
+				} else {
+					cmd_error("Invalid IP address\n" \
+								 "Error: telnet bind <ip-address|any>\n");
+				}
+			} else {
+				cmd_error("telnet [on|off|bind <ip-address|any>|timeout <secs>]\n");
+			}
+		} else if (cmd_compare(0, "ntp")) {
+			if (cmd_words_len == 1) {
+				sntp_status_print();
+			} else if (cmd_compare(1, "off")) {
+				sntp_stop();
+			} else if (parse_ip(cmd_words_b[1]) != 0) {
+				sntp_state.server[0] = ip[0]; sntp_state.server[1] = ip[1];
+				sntp_state.server[2] = ip[2]; sntp_state.server[3] = ip[3];
+				sntp_start();
+			} else {
+				cmd_error("ntp [<server-ip>|off]\n");
+			}
+		} else if (cmd_compare(0, "totp")) {
+			if (cmd_words_len == 1) {
+				totp_status_print();
+			} else if (cmd_compare(1, "on")) {
+				if (!totp_keylen) {
+					cmd_error("No TOTP secret set, use: totp secret <base32>\n");
+				} else {
+					totp_enabled = 1;
+					print_string("TOTP second factor for telnet enabled\n");
+					if (!sntp_state.synced)
+						print_string("WARNING: time not synced, telnet logins fail until SNTP syncs (see 'ntp')\n");
+				}
+			} else if (cmd_compare(1, "off")) {
+				totp_enabled = 0;
+				print_string("TOTP disabled\n");
+			} else if (cmd_compare(1, "secret") && cmd_words_len == 3) {
+				if (totp_set_secret(&cmd_buffer[cmd_words_b[2]])) {
+					print_string("TOTP secret set. Authenticator URI:\notpauth://totp/");
+					print_string_x(hostname);
+					print_string("?secret=");
+					print_string_x(&cmd_buffer[cmd_words_b[2]]);
+					print_string("&issuer=RTLPlayground\n");
+				} else {
+					cmd_error("Invalid base32 secret (10..32 bytes decoded)\n");
+				}
+			} else {
+				cmd_error("totp [on|off|secret <base32>]\n");
+			}
 		} else if (cmd_compare(0, "mac")) {
 			parse_mac_cmd();
 		} else if (cmd_compare(0, "hostname")) {
@@ -1916,6 +2015,9 @@ void cmd_parser(void) __banked
 			cmd_error("Unknown command\n");
 		}
 
+
+		if (save_cmd && cmd_words_len && err_status == ERR_OK)
+			cfgstore_note();
 
 		if (save_cmd && cmd_words_len && err_status == ERR_OK) {
 			// Find end of the cmd-buffer, looking for the NUL-byte.

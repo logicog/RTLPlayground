@@ -72,6 +72,7 @@ bw_exceed:"When exceeded",bw_fc:"Flow control",bw_drop:"Drop",
 bw_in_err:"Ingress limit must be 0.016-10000 Mbit/s",bw_out_err:"Egress limit must be 0.016-10000 Mbit/s",
 sy_network:"Network",sy_dhcp:"Use DHCP",sy_dhcp_t:"Request address via DHCP",sy_services:"Services",
 sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",
+sy_telnet:"Telnet console",sy_bind:"Bind IP",sy_bind_err:"Invalid bind IP",
 sy_services_note:"Service state reflects the startup config; runtime state is not readable.",
 sy_password:"Admin password",sy_newpw:"New password",sy_repeat:"Repeat",sy_pwapply:"Change password",
 sy_pw_note:"Takes effect immediately; save to flash to keep it after reboot.",sy_console:"Console",
@@ -183,6 +184,7 @@ bw_exceed:"超過時の動作",bw_fc:"フロー制御",bw_drop:"破棄",
 bw_in_err:"入力制限は 0.016〜10000 Mbit/s の範囲で指定してください",bw_out_err:"出力制限は 0.016〜10000 Mbit/s の範囲で指定してください",
 sy_network:"ネットワーク",sy_dhcp:"DHCP を使用",sy_dhcp_t:"DHCP でアドレスを取得",sy_services:"サービス",
 sy_igmp:"IGMP スヌーピング",sy_sysip:"サーバー IP",sy_server:"サーバー",sy_port:"ポート",
+sy_telnet:"Telnet コンソール",sy_bind:"バインド IP",sy_bind_err:"バインド IP が無効です",
 sy_services_note:"サービスの状態は起動設定を反映しています。実行時の状態は読み取れません。",
 sy_password:"管理者パスワード",sy_newpw:"新しいパスワード",sy_repeat:"再入力",sy_pwapply:"パスワードを変更",
 sy_pw_note:"即時に反映されます。再起動後も保持するにはフラッシュに保存してください。",sy_console:"コンソール",
@@ -294,6 +296,7 @@ bw_exceed:"超限动作",bw_fc:"流量控制",bw_drop:"丢弃",
 bw_in_err:"入方向限速范围为 0.016-10000 Mbit/s",bw_out_err:"出方向限速范围为 0.016-10000 Mbit/s",
 sy_network:"网络",sy_dhcp:"使用 DHCP",sy_dhcp_t:"通过 DHCP 获取地址",sy_services:"服务",
 sy_igmp:"IGMP 侦听",sy_sysip:"服务器 IP",sy_server:"服务器",sy_port:"端口",
+sy_telnet:"Telnet 控制台",sy_bind:"绑定 IP",sy_bind_err:"绑定 IP 无效",
 sy_services_note:"服务状态反映启动配置；运行时状态无法读取。",
 sy_password:"管理员密码",sy_newpw:"新密码",sy_repeat:"重复输入",sy_pwapply:"修改密码",
 sy_pw_note:"立即生效；如需重启后保留请保存到 Flash。",sy_console:"控制台",
@@ -405,6 +408,7 @@ bw_exceed:"Al excederse",bw_fc:"Control de flujo",bw_drop:"Descartar",
 bw_in_err:"El límite de entrada debe estar entre 0.016 y 10000 Mbit/s",bw_out_err:"El límite de salida debe estar entre 0.016 y 10000 Mbit/s",
 sy_network:"Red",sy_dhcp:"Usar DHCP",sy_dhcp_t:"Solicitar dirección mediante DHCP",sy_services:"Servicios",
 sy_igmp:"IGMP snooping",sy_sysip:"IP del servidor",sy_server:"Servidor",sy_port:"Puerto",
+sy_telnet:"Consola Telnet",sy_bind:"IP de enlace",sy_bind_err:"IP de enlace no válida",
 sy_services_note:"El estado del servicio refleja la configuración de inicio; el estado en ejecución no es legible.",
 sy_password:"Contraseña de administrador",sy_newpw:"Nueva contraseña",sy_repeat:"Repetir",sy_pwapply:"Cambiar contraseña",
 sy_pw_note:"Toma efecto inmediatamente; guarda en flash para conservarla tras el reinicio.",sy_console:"Consola",
@@ -557,6 +561,10 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
+  /^telnet\s+(on|off)$/,/^telnet\s+bind\s+((\d{1,3}\.){3}\d{1,3}|any)$/,
+  /^telnet\s+timeout\s+\d{2,5}$/,
+  /^ntp\s+((\d{1,3}\.){3}\d{1,3}|off)$/,
+  /^totp\s+(on|off)$/,/^totp\s+secret\s+[A-Za-z2-7]+=*$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -1621,6 +1629,9 @@ function sysLoad(){
     var sl=(S.info.syslog_server||"").split(":");
     if(sl[0]&&sl[0]!=="0.0.0.0")$("sy-sysip").value=sl[0];
     if(sl[1])$("sy-sysport").value=sl[1];
+    $("sy-telnet").checked=S.info.telnet==="on";
+    var tb=S.info.telnet_bind||"";
+    $("sy-telnetbind").value=(tb&&tb!=="0.0.0.0")?tb:"";
   }).catch(function(){});
   cfgReload();
 }
@@ -1660,6 +1671,18 @@ $("sy-dhcp").addEventListener("click",function(){
 $("sy-igmp").addEventListener("change",function(){
   var el=this;
   postCmd("igmp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+});
+$("sy-telnet").addEventListener("change",function(){
+  var cmds=[],el=this;
+  if(el.checked){
+    var b=$("sy-telnetbind").value.trim();
+    if(b&&b!=="any"){
+      if(!okIp(b)){toast(t("sy_bind_err"),"err");el.checked=false;return;}
+      cmds.push("telnet bind "+b);
+    }else cmds.push("telnet bind any");
+    cmds.push("telnet on");
+  }else cmds.push("telnet off");
+  postCmds(cmds).catch(function(){el.checked=!el.checked});
 });
 $("sy-syslog").addEventListener("change",function(){
   var cmds=[],el=this;
@@ -1740,8 +1763,9 @@ var CONF_OVERWRITE=[
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,
+  /^telnet\s+bind\b/,/^telnet\s+timeout\b/,/^ntp\b/,/^totp\s+secret\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(telnet)\s+(on|off)$/,/^(totp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}

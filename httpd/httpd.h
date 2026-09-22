@@ -14,10 +14,13 @@ typedef struct httpd_state {
    uint8_t tstate;
 } uip_tcp_appstate_t;
 
-/* Finally we define the application function to be called by uIP. */
+/* Finally we define the application function to be called by uIP.
+ * tcp_appcall dispatches by local port between the httpd and the
+ * telnet server. */
 void httpd_appcall(void);
+void tcp_appcall(void);
 #ifndef UIP_APPCALL
-#define UIP_APPCALL httpd_appcall
+#define UIP_APPCALL tcp_appcall
 #endif /* UIP_APPCALL */
 
 void httpd_init(void) __banked;

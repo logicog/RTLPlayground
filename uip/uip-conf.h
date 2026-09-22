@@ -116,7 +116,8 @@ typedef unsigned short uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_CONF_MAX_LISTENPORTS 1
+/* One slot for the httpd (80) and one for the telnet server (23) */
+#define UIP_CONF_MAX_LISTENPORTS 2
 
 /**
  * uIP buffer size.

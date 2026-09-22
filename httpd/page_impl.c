@@ -15,6 +15,7 @@
 #include "rtl837x_stp.h"
 #include "page_impl.h"
 #include "syslog.h"
+#include "telnetd.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -258,6 +259,16 @@ void send_basic_info(void)
 	itoa_html(syslog_state.server_ip[2]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[3]); char_to_html(':');
 	itoa16_html(syslog_state.server_port);
+	slen += strtox(outbuf + slen, "\",\"telnet\":\"");
+	if (telnet_state.enabled)
+		slen += strtox(outbuf + slen, "on");
+	else
+		slen += strtox(outbuf + slen, "off");
+	slen += strtox(outbuf + slen, "\",\"telnet_bind\":\"");
+	itoa_html(telnet_state.bind[0]); char_to_html('.');
+	itoa_html(telnet_state.bind[1]); char_to_html('.');
+	itoa_html(telnet_state.bind[2]); char_to_html('.');
+	itoa_html(telnet_state.bind[3]);
 	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');

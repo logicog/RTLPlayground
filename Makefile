@@ -64,8 +64,13 @@ SRCS = \
 	html_data.c \
 	rtlplayground.c \
 	boot.c \
+	cfgstore.c \
+	help.c \
 	sfp.c \
+	sntp.c \
 	syslog.c \
+	telnetd.c \
+	totp.c \
 	udp_apps.c
 
 # RTL837x

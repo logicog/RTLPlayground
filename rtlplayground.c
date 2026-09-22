@@ -26,6 +26,10 @@
 #include "phy.h"
 #include "syslog.h"
 #include "httpd/page_impl.h"
+#include "telnetd.h"
+#include "sntp.h"
+#include "totp.h"
+#include "cfgstore.h"
 #include "boot.h"
 #include "sfp.h"
 
@@ -223,6 +227,9 @@ void isr_serial(void) __interrupt(4)
 __xdata uint8_t cmd_capture;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
+extern __xdata uint8_t telnet_outbuf[TELNET_OUTBUF];
+extern __xdata uint16_t telnet_slen;
+extern __xdata uint8_t telnet_capture;
 
 void write_char_no_syslog(char c)
 {
@@ -235,6 +242,15 @@ void write_char_no_syslog(char c)
 			outbuf[slen++] = c;
 		else
 			cmd_capture = 2;	/* out of room, httpd says so */
+	} else if (telnet_capture) {
+		/* Telnet needs CRLF line endings on the wire */
+		if (telnet_slen < TELNET_OUTBUF - 2) {
+			if (c == '\n')
+				telnet_outbuf[telnet_slen++] = '\r';
+			telnet_outbuf[telnet_slen++] = c;
+		} else {
+			telnet_capture = 2;	/* out of room, telnetd says so */
+		}
 	}
 
 	do {
@@ -1728,6 +1744,9 @@ void main(void)
 	uip_init();
 	uip_arp_init();
 	httpd_init();
+	telnetd_init();
+	sntp_init();
+	totp_init();
 
 	management_vlan = 1; // Default management VLAN is 1
 
@@ -1747,6 +1766,7 @@ void main(void)
 	early_boot_handle_button();
 
 	execute_config();
+	cfgstore_load();
 	// After the config so the entry lands in the final management VLAN
 	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
 	/* After the config: a name from it wins, otherwise derive one. */
