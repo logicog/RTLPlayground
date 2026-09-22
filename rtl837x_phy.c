@@ -354,8 +354,9 @@ void phy_set_speed(void) __banked
 			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
-			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
-			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1001);
+			// bits 0-4: 0x1 (802.3 supported), bit 10: PAUSE,
+			// Extended Next Page format used
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1401);
 			if (phy_settings.speed == PHY_SPEED_1G) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
