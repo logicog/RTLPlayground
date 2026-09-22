@@ -465,6 +465,20 @@ extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 #endif /* UIP_CONF_BROADCAST */
 
 /**
+ * Build the IP forwarding module.
+ *
+ * uip-fw.c forwards packets between several network interfaces. A
+ * single-interface device does not call it and should not pay for it.
+ *
+ * \hideinitializer
+ */
+#ifndef UIP_CONF_FORWARDING
+#define UIP_FORWARDING 0
+#else /* UIP_CONF_FORWARDING */
+#define UIP_FORWARDING UIP_CONF_FORWARDING
+#endif /* UIP_CONF_FORWARDING */
+
+/**
  * Print out a uIP log message.
  *
  * This function must be implemented by the module that uses uIP, and
