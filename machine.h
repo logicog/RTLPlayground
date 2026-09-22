@@ -48,6 +48,7 @@
 // #define MACHINE_POE_2G080110GS
 // #define MACHINE_PB_2132
 // #define MACHINE_HASIVO_S600W_4GT_2XGT_SE
+// #define MACHINE_F7008_2_5
 
 #define LED_27 1
 // SYSTEM LED
