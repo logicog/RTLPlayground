@@ -751,7 +751,15 @@ uip_process(u8_t flag) __banked
 	 connection's timer and see if it has reached the RTO value
 	 in which case we retransmit. */
 #if UIP_IDLE_TIMEOUT
-      if(!uip_outstanding(uip_connr)) {
+      if(!uip_outstanding(uip_connr)
+#ifdef UIP_IDLE_EXEMPT_LPORT
+	 /* Long-lived services (e.g. the telnet console) run their own,
+	    longer idle timeout in the application, so exempt them from
+	    this short reaper - it exists to free slots held by abandoned
+	    httpd connections, not to cap interactive sessions. */
+	 && uip_connr->lport != HTONS(UIP_IDLE_EXEMPT_LPORT)
+#endif
+	) {
 	/* The retransmission timer is unused while nothing is in flight,
 	   so idle time is counted in it instead. */
 	if(uip_idle_age &&

@@ -111,6 +111,11 @@ typedef unsigned short uip_stats_t;
 #define UIP_CONF_IDLE_PERIODS 200
 #define UIP_CONF_IDLE_TIMEOUT 30
 
+/* Exempt the telnet port from the short idle reaper above: the telnet
+ * server keeps its own, user-configurable idle timeout. Without this a
+ * telnet session is dropped after ~30s regardless. */
+#define UIP_IDLE_EXEMPT_LPORT 23
+
 /**
  * Maximum number of listening TCP ports. TODO: increase this!
  *
