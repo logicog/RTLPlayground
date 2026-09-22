@@ -130,10 +130,20 @@ distclean: $(SUBDIRSCLEAN)
 $(SUBDIRSCLEAN):
 	$(MAKE) -C $(@:clean=) clean
 
-$(BUILDDIR)/%.rel: %.c | create_build_dir html_data.h
+# Objects depend on the flags they were built with, through a stamp file that
+# is rewritten only when CC_FLAGS actually changes.
+CCFLAGS_STAMP := $(BUILDDIR)/.ccflags
+
+.PHONY: FORCE
+FORCE:
+
+$(CCFLAGS_STAMP): FORCE | create_build_dir
+	@echo '$(CC_FLAGS)' | cmp -s - $@ 2>/dev/null || echo '$(CC_FLAGS)' > $@
+
+$(BUILDDIR)/%.rel: %.c $(CCFLAGS_STAMP) | create_build_dir html_data.h
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
-$(BUILDDIR)/%.rel: %.asm | create_build_dir
+$(BUILDDIR)/%.rel: %.asm $(CCFLAGS_STAMP) | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
