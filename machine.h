@@ -44,6 +44,7 @@
 // #define MACHINE_SWTG024AS_V2_0
 // #define MACHINE_FG_4GT_2SX_V2_0
 // #define MACHINE_FG_8GT_1SX
+// #define MACHINE_LINKSYS_LN2308
 // #define MACHINE_LIANGUO_HYWS_SGT0108S
 // #define MACHINE_POE_2G080110GS
 // #define MACHINE_PB_2132
@@ -71,6 +72,11 @@ struct sfp_port
 	uint8_t i2c;
 };
 
+#ifdef MACHINE_LINKSYS_LN2308
+// Dual-IO flash reads leave the LN2308 rebooting/crashing after the first banked call; use single IO
+#define FLASH_SIO_ONLY 1
+#endif
+
 struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
@@ -86,6 +92,8 @@ struct machine {
 	// sfp_port[0] is the first SFP-port from the left on the device, sfp_port[1] the next if present 
 	struct sfp_port sfp_port[2];
 	uint8_t reset_pin;
+	// GPIO that resets/enables the RTL8224 on RTL8373 boards. 0 = default (GPIO36), GPIO_NA = none.
+	uint8_t rtl8224_reset_pin;
 	struct high_leds high_leds;
 	// Defines which led-set (0-3) will be used for given logical port
 	// led-set is physical group of LEDs that can be configured to show different port status combinations (see port_led_set below)

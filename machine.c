@@ -1119,6 +1119,46 @@ __code const struct machine machine = {
 		},
 	};
 
+#elif defined MACHINE_LINKSYS_LN2308
+/* Linksys LN2308: 8 x 2.5GBit RJ45, no SFP cage. See doc/devices/LN2308.md */
+__code const struct machine machine = {
+	.machine_name = "Linksys LN2308",
+	.isRTL8373 = 1,
+	.min_port = 0,
+	.max_port = 8,
+	.n_sfp = 0,
+	.n_10g = 0,
+	.log_to_phys_port = {1, 2, 3, 4, 5, 6, 7, 8, 9},
+	.phys_to_log_port = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 0},
+	.reset_pin = GPIO_NA,
+	/* Stock drives GPIO30 high and leaves GPIO36 as input; pulling GPIO36 low resets the board */
+	.rtl8224_reset_pin = GPIO30_ACL_BIT3_EN,
+	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
+	.port_led_set = {0, 0, 0, 0, 1, 1, 0, 1, 0},
+	.led_sets = {
+		{	/* Set 0 (stock LED1_0_SET0 = 0x01540141, LED3_2_SET0 = 0x01411000; 10M added)
+			 * LED0: 2.5GBit link/activity, LED1: 10/100/1000MBit link/activity */
+			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+			LEDS_DUPLEX,
+			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+		},
+		{	/* Set 1 (stock LED1_0_SET1 = 0x01410174, LED3_2_SET1 = 0x18000041): LED0/LED1 swapped */
+			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+			LEDS_2G5 | LEDS_LINK,
+			LEDS_COL | LEDS_DUPLEX,
+		},
+	},
+	.led_mux_custom = 1,
+	.led_mux = {	/* stock LED_GLB_MUX_1..6 = 08144040 10349309 12454391 19616555 1c79d65a 0002181d */
+		0x00, 0x01, 0x04, 0x05, 0x08, 0x09, 0x0c, 0x09, 0x0d, 0x10,
+		0x11, 0x0e, 0x14, 0x11, 0x12, 0x15, 0x15, 0x16, 0x18, 0x19,
+		0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21,
+	},
+};
+
 #elif defined MACHINE_FG_8GT_1SX
 __code const struct machine machine = {
 	.machine_name = "FG-8GT-1SX",

@@ -23,6 +23,7 @@ The following devices have been tested and are fully working:
 | LIANGUO  | SWTG024AS       | No      | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 0.5M  | 4 + 2 |
 | Lianguo  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0 / PCB-SWTG115AS-V2.1](devices/SWTGW215AS.md)          | 2M    | 5 + 1 |
 | Lianguo  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/HYWS-SGT0108S.md)                                | 0.5M  | 8 + 1 |
+| Linksys  | LN2308          | No      | [LN2308](devices/LN2308.md)                                               | 1M    | 8     |
 | Mokerlink| 2G040210GSM     | Yes     | [2M-PCB43-V1.1](devices/2M-PCB43-V1.1.md)                                 |       | 4 + 2 |
 | Mokerlink| ZX-SWTGW218AS   | Yes     | [SWTG118AS-V2.0-16029](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | MokerLink| POE-2G080110GS  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1_1.md)                           | 4M    | 8 + 1 |

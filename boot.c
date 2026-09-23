@@ -236,13 +236,29 @@ void sds_config(uint8_t sds, uint8_t mode) __banked
 
 void rtl8224_enable(void) __banked
 {
-	// Set Pin 4 low
-	reg_bit_clear(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
-	// Configure Pin as output
-	reg_bit_set(RTL837X_REG_GPIO_32_63_DIRECTION, 4);
-	delay(100);
-	// Set pin 4 high
-	reg_bit_set(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
+	// Pulse the RTL8224 reset line low, then high. A machine that does not name a pin gets
+	// the GPIO36 sequence this function has always used, register for register; boards that
+	// set rtl8224_reset_pin (e.g. the Linksys LN2308, which uses GPIO30) go through
+	// gpio_output_setup() so the pin's MUX is selected as well.
+	uint8_t pin = machine.rtl8224_reset_pin;
+
+	if (pin == GPIO_NA)
+		return;
+
+	if (!pin) {
+		// Set Pin 4 low
+		reg_bit_clear(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
+		// Configure Pin as output
+		reg_bit_set(RTL837X_REG_GPIO_32_63_DIRECTION, 4);
+		delay(100);
+		// Set pin 4 high
+		reg_bit_set(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
+	} else {
+		gpio_output_setup(pin, 0);
+		delay(100);
+		reg_bit_set(pin < 32 ? RTL837X_REG_GPIO_00_31_OUTPUT
+				     : RTL837X_REG_GPIO_32_63_OUTPUT, pin % 32);
+	}
 	delay(500);
 }
 
