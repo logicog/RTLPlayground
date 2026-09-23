@@ -901,7 +901,7 @@ void parse_port(void)
 		port_media_show(phy_settings.port);
 	} else if (cmd_compare(2, "name")) {
 		uint8_t i = 0;
-		while ( (i < PORT_NAME_SIZE-1) && (cmd_buffer[cmd_words_b[3] + i] != NUL) ) {
+		while ( cmd_words_len > 3 && (i < PORT_NAME_SIZE-1) && (cmd_buffer[cmd_words_b[3] + i] != NUL) ) {
 			port_names[phy_settings.port][i] = name_char(cmd_buffer[cmd_words_b[3] + i]);
 			i++;
 		}
