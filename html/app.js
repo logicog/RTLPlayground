@@ -63,6 +63,9 @@ l2_del_t:"Delete entry",l2_flush_q:"Flush all learned MAC entries?",
 m_title:"Port mirroring",m_active:"active",m_monitor:"Monitor port",m_mirror:"Mirror",m_both:"Both",
 m_note:"Both = mirror RX and TX of the port to the monitor port.",m_none:"Select at least one mirrored port",
 lag_hash:"Hash:",lag_note:"A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.",
+lacp_heading:"LACP (802.3ad)",lag_mode:"Mode",lag_static:"Static",lacp_neg:"negotiating",lacp_agg:"aggregator",
+lacp_members:"active members",lacp_hint:"LACP: select candidate ports and press Apply to start negotiation",
+lacp_actor:"Actor",lacp_partner:"Partner",lacp_rxstate:"RX state",lacp_rx:"LACPDUs received",lacp_psys:"Partner system",
 lag_clear_q:"Clear LAG {n}?",lag_clear_d:"All member ports return to normal operation.",
 e_title:"Energy Efficient Ethernet",e_adv:"Advertised",e_lp:"Link partner",e_active:"Active",e_enable:"Enable",
 e_note:"Advertised and link-partner flags per speed: 100M, 1G, 2.5G. SFP ports do not support EEE.",
@@ -550,7 +553,7 @@ var CONF_CMDS=[
   /^port\s+\d{1,2}\s+name\s+\S+$/,
   /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
-  /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
+  /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
   /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
   /^stp\s+version\s+(rstp|stp)$/,
@@ -1479,6 +1482,15 @@ function buildLag(){
   for(var g=1;g<=4;g++)(function(g){
     var card=h("div",{class:"card"});
     card.appendChild(h("h2",{text:"LAG "+g}));
+    var mr=h("div",{style:"display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px",class:"small"});
+    mr.appendChild(h("span",{class:"mut",text:t("lag_mode")}));
+    var ms=h("select",{class:"in",id:"lgm"+g});
+    ms.appendChild(h("option",{value:"static",text:t("lag_static")}));
+    ms.appendChild(h("option",{value:"lacp",text:"LACP"}));
+    ms.addEventListener("change",function(){$("lgs"+g).textContent=ms.value==="lacp"?t("lacp_hint"):""});
+    mr.appendChild(ms);
+    card.appendChild(mr);
+    card.appendChild(h("p",{class:"small mono",id:"lgs"+g,style:"margin-bottom:10px"}));
     var pr=h("div",{style:"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"});
     for(var p=1;p<=S.n;p++)pr.appendChild(h("label",null,[
       h("input",{type:"checkbox",id:"lg"+g+"p"+p}),document.createTextNode(" "+p+" "),
@@ -1491,14 +1503,33 @@ function buildLag(){
     });
     card.appendChild(hr);
     card.appendChild(h("button",{class:"ctl pri",text:t("c_apply"),onclick:function(){lagApply(g)}}));
+    card.addEventListener("change",function(){card.dataset.dirty="1"});
     w.appendChild(card);
   })(g);
 }
+var lacpCfg=[0,0,0,0,0];
 function lagLoad(){
-  return getJSON("/lag.json").then(function(s){
+  return getJSON("/lacp.json").then(function(c){
+    var tb=$("lacptbl").tBodies[0];
+    tb.innerHTML="";
+    c.lags.forEach(function(lg,i){
+      var g=i+1;
+      lacpCfg[g]=parseInt(lg.cfg,16);
+      if($("lgm"+g).closest(".card").dataset.dirty)return;
+      $("lgm"+g).value=lacpCfg[g]?"lacp":"static";
+      $("lgs"+g).textContent=lacpCfg[g]?"LACP: "+t("lacp_agg")+" "+(lg.aggValid?lg.agg:"("+t("lacp_neg")+")")+", "+t("lacp_members")+" 0x"+lg.members:"";
+    });
+    if(c.on)c.ports.forEach(function(p){
+      if(p.lag===255)return;
+      var tr=tb.insertRow();
+      [p.p,p.lag+1,p.a,p.pt,p.rs,parseInt(p.rx,16),p.psys].forEach(function(v){tr.insertCell().textContent=v});
+    });
+    return getJSON("/lag.json");
+  }).then(function(s){
     s.forEach(function(l){
       var g=l.lagNum+1;
-      var members=parseInt(l.members,2);
+      if($("lgm"+g).closest(".card").dataset.dirty)return;
+      var members=lacpCfg[g]||parseInt(l.members,2);
       for(var p=1;p<=S.n;p++)
         $("lg"+g+"p"+p).checked=!!((members>>S.physToLog[p-1])&1);
       var hash=parseInt(l.hash,16);
@@ -1507,21 +1538,25 @@ function lagLoad(){
   });
 }
 function lagApply(g){
-  var cmd="lag "+g,n=0;
+  var lacp=$("lgm"+g).value==="lacp",cmd="lag "+g+(lacp?" lacp":""),n=0,pre=[];
+  delete $("lgm"+g).closest(".card").dataset.dirty;
   for(var p=1;p<=S.n;p++)if($("lg"+g+"p"+p).checked){cmd+=" "+p;n++;}
-  if(!n){
+  if(!lacp&&lacpCfg[g])pre.push("lag "+g+" lacp off");
+  if(lacp&&!n)cmd="lag "+g+" lacp off";
+  if(!n&&!lacp){
     confirmModal(t("lag_clear_q",{n:g}),t("lag_clear_d"),function(){
-      postCmd("lag "+g+" d").then(lagLoad).catch(function(){});
+      postCmds(pre.concat(["lag "+g+" d"])).then(lagLoad).catch(function(){});
     });
     return;
   }
   var hcmd="laghash "+g,nh=0;
   HASHF.forEach(function(f){if($("lg"+g+"h"+f).checked){hcmd+=" "+f;nh++;}});
-  var cmds=[cmd];
+  var cmds=pre.concat([cmd]);
   if(nh)cmds.push(hcmd);
   postCmds(cmds).then(lagLoad).catch(function(){});
 }
-tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagLoad().catch(function(){})})}};
+var lagPoller=new Poller(function(){return lagLoad().catch(function(){})},3000);
+tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagPoller.start()})},leave:function(){lagPoller.stop()}};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);
@@ -1765,6 +1800,7 @@ function mergeConf(base,texts){
         else drop(/^eee /);
         conf.push(line);return;
       }
+      if((m=line.match(/^lag (\d) lacp off$/))){drop(new RegExp("^lag "+m[1]+" lacp( |$)"));return;}
       if(line==="mirror off"){drop(/^mirror /);return;}
       if(!isConfCmd(line))return;
       if((m=line.match(/^ingress (.+)$/))){
