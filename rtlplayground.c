@@ -134,10 +134,12 @@ __code const uint16_t bit_mask[16] = {
 
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
+volatile __bit link_irq;
 // Last known state of the SFP detection/Loss of Signal pins
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
 volatile __bit tx_buf_empty;
+__bit rx_seen;
 
 
 struct eth_in {
@@ -489,14 +491,14 @@ void print_cmd_prompt(void)
 }
 
 /*
- * External IRQ 0 Service Routine: Called on link change?
- * Note that all registers are being put on the STACK because of calling a subroutine
+ * External IRQ 0 Service Routine: the switch reports a link change. The
+ * register access macros share the SFR data bytes with the main loop, so
+ * the handler only latches the event; idle() reads and clears it.
  */
 void isr_ext0(void) __interrupt(0)
 {
-	EX0 = 0;	// Disable interrupt for the moment
-	IT0 = 1;	// Trigger on falling edge of external interrupt
-	EX0 = 1;	// Re-enable interrupt
+	EX0 = 0;
+	link_irq = 1;
 }
 
 
@@ -991,10 +993,14 @@ void handle_rx(void)
 	__xdata uint8_t budget = RX_BUDGET;
 
 	while (budget--) {
-		// Check the amount of data available on the NIC/ASIC side
-		reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
-		if (!SFR_DATA_U16)
-			break;
+		if (rx_seen) {
+			rx_seen = 0;
+		} else {
+			// Check the amount of data available on the NIC/ASIC side
+			reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+			if (!SFR_DATA_U16)
+				break;
+		}
 		reg_read(RTL837X_REG_CPU_RX_CURR_PKT);
 		uint16_t ring_ptr = SFR_DATA_U16;
 		ring_ptr <<= 3;
@@ -1169,57 +1175,8 @@ void handle_button(void)
 	}
 }
 
-//
-// An idle function that sleeps for 1 tick and does all the house-keeping
-//
-void idle(void)
+void check_links(void)
 {
-	reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
-	if (!SFR_DATA_U16)
-		PCON |= 1;
-	health_loop_start();
-	if (sec_counter >= SYS_TICK_HZ) {
-		sec_counter -= SYS_TICK_HZ;
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
-		uint8_t v = sfr_data[3];
-#ifdef DEBUG
-		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
-#endif
-		v++;
-		sfr_data[3] = v;
-		if (!v) {
-			v = sfr_data[2];
-			v++;
-			sfr_data[2] = v;
-			if (!v) {
-				v = sfr_data[1];
-				v++;
-				sfr_data[1] = v;
-				if (!v) {
-					v = sfr_data[0];
-					v++;
-					sfr_data[0] = v;
-				}
-			}
-		}
-		reg_write_m(RTL837X_REG_SEC_COUNTER);
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
-
-		// Check for button presses once a second
-		handle_button();
-		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
-		if (++arp_age_secs >= 10) {
-			arp_age_secs = 0;
-			uip_arp_timer();
-		}
-
-#ifdef DEBUG
-		print_sfr_data();
-		write_char('\n');
-#endif
-	}
-
-	// Check for Link changes
 	reg_read_m(RTL837X_REG_LINKS_89);
 	__xdata uint8_t linkbits_p89 = sfr_data[3];
 
@@ -1251,6 +1208,68 @@ void idle(void)
 		} else {
 			cpy_4(linkbits_last, sfr_data);
 		}
+	}
+}
+
+
+//
+// An idle function that sleeps for 1 tick and does all the house-keeping
+//
+void idle(void)
+{
+	reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+	rx_seen = SFR_DATA_U16 != 0;
+	if (!rx_seen)
+		PCON |= 1;
+	health_loop_start();
+	if (sec_counter >= SYS_TICK_HZ) {
+		sec_counter -= SYS_TICK_HZ;
+		reg_read_m(RTL837X_REG_SEC_COUNTER);
+		uint8_t v = sfr_data[3];
+#ifdef DEBUG
+		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
+#endif
+		v++;
+		sfr_data[3] = v;
+		if (!v) {
+			v = sfr_data[2];
+			v++;
+			sfr_data[2] = v;
+			if (!v) {
+				v = sfr_data[1];
+				v++;
+				sfr_data[1] = v;
+				if (!v) {
+					v = sfr_data[0];
+					v++;
+					sfr_data[0] = v;
+				}
+			}
+		}
+		reg_write_m(RTL837X_REG_SEC_COUNTER);
+		reg_read_m(RTL837X_REG_SEC_COUNTER);
+
+		// Check for button presses once a second
+		handle_button();
+		link_irq = 1;
+		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
+		if (++arp_age_secs >= 10) {
+			arp_age_secs = 0;
+			uip_arp_timer();
+		}
+
+#ifdef DEBUG
+		print_sfr_data();
+		write_char('\n');
+#endif
+	}
+
+	// Check for Link changes when the switch has reported one
+	if (link_irq) {
+		link_irq = 0;
+		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
+		EX0 = 1;
+		check_links();
 	}
 
 	health_phase(HEALTH_PH_LINK);
@@ -1309,12 +1328,13 @@ void reset_chip(void)
 
 void setup_external_irqs(void)
 {
-	REG_SET(0x5f84, 0x42);
-	REG_SET(0x5f34, 0x3ff);
+	REG_SET(RTL837X_ISR_SW_INT_MODE, 0x42);
+	REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
+	REG_SET(RTL837X_IMR_INT_PORT_LINK_STS_CHG, 0x3ff);
 
-//	EX0 = 1;	// Enable external IRQ 0 (Link-change)
-	EX0 = 0;
-	IT0 = 1;	// External IRQ on falling edge
+	link_irq = 1;
+	IT0 = 1;	// External IRQ 0 on falling edge (link change)
+	EX0 = 1;
 
 	EX1 = 1;	// External IRQ 1 enable
 	EX2 = 1;	// External IRQ 2 enable: bit EIE.0
