@@ -82,7 +82,7 @@ sy_ip_err:"Invalid IP / netmask / gateway",sy_host_err:"Hostname: 1-23 printable
 sy_net_q:"Apply network settings?",sy_net_d:"The management IP changes to {ip}: this page will need to be reopened there.",
 sy_ip_changed:"IP changed, reconnect at http://{ip}/",sy_dhcp_q:"Switch to DHCP?",
 sy_dhcp_d:"The switch requests an address via DHCP. You must find its new IP to reconnect.",
-sy_sysip_err:"Invalid syslog server IP",sy_sysport_err:"Syslog port must be 1-65535",
+sy_sysip_err:"Invalid syslog server IP",sy_dns1:"DNS server",sy_dns2:"Second DNS",sy_dns_err:"Invalid DNS server IP",sy_dns_dhcp:"from DHCP: {ip}",sy_sysport_err:"Syslog port must be 1-65535",
 sy_pw_len:"Password: 1-20 characters",sy_pw_space:"Password cannot contain spaces",sy_pw_match:"Passwords do not match",
 sy_pw_q:"Change admin password?",sy_pw_d:"Takes effect immediately for new logins. Save to flash to persist.",
 sy_reboot_q:"Reboot the switch?",sy_reboot_d:"There are UNSAVED changes and they will be lost. Save to flash first if you want to keep them.",
@@ -541,6 +541,7 @@ var CONF_CMDS=[
   /^ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^ip\s+dhcp$/,
   /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,/^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,/^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^syslog\s+port\s+\d{1,5}$/,
+  /^dns\s+server\s+(\d{1,3}\.){3}\d{1,3}(\s+(\d{1,3}\.){3}\d{1,3})?$/,
   /^passwd\s+\S+$/,/^hostname\s+\S{1,23}$/,
   /^vlan\s+\d{1,4}\s+d$/,/^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}t?)+$/,
@@ -1626,6 +1627,16 @@ function sysLoad(){
     if(sl[1])$("sy-sysport").value=sl[1];
   }).catch(function(){});
   cfgReload();
+  dnsLoad();
+}
+function dnsLoad(){
+  return api("/cmd",{method:"POST",body:"dns"}).then(function(r){
+    var m=r.body.match(/DNS servers ([\d.]+) ([\d.]+), from DHCP ([\d.]+)/);
+    if(!m)return;
+    function v(x){return x==="0.0.0.0"?"":x}
+    $("sy-dns1").value=v(m[1]);$("sy-dns2").value=v(m[2]);
+    $("sy-dnsdhcp").textContent=m[3]==="0.0.0.0"?"":t("sy_dns_dhcp",{ip:m[3]});
+  }).catch(function(){});
 }
 function cfgParseKnown(txt){
   var igmp=false,syslog=false;
@@ -1642,6 +1653,8 @@ function cfgParseKnown(txt){
 $("sy-apply").addEventListener("click",function(){
   var ip=$("sy-ip").value.trim(),mask=$("sy-mask").value.trim(),gw=$("sy-gw").value.trim();
   if(!okIp(ip)||!okIp(mask)||!okIp(gw)){toast(t("sy_ip_err"),"err");return;}
+  var d1=$("sy-dns1").value.trim(),d2=$("sy-dns2").value.trim();
+  if((d1&&!okIp(d1))||(d2&&!okIp(d2))){toast(t("sy_dns_err"),"err");return;}
   var cmds=[];
   var hn=$("sy-host").value.trim();
   if(hn&&hn!==S.info.hostname){
@@ -1649,6 +1662,7 @@ $("sy-apply").addEventListener("click",function(){
     cmds.push("hostname "+hn);
   }
   cmds.push("ip "+ip,"netmask "+mask,"gw "+gw);
+  cmds.push("dns server "+(d1||"0.0.0.0")+(d2?" "+d2:""));
   var changingIp=ip!==S.info.ip_address;
   confirmModal(t("sy_net_q"),changingIp?t("sy_net_d",{ip:ip}):"",function(){
     postCmds(cmds).then(function(){
@@ -1739,7 +1753,7 @@ tabHooks.system={enter:sysLoad};
 
 var CONF_OVERWRITE=[
   /^ip\b/,/^gw\b/,/^netmask\b/,/^hostname\b/,
-  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,
+  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^dns\s+server\b/,/^passwd\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
