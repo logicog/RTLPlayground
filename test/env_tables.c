@@ -109,13 +109,23 @@ uint16_t stp_lag_mask[STP_LAG_COUNT];
 uint16_t stp_tc_count;
 uint32_t root_bridge_cost;
 uint32_t stp_dcost[STP_ENTITIES];
-uint32_t stp_pcost[STP_ENTITIES];
+uint32_t stp_pcost[STP_TREES * STP_ENTITIES];
 uint8_t  stp_ent_of[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 uint8_t  stp_fwddelay_s = 15, stp_hello_s = 2, stp_maxage_s = 20;
 uint8_t  stp_pflags[STP_ENTITIES];
 uint8_t  stp_pp2p[STP_ENTITIES];
-uint8_t  stp_pprio[STP_ENTITIES];
-uint8_t  stp_prio = 0x80, stp_root_port = 0xff, stp_rstp = 1, stp_txhold = 6;
+uint8_t  stp_pprio[STP_TREES * STP_ENTITIES];
+uint8_t  stp_bprio[STP_TREES] = { 0x80 };
+uint8_t  stp_rport[STP_TREES] = { 0xff };
+uint8_t  stp_rstp = 1, stp_txhold = 6;
+uint8_t  stp_bpdu_filter, stp_pcost_short, stp_root_fwd = 15, stp_root_maxage = 20;
+uint16_t stp_legacy, stp_link_prev = 0x3ff;
+uint16_t stp_info_while[STP_TREES * STP_ENTITIES];
+uint32_t stp_cnt[STP_CNT_N][STP_ENTITIES];
+uint32_t stp_tc_secs;
+struct stp_vec stp_pv[STP_TREES * STP_ENTITIES];
+struct stp_vec stp_rv[STP_TREES];
+uint8_t  stp_ent_id(uint8_t e) { return e >= STP_LAG_BASE ? e + 101 - STP_LAG_BASE : machine.log_to_phys_port[e]; }
 
 /* ---- SFP: no module present, reads fail ---- */
 uint8_t sfp_buf[16];
