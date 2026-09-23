@@ -137,13 +137,15 @@ __code const uint16_t bit_mask[16] = {
 
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
-volatile __bit link_irq;
-__xdata uint8_t idle_tick_last;
+__data __at(0x20) volatile uint8_t evflags;
+volatile __bit __at(0x00) link_irq;
+volatile __bit __at(0x01) rx_irq;
+volatile __bit __at(0x02) tick_pending;
+__bit __at(0x03) cmd_available;
 // Last known state of the SFP detection/Loss of Signal pins
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
 volatile __bit tx_buf_empty;
-__bit rx_seen;
 
 
 struct eth_in {
@@ -201,6 +203,7 @@ void isr_timer0(void) __interrupt(1)
 void isr_timer2(void) __interrupt(5)
 {
 	ticks++;
+	tick_pending = 1;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
 	sec_counter++;
@@ -511,9 +514,8 @@ void isr_ext0(void) __interrupt(0)
  */
 void isr_ext1(void) __interrupt(2)
 {
-	// This flag should only be reset after all packets have been read
 	EX1 = 0;
-	EX1 = 1;
+	rx_irq = 1;
 }
 
 /*
@@ -997,14 +999,10 @@ void handle_rx(void)
 	__xdata uint8_t budget = RX_BUDGET;
 
 	while (budget--) {
-		if (rx_seen) {
-			rx_seen = 0;
-		} else {
-			// Check the amount of data available on the NIC/ASIC side
-			reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
-			if (!SFR_DATA_U16)
-				break;
-		}
+		// Check the amount of data available on the NIC/ASIC side
+		reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+		if (!SFR_DATA_U16)
+			break;
 		reg_read(RTL837X_REG_CPU_RX_CURR_PKT);
 		uint16_t ring_ptr = SFR_DATA_U16;
 		ring_ptr <<= 3;
@@ -1284,13 +1282,11 @@ static void handle_tick(void)
 
 void idle(void)
 {
-	reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
-	rx_seen = SFR_DATA_U16 != 0;
-	if (!rx_seen)
+	if (!evflags)
 		PCON |= 1;
 	health_loop_start();
-	if (TICKS_DUE(idle_tick_last, 1)) {
-		idle_tick_last = (uint8_t)ticks;
+	if (tick_pending) {
+		tick_pending = 0;
 		handle_tick();
 	}
 	if (link_irq) {
@@ -1300,7 +1296,12 @@ void idle(void)
 		check_links();
 	}
 	health_phase(HEALTH_PH_LINK);
-	handle_rx();
+	if (rx_irq) {
+		rx_irq = 0;
+		handle_rx();
+		REG_SET(RTL837X_NIC_INT_STS, NIC_INT_RXIS);
+		EX1 = 1;
+	}
 	health_phase(HEALTH_PH_RX);
 	if (cmd_available) {
 		cmd_available = 0;
@@ -1343,7 +1344,8 @@ void setup_external_irqs(void)
 	IT0 = 1;	// External IRQ 0 on falling edge (link change)
 	EX0 = 1;
 
-	EX1 = 1;	// External IRQ 1 enable
+	rx_irq = 1;
+	EX1 = 1;	// External IRQ 1: the NIC has received a packet
 	EX2 = 1;	// External IRQ 2 enable: bit EIE.0
 	EX3 = 1;	// External IRQ 3 enable: bit EIE.1
 	PX3 = 1;	// Set EIP.1 = 1: External IRQ 3 set to high priority
@@ -1625,7 +1627,6 @@ void main(void)
 {
 	ticks = 0;
 	stp_tick_last = (uint8_t)ticks;
-	idle_tick_last = (uint8_t)ticks;
 	sfp_tick_last = (uint8_t)ticks;
 	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
@@ -1770,6 +1771,7 @@ void main(void)
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	nic_setup();
+	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
