@@ -1011,7 +1011,7 @@ void send_cmd_log(void)
 	__xdata uint8_t found_begin = 0;
 	dbg_string("History ptr: ");
 	dbg_short(cmd_history_ptr); dbg_char('\n');
-	while (p != cmd_history_ptr) {
+	while (p != cmd_history_ptr && slen < TCP_OUTBUF_SIZE) {
 		if (!cmd_history[p] || cmd_history[p] == '\n')
 			found_begin = 1;
 		if (found_begin && cmd_history[p])
