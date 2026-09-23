@@ -63,6 +63,7 @@ __xdata uint8_t hexvalue[4] = { 0 };
 __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 
 __xdata	char save_cmd;
+__xdata uint8_t cmd_quiet;	/* the command only shows state: keep it out of the history */
 
 __xdata uint8_t ip[4];
 __xdata uint8_t mac_parse_result[6];
@@ -668,6 +669,7 @@ void parse_vlan(void)
 				goto err;
 		}
 		vlan_create();
+		stp_vlan_new();
 	} else if (cmd_compare(1, "show")) {
 		vlan_dump();
 	} else {
@@ -1925,7 +1927,7 @@ void cmd_parser(void) __banked
 		}
 
 
-		if (save_cmd && cmd_words_len && err_status == ERR_OK) {
+		if (save_cmd && cmd_words_len && err_status == ERR_OK && !cmd_quiet) {
 			// Find end of the cmd-buffer, looking for the NUL-byte.
 			uint8_t i = cmd_words_b[cmd_words_len - 1];
 			do {
@@ -1942,6 +1944,7 @@ void cmd_parser(void) __banked
 				cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
 			} while (i);
 		}
+		cmd_quiet = 0;
 	}
 }
 

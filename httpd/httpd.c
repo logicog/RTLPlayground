@@ -1026,6 +1026,8 @@ void httpd_appcall(void)
 				send_lag();
 			} else if (is_word(q, "/stp.json")) {
 				send_stp();
+			} else if (is_word(q, "/stpcnt.json")) {
+				send_stp_counters();
 			} else if (is_word(q, "/vlanlist")) {
 				send_vlanlist();
 			} else if (is_word(q, "/config")) {
