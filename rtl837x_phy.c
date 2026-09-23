@@ -23,6 +23,8 @@
 extern __code const uint16_t bit_mask[16];
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
+extern volatile __xdata uint32_t ticks;
+extern __xdata uint32_t rtl8224_release_tick;
 
 __xdata struct phy_settings phy_settings;
 
@@ -214,9 +216,20 @@ void phy_config(uint8_t phy) __banked
 }
 
 
+void rtl8224_wait_ready(void) __banked
+{
+	do {
+		rtl8224_read_reg_u16(RTL837X_REG_CHIP_ID + 1);
+		if (SFR_DATA_U16 == 0x8224)
+			return;
+	} while ((ticks - rtl8224_release_tick) < (SYS_TICK_HZ * 5 / 2));
+	print_string("\r\nRTL8224 not responding\r\n");
+}
+
 void phy_config_8224(void) __banked
 {
 	uint16_t pval;
+	uint16_t tries;
 	print_string("\r\nphy_config_8224 called\r\nRTL8224 ID: ");
 
 	// Print RTL8224 chip id
@@ -244,9 +257,12 @@ void phy_config_8224(void) __banked
 		i++;
 		rtl8224_write_reg_u16(RTL837X_SDS_INDACS_CMD, rtl8224_sds0_setttings[i]);
 		i++;
+		tries = 0xffff;
 		do {
 			rtl8224_read_reg_u16(0x3f8);
-		} while (SFR_DATA_8 & 0x80);
+		} while ((SFR_DATA_8 & 0x80) && --tries);
+		if (SFR_DATA_8 & 0x80)
+			print_string("\r\nRTL8224 SerDes access timed out\r\n");
 	}
 
 	print_string("\r\nphy_config_8224 done\r\n");
