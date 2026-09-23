@@ -380,6 +380,22 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
             <input class="in" id="sy-sysport" style="width:64px" type="number" min="1" max="65535"></div>
           <p class="small mut" data-i18n="sy_services_note">Service state reflects the startup config; runtime state is not readable.</p>
         </div>
+        <div class="card" id="sy-ntpcard"><h2 data-i18n="sy_time">Time</h2>
+          <label class="row" style="justify-content:space-between"><span data-i18n="sy_ntp">NTP</span>
+            <span class="switch"><input type="checkbox" id="sy-ntp"><i></i></span></label>
+          <label class="row"><span class="lb" data-i18n="sy_ntpsrv">NTP server</span><input class="in" id="sy-ntpsrv" maxlength="47" data-i18n-p="sy_ntpsrv_p"></label>
+          <label class="row"><span class="lb" data-i18n="sy_ntpint">Poll interval [min]</span><input class="in sm" id="sy-ntpint" type="number" min="1" max="1440"></label>
+          <label class="row"><span class="lb" data-i18n="sy_tz">Time zone</span><select class="in" id="sy-tz"></select></label>
+          <label class="row"><span class="lb" data-i18n="sy_dst">Daylight saving</span><select class="in" id="sy-dst"><option value="off" data-i18n="c_offc">Off</option><option value="eu" data-i18n="sy_dst_eu">Europe</option><option value="us" data-i18n="sy_dst_us">United States</option></select></label>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="ctl pri" id="sy-ntpapply" data-i18n="c_apply">Apply</button>
+            <button class="ctl" id="sy-ntprefresh" data-i18n="c_refresh">Refresh</button>
+          </div>
+          <label class="row" style="margin-top:10px"><span class="lb" data-i18n="sy_now">Local time</span><span class="mono" id="sy-now">-</span></label>
+          <label class="row"><span class="lb" data-i18n="sy_sync">Last synchronisation</span><span id="sy-sync">-</span></label>
+          <label class="row"><span class="lb" data-i18n="sy_ntpaddr">Server address</span><span class="mono" id="sy-ntpaddr">-</span></label>
+          <p class="small mut" style="margin-top:8px" data-i18n="sy_time_note">The switch has no battery backed clock.</p>
+        </div>
         <div class="card"><h2 data-i18n="sy_password">Admin password</h2>
           <label class="row"><span class="lb" data-i18n="sy_newpw">New password</span><input class="in" id="sy-pw1" type="password" maxlength="20"></label>
           <label class="row"><span class="lb" data-i18n="sy_repeat">Repeat</span><input class="in" id="sy-pw2" type="password" maxlength="20"></label>
