@@ -88,11 +88,13 @@ __xdata struct uip_eth_addr uip_ethaddr;
 volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
-__xdata uint8_t stp_clock;
+__xdata uint8_t stp_tick_last;
+__xdata uint8_t tx_tick_last;
 __xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
-#define STP_TICK_DIVIDER 3
+#define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
+#define STP_CATCH_UP 8
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -1075,6 +1077,9 @@ void handle_rx(void)
 
 void handle_tx(void)
 {
+	if (!TICKS_DUE(tx_tick_last, 1))
+		return;
+	tx_tick_last = (uint8_t)ticks;
 	for(uint8_t i = 0; i < UIP_CONNS; i++) {
 		uip_periodic(i);
 		if(uip_len > 0) {
@@ -1265,13 +1270,12 @@ void idle(void)
 	// Check UIP for packets to transmit
 	handle_tx();
 	health_phase(HEALTH_PH_TX);
-	// If STP protocol enabled, decrease STP timers to trigger actions
+	// If STP protocol enabled, run its timers once per STP tick that has passed
 	if (stp_enabled) {
-		if (!stp_clock) {
-			stp_clock = STP_TICK_DIVIDER;
+		uint8_t n = STP_CATCH_UP;
+		while (n-- && TICKS_DUE(stp_tick_last, STP_TICK_STEP)) {
+			stp_tick_last += STP_TICK_STEP;
 			stp_timers();
-		} else {
-			stp_clock--;
 		}
 	}
 	health_phase(HEALTH_PH_STP);
@@ -1597,7 +1601,7 @@ void check_and_flash_update_image(void)
 void main(void)
 {
 	ticks = 0;
-	stp_clock = STP_TICK_DIVIDER;
+	stp_tick_last = (uint8_t)ticks;
 	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
 
