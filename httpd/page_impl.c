@@ -3,6 +3,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_storm.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_pins.h"
@@ -794,6 +795,40 @@ void send_bandwidth(void)
 		byte_to_html(sfr_data[1] & 0x0f);
 		byte_to_html(sfr_data[2]);
 		byte_to_html(sfr_data[3]);
+		char_to_html('"');
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+}
+
+
+void send_storm(void)
+{
+	__xdata uint8_t i, t, idx;
+
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	char_to_html('[');
+	for (i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"en\":\"");
+		for (t = 0; t < STORM_TYPES; t++)
+			char_to_html(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? '1' : '0');
+		slen += strtox(outbuf + slen, "\",\"pps\":\"");
+		for (t = 0; t < STORM_TYPES; t++) {
+			idx = (i << 2) | t;
+			char_to_html(reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f) ? '1' : '0');
+		}
+		slen += strtox(outbuf + slen, "\",\"rate\":\"");
+		for (t = 0; t < STORM_TYPES; t++) {
+			reg_read_m(RTL837X_METER_RATE + ((((i << 2) | t)) << 2));
+			byte_to_html(sfr_data[1]);
+			byte_to_html(sfr_data[2]);
+			byte_to_html(sfr_data[3]);
+		}
 		char_to_html('"');
 		char_to_html('}');
 		if (i < machine.max_port)
