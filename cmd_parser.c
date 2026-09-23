@@ -16,6 +16,7 @@
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
+#include "rtl837x_rldp.h"
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
@@ -1546,6 +1547,37 @@ err:
 	cmd_error("bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
 }
 
+void parse_rldp(void)
+{
+	if (cmd_words_len == 1) {
+		rldp_show();
+		return;
+	}
+	if (cmd_words_len == 2) {
+		if (cmd_compare(1, "on")) {
+			rldp_enable(1);
+			return;
+		}
+		if (cmd_compare(1, "off")) {
+			rldp_enable(0);
+			return;
+		}
+		goto err;
+	}
+	if (cmd_words_len != 3 || cmd_parse_port_separator(cmd_words_b[1]) == 0)
+		goto err;
+	if (cmd_compare(2, "on")) {
+		rldp_port(atoi_results_u8, 1);
+		return;
+	}
+	if (cmd_compare(2, "off")) {
+		rldp_port(atoi_results_u8, 0);
+		return;
+	}
+err:
+	print_string("usage: rldp [on|off|<port> on|off]\n");
+}
+
 void parse_syslog(void)
 {
 	if (cmd_words_len < 2) // no argument -> print status
@@ -1898,6 +1930,8 @@ void cmd_parser(void) __banked
 			parse_eee();
 		} else if (cmd_compare(0, "bw")) {
 			parse_bw();
+		} else if (cmd_compare(0, "rldp")) {
+			parse_rldp();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "time")) {

@@ -12,6 +12,7 @@
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_rldp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
 #include "rtl837x_bandwidth.h"
@@ -1207,6 +1208,8 @@ void idle(void)
 
 		// Check for button presses once a second
 		handle_button();
+		if (rldp_on)
+			rldp_tick();
 		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
 		if (++arp_age_secs >= 10) {
 			arp_age_secs = 0;
@@ -1745,6 +1748,7 @@ void main(void)
 	port_l2_setup();
 	igmp_setup();
 	bandwidth_setup();
+	rldp_init();
 	uip_init();
 	uip_arp_init();
 	httpd_init();
