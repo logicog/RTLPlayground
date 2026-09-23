@@ -21,6 +21,7 @@ extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
+__xdata uint32_t rtl8224_release_tick;
 extern __xdata uint8_t tx_seq;
 extern __code const uint8_t * __code const hex;
 
@@ -240,10 +241,10 @@ void rtl8224_enable(void) __banked
 	reg_bit_clear(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
 	// Configure Pin as output
 	reg_bit_set(RTL837X_REG_GPIO_32_63_DIRECTION, 4);
-	delay(100);
+	delay(4);
 	// Set pin 4 high
 	reg_bit_set(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
-	delay(500);
+	rtl8224_release_tick = ticks;
 }
 
 

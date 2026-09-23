@@ -22,6 +22,7 @@ extern __xdata struct phy_settings phy_settings;
 void rtl8224_phy_enable(void) __banked;
 void phy_config(uint8_t phy) __banked;
 void phy_config_8224(void) __banked;
+void rtl8224_wait_ready(void) __banked;
 void phy_set_speed(void) __banked;
 void phy_set_duplex(void) __banked;
 void phy_show(uint8_t port) __banked;

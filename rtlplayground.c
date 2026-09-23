@@ -1701,6 +1701,8 @@ void main(void)
 
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
+	if (machine_detected.isRTL8373)
+		rtl8224_wait_ready();
 
 	rtl8373_revision();
 
