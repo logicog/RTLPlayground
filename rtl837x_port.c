@@ -487,6 +487,38 @@ void port_l2_setup(void) __banked
 }
 
 
+void port_media_show(uint8_t port) __banked
+{
+	uint8_t pause;
+
+	if (!machine.is_sfp[port]) {
+		reg_read_m(RTL837X_REG_LINKS_STS);
+		if (sfr_data[(port / 8) + 1] >> (port % 8) & 1) {
+			print_string("Link role: ");
+			reg_read_m(RTL837X_MAC_MSTR_SLV_STS);
+			if (sfr_data[3 - (port >> 3)] & (1 << (port & 7)))
+				print_string("master\n");
+			else
+				print_string("slave\n");
+		}
+	}
+
+	print_string("Pause negotiated:");
+	reg_read_m(RTL837X_MAC_TX_PAUSE_STS);
+	pause = sfr_data[3 - (port >> 3)] & (1 << (port & 7));
+	if (pause)
+		print_string(" TX");
+	reg_read_m(RTL837X_MAC_RX_PAUSE_STS);
+	if (sfr_data[3 - (port >> 3)] & (1 << (port & 7))) {
+		print_string(" RX");
+		pause = 1;
+	}
+	if (!pause)
+		print_string(" none");
+	write_char('\n');
+}
+
+
 void port_stats_print(void) __banked
 {
 	print_string("\nPort\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");

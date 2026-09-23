@@ -83,6 +83,10 @@
 #define RTL837X_REG_LINKS	0x63f0
 #define RTL837X_REG_LINKS_89	0x63f4
 #define RTL837X_REG_LINKS_STS	0x63E8
+/* Per-port status bits: bit N is chip port N */
+#define RTL837X_MAC_TX_PAUSE_STS	0x63FC
+#define RTL837X_MAC_RX_PAUSE_STS	0x6400
+#define RTL837X_MAC_MSTR_SLV_STS	0x6408
 
 /* Each nibble encodes the link state of a port.
    Port 0 appears to be the CPU port
