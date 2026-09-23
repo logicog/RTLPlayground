@@ -6,7 +6,7 @@
 #include "rtl837x_common.h"
 
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
-extern __xdata uint8_t cmd_available;
+extern __bit __at(0x03) cmd_available;
 extern __xdata uint8_t err_status;
 
 /* Health instrumentation, built with HEALTH=1. Without it the hooks below

@@ -61,7 +61,6 @@ __xdata uint8_t hexvalue[4] = { 0 };
 
 // Buffer for writing to flash 0x1fd000, copy to 0x1fe000
 __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
-__xdata uint8_t cmd_available;
 
 __xdata	char save_cmd;
 
