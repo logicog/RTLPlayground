@@ -40,6 +40,11 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
+stp_pcs:"Path cost",stp_pcs_long:"Long (32 bit)",stp_pcs_short:"Short (16 bit)",
+stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
+stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
+stp_mcheck:"Check",stp_mcheck_t:"Send RST BPDUs again to find out whether the neighbour still needs 802.1D",
+stp_cnt:"Counters",stp_crx:"BPDUs received",stp_ctx:"BPDUs sent",stp_ctrx:"TC received",stp_cttx:"TC sent",stp_cage:"Last BPDU [s]",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -553,7 +558,7 @@ var CONF_CMDS=[
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
   /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
-  /^stp\s+version\s+(rstp|stp)$/,
+  /^stp\s+version\s+(rstp|stp)$/,/^stp\s+pathcost\s+(long|short)$/,/^stp\s+bpdu\s+(filter|flood)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(on|off)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+edge\s+(on|off|auto)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+cost\s+\d{1,9}$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+prio\s+\d{1,3}$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
@@ -948,12 +953,14 @@ function fmtBridge(hex){
   if(!hex||hex.length<16)return"-";
   return parseInt(hex.slice(0,4),16)+" / "+hex.slice(4).replace(/(..)(?=.)/g,"$1:");
 }
+function stpEnt(pt){pt.lag=pt.p>100?pt.p-100:0}
 function stpKey(pt){return pt.lag?"L"+pt.lag:String(pt.p)}
-function stpName(pt){return pt.lag?"LAG"+pt.lag+" ("+maskToPorts(pt.mbr).join(",")+")":String(pt.p)}
+function stpName(pt){return pt.lag?"LAG"+pt.lag:String(pt.p)}
+function stpDhms(x){return Math.floor(x/86400)+"d "+Math.floor(x/3600)%24+"h "+Math.floor(x/60)%60+"m "+x%60+"s"}
 function stpPre(k){return k.charAt(0)==="L"?"stp lag "+k.slice(1)+" ":"stp port "+k+" "}
 function stpBuild(ports){
-  var tb=$("stpcfg").tBodies[0],st=$("stpstat").tBodies[0];
-  tb.innerHTML="";st.innerHTML="";
+  var tb=$("stpcfg").tBodies[0],st=$("stpstat").tBodies[0],ct=$("stpcnt").tBodies[0];
+  tb.innerHTML="";st.innerHTML="";ct.innerHTML="";
   ports.forEach(function(pt){
     var p=stpKey(pt);
     var tr=tb.insertRow();
@@ -971,7 +978,12 @@ function stpBuild(ports){
     tr.insertCell().appendChild(h("button",{class:"ctl",text:t("c_apply"),onclick:function(){stpApplyPort(p)}}));
     var sr=st.insertRow();
     sr.insertCell().textContent=stpName(pt);
-    ["ro","st","db","dp","dc","oe","op"].forEach(function(k){sr.insertCell().id="st"+k+p});
+    ["ro","st","db","dp","dc","oe","op","pv"].forEach(function(k){sr.insertCell().id="st"+k+p});
+    sr.insertCell().appendChild(h("button",{class:"ctl",id:"stmc"+p,text:t("stp_mcheck"),title:t("stp_mcheck_t"),
+      onclick:function(){postCmd(stpPre(p)+"mcheck").then(stpLoad).catch(function(){})}}));
+    var cr=ct.insertRow();
+    cr.insertCell().textContent=stpName(pt);
+    ["rx","tx","trx","ttx","age"].forEach(function(k){cr.insertCell().id="sc"+k+p});
   });
 }
 function stpPortVals(pt){
@@ -985,10 +997,21 @@ function stpPortVals(pt){
     p2p:["auto","on","off"][pt.p2]||"auto",
   };
 }
+function stpCnt(c){
+  c.ports.forEach(function(pt){
+    stpEnt(pt);
+    var p=stpKey(pt);
+    if(!$("scrx"+p))return;
+    var v=[0,1,2,3].map(function(k){return parseInt(pt.c.slice(8*k,8*k+8),16)}),age=parseInt(pt.c.slice(32,36),16);
+    ["rx","tx","trx","ttx"].forEach(function(k,i){$("sc"+k+p).textContent=v[i]});
+    $("scage"+p).textContent=!v[0]?"-":(age===0xffff?">":"")+Math.floor(age/c.hz);
+  });
+}
 function stpLoad(){
   return getJSON("/stp.json").then(function(s){
-    s.ports.sort(function(a,b){return((a.lag||0)-(b.lag||0))||(a.p-b.p)});
-    var sig=s.ports.map(function(pt){return stpKey(pt)+":"+(pt.mbr||0)}).join();
+    s.ports.forEach(stpEnt);
+    s.ports.sort(function(a,b){return(a.lag-b.lag)||(a.p-b.p)});
+    var sig=s.ports.map(stpKey).join();
     if(sig!==stpSig){stpSig=sig;stpBuild(s.ports);}
     stpCur=s;
     var en=$("stpen");
@@ -996,16 +1019,19 @@ function stpLoad(){
     var msg;
     if(!s.on)msg=t("stp_off_msg");
     else{
-      var me=(s.prio*4096).toString(16).padStart(4,"0")+s.myMac;
+      var me=(s.prio*4096).toString(16).padStart(4,"0")+s.myMac,tc=parseInt(s.tc,16),rp="-";
+      s.ports.forEach(function(pt){if(pt.role===1)rp=stpName(pt)});
       msg=t("stp_bridge")+" "+fmtBridge(me)+(s.weRoot
         ?" ("+t("stp_root_self")+")"
-        :"; "+t("stp_root")+" "+fmtBridge(s.rootPrio+s.rootMac)+" "+t("stp_via")+" "+s.rootPort+", "+t("stp_cost")+" "+parseInt(s.cost,16))
-        +"; "+t("stp_tc")+": "+parseInt(s.tc,16);
+        :"; "+t("stp_root")+" "+fmtBridge(s.rootPrio+s.rootMac)+" "+t("stp_via")+" "+rp+", "+t("stp_cost")+" "+parseInt(s.cost,16))
+        +"; "+t("stp_tc")+": "+tc+(tc?" ("+t("stp_lasttc")+" "+stpDhms(parseInt(s.tcs,16))+")":"")
+        +"; "+t("stp_times")+" "+s.rMaxage+" / "+s.rFwd+" s";
     }
     $("stpids").textContent=msg;
     var bc=$("stpbridge");
     if(!bc.dataset.dirty){
       $("stpver").value=s.rstp?"rstp":"stp";
+      $("stppcs").value=s.pcs?"short":"long";$("stpbh").value=s.bh?"filter":"flood";
       $("stpprio").value=String(s.prio);
       $("stphello").value=s.hello;$("stpmaxage").value=s.maxage;
       $("stpfwd").value=s.fwd;$("stptxhold").value=s.txhold;
@@ -1014,18 +1040,21 @@ function stpLoad(){
       var p=stpKey(pt);
       var trip=(pt.f&STP_PF.TRIP)?" "+badge(t("stp_trip"),"bad"):"";
       $("stro"+p).textContent=s.on&&pt.role?t("stp_r"+pt.role):"-";
-      $("stst"+p).innerHTML=s.on?badge(t("stp_s"+pt.st),pt.st===3?"ok":"")+trip:"-";
+      $("stst"+p).innerHTML=s.on?(pt.lk?badge(t("stp_s"+pt.st),pt.st===3?"ok":""):badge(t("stp_nolink")))+trip:"-";
       $("stdb"+p).textContent=s.on?fmtBridge(pt.db):"-";
       $("stdp"+p).textContent=s.on?parseInt(pt.dp.slice(0,2),16)+"."+parseInt(pt.dp.slice(2),16):"-";
       $("stdc"+p).textContent=s.on?parseInt(pt.dc,16):"-";
       $("stoe"+p).textContent=s.on?t((pt.f&STP_PF.OPEREDGE)?"c_yes":"c_no"):"-";
       $("stop"+p).textContent=s.on?t(pt.p2===2?"c_no":"c_yes"):"-";
+      $("stpv"+p).textContent=s.on&&pt.role?(s.rstp&&!pt.lg?"RSTP":"STP"):"-";
+      $("stmc"+p).disabled=!(s.on&&pt.role&&s.rstp);
       var row=$("sten"+p).closest("tr");
       if(row.dataset.dirty)return;
       var v=stpPortVals(pt);
       $("sten"+p).checked=v.en;$("sted"+p).value=v.edge;$("stco"+p).value=v.cost;
       $("stpr"+p).value=v.prio;$("stgu"+p).value=v.guard;$("stfi"+p).value=v.filter;$("stpp"+p).value=v.p2p;
     });
+    if($("stpcntd").open)return getJSON("/stpcnt.json").then(stpCnt);
   }).catch(function(){});
 }
 function stpApplyPort(p){
@@ -1053,6 +1082,8 @@ $("stpbapply").addEventListener("click",function(){
   var ver=$("stpver").value,prio=$("stpprio").value;
   if(ver!==(s.rstp?"rstp":"stp"))cmds.push("stp version "+ver);
   if(prio!==String(s.prio))cmds.push("stp prio "+prio);
+  if($("stppcs").value!==(s.pcs?"short":"long"))cmds.push("stp pathcost "+$("stppcs").value);
+  if($("stpbh").value!==(s.bh?"filter":"flood"))cmds.push("stp bpdu "+$("stpbh").value);
   [["stphello","hello"],["stpmaxage","maxage"],["stpfwd","fwd"],["stptxhold","txhold"]].forEach(function(f){
     var v=$(f[0]).value;
     if(String(v)!==String(s[f[1]]))cmds.push("stp "+f[1]+" "+v);
@@ -1071,6 +1102,7 @@ $("stpen").addEventListener("change",function(){
   var sel=$("stpprio");
   for(var i=0;i<16;i++)sel.appendChild(h("option",{value:String(i),text:i+" ("+(i*4096)+")"}));
 })();
+$("stpcntd").addEventListener("toggle",function(){if(this.open)stpLoad()});
 var stpPoller=new Poller(stpLoad,3000);
 tabHooks.stp={enter:function(){stpPoller.start()},leave:function(){stpPoller.stop()}};
 
