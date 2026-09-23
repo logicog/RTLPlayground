@@ -13,6 +13,7 @@
 #include "rtl837x_port.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
 #include "rtl837x_bandwidth.h"
@@ -133,6 +134,7 @@ __xdata bool stp_enabled;
 __xdata uint8_t igmpEnabled;
 __xdata bool lldp_enabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
+__xdata uint8_t lacpEnabled;
 
 __code const uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
@@ -1059,12 +1061,18 @@ void handle_rx(void)
 		print_byte(uip_buf[3]); print_byte(uip_buf[4]); print_byte(uip_buf[5]); write_char('\n');
 		print_string(" MGMT-VLAN: "); print_short(management_vlan); write_char('\n');
 #endif
-		if (stp_enabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2 // STP packet?
-			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x00) {
-			stp_in();
-			if (uip_len) {
-				print_string("STP TX\n");
-				tcpip_output();
+		if ((stp_enabled || lacpEnabled) && uip_buf[0] == 0x01 && uip_buf[1] == 0x80
+			&& uip_buf[2] == 0xc2 && uip_buf[3] == 0x00 && uip_buf[4] == 0x00) { // 01:80:C2:00:00:0x
+			if (stp_enabled && uip_buf[5] == 0x00) {		// STP/RSTP BPDU
+				stp_in();
+				if (uip_len) {
+					print_string("STP TX\n");
+					tcpip_output();
+				}
+			} else if (lacpEnabled && uip_buf[5] == 0x02) {	// LACPDU (slow protocols)
+				lacp_in();
+				if (uip_len)
+					tcpip_output();
 			}
 		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
 			&& igmp_packet_handler()) {
@@ -1290,6 +1298,9 @@ static void handle_tick(void)
 			stp_timers();
 		}
 	}
+	// If LACP enabled, drive its machines (own tick divider lives in the banked module)
+	if (lacpEnabled)
+		lacp_timers();
 	health_phase(HEALTH_PH_STP);
 	lldp_tick();
 	health_phase(HEALTH_LLDP);
@@ -1792,6 +1803,8 @@ void main(void)
 #endif
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
+	lacpEnabled = 0;
+	lacp_init();		/* clear per-LAG state (port->LAG map = NONE) before any config replay */
 	nic_setup();
 	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
 	trap_init();
