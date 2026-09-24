@@ -25,6 +25,7 @@
 #include "machine.h"
 #include "phy.h"
 #include "syslog.h"
+#include "sflow.h"
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
@@ -1756,6 +1757,7 @@ void main(void)
 	check_and_flash_update_image();
 
 	syslog_init();
+	sflow_init();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS

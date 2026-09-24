@@ -35,6 +35,12 @@ void health_show(void) __banked;	/* "health" CLI dump */
 #define health_stack_paint()
 #endif
 
+/* Word matching and number parsing over cmd_buffer, for command handlers
+ * outside cmd_parser.c; plain calls, so the caller has to be in BANK2. */
+uint8_t cmd_compare(uint8_t start, __code const uint8_t * cmd);
+uint8_t atoi_short(uint8_t idx);
+uint8_t parse_ip(uint8_t idx);
+
 void cmd_tokenize(void) __banked;
 void cmd_parser(void) __banked;
 void execute_config(void) __banked;
