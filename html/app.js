@@ -681,6 +681,8 @@ var CONF_CMDS=[
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
+  /^acl\s+\d{1,2}\s+(dmac|smac)\s+([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\s+(drop|cpu|\d)(\s+\d)*$/,
+  /^acl\s+\d{1,2}\s+ethertype\s+[0-9a-fA-F]{4}\s+(drop|cpu|\d)(\s+\d)*$/,/^acl\s+\d{1,2}\s+off$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -1928,7 +1930,7 @@ var CONF_OVERWRITE=[
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
-  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
+  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,/^acl\s+\d{1,2}\b/,
 ];
 var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
@@ -1947,6 +1949,7 @@ function mergeConf(base,texts){
         conf.push(line);return;
       }
       if(line==="mirror off"){drop(/^mirror /);return;}
+      if((m=line.match(/^acl (\d{1,2}) off$/))){drop(new RegExp("^acl "+m[1]+" "));return;}
       if(!isConfCmd(line))return;
       if((m=line.match(/^ingress (.+)$/))){
         if(/^[tua]$/.test(m[1])){drop(/^ingress /);conf.push(line);return;}
