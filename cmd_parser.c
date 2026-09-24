@@ -14,6 +14,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_acl.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "sfp.h"
@@ -583,6 +584,60 @@ void parse_lag_hash(void)
 	return;
 err:
 	cmd_error("laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
+}
+
+
+void parse_acl(void)
+{
+	if (cmd_words_len < 3)
+		goto err;
+	uint8_t n = atoi_byte(cmd_words_b[1]);
+	if (!n || cmd_buffer[cmd_words_b[1] + n] != ' '
+	    || !atoi_results_u8 || atoi_results_u8 > ACL_RULES)
+		goto err;
+	uint8_t idx = atoi_results_u8 - 1;
+
+	if (cmd_words_len == 3 && cmd_compare(2, "off")) {
+		acl_rule_clear(idx);
+		return;
+	}
+	if (cmd_words_len < 5)
+		goto err;
+
+	if (cmd_compare(2, "dmac") || cmd_compare(2, "smac")) {
+		acl_field = cmd_compare(2, "dmac") ? ACL_FIELD_DMAC : ACL_FIELD_SMAC;
+		if (!parse_mac(cmd_words_b[3]))
+			goto err;
+		memcpy(acl_value, mac_parse_result, 6);
+	} else if (cmd_compare(2, "ethertype")) {
+		if (atoi_hex(cmd_words_b[3]) != 2)
+			goto err;
+		acl_field = ACL_FIELD_ETHERTYPE;
+		acl_value[0] = hexvalue[0];
+		acl_value[1] = hexvalue[1];
+	} else {
+		goto err;
+	}
+
+	if (cmd_compare(4, "drop"))
+		acl_out_pmask = 0;
+	else if (cmd_compare(4, "cpu"))
+		acl_out_pmask = PMASK_CPU;
+	else if (cmd_parse_port_separator(cmd_words_b[4]))
+		acl_out_pmask = (uint16_t)1 << atoi_results_u8;
+	else
+		goto err;
+
+	acl_in_pmask = 0;
+	for (uint8_t w = 5; w < cmd_words_len; w++) {
+		if (!cmd_parse_port_separator(cmd_words_b[w]))
+			goto err;
+		acl_in_pmask |= (uint16_t)1 << atoi_results_u8;
+	}
+	acl_rule_set(idx);
+	return;
+err:
+	cmd_error("acl <1-64> (dmac|smac <mac> | ethertype <hex>) (drop|cpu|<port>) [<port>...] | acl <1-64> off\n");
 }
 
 
@@ -1872,6 +1927,8 @@ void cmd_parser(void) __banked
 			parse_lag();
 		} else if (cmd_compare(0, "laghash")) {
 			parse_lag_hash();
+		} else if (cmd_compare(0, "acl")) {
+			parse_acl();
 		} else if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
 			write_char('\n');
