@@ -67,4 +67,9 @@ Copper ports use LED SET0, the SFP port uses LED SET1.
 
 ### PoE
 
-The 8 copper ports support PoE (power input DC 52V 2.5A). PoE is not configurable via RTLPlayground, and no `struct poe_port` telemetry is configured for this machine.
+The 8 copper ports support PoE powered by a DC 52V 2.5A input. Power management is handled by two HS104PTI chipsets over I2C (GPIO47_I2C_SDA0, GPIO46_I2C_SCL0):
+
+* Chip 1 (I2C address 0x1A): 2.5G Ports 1–4
+* Chip 2 (I2C address 0x2A): 2.5G Ports 5–8
+
+Note: The current implementation does not yet support PoE management. Consequently, PoE currently operates in standalone mode without software control.
