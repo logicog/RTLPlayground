@@ -1,30 +1,59 @@
-name: Build firmware
+name: Build RY‑4GT‑2SX Firmware
 
 on:
   push:
     branches: ['**']
   pull_request:
+  workflow_dispatch:   # 网页手动触发编译
 
 jobs:
-  build:
+  build_firmware:
     runs-on: ubuntu-latest
     container:
       image: debian:trixie
+    strategy:
+      fail-fast: false
+      matrix:
+        build_cfg:
+          # 基础固件
+          - { machine: "KP_9000_6XHML_X2", health: 0 }
+          # 带健康检测instrument版本
+          - { machine: "KP_9000_6XHML_X2", health: 1 }
+          # 如果你已经写好 machines/RY_4GT_2SX/machine.c，注释上面两行，启用下面两行
+          #‑ { machine: "RY_4GT_2SX", health: 0 }
+          #‑ { machine: "RY_4GT_2SX", health: 1 }
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout source & submodules
+        uses: actions/checkout@v6
+        with:
+          submodules: true
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           apt update
-          apt install make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev -y
-      - name: Run the host-side unit tests
+          apt install -y --no-install-recommends \
+            make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev
+
+      - name: Host unit tests
         run: make -C test
-      - name: Check if machine.c can be compiled for all machines
+
+      - name: machine.c syntax check for all boards
         run: make machine_check
-      - name: Make project (4x2/RTL8372)
-        run: make CI=1 MACHINE="KP_9000_6XHML_X2"
-      - name: Make project (8x1/RTL8373)
-        run: make CI=1 MACHINE="KP_9000_9XHML_X_V3_1"
-      - name: Make project with the health instrumentation
-        run: make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" HEALTH=1
+
+      - name: Compile MACHINE=${{ matrix.build_cfg.machine }} HEALTH=${{ matrix.build_cfg.health }}
+        run: |
+          make clean
+          make CI=1 \
+            MACHINE=${{ matrix.build_cfg.machine }} \
+            HEALTH=${{ matrix.build_cfg.health }}
+
+      - name: Upload compiled firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fw‑${{ matrix.build_cfg.machine }}‑HEALTH${{ matrix.build_cfg.health }}
+          path: |
+            *.bin
+            *.hex
+            installer/*.bin
+          retention-days: 30
