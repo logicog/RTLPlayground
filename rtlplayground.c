@@ -11,6 +11,7 @@
 #include "rtl837x_pins.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
+#include "rtl837x_trap.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
@@ -1774,6 +1775,7 @@ void main(void)
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	nic_setup();
 	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
+	trap_init();
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
