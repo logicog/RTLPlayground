@@ -1300,7 +1300,11 @@ void idle(void)
 		rx_irq = 0;
 		handle_rx();
 		REG_SET(RTL837X_NIC_INT_STS, NIC_INT_RXIS);
-		EX1 = 1;
+		reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+		if (SFR_DATA_U16)
+			rx_irq = 1;
+		else
+			EX1 = 1;
 	}
 	health_phase(HEALTH_PH_RX);
 	if (cmd_available) {
