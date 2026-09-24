@@ -7,6 +7,7 @@ The following devices have been tested and are fully working:
 | Davuaz   | Da-K6501W       | No      | [PCB-K0501W-V2.0](devices/K0501W_V2_0.md)                                 |       | 5 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/FNS-1200P.md)                               | 2M    | 4 + 2 |
 | Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                             | 4M    | 8 + 1 |
+| Hasivo   | S1100WP_8GT_1SX_SE | Yes  | [S1100WP_8GT_1SX_SE-V1.05](devices/HASIVO_S1100WP_8GT_1SX_SE.md)          | 2M    | 8 + 1 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V2.0](devices/PCB-K0402WS-V2.0.md)                           | 2M    | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-KO801W-V2.0](devices/HI-K0801WS.md)                                  |       | 8 + 1 |
