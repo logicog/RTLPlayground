@@ -2369,8 +2369,7 @@ var CONF_CMDS = [
     /^lldp\s+(on|off)$/,
     /^bw\s+(in|out)\s+\d+\s+\S+$/,
     /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
-    /^acl\s+\d{1,2}\s+(dmac|smac)\s+([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\s+(drop|cpu|\d)(\s+\d)*$/,
-    /^acl\s+\d{1,2}\s+ethertype\s+[0-9a-fA-F]{4}\s+(drop|cpu|\d)(\s+\d)*$/,
+    /^acl\s+\d{1,2}(\s+(dmac|smac)\s+([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}|\s+ethertype\s+[0-9a-fA-F]{4})+\s+(drop|cpu|mirror\s+\d|\d)(\s+\d)*$/,
     /^acl\s+\d{1,2}\s+off$/,
 ];
 
