@@ -133,7 +133,10 @@ five words, fields in words 0-3 and rule information in word 4 (template 0-2,
 C-tag/S-tag/PPPoE 3-5, layer 3 format 6-7, layer 4 format 8-10, ingress ports
 11-20, valid 21). Rules 65 to 96 are left for the firmware. An entry whose
 `ACL_ACT_CTRL` (0x4848 + 4 * n) is zero has no actions and is joined to the
-entry before it; the `not` flag is bit 8 of that register.
+entry before it, even when the entry itself is empty: an empty entry with a zero
+`ACT_CTRL` after a rule stops that rule from matching anything. Removing a rule
+therefore puts `ACT_CTRL` back to its reset value 0xff. The `not` flag is bit 8
+of that register.
 
 `ACL_ACT_CTRL` resets to 0xff, which enables every action type; with the action
 words at zero the VLAN and policing actions drop every matching frame, so the
