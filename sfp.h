@@ -1,6 +1,8 @@
 #ifndef SFP_H
 #define SFP_H
 
+#define SFP_WAKE_TICKS	100
+
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata char sfp_module_vendor[2][17];
 extern __xdata char sfp_module_model[2][17];

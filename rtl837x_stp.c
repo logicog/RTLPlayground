@@ -15,12 +15,14 @@
 #include "uip.h"
 #include "machine.h"
 
+extern __xdata uint8_t err_status;
+
 // All entry points are __banked and nothing here runs from an interrupt,
 // so the module does not need to stay in the resident bank
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __code struct machine machine;
+extern __code const struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata struct machine_runtime machine_detected;
 
@@ -33,7 +35,7 @@ extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_words_len;
 extern __xdata uint8_t cmd_words_b[15];
 extern __xdata char save_cmd;		/* 0 while execute_config() replays the saved config */
-uint8_t cmd_compare(uint8_t start, __code uint8_t * cmd);
+uint8_t cmd_compare(uint8_t start, __code const uint8_t * cmd);
 uint8_t atoi_byte(uint8_t idx);
 uint8_t cmd_parse_port_separator(uint8_t idx);
 extern __xdata uint8_t atoi_results_u8;
@@ -1134,5 +1136,6 @@ void stp_parse(void) __banked __reentrant
 	}
 	return;
 err:
+	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: stp on|off|status | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | port <1-9>|lag <1-4> on|off|edge|cost|prio|guard|filter ...\n");
 }

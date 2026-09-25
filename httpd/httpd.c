@@ -26,9 +26,9 @@ __xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 extern volatile __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
 extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
-extern __code uint8_t * __code hex;
-extern __code struct f_data f_data[];
-extern __code char * __code mime_strings[];
+extern __code const uint8_t * __code const hex;
+extern __code const struct f_data f_data[];
+extern __code const char * __code const mime_strings[];
 extern __xdata struct flash_region_t flash_region;
 extern __xdata uint32_t flash_size;
 
@@ -41,6 +41,7 @@ __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 __xdata uint8_t entry;
 __xdata uint16_t slen;
 __xdata uint16_t o_idx;
+__xdata uint16_t sent_len;
 __xdata uint16_t len_left;
 __xdata uint16_t cont_len;
 __xdata uint32_t cont_addr;
@@ -130,7 +131,7 @@ uint8_t find_entry(__xdata uint8_t *e)
 }
 
 
-bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
+bool is_word(__xdata uint8_t *xdata_str_p, __code const uint8_t * __xdata code_str_p)
 {
 	uint8_t u, c;
 
@@ -152,7 +153,7 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 
 
 /* name must be lower-case, starting with the '\n' of the previous line's end */
-__xdata uint8_t *header_value(__xdata uint8_t *p, __code uint8_t *name)
+__xdata uint8_t *header_value(__xdata uint8_t *p, __code const uint8_t *name)
 {
 	uint8_t u, c;
 
@@ -351,8 +352,9 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 			if (is_word_x(session, session_id)) {
 				authenticated = 1;
 				last_session_use = now;
-			} else
+			} else {
 				dbg_string("Invalid session cookie!\n");
+			}
 		}
 	}
 	return p;
@@ -379,8 +381,8 @@ void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 static uint8_t config_take(void)
 {
 	// #386: needs static, otherwise it still lands in SRAM/DSEG
-	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
-	__xdata uint8_t cfg_bl;
+	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last, cfg_i;
+	__xdata uint8_t cfg_bl, cfg_run;
 
 	cfg_bl = strlen_x(boundary);
 
@@ -422,6 +424,13 @@ static uint8_t config_take(void)
 				// the payload plus its terminator must fit the sector
 				if (cfg_end - cfg_body + 1 > CONFIG_LEN)
 					return 2;
+				cfg_run = 0;
+				for (cfg_i = cfg_body; cfg_i < cfg_end; cfg_i++) {
+					if (config_buf[cfg_i] == '\n')
+						cfg_run = 0;
+					else if (++cfg_run >= CMD_BUF_SIZE - 1)
+						return 2;
+				}
 				config_buf[cfg_end] = 0;
 				flash_region.addr = CONFIG_START;
 				flash_sector_erase();
@@ -534,6 +543,19 @@ uint8_t stream_upload(void)
 			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
+				/* The staged image spans FIRMWARE_UPLOAD_START to twice that,
+				 * the span check_and_flash_update_image() reads back. Nothing
+				 * else bounds uptr: a body whose closing boundary never arrives
+				 * keeps writing, and on a flash exactly this size the address
+				 * wraps onto the running image at zero. */
+				if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+					print_string("Upload runs past the image area! Aborting.\n");
+					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"NO: upload exceeds image area\n");
+					s->tstate = TSTATE_NONE;
+					return 0;
+				}
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
 				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
 				if (uptr % FLASH_SECTOR_SIZE == 0) {
@@ -563,7 +585,7 @@ static void handle_config_fragment(__xdata uint8_t *p)
 	__xdata uint16_t frag_len;
 	uint8_t taken;
 
-	frag_len = uip_len - (p - uip_appdata);
+	frag_len = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 		print_string("Configuration too large, aborting.\n");
 		config_upload = 0;
@@ -593,7 +615,7 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint16_t frag_len, payload_start;
 
-	frag_len = uip_len - (p - uip_appdata);
+	frag_len = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (pre_acc + frag_len >= CONFIG_UPLOAD_BUF) {
 		print_string("Firmware upload header too large, aborting.\n");
 		config_upload = 0;
@@ -690,7 +712,7 @@ static uint8_t post_body_take(__xdata uint8_t *p)
 		send_bad_request();
 		return 0;
 	}
-	have = uip_len - (p - uip_appdata);
+	have = uip_len - (p - (__xdata uint8_t *)uip_appdata);
 	if (have >= content_length) {
 		p[content_length] = NUL;
 		return 1;
@@ -756,6 +778,10 @@ void handle_post(void)
 			return;
 		}
 		if (is_word(request_path, "upload")) {
+			if (!authenticated) {
+				send_unauthorized();
+				return;
+			}
 			if (flash_size < FIRMWARE_UPLOAD_START*2)
 			{
 				print_string("Flash too small for firmware upload!\n");
@@ -783,7 +809,23 @@ void handle_post(void)
 		dbg_string("Multipart request\n");
 	}
 
-	if (is_word(request_path, "cmd")) {
+	if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
+		dbg_string("POST upload/config request\n");
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
+		if (!boundary[0]) {
+			dbg_string("Bad request, no boundary!\n");
+			send_bad_request();
+			return;
+		}
+		if (config_upload)
+			handle_config_fragment(p);
+		else
+			handle_firmware_fragment(p);
+		return;
+	} else if (is_word(request_path, "cmd")) {
 		p += 4;
 		if (!authenticated) {
 			send_unauthorized();
@@ -809,26 +851,17 @@ void handle_post(void)
 			return;
 		run_login_body(p);
 		return;
-	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
-		dbg_string("POST upload/config request\n");
-		if (!authenticated) {
-			send_unauthorized();
-			return;
-		}
-		if (!boundary[0]) {
-			dbg_string("Bad request, no boundary!\n");
-			send_bad_request();
-			return;
-		}
-		if (config_upload)
-			handle_config_fragment(p);
-		else
-			handle_firmware_fragment(p);
-		return;
 	} else {
 		send_not_found();
 		return;
 	}
+}
+
+
+static void tx_send(uint16_t len)
+{
+	sent_len = len;
+	uip_send(outbuf + o_idx, len);
 }
 
 
@@ -867,9 +900,9 @@ void httpd_appcall(void)
 		}
 	} else if (uip_acked() && s->tstate == TSTATE_TX) {
 		dbg_string("ACK\n");
-		if (slen > uip_mss()) {
-			slen -= uip_mss();
-			o_idx += uip_mss();
+		if (slen > sent_len) {
+			slen -= sent_len;
+			o_idx += sent_len;
 		} else {
 			slen = 0;
 		}
@@ -878,11 +911,11 @@ void httpd_appcall(void)
 
 		if (slen > uip_mss()) {
 			dbg_string("Sending A: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, uip_mss());
+			tx_send(uip_mss());
 			s->tstate = TSTATE_TX;
 		} else if (slen > 0) {
 			dbg_string("Sending B: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, slen);
+			tx_send(slen);
 			s->tstate = TSTATE_TX;
 		} else if (cont_len) {
 			dbg_string("CONT cont_len: "); dbg_short(cont_len);
@@ -893,7 +926,7 @@ void httpd_appcall(void)
 			flash_region.len = slen;
 			flash_read_bulk(outbuf);
 			o_idx = 0;
-			uip_send(outbuf + o_idx, slen);
+			tx_send(slen);
 			cont_len -= slen;
 			cont_addr += slen;
 			s->tstate = TSTATE_TX;
@@ -904,8 +937,9 @@ void httpd_appcall(void)
 			reset_chip();
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
-		// Check here maxupload by subtracting uip_len and close socekt if fails!
-		if (max_upload - uip_len > 0) {
+		if (config_upload || uip_len <= max_upload) {
+			if (!config_upload)
+				max_upload -= uip_len;
 			upload_settings.p = uip_appdata;
 			upload_settings.bptr = 0;
 			upload_settings.plen = uip_len;
@@ -1051,24 +1085,20 @@ do_send:
 		o_idx = 0;
 		if (slen > uip_mss()) {
 			dbg_string("Sending a: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, uip_mss());
+			tx_send(uip_mss());
 			dbg_string("Sending a done\n");
 		} else {
 			dbg_string("Sending b: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, slen);
+			tx_send(slen);
 			dbg_string("Sending b done\n");
 		}
 		s->tstate = TSTATE_TX;
 	} else if (uip_rexmit()) { // Connection established, need to rexmit?
 		dbg_string("RETRANSMIT requested\n");
-		if (slen > uip_mss()) {
-			dbg_string("Sending C: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, uip_mss());
+		if (sent_len) {
+			dbg_string("Sending C: "); dbg_short(sent_len); dbg_char('\n');
+			tx_send(sent_len);
 			dbg_string("Sending C done\n");
-		} else if (slen > 0) {
-			dbg_string("Sending D: "); dbg_short(slen); dbg_char('\n');
-			uip_send(outbuf + o_idx, slen);
-			dbg_string("Sending D done\n");
 		}
 		s->tstate = TSTATE_TX;
 		uip_len = 0;

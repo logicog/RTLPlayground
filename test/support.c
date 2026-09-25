@@ -47,7 +47,7 @@ static void out_putc(char c) {
 
 /* --- mocked print helpers (signatures match rtl837x_common.h post-shim) ---- */
 void write_char(char c)            { out_putc(c); }
-void print_string(char *p)         { while (*p) out_putc(*p++); }
+void print_string(const char *p)   { while (*p) out_putc(*p++); }
 void print_string_x(char *p)       { while (*p) out_putc(*p++); }
 void print_cmd_prompt(void)        { print_string((char *)"> "); }
 void itoa(uint8_t v) {                       /* firmware prints a decimal number */

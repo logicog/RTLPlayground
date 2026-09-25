@@ -15,7 +15,7 @@
 #include "rtl837x_igmp.h"
 #include "machine.h"
 
-extern __code struct machine machine;
+extern __code const struct machine machine;
 extern __xdata uint8_t igmpEnabled;
 
 #include "uip.h"

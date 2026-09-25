@@ -912,8 +912,8 @@ __xdata struct uip_udp_conn *uip_udp_new(__xdata uip_ipaddr_t * __xdata ripaddr,
 				      ((__xdata u16_t *)addr1)[1] == ((__xdata u16_t *)addr2)[1])
 #define uip_ipaddr_cmpx(addr1, addr2) (((__xdata u16_t *)addr1)[0] == ((__xdata u16_t *)addr2)[0] && \
 				      ((__xdata u16_t *)addr1)[1] == ((__xdata u16_t *)addr2)[1])
-#define uip_ipaddr_cmpc(addr1, addr2) (((__xdata u16_t *)addr1)[0] == ((__code u16_t *)addr2)[0] && \
-				      ((__xdata u16_t *)addr1)[1] == ((__code u16_t *)addr2)[1])
+#define uip_ipaddr_cmpc(addr1, addr2) (((__xdata u16_t *)addr1)[0] == ((__code const u16_t *)addr2)[0] && \
+				      ((__xdata u16_t *)addr1)[1] == ((__code const u16_t *)addr2)[1])
 #else /* !UIP_CONF_IPV6 */
 #define uip_ipaddr_cmp(addr1, addr2) (memcmp(addr1, addr2, sizeof(uip_ip6addr_t)) == 0)
 #endif /* !UIP_CONF_IPV6 */

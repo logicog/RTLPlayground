@@ -20,9 +20,11 @@
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __code uint16_t bit_mask[16];
+extern __code const uint16_t bit_mask[16];
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
+extern volatile __xdata uint32_t ticks;
+extern __xdata uint32_t rtl8224_release_tick;
 
 __xdata struct phy_settings phy_settings;
 
@@ -33,7 +35,7 @@ __xdata struct phy_settings phy_settings;
 // Note: Adding `Swapping the RX for N-devices`-setting on the end of the array, didn't work.
 // Setting will apply but still no packets flow.
 // Settings are `0x2000, 0xc10c`,
-__code uint16_t rtl8224_sds0_setttings[42] = {
+__code const uint16_t rtl8224_sds0_setttings[42] = {
 	// SDS_DATA, SDS_CMD
 	0x4480, 0xc842,
 	0x0400, 0xc9c2,
@@ -214,9 +216,20 @@ void phy_config(uint8_t phy) __banked
 }
 
 
+void rtl8224_wait_ready(void) __banked
+{
+	do {
+		rtl8224_read_reg_u16(RTL837X_REG_CHIP_ID + 1);
+		if (SFR_DATA_U16 == 0x8224)
+			return;
+	} while ((ticks - rtl8224_release_tick) < (SYS_TICK_HZ * 5 / 2));
+	print_string("\r\nRTL8224 not responding\r\n");
+}
+
 void phy_config_8224(void) __banked
 {
 	uint16_t pval;
+	uint16_t tries;
 	print_string("\r\nphy_config_8224 called\r\nRTL8224 ID: ");
 
 	// Print RTL8224 chip id
@@ -244,9 +257,12 @@ void phy_config_8224(void) __banked
 		i++;
 		rtl8224_write_reg_u16(RTL837X_SDS_INDACS_CMD, rtl8224_sds0_setttings[i]);
 		i++;
+		tries = 0xffff;
 		do {
 			rtl8224_read_reg_u16(0x3f8);
-		} while (SFR_DATA_8 & 0x80);
+		} while ((SFR_DATA_8 & 0x80) && --tries);
+		if (SFR_DATA_8 & 0x80)
+			print_string("\r\nRTL8224 SerDes access timed out\r\n");
 	}
 
 	print_string("\r\nphy_config_8224 done\r\n");
@@ -354,8 +370,9 @@ void phy_set_speed(void) __banked
 			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
-			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
-			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1001);
+			// bits 0-4: 0x1 (802.3 supported), bit 10: PAUSE,
+			// Extended Next Page format used
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1401);
 			if (phy_settings.speed == PHY_SPEED_1G) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed

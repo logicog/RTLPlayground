@@ -139,7 +139,6 @@ void dhcp_addopt_request_ip(void)
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[1];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[2];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[3];
-	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
 }
 
 
@@ -151,13 +150,11 @@ void dhcp_addopt_server_id(void)
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[1];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[2];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[3];
-	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
 }
 
 
 void dhcp_send_discover(void)
 {
-	print_string("dhcp_send_discover called\n");
 	dhcp_prepare_request();
 
 	dhcp_state.opt_ptr = 0;
@@ -193,7 +190,6 @@ void dhcp_send_discover(void)
 
 void dhcp_send_request(void)
 {
-	print_string("dhcp_send_request called\n");
 	dhcp_prepare_request();
 
 	dhcp_state.opt_ptr = 0;
@@ -232,19 +228,21 @@ void ip_opt(__xdata uint8_t * ip)
 {
 	dhcp_state.opt_ptr++;
 	uint8_t len = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
+	if (len >= 4)
+		memcpy(ip, &DHCP_OPT[dhcp_state.opt_ptr], 4);
 	 // There may be more than one IP option, such as 2 DNS servers advertised
-	dhcp_state.opt_ptr += len - 4;
+	dhcp_state.opt_ptr += len;
 }
 
 
-void long_opt(void)
+uint8_t long_opt(void)
 {
 	dhcp_state.opt_ptr++;
-	dhcp_state.opt_ptr++;
+	uint8_t len = DHCP_OPT[dhcp_state.opt_ptr++];
+	if (len < 4) {
+		dhcp_state.opt_ptr += len;
+		return 0;
+	}
 	long_value =  DHCP_OPT[dhcp_state.opt_ptr++];
 	long_value <<= 8;
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
@@ -252,6 +250,8 @@ void long_opt(void)
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
 	long_value <<= 8;
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
+	dhcp_state.opt_ptr += len - 4;
+	return 1;
 }
 
 
@@ -275,16 +275,16 @@ void parse_opts(void)
 			ip_opt(&dhcp_state.broadcast[0]);
 			break;
 		case DHCP_LEASE:
-			long_opt();
-			dhcp_state.lease = long_value;
+			if (long_opt())
+				dhcp_state.lease = long_value;
 			break;
 		case DHCP_REBIND:
-			long_opt();
-			dhcp_state.rebind = long_value;
+			if (long_opt())
+				dhcp_state.rebind = long_value;
 			break;
 		case DHCP_RENEWAL:
-			long_opt();
-			dhcp_state.renewal = long_value;
+			if (long_opt())
+				dhcp_state.renewal = long_value;
 			break;
 		case DHCP_END:
 			break;
@@ -376,13 +376,11 @@ void dhcp_start(void) __banked
 	*tid++ = SFR_DATA_8;
 	*tid = SFR_DATA_0;
 	dhcp_state.state = DHCP_START;
-	print_string("dhcp_start done\n");
 }
 
 
 void dhcp_stop(void) __banked
 {
-	print_string("dhcp_stop called\n");
 	uip_udp_remove(dhcp_state.conn);
 	dhcp_state.state = DHCP_OFF;
 }
