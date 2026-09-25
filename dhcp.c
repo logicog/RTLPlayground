@@ -139,7 +139,6 @@ void dhcp_addopt_request_ip(void)
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[1];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[2];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.current_ip[3];
-	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
 }
 
 
@@ -151,7 +150,6 @@ void dhcp_addopt_server_id(void)
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[1];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[2];
 	DHCP_OPT[dhcp_state.opt_ptr++] = dhcp_state.server[3];
-	memcpy(&DHCP_OPT[dhcp_state.opt_ptr], uip_ethaddr.addr, 4);
 }
 
 
