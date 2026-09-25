@@ -393,7 +393,7 @@ void acl_rule_clear(uint8_t idx) __banked
 	acl_k = acl_idx;
 	acl_h = acl_zero;
 	acl_tbl_write();
-	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), 0);
+	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), 0xff);
 	acl_used[acl_idx >> 3] &= ~(1 << (acl_idx & 7));
 	acl_rng_free();
 	acl_ports_update();
