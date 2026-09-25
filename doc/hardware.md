@@ -16,6 +16,8 @@ The following hardware features of the RTL8372/3 is supported:
   - L2 learning table access, L2 table flushing
   - VLAN setup/configuration
   - Port mirroring
+  - ACL: rule and action tables, templates, range checks, field selectors,
+    shared meters and logging counters
 - Access to PHYs via MDIO (clause 45 via SFR):
   - Internal PHYs of RTL8372 and RTL8373
   - RTL8221 (1x2.5GBit port on devices with 5 ports)
