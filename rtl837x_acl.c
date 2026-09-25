@@ -60,6 +60,7 @@ static __code const uint8_t acl_key_fts[ACL_KEYS] = {
 	ACL_FT_SEL0 + 4, ACL_FT_SEL0 + 5, ACL_FT_SEL0 + 6, ACL_FT_SEL0 + 7,
 	ACL_FT_SEL0 + 8, ACL_FT_SEL0 + 9, ACL_FT_SEL0 + 10, ACL_FT_SEL0 + 11,
 	ACL_FT_SEL0 + 12, ACL_FT_SEL0 + 13, ACL_FT_SEL0 + 14, ACL_FT_SEL0 + 15,
+	ACL_FT_FIELD_VALID,
 };
 
 static __code const uint8_t acl_tmpl[ACL_TEMPLATES][8] = {
@@ -145,6 +146,8 @@ uint8_t acl_key(uint8_t ft) __banked
 		return ft - ACL_FT_IPTOSPROTO + 13;
 	if (ft >= ACL_FT_SEL0 && ft < ACL_FT_SEL0 + ACL_SELECTORS)
 		return ft - ACL_FT_SEL0 + 16;
+	if (ft == ACL_FT_FIELD_VALID)
+		return 32;
 	return ACL_NONE;
 }
 
@@ -403,6 +406,15 @@ void acl_unmatch_set(void) __banked
 {
 	acl_unmatch_drop &= ACL_PORTS;
 	acl_ports_update();
+}
+
+void acl_poll(void) __banked
+{
+	reg_read_m(RTL837X_ISR_INT_MISC);
+	if (!(sfr_data[2] & (ISR_MISC_ACL >> 8)))
+		return;
+	REG_SET(RTL837X_ISR_INT_MISC, ISR_MISC_ACL);
+	print_string("ACL interrupt\n");
 }
 
 void acl_counter_reset(void) __banked

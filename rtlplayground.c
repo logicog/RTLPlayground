@@ -29,6 +29,7 @@
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
+#include "rtl837x_acl.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -1249,6 +1250,7 @@ static void handle_tick(void)
 
 		// Check for button presses once a second
 		handle_button();
+		acl_poll();
 		link_irq = 1;
 		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
 		if (++arp_age_secs >= 10) {
