@@ -150,6 +150,7 @@ void send_lag(void) { }
 void send_stp(void) { }
 void send_stp_counters(void) { }
 void send_vlanlist(void) { }
+void send_lldp(void) {}
 
 extern uint8_t authenticated;
 
