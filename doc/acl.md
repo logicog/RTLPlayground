@@ -24,7 +24,12 @@ A frame has to match every field a rule names. The ports after the actions are
 the ingress ports the rule applies to; without them it applies to all front
 panel ports. `acl <n>` replaces rule `n` and `acl <n> off` removes it; rules,
 meters, fields, counter modes and the default are kept in the saved
-configuration like any other command.
+configuration like any other command. A command line holds at most 14 words, so
+a long rule is split with `and` (see below).
+
+`acl show` lists the rules in use with the template each one got, the counters
+that are not zero, the hardware's hit indicator and the meters exceeded since the
+previous `acl show`.
 
 Examples:
 
@@ -94,7 +99,7 @@ It may continue with further `and` rules.
 | `trap [int\|ext\|both]` | trap the frame to the 8051, to the external CPU port, or to both; this firmware makes the 8051 the external CPU port too, so all three reach it |
 | `setvlan <vid>` | classify an untagged frame into this VLAN |
 | `outvlan <vid>` | use this VID in the tag on the way out |
-| `cvidfromsvid` | take the C-VID from the S-tag |
+| `cvidfromsvid` | take the C-VID from the S-tag (not measured) |
 | `setsvlan <vid>`, `outsvlan <vid>`, `svidfromcvid` | the same for the S-VLAN |
 | `tag`, `untag`, `keeptag`, `keepremark` | leave with a C-tag, without one, as received, or as received but with `pcp` applied |
 | `priority <0-7>` | internal priority |
@@ -141,6 +146,7 @@ ACL pins 0 to 3 are GPIO 52, 53, 54 and 30. Taking one over removes whatever the
 board uses it for; on the SWTGW218AS GPIO 54 is the reset button and GPIO 30 the
 SFP module detect, so only pins 0 and 1 are free there. A matching frame pulses
 the pin high; `acl gpio polarity` made no difference to that in our test.
+doc/gpio.md lists the pins with their other functions.
 
 A field selector picks 16 bits at `offset` bytes into a part of the frame:
 `raw` from the start of the frame after its VLAN tags, `llc`, `arp`, `ipv4` and
