@@ -8,7 +8,7 @@ priority.
 acl <1-64> [not] <match>... <action>... [<port>...]
 acl <1-64> and <match>... [<port>...]
 acl <1-64> off
-acl meter <0-63> <rate> kbps|pps <burst>
+acl meter <0-63> <rate> kbps|pps <burst> [ifg]
 acl field <0-15> off|raw|llc|ipv4|arp|ipv6|ip|l4 <offset>
 acl default permit
 acl default drop <port>...
@@ -45,9 +45,10 @@ acl 11 and udp dport 5000
 |---|---|
 | `dmac <mac>[/<mask>]`, `smac <mac>[/<mask>]` | MAC address, `aa:bb:cc:dd:ee:ff` |
 | `ethertype <hex>[/<hex>]` | EtherType; for a tagged frame the type after the tag, for LLC/SNAP the SNAP type |
-| `vlan <vid>[-<vid>]` | VID of the C-tag; frames without a C-tag never match |
-| `pri <0-7>` | priority of the C-tag |
+| `vlan <vid>[-<vid>]` | VID of the C-tag |
+| `pri <0-7>`, `cfi <0-1>` | priority and CFI bit of the C-tag |
 | `svlan <vid>[-<vid>]` | VID of the S-tag |
+| `spri <0-7>`, `sdei <0-1>` | priority and DEI bit of the S-tag |
 | `tagged`, `untagged` | the frame carries a C-tag or not |
 | `stagged` | the frame carries an S-tag |
 | `pppoe` | PPPoE session frame |
@@ -61,6 +62,9 @@ acl 11 and udp dport 5000
 | `sport <port>[-<port>]`, `dport ...` | TCP or UDP port, IPv4 or IPv6 |
 | `field <0-15> <hex>[/<hex>]` | 16 bits picked by field selector n, see below |
 | `valid <0-15>` | field selector n applies to the frame (its format matches) |
+
+A frame without a C-tag reads its C-tag as all zeroes: `vlan 5` or `pri 3` never
+matches it, but `pri 0` and `cfi 0` do, so add `tagged` when that matters.
 
 `not` inverts the match of the whole rule. A frame goes through all rules at
 once; the lowest numbered rule that matches and has an action of a given kind
@@ -83,7 +87,7 @@ It may continue with further `and` rules.
 | `drop` | drop |
 | `permit` | forward as usual; overrides later forwarding rules |
 | `<port>` or `redirect <port>[,<port>...]` | send to these ports instead |
-| `copy <port>[,...]` | forward as usual and also send to these ports |
+| `copy <port>[,...]` | forward as usual and add these ports (not measured) |
 | `mirror <port>[,...]` | forward as usual and mirror to these ports |
 | `isolate <port>[,...]` | forward only to these of the usual ports |
 | `cpu` | hand the frame to the 8051 instead of forwarding it |
@@ -92,9 +96,9 @@ It may continue with further `and` rules.
 | `outvlan <vid>` | use this VID in the tag on the way out |
 | `cvidfromsvid` | take the C-VID from the S-tag |
 | `setsvlan <vid>`, `outsvlan <vid>`, `svidfromcvid` | the same for the S-VLAN |
-| `tag`, `untag`, `keeptag`, `keepremark` | leave with a C-tag, without one, as received, or as received with the priority remarked |
+| `tag`, `untag`, `keeptag`, `keepremark` | leave with a C-tag, without one, as received, or as received but with `pcp` applied |
 | `priority <0-7>` | internal priority |
-| `pcp <0-7>` | remark the 802.1p priority of the outgoing tag |
+| `pcp <0-7>` | remark the 802.1p priority of the outgoing tag; `keeptag` keeps the received priority instead |
 | `dscp <0-63>` | remark the DSCP of an IPv4 frame |
 | `police <m>[,<m>[,<m>]]` | police with up to three meters; a frame passes only if every one of them lets it |
 | `count <0-31>` | count in counter n |
@@ -121,7 +125,8 @@ and never goes back into the group it came from.
 
 `acl meter <n> <rate> kbps <burst>` limits to `rate` kbit/s with a bucket of
 `burst` bytes, `pps` to `rate` packets per second with a bucket of `burst`
-packets. A bucket of 0 passes nothing, and a bucket should hold a few frames.
+packets; `ifg` also counts the preamble and inter-frame gap of each frame. A
+bucket of 0 passes nothing, and a bucket should hold a few frames.
 Several rules may share a meter. `acl show` lists which meters have been
 exceeded; the hardware keeps those bits set.
 
@@ -136,10 +141,21 @@ the board uses it for. `acl gpio polarity` sets the level a matching rule
 drives.
 
 A field selector picks 16 bits at `offset` bytes into a part of the frame:
-`raw` from the start of the frame after its VLAN tags, `llc`, `ipv4` and `ipv6`
-from the start of that header, `arp`, `ip` from the IP payload and `l4` from the
-TCP or UDP payload. `acl field 0 ipv6 8` makes `field 0` the first 16 bits of the
-IPv6 source address.
+`raw` from the start of the frame after its VLAN tags, `llc`, `arp`, `ipv4` and
+`ipv6` from the start of that header, `ip` from the IP payload (the layer 4
+header, IPv4 or IPv6) and `l4` from the TCP or UDP payload. A selector whose
+part the frame does not have is not valid for it, which `valid <n>` tests.
+`acl field 0 ipv6 8` makes `field 0` the first 16 bits of the IPv6 source
+address. Selectors 4 to 11 share a template, so a whole IPv6 address fits in one
+rule and an `and` rule:
+
+```
+acl field 4 ipv6 8
+...
+acl field 11 ipv6 22
+acl 1 field 4 fd00 field 5 0000 field 6 0000 field 7 0000 drop
+acl 2 and field 8 0000 field 9 0000 field 10 0000 field 11 0001
+```
 
 ## Default action
 

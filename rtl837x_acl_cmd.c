@@ -369,13 +369,18 @@ static uint8_t acl_match(void)
 		acl_m = 0x0fff;
 		return acl_range() && acl_exact() ? 1 : ACL_BAD;
 	}
-	if (acl_eq("pri")) {
-		acl_max = 7;
+	acl_ft = ACL_BAD;
+	if (acl_eq("pri") || acl_eq("cfi"))
+		acl_ft = ACL_FT_CTAG;
+	else if (acl_eq("spri") || acl_eq("sdei"))
+		acl_ft = ACL_FT_STAG;
+	if (acl_ft != ACL_BAD) {
+		acl_kind = acl_eq("cfi") || acl_eq("sdei");
+		acl_max = acl_kind ? 1 : 7;
 		if (!acl_val())
 			return ACL_BAD;
-		acl_ft = ACL_FT_CTAG;
-		acl_lo = acl_n << 13;
-		acl_m = 0xe000;
+		acl_lo = acl_n << (acl_kind ? 12 : 13);
+		acl_m = acl_kind ? 0x1000 : 0xe000;
 		acl_key_set();
 		return 1;
 	}
@@ -847,8 +852,17 @@ static uint8_t acl_global_cmd(void)
 		return acl_bit();
 	}
 	if (acl_eq("meter")) {
+		acl_kind = 0;
+		if (cmd_words_len == 7) {
+			acl_w = 6;
+			acl_kind = acl_eq("ifg");
+			acl_w = 1;
+		}
+		if (cmd_words_len != 6 + acl_kind)
+			return 0;
+		acl_intr = acl_kind;
 		acl_max = ACL_METERS - 1;
-		if (cmd_words_len != 6 || !acl_val())
+		if (!acl_val())
 			return 0;
 		acl_r = acl_n;
 		acl_max = 0xffffff;
@@ -870,6 +884,9 @@ static uint8_t acl_global_cmd(void)
 		acl_rv = acl_lo;
 		acl_reg();
 		acl_ra = RTL837X_METER_MODE + ((acl_r >> 5) << 2);
+		acl_bit();
+		acl_kind = acl_intr;
+		acl_ra = RTL837X_METER_IFG + ((acl_r >> 5) << 2);
 		return acl_bit();
 	}
 	if (acl_eq("field")) {
@@ -946,7 +963,7 @@ void acl_cmd(void) __banked
 		return;
 	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: acl <1-64> [not|and] <match>... <action>... [<port>...] | acl <1-64> off"
-		     " | acl meter <0-63> <rate> kbps|pps <burst> | acl field <0-15> <format> <offset>"
+		     " | acl meter <0-63> <rate> kbps|pps <burst> [ifg] | acl field <0-15> <format> <offset>"
 		     " | acl default permit|drop <port>... | acl counter reset|<n> mode bytes|packets|<n> width 32|64"
 		     " | acl gpio <0-3> on|off | acl gpio polarity high|low"
 		     " | acl show\n");
