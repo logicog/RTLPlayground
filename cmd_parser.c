@@ -601,35 +601,44 @@ void parse_acl(void)
 		acl_rule_clear(idx);
 		return;
 	}
-	if (cmd_words_len < 5)
+
+	acl_match_begin();
+	uint8_t w = 2;
+	while (w + 1 < cmd_words_len) {
+		if (cmd_compare(w, "dmac") || cmd_compare(w, "smac")) {
+			if (!parse_mac(cmd_words_b[w + 1]))
+				goto err;
+			acl_match_mac(cmd_compare(w, "dmac") ? ACL_FIELD_DMAC : ACL_FIELD_SMAC, mac_parse_result);
+		} else if (cmd_compare(w, "ethertype")) {
+			if (atoi_hex(cmd_words_b[w + 1]) != 2)
+				goto err;
+			acl_match_ethertype(((uint16_t)hexvalue[0] << 8) | hexvalue[1]);
+		} else {
+			break;
+		}
+		w += 2;
+	}
+	if (w == 2 || w >= cmd_words_len)
 		goto err;
 
-	if (cmd_compare(2, "dmac") || cmd_compare(2, "smac")) {
-		acl_field = cmd_compare(2, "dmac") ? ACL_FIELD_DMAC : ACL_FIELD_SMAC;
-		if (!parse_mac(cmd_words_b[3]))
+	acl_fwd = RTL837X_ACL_FWD_REDIRECT;
+	if (cmd_compare(w, "drop")) {
+		acl_out_pmask = 0;
+	} else if (cmd_compare(w, "cpu")) {
+		acl_out_pmask = 1 << CPU_PORT;
+	} else if (cmd_compare(w, "mirror")) {
+		if (++w >= cmd_words_len || !cmd_parse_port_separator(cmd_words_b[w]))
 			goto err;
-		memcpy(acl_value, mac_parse_result, 6);
-	} else if (cmd_compare(2, "ethertype")) {
-		if (atoi_hex(cmd_words_b[3]) != 2)
-			goto err;
-		acl_field = ACL_FIELD_ETHERTYPE;
-		acl_value[0] = hexvalue[0];
-		acl_value[1] = hexvalue[1];
+		acl_fwd = RTL837X_ACL_FWD_MIRROR;
+		acl_out_pmask = (uint16_t)1 << atoi_results_u8;
+	} else if (cmd_parse_port_separator(cmd_words_b[w])) {
+		acl_out_pmask = (uint16_t)1 << atoi_results_u8;
 	} else {
 		goto err;
 	}
 
-	if (cmd_compare(4, "drop"))
-		acl_out_pmask = 0;
-	else if (cmd_compare(4, "cpu"))
-		acl_out_pmask = PMASK_CPU;
-	else if (cmd_parse_port_separator(cmd_words_b[4]))
-		acl_out_pmask = (uint16_t)1 << atoi_results_u8;
-	else
-		goto err;
-
 	acl_in_pmask = 0;
-	for (uint8_t w = 5; w < cmd_words_len; w++) {
+	for (w++; w < cmd_words_len; w++) {
 		if (!cmd_parse_port_separator(cmd_words_b[w]))
 			goto err;
 		acl_in_pmask |= (uint16_t)1 << atoi_results_u8;
@@ -637,7 +646,7 @@ void parse_acl(void)
 	acl_rule_set(idx);
 	return;
 err:
-	cmd_error("acl <1-64> (dmac|smac <mac> | ethertype <hex>) (drop|cpu|<port>) [<port>...] | acl <1-64> off\n");
+	cmd_error("acl <1-64> [dmac <mac>] [smac <mac>] [ethertype <hex>] (drop|cpu|mirror <port>|<port>) [<port>...] | acl <1-64> off\n");
 }
 
 
