@@ -37,9 +37,9 @@ frame.
 
 While STP runs, the action is *trap*. A trap delivers to the port named in
 `EXT_CPU_CTRL` (0x6724), whose reset value 0xf names no port, and with that
-value the trapped frame is dropped at ingress. `trap_init()` sets it to 9, the
-port the 8051 sits behind, once at startup. The trap needs no per-VLAN L2
-entries, so it does not depend on which VLANs exist or on the PVIDs, and turning
+value the trapped frame is dropped at ingress. `trap_init()` sets it to
+`CPU_PORT` (9), the port the 8051 sits behind, once at startup. The trap needs
+no per-VLAN L2 entries, so it does not depend on which VLANs exist or on the PVIDs, and turning
 STP on no longer walks the whole VLAN table. BPDUs reach the CPU on a port that
 STP holds in blocking with either action: measured on a SWTGW218AS by sending
 BPDUs into a blocked port with forward and with trap, both ports stopped being
