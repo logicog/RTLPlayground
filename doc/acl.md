@@ -48,7 +48,7 @@ acl 11 and udp dport 5000
 | `vlan <vid>[-<vid>]` | VID of the C-tag |
 | `pri <0-7>`, `cfi <0-1>` | priority and CFI bit of the C-tag |
 | `svlan <vid>[-<vid>]` | VID of the S-tag |
-| `spri <0-7>`, `sdei <0-1>` | priority and DEI bit of the S-tag |
+| `spri <0-7>`, `sdei <0-1>` | priority and DEI part of the S-tag key, see S-VLAN |
 | `tagged`, `untagged` | the frame carries a C-tag or not |
 | `stagged` | the frame carries an S-tag |
 | `pppoe` | PPPoE session frame |
@@ -87,11 +87,11 @@ It may continue with further `and` rules.
 | `drop` | drop |
 | `permit` | forward as usual; overrides later forwarding rules |
 | `<port>` or `redirect <port>[,<port>...]` | send to these ports instead |
-| `copy <port>[,...]` | forward as usual and add these ports (not measured) |
+| `copy <port>[,...]` | forward as usual and add these ports |
 | `mirror <port>[,...]` | forward as usual and mirror to these ports |
 | `isolate <port>[,...]` | forward only to these of the usual ports |
 | `cpu` | hand the frame to the 8051 instead of forwarding it |
-| `trap [int\|ext\|both]` | trap the frame to the 8051, to an external CPU, or to both |
+| `trap [int\|ext\|both]` | trap the frame to the 8051, to the external CPU port, or to both; this firmware makes the 8051 the external CPU port too, so all three reach it |
 | `setvlan <vid>` | classify an untagged frame into this VLAN |
 | `outvlan <vid>` | use this VID in the tag on the way out |
 | `cvidfromsvid` | take the C-VID from the S-tag |
@@ -103,7 +103,7 @@ It may continue with further `and` rules.
 | `police <m>[,<m>[,<m>]]` | police with up to three meters; a frame passes only if every one of them lets it |
 | `count <0-31>` | count in counter n |
 | `interrupt` | raise the ACL interrupt; the firmware prints `ACL interrupt` once a second while it fires |
-| `gpio <0-3>` | drive ACL GPIO pin n while the rule matches |
+| `gpio <0-3>` | pulse ACL GPIO pin n high for each matching frame |
 | `bypass storm\|stp\|vlan` | skip storm control, the STP source check or the ingress VLAN filter |
 
 A rule whose only action is `interrupt` or `gpio` drops the frame; together
@@ -128,17 +128,19 @@ and never goes back into the group it came from.
 packets; `ifg` also counts the preamble and inter-frame gap of each frame. A
 bucket of 0 passes nothing, and a bucket should hold a few frames.
 Several rules may share a meter. `acl show` lists which meters have been
-exceeded; the hardware keeps those bits set.
+exceeded since the previous `acl show` and clears the list.
 
 Counters count packets unless their pair (0-1, 2-3, ...) is switched to bytes,
 and are 32 bits wide unless the pair is switched to 64, which joins the two
 counters of the pair. They are shown with `acl show` and cleared with
-`acl counter reset`; reading does not clear them.
+`acl counter reset`; reading does not clear them. Counter numbers stop at 31;
+the hardware accepts higher ones but counts them nowhere.
 
-`gpio` drives one of four pins the ACL can take over with `acl gpio <n> on`;
-which pins those are depends on the board, and taking one over removes whatever
-the board uses it for. `acl gpio polarity` sets the level a matching rule
-drives.
+`gpio` drives one of four pins the ACL can take over with `acl gpio <n> on`:
+ACL pins 0 to 3 are GPIO 52, 53, 54 and 30. Taking one over removes whatever the
+board uses it for; on the SWTGW218AS GPIO 54 is the reset button and GPIO 30 the
+SFP module detect, so only pins 0 and 1 are free there. A matching frame pulses
+the pin high; `acl gpio polarity` made no difference to that in our test.
 
 A field selector picks 16 bits at `offset` bytes into a part of the frame:
 `raw` from the start of the frame after its VLAN tags, `llc`, `arp`, `ipv4` and
@@ -182,8 +184,20 @@ firmware enables only the types a rule uses. `ACL_PORT_UNMATCH_PERMIT` (0x481c)
 resets to 0, which drops every unmatched frame on a port with ACL enabled; it is
 set before `ACL_PORT_EN` (0x4818) when the first rule is added.
 
-Not measured: the S-tag matches, `svlan` ranges and the S-VLAN actions need
-S-VLAN operation, which the firmware does not configure; `trap ext` drops the
-frame, as there is no external CPU; the bypass flags could not be observed (the redirect already
-passes the VLAN filter); `gpio` was not driven on a board. `acl show` also prints
-the hardware's hit indicator, which read zero in every test.
+## S-VLAN
+
+The S-tag matches and actions need S-VLAN operation, which this firmware does
+not configure. Measured with the S-VLAN registers set by hand: a port reads
+S-tags only while it is an S-VLAN service port; `stagged`, `svlan` and S-VID
+ranges then match, but the priority and DEI part of the S-tag key read 0 for
+every frame, so `spri` and `sdei` only match 0. `outsvlan` adds an S-tag with
+that VID to frames leaving a service port, and `svidfromcvid` forwards them in
+the S-VLAN of their C-VID. With `setsvlan` the frames did not arrive, even with
+the S-VLAN defined on the target port. Frames that get no S-VID at all are
+dropped on the way to a service port.
+
+## Not measured
+
+`bypass stp`, which would need a live port in blocking state; the storm and
+VLAN filter bypasses were measured. `acl show` also prints the hardware's hit
+indicator, which read zero in every test.
