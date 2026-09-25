@@ -155,7 +155,6 @@ void dhcp_addopt_server_id(void)
 
 void dhcp_send_discover(void)
 {
-	print_string("dhcp_send_discover called\n");
 	dhcp_prepare_request();
 
 	dhcp_state.opt_ptr = 0;
@@ -191,7 +190,6 @@ void dhcp_send_discover(void)
 
 void dhcp_send_request(void)
 {
-	print_string("dhcp_send_request called\n");
 	dhcp_prepare_request();
 
 	dhcp_state.opt_ptr = 0;
@@ -378,13 +376,11 @@ void dhcp_start(void) __banked
 	*tid++ = SFR_DATA_8;
 	*tid = SFR_DATA_0;
 	dhcp_state.state = DHCP_START;
-	print_string("dhcp_start done\n");
 }
 
 
 void dhcp_stop(void) __banked
 {
-	print_string("dhcp_stop called\n");
 	uip_udp_remove(dhcp_state.conn);
 	dhcp_state.state = DHCP_OFF;
 }
