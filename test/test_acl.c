@@ -131,7 +131,7 @@ static void t_globals(void)
 	printf("[test] acl meter, field, default, counter\n");
 	hw_reset();
 	for (int n = 1; n <= ACL_RULES; n++) {
-		char line[16];
+		char line[32];
 		snprintf(line, sizeof(line), "acl %d off", n);
 		run(line);
 	}
