@@ -348,16 +348,15 @@ uint8_t acl_match_range(uint8_t key) __banked
 
 uint8_t acl_rule_set(uint8_t idx) __banked
 {
-	acl_idx = idx;
-	if (acl_used[acl_idx >> 3] & (1 << (acl_idx & 7)))
-		acl_rule_clear(acl_idx);
-
 	for (acl_alt_ok = 0; acl_alt_ok < 2; acl_alt_ok++)
 		for (acl_t = 0; acl_t < ACL_TEMPLATES; acl_t++)
 			if (acl_fits())
 				goto found;
 	return ACL_ERR_TEMPLATE;
 found:
+	if (acl_used[idx >> 3] & (1 << (idx & 7)))
+		acl_rule_clear(idx);
+	acl_idx = idx;
 
 	if (!acl_any()) {
 		for (acl_s = 0; acl_s < ACL_TEMPLATES; acl_s++) {
