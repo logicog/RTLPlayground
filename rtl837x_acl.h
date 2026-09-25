@@ -10,7 +10,7 @@
 #define ACL_METERS		64
 #define ACL_COUNTERS		32
 #define ACL_SELECTORS		16
-#define ACL_KEYS		32
+#define ACL_KEYS		33
 #define ACL_REQS		6
 
 #define ACL_FT_DMAC0		0x00
@@ -78,6 +78,9 @@
 #define ACL_FWD_REDIRECT	1
 #define ACL_FWD_MIRROR		2
 #define ACL_FWD_TRAP		3
+#define ACL_FWD_TRAP_EXT	4
+#define ACL_FWD_TRAP_BOTH	5
+#define ACL_GPIO_PINS		4
 
 #define ACL_ERR_TEMPLATE	1
 #define ACL_ERR_RANGE		2
@@ -118,6 +121,7 @@ uint8_t acl_rule_set(uint8_t idx) __banked;
 void acl_rule_clear(uint8_t idx) __banked;
 void acl_unmatch_set(void) __banked;
 void acl_counter_reset(void) __banked;
+void acl_poll(void) __banked;
 void acl_cmd(void) __banked;
 
 #endif
