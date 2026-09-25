@@ -102,6 +102,9 @@ It may continue with further `and` rules.
 | `gpio <0-3>` | drive ACL GPIO pin n while the rule matches |
 | `bypass storm\|stp\|vlan` | skip storm control, the STP source check or the ingress VLAN filter |
 
+A rule whose only action is `interrupt` or `gpio` drops the frame; together
+with any other action, such as `permit` or `count`, it does not.
+
 A rule takes at most one forwarding action, one remark, and `police` or `count`.
 The second and third meter of `police` use the rule's C-VLAN and S-VLAN action,
 so they do not combine with the VLAN actions of that kind. The single `<port>`
@@ -164,7 +167,7 @@ resets to 0, which drops every unmatched frame on a port with ACL enabled; it is
 set before `ACL_PORT_EN` (0x4818) when the first rule is added.
 
 Not measured: the S-tag matches, `svlan` ranges and the S-VLAN actions need
-S-VLAN operation, which the firmware does not configure; `trap ext` needs an
-external CPU; the bypass flags could not be observed (the redirect already
+S-VLAN operation, which the firmware does not configure; `trap ext` drops the
+frame, as there is no external CPU; the bypass flags could not be observed (the redirect already
 passes the VLAN filter); `gpio` was not driven on a board. `acl show` also prints
 the hardware's hit indicator, which read zero in every test.
