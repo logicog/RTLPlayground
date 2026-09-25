@@ -232,19 +232,21 @@ void ip_opt(__xdata uint8_t * ip)
 {
 	dhcp_state.opt_ptr++;
 	uint8_t len = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
-	*ip++ = DHCP_OPT[dhcp_state.opt_ptr++];
+	if (len >= 4)
+		memcpy(ip, &DHCP_OPT[dhcp_state.opt_ptr], 4);
 	 // There may be more than one IP option, such as 2 DNS servers advertised
-	dhcp_state.opt_ptr += len - 4;
+	dhcp_state.opt_ptr += len;
 }
 
 
-void long_opt(void)
+uint8_t long_opt(void)
 {
 	dhcp_state.opt_ptr++;
-	dhcp_state.opt_ptr++;
+	uint8_t len = DHCP_OPT[dhcp_state.opt_ptr++];
+	if (len < 4) {
+		dhcp_state.opt_ptr += len;
+		return 0;
+	}
 	long_value =  DHCP_OPT[dhcp_state.opt_ptr++];
 	long_value <<= 8;
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
@@ -252,6 +254,8 @@ void long_opt(void)
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
 	long_value <<= 8;
 	long_value |= DHCP_OPT[dhcp_state.opt_ptr++];
+	dhcp_state.opt_ptr += len - 4;
+	return 1;
 }
 
 
@@ -275,16 +279,16 @@ void parse_opts(void)
 			ip_opt(&dhcp_state.broadcast[0]);
 			break;
 		case DHCP_LEASE:
-			long_opt();
-			dhcp_state.lease = long_value;
+			if (long_opt())
+				dhcp_state.lease = long_value;
 			break;
 		case DHCP_REBIND:
-			long_opt();
-			dhcp_state.rebind = long_value;
+			if (long_opt())
+				dhcp_state.rebind = long_value;
 			break;
 		case DHCP_RENEWAL:
-			long_opt();
-			dhcp_state.renewal = long_value;
+			if (long_opt())
+				dhcp_state.renewal = long_value;
 			break;
 		case DHCP_END:
 			break;
