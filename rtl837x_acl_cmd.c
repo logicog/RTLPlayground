@@ -799,9 +799,13 @@ static void acl_show(void)
 	print_string("\nmeters exceeded: ");
 	acl_ra = RTL837X_METER_EXCEED;
 	acl_print_reg();
+	reg_read_m(acl_ra);
+	reg_write_m(acl_ra);
 	write_char(' ');
 	acl_ra = RTL837X_METER_EXCEED + 4;
 	acl_print_reg();
+	reg_read_m(acl_ra);
+	reg_write_m(acl_ra);
 	write_char('\n');
 }
 
