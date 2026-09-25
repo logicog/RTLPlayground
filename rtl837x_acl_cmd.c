@@ -34,6 +34,9 @@ static __xdata uint32_t acl_hi;
 static __xdata uint32_t acl_m;
 static __xdata uint32_t acl_t32;
 static __xdata uint8_t  acl_byp;
+static __xdata uint8_t  acl_svlan;
+static __xdata uint8_t  acl_intr;
+static __xdata uint8_t  acl_pol[3];
 static __xdata uint8_t  acl_mac[6];
 static __xdata uint8_t  acl_mmask[6];
 static __xdata uint8_t * __xdata acl_out;
@@ -308,6 +311,8 @@ static uint8_t acl_flag(void)
 		acl_info(ACL_L4_TCP);
 	else if (acl_eq("udp"))
 		acl_info(ACL_L4_UDP);
+	else if (acl_eq("l4other"))
+		acl_info(ACL_L4_OTHER);
 	else
 		acl_pm = ACL_INFO_CTAG;
 	if (acl_pm == ACL_INFO_L4)
@@ -319,6 +324,9 @@ static uint8_t acl_flag(void)
 	} else if (acl_eq("pppoe")) {
 		acl_pm = ACL_INFO_PPPOE;
 		acl_info(ACL_INFO_PPPOE);
+	} else if (acl_eq("stagged")) {
+		acl_pm = ACL_INFO_STAG;
+		acl_info(ACL_INFO_STAG);
 	} else {
 		return 0;
 	}
@@ -417,6 +425,15 @@ static uint8_t acl_match(void)
 		acl_m = 0xffff;
 		return acl_range() && acl_exact() ? 1 : ACL_BAD;
 	}
+	if (acl_eq("valid")) {
+		acl_max = ACL_SELECTORS - 1;
+		if (!acl_val())
+			return ACL_BAD;
+		acl_ft = ACL_FT_FIELD_VALID;
+		acl_lo = acl_m = (uint16_t)1 << acl_n;
+		acl_key_set();
+		return 1;
+	}
 	if (acl_eq("field")) {
 		acl_max = ACL_SELECTORS - 1;
 		if (!acl_val())
@@ -459,6 +476,15 @@ static uint8_t acl_fwd_action(void)
 		acl_kind = ACL_FWD_COPY;
 	else if (acl_eq("trap"))
 		acl_kind = ACL_FWD_TRAP;
+	if (acl_kind == ACL_FWD_TRAP && acl_w + 1 < cmd_words_len) {
+		acl_w++;
+		if (acl_eq("ext"))
+			acl_kind = ACL_FWD_TRAP_EXT;
+		else if (acl_eq("both"))
+			acl_kind = ACL_FWD_TRAP_BOTH;
+		else if (!acl_eq("int"))
+			acl_w--;
+	}
 	else if (acl_eq("cpu"))
 		acl_kind = ACL_FWD_REDIRECT;
 	if (acl_eq("cpu"))
@@ -486,8 +512,40 @@ static uint8_t acl_fwd_action(void)
 	return acl_fwd();
 }
 
+static uint8_t acl_svlan_action(void)
+{
+	acl_kind = ACL_BAD;
+	if (acl_eq("setsvlan"))
+		acl_kind = 0;
+	else if (acl_eq("outsvlan"))
+		acl_kind = 1;
+	else if (acl_eq("svidfromcvid"))
+		acl_kind = 2;
+	if (acl_kind == ACL_BAD)
+		return 0;
+	if (acl_svlan)
+		return ACL_BAD;
+	acl_svlan = 1;
+	acl_n = 0;
+	acl_max = 4095;
+	if (acl_kind != 2 && !acl_val())
+		return ACL_BAD;
+	acl_n <<= 2;
+	acl_n |= acl_kind;
+	acl_n <<= 18;
+	acl_act[0] |= acl_n;
+	return 1;
+}
+
 static uint8_t acl_vlan_action(void)
 {
+	if (acl_eq("cvidfromsvid")) {
+		if (acl_vlan)
+			return ACL_BAD;
+		acl_vlan = 1;
+		acl_act[0] |= 2;
+		return 1;
+	}
 	if (acl_eq("setvlan") || acl_eq("outvlan")) {
 		acl_kind = acl_eq("outvlan");
 		acl_max = 4095;
@@ -527,6 +585,9 @@ static uint8_t acl_action(void)
 	acl_r = acl_vlan_action();
 	if (acl_r)
 		return acl_r;
+	acl_r = acl_svlan_action();
+	if (acl_r)
+		return acl_r;
 	if (acl_eq("priority")) {
 		acl_max = 7;
 		if (!acl_val() || !acl_set(ACL_ACT_PRI))
@@ -545,7 +606,43 @@ static uint8_t acl_action(void)
 		acl_act[1] |= acl_n;
 		return 1;
 	}
-	if (acl_eq("police") || acl_eq("count")) {
+	if (acl_eq("police")) {
+		if (!acl_next() || !acl_set(ACL_ACT_POLIC_LOG))
+			return ACL_BAD;
+		for (acl_c = 0; acl_c < 3; acl_c++) {
+			if (acl_c && !acl_sep(','))
+				break;
+			if (!acl_dec() || acl_n >= ACL_METERS)
+				return ACL_BAD;
+			acl_pol[acl_c] = acl_n;
+		}
+		if (!acl_end())
+			return ACL_BAD;
+		acl_n = acl_pol[0];
+		acl_n <<= 10;
+		acl_act[1] |= acl_n;
+		if (acl_c > 1) {
+			if (acl_vlan)
+				return ACL_BAD;
+			acl_vlan = 1;
+			acl_n = acl_pol[1];
+			acl_n <<= 4;
+			acl_n |= 3;
+			acl_act[0] |= acl_n;
+		}
+		if (acl_c > 2) {
+			if (acl_svlan)
+				return ACL_BAD;
+			acl_svlan = 1;
+			acl_n = acl_pol[2];
+			acl_n <<= 2;
+			acl_n |= 3;
+			acl_n <<= 18;
+			acl_act[0] |= acl_n;
+		}
+		return 1;
+	}
+	if (acl_eq("count")) {
 		acl_kind = acl_eq("count");
 		acl_max = acl_kind ? ACL_COUNTERS - 1 : ACL_METERS - 1;
 		if (!acl_val() || !acl_set(ACL_ACT_POLIC_LOG))
@@ -556,9 +653,19 @@ static uint8_t acl_action(void)
 		return 1;
 	}
 	if (acl_eq("interrupt")) {
-		if (!acl_set(ACL_ACT_INT))
+		if (acl_intr & 1)
 			return ACL_BAD;
+		acl_intr |= 1;
 		acl_act[1] |= 0x80000000;
+		return 1;
+	}
+	if (acl_eq("gpio")) {
+		acl_max = ACL_GPIO_PINS - 1;
+		if ((acl_intr & 2) || !acl_val())
+			return ACL_BAD;
+		acl_intr |= 2;
+		acl_n |= 0x10;
+		acl_act[2] |= acl_n;
 		return 1;
 	}
 	if (acl_eq("bypass")) {
@@ -605,7 +712,7 @@ static uint8_t acl_rule_cmd(void)
 		return 1;
 	}
 	acl_match_begin();
-	acl_vlan = acl_tag = acl_cont = acl_byp = 0;
+	acl_vlan = acl_tag = acl_cont = acl_byp = acl_svlan = acl_intr = 0;
 	if (acl_eq("and")) {
 		acl_cont = 1;
 		acl_w++;
@@ -632,6 +739,10 @@ static uint8_t acl_rule_cmd(void)
 			acl_act[0] |= (acl_vlan ? (acl_tag ? 1 : 0) : 2) << 2;
 			acl_ctrl |= ACL_ACT_CVLAN;
 		}
+		if (acl_svlan)
+			acl_ctrl |= ACL_ACT_SVLAN;
+		if (acl_intr)
+			acl_ctrl |= ACL_ACT_INT;
 		if (!(acl_ctrl & 0xff))
 			return 0;
 	}
@@ -674,6 +785,12 @@ static void acl_show(void)
 		write_char('=');
 		acl_print_reg();
 	}
+	print_string("\nhit: ");
+	acl_ra = RTL837X_ACL_HIT;
+	acl_print_reg();
+	write_char(' ');
+	acl_ra = RTL837X_ACL_HIT + 4;
+	acl_print_reg();
 	print_string("\nmeters exceeded: ");
 	acl_ra = RTL837X_METER_EXCEED;
 	acl_print_reg();
@@ -710,13 +827,23 @@ static uint8_t acl_global_cmd(void)
 			return 1;
 		}
 		acl_max = ACL_COUNTERS - 1;
-		if (cmd_words_len != 4 || !acl_val() || !acl_next())
+		if (cmd_words_len != 5 || !acl_val() || !acl_next())
 			return 0;
 		acl_r = acl_n >> 1;
-		acl_kind = acl_eq("bytes");
-		if (!acl_kind && !acl_eq("packets"))
+		acl_ra = acl_eq("mode") ? RTL837X_ACL_LOG_TYPE : RTL837X_ACL_LOG_MODE;
+		if (acl_ra == RTL837X_ACL_LOG_MODE && !acl_eq("width"))
 			return 0;
-		acl_ra = RTL837X_ACL_LOG_TYPE;
+		if (!acl_next())
+			return 0;
+		if (acl_ra == RTL837X_ACL_LOG_TYPE) {
+			acl_kind = acl_eq("bytes");
+			if (!acl_kind && !acl_eq("packets"))
+				return 0;
+		} else {
+			acl_kind = acl_eq("64");
+			if (!acl_kind && !acl_eq("32"))
+				return 0;
+		}
 		return acl_bit();
 	}
 	if (acl_eq("meter")) {
@@ -763,6 +890,29 @@ static uint8_t acl_global_cmd(void)
 		acl_reg();
 		return 1;
 	}
+	if (acl_eq("gpio")) {
+		if (cmd_words_len != 4 || !acl_next())
+			return 0;
+		if (acl_eq("polarity")) {
+			if (!acl_next())
+				return 0;
+			acl_kind = acl_eq("high");
+			if (!acl_kind && !acl_eq("low"))
+				return 0;
+			REG_SET(RTL837X_ACL_GPIO_CTRL, acl_kind);
+			return 1;
+		}
+		acl_w--;
+		acl_max = ACL_GPIO_PINS - 1;
+		if (!acl_val() || !acl_next())
+			return 0;
+		acl_r = acl_n;
+		acl_kind = acl_eq("on");
+		if (!acl_kind && !acl_eq("off"))
+			return 0;
+		acl_ra = RTL837X_IO_MUX_SEL_2;
+		return acl_bit();
+	}
 	if (acl_eq("default")) {
 		if (!acl_next())
 			return 0;
@@ -797,6 +947,7 @@ void acl_cmd(void) __banked
 	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: acl <1-64> [not|and] <match>... <action>... [<port>...] | acl <1-64> off"
 		     " | acl meter <0-63> <rate> kbps|pps <burst> | acl field <0-15> <format> <offset>"
-		     " | acl default permit|drop <port>... | acl counter [reset|<n> bytes|packets]"
+		     " | acl default permit|drop <port>... | acl counter reset|<n> mode bytes|packets|<n> width 32|64"
+		     " | acl gpio <0-3> on|off | acl gpio polarity high|low"
 		     " | acl show\n");
 }

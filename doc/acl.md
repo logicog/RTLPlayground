@@ -12,8 +12,11 @@ acl meter <0-63> <rate> kbps|pps <burst>
 acl field <0-15> off|raw|llc|ipv4|arp|ipv6|ip|l4 <offset>
 acl default permit
 acl default drop <port>...
-acl counter <0-31> bytes|packets
+acl counter <0-31> mode bytes|packets
+acl counter <0-31> width 32|64
 acl counter reset
+acl gpio <0-3> on|off
+acl gpio polarity high|low
 acl show
 ```
 
@@ -46,15 +49,18 @@ acl 11 and udp dport 5000
 | `pri <0-7>` | priority of the C-tag |
 | `svlan <vid>[-<vid>]` | VID of the S-tag |
 | `tagged`, `untagged` | the frame carries a C-tag or not |
+| `stagged` | the frame carries an S-tag |
 | `pppoe` | PPPoE session frame |
 | `nonip`, `arp`, `ipv4`, `ipv6` | layer 3 format |
 | `tcp`, `udp`, `icmp`, `igmp` | layer 4 protocol, IPv4 or IPv6 (`icmp` includes ICMPv6) |
+| `l4other` | any other IP protocol |
 | `sip <ip>[/<len>]`, `sip <ip>-<ip>` | IPv4 source address, prefix or range; `dip` the same for the destination |
 | `sip6 <hex>[-<hex>]`, `dip6 ...` | lowest 32 bits of an IPv6 address, as a range |
 | `proto <0-255>` | IPv4 protocol |
 | `tos <hex>[/<hex>]` | IPv4 ToS byte |
 | `sport <port>[-<port>]`, `dport ...` | TCP or UDP port, IPv4 or IPv6 |
 | `field <0-15> <hex>[/<hex>]` | 16 bits picked by field selector n, see below |
+| `valid <0-15>` | field selector n applies to the frame (its format matches) |
 
 `not` inverts the match of the whole rule. A frame goes through all rules at
 once; the lowest numbered rule that matches and has an action of a given kind
@@ -81,20 +87,25 @@ It may continue with further `and` rules.
 | `mirror <port>[,...]` | forward as usual and mirror to these ports |
 | `isolate <port>[,...]` | forward only to these of the usual ports |
 | `cpu` | hand the frame to the 8051 instead of forwarding it |
-| `trap` | trap the frame to the 8051 |
+| `trap [int\|ext\|both]` | trap the frame to the 8051, to an external CPU, or to both |
 | `setvlan <vid>` | classify an untagged frame into this VLAN |
 | `outvlan <vid>` | use this VID in the tag on the way out |
+| `cvidfromsvid` | take the C-VID from the S-tag |
+| `setsvlan <vid>`, `outsvlan <vid>`, `svidfromcvid` | the same for the S-VLAN |
 | `tag`, `untag`, `keeptag`, `keepremark` | leave with a C-tag, without one, as received, or as received with the priority remarked |
 | `priority <0-7>` | internal priority |
 | `pcp <0-7>` | remark the 802.1p priority of the outgoing tag |
 | `dscp <0-63>` | remark the DSCP of an IPv4 frame |
-| `police <0-63>` | police with meter n |
+| `police <m>[,<m>[,<m>]]` | police with up to three meters; a frame passes only if every one of them lets it |
 | `count <0-31>` | count in counter n |
-| `interrupt` | raise the ACL interrupt |
+| `interrupt` | raise the ACL interrupt; the firmware prints `ACL interrupt` once a second while it fires |
+| `gpio <0-3>` | drive ACL GPIO pin n while the rule matches |
 | `bypass storm\|stp\|vlan` | skip storm control, the STP source check or the ingress VLAN filter |
 
-A rule takes at most one action of each row group: one forwarding action, one
-remark, `police` or `count`. The single `<port>` form must be the first action.
+A rule takes at most one forwarding action, one remark, and `police` or `count`.
+The second and third meter of `police` use the rule's C-VLAN and S-VLAN action,
+so they do not combine with the VLAN actions of that kind. The single `<port>`
+form must be the first action.
 
 A redirect ignores the VLAN membership of the target port: a frame from a VLAN
 the port does not belong to still leaves through it, without a VLAN tag, and
@@ -107,11 +118,19 @@ and never goes back into the group it came from.
 
 `acl meter <n> <rate> kbps <burst>` limits to `rate` kbit/s with a bucket of
 `burst` bytes, `pps` to `rate` packets per second with a bucket of `burst`
-packets. A bucket of 0 passes nothing. Several rules may share a meter.
+packets. A bucket of 0 passes nothing, and a bucket should hold a few frames.
+Several rules may share a meter. `acl show` lists which meters have been
+exceeded; the hardware keeps those bits set.
 
-Counters count packets unless their pair (0-1, 2-3, ...) is switched to bytes.
-They are shown with `acl show` and cleared with `acl counter reset`; reading
-does not clear them.
+Counters count packets unless their pair (0-1, 2-3, ...) is switched to bytes,
+and are 32 bits wide unless the pair is switched to 64, which joins the two
+counters of the pair. They are shown with `acl show` and cleared with
+`acl counter reset`; reading does not clear them.
+
+`gpio` drives one of four pins the ACL can take over with `acl gpio <n> on`;
+which pins those are depends on the board, and taking one over removes whatever
+the board uses it for. `acl gpio polarity` sets the level a matching rule
+drives.
 
 A field selector picks 16 bits at `offset` bytes into a part of the frame:
 `raw` from the start of the frame after its VLAN tags, `llc`, `ipv4` and `ipv6`
@@ -144,6 +163,8 @@ firmware enables only the types a rule uses. `ACL_PORT_UNMATCH_PERMIT` (0x481c)
 resets to 0, which drops every unmatched frame on a port with ACL enabled; it is
 set before `ACL_PORT_EN` (0x4818) when the first rule is added.
 
-Not measured: the S-tag matches and `svlan` ranges need S-VLAN operation, which
-the firmware does not configure, and the bypass flags could not be observed
-(the redirect already passes the VLAN filter).
+Not measured: the S-tag matches, `svlan` ranges and the S-VLAN actions need
+S-VLAN operation, which the firmware does not configure; `trap ext` needs an
+external CPU; the bypass flags could not be observed (the redirect already
+passes the VLAN filter); `gpio` was not driven on a board. `acl show` also prints
+the hardware's hit indicator, which read zero in every test.
