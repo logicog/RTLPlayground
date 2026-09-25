@@ -48,7 +48,7 @@ acl 11 and udp dport 5000
 | `vlan <vid>[-<vid>]` | VID of the C-tag |
 | `pri <0-7>`, `cfi <0-1>` | priority and CFI bit of the C-tag |
 | `svlan <vid>[-<vid>]` | VID of the S-tag |
-| `spri <0-7>`, `sdei <0-1>` | priority and DEI part of the S-tag key, see S-VLAN |
+| `spri <0-7>`, `sdei <0-1>` | priority and DEI bit of the S-tag |
 | `tagged`, `untagged` | the frame carries a C-tag or not |
 | `stagged` | the frame carries an S-tag |
 | `pppoe` | PPPoE session frame |
@@ -188,9 +188,8 @@ set before `ACL_PORT_EN` (0x4818) when the first rule is added.
 
 The S-tag matches and actions need S-VLAN operation, which this firmware does
 not configure. Measured with the S-VLAN registers set by hand: a port reads
-S-tags only while it is an S-VLAN service port; `stagged`, `svlan` and S-VID
-ranges then match, but the priority and DEI part of the S-tag key read 0 for
-every frame, so `spri` and `sdei` only match 0. `outsvlan` adds an S-tag with
+S-tags only while it is an S-VLAN service port; `stagged`, `svlan`, `spri`,
+`sdei` and S-VID ranges then match. `outsvlan` adds an S-tag with
 that VID to frames leaving a service port, and `svidfromcvid` forwards them in
 the S-VLAN of their C-VID. With `setsvlan` the frames did not arrive, even with
 the S-VLAN defined on the target port. Frames that get no S-VID at all are
