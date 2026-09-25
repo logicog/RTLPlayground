@@ -2373,7 +2373,8 @@ var CONF_CMDS = [
     /^acl\s+meter\s+\d{1,2}\s+\d+\s+(kbps|pps)\s+\d+$/,
     /^acl\s+field\s+\d{1,2}\s+(off|raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3}$/,
     /^acl\s+default\s+(permit|drop(\s+\d)+)$/,
-    /^acl\s+counter\s+\d{1,2}\s+(bytes|packets)$/,
+    /^acl\s+counter\s+\d{1,2}\s+(mode\s+(bytes|packets)|width\s+(32|64))$/,
+    /^acl\s+gpio\s+([0-3]\s+(on|off)|polarity\s+(high|low))$/,
 ];
 
 function isConfCmd(line) {
@@ -5062,7 +5063,7 @@ var CONF_OVERWRITE = [
     /^lag\s+\d\b/, /^laghash\s+\d\b/, /^isolate\s+\d{1,2}\b/,
     /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
-    /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/, /^acl\s+\d{1,2}\b/, /^acl\s+(meter|field|counter)\s+\d{1,2}\b/, /^acl\s+default\b/,
+    /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/, /^acl\s+\d{1,2}\b/, /^acl\s+(meter|field)\s+\d{1,2}\b/, /^acl\s+counter\s+\d{1,2}\s+(mode|width)\b/, /^acl\s+gpio\s+([0-3]|polarity)\b/, /^acl\s+default\b/,
 ];
 var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
