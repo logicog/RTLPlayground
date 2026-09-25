@@ -182,7 +182,7 @@ static void print_port_nl(uint8_t port) __reentrant
 		write_char('L');
 		write_char('1' + port - STP_LAG_BASE);
 	} else {
-		print_byte(machine.log_to_phys_port[port]);
+		print_phys_port(port);
 	}
 	write_char('\n');
 }
@@ -934,7 +934,7 @@ void stp_setup(void) __banked
 		if (port_ingress_filter_get(stp_i) != VLAN_TAGGED)
 			continue;
 		print_string("STP: port ");
-		write_char('0' + machine.log_to_phys_port[stp_i]);
+		print_phys_port(stp_i);
 		print_string(" admits tagged frames only - BPDUs are untagged and will not arrive\n");
 	}
 

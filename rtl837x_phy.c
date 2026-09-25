@@ -279,10 +279,11 @@ void phy_set_speed(void) __banked
 	uint16_t v;
 
 	print_string("Setting port "); print_phys_port(phy_settings.port);
-	if (machine.n_10g && phy_settings.port == 3)
-		phy_settings.is10g_port = 1;
-	if (machine.n_10g == 2 && phy_settings.port == 8)
-		phy_settings.is10g_port = 1;
+	int8_t sds = port_to_sds(phy_settings.port);
+	if (sds >= 0 &&
+		machine.sds_settings[sds].usage == SDS_EPHY &&
+		get_phy_max_speed(machine.sds_settings[sds].sds_settings_t.ephy.type) == PHY_SPEED_10G)
+			phy_settings.is10g_port = 1;
 	if (phy_settings.speed == PHY_OFF) {
 		print_string(" to disabled");
 	} else {
@@ -671,4 +672,20 @@ void rtl8224_sds_write(uint16_t sds_cmd, __xdata uint16_t value) __banked
 	do {
 		rtl8224_read_reg_u16(RTL837X_SDS_INDACS_CMD);
 	} while (SFR_DATA_8 & 0x80);
+}
+
+// Return the max PHY speed.
+uint8_t get_phy_max_speed(enum phy_type phytype) __banked
+{
+	switch(phytype) {
+		case RTL8224:
+		case RTL8221B:
+			return PHY_SPEED_2G5;
+			break;
+		case RTL8261BE:
+			return PHY_SPEED_10G;
+			break;
+	}
+
+	return PHY_SPEED_2G5;
 }

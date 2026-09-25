@@ -1179,8 +1179,8 @@ void handle_button(void)
 
 void check_links(void)
 {
-	reg_read_m(RTL837X_REG_LINKS_89);
-	__xdata uint8_t linkbits_p89 = sfr_data[3];
+	reg_read(RTL837X_REG_LINKS_89);
+	__xdata uint8_t linkbits_p89 = SFR_DATA_0;
 
 	reg_read_m(RTL837X_REG_LINKS);
 	if (cmp_4(sfr_data, linkbits_last) || (linkbits_p89 != linkbits_last_p89)) {
@@ -1191,25 +1191,44 @@ void check_links(void)
 		print_byte(linkbits_last_p89); print_byte(linkbits_last[0]); print_byte(linkbits_last[1]);
 		print_byte(linkbits_last[2]); print_byte(linkbits_last[3]);
 		print_string(">\n");
-		linkbits_last_p89 = linkbits_p89;
-		if (!machine_detected.isRTL8373 && machine.n_sfp != 2) {
-			uint8_t p5 = sfr_data[2] >> 4;
-			uint8_t p5_last = linkbits_last[2] >> 4;
-			cpy_4(linkbits_last, sfr_data);
-			// Handle link change of the RTL8221 PHY, adjust SDS mode, RTL8261BE always uses SDS_QXGMII
-			if (!machine.n_10g && p5_last != p5) {
-				if (p5 == 0x5)	// 2.5GBit Mode
-					sds_config(0, SDS_HISGMII);
-				else		// 1GBit and 100Mbit
-					sds_config(0, SDS_SGMII);
+
+		for (uint8_t port = 0; port < CPU_PORT; port++) {
+			// Skip unused ports
+			if (machine.log_to_phys_port[port] == NOP)
+				continue;
+
+			uint8_t new;
+			uint8_t old;
+			if (port < 8) {
+				uint8_t idx = port >> 1;
+				new = sfr_data[idx];
+				old = linkbits_last[idx];
+			} else {
+				new = linkbits_p89;
+				old = linkbits_last_p89;
 			}
-			if (machine.n_10g)
-				sds_config(0, SDS_QXGMII);
-			if (machine.n_10g == 2)
-				sds_config(1, SDS_QXGMII);
-		} else {
-			cpy_4(linkbits_last, sfr_data);
+			if (port & 1) {
+				new = (new << 4) | (new >> 4);
+				old = (old << 4) | (old >> 4);
+			}
+			new &= 0x0F;
+			old &= 0x0F;
+				
+			uint8_t diff = new ^ old;
+			bool change = diff != 0;
+
+			if (change) {
+				print_phys_port(port);
+				write_char(':');
+				print_byte(old);
+				write_char('>');
+				print_byte(new);
+				write_char('\n');
+			}
 		}
+
+		linkbits_last_p89 = linkbits_p89;
+		cpy_4(linkbits_last, sfr_data);
 	}
 }
 

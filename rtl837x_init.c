@@ -48,8 +48,6 @@ void static sds_init(void)
 		uint16_t pval;
 
 		print_string("  N-settings");
-		if (machine.n_10g)
-			print_string(" - 10g");
 		// Serdes 0 RX PN swap for 64B/66B
 		sds_read(1, 6, 2);
 		pval = SFR_DATA_U16;
@@ -65,27 +63,24 @@ void static sds_init(void)
 		pval = SFR_DATA_U16;
 		sds_write_v(0, 6, 2, pval | 0x2000);
 
-		if (!machine.n_10g) {
-			if (machine_detected.isRTL8373) {
-				// RTL8224: Serdes 0 RX PN swap for 64B/66B
-				// We assume that RTL8373N always paired with RTL8224N.
-				// This sds register value is 0x0000 at reset.
-				// So only write to it.
-				RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
-			} else {
-				// Serdes 0 RX PN swap for 8B/10B
-				sds_read(0, 0, 0);
-				pval = SFR_DATA_U16;
-				sds_write_v(0, 0, 0, pval | 0x200);
+		for (uint8_t sds = 0; sds < 2; sds++) {
+			enum sds_type usage = machine.sds_settings[sds].usage;
+			if (usage == SDS_EPHY) {
+				switch (machine.sds_settings[sds].sds_settings_t.ephy.type) {
+					case RTL8224:
+						// RTL8224: Serdes 0 RX PN swap for 64B/66B
+						// We assume that RTL8373N always paired with RTL8224N.
+						// This sds register value is 0x0000 at reset.
+						// So only write to it.
+						RTL8224_SDS_WRITE(0, 6, 2, 0x2000);
+						break;
+					default:
+						REG_SET(RTL837X_CFG_PHY_MDI_REVERSE, 0xc);
+						REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
+						break;
+
+				}
 			}
-		} else if (machine.n_10g == 1) {
-			reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
-			sfr_mask_data(0, 0x0f,0x0c);
-			reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
-			REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
-		} else if (machine.n_10g == 2) {
-			REG_SET(RTL837X_CFG_PHY_MDI_REVERSE, 0xc);
-			REG_SET(RTL837X_CFG_PHY_TX_POLARITY_SWAP, 0x0000596a);
 		}
 	}
 	print_string("\nsds_init done\n");
@@ -112,10 +107,14 @@ void rtl8373_init(void) __banked
 	pval = SFR_DATA_U16;
 	sds_write_v(0, 0x06, 0x01, pval & 0xfffb);
 
-	phy_config_8224();
 	sds_config_mac(1, SDS_OFF);    // Off for now until SFP+ port used
-	sds_config_mac(2, SDS_SGMII);  // For RTL8224
-	sds_config(0, SDS_QXGMII);     // For RTL8224
+
+	bool is_rtl8224 = machine.sds_settings[0].usage == SDS_EPHY && machine.sds_settings[0].sds_settings_t.ephy.type == RTL8224;
+	if (is_rtl8224) {
+		phy_config_8224();
+		sds_config_mac(2, SDS_SGMII);  // For RTL8224
+		sds_config(0, SDS_QXGMII);     // For RTL8224
+	}
 
 	// SDS 1 setup
 	// q012100:4902 Q012100:4906 q013605:0000 Q013605:4000 Q011f02:001f q011f15:0086
@@ -139,7 +138,8 @@ void rtl8373_init(void) __banked
 		reg_write_m(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
 	}
 
-	rtl8224_phy_enable();
+	if (is_rtl8224)
+		rtl8224_phy_enable();
 
 	// Disable PHYs for configuration
 	phy_write_mask(0xff,PHY_MMD31,0xa610,0x2858);
@@ -188,31 +188,40 @@ void rtl8373_init(void) __banked
 	print_string("\nrtl8373_init done\n");
 }
 
-
 void rtl8372_init(void) __banked
 {
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();
-	if (machine.n_10g != 2)
-		phy_config(8);	// PHY configuration: External 8221B?
-	if (machine.n_10g)
-		phy_config_8261(3, 0);
-	if (machine.n_10g == 2)
-		phy_config_8261(8, 1);
-	else
-		phy_config(3);	// PHY configuration: all internal PHYs?
-	// Set the MAC SerDes Modes Bits 0-4: SDS 0 = 0x2 (0x2), Bits 5-9: SDS 1: 1f (off)
-	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
-	if (machine.n_10g == 1) {
-		REG_SET(RTL837X_REG_SDS_MODES, 0x3ed); // Disable SFP for now, set RTL8261BE SDS 0 to 0xd
-	} else if(machine.n_10g == 2) {
-		REG_SET(RTL837X_REG_SDS_MODES, 0x1ad); // Both 10g ports use SDS_QXGMII
-	} else {
-		reg_read_m(RTL837X_REG_SDS_MODES);
-		sfr_mask_data(1, 0, 0x03);
-		sfr_mask_data(0, 0, 0xe2);
-		reg_write_m(RTL837X_REG_SDS_MODES);
+
+	for (uint8_t sds = 0; sds < 2; sds++) {
+		enum sds_type usage = machine.sds_settings[sds].usage;
+		switch (usage) {
+			case SDS_EPHY:
+				uint8_t port = sds == 1 ? MAC_SDS1 : MAC_SDS0;
+				uint8_t phy_type = machine.sds_settings[sds].sds_settings_t.ephy.type;
+				// uint8_t speed = get_phy_max_speed(phy_type);
+				switch (phy_type) {
+					case RTL8224:
+						sds_config_mac(sds, SDS_SGMII);
+						break;
+					case RTL8261BE:
+						phy_config_8261(port, sds);
+						sds_config_mac(sds, SDS_QXGMII);
+						break;
+					case RTL8221B:
+						phy_config(port);	// PHY configuration: External 8221B?
+						sds_config_mac(sds, SDS_HISGMII);
+						break;
+				}
+			case SDS_FIXED_LINK:
+				sds_config_mac(sds, SDS_QXGMII);
+				break;
+			case SDS_SFP:
+			default:
+				sds_config_mac(sds, SDS_OFF);
+				break;
+		}
 	}
 
 	// r0a90:000000f3 R0a90-000000fc

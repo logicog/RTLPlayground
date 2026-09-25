@@ -124,13 +124,16 @@ void early_boot_handle_button(void) __banked
  */
 void sds_config(uint8_t sds, uint8_t mode) __banked
 {
-	print_string("sds_config sds: "); print_byte(sds); print_string(", mode: "); print_byte(mode); write_char('\n');
 	sds_config_mac(sds, mode);
+	print_string("sds_config port: "); print_phys_port(sds == 1 ? MAC_SDS1 : MAC_SDS0);
+	print_string(" sds: "); print_byte(sds);
+	print_string(", mode: ");
 
+	uint16_t v = 0x6480; // Q002110:6480
 	if (mode == SDS_10GR || mode == SDS_QXGMII)
-		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
-	else
-		sds_write_v(sds, 0x21, 0x10, 0x6480); // Q002110:6480
+		v = 0x4480; // Q002110:6480
+	sds_write_v(sds, 0x21, 0x10, v);
+
 	sds_write_v(sds, 0x21, 0x13, 0x0400); // Q002113:0400
 	sds_write_v(sds, 0x21, 0x18, 0x6d02); // Q002118:6d02
 	sds_write_v(sds, 0x21, 0x1b, 0x424e); // Q00211b:424e
@@ -138,8 +141,37 @@ void sds_config(uint8_t sds, uint8_t mode) __banked
 	sds_write_v(sds, 0x36, 0x1c, 0x1390); // Q00361c:1390
 	sds_write_v(sds, 0x36, 0x14, 0x003f); // Q003614:003f
 
+	__code uint8_t * msg = "UNKNOWN\n";
+	switch (mode) {
+	case SDS_OFF:
+		msg = "OFF\n";
+		break;
+	case SDS_SGMII:
+		msg = "SGMII\n";
+		break;
+	case SDS_1000BX_FIBER:
+		msg = "1000BX\n";
+		break;
+	case SDS_HISGMII:
+		msg = "HISGMII\n";
+		break;
+	case SDS_HSG:
+		msg = "HSG\n";
+		break;
+	case SDS_10GR:
+		msg = "10GR\n";
+		break;
+	case SDS_QXGMII:
+		msg = "QXGMII\n";
+		break;
+	case SDS_100FX:
+		msg = "100FX\n";
+		break;
+	}
+	print_string(msg);
+
 	uint8_t page = 0;
-	uint16_t v = 0;
+	v = 0;
 
 	switch (mode) {
 	case SDS_SGMII:
@@ -198,7 +230,8 @@ void sds_config(uint8_t sds, uint8_t mode) __banked
 	sds_write_v(sds, 0x06, 0x03, 0xc45c); // Q000603:c45c
 
 	// RTL8261BE
-	if (machine.n_10g && mode == SDS_QXGMII) {
+	if (machine.sds_settings[sds].usage == SDS_EPHY &&
+		machine.sds_settings[sds].sds_settings_t.ephy.type == RTL8261BE) {
 		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
 		sds_write_v(sds, 0x07, 0x11, 0x054f); // Q000711:054f
 		sds_write_v(sds, 0x20, 0x00, 0x0030); // Q002000:0030
@@ -332,13 +365,26 @@ void init_smi(void) __banked
 	// Default: 0x00005555
 	// Workaround for SDCC BUG 4070: SFR_DATA_U32 = 0x00005555;
 	SFR_DATA_U16_UPPER = 0x0000;
+	// Default value for every internal PHY port is 0b01.
 	SFR_DATA_U16 = 0x5555;
-	if (machine.n_10g == 2) {
-		// 0x00015555, only change the bytes that differs from the default.
-		SFR_DATA_16 = 0x01;
-	} else if (machine.n_sfp == 2)
-		// 0x00005515
-		SFR_DATA_0 = 0x15;
+	for (uint8_t sds = 0; sds < 2; sds++) {
+		enum sds_type usage = machine.sds_settings[sds].usage;
+		if (sds == 0) {
+			if (usage == SDS_EPHY) {
+				// Set bit 6,7 to 0b01
+				SFR_DATA_0 = 0x55;
+			} else if (usage == SDS_SFP) {
+				// Set bit 6,7 to 0b00
+				SFR_DATA_0 = 0x15;
+
+			}
+		} else { // sds == 1
+			if (usage == SDS_EPHY) {
+				// Set bit 16,17 to 0b01
+				SFR_DATA_16 = 0x01;
+			}
+		}
+	}
 	reg_write(RTL837X_REG_SMI_MAC_TYPE);
 
 	// Configure polling of all PHYs by the MAC to detect link-state changes
@@ -346,16 +392,21 @@ void init_smi(void) __banked
 	// Workaround for SDCC BUG 4070: SFR_DATA_U32 = 0x000000ff;
 	SFR_DATA_U16_UPPER = 0x0000;
 	SFR_DATA_U16 = 0x00ff;
-	if (!machine_detected.isRTL8373) {
-		if (machine.n_sfp == 2) {
-			// 0x000000f0, only change the bytes that differs from the default.
-			SFR_DATA_0 = 0xf0;
-		} else {
-			// 0x000001f8, only change the bytes that differs from the default.
-			SFR_DATA_8 = 0x01;
+	if (machine_detected.isRTL8373) {
+		// poll all the first 8 internal phy's (mac 0-7).
+		SFR_DATA_0 = 0xff;
+	} else {
+		if (machine.sds_settings[0].usage == SDS_EPHY)
+			// Poll port 1-4 (mac 4-7) and phy on SDS0 (mac3)
 			SFR_DATA_0 = 0xf8;
-		}
+		else
+			// Poll only port 1-4 (mac 4-7)
+			SFR_DATA_0 = 0xf0;
 	}
+	if (machine.sds_settings[1].usage == SDS_EPHY)
+		// Set bit 9
+		SFR_DATA_8 = 0x01;
+
 	reg_write(RTL837X_REG_SMI_PORT_POLLING);
 	// Enable MDC
 	reg_read_m(RTL837X_REG_SMI_CTRL);
@@ -363,24 +414,34 @@ void init_smi(void) __banked
 	reg_write_m(RTL837X_REG_SMI_CTRL);
 	delay(50);
 
-	if (!machine_detected.isRTL8373) {
-		// Change I2C addresses for SMI of the non-existent PHYs
-		// r6450:000020e6 R6450-000000e6
-		reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
-		sfr_mask_data(1, 0x7c, 0);
-		reg_write_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+	// Program the PHY addresses for MAC 0-5.
+	if (machine_detected.isRTL8373) {
+		// RTL8373, we assume that all the PHY_ADDR are start from 0 are counting up to 5.
+		SFR_DATA_0 = 0x20;
+		SFR_DATA_8 = 0x88;
+		SFR_DATA_16 = 0x41;
+	} else {
+		// RTL8372, we assume that all the PHY_ADDR are start from 4 are counting up to 5.
+		// Other unused macs are are set to zero.
+		// When a external phy is connected to MAC 3 / SDS 0, the external PHY_ADDR is also programmed.
+		uint8_t phy_addr_mac3 = 0x00;
 
-		// r644c:0a418820 R644c-0a400820
-		reg_read_m(RTL837X_REG_SMI_PORT0_5_ADDR);
-		sfr_mask_data(2, 0x0f, 0);
-		sfr_mask_data(1, 0x80, 0);
-		reg_write_m(RTL837X_REG_SMI_PORT0_5_ADDR);
+		SFR_DATA_0 = 0x00;
+		if (machine.sds_settings[0].usage == SDS_EPHY)
+			phy_addr_mac3 = machine.sds_settings[0].sds_settings_t.ephy.phy_addr;
+		SFR_DATA_8 = (phy_addr_mac3 << 7);
+		SFR_DATA_16 = 0x40 | (phy_addr_mac3 >> 1);
 	}
+	SFR_DATA_24 = 0x0a;
+	reg_write(RTL837X_REG_SMI_PORT0_5_ADDR);
 
-	if (machine.n_10g == 2) {
-		// Set address of second external PHY on port 8
-		REG_SET(RTL837X_REG_SMI_PORT6_9_ADDR, 0x000040e6);
-	}
+	// Program the PHY addresses for MAC 6-8.
+	uint8_t phy_addr_mac8 = 0;
+	if (machine.sds_settings[1].usage == (uint8_t)SDS_EPHY)
+		phy_addr_mac8 = machine.sds_settings[1].sds_settings_t.ephy.phy_addr;
+	// Set address of external PHY connected MAC 8 / SDS 1
+	//  [ 100 00 ] | 00 111 | 0 0110, port 8 = 0b10000 = 0x10
+	REG_WRITE(RTL837X_REG_SMI_PORT6_9_ADDR, 0x00, 0x00, phy_addr_mac8 << 2, 0xe6);
 }
 
 
@@ -397,8 +458,10 @@ void setup_i2c(void) __banked
 
 	// HW Control register, enable I2C depending on PIN configuration
 	reg_read_m(RTL837X_PIN_MUX_1);
-	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
-		uint8_t i2c = machine.sfp_port[sfp].i2c;
+	for (uint8_t sfp = 0; sfp < 2; sfp++) {
+		if (!is_slot_sfp(sfp))
+			continue;
+		uint8_t i2c = machine.sds_settings[sfp].sds_settings_t.sfp.i2c;
 		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & RTL837X_REG_I2C_SCL_MASK;
 		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & RTL837X_REG_I2C_SDA_MASK;
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');

@@ -32,6 +32,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "hw_mock.h"
+#include "machine.h"
 
 uint8_t sfr_data[4];
 unsigned long hw_reads, hw_writes;
@@ -339,4 +340,21 @@ uint8_t reg_bit_test(uint16_t addr, char bit)
 void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 {
 	sfr_data[3 - n] = (sfr_data[3 - n] & ~mask) | set;
+}
+
+
+// Return the max PHY speed.
+uint8_t get_phy_max_speed(enum phy_type phytype) __banked
+{
+	switch(phytype) {
+		case RTL8224:
+		case RTL8221B:
+			return SFP_SPEED_2G5;
+			break;
+		case RTL8261BE:
+			return SFP_SPEED_10G;
+			break;
+	}
+
+	return SFP_SPEED_2G5;
 }
