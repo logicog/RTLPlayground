@@ -98,7 +98,8 @@ static void t_rules(void)
 	CHECK(hw_reg_get(RTL837X_ACL_RNG_IP) == 0 && hw_reg_get(RTL837X_ACL_RNG_PORT + 8) == 0
 	      && hw_reg_get(RTL837X_ACL_RNG_PORT) == 2, "removing a rule frees its ranges and only its ranges");
 	CHECK(hw_acl_rule(5, 4) == 0 && hw_acl_rule(0x85, 4) == 0 && hw_acl_act(5, 1) == 0
-	      && hw_reg_get(RTL837X_ACL_ACT_CTRL + 20) == 0, "removing a rule clears rule, action and ACT_CTRL");
+	      && hw_reg_get(RTL837X_ACL_ACT_CTRL + 20) == 0xff,
+	      "removing a rule clears rule and action and puts ACT_CTRL back to 0xff, not 0, which would join it to the rule before");
 	run("acl 14 vlan 20-30 drop");
 	CHECK(hw_reg_get(RTL837X_ACL_RNG_VID) == (30u << 14 | 20u << 2 | 1), "vid range = lower << 2, upper << 14, cvid");
 }
