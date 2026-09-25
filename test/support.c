@@ -27,6 +27,7 @@ uint8_t                  cmd_available;
 uint8_t                  err_status;
 uint8_t                  cmd_history[CMD_HISTORY_SIZE];
 uint16_t                 cmd_history_ptr;
+__xdata uint16_t         session_timeout = 200;   /* httpd global, referenced by page_impl.c */
 
 /* editor-internal read pointer (defined in cmd_editor.c, external linkage) */
 extern __xdata uint8_t l;

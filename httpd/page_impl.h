@@ -5,6 +5,8 @@
 
 extern __code const uint8_t * __code const HTTP_RESPONCE_TXT;
 
+void itoa16_html(uint16_t v);
+
 bool send_counters(uint8_t phys_port);
 void send_status(void);
 void send_vlan(uint16_t vlan);
