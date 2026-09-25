@@ -681,8 +681,7 @@ var CONF_CMDS=[
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
-  /^acl\s+\d{1,2}\s+(dmac|smac)\s+([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\s+(drop|cpu|\d)(\s+\d)*$/,
-  /^acl\s+\d{1,2}\s+ethertype\s+[0-9a-fA-F]{4}\s+(drop|cpu|\d)(\s+\d)*$/,/^acl\s+\d{1,2}\s+off$/,
+  /^acl\s+\d{1,2}(\s+(dmac|smac)\s+([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}|\s+ethertype\s+[0-9a-fA-F]{4})+\s+(drop|cpu|mirror\s+\d|\d)(\s+\d)*$/,/^acl\s+\d{1,2}\s+off$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;

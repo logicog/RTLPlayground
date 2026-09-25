@@ -7,17 +7,19 @@
 #pragma codeseg BANK3
 #pragma constseg BANK3
 
+#define ACL_PORTS	((uint16_t)((1 << CPU_PORT) - 1))
+
 extern __xdata uint8_t sfr_data[4];
 
-__xdata uint8_t  acl_field;
-__xdata uint8_t  acl_value[6];
 __xdata uint16_t acl_in_pmask;
 __xdata uint16_t acl_out_pmask;
+__xdata uint8_t  acl_fwd;
 
 __xdata uint8_t  acl_used[ACL_RULES / 8];
 __xdata uint16_t acl_data[10];
 __xdata uint16_t acl_care[10];
 __xdata uint16_t acl_act[6];
+static __xdata uint16_t acl_zero[10];
 
 static void acl_tbl_wait(void)
 {
@@ -51,34 +53,45 @@ static void acl_field_set(uint8_t f, uint16_t v)
 	acl_care[f] = ~v;
 }
 
+void acl_match_begin(void) __banked
+{
+	for (uint8_t i = 0; i < 10; i++)
+		acl_data[i] = acl_care[i] = 0xffff;
+}
+
+void acl_match_mac(uint8_t field, __xdata uint8_t *mac) __banked
+{
+	acl_field_set(field, ((uint16_t)mac[4] << 8) | mac[5]);
+	acl_field_set(field + 1, ((uint16_t)mac[2] << 8) | mac[3]);
+	acl_field_set(field + 2, ((uint16_t)mac[0] << 8) | mac[1]);
+}
+
+void acl_match_ethertype(uint16_t type) __banked
+{
+	acl_field_set(ACL_FIELD_ETHERTYPE, type);
+}
+
 void acl_rule_set(uint8_t idx) __banked
 {
-	uint16_t in = acl_in_pmask ? acl_in_pmask : (PMASK_9 & ~PMASK_CPU);
-	uint16_t out = ~in & 0x3ff;
+	uint16_t in = acl_in_pmask ? acl_in_pmask : ACL_PORTS;
+	uint16_t out = ~in & ((1 << (CPU_PORT + 1)) - 1);
 
 	if (acl_used[idx >> 3] & (1 << (idx & 7)))
 		acl_rule_clear(idx);
 
-	for (uint8_t i = 0; i < 10; i++)
-		acl_data[i] = acl_care[i] = 0xffff;
-	if (acl_field == ACL_FIELD_ETHERTYPE) {
-		acl_field_set(ACL_FIELD_ETHERTYPE, ((uint16_t)acl_value[0] << 8) | acl_value[1]);
-	} else {
-		acl_field_set(acl_field, ((uint16_t)acl_value[4] << 8) | acl_value[5]);
-		acl_field_set(acl_field + 1, ((uint16_t)acl_value[2] << 8) | acl_value[3]);
-		acl_field_set(acl_field + 2, ((uint16_t)acl_value[0] << 8) | acl_value[1]);
-	}
 	acl_data[8] &= ~(0x0007 | (uint16_t)(out << 11));
 	acl_data[9] &= ~(out >> 5);
 
 	if (!acl_any()) {
-		REG_SET(RTL837X_ACL_TEMPLATE0_LO, 0x00060504);
-		REG_SET(RTL837X_ACL_TEMPLATE0_HI, 0x03020100);
+		REG_SET(RTL837X_ACL_TEMPLATE0_F0_3,
+			ACL_TEMPLATE(ACL_FT_DMAC0, ACL_FT_DMAC1, ACL_FT_DMAC2, ACL_FT_SMAC0));
+		REG_SET(RTL837X_ACL_TEMPLATE0_F4_7,
+			ACL_TEMPLATE(ACL_FT_SMAC1, ACL_FT_SMAC2, ACL_FT_ETHERTYPE, ACL_FT_DMAC0));
 	}
 
 	for (uint8_t i = 0; i < 6; i++)
 		acl_act[i] = 0;
-	acl_act[3] = (RTL837X_ACL_FWD_REDIRECT << 1) | (acl_out_pmask << 5);
+	acl_act[3] = (acl_fwd << 1) | (acl_out_pmask << 5);
 	acl_tbl_write(idx, TBL_ACL_ACT, acl_act, 3);
 	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2), RTL837X_ACL_ACT_FWD);
 
@@ -86,18 +99,18 @@ void acl_rule_set(uint8_t idx) __banked
 	acl_tbl_write(0x80 | idx, TBL_ACL_RULE, acl_data, 5);
 
 	if (!acl_any()) {
-		REG_SET(RTL837X_ACL_UNMATCH_PERMIT, PMASK_9);
-		REG_SET(RTL837X_ACL_PORT_EN, PMASK_9 & ~PMASK_CPU);
+		REG_SET(RTL837X_ACL_UNMATCH_PERMIT, ACL_PORTS);
+		REG_SET(RTL837X_ACL_PORT_EN, ACL_PORTS);
 	}
 	acl_used[idx >> 3] |= 1 << (idx & 7);
 }
 
 void acl_rule_clear(uint8_t idx) __banked
 {
-	for (uint8_t i = 0; i < 10; i++)
-		acl_data[i] = 0;
-	acl_tbl_write(idx, TBL_ACL_RULE, acl_data, 5);
-	acl_tbl_write(0x80 | idx, TBL_ACL_RULE, acl_data, 5);
+	acl_tbl_write(idx, TBL_ACL_RULE, acl_zero, 5);
+	acl_tbl_write(0x80 | idx, TBL_ACL_RULE, acl_zero, 5);
+	acl_tbl_write(idx, TBL_ACL_ACT, acl_zero, 3);
+	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2), 0);
 	acl_used[idx >> 3] &= ~(1 << (idx & 7));
 
 	if (!acl_any()) {
