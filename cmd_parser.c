@@ -589,64 +589,7 @@ err:
 
 void parse_acl(void)
 {
-	if (cmd_words_len < 3)
-		goto err;
-	uint8_t n = atoi_byte(cmd_words_b[1]);
-	if (!n || cmd_buffer[cmd_words_b[1] + n] != ' '
-	    || !atoi_results_u8 || atoi_results_u8 > ACL_RULES)
-		goto err;
-	uint8_t idx = atoi_results_u8 - 1;
-
-	if (cmd_words_len == 3 && cmd_compare(2, "off")) {
-		acl_rule_clear(idx);
-		return;
-	}
-
-	acl_match_begin();
-	uint8_t w = 2;
-	while (w + 1 < cmd_words_len) {
-		if (cmd_compare(w, "dmac") || cmd_compare(w, "smac")) {
-			if (!parse_mac(cmd_words_b[w + 1]))
-				goto err;
-			acl_match_mac(cmd_compare(w, "dmac") ? ACL_FIELD_DMAC : ACL_FIELD_SMAC, mac_parse_result);
-		} else if (cmd_compare(w, "ethertype")) {
-			if (atoi_hex(cmd_words_b[w + 1]) != 2)
-				goto err;
-			acl_match_ethertype(((uint16_t)hexvalue[0] << 8) | hexvalue[1]);
-		} else {
-			break;
-		}
-		w += 2;
-	}
-	if (w == 2 || w >= cmd_words_len)
-		goto err;
-
-	acl_fwd = RTL837X_ACL_FWD_REDIRECT;
-	if (cmd_compare(w, "drop")) {
-		acl_out_pmask = 0;
-	} else if (cmd_compare(w, "cpu")) {
-		acl_out_pmask = 1 << CPU_PORT;
-	} else if (cmd_compare(w, "mirror")) {
-		if (++w >= cmd_words_len || !cmd_parse_port_separator(cmd_words_b[w]))
-			goto err;
-		acl_fwd = RTL837X_ACL_FWD_MIRROR;
-		acl_out_pmask = (uint16_t)1 << atoi_results_u8;
-	} else if (cmd_parse_port_separator(cmd_words_b[w])) {
-		acl_out_pmask = (uint16_t)1 << atoi_results_u8;
-	} else {
-		goto err;
-	}
-
-	acl_in_pmask = 0;
-	for (w++; w < cmd_words_len; w++) {
-		if (!cmd_parse_port_separator(cmd_words_b[w]))
-			goto err;
-		acl_in_pmask |= (uint16_t)1 << atoi_results_u8;
-	}
-	acl_rule_set(idx);
-	return;
-err:
-	cmd_error("acl <1-64> [dmac <mac>] [smac <mac>] [ethertype <hex>] (drop|cpu|mirror <port>|<port>) [<port>...] | acl <1-64> off\n");
+	acl_cmd();
 }
 
 
