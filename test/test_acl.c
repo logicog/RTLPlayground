@@ -53,6 +53,12 @@ static const struct expect rules[] = {
 	{"acl 11 svlan 100 setvlan 7 untag", 10, {0xffffffff, 0xffffffff, 0xffffff9b, 0xffffffff, 0xfffffffb}, {0xffffffff, 0xffffffff, 0xfffff064, 0xffffffff, 0xffeffffc}, {0x00000074, 0x00000000, 0x00000000}, 0x1},
 	{"acl 12 tcp sport 80 trap", 11, {0xffffffff, 0xffffffff, 0xffafffff, 0xffffffff, 0xfffffcfe}, {0xffffffff, 0xffffffff, 0x0050ffff, 0xffffffff, 0xffeffbf9}, {0x00000000, 0x00060000, 0x00000000}, 0x20},
 	{"acl 13 sip6 00000001 police 7 1", 12, {0xfffdffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffd}, {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffe00ffa}, {0x00000000, 0x00001c00, 0x00000000}, 0x10},
+	{"acl 15 stagged l4other drop", 14, {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffef}, {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffeff8f8}, {0x00000000, 0x00020000, 0x00000000}, 0x20},
+	{"acl 16 valid 3 field 3 4143 drop", 15, {0xffffffff, 0xfff7ffff, 0xffffffff, 0xbebcffff, 0xfffffffd}, {0xffffffff, 0xffffffff, 0xffffffff, 0x4143ffff, 0xffeffffa}, {0x00000000, 0x00020000, 0x00000000}, 0x20},
+	{"acl 17 dmac b8:27:eb:4d:27:e9 police 1,2,3", 16, {0x14b2d816, 0xffff47d8, 0xffffffff, 0xffffffff, 0xffffffff}, {0xeb4d27e9, 0xffffb827, 0xffffffff, 0xffffffff, 0xffeffff8}, {0x003c0023, 0x00000400, 0x00000000}, 0x13},
+	{"acl 18 dmac b8:27:eb:4d:27:e9 setsvlan 100 trap ext gpio 2 interrupt", 17, {0x14b2d816, 0xffff47d8, 0xffffffff, 0xffffffff, 0xffffffff}, {0xeb4d27e9, 0xffffb827, 0xffffffff, 0xffffffff, 0xffeffff8}, {0x06400000, 0x80080000, 0x00000012}, 0x62},
+	{"acl 19 dmac b8:27:eb:4d:27:e9 cvidfromsvid outsvlan 5", 18, {0x14b2d816, 0xffff47d8, 0xffffffff, 0xffffffff, 0xffffffff}, {0xeb4d27e9, 0xffffb827, 0xffffffff, 0xffffffff, 0xffeffff8}, {0x00540002, 0x00000000, 0x00000000}, 0x3},
+
 };
 
 static void t_rules(void)
@@ -150,10 +156,18 @@ static void t_globals(void)
 	run("acl default permit");
 	CHECK(hw_reg_get(RTL837X_ACL_PORT_EN) == 0 && hw_reg_get(RTL837X_ACL_UNMATCH_PERMIT) == 0,
 	      "default permit without rules turns ACL off");
-	run("acl counter 5 bytes");
+	run("acl counter 5 mode bytes");
 	CHECK(hw_reg_get(RTL837X_ACL_LOG_TYPE) == 4, "counter 5 counts bytes through the type bit of its pair");
 	run("acl counter reset");
 	CHECK(!err_status, "counter reset");
+	run("acl counter 5 width 64");
+	CHECK(hw_reg_get(RTL837X_ACL_LOG_MODE) == 4, "counter 5 runs 64 bits wide through the mode bit of its pair");
+	run("acl gpio 2 on");
+	CHECK(hw_reg_get(RTL837X_IO_MUX_SEL_2) == 4, "gpio 2 hands pin 2 to the ACL");
+	run("acl gpio polarity high");
+	CHECK(hw_reg_get(RTL837X_ACL_GPIO_CTRL) == 1, "gpio polarity high");
+	run("acl gpio 4 on");
+	CHECK(err_status, "the ACL drives four pins");
 }
 
 int main(void)
