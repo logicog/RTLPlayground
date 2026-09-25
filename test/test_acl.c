@@ -59,6 +59,10 @@ static const struct expect rules[] = {
 	{"acl 18 dmac b8:27:eb:4d:27:e9 setsvlan 100 trap ext gpio 2 interrupt", 17, {0x14b2d816, 0xffff47d8, 0xffffffff, 0xffffffff, 0xffffffff}, {0xeb4d27e9, 0xffffb827, 0xffffffff, 0xffffffff, 0xffeffff8}, {0x06400000, 0x80080000, 0x00000012}, 0x62},
 	{"acl 19 dmac b8:27:eb:4d:27:e9 cvidfromsvid outsvlan 5", 18, {0x14b2d816, 0xffff47d8, 0xffffffff, 0xffffffff, 0xffffffff}, {0xeb4d27e9, 0xffffb827, 0xffffffff, 0xffffffff, 0xffeffff8}, {0x00540002, 0x00000000, 0x00000000}, 0x3},
 
+	{"acl 20 vlan 5 cfi 1 drop", 19, {0xffffffff, 0xffffffff, 0xffffffff, 0xeffaffff, 0xffffffff}, {0xffffffff, 0xffffffff, 0xffffffff, 0xf005ffff, 0xffeffff8}, {0x00000000, 0x00020000, 0x00000000}, 0x20},
+	{"acl 21 spri 3 sdei 1 drop", 20, {0xffffffff, 0xffffffff, 0xffff8fff, 0xffffffff, 0xfffffffb}, {0xffffffff, 0xffffffff, 0xffff7fff, 0xffffffff, 0xffeffffc}, {0x00000000, 0x00020000, 0x00000000}, 0x20},
+	{"acl 22 dmac b8:27:eb:4d:27:e9 pcp 3 keepremark priority 6", 21, {0x14b2d816, 0xffff47d8, 0xffffffff, 0xffffffff, 0xffffffff}, {0xeb4d27e9, 0xffffb827, 0xffffffff, 0xffffffff, 0xffeffff8}, {0x00030008, 0x00000036, 0x00000000}, 0xd},
+
 };
 
 static void t_rules(void)
@@ -129,6 +133,10 @@ static void t_errors(void)
 	CHECK(err_status, "rule numbers stop at 64");
 	run("acl 1 sip 10.1.1.1/33 drop");
 	CHECK(err_status, "prefix length stops at 32");
+	run("acl 1 dmac b8:27:eb:4d:27:e9 drop 4");
+	run("acl 1 dmac 00:11:22:33:44:55 sip 1.2.3.4 drop");
+	CHECK(err_status && hw_acl_rule(0x80, 0) == 0xeb4d27e9 && hw_reg_get(RTL837X_ACL_ACT_CTRL) == 0x20,
+	      "a rule that cannot be written leaves the old rule in place");
 	run("acl 1 ethertype 0800 drop 3 4");
 	CHECK(!err_status && hw_acl_rule(0x80, 4) == 0xffe067f8, "trailing ports restrict the rule");
 }
@@ -147,6 +155,11 @@ static void t_globals(void)
 	      && hw_reg_get(RTL837X_METER_BURST + 4 * 33) == 50
 	      && hw_reg_get(RTL837X_METER_MODE + 4) == 2, "meter 33: rate, burst, pps bit 1 of the second mode word");
 	run("acl meter 33 64 kbps 1600");
+	CHECK(hw_reg_get(RTL837X_METER_IFG + 4) == 0, "no ifg, no ifg bit");
+	run("acl meter 34 100 kbps 1600 ifg");
+	CHECK(!err_status && hw_reg_get(RTL837X_METER_IFG + 4) == 4, "ifg counts the gap for meter 34");
+	run("acl meter 34 200 kbps 1600 gap");
+	CHECK(err_status && hw_reg_get(RTL837X_METER_RATE + 4 * 34) == 100, "a bad last word changes nothing");
 	CHECK(hw_reg_get(RTL837X_METER_MODE + 4) == 0, "kbps clears the mode bit");
 	run("acl field 3 ipv6 8");
 	CHECK(hw_reg_get(RTL837X_ACL_FIELD_SEL + 12) == (8 << 3 | 5), "selector 3 = ipv6 at 8");
