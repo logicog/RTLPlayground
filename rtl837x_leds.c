@@ -15,7 +15,7 @@
 #include "rtl837x_leds.h"
 #include "machine.h"
 
-extern __code struct machine machine;
+extern __code const struct machine machine;
 
 #include "uip.h"
 
@@ -261,7 +261,7 @@ void leds_setup(void) __banked
 	sfr_data[3] = sfr_data[2] = sfr_data[1] = sfr_data[0] = 0;
 	reg_write_m(RTL837X_REG_LED3_0_SET1);
 	reg_write_m(RTL837X_REG_LED3_0_SET3);
-	__code uint8_t * __xdata lptr = &machine.led_sets[0][0];
+	__code const uint8_t * __xdata lptr = &machine.led_sets[0][0];
 	for (__xdata uint8_t set = 0; set < 4; set++) {
 		sfr_data[0] = *(lptr + 5);
 		sfr_data[1] = *(lptr + 4);
@@ -275,7 +275,7 @@ void leds_setup(void) __banked
 			reg_write_m(RTL837X_REG_LED3_0_SET1);
 		} else {
 			reg_read_m(RTL837X_REG_LED3_0_SET3);
-			sfr_data[3 - (set << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
+			sfr_data[3 - ((set - 2) << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
 			reg_write_m(RTL837X_REG_LED3_0_SET3);
 		}
 		lptr += 8;
@@ -291,7 +291,7 @@ void leds_setup(void) __banked
 			reg_write_m(RTL837X_REG_LED3_0_SET1);
 		} else {
 			reg_read_m(RTL837X_REG_LED3_0_SET3);
-			sfr_data[2 - (set << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
+			sfr_data[2 - ((set - 2) << 1)] = (*(lptr + 6) << 4) | (*(lptr + 2));
 			reg_write_m(RTL837X_REG_LED3_0_SET3);
 		}
 		lptr += 8;

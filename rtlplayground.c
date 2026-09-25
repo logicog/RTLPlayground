@@ -79,20 +79,23 @@ void crc16_bank1(__xdata uint8_t *v) __naked;
 
 __xdata uint8_t idle_ready;
 
-__code uint8_t ownIP[] = { 192, 168, 2, 2 };
-__code uint8_t gatewayIP[] = { 192, 168, 2, 22};
-__code uint8_t netmask[] = { 255, 255, 255, 0};
+__code const uint8_t ownIP[] = { 192, 168, 2, 2 };
+__code const uint8_t gatewayIP[] = { 192, 168, 2, 22};
+__code const uint8_t netmask[] = { 255, 255, 255, 0};
 
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
-__xdata uint8_t stp_clock;
+__xdata uint8_t stp_tick_last;
 __xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
-#define STP_TICK_DIVIDER 3
+#define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
+#define STP_CATCH_UP 8
+#define SFP_TICK_STEP 10
+__xdata uint8_t sfp_tick_last;
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -108,8 +111,8 @@ extern __xdata uint8_t gpio_last_value[8];
 
 extern __xdata struct flash_region_t flash_region;
 
-__code uint8_t * __code greeting = "\nA minimal prompt to explore the RTL8372:\n";
-__code uint8_t * __code hex = "0123456789abcdef";
+__code const uint8_t * __code const greeting = "\nA minimal prompt to explore the RTL8372:\n";
+__code const uint8_t * __code const hex = "0123456789abcdef";
 
 __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 
@@ -126,7 +129,7 @@ __xdata bool stp_enabled;
 __xdata uint8_t igmpEnabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
-__code uint16_t bit_mask[16] = {
+__code const uint16_t bit_mask[16] = {
 	0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
 	0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000, 0x8000
 };
@@ -134,6 +137,11 @@ __code uint16_t bit_mask[16] = {
 
 __xdata uint8_t linkbits_last[4];
 __xdata uint8_t linkbits_last_p89;
+__data __at(0x20) volatile uint8_t evflags;
+volatile __bit __at(0x00) link_irq;
+volatile __bit __at(0x01) rx_irq;
+volatile __bit __at(0x02) tick_pending;
+__bit __at(0x03) cmd_available;
 // Last known state of the SFP detection/Loss of Signal pins
 __xdata bool button_last;
 __xdata uint8_t button_sec_counter_last;
@@ -195,6 +203,7 @@ void isr_timer0(void) __interrupt(1)
 void isr_timer2(void) __interrupt(5)
 {
 	ticks++;
+	tick_pending = 1;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
 	sec_counter++;
@@ -254,8 +263,19 @@ void write_char(char c)
 	write_char_no_syslog(c);
 
 	if (syslog_state.enabled) {
-		logbuf[syslog_state.writeptr++] = c;
-		syslog_state.writeptr &= (LOGBUF_SIZE - 1);
+		__xdata uint16_t next = (syslog_state.writeptr + 1) & (LOGBUF_SIZE - 1);
+
+		/* The ring is drained once per main loop pass, and a single command
+		 * can print several times its size, so writing on regardless laps
+		 * the reader and the datagram starts mid record. Drop instead, and
+		 * flag a line so the reader empties what is there even if no
+		 * newline has been seen yet. */
+		if (next == syslog_state.readptr) {
+			syslog_state.line_available = 1;
+			return;
+		}
+		logbuf[syslog_state.writeptr] = c;
+		syslog_state.writeptr = next;
 		if (c == '\n')
 			syslog_state.line_available = 1;
 	}
@@ -303,19 +323,19 @@ void itoa_short(uint16_t v)
 }
 
 
-void print_string(__code char *p)
+void print_string(__code const char *p)
 {
 	while (*p)
 		write_char(*p++);
 }
 
-void print_string_no_syslog(__code char *p)
+void print_string_no_syslog(__code const char *p)
 {
 	while (*p)
 		write_char_no_syslog(*p++);
 }
 
-void print_string_newline_no_syslog(__code char *p)
+void print_string_newline_no_syslog(__code const char *p)
 {
 	write_char_no_syslog('\n');
 	print_string_no_syslog(p);
@@ -349,7 +369,7 @@ int memcmp(__xdata const void *a, __xdata const void *b, uint16_t len)
 	return 0;
 }
 
-void memcpyc(__xdata uint8_t *dst, __code uint8_t *src, uint16_t len)
+void memcpyc(__xdata uint8_t *dst, __code const uint8_t *src, uint16_t len)
 {
 	while (len--)
 		*dst++ = *src++;
@@ -478,14 +498,14 @@ void print_cmd_prompt(void)
 }
 
 /*
- * External IRQ 0 Service Routine: Called on link change?
- * Note that all registers are being put on the STACK because of calling a subroutine
+ * External IRQ 0 Service Routine: the switch reports a link change. The
+ * register access macros share the SFR data bytes with the main loop, so
+ * the handler only latches the event; idle() reads and clears it.
  */
 void isr_ext0(void) __interrupt(0)
 {
-	EX0 = 0;	// Disable interrupt for the moment
-	IT0 = 1;	// Trigger on falling edge of external interrupt
-	EX0 = 1;	// Re-enable interrupt
+	EX0 = 0;
+	link_irq = 1;
 }
 
 
@@ -494,9 +514,8 @@ void isr_ext0(void) __interrupt(0)
  */
 void isr_ext1(void) __interrupt(2)
 {
-	// This flag should only be reset after all packets have been read
 	EX1 = 0;
-	EX1 = 1;
+	rx_irq = 1;
 }
 
 /*
@@ -785,7 +804,7 @@ void nic_tx_packet(uint16_t ring_ptr)
  * Note that the address in the flash memory is not simply 0xbbaddr, because
  * the size of a bank is merely 0xc000.
  */
-uint8_t read_flash(uint8_t bank, __code uint8_t *addr)
+uint8_t read_flash(uint8_t bank, __code const uint8_t *addr)
 {
 	uint8_t v;
 	uint8_t current_bank = PSBANK;
@@ -973,14 +992,19 @@ void tcpip_output(void)
 }
 
 
+#define RX_BUDGET 4
+
 void handle_rx(void)
 {
-	// Check the amount of data available on the NIC/ASIC side
-	reg_read_m(RTL837X_REG_NIC_RX_BUFF_DATA);
-	if (sfr_data[2] != 0 || sfr_data[3] != 0) {
-		reg_read_m(RTL837X_REG_CPU_RX_CURR_PKT);
-		uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
-		ring_ptr |= sfr_data[3];
+	__xdata uint8_t budget = RX_BUDGET;
+
+	while (budget--) {
+		// Check the amount of data available on the NIC/ASIC side
+		reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+		if (!SFR_DATA_U16)
+			break;
+		reg_read(RTL837X_REG_CPU_RX_CURR_PKT);
+		uint16_t ring_ptr = SFR_DATA_U16;
 		ring_ptr <<= 3;
 		if (!nic_rx_header(ring_ptr)) {
 			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
@@ -999,6 +1023,7 @@ void handle_rx(void)
 			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
 			return;
 		}
+		health_rx_frame();
 
 #ifdef RXTXDBG
 		print_string("\n<< ");
@@ -1152,54 +1177,8 @@ void handle_button(void)
 	}
 }
 
-//
-// An idle function that sleeps for 1 tick and does all the house-keeping
-//
-void idle(void)
+void check_links(void)
 {
-	PCON |= 1;
-	if (sec_counter >= SYS_TICK_HZ) {
-		sec_counter -= SYS_TICK_HZ;
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
-		uint8_t v = sfr_data[3];
-#ifdef DEBUG
-		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
-#endif
-		v++;
-		sfr_data[3] = v;
-		if (!v) {
-			v = sfr_data[2];
-			v++;
-			sfr_data[2] = v;
-			if (!v) {
-				v = sfr_data[1];
-				v++;
-				sfr_data[1] = v;
-				if (!v) {
-					v = sfr_data[0];
-					v++;
-					sfr_data[0] = v;
-				}
-			}
-		}
-		reg_write_m(RTL837X_REG_SEC_COUNTER);
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
-
-		// Check for button presses once a second
-		handle_button();
-		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
-		if (++arp_age_secs >= 10) {
-			arp_age_secs = 0;
-			uip_arp_timer();
-		}
-
-#ifdef DEBUG
-		print_sfr_data();
-		write_char('\n');
-#endif
-	}
-
-	// Check for Link changes
 	reg_read_m(RTL837X_REG_LINKS_89);
 	__xdata uint8_t linkbits_p89 = sfr_data[3];
 
@@ -1232,24 +1211,102 @@ void idle(void)
 			cpy_4(linkbits_last, sfr_data);
 		}
 	}
+}
 
-	// Check for changes with SFP modules
-	handle_sfp();
 
-	// Check new Packets RX
-	handle_rx();
-	// Check UIP for packets to transmit
+//
+// An idle function that sleeps for 1 tick and does all the house-keeping
+//
+static void handle_tick(void)
+{
+	if (sec_counter >= SYS_TICK_HZ) {
+		sec_counter -= SYS_TICK_HZ;
+		reg_read_m(RTL837X_REG_SEC_COUNTER);
+		uint8_t v = sfr_data[3];
+#ifdef DEBUG
+		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
+#endif
+		v++;
+		sfr_data[3] = v;
+		if (!v) {
+			v = sfr_data[2];
+			v++;
+			sfr_data[2] = v;
+			if (!v) {
+				v = sfr_data[1];
+				v++;
+				sfr_data[1] = v;
+				if (!v) {
+					v = sfr_data[0];
+					v++;
+					sfr_data[0] = v;
+				}
+			}
+		}
+		reg_write_m(RTL837X_REG_SEC_COUNTER);
+		reg_read_m(RTL837X_REG_SEC_COUNTER);
+
+		// Check for button presses once a second
+		handle_button();
+		link_irq = 1;
+		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
+		if (++arp_age_secs >= 10) {
+			arp_age_secs = 0;
+			uip_arp_timer();
+		}
+
+#ifdef DEBUG
+		print_sfr_data();
+		write_char('\n');
+#endif
+	}
+
+	health_phase(HEALTH_PH_LINK);
+	if (TICKS_DUE(sfp_tick_last, SFP_TICK_STEP)) {
+		sfp_tick_last += SFP_TICK_STEP;
+		handle_sfp();
+	}
+	health_phase(HEALTH_PH_SFP);
 	handle_tx();
-	// If STP protocol enabled, decrease STP timers to trigger actions
+	health_phase(HEALTH_PH_TX);
 	if (stp_enabled) {
-		if (!stp_clock) {
-			stp_clock = STP_TICK_DIVIDER;
+		uint8_t n = STP_CATCH_UP;
+		while (n-- && TICKS_DUE(stp_tick_last, STP_TICK_STEP)) {
+			stp_tick_last += STP_TICK_STEP;
 			stp_timers();
-		} else {
-			stp_clock--;
 		}
 	}
-	// Check whether a command is waiting in the cmd_buffer and execute
+	health_phase(HEALTH_PH_STP);
+}
+
+
+void idle(void)
+{
+	if (!evflags)
+		PCON |= 1;
+	health_loop_start();
+	if (tick_pending) {
+		tick_pending = 0;
+		handle_tick();
+	}
+	if (link_irq) {
+		link_irq = 0;
+		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
+		EX0 = 1;
+		check_links();
+	}
+	health_phase(HEALTH_PH_LINK);
+	if (rx_irq) {
+		rx_irq = 0;
+		handle_rx();
+		REG_SET(RTL837X_NIC_INT_STS, NIC_INT_RXIS);
+		reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
+		if (SFR_DATA_U16)
+			rx_irq = 1;
+		else
+			EX1 = 1;
+	}
+	health_phase(HEALTH_PH_RX);
 	if (cmd_available) {
 		cmd_available = 0;
 		cmd_tokenize();
@@ -1257,6 +1314,7 @@ void idle(void)
 			cmd_parser();
 		print_cmd_prompt();
 	}
+	health_phase(HEALTH_PH_CMD);
 }
 
 
@@ -1282,14 +1340,16 @@ void reset_chip(void)
 
 void setup_external_irqs(void)
 {
-	REG_SET(0x5f84, 0x42);
-	REG_SET(0x5f34, 0x3ff);
+	REG_SET(RTL837X_ISR_SW_INT_MODE, 0x42);
+	REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
+	REG_SET(RTL837X_IMR_INT_PORT_LINK_STS_CHG, 0x3ff);
 
-//	EX0 = 1;	// Enable external IRQ 0 (Link-change)
-	EX0 = 0;
-	IT0 = 1;	// External IRQ on falling edge
+	link_irq = 1;
+	IT0 = 1;	// External IRQ 0 on falling edge (link change)
+	EX0 = 1;
 
-	EX1 = 1;	// External IRQ 1 enable
+	rx_irq = 1;
+	EX1 = 1;	// External IRQ 1: the NIC has received a packet
 	EX2 = 1;	// External IRQ 2 enable: bit EIE.0
 	EX3 = 1;	// External IRQ 3 enable: bit EIE.1
 	PX3 = 1;	// Set EIP.1 = 1: External IRQ 3 set to high priority
@@ -1570,7 +1630,8 @@ void check_and_flash_update_image(void)
 void main(void)
 {
 	ticks = 0;
-	stp_clock = STP_TICK_DIVIDER;
+	stp_tick_last = (uint8_t)ticks;
+	sfp_tick_last = (uint8_t)ticks;
 	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
 
@@ -1674,6 +1735,8 @@ void main(void)
 
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
+	if (machine_detected.isRTL8373)
+		rtl8224_wait_ready();
 
 	rtl8373_revision();
 
@@ -1714,6 +1777,7 @@ void main(void)
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	nic_setup();
+	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
@@ -1751,6 +1815,7 @@ void main(void)
 
 	cmd_editor_init();
 
+	health_stack_paint();
 	while (1) {
 		cmd_edit();
 		idle(); // Enter Idle mode until interrupt occurs

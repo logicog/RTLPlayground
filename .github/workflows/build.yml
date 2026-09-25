@@ -22,5 +22,9 @@ jobs:
         run: make -C test
       - name: Check if machine.c can be compiled for all machines
         run: make machine_check
-      - name: Make project
-        run: make MACHINE="KP_9000_6XHML_X2"
+      - name: Make project (4x2/RTL8372)
+        run: make CI=1 MACHINE="KP_9000_6XHML_X2"
+      - name: Make project (8x1/RTL8373)
+        run: make CI=1 MACHINE="KP_9000_9XHML_X_V3_1"
+      - name: Make project with the health instrumentation
+        run: make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" HEALTH=1

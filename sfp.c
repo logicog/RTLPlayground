@@ -20,6 +20,8 @@ extern __code const struct machine machine;
 
 // SFP1 b0 = 1 => module missing, b1 = 1 => LOS;
 // SFP2 b4 = 1 => module missing, b5 = 1 => LOS;
+extern volatile __xdata uint32_t ticks;
+
 __xdata uint8_t sfp_pins_last;
 __xdata char sfp_module_vendor[2][17];
 __xdata char sfp_module_model[2][17];
@@ -28,6 +30,8 @@ __xdata uint8_t sfp_options[2];
 __xdata uint8_t sfp_buf[16];	/* scratch for one I2C transaction, the controller reads at most 16 bytes */
 __xdata uint8_t sfp_speed[2];
 __xdata uint8_t sfp_quirks[2];
+__xdata uint8_t sfp_wake_at[2];
+__xdata uint8_t sfp_wake_pending[2];
 
 
 __code enum sfp_quirk {
@@ -35,12 +39,12 @@ __code enum sfp_quirk {
 };
 
 struct sfp_quirk_entry {
-	__code char *vendor; // Set vendor or model to 0 to act as wildcard
-	__code char *model;
+	__code const char *vendor; // Set vendor or model to 0 to act as wildcard
+	__code const char *model;
 	uint8_t quirks;
 };
 
-static __code struct sfp_quirk_entry sfp_quirk_table[] = {
+static __code const struct sfp_quirk_entry sfp_quirk_table[] = {
 	{ "QSFPTEK", "QT-SFP+-T", SFP_QUIRK_DDM },
 };
 
@@ -88,9 +92,14 @@ bool sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t lengt
 		return false;
 
 	dst[length] = NUL;
-	memcpy(dst, sfp_buf, length);
+	for (uint8_t i = 0; i < length; i++) {
+		uint8_t c = sfp_buf[i];
+		if (c && (c < 0x20 || c > 0x7e || c == '"' || c == '\\'))
+			c = '.';
+		dst[i] = c;
+	}
 
-	while (length > 0 && dst[--length] == ' ')
+	while (length-- > 0 && (dst[length] == ' ' || dst[length] == NUL))
 		dst[length] = NUL;
 
 	return true;
@@ -152,7 +161,6 @@ static bool sfp_module_read(uint8_t sfp)
 
 	// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
 	// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
-	delay(100); // Delay, because some modules need time to wake up
 	if (!sfp_read_block(sfp, 11, 2))
 		return false;
 
@@ -194,6 +202,11 @@ void handle_sfp(void) __banked
 			if (sfp_pins_last & (0x1 << (sfp << 2))) {
 				sfp_pins_last &= ~(0x01 << (sfp << 2));
 				print_string("\n<MODULE INSERTED>  Slot: "); write_char('1' + sfp);
+				sfp_wake_at[sfp] = ticks;
+				sfp_wake_pending[sfp] = 1;
+			} else if (sfp_wake_pending[sfp]
+				   && (uint8_t)((uint8_t)ticks - sfp_wake_at[sfp]) >= SFP_WAKE_TICKS) {
+				sfp_wake_pending[sfp] = 0;
 				if (!sfp_module_read(sfp)) {
 					print_string("SFP: an I2C read failed, retrying on the next poll\n");
 					sfp_pins_last |= 0x01 << (sfp << 2);
@@ -202,6 +215,7 @@ void handle_sfp(void) __banked
 		} else {
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
 				sfp_pins_last |= 0x01 << (sfp << 2);
+				sfp_wake_pending[sfp] = 0;
 				print_string("\n<MODULE REMOVED>  Slot: "); write_char('1' + sfp); write_char('\n');
 			}
 		}

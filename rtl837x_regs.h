@@ -83,6 +83,10 @@
 #define RTL837X_REG_LINKS	0x63f0
 #define RTL837X_REG_LINKS_89	0x63f4
 #define RTL837X_REG_LINKS_STS	0x63E8
+/* Per-port status bits: bit N is chip port N */
+#define RTL837X_MAC_TX_PAUSE_STS	0x63FC
+#define RTL837X_MAC_RX_PAUSE_STS	0x6400
+#define RTL837X_MAC_MSTR_SLV_STS	0x6408
 
 /* Each nibble encodes the link state of a port.
    Port 0 appears to be the CPU port
@@ -126,6 +130,10 @@
 #define RTL837X_REG_I2C_CTRL2		0x041c
 #define RTL837X_REG_I2C_IN		0x0420
 #define RTL837X_REG_I2C_OUT		0x0424
+#define RTL837X_REG_I2C_SCL_SHIFT 5
+#define RTL837X_REG_I2C_SDA_SHIFT 2
+#define RTL837X_REG_I2C_SCL_MASK  0x3
+#define RTL837X_REG_I2C_SDA_MASK  0x7
 
 /*
  * NIC Related registers
@@ -137,12 +145,19 @@
 #define RTL837X_REG_RX_CTRL		0x785c
 #define RTL837X_REG_TX_CTRL		0x7860
 #define RTL837X_REG_NIC_RX_BUFF_DATA	0x7874
+#define RTL837X_NIC_INT_STS		0x7854
+#define RTL837X_NIC_INT_MSK		0x7858
+#define NIC_INT_RXIS			0x02
+#define NIC_INT_RXIE			0x02
 #define RTL837X_REG_CPU_RX_CURR_PKT	0x787c
 #define RTL837X_REG_NIC_TX_CURR_PKT	0x7884
 #define RTL837X_REG_CPU_TX_CURR_PKT	0x7890
 #define RTL837X_REG_CPU_TAG		0x6720
 #define RTL837X_REG_CPU_TAG_AWARE_PMASK	0x603C
 #define RTL837X_REG_MAC_FORCE_MODE	0x6344
+
+/* Flags in byte 1 of the RX frame descriptor */
+#define RX_TAG_L4_CSUM_BAD		0x04
 
 /*
  * Statistics related registers
@@ -263,6 +278,9 @@
  */
 #define RTL8373_RLDP_TIMER		0x1074
 #define RTL837X_RMA0_CONF		0x4ecc
+#define RTL837X_IMR_INT_PORT_LINK_STS_CHG	0x5f34
+#define RTL837X_ISR_SW_INT_MODE		0x5f84
+#define RTL837X_ISR_INT_PORT_LINK_CHG	0x5f88
 #define RTL837X_RMA_CONF		0x4f1c
 #define RTL837X_MSTP_STATES		0x5310
 #define RTL837X_REG_LED_RLDP_1		0x65F8

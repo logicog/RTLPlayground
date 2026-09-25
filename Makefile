@@ -19,6 +19,14 @@ ifeq ($(MACHINE),)
 else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
+# Health instrumentation and the "health" console command: HEALTH=1 gmake ...
+ifneq ($(HEALTH),)
+	CC_FLAGS += -DHEALTH
+endif
+
+ifeq ($(CI),1)
+	CC_FLAGS += --Werror
+endif
 
 BUILDDIR = output/$(MACHINE)
 VERSION_HEADER := version.h
@@ -126,15 +134,25 @@ distclean: $(SUBDIRSCLEAN)
 $(SUBDIRSCLEAN):
 	$(MAKE) -C $(@:clean=) clean
 
-$(BUILDDIR)/%.rel: %.c | create_build_dir html_data.h
+# Objects depend on the flags they were built with, through a stamp file that
+# is rewritten only when CC_FLAGS actually changes.
+CCFLAGS_STAMP := $(BUILDDIR)/.ccflags
+
+.PHONY: FORCE
+FORCE:
+
+$(CCFLAGS_STAMP): FORCE | create_build_dir
+	@echo '$(CC_FLAGS)' | cmp -s - $@ 2>/dev/null || echo '$(CC_FLAGS)' > $@
+
+$(BUILDDIR)/%.rel: %.c $(CCFLAGS_STAMP) | create_build_dir html_data.h
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
-$(BUILDDIR)/%.rel: %.asm | create_build_dir
+$(BUILDDIR)/%.rel: %.asm $(CCFLAGS_STAMP) | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
 $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel
-	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-r -o $@ $^
+	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-r -o $@ $^
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@

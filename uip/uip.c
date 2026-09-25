@@ -95,6 +95,9 @@
 #endif /* UIP_CONF_IPV6 */
 
 #include "../rtl837x_common.h"
+#include "../rtl837x_regs.h"
+
+extern __xdata uint8_t rx_headers[16];
 
 /*---------------------------------------------------------------------------*/
 /* Variable definitions. */
@@ -1120,6 +1123,12 @@ uip_process(u8_t flag) __banked
     goto drop;
   }
 #else /* UIP_UDP_CHECKSUMS */
+  if (rx_headers[1] & RX_TAG_L4_CSUM_BAD) {
+    UIP_STAT(++uip_stat.udp.drop);
+    UIP_STAT(++uip_stat.udp.chkerr);
+    UIP_LOG("udp: bad checksum.");
+    goto drop;
+  }
   uip_len = uip_len - UIP_IPUDPH_LEN;
 #endif /* UIP_UDP_CHECKSUMS */
 
@@ -1200,15 +1209,12 @@ uip_process(u8_t flag) __banked
 
   /* Start of TCP input header processing code. */
 
-//  BUG: We need to reimplement this with RTL837x TCP checksum checking
-// i.e. figure out which bit in the RX-tag states the checksum is correct
-//  if(uip_tcpchksum() != 0xffff) {   /* Compute and check the TCP
-//				       checksum. */
-//    UIP_STAT(++uip_stat.tcp.drop);
-//    UIP_STAT(++uip_stat.tcp.chkerr);
-//    UIP_LOG("tcp: bad checksum.");
-//    goto drop;
-//  }
+  if (rx_headers[1] & RX_TAG_L4_CSUM_BAD) {
+    UIP_STAT(++uip_stat.tcp.drop);
+    UIP_STAT(++uip_stat.tcp.chkerr);
+    UIP_LOG("tcp: bad checksum.");
+    goto drop;
+  }
   
   
   /* Demultiplex this segment. */

@@ -171,7 +171,7 @@ void flash_read_uid(void)
 	flash_configure_mmio();
 }
 
-__code char* get_flash_size_str(void)
+__code const char* get_flash_size_str(void)
 {
 	switch (flash_capacity_code) {
 		case 0x12: return "256 KB";
