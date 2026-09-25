@@ -854,8 +854,11 @@ var CONF_CMDS=[
   /^lldp\s+(on|off)$/,
   /^bw\s+(in|out)\s+\d+\s+\S+$/,
   /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
-  /^acl\s+\d{1,2}(\s+(dmac|smac)\s+([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}|\s+ethertype\s+[0-9a-fA-F]{4})+\s+(drop|cpu|mirror\s+\d|\d)(\s+\d)*$/,
-  /^acl\s+\d{1,2}\s+off$/,
+  /^acl\s+\d{1,2}\s+\S.*$/,
+  /^acl\s+meter\s+\d{1,2}\s+\d+\s+(kbps|pps)\s+\d+$/,
+  /^acl\s+field\s+\d{1,2}\s+(off|raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3}$/,
+  /^acl\s+default\s+(permit|drop(\s+\d)+)$/,
+  /^acl\s+counter\s+\d{1,2}\s+(bytes|packets)$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -2457,7 +2460,7 @@ var CONF_OVERWRITE=[
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
-  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,/^acl\s+\d{1,2}\b/,
+  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,/^acl\s+\d{1,2}\b/,/^acl\s+(meter|field|counter)\s+\d{1,2}\b/,/^acl\s+default\b/,
 ];
 var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
