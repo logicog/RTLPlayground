@@ -146,6 +146,7 @@ void send_mirror(void) { }
 void send_mtu(void) { }
 void send_config(void) { }
 void send_cmd_log(void) { }
+void send_lacp(void) { }
 void send_lag(void) { }
 void send_stp(void) { }
 void send_stp_counters(void) { }

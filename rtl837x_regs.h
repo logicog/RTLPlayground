@@ -281,6 +281,18 @@
 #define RTL837X_IMR_INT_PORT_LINK_STS_CHG	0x5f34
 #define RTL837X_ISR_SW_INT_MODE		0x5f84
 #define RTL837X_ISR_INT_PORT_LINK_CHG	0x5f88
+/* Per reserved-multicast-address action registers: RMA0_CONF is address
+ * 01:80:C2:00:00:00, each subsequent address is +4. Address ...:02 (Slow
+ * Protocols / LACP) is therefore at 0x4ecc + 2*4. The action field RMA_ACT
+ * sits at bits [5:4]: 0=forward 1=trap-to-CPU 2=drop 3=forward-excl-CPU. */
+#define RTL837X_RMA2_CONF		0x4ed4
+/* Action values in RMA_ACT [5:4]. NB: on this firmware the CPU port is a
+ * member of the forwarding domain, so FORWARD (op 0) is what actually
+ * delivers a frame to the CPU-RX ring (confirmed on hardware: LACPDUs only
+ * reached handle_rx once 0x4ed4 was set to forward, never with trap). TRAP
+ * (op 1) routes to a hardware trap path this firmware does not read. */
+#define RTL837X_RMA_ACT_FORWARD		0x00000000
+#define RTL837X_RMA_ACT_DROP		0x00000020	/* op 2 << lsb 4 */
 #define RTL837X_RMA_CONF		0x4f1c
 #define RTL837X_MSTP_STATES		0x5310
 #define RTL837X_REG_LED_RLDP_1		0x65F8
