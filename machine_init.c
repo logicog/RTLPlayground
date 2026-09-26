@@ -54,10 +54,19 @@ void machine_custom_init(void) __banked
     reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
 }
 
-#elif defined MACHINE_PCB_SWTG024AS_A_2_0_1
+#elif defined(MACHINE_PCB_SWTG024AS_A_2_0_1) || defined(MACHINE_PCB_SWTG024AS_V2_1_1)
 void machine_custom_init(void) __banked
 {
+#if defined(MACHINE_PCB_SWTG024AS_V2_1_1)
+    // OEM init and live register reads agree on the LED pad routing/enables.
+    REG_SET(RTL837X_PIN_MUX_0, 0x20db68bf);
+    REG_SET(RTL837X_REG_LED_GLB_IO_EN, 0x7f249740);
+    // OEM GPIO48 setup selects GPIO rather than I2C SCL1 for the reset button.
+    reg_bit_clear(RTL837X_PIN_MUX_1, 11);
+    reg_bit_clear(RTL837X_PIN_MUX_1, 12);
+#else
     reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
+#endif
     reg_bit_set(RTL837X_REG_LED_MODE, 17);
     reg_bit_clear(RTL837X_REG_LED_MODE, 9);
     reg_bit_clear(RTL837X_REG_LED_MODE, 7);
