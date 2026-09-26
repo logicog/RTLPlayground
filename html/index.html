@@ -250,6 +250,8 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <p class="small mono" id="stpids">-</p>
         <div id="stpbridge" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
           <label><span class="small mut" data-i18n="stp_version">Version</span><br><select class="in" id="stpver"><option value="rstp">RSTP</option><option value="stp" data-i18n="stp_v_stp">STP compatible</option></select></label>
+          <label><span class="small mut" data-i18n="stp_pcs">Path cost</span><br><select class="in" id="stppcs"><option value="long" data-i18n="stp_pcs_long">Long (32 bit)</option><option value="short" data-i18n="stp_pcs_short">Short (16 bit)</option></select></label>
+          <label><span class="small mut" data-i18n="stp_bh">BPDUs while disabled</span><br><select class="in" id="stpbh"><option value="flood" data-i18n="stp_bh_flood">Flood</option><option value="filter" data-i18n="stp_bh_filter">Filter</option></select></label>
           <label><span class="small mut" data-i18n="stp_prio">Bridge priority</span><br><select class="in" id="stpprio"></select></label>
           <label><span class="small mut" data-i18n="stp_hello">Hello [s]</span><br><input class="in sm" id="stphello" type="number" min="1" max="10"></label>
           <label><span class="small mut" data-i18n="stp_maxage">Max age [s]</span><br><input class="in sm" id="stpmaxage" type="number" min="6" max="40"></label>
@@ -267,8 +269,13 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       </div>
       <div class="card"><h2 data-i18n="stp_status">Port status</h2>
         <div class="scrollx"><table class="t" id="stpstat">
-          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_role">Role</th><th data-i18n="c_state">State</th><th data-i18n="stp_db">Designated bridge</th><th data-i18n="stp_dp">Designated port</th><th data-i18n="stp_dc">Designated cost</th><th data-i18n="stp_oedge">Oper. edge</th><th data-i18n="stp_op2p">Oper. P2P</th></tr></thead>
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_role">Role</th><th data-i18n="c_state">State</th><th data-i18n="stp_db">Designated bridge</th><th data-i18n="stp_dp">Designated port</th><th data-i18n="stp_dc">Designated cost</th><th data-i18n="stp_oedge">Oper. edge</th><th data-i18n="stp_op2p">Oper. P2P</th><th data-i18n="stp_proto">Protocol</th><th></th></tr></thead>
           <tbody></tbody></table></div>
+      </div>
+      <div class="card"><details id="stpcntd"><summary><h2 style="display:inline" data-i18n="stp_cnt">Counters</h2></summary>
+        <div class="scrollx"><table class="t" id="stpcnt">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_crx">BPDUs received</th><th data-i18n="stp_ctx">BPDUs sent</th><th data-i18n="stp_ctrx">TC received</th><th data-i18n="stp_cttx">TC sent</th><th data-i18n="stp_cage">Last BPDU [s]</th></tr></thead>
+          <tbody></tbody></table></div></details>
       </div>
     </section>
 
