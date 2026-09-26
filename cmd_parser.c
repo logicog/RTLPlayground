@@ -14,6 +14,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_acl.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "sfp.h"
@@ -585,6 +586,12 @@ void parse_lag_hash(void)
 	return;
 err:
 	cmd_error("laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
+}
+
+
+void parse_acl(void)
+{
+	acl_cmd();
 }
 
 
@@ -1893,6 +1900,8 @@ void cmd_parser(void) __banked
 			parse_lag();
 		} else if (cmd_compare(0, "laghash")) {
 			parse_lag_hash();
+		} else if (cmd_compare(0, "acl")) {
+			parse_acl();
 		} else if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
 			write_char('\n');
