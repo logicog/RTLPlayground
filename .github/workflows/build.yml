@@ -34,17 +34,17 @@ jobs:
       - name: Check if machine.c can be compiled for all machines
         run: cd branch && make machine_check
       - name: Make project (4x2/RTL8372)
-        run: cd branch && make CI=1 MACHINE="KP_9000_6XHML_X2" | tee /tmp/build_KP_9000_6XHML_X2.branch.log
+        run: cd branch && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map /tmp/branch.map
       - name: Make project (8x1/RTL8373)
         run: cd branch && make CI=1 MACHINE="KP_9000_9XHML_X_V3_1"
       - name: Make project with the health instrumentation
         run: cd branch && make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" HEALTH=1
       - name: Make main
-        run: cd main && make CI=1 MACHINE="KP_9000_6XHML_X2" | tee /tmp/build_KP_9000_6XHML_X2.main.log
+        run: cd main && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map /tmp/main.map
       - name: Calculate bank growth
         run: |
-          sed -n 's/^Bank \([0-9]\): [Bb]ytes read: \([0-9]\+\)$/MAIN_BANK_\1=\2/p' /tmp/build_*.main.log >> "$GITHUB_ENV"
-          sed -n 's/^Bank \([0-9]\): [Bb]ytes read: \([0-9]\+\)$/BRANCH_BANK_\1=\2/p' /tmp/build_*.branch.log >> "$GITHUB_ENV"
+          sed -n 's/^\(BANK[0-9]\).*=\s\+\([0-9]\+\)\. bytes.*$/MAIN_\1=\2/p' /tmp/main.map | sort | uniq >> "$GITHUB_ENV"
+          sed -n 's/^\(BANK[0-9]\).*=\s\+\([0-9]\+\)\. bytes.*$/BRANCH_\1=\2/p' /tmp/branch.map | sort | uniq >> "$GITHUB_ENV"
       - name: Update PR comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
@@ -54,7 +54,7 @@ jobs:
 
             | Bank # | Main | Branch |
             | --- | --- | --- |
-            | 0 | ${{ env.MAIN_BANK_0 }} bytes | ${{ env.BRANCH_BANK_0 }} bytes |
-            | 1 | ${{ env.MAIN_BANK_1 }} bytes | ${{ env.BRANCH_BANK_1 }} bytes |
-            | 2 | ${{ env.MAIN_BANK_2 }} bytes | ${{ env.BRANCH_BANK_2 }} bytes |
-            | 3 | ${{ env.MAIN_BANK_3 }} bytes | ${{ env.BRANCH_BANK_3 }} bytes |
+            | 0 | ${{ env.MAIN_BANK0 }} bytes | ${{ env.BRANCH_BANK0 }} bytes |
+            | 1 | ${{ env.MAIN_BANK1 }} bytes | ${{ env.BRANCH_BANK1 }} bytes |
+            | 2 | ${{ env.MAIN_BANK2 }} bytes | ${{ env.BRANCH_BANK2 }} bytes |
+            | 3 | ${{ env.MAIN_BANK3 }} bytes | ${{ env.BRANCH_BANK3 }} bytes |
