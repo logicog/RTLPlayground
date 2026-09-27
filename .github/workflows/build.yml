@@ -50,19 +50,11 @@ jobs:
         with:
           header: Sizes
           message: |
-            ## Image Growth Sizes
+            ## Image Growth
 
-            ### Main
-            ```text
-            Bank 0:  ${{  env.MAIN_BANK_0 }}
-            Bank 1:  ${{  env.MAIN_BANK_1 }}
-            Bank 2:  ${{  env.MAIN_BANK_2 }}
-            Bank 3:  ${{  env.MAIN_BANK_3 }}
-            ```
-            ### Branch
-            ```text
-            Bank 0:  ${{  env.BRANCH_BANK_0 }}
-            Bank 1:  ${{  env.BRANCH_BANK_1 }}
-            Bank 2:  ${{  env.BRANCH_BANK_2 }}
-            Bank 3:  ${{  env.BRANCH_BANK_3 }}
-            ```
+            | Bank # | Main | Branch |
+            | --- | --- | --- |
+            | 0 | ${{ env.MAIN_BANK_0 }} bytes | ${{ env.BRANCH_BANK_0 }} bytes |
+            | 1 | ${{ env.MAIN_BANK_1 }} bytes | ${{ env.BRANCH_BANK_1 }} bytes |
+            | 2 | ${{ env.MAIN_BANK_2 }} bytes | ${{ env.BRANCH_BANK_2 }} bytes |
+            | 3 | ${{ env.MAIN_BANK_3 }} bytes | ${{ env.BRANCH_BANK_3 }} bytes |
