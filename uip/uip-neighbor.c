@@ -43,6 +43,8 @@
 #include "uip-neighbor.h"
 #include "../rtl837x_common.h"
 
+#if UIP_CONF_IPV6
+
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
@@ -170,3 +172,5 @@ uip_neighbor_lookup(__xdata uip_ipaddr_t ipaddr)
   return NULL;
 }
 /*---------------------------------------------------------------------------*/
+
+#endif /* UIP_CONF_IPV6 */
