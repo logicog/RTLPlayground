@@ -1766,7 +1766,7 @@ $("sy-apply").addEventListener("click",function(){
     if(!/^[\x21-\x7e]{1,23}$/.test(hn)||/["\\]/.test(hn)){toast(t("sy_host_err"),"err");return;}
     cmds.push("hostname "+hn);
   }
-  cmds.push("ip "+ip,"netmask "+mask,"gw "+gw);
+  cmds.push("ip "+ip+"\nnetmask "+mask+"\ngw "+gw);
   var changingIp=ip!==S.info.ip_address;
   confirmModal(t("sy_net_q"),changingIp?t("sy_net_d",{ip:ip}):"",function(){
     postCmds(cmds).then(function(){
