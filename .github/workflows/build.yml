@@ -13,13 +13,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          path: branch
+
+      - uses: actions/checkout@v6
+        with:
+          path: main
+          ref: main
 
       - name: Install dependencies
         run: |
           apt update
-          apt install make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev git -y
+          apt install make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev -y
       - name: Run the host-side unit tests
-        run: make -C test
+        run: cd branch && make -C test
       - name: Check if machine.c can be compiled for all machines
         run: make machine_check
       - name: Make project (4x2/RTL8372)
@@ -29,7 +36,9 @@ jobs:
       - name: Make project with the health instrumentation
         run: make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" HEALTH=1
       - name: Make main
-        run: git checkout main && make CI=1 MACHINE="KP_9000_6XHML_X2" | tee /tmp/build_KP_9000_6XHML_X2.main.log
+        run: |
+          cd ../main
+          make CI=1 MACHINE="KP_9000_6XHML_X2" | tee /tmp/build_KP_9000_6XHML_X2.main.log
       - name: Calculate bank growth
         run: |
           export $(sed -n 's/^Bank \([0-9]\): [Bb]ytes read: \([0-9]\+\)$/MAIN_BANK_\1=\2/p' /tmp/build_*.main.log$)
