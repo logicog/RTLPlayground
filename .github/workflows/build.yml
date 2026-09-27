@@ -5,6 +5,10 @@ on:
     branches: ['**']
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,6 +43,26 @@ jobs:
         run: cd main && make CI=1 MACHINE="KP_9000_6XHML_X2" | tee /tmp/build_KP_9000_6XHML_X2.main.log
       - name: Calculate bank growth
         run: |
-          export $(sed -n 's/^Bank \([0-9]\): [Bb]ytes read: \([0-9]\+\)$/MAIN_BANK_\1=\2/p' /tmp/build_*.main.log)
-          export $(sed -n 's/^Bank \([0-9]\): [Bb]ytes read: \([0-9]\+\)$/BRANCH_BANK_\1=\2/p' /tmp/build_*.branch.log)
-          echo $(($MAIN_BANK_0-$BRANCH_BANK_0)) $(($MAIN_BANK_1-$BRANCH_BANK_1)) $(($MAIN_BANK_2-$BRANCH_BANK_2)) $(($MAIN_BANK_3-$BRANCH_BANK_3))
+          sed -n 's/^Bank \([0-9]\): [Bb]ytes read: \([0-9]\+\)$/MAIN_BANK_\1=\2/p' /tmp/build_*.main.log >> "$GITHUB_ENV"
+          sed -n 's/^Bank \([0-9]\): [Bb]ytes read: \([0-9]\+\)$/BRANCH_BANK_\1=\2/p' /tmp/build_*.branch.log >> "$GITHUB_ENV"
+      - name: Update PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: Sizes
+          message: |
+            ## Image Growth Sizes
+
+            ### Main
+            ```text
+            Bank 0:  ${{  env.MAIN_BANK_0 }}
+            Bank 1:  ${{  env.MAIN_BANK_1 }}
+            Bank 2:  ${{  env.MAIN_BANK_2 }}
+            Bank 3:  ${{  env.MAIN_BANK_3 }}
+            ```
+            ### Branch
+            ```text
+            Bank 0:  ${{  env.BRANCH_BANK_0 }}
+            Bank 1:  ${{  env.BRANCH_BANK_1 }}
+            Bank 2:  ${{  env.BRANCH_BANK_2 }}
+            Bank 3:  ${{  env.BRANCH_BANK_3 }}
+            ```
