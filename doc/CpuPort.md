@@ -61,7 +61,9 @@ the trap used for BPDUs.
 A trapped frame differs from a forwarded one:
 
 * the tag carries a reason code, 0x5f for a reserved multicast address
-  (0x67 for an ACL trap);
+  (0x64 for a PTP trap, 0x67 for an ACL trap);
+* the low three bits of the first `flags` byte hold the priority of the trap,
+  set with `rma priority` and `rma ptp priority` (rma.md);
 * no 802.1Q tag is inserted, so the EtherType follows the RTL tag directly
   and the payload starts four bytes earlier; `TRAP_RX_BODY()` returns the
   payload offset for either form;
