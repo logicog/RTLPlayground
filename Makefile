@@ -76,6 +76,7 @@ SRCS = \
 SRCS += \
 	rtl837x_acl.c \
 	rtl837x_acl_cmd.c \
+	rtl837x_dhcp_snoop.c \
 	rtl837x_bandwidth.c \
 	rtl837x_flash.c \
 	rtl837x_igmp.c \
