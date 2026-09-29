@@ -1932,7 +1932,8 @@ var CONF_OVERWRITE=[
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
-  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,/^acl\s+\d{1,2}\b/,/^acl\s+(meter|field)\s+\d{1,2}\b/,/^acl\s+counter\s+\d{1,2}\s+(mode|width)\b/,/^acl\s+gpio\s+([0-3]|polarity)\b/,/^acl\s+default\b/,
+  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
+  /^acl\s+\d{1,2}\b/,/^acl\s+(meter|field)\s+\d{1,2}\b/,/^acl\s+counter\s+\d{1,2}\s+(mode|width)\b/,/^acl\s+gpio\s+([0-3]|polarity)\b/,/^acl\s+default\b/,
 ];
 var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
