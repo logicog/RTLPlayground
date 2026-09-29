@@ -137,6 +137,21 @@ static void t_errors(void)
 	run("acl 1 dmac 00:11:22:33:44:55 sip 1.2.3.4 drop");
 	CHECK(err_status && hw_acl_rule(0x80, 0) == 0xeb4d27e9 && hw_reg_get(RTL837X_ACL_ACT_CTRL) == 0x20,
 	      "a rule that cannot be written leaves the old rule in place");
+	for (int i = 2; i <= 17; i++) {
+		char cmd[64];
+		snprintf(cmd, sizeof(cmd), "acl %d dport %d-%d drop", i, i * 100, i * 100 + 50);
+		run(cmd);
+	}
+	run("acl 1 dport 5000-6000 drop");
+	CHECK(err_status && hw_acl_rule(0x80, 0) == 0xeb4d27e9 && hw_reg_get(RTL837X_ACL_ACT_CTRL) == 0x20,
+	      "a rule replacement failing on range exhaustion leaves the old rule in place");
+	run("acl 2 dport 7000-7100 drop");
+	CHECK(!err_status, "a rule reuses the ranges of the rule it replaces");
+	for (int i = 2; i <= 17; i++) {
+		char cmd[32];
+		snprintf(cmd, sizeof(cmd), "acl %d off", i);
+		run(cmd);
+	}
 	run("acl 1 ethertype 0800 drop 3 4");
 	CHECK(!err_status && hw_acl_rule(0x80, 4) == 0xffe067f8, "trailing ports restrict the rule");
 }
