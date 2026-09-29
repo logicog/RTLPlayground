@@ -685,6 +685,7 @@ var CONF_CMDS=[
   /^acl\s+field\s+\d{1,2}\s+(off|raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3}$/,
   /^acl\s+default\s+(permit|drop(\s+\d)+)$/,/^acl\s+counter\s+\d{1,2}\s+(mode\s+(bytes|packets)|width\s+(32|64))$/,
   /^acl\s+gpio\s+([0-3]\s+(on|off)|polarity\s+(high|low))$/,
+  /^dhcp\s+snooping\s+(on|off)$/,/^dhcp\s+snooping\s+trust(\s+\d)+$/,/^dhcp\s+snooping\s+trust\s+none$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -1933,9 +1934,9 @@ var CONF_OVERWRITE=[
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
-  /^acl\s+\d{1,2}\b/,/^acl\s+(meter|field)\s+\d{1,2}\b/,/^acl\s+counter\s+\d{1,2}\s+(mode|width)\b/,/^acl\s+gpio\s+([0-3]|polarity)\b/,/^acl\s+default\b/,
+  /^acl\s+\d{1,2}\b/,/^acl\s+(meter|field)\s+\d{1,2}\b/,/^acl\s+counter\s+\d{1,2}\s+(mode|width)\b/,/^acl\s+gpio\s+([0-3]|polarity)\b/,/^acl\s+default\b/,/^dhcp\s+snooping\s+trust\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(dhcp snooping)\s+(on|off)$/,/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
