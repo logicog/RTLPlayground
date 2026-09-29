@@ -10,6 +10,15 @@
 #define ACL_PORTS	((uint16_t)((1 << CPU_PORT) - 1))
 #define ACL_ALL		((uint16_t)((1 << (CPU_PORT + 1)) - 1))
 #define ACL_NONE	0xff
+#define ACL_TBL_Y	0x80
+#define ACL_ACT_CTRL_OFF	0xff
+#define ACL_INFO_TMPL	0x0007
+#define ACL_INFO_PORT_SHIFT	11
+#define ACL_SLOT_INFO	8
+#define ACL_RNG_KINDS	3
+#define ACL_RNG_REG_STEP	4
+#define ACL_RULE_WORDS	5
+#define ACL_ACT_WORDS	3
 
 extern __xdata uint8_t sfr_data[4];
 
@@ -20,7 +29,7 @@ __xdata uint8_t  acl_nreq;
 __xdata uint16_t acl_info_v;
 __xdata uint16_t acl_info_m;
 __xdata uint16_t acl_in_pmask;
-__xdata uint32_t acl_act[3];
+__xdata struct acl_act_entry acl_act;
 __xdata uint16_t acl_ctrl;
 __xdata uint16_t acl_unmatch_drop;
 __xdata uint8_t  acl_rule_tmpl[ACL_HW_RULES];
@@ -31,26 +40,33 @@ __xdata uint16_t acl_vk;
 __xdata uint16_t acl_mk;
 __xdata struct acl_req acl_rq;
 
-static __xdata uint8_t  acl_rng_owner[3][ACL_RANGES];
-static __xdata uint16_t acl_y[10];
-static __xdata uint16_t acl_x[10];
-static __xdata uint16_t acl_zero[10];
-static __xdata uint16_t acl_rbits[3];
-static __xdata uint8_t  acl_need[3];
-static __xdata uint16_t acl_v;
-static __xdata uint16_t acl_m;
-static __xdata uint16_t acl_t1;
-static __xdata uint16_t acl_t2;
-static __xdata uint8_t  acl_t;
+static __xdata uint8_t  acl_rng_owner[ACL_RNG_KINDS][ACL_RANGES];
+static __xdata struct acl_rule_entry acl_y;
+static __xdata struct acl_rule_entry acl_x;
+static __xdata struct acl_rule_entry acl_zero;
+static __xdata uint16_t acl_rbits[ACL_RNG_KINDS];
+static __xdata uint8_t  acl_need[ACL_RNG_KINDS];
+static __xdata uint16_t acl_put_val;
+static __xdata uint16_t acl_put_mask;
+static __xdata uint16_t acl_tmp;
+static __xdata uint16_t acl_tmp2;
+static __xdata uint16_t * __xdata acl_py;
+static __xdata uint16_t * __xdata acl_px;
+static __xdata uint8_t  acl_tmpl_i;
 static __xdata uint8_t  acl_idx;
 static __xdata uint8_t  acl_i;
-static __xdata uint8_t  acl_j;
-static __xdata uint8_t  acl_k;
-static __xdata uint8_t  acl_s;
-static __xdata uint8_t  acl_alt_ok;
-static __xdata struct acl_req * __xdata acl_q;
-static __xdata uint16_t * __xdata acl_h;
-static __xdata uint16_t * __xdata acl_h2;
+static __xdata uint8_t  acl_req_i;
+static __xdata uint8_t  acl_slot_i;
+static __xdata uint8_t  acl_key_i;
+static __xdata uint8_t  acl_rng_kind;
+static __xdata uint8_t  acl_rng_slot;
+static __xdata uint8_t  acl_use_ranges;
+static __xdata struct acl_req * __xdata acl_cur_req;
+static __xdata uint8_t  acl_tbl_sel;
+static __xdata uint8_t  acl_tbl_words;
+static __xdata uint8_t  acl_tbl_addr;
+static __xdata uint16_t * __xdata acl_tbl_src;
+static __xdata uint16_t * __xdata acl_tbl_src_y;
 
 static __code const uint8_t acl_key_fts[ACL_KEYS] = {
 	ACL_FT_DMAC0, ACL_FT_DMAC1, ACL_FT_DMAC2, ACL_FT_SMAC0, ACL_FT_SMAC1, ACL_FT_SMAC2,
@@ -77,10 +93,10 @@ static __code const uint8_t acl_tmpl[ACL_TEMPLATES][8] = {
 	 ACL_FT_STAG, ACL_FT_CTAG, ACL_FT_ETHERTYPE, ACL_FT_IPTOSPROTO},
 };
 
-static __code const uint16_t acl_rng_base[3] = {
+static __code const uint16_t acl_rng_base[ACL_RNG_KINDS] = {
 	RTL837X_ACL_RNG_VID, RTL837X_ACL_RNG_IP, RTL837X_ACL_RNG_PORT
 };
-static __code const uint8_t acl_rng_stride[3] = {4, 12, 8};
+static __code const uint8_t acl_rng_stride[ACL_RNG_KINDS] = {4, 12, 8};
 
 void acl_reg(void) __banked
 {
@@ -100,21 +116,21 @@ static void acl_tbl_wait(void)
 static void acl_tbl_write(void)
 {
 	acl_tbl_wait();
-	for (acl_i = 0; acl_i < acl_j; acl_i++)
-		REG_WRITE(RTL837x_TBL_DATA_IN_A + (acl_i << 2), acl_h[2 * acl_i + 1] >> 8,
-			  acl_h[2 * acl_i + 1], acl_h[2 * acl_i] >> 8, acl_h[2 * acl_i]);
-	REG_WRITE(RTL837X_TBL_CTRL, 0, acl_k, acl_s, TBL_WRITE | TBL_EXECUTE);
+	for (acl_i = 0; acl_i < acl_tbl_words; acl_i++)
+		REG_WRITE(RTL837x_TBL_DATA_IN_A + (acl_i << 2), acl_tbl_src[2 * acl_i + 1] >> 8,
+			  acl_tbl_src[2 * acl_i + 1], acl_tbl_src[2 * acl_i] >> 8, acl_tbl_src[2 * acl_i]);
+	REG_WRITE(RTL837X_TBL_CTRL, 0, acl_tbl_addr, acl_tbl_sel, TBL_WRITE | TBL_EXECUTE);
 	acl_tbl_wait();
 }
 
 static void acl_entry_write(void)
 {
-	acl_s = TBL_ACL_RULE;
-	acl_j = 5;
-	acl_k = acl_idx;
+	acl_tbl_sel = TBL_ACL_RULE;
+	acl_tbl_words = ACL_RULE_WORDS;
+	acl_tbl_addr = acl_idx;
 	acl_tbl_write();
-	acl_k = 0x80 | acl_idx;
-	acl_h = acl_h2;
+	acl_tbl_addr = ACL_TBL_Y | acl_idx;
+	acl_tbl_src = acl_tbl_src_y;
 	acl_tbl_write();
 }
 
@@ -155,7 +171,7 @@ uint8_t acl_key(uint8_t ft) __banked
 static uint8_t acl_slot(uint8_t ft)
 {
 	for (uint8_t s = 0; s < 8; s++)
-		if (acl_tmpl[acl_t][s] == ft)
+		if (acl_tmpl[acl_tmpl_i][s] == ft)
 			return s;
 	return ACL_NONE;
 }
@@ -179,8 +195,8 @@ static uint8_t acl_fits(void)
 	for (acl_i = 0; acl_i < ACL_KEYS; acl_i++) {
 		if (!acl_km[acl_i] || acl_slot(acl_key_fts[acl_i]) != ACL_NONE)
 			continue;
-		acl_j = acl_alt_ok ? acl_alt(acl_i) : ACL_NONE;
-		if (acl_j == ACL_NONE || acl_slot(ACL_FT_VIDRANGE + acl_req[acl_j].kind) == ACL_NONE)
+		acl_req_i = acl_use_ranges ? acl_alt(acl_i) : ACL_NONE;
+		if (acl_req_i == ACL_NONE || acl_slot(ACL_FT_VIDRANGE + acl_req[acl_req_i].kind) == ACL_NONE)
 			return 0;
 	}
 	for (acl_i = 0; acl_i < acl_nreq; acl_i++)
@@ -192,38 +208,45 @@ static uint8_t acl_fits(void)
 
 static void acl_put(uint8_t s)
 {
-	acl_t2 = ~acl_m;
-	acl_t1 = acl_v & acl_m;
-	acl_y[s] &= acl_t2;
-	acl_y[s] |= acl_t1;
-	acl_t1 ^= acl_m;
-	acl_x[s] &= acl_t2;
-	acl_x[s] |= acl_t1;
+	if (s == ACL_SLOT_INFO) {
+		acl_py = &acl_y.info;
+		acl_px = &acl_x.info;
+	} else {
+		acl_py = &acl_y.field[s];
+		acl_px = &acl_x.field[s];
+	}
+	acl_tmp2 = ~acl_put_mask;
+	acl_tmp = acl_put_val & acl_put_mask;
+	*acl_py &= acl_tmp2;
+	*acl_py |= acl_tmp;
+	acl_tmp ^= acl_put_mask;
+	*acl_px &= acl_tmp2;
+	*acl_px |= acl_tmp;
 }
 
 static void acl_rng_addr(void)
 {
-	acl_ra = acl_rng_base[acl_k];
-	for (acl_i = 0; acl_i < acl_j; acl_i++)
-		acl_ra += acl_rng_stride[acl_k];
+	acl_ra = acl_rng_base[acl_rng_kind];
+	for (acl_i = 0; acl_i < acl_rng_slot; acl_i++)
+		acl_ra += acl_rng_stride[acl_rng_kind];
 }
 
 static void acl_rng_free(void)
 {
-	for (acl_k = 0; acl_k < 3; acl_k++) {
-		for (acl_j = 0; acl_j < ACL_RANGES; acl_j++) {
-			if (acl_rng_owner[acl_k][acl_j] != acl_idx + 1)
+	for (acl_rng_kind = 0; acl_rng_kind < ACL_RNG_KINDS; acl_rng_kind++) {
+		for (acl_rng_slot = 0; acl_rng_slot < ACL_RANGES; acl_rng_slot++) {
+			if (acl_rng_owner[acl_rng_kind][acl_rng_slot] != acl_idx + 1)
 				continue;
-			acl_rng_owner[acl_k][acl_j] = 0;
+			acl_rng_owner[acl_rng_kind][acl_rng_slot] = 0;
 			acl_rng_addr();
 			acl_rv = 0;
 			acl_reg();
-			if (acl_k == ACL_RNG_VID)
+			if (acl_rng_kind == ACL_RNG_VID)
 				continue;
-			acl_ra += 4;
+			acl_ra += ACL_RNG_REG_STEP;
 			acl_reg();
-			if (acl_k == ACL_RNG_IP) {
-				acl_ra += 4;
+			if (acl_rng_kind == ACL_RNG_IP) {
+				acl_ra += ACL_RNG_REG_STEP;
 				acl_reg();
 			}
 		}
@@ -232,44 +255,44 @@ static void acl_rng_free(void)
 
 static uint8_t acl_rng_alloc(void)
 {
-	acl_k = acl_q->kind;
-	for (acl_j = 0; acl_j < ACL_RANGES; acl_j++)
-		if (!acl_rng_owner[acl_k][acl_j])
+	acl_rng_kind = acl_cur_req->kind;
+	for (acl_rng_slot = 0; acl_rng_slot < ACL_RANGES; acl_rng_slot++)
+		if (!acl_rng_owner[acl_rng_kind][acl_rng_slot])
 			break;
-	if (acl_j == ACL_RANGES)
+	if (acl_rng_slot == ACL_RANGES)
 		return 0;
-	acl_rng_owner[acl_k][acl_j] = acl_idx + 1;
-	acl_rbits[acl_k] |= (uint16_t)1 << acl_j;
+	acl_rng_owner[acl_rng_kind][acl_rng_slot] = acl_idx + 1;
+	acl_rbits[acl_rng_kind] |= (uint16_t)1 << acl_rng_slot;
 	acl_rng_addr();
-	if (acl_k == ACL_RNG_VID) {
-		acl_t1 = acl_q->lo;
-		acl_t1 <<= 2;
-		acl_t1 |= acl_q->type;
-		acl_t2 = acl_q->hi;
-		acl_v = acl_t2 << 14;
-		acl_t1 |= acl_v;
-		acl_t2 >>= 2;
-		((__xdata uint16_t *)&acl_rv)[0] = acl_t1;
-		((__xdata uint16_t *)&acl_rv)[1] = acl_t2;
+	if (acl_rng_kind == ACL_RNG_VID) {
+		acl_tmp = acl_cur_req->lo;
+		acl_tmp <<= 2;
+		acl_tmp |= acl_cur_req->type;
+		acl_tmp2 = acl_cur_req->hi;
+		acl_put_val = acl_tmp2 << 14;
+		acl_tmp |= acl_put_val;
+		acl_tmp2 >>= 2;
+		((__xdata uint16_t *)&acl_rv)[0] = acl_tmp;
+		((__xdata uint16_t *)&acl_rv)[1] = acl_tmp2;
 		acl_reg();
 		return 1;
 	}
-	acl_ra += 4;
-	if (acl_k == ACL_RNG_IP) {
-		acl_rv = acl_q->hi;
+	acl_ra += ACL_RNG_REG_STEP;
+	if (acl_rng_kind == ACL_RNG_IP) {
+		acl_rv = acl_cur_req->hi;
 		acl_reg();
-		acl_ra += 4;
-		acl_rv = acl_q->lo;
+		acl_ra += ACL_RNG_REG_STEP;
+		acl_rv = acl_cur_req->lo;
 		acl_reg();
-		acl_ra -= 4;
+		acl_ra -= ACL_RNG_REG_STEP;
 	} else {
-		acl_rv = acl_q->hi;
+		acl_rv = acl_cur_req->hi;
 		acl_rv <<= 16;
-		acl_rv |= acl_q->lo;
+		acl_rv |= acl_cur_req->lo;
 		acl_reg();
 	}
-	acl_ra -= 4;
-	acl_rv = acl_q->type;
+	acl_ra -= ACL_RNG_REG_STEP;
+	acl_rv = acl_cur_req->type;
 	acl_reg();
 	return 1;
 }
@@ -277,58 +300,61 @@ static uint8_t acl_rng_alloc(void)
 static uint8_t acl_rng_check(void)
 {
 	acl_need[0] = acl_need[1] = acl_need[2] = 0;
-	for (acl_s = 0; acl_s < acl_nreq; acl_s++) {
-		acl_q = &acl_req[acl_s];
-		if (acl_q->key != ACL_NONE && acl_slot(acl_key_fts[acl_q->key]) != ACL_NONE)
+	for (acl_req_i = 0; acl_req_i < acl_nreq; acl_req_i++) {
+		acl_cur_req = &acl_req[acl_req_i];
+		if (acl_cur_req->key != ACL_NONE && acl_slot(acl_key_fts[acl_cur_req->key]) != ACL_NONE)
 			continue;
-		acl_need[acl_q->kind]++;
+		acl_need[acl_cur_req->kind]++;
 	}
-	for (acl_k = 0; acl_k < 3; acl_k++)
-		for (acl_j = 0; acl_j < ACL_RANGES && acl_need[acl_k]; acl_j++)
-			if (!acl_rng_owner[acl_k][acl_j] || acl_rng_owner[acl_k][acl_j] == acl_idx + 1)
-				acl_need[acl_k]--;
+	for (acl_rng_kind = 0; acl_rng_kind < ACL_RNG_KINDS; acl_rng_kind++)
+		for (acl_rng_slot = 0; acl_rng_slot < ACL_RANGES && acl_need[acl_rng_kind]; acl_rng_slot++)
+			if (!acl_rng_owner[acl_rng_kind][acl_rng_slot]
+			    || acl_rng_owner[acl_rng_kind][acl_rng_slot] == acl_idx + 1)
+				acl_need[acl_rng_kind]--;
 	return !(acl_need[0] | acl_need[1] | acl_need[2]);
 }
 
 static uint8_t acl_encode(void)
 {
-	for (acl_s = 0; acl_s < 10; acl_s++)
-		acl_y[acl_s] = acl_x[acl_s] = 0xffff;
+	acl_py = (__xdata uint16_t *)&acl_y;
+	acl_px = (__xdata uint16_t *)&acl_x;
+	for (acl_slot_i = 0; acl_slot_i < 2 * ACL_RULE_WORDS; acl_slot_i++)
+		acl_py[acl_slot_i] = acl_px[acl_slot_i] = 0xffff;
 	acl_rbits[0] = acl_rbits[1] = acl_rbits[2] = 0;
 
-	for (acl_s = 0; acl_s < 8; acl_s++) {
-		acl_k = acl_key(acl_tmpl[acl_t][acl_s]);
-		if (acl_k == ACL_NONE || !acl_km[acl_k])
+	for (acl_slot_i = 0; acl_slot_i < ACL_SLOT_INFO; acl_slot_i++) {
+		acl_key_i = acl_key(acl_tmpl[acl_tmpl_i][acl_slot_i]);
+		if (acl_key_i == ACL_NONE || !acl_km[acl_key_i])
 			continue;
-		acl_v = acl_kv[acl_k];
-		acl_m = acl_km[acl_k];
-		acl_put(acl_s);
+		acl_put_val = acl_kv[acl_key_i];
+		acl_put_mask = acl_km[acl_key_i];
+		acl_put(acl_slot_i);
 	}
-	for (acl_s = 0; acl_s < acl_nreq; acl_s++) {
-		acl_q = &acl_req[acl_s];
-		if (acl_q->key != ACL_NONE && acl_slot(acl_key_fts[acl_q->key]) != ACL_NONE)
+	for (acl_req_i = 0; acl_req_i < acl_nreq; acl_req_i++) {
+		acl_cur_req = &acl_req[acl_req_i];
+		if (acl_cur_req->key != ACL_NONE && acl_slot(acl_key_fts[acl_cur_req->key]) != ACL_NONE)
 			continue;
 		if (!acl_rng_alloc()) {
 			acl_rng_free();
 			return 0;
 		}
 	}
-	for (acl_s = 0; acl_s < 3; acl_s++) {
-		if (!acl_rbits[acl_s])
+	for (acl_rng_kind = 0; acl_rng_kind < ACL_RNG_KINDS; acl_rng_kind++) {
+		if (!acl_rbits[acl_rng_kind])
 			continue;
-		acl_v = acl_m = acl_rbits[acl_s];
-		acl_put(acl_slot(ACL_FT_VIDRANGE + acl_s));
+		acl_put_val = acl_put_mask = acl_rbits[acl_rng_kind];
+		acl_put(acl_slot(ACL_FT_VIDRANGE + acl_rng_kind));
 	}
 
-	acl_v = acl_t;
-	acl_m = 0x0007;
-	acl_put(8);
-	acl_v = acl_info_v;
-	acl_m = acl_info_m;
-	acl_put(8);
-	acl_v = ~(acl_in_pmask ? acl_in_pmask : ACL_PORTS) & ACL_ALL;
-	acl_y[8] &= ~(uint16_t)(acl_v << 11);
-	acl_y[9] &= ~(acl_v >> 5);
+	acl_put_val = acl_tmpl_i;
+	acl_put_mask = ACL_INFO_TMPL;
+	acl_put(ACL_SLOT_INFO);
+	acl_put_val = acl_info_v;
+	acl_put_mask = acl_info_m;
+	acl_put(ACL_SLOT_INFO);
+	acl_put_val = ~(acl_in_pmask ? acl_in_pmask : ACL_PORTS) & ACL_ALL;
+	acl_y.info &= ~(uint16_t)(acl_put_val << ACL_INFO_PORT_SHIFT);
+	acl_y.info_hi &= ~(acl_put_val >> (16 - ACL_INFO_PORT_SHIFT));
 	return 1;
 }
 
@@ -339,34 +365,34 @@ void acl_match_begin(void) __banked
 	acl_nreq = 0;
 	acl_info_v = acl_info_m = 0;
 	acl_in_pmask = 0;
-	acl_act[0] = acl_act[1] = acl_act[2] = 0;
+	acl_act.vlan = acl_act.fwd_qos = acl_act.misc = 0;
 	acl_ctrl = 0;
 }
 
 void acl_match_key(uint8_t ft) __banked
 {
-	acl_k = acl_key(ft);
-	acl_kv[acl_k] = (acl_kv[acl_k] & ~acl_mk) | (acl_vk & acl_mk);
-	acl_km[acl_k] |= acl_mk;
+	acl_key_i = acl_key(ft);
+	acl_kv[acl_key_i] = (acl_kv[acl_key_i] & ~acl_mk) | (acl_vk & acl_mk);
+	acl_km[acl_key_i] |= acl_mk;
 }
 
 uint8_t acl_match_range(uint8_t key) __banked
 {
 	if (acl_nreq == ACL_REQS)
 		return 0;
-	acl_q = &acl_req[acl_nreq++];
-	acl_q->kind = acl_rq.kind;
-	acl_q->type = acl_rq.type;
-	acl_q->key = key;
-	acl_q->lo = acl_rq.lo;
-	acl_q->hi = acl_rq.hi;
+	acl_cur_req = &acl_req[acl_nreq++];
+	acl_cur_req->kind = acl_rq.kind;
+	acl_cur_req->type = acl_rq.type;
+	acl_cur_req->key = key;
+	acl_cur_req->lo = acl_rq.lo;
+	acl_cur_req->hi = acl_rq.hi;
 	return 1;
 }
 
 uint8_t acl_rule_set(uint8_t idx) __banked
 {
-	for (acl_alt_ok = 0; acl_alt_ok < 2; acl_alt_ok++)
-		for (acl_t = 0; acl_t < ACL_TEMPLATES; acl_t++)
+	for (acl_use_ranges = 0; acl_use_ranges < 2; acl_use_ranges++)
+		for (acl_tmpl_i = 0; acl_tmpl_i < ACL_TEMPLATES; acl_tmpl_i++)
 			if (acl_fits())
 				goto found;
 	return ACL_ERR_TEMPLATE;
@@ -379,28 +405,28 @@ found:
 	acl_idx = idx;
 
 	if (!acl_any()) {
-		for (acl_s = 0; acl_s < ACL_TEMPLATES; acl_s++) {
-			REG_WRITE(RTL837X_ACL_TEMPLATE0_F0_3 + (acl_s << 3), acl_tmpl[acl_s][3],
-				  acl_tmpl[acl_s][2], acl_tmpl[acl_s][1], acl_tmpl[acl_s][0]);
-			REG_WRITE(RTL837X_ACL_TEMPLATE0_F4_7 + (acl_s << 3), acl_tmpl[acl_s][7],
-				  acl_tmpl[acl_s][6], acl_tmpl[acl_s][5], acl_tmpl[acl_s][4]);
+		for (acl_i = 0; acl_i < ACL_TEMPLATES; acl_i++) {
+			REG_WRITE(RTL837X_ACL_TEMPLATE0_F0_3 + (acl_i << 3), acl_tmpl[acl_i][3],
+				  acl_tmpl[acl_i][2], acl_tmpl[acl_i][1], acl_tmpl[acl_i][0]);
+			REG_WRITE(RTL837X_ACL_TEMPLATE0_F4_7 + (acl_i << 3), acl_tmpl[acl_i][7],
+				  acl_tmpl[acl_i][6], acl_tmpl[acl_i][5], acl_tmpl[acl_i][4]);
 		}
 	}
 	if (!acl_encode())
 		return ACL_ERR_RANGE;
 
-	acl_s = TBL_ACL_ACT;
-	acl_j = 3;
-	acl_k = acl_idx;
-	acl_h = (__xdata uint16_t *)acl_act;
+	acl_tbl_sel = TBL_ACL_ACT;
+	acl_tbl_words = ACL_ACT_WORDS;
+	acl_tbl_addr = acl_idx;
+	acl_tbl_src = (__xdata uint16_t *)&acl_act;
 	acl_tbl_write();
 	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), acl_ctrl);
-	acl_h = acl_x;
-	acl_h2 = acl_y;
+	acl_tbl_src = (__xdata uint16_t *)&acl_x;
+	acl_tbl_src_y = (__xdata uint16_t *)&acl_y;
 	acl_entry_write();
 
 	acl_used[acl_idx >> 3] |= 1 << (acl_idx & 7);
-	acl_rule_tmpl[acl_idx] = acl_t;
+	acl_rule_tmpl[acl_idx] = acl_tmpl_i;
 	acl_ports_update();
 	return 0;
 }
@@ -408,14 +434,14 @@ found:
 void acl_rule_clear(uint8_t idx) __banked
 {
 	acl_idx = idx;
-	acl_h = acl_h2 = acl_zero;
+	acl_tbl_src = acl_tbl_src_y = (__xdata uint16_t *)&acl_zero;
 	acl_entry_write();
-	acl_s = TBL_ACL_ACT;
-	acl_j = 3;
-	acl_k = acl_idx;
-	acl_h = acl_zero;
+	acl_tbl_sel = TBL_ACL_ACT;
+	acl_tbl_words = ACL_ACT_WORDS;
+	acl_tbl_addr = acl_idx;
+	acl_tbl_src = (__xdata uint16_t *)&acl_zero;
 	acl_tbl_write();
-	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), 0xff);
+	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), ACL_ACT_CTRL_OFF);
 	acl_used[acl_idx >> 3] &= ~(1 << (acl_idx & 7));
 	acl_rng_free();
 	acl_ports_update();
