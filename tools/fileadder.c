@@ -441,7 +441,7 @@ int main(int argc, char **argv)
 		fputs(xbuf, ofile);
 		fputs(fbuf, ofile);
 		fclose(ofile);
-	} else if (addsDir){
+	} else if (addsDir && !argv[arg_index]) {
 		puts(dbuf);
 		puts(xbuf);
 		puts(ibuf);
