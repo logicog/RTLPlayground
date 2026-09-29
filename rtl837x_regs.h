@@ -9,6 +9,13 @@
 #define RESET_SOC_BIT			0
 #define RESET_NIC_BIT			2
 
+#define RTL837X_TM_CTRL2		0x0338
+#define TM_CTRL2_EN_LATCH		0x04
+#define RTL837X_TM_RESULT		0x0340
+#define RTL837X_TM_RESULT_POWERON	0x0350
+// Temperature: 19 bit value, bits 18:3 in the low 16 bits of the register,
+// bits 2:0 in bits 18:16. Bit 18 signed, bits 17:10 degrees C, bits 9:0 fraction.
+
 #define RTL837X_REG_HW_CONF		0x6040
 // Bits 4 & 5: CLOCK DIVIDER from 125MHz for Timer
 
