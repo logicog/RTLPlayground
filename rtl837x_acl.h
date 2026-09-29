@@ -85,6 +85,18 @@
 #define ACL_ERR_TEMPLATE	1
 #define ACL_ERR_RANGE		2
 
+struct acl_rule_entry {
+	uint16_t field[8];	/* template fields 0-7 */
+	uint16_t info;		/* template 0-2, C-tag/S-tag/PPPoE 3-5, L3 format 6-7, L4 format 8-10, ingress ports 0-4 at 11-15 */
+	uint16_t info_hi;	/* ingress ports 5-9 at 0-4, valid 5 */
+};
+
+struct acl_act_entry {
+	uint32_t vlan;		/* C-VLAN and S-VLAN actions; police puts its second and third meter here */
+	uint32_t fwd_qos;	/* priority, remark, police/count, forward, interrupt 31 */
+	uint32_t misc;		/* GPIO and bypass */
+};
+
 struct acl_req {
 	uint8_t  kind;
 	uint8_t  type;
@@ -100,7 +112,7 @@ extern __xdata uint8_t  acl_nreq;
 extern __xdata uint16_t acl_info_v;
 extern __xdata uint16_t acl_info_m;
 extern __xdata uint16_t acl_in_pmask;
-extern __xdata uint32_t acl_act[3];
+extern __xdata struct acl_act_entry acl_act;
 extern __xdata uint16_t acl_ctrl;
 extern __xdata uint16_t acl_unmatch_drop;
 extern __xdata uint8_t  acl_used[ACL_HW_RULES / 8];
