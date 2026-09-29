@@ -145,13 +145,23 @@ HTML := $(shell find html -name '*.js' -or -name '*.html' -or -name '*.svg' -or 
 # The raw html/ sources stay untouched for development; the minified
 # copy is a build artifact under output/.
 HTML_MIN := $(BUILDDIR)/html_min
+HTML_MIN_LIST := $(BUILDDIR)/html_min.list
+HTML_MIN_STAMP := $(BUILDDIR)/html_min.stamp
 .PHONY: html_min
-html_min: $(HTML)
+html_min: $(HTML_MIN_STAMP)
+
+$(HTML_MIN_LIST): FORCE
+	@mkdir -p $(BUILDDIR)
+	@echo $(sort $(HTML)) > $@.tmp
+	@cmp -s $@.tmp $@ && rm -f $@.tmp || mv $@.tmp $@
+
+$(HTML_MIN_STAMP): $(HTML) $(HTML_MIN_LIST) tools/minify.py $(if $(wildcard $(HTML_MIN)),,FORCE)
 	rm -rf $(HTML_MIN)
 	mkdir -p $(HTML_MIN)
 	@for f in $(HTML); do python3 tools/minify.py $$f $(HTML_MIN)/$$(basename $$f) || exit 1; done
+	@touch $@
 
-html_data.c html_data.h &: $(HTML) | tools html_min
+html_data.c html_data.h &: $(HTML_MIN_STAMP) | tools
 	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
 $(VERSION_HEADER): FORCE
@@ -169,11 +179,11 @@ $(SUBDIRS):
 	$(MAKE) -C $@ BUILDDIR=$(BUILDDIR)
 
 clean: $(SUBDIRSCLEAN)
-	-rm -f html_data.c html_data.h $(VERSION_HEADER)
+	-rm -f html_data.c html_data.h $(VERSION_HEADER) $(HTML_MIN_LIST) $(HTML_MIN_STAMP)
 	-if [ -d $(BUILDDIR) ]; then find $(BUILDDIR) -type f ! -name "*.bin" -delete; fi
 
 distclean: $(SUBDIRSCLEAN)
-	-rm -f html_data.c html_data.h $(VERSION_HEADER)
+	-rm -f html_data.c html_data.h $(VERSION_HEADER) $(HTML_MIN_LIST) $(HTML_MIN_STAMP)
 	-rm -rf $(BUILDDIR)
 
 $(SUBDIRSCLEAN):

@@ -79,8 +79,11 @@ JSON polling of the visible section).
   computation no longer depends on uninitialised buffer content.
 - `version.h` is now written by a single atomic `printf` (change from
   upstream) instead of five separate `echo`s, so a parallel build
-  (`make -j`) can no longer read a half-written copy.  It stays in
-  `.PHONY` so it is regenerated on every build.
+  (`make -j`) can no longer read a half-written copy.  It depends on
+  `FORCE`, so its recipe runs on every build, but the file is only
+  rewritten when its content changes.  The minified copy in
+  `output/html_min/` is redone only when a web file, the list of web
+  files or `tools/minify.py` changes.
 
 ## Verification
 
