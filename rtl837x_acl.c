@@ -36,6 +36,7 @@ static __xdata uint16_t acl_y[10];
 static __xdata uint16_t acl_x[10];
 static __xdata uint16_t acl_zero[10];
 static __xdata uint16_t acl_rbits[3];
+static __xdata uint8_t  acl_need[3];
 static __xdata uint16_t acl_v;
 static __xdata uint16_t acl_m;
 static __xdata uint16_t acl_t1;
@@ -273,6 +274,22 @@ static uint8_t acl_rng_alloc(void)
 	return 1;
 }
 
+static uint8_t acl_rng_check(void)
+{
+	acl_need[0] = acl_need[1] = acl_need[2] = 0;
+	for (acl_s = 0; acl_s < acl_nreq; acl_s++) {
+		acl_q = &acl_req[acl_s];
+		if (acl_q->key != ACL_NONE && acl_slot(acl_key_fts[acl_q->key]) != ACL_NONE)
+			continue;
+		acl_need[acl_q->kind]++;
+	}
+	for (acl_k = 0; acl_k < 3; acl_k++)
+		for (acl_j = 0; acl_j < ACL_RANGES && acl_need[acl_k]; acl_j++)
+			if (!acl_rng_owner[acl_k][acl_j] || acl_rng_owner[acl_k][acl_j] == acl_idx + 1)
+				acl_need[acl_k]--;
+	return !(acl_need[0] | acl_need[1] | acl_need[2]);
+}
+
 static uint8_t acl_encode(void)
 {
 	for (acl_s = 0; acl_s < 10; acl_s++)
@@ -354,6 +371,9 @@ uint8_t acl_rule_set(uint8_t idx) __banked
 				goto found;
 	return ACL_ERR_TEMPLATE;
 found:
+	acl_idx = idx;
+	if (!acl_rng_check())
+		return ACL_ERR_RANGE;
 	if (acl_used[idx >> 3] & (1 << (idx & 7)))
 		acl_rule_clear(idx);
 	acl_idx = idx;
