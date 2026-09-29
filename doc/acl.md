@@ -22,7 +22,8 @@ acl show
 
 A frame has to match every field a rule names. The ports after the actions are
 the ingress ports the rule applies to; without them it applies to all front
-panel ports. `acl <n>` replaces rule `n` and `acl <n> off` removes it; rules,
+panel ports. `acl <n>` replaces rule `n` and `acl <n> off` removes it. A rule that
+doesn't fit, for lack of a template or a free range, leaves the old one in place. Rules,
 meters, fields, counter modes and the default are kept in the saved
 configuration like any other command. A command line holds at most 14 words, so
 a long rule is split with `and` (see below).
