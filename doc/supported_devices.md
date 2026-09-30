@@ -8,6 +8,7 @@ The following devices have been tested and are fully working:
 | Davuaz   | Da-K6501W       | No      | [PCB-K0501W-V2.0](devices/PCB-K0501W-V2.0.md)                                         |       | 5 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/PCB-K0402W-U13-V2.0.md)                                 | 2M    | 4 + 2 |
 | Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
+| Goalake  | IG204           | No      | [PB-2131](devices/PB-2131.md)                                             | 4M    | 4 + 2 |
 | GoodTop  | GT-ST018M       | Yes     | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 2M    | 8 + 1 |
 | GoodTop  | GT-ST024M       | Yes     | [PCB-SWTG024AS-A V2.0.1_19650](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)               | 2M    | 4 + 2 |
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5GPOE-V1.2.md)                                   | 8M    | 8 + 1 |
