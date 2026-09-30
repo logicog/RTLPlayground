@@ -20,6 +20,15 @@ __xdata uint8_t rldp_level[10];
 __xdata uint16_t rldp_fwd_mask;
 __xdata uint16_t rldp_tx_mask;
 
+extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
+extern __xdata uint16_t slen;
+
+static __code const char rldp_json_hdr[] = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+static __xdata uint8_t rj_i;
+static __xdata uint8_t rj_st0;
+static __xdata uint8_t rj_st1;
+static __xdata uint8_t rj_loop;
+
 
 static uint8_t rldp_link(uint8_t port)
 {
@@ -224,4 +233,53 @@ void rldp_show(void) __banked
 		}
 		write_char('\n');
 	}
+}
+
+
+static void rj_char(uint8_t c)
+{
+	outbuf[slen++] = c;
+}
+
+static void rj_num(uint8_t v)
+{
+	if (v >= 100)
+		rj_char('0' + v / 100);
+	if (v >= 10)
+		rj_char('0' + (v / 10) % 10);
+	rj_char('0' + v % 10);
+}
+
+void rldp_json(void) __banked
+{
+	reg_read_m(RTL837X_RLDP_LOOP_STATE);
+	rj_st0 = sfr_data[3];
+	rj_st1 = sfr_data[2];
+	slen = strtox(outbuf, rldp_json_hdr);
+	slen += strtox(outbuf + slen, "{\"on\":");
+	rj_char(rldp_on ? '1' : '0');
+	slen += strtox(outbuf + slen, ",\"ports\":[");
+	for (rj_i = machine.min_port; rj_i <= machine.max_port; rj_i++) {
+		if (rj_i < 8)
+			rj_loop = (rj_st0 >> rj_i) & 1;
+		else
+			rj_loop = (rj_st1 >> (rj_i - 8)) & 1;
+		if (rj_loop) {
+			reg_read_m(RTL837X_REG_LINKS_STS);
+			if (!rldp_on || !((sfr_data[(rj_i / 8) + 1] >> (rj_i % 8)) & 1))
+				rj_loop = 0;
+		}
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		rj_num(machine.log_to_phys_port[rj_i]);
+		slen += strtox(outbuf + slen, ",\"en\":");
+		rj_char(((rldp_off_mask >> rj_i) & 1) ? '0' : '1');
+		slen += strtox(outbuf + slen, ",\"loop\":");
+		rj_char(rj_loop ? '1' : '0');
+		slen += strtox(outbuf + slen, ",\"blk\":");
+		rj_num(rldp_block[rj_i]);
+		rj_char('}');
+		if (rj_i < machine.max_port)
+			rj_char(',');
+	}
+	slen += strtox(outbuf + slen, "]}");
 }

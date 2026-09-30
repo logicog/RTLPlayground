@@ -15,5 +15,6 @@ void rldp_enable(uint8_t on) __banked;
 void rldp_port(uint8_t port, __xdata uint8_t on) __banked;
 void rldp_tick(void) __banked;
 void rldp_show(void) __banked;
+void rldp_json(void) __banked;
 
 #endif
