@@ -1,6 +1,8 @@
 #ifndef _RTL837X_PHY_H_
 #define _RTL837X_PHY_H_
 
+#include "machine.h"
+
 #define PHY_SPEED_10M	0x2
 #define PHY_SPEED_100M	0x3
 #define PHY_SPEED_1G	0x4
@@ -31,6 +33,7 @@ void rtl8224_read_reg_u16(uint16_t reg) __banked;
 void rtl8224_write_reg_u16(uint16_t reg, uint16_t val) __banked;
 void rtl8224_sds_write(uint16_t sds_cmd, __xdata uint16_t val) __banked;
 void phy_config_8261(uint8_t phy, uint8_t sds) __banked;
+uint8_t get_phy_max_speed(enum phy_type phytype) __banked;
 
 #define	RTL8224_SDS_WRITE(sds_id, page, reg, v) do { \
 	uint16_t _sdscmd = (uint16_t)(sds_id & 0x01) | (1 << 14) | (1 << 15); \

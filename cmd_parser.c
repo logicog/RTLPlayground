@@ -247,12 +247,9 @@ uint8_t atoi_short(uint8_t idx)
  * Store the value in atoi_results_u8.
  */
 uint8_t cmd_parse_port(uint8_t idx) {
-	uint8_t port = cmd_buffer[idx] - '0' - 1;
-	if (port > 8)
-		return 0;
-
-	port = machine.phys_to_log_port[port];
-	if (port < machine.min_port || port > machine.max_port)
+	uint8_t port = cmd_buffer[idx] - '0';
+	port = phys_to_log_port(port);
+	if ((int8_t)port < 0)
 		return 0;
 
 	atoi_results_u8 = port;
@@ -894,7 +891,7 @@ void parse_port(void)
 	if (cmd_compare(2, "show")) {
 		print_string("Name: ");
 		print_string_x(port_names[phy_settings.port]);
-		if (!machine.is_sfp[phy_settings.port]) {
+		if (port_to_sds_usage(phy_settings.port) != SDS_SFP) {
 			phy_show(phy_settings.port);
 		} else {
 			write_char('\n');
@@ -910,7 +907,7 @@ void parse_port(void)
 		print_string("\nName set to: \"");
 		print_string_x(port_names[phy_settings.port]);
 		print_string("\"\n");
-	} else if (machine.is_sfp[phy_settings.port]) {
+	} else if (port_to_sds_usage(phy_settings.port) == SDS_SFP) {
 		print_string(" is SFP no PHY information available.\n");
 	} else if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
@@ -1010,18 +1007,18 @@ bool sfp_print_measurements(uint8_t sfp)
 	if (!sfp_read_block(sfp, 92, 1))
 		return false;
 
-	print_string("Options: "); print_byte(sfp_buf[0]); write_char('\n');
+	print_string("Options: "); print_byte(i2c_buf[0]); write_char('\n');
 	if (!(sfp_options[sfp] & 0x40))
 		return true;
 	if (!sfp_read_block(sfp, 224, 16))
 		return false;
-	print_string("Temp: "); print_byte(sfp_buf[0]); print_byte(sfp_buf[1]); write_char('\n');
-	print_string("Vcc: "); print_byte(sfp_buf[2]); print_byte(sfp_buf[3]); write_char('\n');
-	print_string("TX Bias: "); print_byte(sfp_buf[4]); print_byte(sfp_buf[5]); write_char('\n');
-	print_string("TX Power: "); print_byte(sfp_buf[6]); print_byte(sfp_buf[7]); write_char('\n');
-	print_string("RX Power: "); print_byte(sfp_buf[8]); print_byte(sfp_buf[9]); write_char('\n');
-	print_string("Laser: "); print_byte(sfp_buf[10]); print_byte(sfp_buf[11]); write_char('\n');
-	print_string("State: "); print_byte(sfp_buf[14]); write_char('\n');
+	print_string("Temp: "); print_byte(i2c_buf[0]); print_byte(i2c_buf[1]); write_char('\n');
+	print_string("Vcc: "); print_byte(i2c_buf[2]); print_byte(i2c_buf[3]); write_char('\n');
+	print_string("TX Bias: "); print_byte(i2c_buf[4]); print_byte(i2c_buf[5]); write_char('\n');
+	print_string("TX Power: "); print_byte(i2c_buf[6]); print_byte(i2c_buf[7]); write_char('\n');
+	print_string("RX Power: "); print_byte(i2c_buf[8]); print_byte(i2c_buf[9]); write_char('\n');
+	print_string("Laser: "); print_byte(i2c_buf[10]); print_byte(i2c_buf[11]); write_char('\n');
+	print_string("State: "); print_byte(i2c_buf[14]); write_char('\n');
 
 	return true;
 }
@@ -1030,14 +1027,19 @@ bool sfp_print_measurements(uint8_t sfp)
 void parse_sfp(void)
 {
 	uint8_t slot;
+	uint8_t port;
 
 	if (cmd_words_len != 1 && cmd_words_len != 3)
 		goto err;
 
 	if (cmd_words_len == 1) {
-		for (slot = 0; slot < machine.n_sfp; slot++) {
-			print_string("\nSlot "); write_char('1' + slot);
-			if (gpio_pin_test(machine.sfp_port[slot].pin_detect)) {
+		for (slot = 0; slot < 2; slot++) {
+			if (machine.sds_settings[slot].usage != SDS_SFP)
+				continue;
+
+			port = slot ? MAC_SDS1 : MAC_SDS0;
+			print_string("\nPort "); print_phys_port(port);
+			if (gpio_pin_test(machine.sds_settings[slot].sds_settings_t.sfp.pin_detect)) {
 				print_string(" - empty\n");
 				continue;
 			}
@@ -1045,27 +1047,28 @@ void parse_sfp(void)
 				print_string(" - I2C read failed on this slot\n");
 				continue;
 			}
-			print_string(" - Rate: "); print_byte(sfp_buf[1]);
-			print_string("  Encoding: "); print_byte(sfp_buf[0]);
+			print_string(" - Rate: "); print_byte(i2c_buf[1]);
+			print_string("  Encoding: "); print_byte(i2c_buf[0]);
 			write_char('\n');
 			if (!sfp_print_info(slot) || !sfp_print_measurements(slot))
 				print_string("I2C read failed on this slot\n");
 		}
 		return;
 	}
-	uint8_t idx = cmd_words_b[1];
-	uint8_t ret = atoi_byte(idx);
-	idx += ret;
-	slot = atoi_results_u8 - 1;
-	if (ret == 0 || !cmd_is_space(idx) || slot > 1) {
+	uint8_t ret = cmd_parse_port_separator(cmd_words_b[1]);
+	port = atoi_results_u8;
+	if (ret == 0) {
 		cmd_error("Illegal SFP slot number\n");
 		return;
 	}
-	if (slot >= machine.n_sfp) {
-		cmd_error("SFP slot not present\n");
+
+	int8_t sds = port_to_sds(port);
+	if (sds < 0 || machine.sds_settings[sds].usage != SDS_SFP) {
+		cmd_error("This is not SFP port\n");
 		return;
 	}
 
+	slot = (uint8_t)sds;
 	if (cmd_compare(2, "10g")) {
 		print_string(" 10G\n");
 		sfp_speed[slot] = SFP_SPEED_10G;
@@ -1088,9 +1091,75 @@ void parse_sfp(void)
 	handle_sfp();
 	return;
 err:
-	cmd_error("\nUsage:\n\tsfp\n\tsfp [1|2] [1g|2g5|10g]\n");
+	cmd_error("Usage:\n\ttsfp [<PORT> [1g|2g5|10g]]\n");
 }
 
+
+void parse_phy(void)
+{
+	uint8_t hex_size;
+
+	if (cmd_words_len < 4)
+		goto err;
+
+	// port
+	if (cmd_parse_port_separator(cmd_words_b[1]) == 0) {
+		cmd_error("Invalid or unused port number\n");
+		return;
+	}
+	uint8_t port = atoi_results_u8;
+	print_string("Port: "); print_phys_port(port);
+
+	// devad
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size != 1)
+		goto err;
+	uint8_t devad = hexvalue[0];
+	print_string("\ndevad: "); print_byte(devad);
+
+	// reg
+	hex_size = atoi_hex(cmd_words_b[3]);
+	if (hex_size == 0 || hex_size > 2)
+		goto err;
+
+	uint16_t reg = hexvalue[0];
+	if (hex_size == 2) {
+		reg <<= 8;
+		reg |= hexvalue[1];
+	}
+	print_string("\nreg: "); print_short(reg); write_char('\n');
+
+	// Read value
+	if (port == MAC_SDS0 && !machine.isRTL8373 || port == MAC_SDS1) {
+		uint8_t sds = port == MAC_SDS1;
+		if (machine.sds_settings[sds].usage == SDS_SFP) {
+			if (!i2c_mdio_phy_read_c45(sds, SFP_PHY_ADDR, devad, reg)) {
+				print_string("I2C error\n");
+				return;
+			}
+		} else if (machine.sds_settings[sds].usage == SDS_EPHY) {
+			phy_read(machine.sds_settings[sds].sds_settings_t.ephy.phy_addr, devad, reg);
+		} else {
+			print_string("Not a SFP or EPHY");
+			return;
+		}
+	} else {
+		print_string("phy: port/id: "); print_byte(port);
+		print_string(", devad: "); print_byte(devad);
+		print_string(", reg: "); print_short(reg);
+		phy_read(port, devad, reg);
+	}
+
+	print_string(" = ");
+	uint16_t pval = SFR_DATA_U16LE;
+	print_short(pval);
+	write_char('\n');
+
+	return;
+
+err:
+	cmd_error("Usage phy <port> <devad> <reg> [value]");
+}
 
 void parse_regget(void)
 {
@@ -1446,8 +1515,6 @@ void parse_eee(void)
 	__xdata uint8_t speed = EEE_2G5;
 	__xdata uint8_t speed_word = 0;
 
-	if (machine.n_10g)
-		speed = EEE_10G;
 	// Check if word 2 is a speed (contains 'g' or 'm') or a port number
 	if (cmd_words_len >= 3) {
 		uint8_t idx = cmd_words_b[2];
@@ -1469,6 +1536,19 @@ void parse_eee(void)
 				speed_word = 3;
 		}
 	}
+
+	if (port_to_sds_usage(port) == SDS_EPHY) {
+		uint8_t sds = port_to_sds(port);
+		uint8_t phy_type = machine.sds_settings[sds].sds_settings_t.ephy.type;
+		switch (get_phy_max_speed(phy_type)) {
+			case PHY_SPEED_10G:
+				speed = EEE_10G;
+				break;
+			default:
+				break;
+		}
+	}
+
 	// Parse speed if found
 	if (speed_word > 0) {
 		if (cmd_compare(speed_word, "100m"))
@@ -1953,6 +2033,8 @@ void cmd_parser(void) __banked
 			reg_read_m(RTL837X_REG_SEC_COUNTER);
 			print_sfr_data();
 			write_char('\n');
+		} else if (cmd_compare(0, "phy")) {
+			parse_phy();
 		} else if (cmd_compare(0, "history")) {
 			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			__xdata uint8_t found_begin = 0;

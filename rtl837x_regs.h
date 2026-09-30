@@ -77,15 +77,39 @@
 /*
  * 5 Bits each give the state of the 2 SerDes of the RTL8372
  * Values are:
+ * Added names from linux kernel, see also https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/linux/phy.h
  */
-#define SDS_SGMII		0x02
-#define SDS_1000BX_FIBER	0x04
-#define SDS_100FX		0x05
-#define SDS_QXGMII		0x0d
-#define SDS_HISGMII		0x12
-#define SDS_HSG			0x16
-#define SDS_10GR		0x1a
-#define SDS_OFF			0x1f
+enum sds_modes
+{
+	// PHY_INTERFACE_MODE_10G_QXGMII
+	// Also used to interface with RTL8224
+    SDS_10G_QXGMII = 0x00,
+	// PHY_INTERFACE_MODE_USXGMII
+    SDS_10G_USXGMII = 0x0D,
+	// PHY_INTERFACE_MODE_10GBASER
+    SDS_10GBASER = 0x1A,
+	// No equvilent in the linux kernel.
+	// They seems to use PHY_INTERFACE_MODE_2500BASEX.
+    SDS_2G5_SGMII = 0x12,
+	// PHY_INTERFACE_MODE_2500BASEX
+    SDS_2500BASEX = 0x16,
+	// PHY_INTERFACE_MODE_SGMII
+    SDS_SGMII = 0x02,
+	// PHY_INTERFACE_MODE_1000BASEX
+    SDS_1000BASEX = 0x04,
+	// PHY_INTERFACE_MODE_100BASEX
+    SDS_100FX = 0x05,
+    SDS_OFF = 0x1F,
+};
+
+// #define SDS_SGMII		0x02
+// #define SDS_1000BASEX	0x04
+// #define SDS_100FX		0x05
+// #define SDS_10G_QXGMII		0x0d
+// #define SDS_2G5_SGMII		0x12
+// #define SDS_2500BASEX			0x16
+// #define SDS_10GBASER		0x1a
+// #define SDS_OFF			0x1f
 
 #define RTL837X_REG_LINKS	0x63f0
 #define RTL837X_REG_LINKS_89	0x63f4

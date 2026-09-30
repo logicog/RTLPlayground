@@ -171,7 +171,7 @@ void write_char_no_syslog(char c);
 void write_char(char c);
 void print_reg(uint16_t reg);
 bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant;
-extern __xdata uint8_t sfp_buf[16];
+extern __xdata uint8_t i2c_buf[16];
 void reg_bit_set(uint16_t reg_addr, char bit);
 void reg_bit_clear(uint16_t reg_addr, char bit);
 uint8_t reg_bit_test(uint16_t reg_addr, char bit);

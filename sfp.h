@@ -3,6 +3,15 @@
 
 #define SFP_WAKE_TICKS	100
 
+
+// SFF-8024 Rev 4.14 defines
+#define SFF_CONN_REF_RJ45 0x22
+
+
+#define SFP_PHY_ADDR            22
+#define SFP_PHY_ADDR_ROLLBALL   17
+
+
 extern __xdata uint8_t sfp_pins_last;
 extern __xdata char sfp_module_vendor[2][17];
 extern __xdata char sfp_module_model[2][17];
@@ -17,5 +26,6 @@ bool sfp_get_info(uint8_t sfp) __banked;
 void sfp_apply_quirks(uint8_t sfp) __banked __reentrant;
 void setup_sfp_gpio(void) __banked;
 void handle_sfp(void) __banked;
+bool i2c_mdio_phy_read_c45(uint8_t sds, uint8_t phy_id, int8_t devad, uint16_t reg) __reentrant __banked;
 
 #endif

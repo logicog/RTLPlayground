@@ -480,7 +480,7 @@ void port_media_show(uint8_t port) __banked
 {
 	uint8_t pause;
 
-	if (!machine.is_sfp[port]) {
+	if (port_to_sds_usage(port) != SDS_SFP) {
 		reg_read_m(RTL837X_REG_LINKS_STS);
 		if (sfr_data[(port / 8) + 1] >> (port % 8) & 1) {
 			print_string("Link role: ");
@@ -514,18 +514,19 @@ void port_stats_print(void) __banked
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		print_phys_port(i); write_char('\t');
 
-		if (!machine.is_sfp[i]) {
+		int8_t sds = port_to_sds(i);
+		if (sds >= 0 && machine.sds_settings[sds].usage == SDS_SFP) {
+			// An SFP Module
+			if (!gpio_pin_test(machine.sds_settings[sds].sds_settings_t.sfp.pin_detect))
+				print_string("SFP IN\t");
+			else
+				print_string("NO SFP\t");
+		} else {
 			phy_read(i, PHY_MMD31, 0xa610);
 			if (SFR_DATA_8 == 0x20)
 				print_string("On\t");
 			else
 				print_string("Off\t");
-		} else {  // An SFP Module
-			if (!gpio_pin_test(machine.sfp_port[machine.is_sfp[i]-1].pin_detect)) {
-				print_string("SFP IN\t");
-			} else {
-				print_string("NO SFP\t");
-			}
 		}
 
 		uint8_t b = 0;
@@ -608,9 +609,7 @@ uint16_t port_isolation_get(uint8_t port) __banked
 
 void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 {
-
-	if (machine.is_sfp[port])
-	{
+	if (port_to_sds_usage(port) == SDS_SFP) {
 		print_string("EEE can't be enabled for SFP port "); print_phys_port(port); print_string("\n");
 		return;
 	}
@@ -672,7 +671,7 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 
 void port_eee_disable(uint8_t port) __banked
 {
-	if (machine.is_sfp[port])
+	if (port_to_sds_usage(port) == SDS_SFP)
 		return;
 
 	print_string("EEE off for "); print_phys_port(port); write_char('\n');
@@ -689,15 +688,35 @@ void port_eee_status(uint8_t port) __banked
 {
 	print_string("Port: "); print_phys_port(port);
 	print_string(": ");
-	if (machine.is_sfp[port]) {
-		print_string("SFP\n");
-		return;
+
+	bool phy_support_10g = false;
+
+	int8_t sds = port_to_sds(port);
+	if (sds >= 0) {
+		enum sds_type usage = machine.sds_settings[sds].usage;
+		switch (usage) {
+			case SDS_SFP:
+				print_string("SFP\n");
+				return;
+				break;
+			case SDS_FIXED_LINK:
+				print_string("FIXED-LINK\n");
+				return;
+				break;
+			case SDS_EPHY:
+				phy_support_10g = get_phy_max_speed(machine.sds_settings[sds].sds_settings_t.ephy.type);
+				break;
+			default:
+				print_string("Unused\n");
+				return;
+				break;
+		}
 	}
 
 	uint16_t v;
 	print_string("Advertising: ");
 
-	if (machine.n_10g) {
+	if (phy_support_10g) {
 		phy_read(port, PHY_MMD_AN, PHY_EEE_ADV);
 		v = SFR_DATA_U16;
 		if (v & PHY_EEE_BIT_10G)
@@ -707,7 +726,7 @@ void port_eee_status(uint8_t port) __banked
 	}
 	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV2);
 	v = SFR_DATA_U16;
-	if (machine.n_10g) {
+	if (phy_support_10g) {
 		if (v & PHY_EEE_BIT_5G)
 			print_string(" 5G");
 		else
@@ -730,7 +749,7 @@ void port_eee_status(uint8_t port) __banked
 		print_string("     ");
 
 	print_string("   Link Partner: ");
-	if (machine.n_10g) {
+	if (phy_support_10g) {
 		phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
 		v = SFR_DATA_U16;
 		if (v & PHY_EEE_BIT_10G)
@@ -740,7 +759,7 @@ void port_eee_status(uint8_t port) __banked
 	}
 	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
 	v = SFR_DATA_U16;
-	if (machine.n_10g) {
+	if (phy_support_10g) {
 		if (v & PHY_EEE_BIT_5G)
 			print_string(" 5G");
 		else
@@ -773,9 +792,7 @@ void port_eee_status(uint8_t port) __banked
 void port_eee_enable_all(__xdata uint8_t speed) __banked
 {
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		if (i == 3 && machine.n_10g) {
-			port_eee_enable(i, speed);
-		} else if (i == 8 && machine.n_10g == 2) {
+		if (port_to_sds_usage(i) == SDS_EPHY) {
 			port_eee_enable(i, speed);
 		} else {
 			if (speed & EEE_10G)

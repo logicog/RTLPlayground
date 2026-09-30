@@ -78,6 +78,7 @@ SRCS += \
 	rtl837x_flash.c \
 	rtl837x_igmp.c \
 	rtl837x_init.c \
+	rtl837x_i2c.c \
 	rtl837x_leds.c \
 	rtl837x_phy.c \
 	rtl837x_pins.c\
