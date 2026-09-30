@@ -732,9 +732,9 @@ __code const struct machine machine = {
 		    },
 };
 
-#elif defined MACHINE_STEAMEMO_IG204_V1
+#elif defined MACHINE_PB_2131
 __code const struct machine machine = {
-	.machine_name = "Steamemo IG204 V1",
+	.machine_name = "PB-2131",
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
