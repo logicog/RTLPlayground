@@ -11,12 +11,13 @@
 extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 
-/* Meter index fields of RTL837X_STORM_MIDX, [type << 1 | ports 5-9] */
+/* RTL837X_STORM_MIDX words, row type * 2 + half: half 0 holds ports 0-4, half 1 ports 5-9,
+ * 6 bits per port, each set to STORM_METER(port, type) */
 static const __code uint8_t storm_midx[8][4] = {
-	{ 0x10, 0x30, 0x81, 0x00 }, { 0x24, 0x81, 0xc6, 0x14 },
-	{ 0x11, 0x34, 0x91, 0x41 }, { 0x25, 0x85, 0xd6, 0x55 },
-	{ 0x12, 0x38, 0xa1, 0x82 }, { 0x26, 0x89, 0xe6, 0x96 },
-	{ 0x13, 0x3c, 0xb1, 0xc3 }, { 0x27, 0x8d, 0xf6, 0xd7 },
+	{ 0x28, 0x92, 0x07, 0x18 }, { 0x3c, 0xe3, 0x4c, 0x2c },
+	{ 0x29, 0x96, 0x17, 0x59 }, { 0x3d, 0xe7, 0x5c, 0x6d },
+	{ 0x2a, 0x9a, 0x27, 0x9a }, { 0x3e, 0xeb, 0x6c, 0xae },
+	{ 0x2b, 0x9e, 0x37, 0xdb }, { 0x3f, 0xef, 0x7c, 0xef },
 };
 
 static __code char * __code storm_names[STORM_TYPES] = { " bcast ", " mcast ", " ucast ", " umcast " };
@@ -24,7 +25,7 @@ static __code char * __code storm_names[STORM_TYPES] = { " bcast ", " mcast ", "
 
 void storm_set(uint8_t port, __xdata uint8_t type, __xdata uint32_t rate, __xdata uint8_t pps) __banked
 {
-	__xdata uint8_t idx = (port << 2) | type;
+	__xdata uint8_t idx = STORM_METER(port, type);
 	__xdata uint8_t row = (type << 1) | (port >= 5 ? 1 : 0);
 	__xdata uint8_t * __xdata r = (uint8_t *)&rate;
 
@@ -64,7 +65,7 @@ void storm_off(uint8_t port, __xdata uint8_t type) __banked
 
 void storm_show(void) __banked
 {
-	__xdata uint8_t i, t, idx;
+	uint8_t i, t, idx;
 
 	for (i = machine.min_port; i <= machine.max_port; i++) {
 		print_string("port ");
@@ -75,7 +76,7 @@ void storm_show(void) __banked
 				print_string("off");
 				continue;
 			}
-			idx = (i << 2) | t;
+			idx = STORM_METER(i, t);
 			reg_read_m(RTL837X_METER_RATE + (idx << 2));
 			print_byte(sfr_data[1]); print_byte(sfr_data[2]); print_byte(sfr_data[3]);
 			if (reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f))
