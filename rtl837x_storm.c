@@ -3,6 +3,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_meter.h"
 #include "machine.h"
 
 #pragma codeseg BANK3
@@ -11,23 +12,37 @@
 extern __code struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 
-/* RTL837X_STORM_MIDX words, row type * 2 + half: half 0 holds ports 0-4, half 1 ports 5-9,
- * 6 bits per port, each set to STORM_METER(port, type) */
-static const __code uint8_t storm_midx[8][4] = {
-	{ 0x28, 0x92, 0x07, 0x18 }, { 0x3c, 0xe3, 0x4c, 0x2c },
-	{ 0x29, 0x96, 0x17, 0x59 }, { 0x3d, 0xe7, 0x5c, 0x6d },
-	{ 0x2a, 0x9a, 0x27, 0x9a }, { 0x3e, 0xeb, 0x6c, 0xae },
-	{ 0x2b, 0x9e, 0x37, 0xdb }, { 0x3f, 0xef, 0x7c, 0xef },
-};
+static __xdata uint32_t storm_w;
+static __xdata uint8_t storm_shift;
 
 static __code char * __code storm_names[STORM_TYPES] = { " bcast ", " mcast ", " ucast ", " umcast " };
 
 
-void storm_set(uint8_t port, __xdata uint8_t type, __xdata uint32_t rate, __xdata uint8_t pps) __banked
+static void storm_midx_read(uint8_t port, __xdata uint8_t type)
 {
-	__xdata uint8_t idx = STORM_METER(port, type);
-	__xdata uint8_t row = (type << 1) | (port >= 5 ? 1 : 0);
+	reg_read_m(RTL837X_STORM_MIDX + (type << 3) + ((port / 5) << 2));
+	storm_w = ((uint32_t)sfr_data[0] << 24) | ((uint32_t)sfr_data[1] << 16)
+		  | ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+	storm_shift = (port % 5) * 6;
+}
+
+
+uint8_t storm_meter(uint8_t port, __xdata uint8_t type) __banked
+{
+	storm_midx_read(port, type);
+	return (storm_w >> storm_shift) & 0x3f;
+}
+
+
+uint8_t storm_set(uint8_t port, __xdata uint8_t type, __xdata uint32_t rate, __xdata uint8_t pps) __banked
+{
+	__xdata uint8_t idx;
 	__xdata uint8_t * __xdata r = (uint8_t *)&rate;
+
+	if (reg_bit_test(RTL837X_STORM_CTRL + (type << 2), port))
+		idx = storm_meter(port, type);
+	else if ((idx = meter_alloc()) == METER_NONE)
+		return 0;
 
 	sfr_data[0] = 0;
 	sfr_data[1] = r[2];
@@ -47,18 +62,25 @@ void storm_set(uint8_t port, __xdata uint8_t type, __xdata uint32_t rate, __xdat
 	else
 		reg_bit_clear(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f);
 
-	sfr_data[0] = storm_midx[row][0];
-	sfr_data[1] = storm_midx[row][1];
-	sfr_data[2] = storm_midx[row][2];
-	sfr_data[3] = storm_midx[row][3];
-	reg_write_m(RTL837X_STORM_MIDX + (row << 2));
+	storm_midx_read(port, type);
+	storm_w &= ~((uint32_t)0x3f << storm_shift);
+	storm_w |= (uint32_t)idx << storm_shift;
+	sfr_data[0] = storm_w >> 24;
+	sfr_data[1] = storm_w >> 16;
+	sfr_data[2] = storm_w >> 8;
+	sfr_data[3] = storm_w;
+	reg_write_m(RTL837X_STORM_MIDX + (type << 3) + ((port / 5) << 2));
 
 	reg_bit_set(RTL837X_STORM_CTRL + (type << 2), port);
+	return 1;
 }
 
 
 void storm_off(uint8_t port, __xdata uint8_t type) __banked
 {
+	if (!reg_bit_test(RTL837X_STORM_CTRL + (type << 2), port))
+		return;
+	meter_release(storm_meter(port, type));
 	reg_bit_clear(RTL837X_STORM_CTRL + (type << 2), port);
 }
 
@@ -76,7 +98,7 @@ void storm_show(void) __banked
 				print_string("off");
 				continue;
 			}
-			idx = STORM_METER(i, t);
+			idx = storm_meter(i, t);
 			reg_read_m(RTL837X_METER_RATE + (idx << 2));
 			print_byte(sfr_data[1]); print_byte(sfr_data[2]); print_byte(sfr_data[3]);
 			if (reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f))
