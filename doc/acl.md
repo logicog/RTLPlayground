@@ -9,7 +9,8 @@ acl <1-64> [not] <match>... <action>... [<port>...]
 acl <1-64> and <match>... [<port>...]
 acl <1-64> off
 acl meter <0-63> <rate> kbps|pps <burst> [ifg]
-acl field <0-15> off|raw|llc|ipv4|arp|ipv6|ip|l4 <offset>
+acl field <0-15> raw|llc|ipv4|arp|ipv6|ip|l4 <offset>
+acl field <0-15> off
 acl default permit
 acl default drop <port>...
 acl counter <0-31> mode bytes|packets
@@ -22,7 +23,8 @@ acl show
 
 A frame has to match every field a rule names. The ports after the actions are
 the ingress ports the rule applies to; without them it applies to all front
-panel ports. `acl <n>` replaces rule `n` and `acl <n> off` removes it. A rule that
+panel ports. `acl <n>` replaces rule `n` and `acl <n> off` removes it, together
+with the `and` rules joined to it. A rule that
 doesn't fit, for lack of a template or a free range, leaves the old one in place. Rules,
 meters, fields, counter modes and the default are kept in the saved
 configuration like any other command. A command line holds at most 14 words, so
@@ -84,7 +86,8 @@ asks for. An exact `sip`, `dip`, `vlan`, `sport` or `dport` can also be turned
 into a range entry, of which there are 16 of each kind (VLAN, IP, L4 port).
 Fields that share no template are joined with `and`: `acl <n+1> and <match>`
 has no actions of its own and adds its match to rule `n`, so both have to match.
-It may continue with further `and` rules.
+It may continue with further `and` rules. Rule `n` has to exist before an `and`
+rule can be joined to it.
 
 ## Actions
 

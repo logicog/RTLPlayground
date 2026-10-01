@@ -465,3 +465,11 @@ void acl_counter_reset(void) __banked
 	REG_SET(RTL837X_ACL_LOG_RST, 0xffffffff);
 	REG_SET(RTL837X_ACL_LOG_RST, 0);
 }
+
+uint8_t acl_rule_is_and(uint8_t idx) __banked
+{
+	if (!(acl_used[idx >> 3] & (1 << (idx & 7))))
+		return 0;
+	reg_read_m(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2));
+	return !(sfr_data[0] | sfr_data[1] | sfr_data[2] | sfr_data[3]);
+}

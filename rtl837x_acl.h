@@ -137,6 +137,7 @@ void acl_match_key(uint8_t ft) __banked;
 uint8_t acl_match_range(uint8_t key) __banked;
 uint8_t acl_rule_set(uint8_t idx) __banked;
 void acl_rule_clear(uint8_t idx) __banked;
+uint8_t acl_rule_is_and(uint8_t idx) __banked;
 void acl_unmatch_set(void) __banked;
 void acl_counter_reset(void) __banked;
 void acl_poll(void) __banked;
