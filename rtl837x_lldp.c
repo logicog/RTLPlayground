@@ -110,7 +110,7 @@ void lldp_send(void) __banked __reentrant
 
     for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
 
-        if ((1 << machine.log_to_phys_port[port]) & lldp_physical_port_status) {
+        if ((1 << (machine.log_to_phys_port[port]-1)) & lldp_physical_port_status) {
             LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
             LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 

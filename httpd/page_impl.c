@@ -746,7 +746,7 @@ void send_lldp(void)
 	slen += strtox(outbuf + slen, ",\"port_status\":[");
 
 	for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
-		bool_to_html((1 << machine.log_to_phys_port[port]) & lldp_physical_port_status);
+		bool_to_html((1 << (machine.log_to_phys_port[port]-1)) & lldp_physical_port_status);
 		slen += strtox(outbuf + slen, ",");
     }
 	slen--; //overwrite the last comma
