@@ -725,7 +725,7 @@ static uint8_t acl_rule_cmd(void)
 	acl_match_begin();
 	acl_vlan = acl_tag = acl_cont = acl_byp = acl_svlan = acl_intr = 0;
 	if (acl_eq("and")) {
-		if (!acl_rn || !(acl_used[(acl_rn - 1) >> 3] & (1 << ((acl_rn - 1) & 7)))) {
+		if (!acl_rn || !ACL_IS_USED(acl_rn - 1)) {
 			print_string("acl: and needs rule n-1 to join\n");
 			return 0;
 		}
@@ -781,7 +781,7 @@ static void acl_print_reg(void)
 static void acl_show(void)
 {
 	for (acl_c = 0; acl_c < ACL_RULES; acl_c++) {
-		if (!(acl_used[acl_c >> 3] & (1 << (acl_c & 7))))
+		if (!ACL_IS_USED(acl_c))
 			continue;
 		print_string("rule ");
 		itoa(acl_c + 1);

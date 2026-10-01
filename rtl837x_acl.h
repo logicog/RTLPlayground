@@ -122,6 +122,9 @@ extern __xdata struct acl_act_entry acl_act;
 extern __xdata uint16_t acl_ctrl;
 extern __xdata uint16_t acl_unmatch_drop;
 extern __xdata uint8_t  acl_used[ACL_HW_RULES / 8];
+#define ACL_IS_USED(i)	(acl_used[(i) >> 3] & (1 << ((i) & 7)))
+#define ACL_SET_USED(i)	(acl_used[(i) >> 3] |= 1 << ((i) & 7))
+#define ACL_CLR_USED(i)	(acl_used[(i) >> 3] &= ~(1 << ((i) & 7)))
 extern __xdata uint8_t  acl_rule_tmpl[ACL_HW_RULES];
 
 extern __xdata uint16_t acl_ra;
