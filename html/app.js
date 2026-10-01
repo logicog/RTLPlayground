@@ -560,7 +560,7 @@ fw_rejected:"L'image est rejettée en raison d'une somme de contrôle incorrecte
 fw_lost:"Erreur lors du chargement: connection perdue à mi-transfert",
 fw_noreboot:"Pas de redemarrage détecté: l'image a certainement été refusée. Si vous chargesz un ancien firmware, verifiez la version affichée après l'écran de connection.",
 fw_applied:"Mise à jour effectuée",fw_done_t:"Firmware mis à jour",
-fw_done:"Le commutateur a vérifié l'image et vient de redémarrer. La session a été remise à zero, vous devez vour reconnecter.",
+fw_done:"Le commutateur a vérifié l'image et vient de redémarrer. La session a été remise à zero, vous devez vous reconnecter.",
 fw_login:"Vers l'écran de connection",fw_rebooting:"Le commutateur redémarre...",
 fw_timeout:"Le commutateur n'est plus joignable depuis 150 s: verifiez l'alimentation ou utilisez la console série"
 }
@@ -664,9 +664,9 @@ var CONF_CMDS=[
   /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}t?)+$/,
   /^pvid\s+\d{1,2}\s+\d{1,4}$/,
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
-  /^port\s+\d{1,2}\s+(10m||1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
+  /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
-  /^eee\s+(on|off)(\s+\d{1,2})?(\s+(|1g|2g5))?$/,
+  /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
@@ -895,7 +895,7 @@ function portRows(p){
       rows.push([t("p_rxlos"),v]);
     }
   }else if(p.adv){
-    var bits=parseInt(p.adv,2),names=["10M "+t("c_half"),"10M "+t("c_full")," "+t("c_half")," "+t("c_full"),"1G","2.5G"];
+    var bits=parseInt(p.adv,2),names=["10M "+t("c_half"),"10M "+t("c_full"),"100M "+t("c_half"),"100M "+t("c_full"),"1G","2.5G"];
     var on=names.filter(function(_,b){return bits&(1<<b)});
     rows.push([t("p_adv"),on.join(", ")||"-"]);
   }
