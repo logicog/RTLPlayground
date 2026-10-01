@@ -1068,10 +1068,6 @@ void handle_rx(void)
 			if (uip_len) {
 				tcpip_output();
 			}
-		} else if (lldp_enabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x80 && uip_buf[2] == 0xc2
-			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x0e && uip_buf[12] == 0x88
-			&& uip_buf[13] == 0xcc) {	//LLDP Mac + EtherType check
-			// LLDP packets shouldn't be passed elsewhere
 		} else if (ETH_IN->ether_type == HTONS(0x0806)) { // ARP
 			uip_arp_arpin();
 			if (uip_len) {
