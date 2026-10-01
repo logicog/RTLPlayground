@@ -459,7 +459,7 @@ void send_lldp(int s)
 	char *header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
-	char *body = "{\"on\": true, \"port_status\":[true,true,false,true,true,true,true,false,false]}";
+	char *body = "{\"on\": 1,\"port_status\":[1,1,0,1,1,1,1,0,0]}";
 
 	write(s, header, strlen(header));
 	write(s, body, strlen(body));
