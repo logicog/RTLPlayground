@@ -398,7 +398,7 @@ found:
 	acl_idx = idx;
 	if (!acl_range_check())
 		return ACL_ERR_RANGE;
-	if (acl_used[idx >> 3] & (1 << (idx & 7)))
+	if (ACL_IS_USED(idx))
 		acl_rule_clear(idx);
 	acl_idx = idx;
 
@@ -423,7 +423,7 @@ found:
 	acl_tbl_src_y = (__xdata uint16_t *)&acl_y;
 	acl_entry_write();
 
-	acl_used[acl_idx >> 3] |= 1 << (acl_idx & 7);
+	ACL_SET_USED(acl_idx);
 	acl_rule_tmpl[acl_idx] = acl_tmpl_i;
 	acl_ports_update();
 	return 0;
@@ -440,7 +440,7 @@ void acl_rule_clear(uint8_t idx) __banked
 	acl_tbl_src = (__xdata uint16_t *)&acl_zero;
 	acl_tbl_write();
 	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), ACL_ACT_CTRL_OFF);
-	acl_used[acl_idx >> 3] &= ~(1 << (acl_idx & 7));
+	ACL_CLR_USED(acl_idx);
 	acl_range_free();
 	acl_ports_update();
 }
@@ -468,7 +468,7 @@ void acl_counter_reset(void) __banked
 
 uint8_t acl_rule_is_and(uint8_t idx) __banked
 {
-	if (!(acl_used[idx >> 3] & (1 << (idx & 7))))
+	if (!ACL_IS_USED(idx))
 		return 0;
 	reg_read_m(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2));
 	return !(sfr_data[0] | sfr_data[1] | sfr_data[2] | sfr_data[3]);
