@@ -250,6 +250,8 @@ uint8_t igmp_packet_handler(void) __banked
 #ifdef DEBUG
 	print_string("IGMP join "); print_byte(igmp_join); write_char('\n');
 #endif
+	if (uip_buf[igmp_grp] == IGMP_LOCAL_NET_0 && !uip_buf[igmp_grp + 1] && !uip_buf[igmp_grp + 2])
+		return 1;
 
 #ifdef IPMC_USES_L3MC
 	memset((__xdata uint8_t *)&entry, 0, sizeof(struct ipmc_table_entry));
