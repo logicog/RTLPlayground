@@ -1872,9 +1872,7 @@ $("lldp_en").addEventListener("change",function(){
   var el=this;
   postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
-
 tabHooks.lldp={enter:needPorts(lldpLoad)};
-
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);
@@ -2036,7 +2034,7 @@ function sysLoad(){
   cfgReload();
 }
 function cfgParseKnown(txt){
-  var igmp=false,lldp=false,syslog=false;
+  var igmp=false,syslog=false;
   txt.split(/\r?\n/).forEach(function(l){
     l=l.trim();
     if(/^igmp on$/.test(l))igmp=true;

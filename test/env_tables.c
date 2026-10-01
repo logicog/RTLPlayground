@@ -85,7 +85,7 @@ struct flash_region_t flash_region;
 struct syslog_state syslog_state;
 bool     stp_enabled;
 bool lldp_enabled;
-uint16_t lldp_physical_port_status;
+uint16_t lldp_logical_port_status;
 
 
 uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
