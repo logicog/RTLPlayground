@@ -587,7 +587,7 @@ var S={
   ports:[],n:0,physToLog:[],logToPhys:[],sfpSlot:[],info:{},detail:null,
   dirty:false,prev:null,prevT:0,rates:[],mtu:[],
 };
-var LINKS=["Down","10M","","1000M","500M","10G","2.5G","5G"];
+var LINKS=["Down","10M","100M","1000M","500M","10G","2.5G","5G"];
 var LINKC=[null,"--s10","--s100","--s1000","--s5g","--s10g","--s2g5","--s5g"];
 var $=function(id){return document.getElementById(id)};
 function h(tag,attrs,kids){
