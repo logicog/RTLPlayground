@@ -35,9 +35,9 @@
 #define ACL_FT_L4DPORT		0x36
 #define ACL_FT_SEL0		0x40
 
-#define ACL_RNG_VID		0
-#define ACL_RNG_IP		1
-#define ACL_RNG_PORT		2
+#define ACL_RANGE_VID		0
+#define ACL_RANGE_IP		1
+#define ACL_RANGE_PORT		2
 
 #define ACL_VID_CVID		1
 #define ACL_VID_SVID		2
@@ -95,6 +95,12 @@ struct acl_act_entry {
 	uint32_t vlan;		/* C-VLAN and S-VLAN actions; police puts its second and third meter here */
 	uint32_t fwd_qos;	/* priority, remark, police/count, forward, interrupt 31 */
 	uint32_t misc;		/* GPIO and bypass */
+};
+
+struct acl_range_pool {
+	uint8_t owner[ACL_RANGES];
+	uint16_t bits;
+	uint8_t need;
 };
 
 struct acl_req {
