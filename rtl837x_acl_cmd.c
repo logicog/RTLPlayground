@@ -264,7 +264,7 @@ static uint8_t acl_rq_set(uint8_t key)
 
 static uint8_t acl_ip_key(void)
 {
-	acl_variant = ACL_RNG_IP;
+	acl_variant = ACL_RANGE_IP;
 	if (!acl_m)
 		return acl_rq_set(ACL_BAD);
 	acl_key_set();
@@ -364,7 +364,7 @@ static uint8_t acl_match(void)
 	if (acl_eq("vlan") || acl_eq("svlan")) {
 		acl_ft = acl_eq("vlan") ? ACL_FT_CTAG : ACL_FT_STAG;
 		acl_rq.type = acl_ft == ACL_FT_CTAG ? ACL_VID_CVID : ACL_VID_SVID;
-		acl_variant = ACL_RNG_VID;
+		acl_variant = ACL_RANGE_VID;
 		acl_max = 4095;
 		acl_m = 0x0fff;
 		return acl_range() && acl_exact() ? 1 : ACL_BAD;
@@ -399,7 +399,7 @@ static uint8_t acl_match(void)
 				return ACL_BAD;
 			acl_hi = acl_num;
 		}
-		acl_variant = ACL_RNG_IP;
+		acl_variant = ACL_RANGE_IP;
 		return acl_end() && acl_rq_set(ACL_BAD) ? 1 : ACL_BAD;
 	}
 	if (acl_eq("proto")) {
@@ -425,7 +425,7 @@ static uint8_t acl_match(void)
 	if (acl_eq("sport") || acl_eq("dport")) {
 		acl_ft = acl_eq("sport") ? ACL_FT_L4SPORT : ACL_FT_L4DPORT;
 		acl_rq.type = acl_ft == ACL_FT_L4SPORT ? ACL_PORT_SPORT : ACL_PORT_DPORT;
-		acl_variant = ACL_RNG_PORT;
+		acl_variant = ACL_RANGE_PORT;
 		acl_max = 0xffff;
 		acl_m = 0xffff;
 		return acl_range() && acl_exact() ? 1 : ACL_BAD;
