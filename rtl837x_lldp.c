@@ -13,22 +13,22 @@
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
 
-__xdata uint8_t lldp_seconds;
+__xdata uint16_t lldp_ticks;
 __xdata uint16_t lldp_physical_port_status = 0xffff;
 
 void lldp_init(void) __banked
 {
-    lldp_seconds = 0;
+    lldp_ticks = 0;
 }
 
 void lldp_tick(void) __banked
 {
-    lldp_seconds++;
+    lldp_ticks++;
 
-    if (lldp_seconds < LLDP_TX_INTERVAL_SEC)
+    if (lldp_ticks < LLDP_TX_INTERVAL_TICKS)
         return;
 
-    lldp_seconds = 0;
+    lldp_ticks = 0;
 
     if(lldp_enabled == 1)
         lldp_send();
