@@ -222,6 +222,8 @@ void igmp_packet_handler(void) __banked
 #ifdef DEBUG
 	print_string("IGMP membership report, type "); print_byte(IGMP_I->igmp_rtype); write_char('\n');
 #endif
+	if (IGMP_I->mc_ip[0] == IGMP_LOCAL_NET_0 && !IGMP_I->mc_ip[1] && !IGMP_I->mc_ip[2])
+		return;
 
 #ifdef IPMC_USES_L3MC
 	memset((__xdata uint8_t *)&entry, 0, sizeof(struct ipmc_table_entry));
