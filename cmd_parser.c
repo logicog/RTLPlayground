@@ -1661,18 +1661,20 @@ void parse_storm(void)
 	if (cmd_compare(4, "pps")) {
 		if (!rate || rate > 0xfffff)
 			goto err;
-		storm_set(port, type, rate, 1);
+		d = 1;
 	} else if (cmd_compare(4, "kbps")) {
 		if (!rate || rate > 10000000)
 			goto err;
-		storm_set(port, type, rate, 0);
+		d = 0;
 	} else {
 		goto err;
 	}
+	if (!storm_set(port, type, rate, d))
+		cmd_error("no free meter for another storm limit\n");
 	return;
 
 err:
-	print_string("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
+	cmd_error("storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
 }
 
 void parse_syslog(void)

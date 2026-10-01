@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_init.h"
 #include "rtl837x_lldp.h"
+#include "rtl837x_meter.h"
 #include "rtl837x_cabletest.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
@@ -1737,6 +1738,7 @@ void main(void)
 	uip_arp_init();
 	httpd_init();
 	lldp_init();
+	meter_init();
 
 	management_vlan = 1; // Default management VLAN is 1
 
