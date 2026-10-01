@@ -154,6 +154,27 @@ static void t_errors(void)
 	}
 	run("acl 1 ethertype 0800 drop 3 4");
 	CHECK(!err_status && hw_acl_rule(0x80, 4) == 0xffe067f8, "trailing ports restrict the rule");
+	run("acl 1 and ethertype 0806");
+	CHECK(err_status, "an and rule needs the rule before it");
+	run("acl 30 and ethertype 0806");
+	CHECK(err_status, "an and rule after an unused rule is refused");
+	run("acl 20 ethertype 0806 drop");
+	run("acl 21 and dmac 02:00:00:00:00:01");
+	run("acl 22 and smac 02:00:00:00:00:02");
+	run("acl 23 ethertype 0800 drop");
+	CHECK(hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 20) == 0 && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 21) == 0,
+	      "and rules have no actions of their own");
+	run("acl 20 off");
+	CHECK(!err_status && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 19) == 0xff
+	      && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 20) == 0xff && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 21) == 0xff
+	      && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 22) == 0x20, "acl off also removes the and rules joined to it");
+	run("acl 23 off");
+	run("acl field 3 ipv4 8");
+	CHECK(!err_status && hw_reg_get(RTL837X_ACL_FIELD_SEL + 12) != 0, "a field selector is set");
+	run("acl field 3 off");
+	CHECK(!err_status && hw_reg_get(RTL837X_ACL_FIELD_SEL + 12) == 0, "acl field n off needs no offset");
+	run("acl field 3 ipv4");
+	CHECK(err_status, "a field format other than off needs an offset");
 }
 
 static void t_globals(void)

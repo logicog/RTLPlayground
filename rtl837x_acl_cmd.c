@@ -714,11 +714,21 @@ static uint8_t acl_rule_cmd(void)
 	acl_w = 2;
 	if (cmd_words_len == 3 && acl_eq("off")) {
 		acl_rule_clear(acl_rn);
+		while (++acl_rn < ACL_RULES && acl_rule_is_and(acl_rn)) {
+			acl_rule_clear(acl_rn);
+			print_string("acl: rule ");
+			itoa(acl_rn + 1);
+			print_string(" joined to it with and is removed too\n");
+		}
 		return 1;
 	}
 	acl_match_begin();
 	acl_vlan = acl_tag = acl_cont = acl_byp = acl_svlan = acl_intr = 0;
 	if (acl_eq("and")) {
+		if (!acl_rn || !(acl_used[(acl_rn - 1) >> 3] & (1 << ((acl_rn - 1) & 7)))) {
+			print_string("acl: and needs rule n-1 to join\n");
+			return 0;
+		}
 		acl_cont = 1;
 		acl_w++;
 	} else if (acl_eq("not")) {
@@ -895,14 +905,15 @@ static uint8_t acl_global_cmd(void)
 	}
 	if (acl_eq("field")) {
 		acl_max = ACL_SELECTORS - 1;
-		if (cmd_words_len != 5 || !acl_val() || !acl_next())
+		if (cmd_words_len < 4 || cmd_words_len > 5 || !acl_val() || !acl_next())
 			return 0;
 		acl_r = acl_num;
 		for (acl_variant = 0; acl_variant < 8; acl_variant++)
 			if (acl_eq(acl_formats[acl_variant]))
 				break;
+		acl_num = 0;
 		acl_max = 255;
-		if (acl_variant == 8 || !acl_val())
+		if (acl_variant == 8 || (cmd_words_len == 5 ? !acl_val() : acl_variant))
 			return 0;
 		acl_ra = RTL837X_ACL_FIELD_SEL + ((uint16_t)acl_r << 2);
 		acl_rv = acl_num;
