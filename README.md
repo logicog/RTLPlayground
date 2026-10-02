@@ -20,6 +20,10 @@ only the following features are provided:
   temperatures, RX and TX power are displayed in the CLI and as mouse-over on the web
 - Mirror configuration
 - Link Aggregation Groups can be set up
+- ACL rules on layer 2 to layer 4 fields that drop, redirect, copy, mirror, retag,
+  remark, police or count frames
+- DHCP snooping: DHCP server replies only from trusted ports, and a table of
+  the bindings it saw
 - Detailed information on port packet statistics
 - Configuration saved to flash via the web-interface
 - Firmware updates via the web
@@ -361,4 +365,6 @@ The following documents give further documentation on specific features of the R
 - [Trunking aka. port aggregation](doc/trunking.md)
 - [VLAN](doc/vlan.md)
 - [Storm control](doc/storm_control.md)
+- [ACL](doc/acl.md)
+- [DHCP snooping](doc/dhcp-snooping.md)
 - [Modifications and Flash replacement](doc/mods.md)

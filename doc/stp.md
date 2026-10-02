@@ -35,28 +35,34 @@ BPDUs are addressed to `01:80:C2:00:00:00`, a reserved link-local group. The
 ASIC's Reserved-Multicast action for that address decides what happens to the
 frame.
 
-Forwarding to the CPU port works normally: the 8051 sits behind an ordinary
-port of the internal switch and is an ordinary member of a forwarding mask.
-The *trap* action does not deliver to it. Its destination is an external CPU
-attached to a physical port (`cpuTag_externalCpuPort_set`, `EXT_CPU_CTRL` in
-the vendor SDK), which these boards do not populate. The ACL trap and
-redirect actions do not deliver to the 8051 either.
+While STP runs, the action is *trap*. A trap delivers to the port named in
+`EXT_CPU_CTRL` (0x6724), whose reset value 0xf names no port, and with that
+value the trapped frame is dropped at ingress. `trap_init()` sets it to 9, the
+port the 8051 sits behind, once at startup. The trap needs no per-VLAN L2
+entries, so it does not depend on which VLANs exist or on the PVIDs, and turning
+STP on no longer walks the whole VLAN table. BPDUs reach the CPU on a port that
+STP holds in blocking with either action: measured on a SWTGW218AS by sending
+BPDUs into a blocked port with forward and with trap, both ports stopped being
+edge and waited out the forward delay. The chip exempts this address from the
+ingress state check; the slow-protocols address used by LACP is not exempt.
 
-Delivery therefore uses the *forward* action, constrained to the CPU port
-by a static L2 multicast entry (`port_l2mc_set()`), one per VLAN in use:
+A trapped frame reaches the CPU in the format it came in with: unlike a
+forwarded one it has no VLAN tag inserted after the RTL tag, and the RTL tag
+carries the trap reason. `stp_in()` reads the BPDU from the offset
+`TRAP_RX_BODY()` returns, which works for both.
 
-* while STP runs, the entry's member mask is the CPU port only — BPDUs reach
-  the CPU and are not flooded to other ports, as a participating bridge
-  requires;
-* with STP off, the same entries are retargeted to all ports, restoring the
-  transparency an unmanaged switch is expected to have, so a surrounding
-  spanning tree can span *through* this device.
+With STP off, the action goes back to *forward* and a static L2 multicast
+entry per VLAN in use (`port_l2mc_set()`) targets all ports, restoring the
+transparency an unmanaged switch is expected to have, so a surrounding
+spanning tree can span *through* this device.
 
-A BPDU delivered this way is an ordinary frame to the port's ingress logic
-and passes through its acceptable-frame-type filter. BPDUs are untagged, so a
-port set to admit tagged frames only (`ingress <port>t`) never delivers one
-to the CPU. `stp_setup()` prints a warning for every STP-enabled port in that
-state.
+The port's acceptable-frame-type filter treats the two actions differently.
+BPDUs are untagged, so a port set to admit tagged frames only
+(`ingress <port>t`) drops a forwarded BPDU before it reaches the CPU, while a
+trapped one passes. Both were measured on a SWTGW218AS with `ingress 3t`:
+LACPDUs, delivered by forward, stopped arriving on port 3, and BPDUs sent into
+the same port, delivered by trap, kept arriving. A port that admits tagged
+frames only therefore takes part in STP.
 
 ## Link aggregation
 
