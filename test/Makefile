@@ -58,6 +58,8 @@ $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR
 # this test carries the environment below them itself.
 $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+# Simulators with a Makefile of their own; each fails the run when it fails.
+SUBTESTS = stp
 
 run: $(TESTS)
 	@fail=0; for t in $(TESTS); do \
@@ -65,9 +67,15 @@ run: $(TESTS)
 		$$t || fail=1; \
 		echo; \
 	done; \
+	for d in $(SUBTESTS); do \
+		echo "=== $$d ==="; \
+		$(MAKE) -C $$d test || fail=1; \
+		echo; \
+	done; \
 	if [ $$fail -ne 0 ]; then echo "TESTS FAILED"; exit 1; else echo "ALL TESTS PASSED"; fi
 
 clean:
 	rm -rf $(BUILDDIR)
+	@for d in $(SUBTESTS); do $(MAKE) -C $$d clean; done
 
 .PHONY: all run clean
