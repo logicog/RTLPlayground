@@ -44,27 +44,6 @@ static __xdata struct acl_rule_entry acl_y;
 static __xdata struct acl_rule_entry acl_x;
 static __xdata struct acl_rule_entry acl_zero;
 static __xdata struct acl_range_pool acl_range[ACL_RANGE_KINDS];
-static __xdata uint16_t acl_put_val;
-static __xdata uint16_t acl_put_mask;
-static __xdata uint16_t acl_tmp;
-static __xdata uint16_t acl_tmp2;
-static __xdata uint16_t * __xdata acl_py;
-static __xdata uint16_t * __xdata acl_px;
-static __xdata uint8_t  acl_tmpl_i;
-static __xdata uint8_t  acl_idx;
-static __xdata uint8_t  acl_i;
-static __xdata uint8_t  acl_req_i;
-static __xdata uint8_t  acl_slot_i;
-static __xdata uint8_t  acl_key_i;
-static __xdata uint8_t  acl_range_kind;
-static __xdata uint8_t  acl_range_slot;
-static __xdata uint8_t  acl_use_ranges;
-static __xdata struct acl_req * __xdata acl_cur_req;
-static __xdata uint8_t  acl_tbl_sel;
-static __xdata uint8_t  acl_tbl_words;
-static __xdata uint8_t  acl_tbl_addr;
-static __xdata uint16_t * __xdata acl_tbl_src;
-static __xdata uint16_t * __xdata acl_tbl_src_y;
 
 static __code const uint8_t acl_key_fts[ACL_KEYS] = {
 	ACL_FT_DMAC0, ACL_FT_DMAC1, ACL_FT_DMAC2, ACL_FT_SMAC0, ACL_FT_SMAC1, ACL_FT_SMAC2,
@@ -111,25 +90,22 @@ static void acl_tbl_wait(void)
 	} while ((sfr_data[3] & TBL_EXECUTE) && ++guard);
 }
 
-static void acl_tbl_write(void)
+static void acl_tbl_write(uint8_t sel, uint8_t words, uint8_t addr, __xdata uint16_t *src) __reentrant
 {
+	uint8_t i;
+
 	acl_tbl_wait();
-	for (acl_i = 0; acl_i < acl_tbl_words; acl_i++)
-		REG_WRITE(RTL837x_TBL_DATA_IN_A + (acl_i << 2), acl_tbl_src[2 * acl_i + 1] >> 8,
-			  acl_tbl_src[2 * acl_i + 1], acl_tbl_src[2 * acl_i] >> 8, acl_tbl_src[2 * acl_i]);
-	REG_WRITE(RTL837X_TBL_CTRL, 0, acl_tbl_addr, acl_tbl_sel, TBL_WRITE | TBL_EXECUTE);
+	for (i = 0; i < words; i++)
+		REG_WRITE(RTL837x_TBL_DATA_IN_A + (i << 2), src[2 * i + 1] >> 8,
+			  src[2 * i + 1], src[2 * i] >> 8, src[2 * i]);
+	REG_WRITE(RTL837X_TBL_CTRL, 0, addr, sel, TBL_WRITE | TBL_EXECUTE);
 	acl_tbl_wait();
 }
 
-static void acl_entry_write(void)
+static void acl_entry_write(uint8_t idx, __xdata uint16_t *x, __xdata uint16_t *y) __reentrant
 {
-	acl_tbl_sel = TBL_ACL_RULE;
-	acl_tbl_words = ACL_RULE_WORDS;
-	acl_tbl_addr = acl_idx;
-	acl_tbl_write();
-	acl_tbl_addr = ACL_TBL_Y | acl_idx;
-	acl_tbl_src = acl_tbl_src_y;
-	acl_tbl_write();
+	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, idx, x);
+	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, ACL_TBL_Y | idx, y);
 }
 
 static uint8_t acl_any(void)
@@ -166,10 +142,10 @@ uint8_t acl_key(uint8_t ft) __banked
 	return ACL_NONE;
 }
 
-static uint8_t acl_slot(uint8_t ft)
+static uint8_t acl_slot(uint8_t tmpl, uint8_t ft) __reentrant
 {
 	for (uint8_t s = 0; s < 8; s++)
-		if (acl_tmpl[acl_tmpl_i][s] == ft)
+		if (acl_tmpl[tmpl][s] == ft)
 			return s;
 	return ACL_NONE;
 }
@@ -188,62 +164,65 @@ static uint8_t acl_alt(uint8_t k)
 	return ACL_NONE;
 }
 
-static uint8_t acl_fits(void)
+static uint8_t acl_fits(uint8_t tmpl, uint8_t ranges) __reentrant
 {
-	for (acl_i = 0; acl_i < ACL_KEYS; acl_i++) {
-		if (!acl_km[acl_i] || acl_slot(acl_key_fts[acl_i]) != ACL_NONE)
+	uint8_t k, r;
+
+	for (k = 0; k < ACL_KEYS; k++) {
+		if (!acl_km[k] || acl_slot(tmpl, acl_key_fts[k]) != ACL_NONE)
 			continue;
-		acl_req_i = acl_use_ranges ? acl_alt(acl_i) : ACL_NONE;
-		if (acl_req_i == ACL_NONE || acl_slot(ACL_FT_VIDRANGE + acl_req[acl_req_i].kind) == ACL_NONE)
+		r = ranges ? acl_alt(k) : ACL_NONE;
+		if (r == ACL_NONE || acl_slot(tmpl, ACL_FT_VIDRANGE + acl_req[r].kind) == ACL_NONE)
 			return 0;
 	}
-	for (acl_i = 0; acl_i < acl_nreq; acl_i++)
-		if (acl_req[acl_i].key == ACL_NONE
-		    && acl_slot(ACL_FT_VIDRANGE + acl_req[acl_i].kind) == ACL_NONE)
+	for (r = 0; r < acl_nreq; r++)
+		if (acl_req[r].key == ACL_NONE
+		    && acl_slot(tmpl, ACL_FT_VIDRANGE + acl_req[r].kind) == ACL_NONE)
 			return 0;
 	return 1;
 }
 
-static void acl_put(uint8_t s)
+static void acl_put(uint8_t s, uint16_t val, uint16_t mask) __reentrant
 {
+	__xdata uint16_t *y;
+	__xdata uint16_t *x;
+
 	if (s == ACL_SLOT_INFO) {
-		acl_py = &acl_y.info;
-		acl_px = &acl_x.info;
+		y = &acl_y.info;
+		x = &acl_x.info;
 	} else {
-		acl_py = &acl_y.field[s];
-		acl_px = &acl_x.field[s];
+		y = &acl_y.field[s];
+		x = &acl_x.field[s];
 	}
-	acl_tmp2 = ~acl_put_mask;
-	acl_tmp = acl_put_val & acl_put_mask;
-	*acl_py &= acl_tmp2;
-	*acl_py |= acl_tmp;
-	acl_tmp ^= acl_put_mask;
-	*acl_px &= acl_tmp2;
-	*acl_px |= acl_tmp;
+	val &= mask;
+	*y = (*y & ~mask) | val;
+	*x = (*x & ~mask) | (val ^ mask);
 }
 
-static void acl_range_addr(void)
+static void acl_range_addr(uint8_t kind, uint8_t slot) __reentrant
 {
-	acl_ra = acl_range_base[acl_range_kind];
-	for (acl_i = 0; acl_i < acl_range_slot; acl_i++)
-		acl_ra += acl_range_stride[acl_range_kind];
+	acl_ra = acl_range_base[kind];
+	while (slot--)
+		acl_ra += acl_range_stride[kind];
 }
 
-static void acl_range_free(void)
+static void acl_range_free(uint8_t idx) __reentrant
 {
-	for (acl_range_kind = 0; acl_range_kind < ACL_RANGE_KINDS; acl_range_kind++) {
-		for (acl_range_slot = 0; acl_range_slot < ACL_RANGES; acl_range_slot++) {
-			if (acl_range[acl_range_kind].owner[acl_range_slot] != acl_idx + 1)
+	uint8_t kind, slot;
+
+	for (kind = 0; kind < ACL_RANGE_KINDS; kind++) {
+		for (slot = 0; slot < ACL_RANGES; slot++) {
+			if (acl_range[kind].owner[slot] != idx + 1)
 				continue;
-			acl_range[acl_range_kind].owner[acl_range_slot] = 0;
-			acl_range_addr();
+			acl_range[kind].owner[slot] = 0;
+			acl_range_addr(kind, slot);
 			acl_rv = 0;
 			acl_reg();
-			if (acl_range_kind == ACL_RANGE_VID)
+			if (kind == ACL_RANGE_VID)
 				continue;
 			acl_ra += ACL_RANGE_REG_STEP;
 			acl_reg();
-			if (acl_range_kind == ACL_RANGE_IP) {
+			if (kind == ACL_RANGE_IP) {
 				acl_ra += ACL_RANGE_REG_STEP;
 				acl_reg();
 			}
@@ -251,108 +230,110 @@ static void acl_range_free(void)
 	}
 }
 
-static uint8_t acl_range_alloc(void)
+static uint8_t acl_range_alloc(uint8_t idx, __xdata struct acl_req *req) __reentrant
 {
-	acl_range_kind = acl_cur_req->kind;
-	for (acl_range_slot = 0; acl_range_slot < ACL_RANGES; acl_range_slot++)
-		if (!acl_range[acl_range_kind].owner[acl_range_slot])
+	uint8_t kind = req->kind;
+	uint8_t slot;
+	uint16_t lo, hi;
+
+	for (slot = 0; slot < ACL_RANGES; slot++)
+		if (!acl_range[kind].owner[slot])
 			break;
-	if (acl_range_slot == ACL_RANGES)
+	if (slot == ACL_RANGES)
 		return 0;
-	acl_range[acl_range_kind].owner[acl_range_slot] = acl_idx + 1;
-	acl_range[acl_range_kind].bits |= (uint16_t)1 << acl_range_slot;
-	acl_range_addr();
-	if (acl_range_kind == ACL_RANGE_VID) {
-		acl_tmp = acl_cur_req->lo;
-		acl_tmp <<= 2;
-		acl_tmp |= acl_cur_req->type;
-		acl_tmp2 = acl_cur_req->hi;
-		acl_put_val = acl_tmp2 << 14;
-		acl_tmp |= acl_put_val;
-		acl_tmp2 >>= 2;
-		((__xdata uint16_t *)&acl_rv)[0] = acl_tmp;
-		((__xdata uint16_t *)&acl_rv)[1] = acl_tmp2;
+	acl_range[kind].owner[slot] = idx + 1;
+	acl_range[kind].bits |= (uint16_t)1 << slot;
+	acl_range_addr(kind, slot);
+	if (kind == ACL_RANGE_VID) {
+		lo = req->lo;
+		lo <<= 2;
+		lo |= req->type;
+		hi = req->hi;
+		lo |= hi << 14;
+		hi >>= 2;
+		((__xdata uint16_t *)&acl_rv)[0] = lo;
+		((__xdata uint16_t *)&acl_rv)[1] = hi;
 		acl_reg();
 		return 1;
 	}
 	acl_ra += ACL_RANGE_REG_STEP;
-	if (acl_range_kind == ACL_RANGE_IP) {
-		acl_rv = acl_cur_req->hi;
+	if (kind == ACL_RANGE_IP) {
+		acl_rv = req->hi;
 		acl_reg();
 		acl_ra += ACL_RANGE_REG_STEP;
-		acl_rv = acl_cur_req->lo;
+		acl_rv = req->lo;
 		acl_reg();
 		acl_ra -= ACL_RANGE_REG_STEP;
 	} else {
-		acl_rv = acl_cur_req->hi;
+		acl_rv = req->hi;
 		acl_rv <<= 16;
-		acl_rv |= acl_cur_req->lo;
+		acl_rv |= req->lo;
 		acl_reg();
 	}
 	acl_ra -= ACL_RANGE_REG_STEP;
-	acl_rv = acl_cur_req->type;
+	acl_rv = req->type;
 	acl_reg();
 	return 1;
 }
 
-static uint8_t acl_range_check(void)
+static uint8_t acl_range_check(uint8_t idx, uint8_t tmpl) __reentrant
 {
+	uint8_t r, kind, slot;
+	__xdata struct acl_req *req;
+
 	acl_range[0].need = acl_range[1].need = acl_range[2].need = 0;
-	for (acl_req_i = 0; acl_req_i < acl_nreq; acl_req_i++) {
-		acl_cur_req = &acl_req[acl_req_i];
-		if (acl_cur_req->key != ACL_NONE && acl_slot(acl_key_fts[acl_cur_req->key]) != ACL_NONE)
+	for (r = 0; r < acl_nreq; r++) {
+		req = &acl_req[r];
+		if (req->key != ACL_NONE && acl_slot(tmpl, acl_key_fts[req->key]) != ACL_NONE)
 			continue;
-		acl_range[acl_cur_req->kind].need++;
+		acl_range[req->kind].need++;
 	}
-	for (acl_range_kind = 0; acl_range_kind < ACL_RANGE_KINDS; acl_range_kind++)
-		for (acl_range_slot = 0; acl_range_slot < ACL_RANGES && acl_range[acl_range_kind].need; acl_range_slot++)
-			if (!acl_range[acl_range_kind].owner[acl_range_slot]
-			    || acl_range[acl_range_kind].owner[acl_range_slot] == acl_idx + 1)
-				acl_range[acl_range_kind].need--;
+	for (kind = 0; kind < ACL_RANGE_KINDS; kind++)
+		for (slot = 0; slot < ACL_RANGES && acl_range[kind].need; slot++)
+			if (!acl_range[kind].owner[slot]
+			    || acl_range[kind].owner[slot] == idx + 1)
+				acl_range[kind].need--;
 	return !(acl_range[0].need | acl_range[1].need | acl_range[2].need);
 }
 
-static uint8_t acl_encode(void)
+static uint8_t acl_encode(uint8_t idx, uint8_t tmpl) __reentrant
 {
-	acl_py = (__xdata uint16_t *)&acl_y;
-	acl_px = (__xdata uint16_t *)&acl_x;
-	for (acl_slot_i = 0; acl_slot_i < 2 * ACL_RULE_WORDS; acl_slot_i++)
-		acl_py[acl_slot_i] = acl_px[acl_slot_i] = 0xffff;
+	__xdata uint16_t *y = (__xdata uint16_t *)&acl_y;
+	__xdata uint16_t *x = (__xdata uint16_t *)&acl_x;
+	__xdata struct acl_req *req;
+	uint8_t s, k;
+	uint16_t ports;
+
+	for (s = 0; s < 2 * ACL_RULE_WORDS; s++)
+		y[s] = x[s] = 0xffff;
 	acl_range[0].bits = acl_range[1].bits = acl_range[2].bits = 0;
 
-	for (acl_slot_i = 0; acl_slot_i < ACL_SLOT_INFO; acl_slot_i++) {
-		acl_key_i = acl_key(acl_tmpl[acl_tmpl_i][acl_slot_i]);
-		if (acl_key_i == ACL_NONE || !acl_km[acl_key_i])
+	for (s = 0; s < ACL_SLOT_INFO; s++) {
+		k = acl_key(acl_tmpl[tmpl][s]);
+		if (k == ACL_NONE || !acl_km[k])
 			continue;
-		acl_put_val = acl_kv[acl_key_i];
-		acl_put_mask = acl_km[acl_key_i];
-		acl_put(acl_slot_i);
+		acl_put(s, acl_kv[k], acl_km[k]);
 	}
-	for (acl_req_i = 0; acl_req_i < acl_nreq; acl_req_i++) {
-		acl_cur_req = &acl_req[acl_req_i];
-		if (acl_cur_req->key != ACL_NONE && acl_slot(acl_key_fts[acl_cur_req->key]) != ACL_NONE)
+	for (k = 0; k < acl_nreq; k++) {
+		req = &acl_req[k];
+		if (req->key != ACL_NONE && acl_slot(tmpl, acl_key_fts[req->key]) != ACL_NONE)
 			continue;
-		if (!acl_range_alloc()) {
-			acl_range_free();
+		if (!acl_range_alloc(idx, req)) {
+			acl_range_free(idx);
 			return 0;
 		}
 	}
-	for (acl_range_kind = 0; acl_range_kind < ACL_RANGE_KINDS; acl_range_kind++) {
-		if (!acl_range[acl_range_kind].bits)
+	for (k = 0; k < ACL_RANGE_KINDS; k++) {
+		if (!acl_range[k].bits)
 			continue;
-		acl_put_val = acl_put_mask = acl_range[acl_range_kind].bits;
-		acl_put(acl_slot(ACL_FT_VIDRANGE + acl_range_kind));
+		acl_put(acl_slot(tmpl, ACL_FT_VIDRANGE + k), acl_range[k].bits, acl_range[k].bits);
 	}
 
-	acl_put_val = acl_tmpl_i;
-	acl_put_mask = ACL_INFO_TMPL;
-	acl_put(ACL_SLOT_INFO);
-	acl_put_val = acl_info_v;
-	acl_put_mask = acl_info_m;
-	acl_put(ACL_SLOT_INFO);
-	acl_put_val = ~(acl_in_pmask ? acl_in_pmask : ACL_PORTS) & ACL_ALL;
-	acl_y.info &= ~(uint16_t)(acl_put_val << ACL_INFO_PORT_SHIFT);
-	acl_y.info_hi &= ~(acl_put_val >> (16 - ACL_INFO_PORT_SHIFT));
+	acl_put(ACL_SLOT_INFO, tmpl, ACL_INFO_TMPL);
+	acl_put(ACL_SLOT_INFO, acl_info_v, acl_info_m);
+	ports = ~(acl_in_pmask ? acl_in_pmask : ACL_PORTS) & ACL_ALL;
+	acl_y.info &= ~(uint16_t)(ports << ACL_INFO_PORT_SHIFT);
+	acl_y.info_hi &= ~(ports >> (16 - ACL_INFO_PORT_SHIFT));
 	return 1;
 }
 
@@ -367,81 +348,72 @@ void acl_match_begin(void) __banked
 	acl_ctrl = 0;
 }
 
-void acl_match_key(uint8_t ft) __banked
+void acl_match_key(uint8_t ft) __banked __reentrant
 {
-	acl_key_i = acl_key(ft);
-	acl_kv[acl_key_i] = (acl_kv[acl_key_i] & ~acl_mk) | (acl_vk & acl_mk);
-	acl_km[acl_key_i] |= acl_mk;
+	uint8_t k = acl_key(ft);
+
+	acl_kv[k] = (acl_kv[k] & ~acl_mk) | (acl_vk & acl_mk);
+	acl_km[k] |= acl_mk;
 }
 
 uint8_t acl_match_range(uint8_t key) __banked
 {
+	__xdata struct acl_req *req;
+
 	if (acl_nreq == ACL_REQS)
 		return 0;
-	acl_cur_req = &acl_req[acl_nreq++];
-	acl_cur_req->kind = acl_rq.kind;
-	acl_cur_req->type = acl_rq.type;
-	acl_cur_req->key = key;
-	acl_cur_req->lo = acl_rq.lo;
-	acl_cur_req->hi = acl_rq.hi;
+	req = &acl_req[acl_nreq++];
+	req->kind = acl_rq.kind;
+	req->type = acl_rq.type;
+	req->key = key;
+	req->lo = acl_rq.lo;
+	req->hi = acl_rq.hi;
 	return 1;
 }
 
-uint8_t acl_rule_set(uint8_t idx) __banked
+uint8_t acl_rule_set(uint8_t idx) __banked __reentrant
 {
-	for (acl_use_ranges = 0; acl_use_ranges < 2; acl_use_ranges++)
-		for (acl_tmpl_i = 0; acl_tmpl_i < ACL_TEMPLATES; acl_tmpl_i++)
-			if (acl_fits())
+	uint8_t ranges, tmpl, i;
+
+	for (ranges = 0; ranges < 2; ranges++)
+		for (tmpl = 0; tmpl < ACL_TEMPLATES; tmpl++)
+			if (acl_fits(tmpl, ranges))
 				goto found;
 	return ACL_ERR_TEMPLATE;
 found:
-	acl_idx = idx;
-	if (!acl_range_check())
+	if (!acl_range_check(idx, tmpl))
 		return ACL_ERR_RANGE;
 	if (ACL_IS_USED(idx))
 		acl_rule_clear(idx);
-	acl_idx = idx;
 
 	if (!acl_any()) {
-		for (acl_i = 0; acl_i < ACL_TEMPLATES; acl_i++) {
-			REG_WRITE(RTL837X_ACL_TEMPLATE0_F0_3 + (acl_i << 3), acl_tmpl[acl_i][3],
-				  acl_tmpl[acl_i][2], acl_tmpl[acl_i][1], acl_tmpl[acl_i][0]);
-			REG_WRITE(RTL837X_ACL_TEMPLATE0_F4_7 + (acl_i << 3), acl_tmpl[acl_i][7],
-				  acl_tmpl[acl_i][6], acl_tmpl[acl_i][5], acl_tmpl[acl_i][4]);
+		for (i = 0; i < ACL_TEMPLATES; i++) {
+			REG_WRITE(RTL837X_ACL_TEMPLATE0_F0_3 + (i << 3), acl_tmpl[i][3],
+				  acl_tmpl[i][2], acl_tmpl[i][1], acl_tmpl[i][0]);
+			REG_WRITE(RTL837X_ACL_TEMPLATE0_F4_7 + (i << 3), acl_tmpl[i][7],
+				  acl_tmpl[i][6], acl_tmpl[i][5], acl_tmpl[i][4]);
 		}
 	}
-	if (!acl_encode())
+	if (!acl_encode(idx, tmpl))
 		return ACL_ERR_RANGE;
 
-	acl_tbl_sel = TBL_ACL_ACT;
-	acl_tbl_words = ACL_ACT_WORDS;
-	acl_tbl_addr = acl_idx;
-	acl_tbl_src = (__xdata uint16_t *)&acl_act;
-	acl_tbl_write();
-	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), acl_ctrl);
-	acl_tbl_src = (__xdata uint16_t *)&acl_x;
-	acl_tbl_src_y = (__xdata uint16_t *)&acl_y;
-	acl_entry_write();
+	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_act);
+	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2), acl_ctrl);
+	acl_entry_write(idx, (__xdata uint16_t *)&acl_x, (__xdata uint16_t *)&acl_y);
 
-	ACL_SET_USED(acl_idx);
-	acl_rule_tmpl[acl_idx] = acl_tmpl_i;
+	ACL_SET_USED(idx);
+	acl_rule_tmpl[idx] = tmpl;
 	acl_ports_update();
 	return 0;
 }
 
-void acl_rule_clear(uint8_t idx) __banked
+void acl_rule_clear(uint8_t idx) __banked __reentrant
 {
-	acl_idx = idx;
-	acl_tbl_src = acl_tbl_src_y = (__xdata uint16_t *)&acl_zero;
-	acl_entry_write();
-	acl_tbl_sel = TBL_ACL_ACT;
-	acl_tbl_words = ACL_ACT_WORDS;
-	acl_tbl_addr = acl_idx;
-	acl_tbl_src = (__xdata uint16_t *)&acl_zero;
-	acl_tbl_write();
-	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)acl_idx << 2), ACL_ACT_CTRL_OFF);
-	ACL_CLR_USED(acl_idx);
-	acl_range_free();
+	acl_entry_write(idx, (__xdata uint16_t *)&acl_zero, (__xdata uint16_t *)&acl_zero);
+	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_zero);
+	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2), ACL_ACT_CTRL_OFF);
+	ACL_CLR_USED(idx);
+	acl_range_free(idx);
 	acl_ports_update();
 }
 
