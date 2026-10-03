@@ -28,12 +28,14 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_port_tables \
         $(BUILDDIR)/test_page_json \
         $(BUILDDIR)/test_httpd_tx \
-        $(BUILDDIR)/test_tick_gate
+        $(BUILDDIR)/test_tick_gate \
+        $(BUILDDIR)/test_storm
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
 TABLE_ENV = support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c \
-            $(SRCROOT)/rtl837x_port.c $(SRCROOT)/httpd/page_impl.c
+            $(SRCROOT)/rtl837x_port.c $(SRCROOT)/httpd/page_impl.c \
+            $(SRCROOT)/rtl837x_storm.c $(SRCROOT)/rtl837x_meter.c
 
 all: run
 
@@ -52,6 +54,9 @@ $(BUILDDIR)/test_tick_gate: test_tick_gate.c support.c $(SRCROOT)/cmd_editor.c |
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+$(BUILDDIR)/test_storm: test_storm.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
