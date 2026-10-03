@@ -81,6 +81,9 @@ of IP-MC packets to be limited to only subscribed ports.
 `igmp_router_port_set()`configures forwarding ports for IGMP messages.
 
 `igmp_packet_handler()` implements handling of trapped IGMP packets by the CPU.
+Reports for groups in 224.0.0.0/24 are ignored: the switch floods that block
+even with IGMP on, and an entry for a group such as 224.0.0.251 (mDNS) would
+otherwise limit it to the ports that reported it, as RFC 4541 warns against.
 
 `igmp_show()` prints out the IGMP configuration on the CLI.
 
