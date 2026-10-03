@@ -933,47 +933,57 @@ __code const struct machine machine = {
 #elif defined MACHINE_ONT_S207CW_62TS_SE
 // ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM
 // RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
-// Using PCB-K0402WS-V3 config
+// Port mapping: reversed RJ45 ports
+// Physical ports: 1-4 = RJ45, 5 = SFP (SDS0), 6 = SFP (SDS1)
+// Logical ports: 3 = SFP (SDS0), 8 = SFP (SDS1)
+// RJ45 ports: logical 4->phys 4, 5->phys 3, 6->phys 2, 7->phys 1
+
 __code const struct machine machine = {
     .machine_name = "ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM",
     .isRTL8373 = 0,
-    .mac_flash_offset = 0x1FC000,
     .min_port = 3,
     .max_port = 8,
     .n_sfp = 2,
-    .log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
-    .phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
-    .is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
+    .log_to_phys_port = {0, 0, 0, 5, 4, 3, 2, 1, 6},
+    .phys_to_log_port = {7, 6, 5, 4, 3, 8, 0, 0, 0},
+    .is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
 
-    // Left SFP port on SDS1 / logical port 8
-    .sfp_port[0].pin_detect = GPIO38,
+    // SFP port on SDS0 / logical port 3
+    .sfp_port[0].pin_detect = GPIO37,
     .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
-    .sfp_port[0].sds = 1,
-    .sfp_port[0].i2c =  { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[0].sds = 0,
+    .sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
-    // Right SFP port on SDS0 / logical port 3
-    .sfp_port[1].pin_detect = GPIO37,
+    // SFP port on SDS1 / logical port 8
+    .sfp_port[1].pin_detect = GPIO38,
     .sfp_port[1].pin_los = GPIO_NA,
     .sfp_port[1].pin_tx_disable = GPIO_NA,
-    .sfp_port[1].sds = 0,
-    .sfp_port[1].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[1].sds = 1,
+    .sfp_port[1].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
-    .port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
+    .port_led_set = { 0, 0, 0, 1, 0, 0, 2, 2, 1},
+    .mac_flash_offset = 0x1FC000,
     .led_sets = {
         {
-            LEDS_2G5 | LEDS_LINK | LEDS_10M | LEDS_ACT,
-            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
-            LEDS_1G | LEDS_LINK,
-            0
+            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,  // LED 0 (orange): 1G/100M/10M
+            LEDS_2G5 | LEDS_LINK | LEDS_ACT,                         // LED 1 (green): 2.5G
+            LEDS_DUPLEX,                                             // LED 2
+            0                                                        // LED 3
         },
         {
-            LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK,
-            LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_ACT,
-            0,
-            0
+            LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,              // LED 0 (orange): 2.5G/1G
+            LEDS_10G | LEDS_LINK | LEDS_ACT,                         // LED 1 (green): 10G
+            LEDS_2G5 | LEDS_LINK,                                    // LED 2
+            LEDS_COL | LEDS_DUPLEX                                 // LED 3
+        },
+        {
+            LEDS_2G5 | LEDS_LINK | LEDS_ACT,                         // LED 0 (orange): 2.5G
+            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,  // LED 1 (green): 1G/100M/10M
+            LEDS_DUPLEX,                                             // LED 2
+            0                                                        // LED 3
         },
     },
     .led_mux_custom = 1,
