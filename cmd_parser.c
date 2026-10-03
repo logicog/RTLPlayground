@@ -1574,7 +1574,7 @@ err:
 	cmd_error("bw [in|out|status] <port> [<hexvalue>|off|drop|fc]\n");
 }
 
-static __code char * __code storm_types[STORM_TYPES] = { "bcast", "mcast", "ucast", "umcast" };
+static __code const char * __code const storm_types[STORM_TYPES] = { "bcast", "mcast", "ucast", "umcast" };
 
 void parse_storm(void)
 {

@@ -8,7 +8,7 @@
 #pragma codeseg BANK3
 #pragma constseg BANK3
 
-extern __code struct machine machine;
+extern __code const struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 
 /* RTL837X_STORM_MIDX words, row type * 2 + half: half 0 holds ports 0-4, half 1 ports 5-9,
@@ -20,7 +20,7 @@ static const __code uint8_t storm_midx[8][4] = {
 	{ 0x2b, 0x9e, 0x37, 0xdb }, { 0x3f, 0xef, 0x7c, 0xef },
 };
 
-static __code char * __code storm_names[STORM_TYPES] = { " bcast ", " mcast ", " ucast ", " umcast " };
+static __code const char * __code const storm_names[STORM_TYPES] = { " bcast ", " mcast ", " ucast ", " umcast " };
 
 
 void storm_set(uint8_t port, __xdata uint8_t type, __xdata uint32_t rate, __xdata uint8_t pps) __banked
