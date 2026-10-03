@@ -331,6 +331,17 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       </div>
     </section>
 
+    <section class="tab" id="tab-lldp">
+      <div class="card"><h2 data-i18n="lldp_title">LLDP</h2>
+        <label class="row"><span class="lb" data-i18n="lldp_enabled">Enabled</span>
+          <span class="switch"><input type="checkbox" id="lldp_en"><i></i></span>
+        </label>
+        <div class="scrollx"><table class="t" id="lldp_table">
+          <thead><tr><th data-i18n="c_port">Port Number</th><th data-i18n="lldp_portname">Name</th><th data-i18n="lldp_enable">Send Frames</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-lag">
       <div id="lagwrap" class="grid2"></div>
       <p class="small mut" style="margin-top:10px" data-i18n="lag_note">A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.</p>
