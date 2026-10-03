@@ -69,6 +69,10 @@ SRCS = \
 	rtlplayground.c \
 	boot.c \
 	sfp.c \
+	dns.c \
+	dns_cli.c \
+	ntp.c \
+	ntp_cli.c \
 	syslog.c \
 	udp_apps.c
 
