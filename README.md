@@ -344,6 +344,7 @@ netmask zzz.zzz.zzz.zzz = Network mask of the switch
 port x name xxx         = Name xxx the port number x
 port z 1g               = Set 1g speed for port z
 igmp on/off             = Turn IGMP on or off
+session xxxx            = Web session timeout in seconds (default 200)
 ```
 [To be continue]
 
@@ -359,4 +360,5 @@ The following documents give further documentation on specific features of the R
 - [SFP+ ports](doc/sfp.md) 
 - [Trunking aka. port aggregation](doc/trunking.md)
 - [VLAN](doc/vlan.md)
+- [Storm control](doc/storm_control.md)
 - [Modifications and Flash replacement](doc/mods.md)

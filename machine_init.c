@@ -15,7 +15,11 @@
 
 #if defined(MACHINE_KP_9000_6XH_X2) || \
 	defined(MACHINE_KP_9000_6XH_X2_V2_1) || \
-	defined(MACHINE_KP_9000_6XHML_X2_V2_1)
+	defined(MACHINE_KP_9000_6XHML_X2_V2_1) || \
+	defined(MACHINE_HI_K0402WS) || \
+	defined(MACHINE_PCB_K0402WS_V2) || \
+	defined(MACHINE_PCB_K0402WS_V3) || \
+	defined(MACHINE_FNS1200P)
 void machine_custom_init(void) __banked
 {
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
@@ -42,18 +46,6 @@ void machine_custom_init(void) __banked
 	}
 }
 
-#elif defined(MACHINE_PCB_K0402WS_V3) || defined(MACHINE_HI_K0402WS)
-void machine_custom_init(void) __banked
-{
-	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-}
-
-#elif defined(MACHINE_PCB_K0402WS_V2) || defined(MACHINE_FNS1200P)
-void machine_custom_init(void) __banked
-{
-    reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-}
-
 #elif defined MACHINE_PCB_SWTG024AS_A_2_0_1
 void machine_custom_init(void) __banked
 {
@@ -63,27 +55,8 @@ void machine_custom_init(void) __banked
     reg_bit_clear(RTL837X_REG_LED_MODE, 7);
 }
 
-#elif defined MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
-void machine_custom_init(void) __banked
-{
-    uint16_t pval;
-
-    reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
-    reg_bit_set(RTL837X_REG_LED_MODE, 17);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 9);
-    reg_bit_clear(RTL837X_REG_LED_MODE, 7);
-
-    // OEM firmware sets these companion SDS0 polarity bits for the RTL8221B.
-    sds_read(0, 0, 0);
-    pval = SFR_DATA_U16;
-    sds_write_v(0, 0, 0, pval | 0x100);
-
-    sds_read(0, 6, 2);
-    pval = SFR_DATA_U16;
-    sds_write_v(0, 6, 2, pval | 0x4000);
-}
-
-#elif defined MACHINE_SWTG024AS_V2_0
+#elif defined(MACHINE_SWTG024AS_A_2_0_1_5C_1SFP) || \
+      defined(MACHINE_SWTG024AS_V2_0)
 void machine_custom_init(void) __banked
 {
     uint16_t pval;

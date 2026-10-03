@@ -19,6 +19,14 @@ ifeq ($(MACHINE),)
 else
 	CC_FLAGS += -DMACHINE_$(MACHINE)
 endif
+# Health instrumentation and the "health" console command: HEALTH=1 gmake ...
+ifneq ($(HEALTH),)
+	CC_FLAGS += -DHEALTH
+endif
+
+ifeq ($(CI),1)
+	CC_FLAGS += --Werror
+endif
 
 BUILDDIR = output/$(MACHINE)
 VERSION_HEADER := version.h
@@ -74,7 +82,8 @@ SRCS += \
 	rtl837x_phy.c \
 	rtl837x_pins.c\
 	rtl837x_port.c \
-	rtl837x_stp.c
+	rtl837x_stp.c \
+	rtl837x_storm.c
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c
@@ -104,11 +113,14 @@ html_min: $(HTML)
 html_data.c html_data.h &: $(HTML) | tools html_min
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
-$(VERSION_HEADER):
+$(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
 		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
 		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
-		"#endif" > $(VERSION_HEADER)
+		"#endif" > $(VERSION_HEADER).tmp
+	@cmp -s $(VERSION_HEADER).tmp $(VERSION_HEADER) \
+		&& rm -f $(VERSION_HEADER).tmp \
+		|| mv $(VERSION_HEADER).tmp $(VERSION_HEADER)
 
 httpd: html_data.h
 
@@ -126,15 +138,25 @@ distclean: $(SUBDIRSCLEAN)
 $(SUBDIRSCLEAN):
 	$(MAKE) -C $(@:clean=) clean
 
-$(BUILDDIR)/%.rel: %.c | create_build_dir html_data.h
+# Objects depend on the flags they were built with, through a stamp file that
+# is rewritten only when CC_FLAGS actually changes.
+CCFLAGS_STAMP := $(BUILDDIR)/.ccflags
+
+.PHONY: FORCE
+FORCE:
+
+$(CCFLAGS_STAMP): FORCE | create_build_dir
+	@echo '$(CC_FLAGS)' | cmp -s - $@ 2>/dev/null || echo '$(CC_FLAGS)' > $@
+
+$(BUILDDIR)/%.rel: %.c $(CCFLAGS_STAMP) | create_build_dir html_data.h
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
-$(BUILDDIR)/%.rel: %.asm | create_build_dir
+$(BUILDDIR)/%.rel: %.asm $(CCFLAGS_STAMP) | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
 $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel
-	$(CC) $(CC_FLAGS) -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-r -o $@ $^
+	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-r -o $@ $^
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
@@ -144,11 +166,11 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/imagebuilder -i $^ $@
 	tools/output/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/output/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -p html_data -b BANK1 $@
+	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
 	tools/output/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
 
-.PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) $(VERSION_HEADER) create_build_dir
+.PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
 .PHONY:
 machine_check:

@@ -3,6 +3,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_storm.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_pins.h"
@@ -28,9 +29,10 @@ extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 extern __xdata uint16_t management_vlan;
+extern __xdata uint16_t session_timeout;
 extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
-extern __code uint8_t * __code hex;
+extern __code const uint8_t * __code const hex;
 extern __xdata uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
 
 extern __xdata uint8_t sfr_data[4];
@@ -47,8 +49,8 @@ extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
 
-__code uint8_t * __code HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
-__code uint8_t * __code HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
+__code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+__code const uint8_t * __code const HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
 // Convert uint8_t to ascii HEX char push on html-buffer.
 void charhex_to_html(char c)
@@ -114,12 +116,14 @@ void itoa_html(uint8_t v)
 	char_to_html('0' + (v % 10));
 }
 
-void itoa16_html(uint16_t v) /* sufficient for VLAN IDs (max 4094) */
+void itoa16_html(uint16_t v) /* up to five digits (65535) */
 {
 	uint8_t print_zeros = 0;
 	uint8_t d;
-	d = v / 1000;
+	d = v / 10000;
 	if (d) { char_to_html('0' + d); print_zeros = 1; }
+	d = (v / 1000) % 10;
+	if (d || print_zeros) { char_to_html('0' + d); print_zeros = 1; }
 	d = (v / 100) % 10;
 	if (d || print_zeros) { char_to_html('0' + d); print_zeros = 1; }
 	d = (v / 10) % 10;
@@ -127,9 +131,26 @@ void itoa16_html(uint16_t v) /* sufficient for VLAN IDs (max 4094) */
 	char_to_html('0' + (v % 10));
 }
 
-void string_to_html(__code char *s)
+void string_to_html(__code const char *s)
 {
 	while (*s) char_to_html(*s++);
+}
+
+static void temp_to_html(void)
+{
+	int16_t v;
+
+	reg_read(RTL837X_TM_RESULT);
+	v = SFR_DATA_U16;
+	if (v < 0) {
+		char_to_html('-');
+		v = -v;
+	}
+	itoa_html(v >> 7);
+	char_to_html('.');
+	itoa_html(((v & 0x7f) * 10) >> 7);
+	char_to_html(' ');
+	char_to_html('C');
 }
 
 uint16_t stat_content(void)
@@ -258,7 +279,9 @@ void send_basic_info(void)
 	itoa_html(syslog_state.server_ip[2]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[3]); char_to_html(':');
 	itoa16_html(syslog_state.server_port);
-	slen += strtox(outbuf + slen, "\",\"mac_address\":\"");
+	slen += strtox(outbuf + slen, "\",\"session_timeout\":");
+	itoa16_html(session_timeout);
+	slen += strtox(outbuf + slen, ",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[2]); char_to_html(':');
@@ -277,6 +300,8 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, BUILD_DATE);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
+	slen += strtox(outbuf + slen, "\",\"chip_temp\":\"");
+	temp_to_html();
 	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
 
@@ -804,6 +829,40 @@ void send_bandwidth(void)
 }
 
 
+void send_storm(void)
+{
+	__xdata uint8_t i, t, idx;
+
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	char_to_html('[');
+	for (i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"en\":\"");
+		for (t = 0; t < STORM_TYPES; t++)
+			char_to_html(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? '1' : '0');
+		slen += strtox(outbuf + slen, "\",\"pps\":\"");
+		for (t = 0; t < STORM_TYPES; t++) {
+			idx = STORM_METER(i, t);
+			char_to_html(reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f) ? '1' : '0');
+		}
+		slen += strtox(outbuf + slen, "\",\"rate\":\"");
+		for (t = 0; t < STORM_TYPES; t++) {
+			reg_read_m(RTL837X_METER_RATE + (STORM_METER(i, t) << 2));
+			byte_to_html(sfr_data[1]);
+			byte_to_html(sfr_data[2]);
+			byte_to_html(sfr_data[3]);
+		}
+		char_to_html('"');
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+}
+
+
 void send_mtu(void)
 {
 	dbg_string("send_mtu called\n");
@@ -1011,7 +1070,7 @@ void send_cmd_log(void)
 	__xdata uint8_t found_begin = 0;
 	dbg_string("History ptr: ");
 	dbg_short(cmd_history_ptr); dbg_char('\n');
-	while (p != cmd_history_ptr) {
+	while (p != cmd_history_ptr && slen < TCP_OUTBUF_SIZE) {
 		if (!cmd_history[p] || cmd_history[p] == '\n')
 			found_begin = 1;
 		if (found_begin && cmd_history[p])

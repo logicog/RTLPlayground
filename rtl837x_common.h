@@ -7,6 +7,14 @@
 
 #define SYS_TICK_HZ 200
 
+/* Timers of the main loop count system ticks, not loop passes: a pass is as
+ * long as the packets it handles, and since #483 the loop no longer sleeps
+ * while packets wait, so passes can outrun the tick as well as lag it. `last`
+ * is the low byte of ticks when the timer last ran; the byte arithmetic wraps
+ * every 256 ticks, so a pass longer than 1.28 s loses time rather than
+ * running the timer 64 times to catch up. */
+#define TICKS_DUE(last, period)	((uint8_t)((uint8_t)ticks - (last)) >= (period))
+
 #define CPU_PORT        9
 #define NUL			'\0'
 
@@ -98,7 +106,7 @@ struct vlan_tag {
 #define FIRMWARE_UPLOAD_START 0x80000
 
 // Constants for the circular command buffer, the size must be 2^n
-#define CMD_HISTORY_SIZE 0x400
+#define CMD_HISTORY_SIZE 0x800
 #define CMD_HISTORY_MASK (CMD_HISTORY_SIZE - 1)
 
 enum sfp_speeds {
@@ -183,13 +191,13 @@ uint16_t strlen(__code const char *s);
 uint16_t strcpy(__xdata uint8_t *dst, const char *s);
 char strcmp(__xdata const uint8_t *a, __code const uint8_t *b);
 #endif
-void memcpyc(__xdata uint8_t *dst, __code uint8_t *src, uint16_t len);
+void memcpyc(__xdata uint8_t *dst, __code const uint8_t *src, uint16_t len);
 uint16_t strlen_x(__xdata const char *s);
 uint16_t strtox(__xdata uint8_t *dst, __code const char *s);
 bool strstart(__xdata const uint8_t *a, __code const uint8_t *b);
 bool strstart_x(__xdata const uint8_t *a, __xdata const uint8_t *b);
 void tcpip_output(void);
-uint8_t read_flash(uint8_t bank, __code uint8_t *addr);
+uint8_t read_flash(uint8_t bank, __code const uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(__xdata uint32_t * tmr);
 bool gpio_pin_test(uint8_t pin);

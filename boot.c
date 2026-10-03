@@ -21,8 +21,9 @@ extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
+__xdata uint32_t rtl8224_release_tick;
 extern __xdata uint8_t tx_seq;
-extern __code uint8_t * __code hex;
+extern __code const uint8_t * __code const hex;
 
 
 
@@ -240,10 +241,10 @@ void rtl8224_enable(void) __banked
 	reg_bit_clear(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
 	// Configure Pin as output
 	reg_bit_set(RTL837X_REG_GPIO_32_63_DIRECTION, 4);
-	delay(100);
+	delay(4);
 	// Set pin 4 high
 	reg_bit_set(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
-	delay(500);
+	rtl8224_release_tick = ticks;
 }
 
 
@@ -397,10 +398,12 @@ void setup_i2c(void) __banked
 	// HW Control register, enable I2C depending on PIN configuration
 	reg_read_m(RTL837X_PIN_MUX_1);
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
-		const uint8_t scl_bus = i2c_bus_from_scl_pin(machine.sfp_port[sfp].i2c.scl);
-		const uint8_t sda_bus = i2c_bus_from_sda_pin(machine.sfp_port[sfp].i2c.sda);
+		uint8_t i2c = machine.sfp_port[sfp].i2c;
+		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & RTL837X_REG_I2C_SCL_MASK;
+		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & RTL837X_REG_I2C_SDA_MASK;
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
-		switch (scl_bus) {
+		// `& RTL837X_REG_I2C_SCL_MASK` is needed to silens a compiler warning 110.
+		switch (scl_bus & RTL837X_REG_I2C_SCL_MASK) {
 			case 3:
 				// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
 				sfr_mask_data(0, 0x60, 0x40);
@@ -419,8 +422,6 @@ void setup_i2c(void) __banked
 				sfr_mask_data(0, 0x80, 0x80);
 				sfr_mask_data(1, 0x01, 0x00);
 				break;
-			default:
-				print_string("Invalid SCL bus number: "); print_byte(scl_bus); write_char('\n');
 		}
 
 		switch (sda_bus) {
@@ -444,8 +445,6 @@ void setup_i2c(void) __banked
 				// Bit 9-10 0b01 -> SDA
 				sfr_mask_data(1, 0x06, 0x02);
 				break;
-			default:
-				print_string("Invalid SDA bus number: "); print_byte(sda_bus); write_char('\n');
 		}
 	}
 	reg_write_m(RTL837X_PIN_MUX_1);	

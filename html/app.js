@@ -15,7 +15,7 @@ c_full:"full",c_half:"half",c_devices:"devices",c_yes:"yes",c_no:"no",
 d_ports:"Ports",d_ports_h:"click a port for details",d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
-i_built:"Built",i_hw:"Hardware",i_flash:"Flash",i_syslog:"Syslog",
+i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"State",p_disabled:"disabled",p_up:"up",p_txgb:"TX good / bad",p_rxgb:"RX good / bad",
 p_pkts:"pkts",p_module:"Module",p_temp:"Temperature",p_vcc:"Vcc",p_txbias:"TX bias",p_txpower:"TX power",
 p_rxpower:"RX power",p_txfault:"TX fault",p_txdis:"TX disabled",p_rxlos:"RX LOS",p_adv:"Advertising",
@@ -70,8 +70,12 @@ e_idle:"idle",e_na:"n/a",
 bw_title:"Bandwidth limits",bw_h:"Mbit/s, 0.016-10000",bw_in:"Ingress limit",bw_out:"Egress limit",
 bw_exceed:"When exceeded",bw_fc:"Flow control",bw_drop:"Drop",
 bw_in_err:"Ingress limit must be 0.016-10000 Mbit/s",bw_out_err:"Egress limit must be 0.016-10000 Mbit/s",
+sc_title:"Storm control",sc_h:"per port and traffic type, empty = off",sc_bcast:"Broadcast",sc_mcast:"Multicast",
+sc_ucast:"Unknown unicast",sc_umcast:"Unknown multicast",sc_err:"Storm limit must be 1-1048575 pps or 1-10000000 kbit/s",
+sc_note:"Frames of a type above its limit are dropped where they enter the switch.",
 sy_network:"Network",sy_dhcp:"Use DHCP",sy_dhcp_t:"Request address via DHCP",sy_services:"Services",
 sy_igmp:"IGMP snooping",sy_sysip:"server IP",sy_server:"Server",sy_port:"Port",
+sy_sesstmo:"Session timeout (s)",sy_sesstmo_err:"Session timeout must be 1-65535 s",
 sy_services_note:"Service state reflects the startup config; runtime state is not readable.",
 sy_password:"Admin password",sy_newpw:"New password",sy_repeat:"Repeat",sy_pwapply:"Change password",
 sy_pw_note:"Takes effect immediately; save to flash to keep it after reboot.",sy_console:"Console",
@@ -90,6 +94,7 @@ sy_rebooting:"Rebooting, reconnect in about 20 s",sy_bytes:"bytes",
 cw_title:"Write this startup configuration?",cw_save_title:"Save running configuration to flash?",
 cw_info:"{n} / 2048 bytes, replayed line by line on every boot",
 cw_toolarge:"Too large: the config sector accepts at most 2048 bytes. Remove lines first.",
+cw_longline:"Line {n} is {m} bytes long: the switch can only replay lines up to 126 bytes and would skip it on boot, so the write is refused. Shorten it first.",
 cw_unknown:"Not in the known config grammar (will still be written): ",cw_empty:"(empty)",
 cw_writing:"Writing configuration...",cw_failed:"config write failed: HTTP {n}",
 cw_verify_fail:"Verification failed: flash content differs from what was sent. Command log NOT cleared.",
@@ -126,7 +131,7 @@ c_full:"全二重",c_half:"半二重",c_devices:"デバイス",c_yes:"はい",c_
 d_ports:"ポート",d_ports_h:"ポートをクリックすると詳細を表示",d_system:"システム",d_traffic:"トラフィック",
 d_traffic_h:"パケット/秒、リアルタイム",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 異常",d_rxbad:"RX 異常",
 i_host:"ホスト名",i_ip:"IP アドレス",i_mask:"ネットマスク",i_gw:"ゲートウェイ",i_mac:"MAC",i_fw:"ファームウェア",
-i_built:"ビルド日",i_hw:"ハードウェア",i_flash:"フラッシュ",i_syslog:"Syslog",
+i_built:"ビルド日",i_hw:"ハードウェア",i_temp:"温度",i_flash:"フラッシュ",i_syslog:"Syslog",
 p_state:"状態",p_disabled:"無効",p_up:"アップ",p_txgb:"TX 正常 / 異常",p_rxgb:"RX 正常 / 異常",
 p_pkts:"pkts",p_module:"モジュール",p_temp:"温度",p_vcc:"電圧",p_txbias:"TX バイアス",p_txpower:"TX 電力",
 p_rxpower:"RX 電力",p_txfault:"TX 障害",p_txdis:"TX 無効",p_rxlos:"RX 信号ロス",p_adv:"アドバタイズ",
@@ -183,6 +188,7 @@ bw_exceed:"超過時の動作",bw_fc:"フロー制御",bw_drop:"破棄",
 bw_in_err:"入力制限は 0.016〜10000 Mbit/s の範囲で指定してください",bw_out_err:"出力制限は 0.016〜10000 Mbit/s の範囲で指定してください",
 sy_network:"ネットワーク",sy_dhcp:"DHCP を使用",sy_dhcp_t:"DHCP でアドレスを取得",sy_services:"サービス",
 sy_igmp:"IGMP スヌーピング",sy_sysip:"サーバー IP",sy_server:"サーバー",sy_port:"ポート",
+sy_sesstmo:"セッションタイムアウト (秒)",sy_sesstmo_err:"セッションタイムアウトは 1〜65535 秒で指定してください",
 sy_services_note:"サービスの状態は起動設定を反映しています。実行時の状態は読み取れません。",
 sy_password:"管理者パスワード",sy_newpw:"新しいパスワード",sy_repeat:"再入力",sy_pwapply:"パスワードを変更",
 sy_pw_note:"即時に反映されます。再起動後も保持するにはフラッシュに保存してください。",sy_console:"コンソール",
@@ -201,6 +207,7 @@ sy_rebooting:"再起動中です。約 20 秒後に再接続してください",
 cw_title:"この起動設定を書き込みますか?",cw_save_title:"実行中の設定をフラッシュに保存しますか?",
 cw_info:"{n} / 2048 バイト、起動のたびに 1 行ずつ実行されます",
 cw_toolarge:"サイズ超過: 設定セクタは最大 2048 バイトです。先に行を削除してください。",
+cw_longline:"{n} 行目は {m} バイトです: スイッチが起動時に実行できる行は 126 バイトまでで、この行は読み飛ばされるため、書き込みを拒否します。先に短くしてください。",
 cw_unknown:"既知の設定文法に含まれない行 (そのまま書き込まれます): ",cw_empty:"(空)",
 cw_writing:"設定を書き込み中...",cw_failed:"設定の書き込みに失敗しました: HTTP {n}",
 cw_verify_fail:"検証失敗: フラッシュの内容が送信内容と異なります。コマンドログは消去されていません。",
@@ -237,7 +244,7 @@ c_full:"全双工",c_half:"半双工",c_devices:"台设备",c_yes:"是",c_no:"�
 d_ports:"端口",d_ports_h:"点击端口查看详情",d_system:"系统",d_traffic:"流量",
 d_traffic_h:"包/秒，实时",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 错误",d_rxbad:"RX 错误",
 i_host:"主机名",i_ip:"IP 地址",i_mask:"子网掩码",i_gw:"网关",i_mac:"MAC",i_fw:"固件",
-i_built:"构建日期",i_hw:"硬件",i_flash:"Flash",i_syslog:"Syslog",
+i_built:"构建日期",i_hw:"硬件",i_temp:"温度",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"状态",p_disabled:"已禁用",p_up:"已连接",p_txgb:"TX 正常 / 错误",p_rxgb:"RX 正常 / 错误",
 p_pkts:"个包",p_module:"模块",p_temp:"温度",p_vcc:"供电电压",p_txbias:"TX 偏置电流",p_txpower:"TX 光功率",
 p_rxpower:"RX 光功率",p_txfault:"TX 故障",p_txdis:"TX 禁用",p_rxlos:"RX 信号丢失",p_adv:"通告能力",
@@ -294,6 +301,7 @@ bw_exceed:"超限动作",bw_fc:"流量控制",bw_drop:"丢弃",
 bw_in_err:"入方向限速范围为 0.016-10000 Mbit/s",bw_out_err:"出方向限速范围为 0.016-10000 Mbit/s",
 sy_network:"网络",sy_dhcp:"使用 DHCP",sy_dhcp_t:"通过 DHCP 获取地址",sy_services:"服务",
 sy_igmp:"IGMP 侦听",sy_sysip:"服务器 IP",sy_server:"服务器",sy_port:"端口",
+sy_sesstmo:"会话超时（秒）",sy_sesstmo_err:"会话超时必须为 1-65535 秒",
 sy_services_note:"服务状态反映启动配置；运行时状态无法读取。",
 sy_password:"管理员密码",sy_newpw:"新密码",sy_repeat:"重复输入",sy_pwapply:"修改密码",
 sy_pw_note:"立即生效；如需重启后保留请保存到 Flash。",sy_console:"控制台",
@@ -312,6 +320,7 @@ sy_rebooting:"正在重启，约 20 秒后重新连接",sy_bytes:"字节",
 cw_title:"写入此启动配置?",cw_save_title:"将运行配置保存到 Flash?",
 cw_info:"{n} / 2048 字节，每次启动时逐行执行",
 cw_toolarge:"过大: 配置扇区最多容纳 2048 字节。请先删除部分行。",
+cw_longline:"第 {n} 行有 {m} 字节: 交换机启动时只能执行不超过 126 字节的行，该行会被跳过，因此拒绝写入。请先缩短该行。",
 cw_unknown:"不属于已知配置语法的行 (仍会写入): ",cw_empty:"(空)",
 cw_writing:"正在写入配置...",cw_failed:"配置写入失败: HTTP {n}",
 cw_verify_fail:"校验失败: Flash 内容与发送内容不一致。命令日志未清除。",
@@ -332,6 +341,230 @@ fw_applied:"升级已应用",fw_done_t:"固件已升级",
 fw_done:"交换机已校验镜像并以新镜像重启。会话已重置，需要重新登录。",
 fw_login:"前往登录",fw_rebooting:"交换机正在重启...",
 fw_timeout:"150 秒后交换机仍未恢复: 请检查电源 / 串口控制台"
+},
+es:{
+nav_dash:"Panel",nav_ports:"Puertos",nav_stp:"Árbol de expansión",nav_stats:"Estadísticas",
+nav_vlan:"VLAN",nav_l2:"Tabla MAC",nav_mirror:"Duplicación",nav_lag:"LAG",nav_eee:"EEE",
+nav_bw:"Ancho de banda",nav_system:"Sistema",nav_fw:"Firmware",
+hdr_dirty:"cambios sin guardar",hdr_dirty_t:"La configuración en ejecución difiere de la guardada",
+hdr_save:"Guardar en flash",hdr_save_t:"Persistir la configuración en ejecución a flash",
+th_auto:"Sistema",th_auto_sel:"Sistema (Selenized)",sy_display:"Pantalla",sy_theme:"Tema",sy_display_note:"Se almacena solo en este navegador.",th_light:"Claro",th_dark:"Oscuro",
+th_sel_light:"Selenized claro",th_sel_dark:"Selenized oscuro",
+c_port:"Puerto",c_name:"Nombre",c_link:"Enlace",c_apply:"Aplicar",c_cancel:"Cancelar",c_confirm:"Confirmar",
+c_close:"Cerrar",c_refresh:"Actualizar",c_off:"apagado",c_offc:"Apagado",c_down:"caído",c_on:"Encendido",c_auto:"Auto",c_delete:"Eliminar",
+c_type:"Tipo",c_state:"Estado",c_enabled:"Habilitado",c_load:"Cargar",c_disable:"Deshabilitar",c_sfp:"SFP",
+c_full:"dúplex completo",c_half:"semidúplex",c_devices:"dispositivos",c_yes:"sí",c_no:"no",
+d_ports:"Puertos",d_ports_h:"pulsa un puerto para ver detalles",d_system:"Sistema",d_traffic:"Tráfico",
+d_traffic_h:"paquetes/s, en vivo",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX erróneos",d_rxbad:"RX erróneos",
+i_host:"Nombre de host",i_ip:"Dirección IP",i_mask:"Máscara de red",i_gw:"Puerta de enlace",i_mac:"MAC",i_fw:"Firmware",
+i_built:"Compilado",i_hw:"Hardware",i_flash:"Flash",i_syslog:"Syslog",
+p_state:"Estado",p_disabled:"deshabilitado",p_up:"activo",p_txgb:"TX correctos / erróneos",p_rxgb:"RX correctos / erróneos",
+p_pkts:"paquetes",p_module:"Módulo",p_temp:"Temperatura",p_vcc:"Vcc",p_txbias:"Polarización TX",p_txpower:"Potencia TX",
+p_rxpower:"Potencia RX",p_txfault:"Fallo TX",p_txdis:"TX deshabilitado",p_rxlos:"Pérdida RX (LOS)",p_adv:"Anunciado",
+pt_title:"Configuración de puerto",pt_conn:"Conectado",pt_speed:"Velocidad",pt_mtu:"MTU",
+pt_sfp_note:"La velocidad del SFP se ajusta por ranura y no se guarda en la configuración de inicio.",
+pt_name_err:"Nombre de puerto: 1-15 caracteres, sin espacios",pt_mtu_err:"El MTU debe estar entre 64 y 16383",
+stp_title:"Árbol de expansión",stp_h:"RSTP, 802.1w",stp_version:"Versión",stp_v_stp:"STP compatible",
+stp_prio:"Prioridad del puente",stp_hello:"Hello [s]",stp_maxage:"Edad máxima [s]",stp_fwd:"Retardo de reenvío [s]",
+stp_txhold:"Retención TX",stp_bridge_apply:"Aplicar ajustes del puente",
+stp_off_msg:"El árbol de expansión está deshabilitado: todos los puertos reenvían.",stp_bridge:"Puente",stp_root:"Raíz",
+stp_root_self:"este puente es la raíz",stp_via:"vía puerto",stp_cost:"coste de ruta",stp_tc:"cambios de topología",
+stp_prio_note:"La prioridad más baja gana la elección de raíz (8 por defecto = 32768). Los ajustes se aplican inmediatamente; usa Guardar en flash para conservarlos.",
+stp_portcfg:"Configuración de puertos",stp_edge:"Borde",stp_pcost:"Coste de ruta",stp_pprio:"Prioridad",
+stp_guard:"Protección",stp_filter:"Filtro BPDU",stp_p2p:"Punto a punto",
+stp_port_note:"Los puertos de borde reenvían inmediatamente y no causan cambios de topología; Auto trata un puerto como de borde tras 3 s sin BPDUs, y cualquier BPDU recibido lo revoca. Coste de ruta 0 = automático.",
+stp_status:"Estado de puertos",stp_role:"Rol",stp_db:"Puente designado",stp_dp:"Puerto designado",
+stp_dc:"Coste designado",stp_oedge:"Borde operativo",stp_op2p:"P2P operativo",
+stp_s0:"deshabilitado",stp_s1:"bloqueo",stp_s2:"aprendizaje",stp_s3:"reenvío",
+stp_r1:"Raíz",stp_r2:"Designado",stp_r3:"Alternativo",stp_trip:"protección disparada",
+stp_g_none:"Ninguno",stp_g_bpdu:"BPDU",stp_g_root:"Raíz",
+stp_en_q:"¿Habilitar el árbol de expansión?",
+stp_en_d:"Los puertos empiezan bloqueados y tardan hasta el doble del retardo de reenvío en alcanzar el reenvío; los puertos de borde se recuperan inmediatamente.",
+stp_dis_q:"¿Deshabilitar el árbol de expansión?",stp_dis_d:"Todos los puertos pasan directamente a reenviar; se pierde la protección contra bucles.",
+stp_cost_err:"El coste de ruta debe estar entre 0 y 200000000",
+st_title:"Estadísticas de puertos",st_h:"totales desde el arranque",st_txg:"TX correctos",st_txb:"TX erróneos",st_rxg:"RX correctos",
+st_rxb:"RX erróneos",st_details:"Detalles",st_counters:"Contadores MIB",st_nonzero:"solo no nulos",
+st_autoref:"actualización automática",st_counter:"Contador",st_value:"Valor",st_fail:"error al cargar contadores",
+v_title:"VLANs",v_vid:"VID",v_members:"Miembros",v_tagged:"Etiquetados",v_untagged:"Sin etiquetar",v_pvid_on:"PVID activo",
+v_empty:"No hay VLANs configuradas.",v_mgmt:"VLAN de gestión",v_mgmt_none:"sin etiquetar",v_editor:"Editor de VLANs",
+v_optional:"opcional",v_setmgmt:"Establecer como VLAN de gestión",v_setmgmt_t:"Hacer esta la VLAN de gestión",
+v_member:"Miembro",v_pvid:"PVID",
+v_legend:"U = miembro sin etiquetar, T = miembro etiquetado, - = no miembro. PVID asigna esta VLAN al tráfico entrante sin etiquetar.",
+v_ingress:"Filtrado de entrada",v_ingress_h:"solo escritura: el estado no se puede leer desde el switch",
+v_accept:"Aceptar",v_ing_all:"Todos",v_ing_apply:"Aplicar modos de entrada",v_del_t:"Eliminar VLAN",
+v_del_q:"¿Eliminar VLAN {n}?",v_del_d:"Los puertos conservan su PVID hasta que se reasignen.",
+v_vid_err:"Introduce un ID de VLAN (1-4094)",v_name_err:"El nombre debe empezar por una letra (letras, dígitos, _)",
+v_loaded:"VLAN {n} cargada",v_notfound:"VLAN {n} no encontrada (aún se puede crear una nueva)",
+v_nomember:"Selecciona al menos un puerto miembro (o elimina la VLAN)",
+v_ing_none:"Elige un modo de entrada para al menos un puerto",v_vid_first:"Introduce primero un ID de VLAN",
+v_mgmt_q:"¿Establecer VLAN {n} como VLAN de gestión?",
+v_mgmt_d:"El switch empezará a etiquetar su propio tráfico con esa VLAN. Si el puerto por el que te conectas no la transporta, esta página dejará de ser accesible y el ajuste solo podrá deshacerse por la consola.",
+l2_title:"Tabla de direcciones MAC",l2_filter:"filtrar...",l2_flush:"Vaciar entradas aprendidas",l2_static:"estática",
+l2_learned:"aprendida",l2_loading:"cargando...",l2_failed:"error de carga",l2_entries:"entradas",
+l2_del_t:"Eliminar entrada",l2_flush_q:"¿Vaciar todas las entradas MAC aprendidas?",
+m_title:"Duplicación de puertos",m_active:"activa",m_monitor:"Puerto monitor",m_mirror:"Duplicar",m_both:"Ambos",
+m_note:"Ambos = duplica RX y TX del puerto al puerto monitor.",m_none:"Selecciona al menos un puerto duplicado",
+lag_hash:"Hash:",lag_note:"Un LAG necesita al menos un miembro para guardarse en la configuración de inicio; aplicar un grupo vacío lo borra.",
+lag_clear_q:"¿Borrar LAG {n}?",lag_clear_d:"Todos los puertos miembros vuelven a la operación normal.",
+e_title:"Ethernet de bajo consumo",e_adv:"Anunciado",e_lp:"Par de enlace",e_active:"Activo",e_enable:"Habilitar",
+e_note:"Banderas anunciadas y del socio de enlace por velocidad: 100M, 1G, 2.5G. Los puertos SFP no soportan EEE.",
+e_idle:"inactivo",e_na:"n/d",
+bw_title:"Límites de ancho de banda",bw_h:"Mbit/s, 0.016-10000",bw_in:"Límite de entrada",bw_out:"Límite de salida",
+bw_exceed:"Al excederse",bw_fc:"Control de flujo",bw_drop:"Descartar",
+bw_in_err:"El límite de entrada debe estar entre 0.016 y 10000 Mbit/s",bw_out_err:"El límite de salida debe estar entre 0.016 y 10000 Mbit/s",
+sy_network:"Red",sy_dhcp:"Usar DHCP",sy_dhcp_t:"Solicitar dirección mediante DHCP",sy_services:"Servicios",
+sy_igmp:"IGMP snooping",sy_sysip:"IP del servidor",sy_server:"Servidor",sy_port:"Puerto",
+sy_sesstmo:"Tiempo de sesión (s)",sy_sesstmo_err:"El tiempo de sesión debe estar entre 1 y 65535 s",
+sy_services_note:"El estado del servicio refleja la configuración de inicio; el estado en ejecución no es legible.",
+sy_password:"Contraseña de administrador",sy_newpw:"Nueva contraseña",sy_repeat:"Repetir",sy_pwapply:"Cambiar contraseña",
+sy_pw_note:"Toma efecto inmediatamente; guarda en flash para conservarla tras el reinicio.",sy_console:"Consola",
+sy_cmd:"Comando de CLI...",sy_send:"Enviar",sy_startup:"Configuración de inicio",sy_replayed:"reaplicada en cada arranque",
+sy_reload:"Recargar desde flash",sy_write:"Escribir en flash",sy_unknown_note:"Las líneas desconocidas se resaltan antes de escribir.",
+sy_maint:"Mantenimiento",sy_reboot:"Reiniciar switch",sy_lang:"Idioma",
+sy_ip_err:"IP / máscara / puerta de enlace no válidos",sy_host_err:"Nombre de host: 1-23 caracteres imprimibles, sin espacios ni comillas",
+sy_net_q:"¿Aplicar ajustes de red?",sy_net_d:"La IP de gestión cambia a {ip}: esta página deberá reabrirse allí.",
+sy_ip_changed:"IP cambiada, reconecta en http://{ip}/",sy_dhcp_q:"¿Cambiar a DHCP?",
+sy_dhcp_d:"El switch solicita una dirección mediante DHCP. Deberás encontrar su nueva IP para reconectar.",
+sy_sysip_err:"IP del servidor syslog no válida",sy_sysport_err:"El puerto de syslog debe estar entre 1 y 65535",
+sy_pw_len:"Contraseña: 1-20 caracteres",sy_pw_space:"La contraseña no puede contener espacios",sy_pw_match:"Las contraseñas no coinciden",
+sy_pw_q:"¿Cambiar la contraseña de administrador?",sy_pw_d:"Toma efecto inmediatamente para los nuevos inicios de sesión. Guarda en flash para persistir.",
+sy_reboot_q:"¿Reiniciar el switch?",sy_reboot_d:"Hay cambios SIN GUARDAR y se perderán. Guarda en flash primero si quieres conservarlos.",
+sy_rebooting:"Reiniciando, reconecta en unos 20 s",sy_bytes:"bytes",
+cw_title:"¿Escribir esta configuración de inicio?",cw_save_title:"¿Guardar la configuración en ejecución en flash?",
+cw_info:"{n} / 2048 bytes, reaplicada línea a línea en cada arranque",
+cw_toolarge:"Demasiado grande: el sector de configuración admite como máximo 2048 bytes. Elimina líneas primero.",
+cw_unknown:"No está en la gramática de configuración conocida (aun así se escribirá): ",cw_empty:"(vacío)",
+cw_writing:"Escribiendo configuración...",cw_failed:"error al escribir la configuración: HTTP {n}",
+cw_verify_fail:"Verificación fallida: el contenido de la flash difiere de lo enviado. El registro de comandos NO se ha borrado.",
+cw_saved:"Configuración de inicio guardada y verificada",cw_collect:"Recopilando cambios en ejecución...",
+t_applied:"Aplicado: {c}",t_cmds:"{n} comando(s) aplicado(s)",t_rejected:"comando rechazado: {c}",t_failed:"fallo: {c}",
+fw_title:"Actualización de firmware",
+fw_intro:"Sube una imagen de RTLPlayground (512 KiB .bin). La imagen se almacena provisionalmente en flash y se comprueba con CRC; si es correcta, el switch se reinicia, vuelve a verificar la imagen y la aplica. La configuración de inicio se conserva.",
+fw_upload:"Subir",fw_checking:"{f}: {n} bytes. Comprobando...",fw_size_err:"el tamaño es {n}, se esperaban 524288 (512 KiB)",
+fw_magic_err:"falta la cabecera de banco / magia LJMP: no es una imagen de firmware",fw_crc_err:"comprobación CRC16 fallida: imagen corrupta",
+fw_valid:"imagen de RTLPlayground válida (tamaño, magia y CRC16 correctos)",fw_q:"¿Subir firmware?",
+fw_d:"Si la suma de comprobación es correcta, el switch se reinicia y aplica la imagen durante el arranque (la configuración de inicio se conserva). No lo apagues hasta que vuelva.",
+fw_finishing:"terminando escritura en flash... {s} s",fw_uploading:"subiendo... {p}% / {s} s",
+fw_verified:"suma de comprobación verificada, el switch se está reiniciando...",
+fw_rejected:"el switch rechazó la imagen (suma de comprobación incorrecta), no se aplicó nada",
+fw_lost:"error de subida: conexión perdida durante la transferencia",
+fw_noreboot:"no se detectó reinicio: lo más probable es que la imagen fuera rechazada. Si actualizas desde un firmware antiguo, verifica la versión en la barra lateral tras volver a iniciar sesión.",
+fw_applied:"actualización aplicada",fw_done_t:"Firmware actualizado",
+fw_done:"El switch verificó la imagen y se reinició con ella. La sesión se restableció, así que se te pedirá que vuelvas a iniciar sesión.",
+fw_login:"Ir al inicio de sesión",fw_rebooting:"el switch se está reiniciando...",
+fw_timeout:"el switch no ha vuelto tras 150 s: comprueba la alimentación / consola serie"
+},
+fr:{
+nav_dash:"Tableau de bord",nav_ports:"Ports",nav_stp:"Arborescence",nav_stats:"Statistiques",
+nav_vlan:"VLANs",nav_l2:"Table MAC",nav_mirror:"Mise en mirroir",nav_lag:"LAG",nav_eee:"EEE",
+nav_bw:"Bande passante",nav_system:"Système",nav_fw:"Micro logiciel",
+hdr_dirty:"Changements non sauvegardés",hdr_dirty_t:"La configuration utilisée diffère de celle au démarrage",
+hdr_save:"Sauvegarder en flash",hdr_save_t:"Maintenir la configuration actuelle en flash",
+th_auto:"Système",th_auto_sel:"Système (sélénisé)",sy_display:"Affichage",sy_theme:"Thème",sy_display_note:"Enregistré seulement dans ce navigateur.",th_light:"Clair",th_dark:"Sombre",
+th_sel_light:"Clair (sélénisé)",th_sel_dark:"Sombre (sélénisé)",
+c_port:"Port",c_name:"Nom",c_link:"Lien",c_apply:"Appliquer",c_cancel:"Annuler",c_confirm:"Confirmer",
+c_close:"Fermer",c_refresh:"Raffraichir",c_off:"arrêt",c_offc:"Arrêt",c_down:"arrêt",c_on:"Marche",c_auto:"Auto",c_delete:"Supprimer",
+c_type:"Type",c_state:"Etat",c_enabled:"Activé",c_load:"Charger",c_disable:"Désactivé",c_sfp:"SFP",
+c_full:"full",c_half:"half",c_devices:"Equipements",c_yes:"oui",c_no:"non",
+d_ports:"Ports",d_ports_h:"Cliquer pour le détail du port",d_system:"Système",d_traffic:"Trafic",
+d_traffic_h:"paquets/s, en direct",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX mauvais",d_rxbad:"RX mauvais",
+i_host:"Nom d'hote",i_ip:"Adresse IP",i_mask:"Masque réseau",i_gw:"Passerelle",i_mac:"MAC",i_fw:"Micro logiciel",
+i_built:"Compilé",i_hw:"Matériel",i_flash:"Flash",i_syslog:"Log système",
+p_state:"Etat",p_disabled:"désactivé",p_up:"up",p_txgb:"TX bon / mauvais",p_rxgb:"RX bon / mauvais",
+p_pkts:"paquets",p_module:"Module",p_temp:"Température",p_vcc:"Vcc",p_txbias:"TX biais",p_txpower:"TX puissance",
+p_rxpower:"RX puissance",p_txfault:"TX erreur",p_txdis:"TX désactivé",p_rxlos:"RX pertes de signaux",p_adv:"Annonces",
+pt_title:"Configuration du port",pt_conn:"Connecté",pt_speed:"Vitesse",pt_mtu:"MTU",
+pt_sfp_note:"La vitesse SFP est paramétrée par slot et n'est pas enregistrée dans la configuration de démarrage.",
+pt_name_err:"Nom du port: 1 à 15 caractères, sans espaces",pt_mtu_err:"MTU doit être comrpis entre 64 et 16383",
+stp_title:"Arborescence",stp_h:"RSTP, 802.1w",stp_version:"Version",stp_v_stp:"Compatibilité STP",
+stp_prio:"Priorité du Pont",stp_hello:"Bonjour [s]",stp_maxage:"Age max [s]",stp_fwd:"Délai de retransmission [s]",
+stp_txhold:"TX en attente",stp_bridge_apply:"Appliquer les paramètres du pont",
+stp_off_msg:"Arborescence désactivée: Tous les ports sont retransmis.",stp_bridge:"Pont",stp_root:"Racine",
+stp_root_self:"Ce pont est la racine",stp_via:"via le port",stp_cost:"coût du chemin",stp_tc:"changements de topologie",
+stp_prio_note:"La priorité la plus basse devient la racine (défaut 8 à 32768). Les paramètres s'appliquent immediatement; utiliser Sauvegarder en flash pour les conserver.",
+stp_portcfg:"Configuration du port",stp_edge:"Bord",stp_pcost:"Coût du chemin",stp_pprio:"Priorité",
+stp_guard:"Garde",stp_filter:"Filtre BPDU",stp_p2p:"Point-à-point",
+stp_port_note:"Les ports en bordure sont transmis immediatemment et ne change pas la topologie; Auto traite le port comme une bordure après 3s sans BPDUs, et chaque BPDU reçu le révoque. Le coût du chemin  0 = automatique.",
+stp_status:"Statut du port",stp_role:"Rôle",stp_db:"Pont désigné",stp_dp:"Port désigné",
+stp_dc:"Coût désigné",stp_oedge:"Oper. bord",stp_op2p:"Oper. P2P",
+stp_s0:"désactivé",stp_s1:"bloquage",stp_s2:"apprentissage",stp_s3:"retransmission",
+stp_r1:"Racine",stp_r2:"Designé",stp_r3:"Alternatif",stp_trip:"protection déclenchée",
+stp_g_none:"Aucun",stp_g_bpdu:"BPDU",stp_g_root:"Racine",
+stp_en_q:"Activer l'arbrescence?",
+stp_en_d:"Les ports sont d'abord bloqués et cela prend deux fois le délai de retransmission pour atteindre l'état de retransmission; les ports en bordures recouvrent immédiatement leur état.",
+stp_dis_q:"Désactiver l'arborescence ?",stp_dis_d:"Tous les ports vont être retransmis; la protection de boucles est perdue.",
+stp_cost_err:"Le coût du chemin doit être compris entre 0 et 200000000",
+st_title:"Statiqtique du port",st_h:"cumul depuis le démarrage",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
+st_rxb:"RX mauvais",st_details:"Détails",st_counters:"Compteur MIB",st_nonzero:"non-zero seulement",
+st_autoref:"rafraichissement automatique",st_counter:"Compteur",st_value:"Valeur",st_fail:"Erreur au chargement des compteurs",
+v_title:"VLANs",v_vid:"VID",v_members:"Membres",v_tagged:"Tagué",v_untagged:"Détagué",v_pvid_on:"PVID on",
+v_empty:"Aucun VLANs configuré.",v_mgmt:"VLAN de management",v_mgmt_none:"détagué",v_editor:"Editeur de VLAN",
+v_optional:"optionel",v_setmgmt:"Mette en VLAN de management",v_setmgmt_t:"Mettre celui-ci en VLAN de management",
+v_member:"Membre",v_pvid:"PVID",
+v_legend:"U = Membre détagué, T = membre tagué, - = non membre. PVID assigne ce VLAN au trafic entrant non tagué.",
+v_ingress:"Filtrage entrant",v_ingress_h:"ecriture seule: cet état n'est pas lisible depuis le communtateur réseau",
+v_accept:"Accepté",v_ing_all:"Tous",v_ing_apply:"Appliquer les modes entrants",v_del_t:"Supprimer le VLAN",
+v_del_q:"Supprimer le VLAN {n}?",v_del_d:"Les ports conservent leur PVID tant qu'ils ne sont pas réassignés.",
+v_vid_err:"Entrez un identifiant VLAN (1-4094)",v_name_err:"Le nom doit commencer par une lettre (lettre, chiffres, _)",
+v_loaded:"VLAN chargés {n}",v_notfound:"VLAN {n} non trouvé (un nouveau peut toutefois être créé)",
+v_nomember:"Selectionnez au moins un port membre (ou supprimez le VLAN)",
+v_ing_none:"Sélectionnez le mode entrant pour au moins un port",v_vid_first:"Entrez un identifiant VLAN d'abord",
+v_mgmt_q:"Mettre ce VLAN {n} en tant que VLAN de management?",
+v_mgmt_d:"Ce commutateur commencera par taguer son propre trafic avec ce VLAN. Si le port avec lequel vous êtes connecté ne le permet pas, cette page deviendra inaccessible et les paramètres ne pourront plus être changés que via la console.",
+l2_title:"Table des adresses MAC",l2_filter:"filtre...",l2_flush:"Effacer les entrées apprises",l2_static:"static",
+l2_learned:"appris",l2_loading:"chargement...",l2_failed:"chargement non réussi",l2_entries:"entrées",
+l2_del_t:"Supprimer l'entrée",l2_flush_q:"Effacer toutes les entrées MAC apprises?",
+m_title:"Dupplication de port",m_active:"actif",m_monitor:"Port de supervision",m_mirror:"Mirroir",m_both:"Les deux",
+m_note:"Les deux = duplique RX et TX du port vers le port de supervision.",m_none:"Selectionnez au moint un port à dupliquer",
+lag_hash:"Hachage:",lag_note:"Un LAG nécessite au moins un membre pour être sauvegardé dans la configuration de démarrage; Utiliser un groupe vide fait office de remise à zero.",
+lag_clear_q:"Effacer l'agrégation {n}?",lag_clear_d:"Tous les ports membres vont redevenir normaux.",
+e_title:"Efficacité Energétique des ports Ethernet",e_adv:"Annoncé",e_lp:"Lien partenaire",e_active:"Actif",e_enable:"Permis",
+e_note:"Drapeaux Annonces et liens partenaires par vitesse : 100M, 1G, 2.5G. Les ports SFP ne peuvent pas bénéficier de l'EEE.",
+e_idle:"en attente",e_na:"n/a",
+bw_title:"Limite de bande passante",bw_h:"Mbit/s, 0.016-10000",bw_in:"Limite entrante",bw_out:"Limite sortante",
+bw_exceed:"Lorsque dépassé",bw_fc:"Contrôle du flux",bw_drop:"Laissés tombés",
+bw_in_err:"LA limite entrante doit être comprise entre 0.016 et 10000 Mbit/s",bw_out_err:"La limite sortante doit être comprise entre 0.016 et 10000 Mbit/s",
+sy_network:"Réseau",sy_dhcp:"Uiliser DHCP",sy_dhcp_t:"Aquérir l'adresse via DHCP",sy_services:"Services",
+sy_igmp:"Surveillance IGMP",sy_sysip:"IP du serveur",sy_server:"Serveur",sy_port:"Port",
+sy_services_note:"L'état de service dépend de la configuration de démarrage; Le temps de fonctionnement n'est pas consultable.",
+sy_password:"Mot de passe administrateur",sy_newpw:"Nouveau mot de passe",sy_repeat:"Saisir à nouveau",sy_pwapply:"Changer le mot de passe",
+sy_pw_note:"Prends effet immédiatement; Sauvegarder en flash afin de conserver la configuration lors du redémarrage.",sy_console:"Console",
+sy_cmd:"Ligne de commande CLI...",sy_send:"Envoyer",sy_startup:"Configuration de démarrage",sy_replayed:"Rejouée à chaque redémarrage",
+sy_reload:"Recharger depuis la mémoire flash",sy_write:"Ecrire en mémoire flash",sy_unknown_note:"Les lignes incorrectes sont mises en évidence avant l'écriture.",
+sy_maint:"Maintenance",sy_reboot:"Redémarre le commutateur",sy_lang:"Langage",
+sy_ip_err:"Erreur d'IP / masque réseau / passerelle",sy_host_err:"Nom d'hôte : 1 à 23 caractères, sans espace ni apostrophes",
+sy_net_q:"Appliquer les paramètres réseau?",sy_net_d:"L'adresse IP de  management va devenir {ip}: merci de réouvrir le page depuis cette adresse.",
+sy_ip_changed:"L'adresse IP a changée, reconnectez-vous à http://{ip}/",sy_dhcp_q:"Passer en DHCP?",
+sy_dhcp_d:"Le commutateur va demander une addresse via le DHCP. Vous devrez rechercher sa prochaine adresse IP pour vous reconnecter.",
+sy_sysip_err:"Adresse IP du serveur Syslog invalide",sy_sysport_err:"Le port Syslog doit être compris entre 1 et 65535",
+sy_pw_len:"Mot de passe : 1 à 20 caractères",sy_pw_space:"Le mot de passe ne doit pas contenir d'espaces",sy_pw_match:"Les mots de passe ne correspondent pas",
+sy_pw_q:"Changer le mot de passe d'administration?",sy_pw_d:"Cela prend effet immédiatement dès la prochaine connection. Enregistrez en Flash pour rendre la modification persistante.",
+sy_reboot_q:"Redémarrer le commutateur ?",sy_reboot_d:"Il y a des paramètres NON SAUVEGARDES qui vont être perdus. Sauvegardez-les au préalable en mémoire flash si vous souhaitez les conserver.",
+sy_rebooting:"Redémarrage, reconnectez-vous d'ici 20s",sy_bytes:"bytes",
+cw_title:"Enregistrer cette configuration de démarrage?",cw_save_title:"Enregistrer la configuration active en mémoire flash?",
+cw_info:"{n} / 2048 bytes, qui seront rejouées ligne par ligne à chaque redémarrage",
+cw_toolarge:"Trop grand : La quota du secteur de démarrage ne peut excéder 2048 bytes. Supprimez des lignes.",
+cw_longline:"La ligne {n} est longue de {m} bytes: Le commutateur ne peut exécuter des lignes de plus de 126 bytes et les omettra donc au démarragee, l'écriture est refusé. Raccourcissez les d'abord.",
+cw_unknown:"Ne respecte pas la grammaire de configuration (sera néanmoins sauvegardé): ",cw_empty:"(vide)",
+cw_writing:"Configuration enregistrée...",cw_failed:"Echec de l'enregistrement de la configuration: HTTP {n}",
+cw_verify_fail:"Verification erronée: La mémoire flash présente des différences par rapport à ce qui a été transmis. Le log de commande ne sera pas éffacé.",
+cw_saved:"Configuration de démarrage sauvegardée et vérifiée",cw_collect:"Récolement des modification des paramètres courants...",
+t_applied:"Appliqué: {c}",t_cmds:"{n} commande(s) appliquée(s)",t_rejected:"commandes rejetées: {c}",t_failed:"échecs: {c}",
+fw_title:"Mise à jour du micro-logiciel",
+fw_intro:"Charge une image RTLPlayground (512 KiB .bin). L'image est envoée en mémoire flash et sa somme de contrôle est vérifiée; en cas de succès le commutateur va redémarrer, re-verifiez l'image et appliquez-là. LA configuration de démarrage est conservée.",
+fw_upload:"Charger",fw_checking:"{f}: {n} bytes. Vérification...",fw_size_err:"la taille est {n} alors que nous attendons 524288 (512 KiB)",
+fw_magic_err:"Entête de banque de donnée manquant / contrôle LJMP: ce n'est pas une image de firmware",fw_crc_err:"Somme de contrôle erronée: image corrompue",
+fw_valid:"Image RTLPlayground valide (taille, LJMP et somme de contrôle OK)",fw_q:"Chargement du firmware?",
+fw_d:"Si la somme de contrôle est correcte, le commutateur va redémarrer tout seul et charger la nouvelle image lors du démarrage (la configuration est préservée). Ne pas éteindre l'appareil avant que les voyants ne s'éteignent.",
+fw_finishing:"fin d'écriture en mémoire flash... {s} s",fw_uploading:"chargement... {p}% / {s} s",
+fw_verified:"somme de contrôle vérifiée, le commutateur redémarre...",
+fw_rejected:"le commutateur rejette l'image en raison d'une somme de contrôle incorrecte, rien n'a été appliqué",
+fw_lost:"erreur lors du chargement: connection perdue à mi-transfert",
+fw_noreboot:"pas de redemarrage détecté: l'image a certainement été refusée. Si vous chargesz un ancien firmware, verifiez la version affichée après l'écran de connection.",
+fw_applied:"mise à jour effectuée",fw_done_t:"Firmware mis à jour",
+fw_done:"Le commutateur a vérifié l'image et vient de redémarrer. La session a été remise à zero, vous allez devoir vour reconnecter.",
+fw_login:"Vers l'écran de connection",fw_rebooting:"Le commutateur redémarre...",
+fw_timeout:"Le commutateur n'est plus joignable depuis 150 s: verifiez l'alimentation ou utilisez la console série"
 }
 };
 var rtlLang=(function(){
@@ -427,6 +660,7 @@ var CONF_CMDS=[
   /^ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^ip\s+dhcp$/,
   /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,/^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,/^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^syslog\s+port\s+\d{1,5}$/,
+  /^session\s+\d{1,5}$/,
   /^passwd\s+\S+$/,/^hostname\s+\S{1,23}$/,
   /^vlan\s+\d{1,4}\s+d$/,/^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}t?)+$/,
@@ -434,7 +668,7 @@ var CONF_CMDS=[
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
-  /^eee(\s+\d{1,2})?\s+(on|off)$/,
+  /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
@@ -446,6 +680,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
+  /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -685,7 +920,7 @@ function portDetail(i){
 function renderInfo(){
   var m=[["i_host","hostname"],["i_ip","ip_address"],["i_mask","ip_netmask"],
     ["i_gw","ip_gateway"],["i_mac","mac_address"],["i_fw","sw_ver"],["i_built","build_date"],
-    ["i_hw","hw_ver"],["i_flash","flash_size"],["i_syslog","syslog_server"]];
+    ["i_hw","hw_ver"],["i_temp","chip_temp"],["i_flash","flash_size"],["i_syslog","syslog_server"]];
   var tb=$("sysinfo");tb.innerHTML="";
   m.forEach(function(r){
     var v=S.info[r[1]];
@@ -1432,7 +1667,7 @@ function eeeLoad(){
       var on=parseInt(p.eee,2)!==0;
       var sw=h("label",{class:"switch"},[
         h("input",{type:"checkbox",onchange:function(){
-          postCmd("eee "+p.portNum+" "+(this.checked?"on":"off"))
+          postCmd("eee "+(this.checked?"on":"off")+" "+p.portNum)
             .then(function(){setTimeout(eeeLoad,300)}).catch(function(){});
         }}),h("i")]);
       sw.firstChild.checked=on;
@@ -1494,7 +1729,61 @@ function bwApply(n){
   }else cmds.push("bw out "+n+" off");
   postCmds(cmds).then(bwLoad).catch(function(){});
 }
-tabHooks.bw={enter:function(){needPorts(function(){bwLoad().catch(function(){})})}};
+var SC_TYPES=["bcast","mcast","ucast","umcast"],scSig="";
+function scLoad(){
+  return getJSON("/storm.json").then(function(s){
+    var tb=$("sctable").tBodies[0];
+    byPort(s);
+    var sig=s.map(function(p){return p.portNum}).join();
+    if(sig!==scSig){
+      scSig=sig;tb.innerHTML="";
+      s.forEach(function(p){
+        var n=p.portNum,tr=tb.insertRow();
+        tr.id="scr"+n;
+        tr.addEventListener("input",function(){tr.dataset.dirty="1"});
+        tr.addEventListener("change",function(){tr.dataset.dirty="1"});
+        tr.insertCell().textContent=n;
+        SC_TYPES.forEach(function(ty){
+          tr.insertCell().appendChild(h("span",{style:"display:flex;gap:4px"},[
+            h("input",{class:"in sm",id:"scv"+ty+n,type:"number",min:"1",step:"1"}),
+            h("select",{class:"in",id:"scu"+ty+n},[
+              h("option",{value:"pps",text:"pps"}),
+              h("option",{value:"kbps",text:"kbit/s"}),
+            ]),
+          ]));
+        });
+        tr.insertCell().appendChild(h("button",{class:"ctl",text:t("c_apply"),onclick:function(){scApply(n)}}));
+      });
+    }
+    s.forEach(function(p){
+      var n=p.portNum;
+      if($("scr"+n).dataset.dirty)return;
+      SC_TYPES.forEach(function(ty,k){
+        var on=p.en.charAt(k)==="1",pps=p.pps.charAt(k)==="1",raw=parseInt(p.rate.substr(k*6,6),16);
+        var inp=$("scv"+ty+n),sel=$("scu"+ty+n);
+        inp.value=on?raw:"";
+        sel.value=on&&!pps?"kbps":"pps";
+        inp.dataset.cur=on?inp.value+" "+sel.value:"off";
+      });
+    });
+  });
+}
+function scApply(n){
+  var cmds=[];
+  for(var k=0;k<SC_TYPES.length;k++){
+    var ty=SC_TYPES[k],inp=$("scv"+ty+n),u=$("scu"+ty+n).value,v=inp.value.trim(),want="off";
+    if(v!==""&&v!=="0"){
+      var x=Number(v);
+      if(!Number.isInteger(x)||x<1||(u==="pps"&&x>1048575)||(u==="kbps"&&x>10000000)){toast(t("sc_err"),"err");return;}
+      want=x+" "+u;
+    }
+    if(want!==inp.dataset.cur)cmds.push("storm "+n+" "+ty+" "+want);
+  }
+  delete $("scr"+n).dataset.dirty;
+  if(!cmds.length)return;
+  postCmds(cmds).then(scLoad).catch(function(){});
+}
+tabHooks.bw={enter:function(){needPorts(function(){bwLoad().then(scLoad).catch(function(){})})}};
 
 var IPRE=/^(\d{1,3}\.){3}\d{1,3}$/;
 function okIp(s){
@@ -1510,6 +1799,7 @@ function sysLoad(){
     var sl=(S.info.syslog_server||"").split(":");
     if(sl[0]&&sl[0]!=="0.0.0.0")$("sy-sysip").value=sl[0];
     if(sl[1])$("sy-sysport").value=sl[1];
+    if(S.info.session_timeout)$("sy-sesstmo").value=S.info.session_timeout;
   }).catch(function(){});
   cfgReload();
 }
@@ -1534,7 +1824,7 @@ $("sy-apply").addEventListener("click",function(){
     if(!/^[\x21-\x7e]{1,23}$/.test(hn)||/["\\]/.test(hn)){toast(t("sy_host_err"),"err");return;}
     cmds.push("hostname "+hn);
   }
-  cmds.push("ip "+ip,"netmask "+mask,"gw "+gw);
+  cmds.push("ip "+ip+"\nnetmask "+mask+"\ngw "+gw);
   var changingIp=ip!==S.info.ip_address;
   confirmModal(t("sy_net_q"),changingIp?t("sy_net_d",{ip:ip}):"",function(){
     postCmds(cmds).then(function(){
@@ -1561,6 +1851,11 @@ $("sy-syslog").addEventListener("change",function(){
     cmds.push("syslog on");
   }else cmds.push("syslog off");
   postCmds(cmds).catch(function(){});
+});
+$("sy-sesstmo").addEventListener("change",function(){
+  var v=+this.value;
+  if(!(v>=1&&v<=65535)){toast(t("sy_sesstmo_err"),"err");sysLoad();return;}
+  postCmd("session "+v).catch(function(){sysLoad()});
 });
 $("sy-pwapply").addEventListener("click",function(){
   var a=$("sy-pw1").value,b=$("sy-pw2").value;
@@ -1604,11 +1899,16 @@ function cfgReload(){
     cfgParseKnown(x);
   }).catch(function(){});
 }
+function cfgLongLine(v){
+  var ls=v.split("\n");
+  for(var i=0;i<ls.length;i++){var n=new Blob([ls[i]]).size;if(n>126)return{n:i+1,m:n};}
+  return null;
+}
 function cfgBytes(){
-  var n=new Blob([$("cfgedit").value]).size;
+  var v=$("cfgedit").value,n=new Blob([v]).size;
   var el=$("cfgbytes");
   el.textContent=n+" / 2048 "+t("sy_bytes");
-  el.style.color=n>2048?"var(--bad)":"";
+  el.style.color=(n>2048||cfgLongLine(v))?"var(--bad)":"";
   return n;
 }
 $("cfgedit").addEventListener("input",cfgBytes);
@@ -1620,15 +1920,15 @@ tabHooks.system={enter:sysLoad};
 
 var CONF_OVERWRITE=[
   /^ip\b/,/^gw\b/,/^netmask\b/,/^hostname\b/,
-  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,
+  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,/^session\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
-  /^pvid\s+\d{1,2}\b/,/^ingress\b/,
+  /^pvid\s+\d{1,2}\b/,
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
-  /^eee\s+\d{1,2}\b/,/^eee\b/,/^mirror\b/,
+  /^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
-  /^igmp\b/,/^mtu\s+\d{1,2}\b/,
+  /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
 var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
@@ -1641,8 +1941,28 @@ function mergeConf(base,texts){
       var m;
       if((m=line.match(/^vlan (\d{1,4}) d$/))){drop(new RegExp("^vlan "+m[1]+"( |$)"));return;}
       if((m=line.match(/^lag (\d) d$/))){drop(new RegExp("^lag(hash)? "+m[1]+"( |$)"));return;}
+      if((m=line.match(/^eee (on|off)(?: (\d{1,2}))?(?: (?:100m|1g|2g5))?$/))){
+        if(m[2])drop(new RegExp("^eee (on|off) "+m[2]+"\\b"));
+        else drop(/^eee /);
+        conf.push(line);return;
+      }
       if(line==="mirror off"){drop(/^mirror /);return;}
       if(!isConfCmd(line))return;
+      if((m=line.match(/^ingress (.+)$/))){
+        if(/^[tua]$/.test(m[1])){drop(/^ingress /);conf.push(line);return;}
+        var ports={},order=[],last=-1;
+        conf.forEach(function(c,i){if(/^ingress [tua]$/.test(c))last=i;});
+        conf.forEach(function(c,i){
+          var cm=c.match(/^ingress (.+)$/);
+          if(!cm||/^[tua]$/.test(cm[1])||i<last)return;
+          cm[1].split(" ").forEach(function(tk){var n=tk.slice(0,-1);if(!(n in ports))order.push(n);ports[n]=tk;});
+        });
+        m[1].split(" ").forEach(function(tk){var n=tk.slice(0,-1);if(!(n in ports))order.push(n);ports[n]=tk;});
+        conf=conf.filter(function(c){var cm=c.match(/^ingress (.+)$/);return!cm||/^[tua]$/.test(cm[1])});
+        order.sort(function(a,b){return a-b});
+        conf.push("ingress "+order.map(function(n){return ports[n]}).join(" "));
+        return;
+      }
       if((m=line.match(/^bw (in|out) (\d{1,2}) (\S+)$/))){
         var pre="^bw "+m[1]+" "+m[2]+" ";
         if(m[1]==="out"||m[3]==="off")drop(new RegExp(pre));
@@ -1670,18 +1990,18 @@ function mergeConf(base,texts){
   });
   return conf;
 }
-function writeConfig(txt,title){
+function writeConfig(txt,title,fromLog){
   var info=h("p",{class:"small mut"}),warn=h("p",{class:"small"});
   var ed=h("textarea",{class:"cfg",spellcheck:"false",placeholder:t("cw_empty"),style:"min-height:45vh"});
   ed.value=txt.replace(/\r\n/g,"\n");
-  var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){closeModal();doWriteConfig(cfgText(ed.value))}});
+  var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){closeModal();doWriteConfig(cfgText(ed.value),fromLog)}});
   function refresh(){
-    var v=cfgText(ed.value),bytes=new Blob([v]).size;
+    var v=cfgText(ed.value),bytes=new Blob([v]).size,long=cfgLongLine(v);
     var unknown=v.split("\n").filter(function(l){return l.trim()&&!isConfCmd(l.trim().replace(/\s+/g," "))});
     info.textContent=t("cw_info",{n:bytes});
-    ok.disabled=bytes>2048;
+    ok.disabled=bytes>2048||!!long;
     warn.style.color=ok.disabled?"var(--bad)":"var(--warn)";
-    warn.textContent=ok.disabled?t("cw_toolarge"):(unknown.length?t("cw_unknown")+unknown.join(" | "):"");
+    warn.textContent=bytes>2048?t("cw_toolarge"):long?t("cw_longline",long):(unknown.length?t("cw_unknown")+unknown.join(" | "):"");
   }
   ed.addEventListener("input",refresh);refresh();
   modal(title,h("div",null,[info,warn,ed]),[h("button",{class:"ctl",text:t("c_cancel"),onclick:closeModal}),ok]);
@@ -1690,7 +2010,7 @@ function cfgText(txt){
   txt=txt.replace(/\r\n/g,"\n");
   return txt&&txt.slice(-1)!=="\n"?txt+"\n":txt;
 }
-function doWriteConfig(txt){
+function doWriteConfig(txt,fromLog){
   var form=new FormData();
   form.append("configuration",new Blob([txt],{type:"application/octet-stream"}),"config.txt");
   toast(t("cw_writing"));
@@ -1700,9 +2020,10 @@ function doWriteConfig(txt){
   }).then(function(back){
     back=back.replace(/\0[\s\S]*$/,"").replace(/\r\n/g,"\n").trim();
     if(back!==txt.trim())throw new Error(t("cw_verify_fail"));
-    return api("/cmd_log_clear").catch(function(){});
-  }).then(function(){
-    setDirty(false);
+    if(!fromLog)return false;
+    return api("/cmd_log_clear").then(function(){return true},function(){return true});
+  }).then(function(cleared){
+    if(cleared)setDirty(false);
     $("cfgedit").value=txt;cfgBytes();cfgParseKnown(txt);
     toast(t("cw_saved"),"ok");
   }).catch(function(e){toast(e.message||String(e),"err")});
@@ -1713,9 +2034,9 @@ $("saveBtn").addEventListener("click",function(){
     getText("/config").catch(function(){return""}),
     getText("/cmd_log").catch(function(){return""}),
   ]).then(function(r){
-    var cur=r[0].replace(/\0[\s\S]*$/,"");
-    var merged=mergeConf([],[cur,r[1].replace(/\0[\s\S]*$/,"")]);
-    writeConfig(merged.join("\n"),t("cw_save_title"));
+    var cur=r[0].replace(/\0[\s\S]*$/,"").split(/\r?\n/).map(function(l){return l.trim().replace(/\s+/g," ")}).filter(Boolean);
+    var merged=mergeConf(cur,[r[1].replace(/\0[\s\S]*$/,"")]);
+    writeConfig(merged.join("\n"),t("cw_save_title"),true);
   });
 });
 

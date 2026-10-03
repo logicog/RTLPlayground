@@ -12,7 +12,11 @@
 #include "debug.h"
 
 #define SESSION_ID_LENGTH 12
-#define SESSION_TIMEOUT 200
+#define SESSION_TIMEOUT_DEFAULT 200
+
+/* Seconds of inactivity after which a session cookie stops validating.
+ * Configurable with the "session" command, see cmd_parser.c. */
+__xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 
 #define CMARK_S 6
 
@@ -22,9 +26,9 @@
 extern volatile __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
 extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
-extern __code uint8_t * __code hex;
-extern __code struct f_data f_data[];
-extern __code char * __code mime_strings[];
+extern __code const uint8_t * __code const hex;
+extern __code const struct f_data f_data[];
+extern __code const char * __code const mime_strings[];
 extern __xdata struct flash_region_t flash_region;
 extern __xdata uint32_t flash_size;
 
@@ -127,7 +131,7 @@ uint8_t find_entry(__xdata uint8_t *e)
 }
 
 
-bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
+bool is_word(__xdata uint8_t *xdata_str_p, __code const uint8_t * __xdata code_str_p)
 {
 	uint8_t u, c;
 
@@ -149,7 +153,7 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code uint8_t * __xdata code_str_p)
 
 
 /* name must be lower-case, starting with the '\n' of the previous line's end */
-__xdata uint8_t *header_value(__xdata uint8_t *p, __code uint8_t *name)
+__xdata uint8_t *header_value(__xdata uint8_t *p, __code const uint8_t *name)
 {
 	uint8_t u, c;
 
@@ -342,7 +346,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 	read_reg_timer(&now);
 
 	if (session && session_id[0]) {
-		if (now - last_session_use > SESSION_TIMEOUT) {
+		if (now - last_session_use > session_timeout) {
 			dbg_string("Session expired\n");
 		} else {
 			if (is_word_x(session, session_id)) {
@@ -377,8 +381,8 @@ void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
 static uint8_t config_take(void)
 {
 	// #386: needs static, otherwise it still lands in SRAM/DSEG
-	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last;
-	__xdata uint8_t cfg_bl;
+	static __xdata uint16_t cfg_pos, cfg_hdr, cfg_body, cfg_end, cfg_last, cfg_i;
+	__xdata uint8_t cfg_bl, cfg_run;
 
 	cfg_bl = strlen_x(boundary);
 
@@ -420,6 +424,13 @@ static uint8_t config_take(void)
 				// the payload plus its terminator must fit the sector
 				if (cfg_end - cfg_body + 1 > CONFIG_LEN)
 					return 2;
+				cfg_run = 0;
+				for (cfg_i = cfg_body; cfg_i < cfg_end; cfg_i++) {
+					if (config_buf[cfg_i] == '\n')
+						cfg_run = 0;
+					else if (++cfg_run >= CMD_BUF_SIZE - 1)
+						return 2;
+				}
 				config_buf[cfg_end] = 0;
 				flash_region.addr = CONFIG_START;
 				flash_sector_erase();
@@ -532,6 +543,19 @@ uint8_t stream_upload(void)
 			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
+				/* The staged image spans FIRMWARE_UPLOAD_START to twice that,
+				 * the span check_and_flash_update_image() reads back. Nothing
+				 * else bounds uptr: a body whose closing boundary never arrives
+				 * keeps writing, and on a flash exactly this size the address
+				 * wraps onto the running image at zero. */
+				if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+					print_string("Upload runs past the image area! Aborting.\n");
+					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"NO: upload exceeds image area\n");
+					s->tstate = TSTATE_NONE;
+					return 0;
+				}
 				dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
 				dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
 				if (uptr % FLASH_SECTOR_SIZE == 0) {
@@ -752,6 +776,10 @@ void handle_post(void)
 			return;
 		}
 		if (is_word(request_path, "upload")) {
+			if (!authenticated) {
+				send_unauthorized();
+				return;
+			}
 			if (flash_size < FIRMWARE_UPLOAD_START*2)
 			{
 				print_string("Flash too small for firmware upload!\n");
@@ -779,7 +807,23 @@ void handle_post(void)
 		dbg_string("Multipart request\n");
 	}
 
-	if (is_word(request_path, "cmd")) {
+	if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
+		dbg_string("POST upload/config request\n");
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
+		if (!boundary[0]) {
+			dbg_string("Bad request, no boundary!\n");
+			send_bad_request();
+			return;
+		}
+		if (config_upload)
+			handle_config_fragment(p);
+		else
+			handle_firmware_fragment(p);
+		return;
+	} else if (is_word(request_path, "cmd")) {
 		p += 4;
 		if (!authenticated) {
 			send_unauthorized();
@@ -804,22 +848,6 @@ void handle_post(void)
 		if (!post_body_take(p))
 			return;
 		run_login_body(p);
-		return;
-	} else if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
-		dbg_string("POST upload/config request\n");
-		if (!authenticated) {
-			send_unauthorized();
-			return;
-		}
-		if (!boundary[0]) {
-			dbg_string("Bad request, no boundary!\n");
-			send_bad_request();
-			return;
-		}
-		if (config_upload)
-			handle_config_fragment(p);
-		else
-			handle_firmware_fragment(p);
 		return;
 	} else {
 		send_not_found();
@@ -907,8 +935,9 @@ void httpd_appcall(void)
 			reset_chip();
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
-		// Check here maxupload by subtracting uip_len and close socekt if fails!
-		if (max_upload - uip_len > 0) {
+		if (config_upload || uip_len <= max_upload) {
+			if (!config_upload)
+				max_upload -= uip_len;
 			upload_settings.p = uip_appdata;
 			upload_settings.bptr = 0;
 			upload_settings.plen = uip_len;
@@ -987,6 +1016,8 @@ void httpd_appcall(void)
 				send_eee();
 			} else if (is_word(q, "/bandwidth.json")) {
 				send_bandwidth();
+			} else if (is_word(q, "/storm.json")) {
+				send_storm();
 			} else if (is_word(q, "/l2.json")) {
 				parse_short(q + 13); // e.g.: /l2.json?idx=10
 				send_l2(short_parsed);

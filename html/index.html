@@ -351,6 +351,12 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="bw_in">Ingress limit</th><th>Mbit/s</th><th data-i18n="bw_exceed">When exceeded</th><th data-i18n="bw_out">Egress limit</th><th>Mbit/s</th><th></th></tr></thead>
           <tbody></tbody></table></div>
       </div>
+      <div class="card"><h2><span data-i18n="sc_title">Storm control</span> <span class="hint" data-i18n="sc_h">per port and traffic type, empty = off</span></h2>
+        <div class="scrollx"><table class="t" id="sctable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="sc_bcast">Broadcast</th><th data-i18n="sc_mcast">Multicast</th><th data-i18n="sc_ucast">Unknown unicast</th><th data-i18n="sc_umcast">Unknown multicast</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="sc_note">Frames of a type above its limit are dropped where they enter the switch.</p>
+      </div>
     </section>
 
     <section class="tab" id="tab-system">
@@ -375,6 +381,8 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
             <input class="in" id="sy-sysip" style="flex:1;min-width:0;width:0" data-i18n-p="sy_sysip">
             <span class="small mut" data-i18n="sy_port">Port</span>
             <input class="in" id="sy-sysport" style="width:64px" type="number" min="1" max="65535"></div>
+          <label class="row" style="justify-content:space-between"><span data-i18n="sy_sesstmo">Session timeout (s)</span>
+            <input class="in" id="sy-sesstmo" style="width:80px" type="number" min="1" max="65535"></label>
           <p class="small mut" data-i18n="sy_services_note">Service state reflects the startup config; runtime state is not readable.</p>
         </div>
         <div class="card"><h2 data-i18n="sy_password">Admin password</h2>
@@ -394,8 +402,11 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <label class="row"><span class="lb" data-i18n="sy_lang">Language</span>
             <select class="in" id="langSel">
               <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
               <option value="ja">日本語</option>
               <option value="zh">中文</option>
+              
             </select></label>
           <label class="row"><span class="lb" data-i18n="sy_theme">Theme</span>
             <select class="in" id="themeSel">

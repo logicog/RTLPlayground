@@ -64,6 +64,8 @@
 
 #include "../rtl837x_common.h"
 
+#if UIP_FORWARDING
+
 /*
  * The list of registered network interfaces.
  */
@@ -535,3 +537,5 @@ uip_fw_periodic(void)
   }
 }
 /*------------------------------------------------------------------------------*/
+
+#endif /* UIP_FORWARDING */

@@ -26,6 +26,7 @@
 #include "httpd.h"
 #include "uip.h"
 #include "rtl837x_common.h"
+#include "rtl837x_regs.h"
 #include "rtl837x_flash.h"
 #include "page_impl.h"
 #include "html_data.h"
@@ -66,17 +67,18 @@ volatile uint8_t sfr_data[4];
 volatile uint32_t ticks;
 uint8_t cmd_capture;
 uint8_t err_status;
-uint8_t *hex = (uint8_t *)"0123456789abcdef";
+const uint8_t * const hex = (const uint8_t *)"0123456789abcdef";
 uint16_t crc_value;
-uint8_t *HTTP_RESPONCE_TXT = (uint8_t *)"HTTP/1.1 200 OK\r\n\r\n";
+const uint8_t * const HTTP_RESPONCE_TXT = (const uint8_t *)"HTTP/1.1 200 OK\r\n\r\n";
 uint32_t flash_size = 0x80000;
 uint8_t flash_buf[FLASH_BUF_SIZE];
+uint8_t rx_headers[16];
 struct flash_region_t flash_region;
 
-char *mime_strings[] = { "text/html", "image/svg+xml", "image/x-icon",
+const char * const mime_strings[] = { "text/html", "image/svg+xml", "image/x-icon",
 			 "image/png", "text/javascript", "text/css", "text/plain" };
 
-struct f_data f_data[] = {
+const struct f_data f_data[] = {
 	{ FILE_NAME, FILE_START, FILE_LEN, mime_HTML, 0 },
 	{ 0, 0, 0, mime_HTML, 0 },
 };
@@ -90,7 +92,7 @@ void flash_read_bulk(uint8_t *dst)
 void flash_init(uint8_t enable_dio) { (void)enable_dio; }
 void flash_sector_erase(void) { }
 void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
-char *get_flash_size_str(void) { return "512 kB"; }
+const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
 void reset_chip(void) { }
 void delay(uint16_t t) { (void)t; }
@@ -122,7 +124,7 @@ uint16_t strtox(uint8_t *dst, const char *s)
 	return n;
 }
 
-void memcpyc(uint8_t *dst, uint8_t *src, uint16_t len) { memcpy(dst, src, len); }
+void memcpyc(uint8_t *dst, const uint8_t *src, uint16_t len) { memcpy(dst, src, len); }
 
 bool strstart(const uint8_t *a, const uint8_t *b)
 {
@@ -137,6 +139,7 @@ void send_status(void) { }
 void send_vlan(uint16_t vlan) { (void)vlan; }
 void send_basic_info(void) { }
 void send_bandwidth(void) { }
+void send_storm(void) { }
 void send_eee(void) { }
 void send_l2(uint16_t idx) { (void)idx; }
 void l2_delete(uint16_t idx) { (void)idx; }
@@ -455,6 +458,38 @@ static void scenario_rexmit_after_shrink(void)
 	CHECK(same, "retransmission: the repeat carries the same bytes");
 }
 
+static void scenario_bad_l4_checksum(void)
+{
+	uip_stats_t chkerr_before;
+	uint32_t seq_before;
+	int len_before;
+
+	session_start(MSS_FULL);
+
+	chkerr_before = uip_stat.tcp.chkerr;
+	len_before = stream_len;
+	seq_before = cli_seq;
+
+	rx_headers[1] = RX_TAG_L4_CSUM_BAD;
+	request_file(MSS_FULL);
+	rx_headers[1] = 0;
+	cli_seq = seq_before;
+
+	CHECK(uip_stat.tcp.chkerr == chkerr_before + 1,
+	      "bad checksum: the segment is counted as a checksum error");
+	CHECK(stream_len == len_before,
+	      "bad checksum: the request draws no reply");
+
+	request_file(MSS_FULL);
+	drain(MSS_FULL);
+	report("bad checksum");
+
+	CHECK(body_offset() >= 0,
+	      "bad checksum control: the same request with a good flag is served");
+	CHECK(first_body_mismatch() == -1,
+	      "bad checksum control: the file that follows is intact");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -465,6 +500,7 @@ int main(int argc, char **argv)
 	scenario_shrinking_window();
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
+	scenario_bad_l4_checksum();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",

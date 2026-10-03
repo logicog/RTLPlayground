@@ -9,7 +9,7 @@
 #include "boot.h"
 
 extern __xdata uint8_t sfr_data[4];
-extern __code struct machine machine;
+extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 
 #pragma codeseg BANK2
@@ -92,8 +92,18 @@ void static sds_init(void)
 }
 
 
+void static tm_init(void)
+{
+	reg_read_m(RTL837X_TM_CTRL2);
+	sfr_mask_data(0, TM_CTRL2_EN_LATCH, 0);
+	reg_write_m(RTL837X_TM_CTRL2);
+}
+
+
 void rtl8373_init(void) __banked
 {
+	tm_init();
+
 	print_string("\nrtl8373_init called\n");
 
 	// r65d8:3ffbedff R65d8-3ffbedff
@@ -191,6 +201,8 @@ void rtl8373_init(void) __banked
 
 void rtl8372_init(void) __banked
 {
+	tm_init();
+
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();

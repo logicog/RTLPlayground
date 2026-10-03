@@ -60,7 +60,7 @@ void syslog_stop(void) __banked
 void syslog_callback(uint16_t lport) __banked
 {
 	uint16_t syslog_hdr;
-	if (lport != state.syslog_conn->lport)
+	if (!state.syslog_conn || lport != state.syslog_conn->lport)
 		return;
 
 	if ((state.readptr != state.writeptr) && state.line_available)
