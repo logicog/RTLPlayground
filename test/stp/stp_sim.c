@@ -12,13 +12,14 @@
 #include "rtl837x_mstp.h"
 #include "rtl837x_port.h"
 
-#define NPORTS	9	/* indices 0..8, front-panel 1..9 */
+#define NPORTS 9 /* indices 0..8, front-panel 1..9 */
 
 uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 uint16_t uip_len;
-struct uip_eth_addr uip_ethaddr = { .addr = {0x1c,0x2a,0xa3,0x1a,0x72,0x4e} };
-const struct machine machine = { .min_port = 0, .max_port = NPORTS - 1,
-			   .log_to_phys_port = {1, 2, 3, 4, 5, 6, 7, 8, 9} };
+struct uip_eth_addr uip_ethaddr = { .addr = { 0x1c, 0x2a, 0xa3, 0x1a, 0x72, 0x4e } };
+const struct machine machine = {
+	.min_port = 0, .max_port = NPORTS - 1, .log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8, 9 }
+};
 struct machine_runtime machine_detected = { .isRTL8373 = 1 };
 uint8_t sfr_data[4];
 bool stp_enabled;
@@ -33,24 +34,72 @@ uint16_t atoi_results_short;
 uint8_t cmd_quiet;
 
 static int verbose;
-void print_string(const char *s) { if (verbose) fputs(s, stdout); }
-void print_byte(uint8_t b) { if (verbose) printf("%02x", b); }
-void print_short(uint16_t v) { if (verbose) printf("%04x", v); }
-void print_long(uint32_t v) { if (verbose) printf("%08x", v); }
-void write_char(char c) { if (verbose) putchar(c); }
-void itoa(uint8_t v) { if (verbose) printf("%u", v); }
-void itoa_short(uint16_t v) { if (verbose) printf("%u", v); }
-void print_string_x(char *s) { if (verbose) fputs(s, stdout); }
-void print_reg(uint16_t reg) { (void)reg; }
+
+void print_string(const char *s)
+{
+	if (verbose)
+		fputs(s, stdout);
+}
+
+void print_byte(uint8_t b)
+{
+	if (verbose)
+		printf("%02x", b);
+}
+
+void print_short(uint16_t v)
+{
+	if (verbose)
+		printf("%04x", v);
+}
+
+void print_long(uint32_t v)
+{
+	if (verbose)
+		printf("%08x", v);
+}
+
+void write_char(char c)
+{
+	if (verbose)
+		putchar(c);
+}
+
+void itoa(uint8_t v)
+{
+	if (verbose)
+		printf("%u", v);
+}
+
+void itoa_short(uint16_t v)
+{
+	if (verbose)
+		printf("%u", v);
+}
+
+void print_string_x(char *s)
+{
+	if (verbose)
+		fputs(s, stdout);
+}
+
+void print_reg(uint16_t reg)
+{
+	(void)reg;
+}
 
 uint8_t cmd_compare(uint8_t start, const uint8_t *cmd)
 {
+	const char *w;
+	size_t n;
+
 	if (start >= cmd_words_len)
 		return 0;
-	const char *w = (const char *)&cmd_buffer[cmd_words_b[start]];
-	size_t n = strlen((const char *)cmd);
+	w = (const char *)&cmd_buffer[cmd_words_b[start]];
+	n = strlen((const char *)cmd);
 	return strncmp(w, (const char *)cmd, n) == 0 && (w[n] == ' ' || w[n] == 0);
 }
+
 uint8_t atoi_byte(uint8_t idx)
 {
 	unsigned v = 0, n = 0;
@@ -59,6 +108,7 @@ uint8_t atoi_byte(uint8_t idx)
 	atoi_results_u8 = (uint8_t)v;
 	return (uint8_t)n;
 }
+
 uint8_t atoi_short(uint8_t idx)
 {
 	unsigned long v = 0;
@@ -71,6 +121,7 @@ uint8_t atoi_short(uint8_t idx)
 	atoi_results_short = (uint16_t)v;
 	return n;
 }
+
 uint8_t cmd_parse_port_separator(uint8_t idx)
 {
 	if (!atoi_byte(idx) || atoi_results_u8 < 1 || atoi_results_u8 > NPORTS)
@@ -78,6 +129,7 @@ uint8_t cmd_parse_port_separator(uint8_t idx)
 	atoi_results_u8--;
 	return 1;
 }
+
 static void sim_cmd(const char *line)
 {
 	memset(cmd_buffer, 0, sizeof(cmd_buffer));
@@ -90,10 +142,15 @@ static void sim_cmd(const char *line)
 	cmd_quiet = 0;
 	stp_parse();
 }
-void execute_config(void) { }
+
+void execute_config(void)
+{
+}
+
 static uint32_t sim_vlan[4096];
 static uint32_t sim_tbl_in;
 struct vlan_settings vlan_settings;
+
 int8_t vlan_get(uint16_t vlan)
 {
 	if (vlan >= 0xfff)
@@ -104,22 +161,50 @@ int8_t vlan_get(uint16_t vlan)
 	sfr_data[3] = (uint8_t)sim_vlan[vlan];
 	return 0;
 }
-uint16_t port_pvid_get(uint8_t port) { (void)port; return 1; }
+
+uint16_t port_pvid_get(uint8_t port)
+{
+	(void)port;
+	return 1;
+}
+
 static int l2mc_calls;
 static uint16_t l2mc_pmask;
-void port_l2mc_set(uint8_t mac_last, uint16_t vid, uint16_t pmask) { (void)mac_last; (void)vid; l2mc_calls++; l2mc_pmask = pmask; }
-uint8_t port_ingress_filter_get(uint8_t port) { (void)port; return 0; }
+
+void port_l2mc_set(uint8_t mac_last, uint16_t vid, uint16_t pmask)
+{
+	(void)mac_last;
+	(void)vid;
+	l2mc_calls++;
+	l2mc_pmask = pmask;
+}
+
+uint8_t port_ingress_filter_get(uint8_t port)
+{
+	(void)port;
+	return 0;
+}
 
 static int flush_count[NPORTS];
-void port_l2_forget_port(uint8_t port) { if (port < NPORTS) flush_count[port]++; }
+
+void port_l2_forget_port(uint8_t port)
+{
+	if (port < NPORTS)
+		flush_count[port]++;
+}
 
 static uint8_t mstp_regs[16][4];
-static uint8_t ever_state[16][10];	/* bit per state ever written for the port in the tree */
+static uint8_t ever_state[16][10]; /* bit per state ever written for the port in the tree */
 #define mstp_reg mstp_regs[0]
 static uint16_t sim_lag[4];
-uint16_t port_lag_members_get(uint8_t lag) { return sim_lag[lag]; }
+
+uint16_t port_lag_members_get(uint8_t lag)
+{
+	return sim_lag[lag];
+}
+
 static uint16_t sim_links;
-static uint8_t sim_speed[NPORTS];	/* nibble as the ASIC reports it: 2 = 1G, 4 = 10G */
+static uint8_t sim_speed[NPORTS]; /* nibble as the ASIC reports it: 2 = 1G, 4 = 10G */
 static int tx_frames[NPORTS];
 
 struct sim_pkt_out {
@@ -162,25 +247,25 @@ void reg_read_m(uint16_t addr)
 	} else if (addr == RTL837X_REG_LINKS || addr == RTL837X_REG_LINKS_89) {
 		uint8_t base = (addr == RTL837X_REG_LINKS) ? 0 : 8;
 		for (uint8_t k = 0; k < 8 && base + k < NPORTS; k++)
-			sfr_data[3 - (k >> 1)] |= (k & 1) ? (uint8_t)(sim_speed[base + k] << 4)
-							  : sim_speed[base + k];
+			sfr_data[3 - (k >> 1)] |= (k & 1) ? (uint8_t)(sim_speed[base + k] << 4) : sim_speed[base + k];
 	}
 }
 
 void reg_write_m(uint16_t addr)
 {
 	if (addr == RTL837x_TBL_DATA_IN_A)
-		sim_tbl_in = ((uint32_t)sfr_data[0] << 24) | ((uint32_t)sfr_data[1] << 16) | ((uint32_t)sfr_data[2] << 8) | sfr_data[3];
+		sim_tbl_in = ((uint32_t)sfr_data[0] << 24) | ((uint32_t)sfr_data[1] << 16) |
+			((uint32_t)sfr_data[2] << 8) | sfr_data[3];
 	if (addr == RTL837X_TBL_CTRL && sfr_data[2] == TBL_VLAN && (sfr_data[3] & TBL_WRITE))
 		sim_vlan[(((uint16_t)sfr_data[0] << 8) | sfr_data[1]) & 0xfff] = sim_tbl_in;
 	if (addr >= RTL837X_MSTP_STATES && addr <= RTL837X_MSTP_STATES + 60 && !((addr - RTL837X_MSTP_STATES) & 3)) {
 		memcpy(mstp_regs[(addr - RTL837X_MSTP_STATES) >> 2], sfr_data, 4);
 		for (uint8_t q = 0; q < 10; q++)
-			ever_state[(addr - RTL837X_MSTP_STATES) >> 2][q] |=
-				1 << ((sfr_data[3 - (q >> 2)] >> ((q << 1) & 0x7)) & 0x3);
+			ever_state[(addr - RTL837X_MSTP_STATES) >> 2][q] |= 1
+				<< ((sfr_data[3 - (q >> 2)] >> ((q << 1) & 0x7)) & 0x3);
 		if (verbose > 1)
-			printf("    [mstp <- %02x %02x %02x %02x]\n",
-			       mstp_reg[0], mstp_reg[1], mstp_reg[2], mstp_reg[3]);
+			printf("    [mstp <- %02x %02x %02x %02x]\n", mstp_reg[0], mstp_reg[1], mstp_reg[2],
+				mstp_reg[3]);
 	}
 }
 
@@ -240,21 +325,21 @@ static void secs(unsigned s)
 }
 
 struct sim_bpdu {
-	uint8_t port;		/* ingress port index */
-	uint8_t root_prio;	/* high byte of the root priority */
+	uint8_t port; /* ingress port index */
+	uint8_t root_prio; /* high byte of the root priority */
 	uint8_t root_mac[6];
-	uint32_t root_cost;	/* root path cost as advertised */
-	uint8_t br_prio;	/* sender's own bridge priority high byte */
+	uint32_t root_cost; /* root path cost as advertised */
+	uint8_t br_prio; /* sender's own bridge priority high byte */
 	uint8_t br_mac[6];
-	uint8_t port_id;	/* sender's port number, 1-based */
-	uint8_t port_prio;	/* 0 = 0x80 */
-	uint8_t flags;		/* 0 = designated, learning + forwarding */
-	uint8_t age;		/* message age, seconds */
-	uint8_t maxage;		/* 0 = 20 s, and hello/fwd default with it */
+	uint8_t port_id; /* sender's port number, 1-based */
+	uint8_t port_prio; /* 0 = 0x80 */
+	uint8_t flags; /* 0 = designated, learning + forwarding */
+	uint8_t age; /* message age, seconds */
+	uint8_t maxage; /* 0 = 20 s, and hello/fwd default with it */
 	uint8_t hello;
 	uint8_t fwd;
-	uint8_t legacy;		/* 1 = 802.1D Config BPDU, 2 = TCN */
-	uint8_t msg_len;	/* 0 = the right length for the type */
+	uint8_t legacy; /* 1 = 802.1D Config BPDU, 2 = TCN */
+	uint8_t msg_len; /* 0 = the right length for the type */
 };
 
 struct sim_pkt_in {
@@ -340,8 +425,7 @@ static void check_state(uint8_t port, uint8_t want, const char *what)
 {
 	uint8_t got = port_state(port);
 	if (got != want) {
-		printf("  FAIL: %s: port %u is %s, expected %s\n",
-		       what, port + 1, state_name(got), state_name(want));
+		printf("  FAIL: %s: port %u is %s, expected %s\n", what, port + 1, state_name(got), state_name(want));
 		failures++;
 	} else if (verbose)
 		printf("  ok: %s (port %u %s)\n", what, port + 1, state_name(got));
@@ -366,8 +450,8 @@ static void reset_all(void)
 	tick(2 * STP_HZ);
 }
 
-static const uint8_t ROOT_MAC[6] = {0x1c,0x2a,0xa3,0x1e,0xc2,0x03};
-static const uint8_t PEER_MAC[6] = {0x00,0x82,0x44,0x2a,0x74,0x82};
+static const uint8_t ROOT_MAC[6] = { 0x1c, 0x2a, 0xa3, 0x1e, 0xc2, 0x03 };
+static const uint8_t PEER_MAC[6] = { 0x00, 0x82, 0x44, 0x2a, 0x74, 0x82 };
 
 static void scen_edge_ports(void)
 {
@@ -382,12 +466,12 @@ static void scen_edge_ports(void)
 
 static void scen_root_port(void)
 {
+	struct sim_bpdu root_bpdu = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+
 	printf("2. the bridge follows the root heard on port 9\n");
 	reset_all();
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu root_bpdu = { .port = 8, .root_prio = 0x40, .root_cost = 0,
-				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(root_bpdu.root_mac, ROOT_MAC, 6);
 	memcpy(root_bpdu.br_mac, ROOT_MAC, 6);
 	bpdu_in(&root_bpdu);
@@ -399,17 +483,16 @@ static void scen_root_port(void)
 
 static void ring(void)
 {
+	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu from_peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+
 	reset_all();
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
 
-	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0,
-				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root.root_mac, ROOT_MAC, 6);
 	memcpy(from_root.br_mac, ROOT_MAC, 6);
 
-	struct sim_bpdu from_peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000,
-				      .br_prio = 0x80, .port_id = 1 };
 	memcpy(from_peer.root_mac, ROOT_MAC, 6);
 	memcpy(from_peer.br_mac, PEER_MAC, 6);
 
@@ -431,10 +514,10 @@ static void scen_ring(void)
 
 static void scen_ring_clears(void)
 {
+	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+
 	printf("4. when the better neighbour goes quiet the port comes back\n");
 	ring();
-	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0,
-				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root.root_mac, ROOT_MAC, 6);
 	memcpy(from_root.br_mac, ROOT_MAC, 6);
 	bpdu_in(&from_root);
@@ -451,16 +534,17 @@ static void scen_ring_clears(void)
 
 static void scen_cheaper_path(void)
 {
+	struct sim_bpdu from_root_p9 = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu from_root_p1;
+
 	printf("5. the cheaper of two paths to the root becomes the root port\n");
 	reset_all();
 	stp_pcost[0] = 2000;
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
-	struct sim_bpdu from_root_p9 = { .port = 8, .root_prio = 0x40, .root_cost = 0,
-					 .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root_p9.root_mac, ROOT_MAC, 6);
 	memcpy(from_root_p9.br_mac, ROOT_MAC, 6);
-	struct sim_bpdu from_root_p1 = from_root_p9;
+	from_root_p1 = from_root_p9;
 	from_root_p1.port = 0;
 	from_root_p1.port_id = 7;
 	for (int i = 0; i < 12; i++) {
@@ -477,16 +561,17 @@ static void scen_cheaper_path(void)
 
 static void scen_we_are_better(void)
 {
+	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu from_peer = {
+		.port = 0, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x80, .port_id = 1, .flags = 0x0c
+	};
+
 	printf("6. a neighbour with a worse path does not block us\n");
 	reset_all();
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
-	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0,
-				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root.root_mac, ROOT_MAC, 6);
 	memcpy(from_root.br_mac, ROOT_MAC, 6);
-	struct sim_bpdu from_peer = { .port = 0, .root_prio = 0x40, .root_cost = 200000,
-				      .br_prio = 0x80, .port_id = 1, .flags = 0x0c };
 	memcpy(from_peer.root_mac, ROOT_MAC, 6);
 	memcpy(from_peer.br_mac, PEER_MAC, 6);
 	for (int i = 0; i < 18; i++) {
@@ -500,14 +585,13 @@ static void scen_we_are_better(void)
 
 static void scen_alt_survives_link_bounce(void)
 {
+	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu from_peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+
 	printf("7. a blocked port stays blocked when the carrier returns\n");
 	ring();
-	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0,
-				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root.root_mac, ROOT_MAC, 6);
 	memcpy(from_root.br_mac, ROOT_MAC, 6);
-	struct sim_bpdu from_peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000,
-				      .br_prio = 0x80, .port_id = 1 };
 	memcpy(from_peer.root_mac, ROOT_MAC, 6);
 	memcpy(from_peer.br_mac, PEER_MAC, 6);
 
@@ -526,17 +610,18 @@ static void scen_alt_survives_link_bounce(void)
 
 static void scen_speed_cost(void)
 {
+	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu slow;
+
 	printf("8. the faster of two links to one root wins on cost\n");
 	reset_all();
 	sim_speed[8] = 4;
 	sim_speed[0] = 2;
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
-	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0,
-				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root.root_mac, ROOT_MAC, 6);
 	memcpy(from_root.br_mac, ROOT_MAC, 6);
-	struct sim_bpdu slow = from_root;
+	slow = from_root;
 	slow.port = 0;
 	slow.port_id = 7;
 	for (int i = 0; i < 12; i++) {
@@ -550,36 +635,55 @@ static void scen_speed_cost(void)
 
 static struct sim_bpdu root_on(uint8_t port)
 {
-	struct sim_bpdu b = { .port = port, .root_prio = 0x40, .root_cost = 0,
-			      .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu b = { .port = port, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
 	memcpy(b.root_mac, ROOT_MAC, 6);
 	memcpy(b.br_mac, ROOT_MAC, 6);
 	return b;
 }
 
-static const uint8_t THIRD_MAC[6] = {0x00,0x11,0x22,0x33,0x44,0x55};
+static const uint8_t THIRD_MAC[6] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55 };
 
 static void scen_root_times(void)
 {
+	struct sim_bpdu r;
+
 	printf("9. the times of the root travel on and time the listen period\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	r.age = 3; r.maxage = 12; r.hello = 1; r.fwd = 8;
+	r = root_on(8);
+	r.age = 3;
+	r.maxage = 12;
+	r.hello = 1;
+	r.fwd = 8;
 	bpdu_in(&r);
 	check(stp_root_port == 8, "port 9 is the root port");
 	links_set((1 << 1) | (1 << 8));
-	for (int i = 0; i < 2; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 2; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check_state(1, 1, "a new designated port starts discarding");
-	for (int i = 0; i < 5; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 5; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check_state(1, 1, "it still discards short of the root's forward delay");
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check_state(1, 2, "it learns after the root's 8 s, not our own 15 s");
-	for (int i = 0; i < 8; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 8; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check_state(1, 3, "and forwards after a second 8 s");
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check(tx_frames[1] > 0, "the designated port sends BPDUs");
 	check((uint8_t)last_tx[1].age == 4, "the message age is one more than received");
 	check((uint8_t)last_tx[1].age_max == 12, "max age is the root's");
@@ -589,12 +693,17 @@ static void scen_root_times(void)
 
 static void scen_too_old(void)
 {
+	struct sim_bpdu r;
+
 	printf("10. information as old as max age is not used\n");
 	reset_all();
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	r.age = 20; r.maxage = 20; r.hello = 2; r.fwd = 15;
+	r = root_on(8);
+	r.age = 20;
+	r.maxage = 20;
+	r.hello = 2;
+	r.fwd = 15;
 	bpdu_in(&r);
 	check(stp_root_port == 0xff, "the switch stays its own root");
 	r.age = 19;
@@ -604,12 +713,16 @@ static void scen_too_old(void)
 
 static void scen_info_expiry(void)
 {
+	struct sim_bpdu r;
+
 	printf("11. received information lasts three of the sender's hellos\n");
 	reset_all();
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	r.maxage = 20; r.hello = 1; r.fwd = 15;
+	r = root_on(8);
+	r.maxage = 20;
+	r.hello = 1;
+	r.fwd = 15;
 	bpdu_in(&r);
 	check(stp_root_port == 8, "port 9 is the root port");
 	tick(2 * STP_HZ + STP_HZ / 2);
@@ -620,91 +733,141 @@ static void scen_info_expiry(void)
 
 static void scen_dport_tiebreak(void)
 {
+	struct sim_bpdu a;
+	struct sim_bpdu b;
+
 	printf("12. equal cost to one bridge: the lower designated port ID wins\n");
 	reset_all();
 	links_set((1 << 1) | (1 << 2));
 	secs(1);
-	struct sim_bpdu a = root_on(1); a.port_id = 5;
-	struct sim_bpdu b = root_on(2); b.port_id = 2;
-	for (int i = 0; i < 12; i++) { bpdu_in(&a); bpdu_in(&b); secs(2); }
+	a = root_on(1);
+	a.port_id = 5;
+	b = root_on(2);
+	b.port_id = 2;
+	for (int i = 0; i < 12; i++) {
+		bpdu_in(&a);
+		bpdu_in(&b);
+		secs(2);
+	}
 	check(stp_root_port == 2, "port 3, which hears port ID 8002, is the root port");
 	check_state(1, 1, "port 2, which hears 8005, is discarding");
 }
 
 static void scen_rxport_tiebreak(void)
 {
+	struct sim_bpdu a;
+	struct sim_bpdu b;
+
 	printf("13. same designated port on two of ours: the receiving port ID decides\n");
 	reset_all();
 	links_set((1 << 3) | (1 << 4));
 	secs(1);
-	struct sim_bpdu a = root_on(3);
-	struct sim_bpdu b = root_on(4);
-	for (int i = 0; i < 3; i++) { bpdu_in(&a); bpdu_in(&b); secs(2); }
+	a = root_on(3);
+	b = root_on(4);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&a);
+		bpdu_in(&b);
+		secs(2);
+	}
 	check(stp_root_port == 3, "equal port priority: the lower port number, port 4");
 	stp_pprio[4] = 0x40;
-	for (int i = 0; i < 3; i++) { bpdu_in(&a); bpdu_in(&b); secs(2); }
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&a);
+		bpdu_in(&b);
+		secs(2);
+	}
 	check(stp_root_port == 4, "a better priority on port 5 wins");
 	stp_pprio[4] = 0x80;
 }
 
 static void scen_inferior_info(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+	struct sim_bpdu third;
+
 	printf("14. worse information replaces stored only from the same sender\n");
 	reset_all();
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	struct sim_bpdu peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000,
-				 .br_prio = 0x80, .port_id = 1 };
+	r = root_on(8);
 	memcpy(peer.root_mac, ROOT_MAC, 6);
 	memcpy(peer.br_mac, PEER_MAC, 6);
-	struct sim_bpdu third = peer;
+	third = peer;
 	third.root_cost = 400000;
 	memcpy(third.br_mac, THIRD_MAC, 6);
-	for (int i = 0; i < 10; i++) { bpdu_in(&r); bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 10; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check_state(0, 1, "port 1 is discarding behind the better peer");
-	for (int i = 0; i < 2; i++) { bpdu_in(&r); bpdu_in(&peer); bpdu_in(&third); secs(1); }
+	for (int i = 0; i < 2; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		bpdu_in(&third);
+		secs(1);
+	}
 	check(be32(stp_pv[0].ext) == 2000, "a worse bridge on the segment does not overwrite the peer");
 	check_state(0, 1, "and port 1 keeps discarding");
 	peer.root_cost = 400000;
 	peer.flags = 0x0c;
 	bpdu_in(&peer);
 	check(be32(stp_pv[0].ext) == 400000, "the peer's own worse information does replace it");
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check_state(0, 3, "port 1 is designated and forwards again");
 }
 
 static void scen_root_role_bpdu(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer = {
+		.port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1, .flags = 0x08 | 0x30
+	};
+
 	printf("15. an RST BPDU sent by a root port is not designated information\n");
 	reset_all();
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	struct sim_bpdu peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000,
-				 .br_prio = 0x80, .port_id = 1, .flags = 0x08 | 0x30 };
+	r = root_on(8);
 	memcpy(peer.root_mac, ROOT_MAC, 6);
 	memcpy(peer.br_mac, PEER_MAC, 6);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check_state(0, 3, "port 1 keeps forwarding");
 	check(stp_root_port == 8, "the uplink stays the root port");
 }
 
 static void scen_alternate_takes_over(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+
 	printf("16. when the root port's information expires an alternate path takes over\n");
 	reset_all();
 	stp_pcost[8] = 2000;
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	struct sim_bpdu peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000,
-				 .br_prio = 0x80, .port_id = 1 };
+	r = root_on(8);
 	memcpy(peer.root_mac, ROOT_MAC, 6);
 	memcpy(peer.br_mac, PEER_MAC, 6);
-	for (int i = 0; i < 12; i++) { bpdu_in(&r); bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 12; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check(stp_root_port == 8, "the 10G uplink is the root port");
-	for (int i = 0; i < 4; i++) { bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check(stp_root_port == 0, "port 1 is the root port once port 9 went quiet");
 	check(memcmp(stp_rv[0].root.mac, ROOT_MAC, 6) == 0, "the root is still the same bridge");
 	check(be32(stp_rv[0].ext) == 22000, "the cost is the peer's plus port 1's");
@@ -713,32 +876,45 @@ static void scen_alternate_takes_over(void)
 
 static void scen_dbridge_tiebreak(void)
 {
+	struct sim_bpdu via_peer = { .port = 1, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+	struct sim_bpdu via_third;
+
 	printf("17. equal cost through two bridges: the lower bridge ID wins\n");
 	reset_all();
 	links_set((1 << 1) | (1 << 2));
 	secs(1);
-	struct sim_bpdu via_peer = { .port = 1, .root_prio = 0x40, .root_cost = 2000,
-				     .br_prio = 0x80, .port_id = 1 };
 	memcpy(via_peer.root_mac, ROOT_MAC, 6);
 	memcpy(via_peer.br_mac, PEER_MAC, 6);
-	struct sim_bpdu via_third = via_peer;
+	via_third = via_peer;
 	via_third.port = 2;
 	memcpy(via_third.br_mac, THIRD_MAC, 6);
 	via_third.br_prio = 0x70;
-	for (int i = 0; i < 12; i++) { bpdu_in(&via_peer); bpdu_in(&via_third); secs(2); }
+	for (int i = 0; i < 12; i++) {
+		bpdu_in(&via_peer);
+		bpdu_in(&via_third);
+		secs(2);
+	}
 	check(stp_root_port == 2, "port 3, behind the bridge with priority 7000, is the root port");
 	check_state(1, 1, "port 2, behind 8000, is discarding");
 }
 
 static void scen_times_revert(void)
 {
+	struct sim_bpdu r;
+
 	printf("18. back to our own times once we are the root again\n");
 	reset_all();
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	r.age = 3; r.maxage = 12; r.hello = 2; r.fwd = 8;
-	for (int i = 0; i < 4; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	r.age = 3;
+	r.maxage = 12;
+	r.hello = 2;
+	r.fwd = 8;
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(stp_root_port == 8, "port 9 is the root port");
 	secs(8);
 	check(stp_root_port == 0xff, "the switch is its own root again");
@@ -752,29 +928,39 @@ static void scen_times_revert(void)
 
 static void ring_with_uplink_on_9(struct sim_bpdu *r, struct sim_bpdu *peer)
 {
+	struct sim_bpdu p = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+
 	reset_all();
 	stp_pcost[8] = 2000;
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
 	*r = root_on(8);
-	struct sim_bpdu p = { .port = 0, .root_prio = 0x40, .root_cost = 2000,
-			      .br_prio = 0x80, .port_id = 1 };
 	memcpy(p.root_mac, ROOT_MAC, 6);
 	memcpy(p.br_mac, PEER_MAC, 6);
 	*peer = p;
-	for (int i = 0; i < 12; i++) { bpdu_in(r); bpdu_in(peer); secs(2); }
+	for (int i = 0; i < 12; i++) {
+		bpdu_in(r);
+		bpdu_in(peer);
+		secs(2);
+	}
 }
 
 static void scen_tc_via_root_port(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer;
+	int waited = 0;
+
 	printf("19. a port that takes over as root port tells the root about it\n");
-	struct sim_bpdu r, peer;
 	ring_with_uplink_on_9(&r, &peer);
 	check(stp_root_port == 8 && port_state(0) == 1, "port 1 starts as the blocked alternate");
 	check(tc_frames[0] == 0, "no TC on port 1 so far");
 	links_set(1 << 0);
-	int waited = 0;
-	while (port_state(0) != 3 && waited < 20 * STP_HZ) { bpdu_in(&peer); tick(STP_HZ / 2); waited += STP_HZ / 2; }
+	while (port_state(0) != 3 && waited < 20 * STP_HZ) {
+		bpdu_in(&peer);
+		tick(STP_HZ / 2);
+		waited += STP_HZ / 2;
+	}
 	check(stp_root_port == 0, "port 1 is the root port after port 9 went down");
 	check_state(0, 3, "and forwards");
 	tick(2);
@@ -785,15 +971,28 @@ static void scen_tc_via_root_port(void)
 
 static void scen_tc_window_rstp(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer;
+	int waited = 0;
+	int seen;
+
 	printf("20. in RSTP the TC window lasts hello time plus one second\n");
-	struct sim_bpdu r, peer;
 	ring_with_uplink_on_9(&r, &peer);
 	links_set(1 << 0);
-	int waited = 0;
-	while (port_state(0) != 3 && waited < 20 * STP_HZ) { bpdu_in(&peer); tick(STP_HZ / 2); waited += STP_HZ / 2; }
-	for (int i = 0; i < 4; i++) { bpdu_in(&peer); secs(1); }
-	int seen = tc_frames[0];
-	for (int i = 0; i < 6; i++) { bpdu_in(&peer); secs(1); }
+	while (port_state(0) != 3 && waited < 20 * STP_HZ) {
+		bpdu_in(&peer);
+		tick(STP_HZ / 2);
+		waited += STP_HZ / 2;
+	}
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&peer);
+		secs(1);
+	}
+	seen = tc_frames[0];
+	for (int i = 0; i < 6; i++) {
+		bpdu_in(&peer);
+		secs(1);
+	}
 	check(seen > 0, "TC was sent");
 	check(tc_frames[0] == seen, "and stops once hello plus one second is over");
 	stp_pcost[8] = 0;
@@ -801,18 +1000,31 @@ static void scen_tc_window_rstp(void)
 
 static void scen_tc_propagation(void)
 {
+	struct sim_bpdu r;
+	int tc2;
+	int tc9;
+	struct sim_bpdu rtc;
+
 	printf("21. a TC from the root side goes out on the other ports, not back\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "designated port 2 forwards");
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	memset(flush_count, 0, sizeof(flush_count));
-	int tc2 = tc_frames[1], tc9 = tc_frames[8];
-	struct sim_bpdu rtc = r; rtc.flags = 0x3d;
+	tc2 = tc_frames[1];
+	tc9 = tc_frames[8];
+	rtc = r;
+	rtc.flags = 0x3d;
 	bpdu_in(&rtc);
 	tick(2);
 	check(tc_frames[1] > tc2, "port 2 passes the TC on at once");
@@ -823,43 +1035,66 @@ static void scen_tc_propagation(void)
 
 static void scen_tc_legacy_tcn(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu ack;
+	int quiet;
+	int n;
+
 	printf("22. with 802.1D neighbours the root port sends TCN until acknowledged\n");
 	reset_all();
 	stp_rstp = 0;
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8); r.legacy = 1;
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	r.legacy = 1;
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(stp_root_port == 8, "port 9 is the root port");
 	check(tcn_frames[8] > 0, "port 9 entering forwarding is itself reported with TCN");
-	struct sim_bpdu ack = r; ack.flags = 0x81;
+	ack = r;
+	ack.flags = 0x81;
 	bpdu_in(&ack);
-	int quiet = tcn_frames[8];
-	for (int i = 0; i < 5; i++) { bpdu_in(&r); secs(2); }
+	quiet = tcn_frames[8];
+	for (int i = 0; i < 5; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(tcn_frames[8] == quiet, "acknowledged: no more TCN while nothing changes");
 	links_set((1 << 1) | (1 << 8));
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "port 2 came up and forwards");
 	check(tcn_frames[8] > quiet, "port 9 sends TCN toward the root again");
 	bpdu_in(&ack);
-	int n = tcn_frames[8];
-	for (int i = 0; i < 5; i++) { bpdu_in(&r); secs(2); }
+	n = tcn_frames[8];
+	for (int i = 0; i < 5; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(tcn_frames[8] == n, "and stops once the root acknowledged it");
 }
 
 static void scen_alt_forgets(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+
 	printf("23. a port that turns alternate forgets what it learned\n");
 	reset_all();
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 10; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 10; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(0, 3, "port 1 forwards as designated");
 	memset(flush_count, 0, sizeof(flush_count));
-	struct sim_bpdu peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000,
-				 .br_prio = 0x80, .port_id = 1 };
 	memcpy(peer.root_mac, ROOT_MAC, 6);
 	memcpy(peer.br_mac, PEER_MAC, 6);
 	bpdu_in(&peer);
@@ -869,17 +1104,32 @@ static void scen_alt_forgets(void)
 
 static void scen_edge_no_tc(void)
 {
+	struct sim_bpdu r;
+	uint16_t tc;
+	int tc9;
+	int tc2;
+
 	printf("24. an edge port coming up raises no topology change\n");
 	reset_all();
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 10; i++) { bpdu_in(&r); secs(2); }
-	for (int i = 0; i < 20; i++) { bpdu_in(&r); secs(2); }
-	uint16_t tc = stp_tc_count;
-	int tc9 = tc_frames[8], tc2 = tc_frames[1];
+	r = root_on(8);
+	for (int i = 0; i < 10; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	for (int i = 0; i < 20; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	tc = stp_tc_count;
+	tc9 = tc_frames[8];
+	tc2 = tc_frames[1];
 	links_set((1 << 1) | (1 << 3) | (1 << 8));
-	for (int i = 0; i < 4; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(3, 3, "the host port forwards as an edge port");
 	check(stp_tc_count == tc, "the change counter does not move");
 	check(tc_frames[8] == tc9 && tc_frames[1] == tc2, "no TC is sent");
@@ -887,39 +1137,56 @@ static void scen_edge_no_tc(void)
 
 static void scen_link_loss_no_tc(void)
 {
+	struct sim_bpdu r;
+	int tc3;
+	int tc9;
+
 	printf("25. losing a designated link flushes it but sends no TC\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 2) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 20; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 20; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "port 2 forwards");
 	memset(flush_count, 0, sizeof(flush_count));
-	int tc3 = tc_frames[2], tc9 = tc_frames[8];
+	tc3 = tc_frames[2];
+	tc9 = tc_frames[8];
 	links_set((1 << 2) | (1 << 8));
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check(flush_count[1] > 0, "port 2's addresses are flushed");
 	check(tc_frames[2] == tc3 && tc_frames[8] == tc9, "no TC goes out");
 }
 
 static void scen_proposal_agreement(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu agree = {
+		.port = 1, .root_prio = 0x40, .root_cost = 22000, .br_prio = 0x80, .port_id = 3, .flags = 0x78
+	};
+
 	printf("26. a new designated port proposes and forwards as soon as the neighbour agrees\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	links_set((1 << 1) | (1 << 8));
 	tick(STP_HZ + STP_HZ / 2);
 	check_state(1, 1, "port 2 starts discarding");
 	check((last_tx[1].flags & 0x02) != 0, "and its BPDU carries the proposal flag");
 	check((last_tx[1].flags & 0x0c) == 0x0c, "with the designated role");
-	struct sim_bpdu agree = { .port = 1, .root_prio = 0x40, .root_cost = 22000,
-				  .br_prio = 0x80, .port_id = 3, .flags = 0x78 };
 	memcpy(agree.root_mac, ROOT_MAC, 6);
 	memcpy(agree.br_mac, PEER_MAC, 6);
 	bpdu_in(&agree);
@@ -929,6 +1196,8 @@ static void scen_proposal_agreement(void)
 
 static void scen_no_agreement(void)
 {
+	struct sim_bpdu r;
+
 	printf("27. without an agreement the port waits both forward delays\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
@@ -936,32 +1205,51 @@ static void scen_no_agreement(void)
 	stp_pp2p[2] = 2;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	links_set((1 << 1) | (1 << 2) | (1 << 8));
-	for (int i = 0; i < 5; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 5; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 1, "port 2 still discards after 10 s");
 	check((last_tx[2].flags & 0x02) == 0, "a port set to p2p off does not propose");
-	for (int i = 0; i < 4; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 2, "port 2 learns once the first forward delay is over");
-	for (int i = 0; i < 8; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 8; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "and forwards after the second");
 	stp_pp2p[2] = 0;
 }
 
 static void scen_sync_on_proposal(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu prop;
+
 	printf("28. a proposal on the root port syncs the designated ports and is agreed\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 3) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "designated port 2 forwards");
 	check_state(3, 3, "edge port 4 forwards");
 	check_state(8, 3, "root port 9 forwards");
-	struct sim_bpdu prop = r; prop.flags = 0x3e;
+	prop = r;
+	prop.flags = 0x3e;
 	bpdu_in(&prop);
 	tick(2);
 	check_state(1, 1, "port 2 is put back to discarding for the sync");
@@ -974,12 +1262,17 @@ static void scen_sync_on_proposal(void)
 
 static void scen_rapid_failover(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer;
+
 	printf("29. when the root port goes down the alternate forwards at once\n");
-	struct sim_bpdu r, peer;
 	ring_with_uplink_on_9(&r, &peer);
 	check(stp_root_port == 8 && port_state(0) == 1, "port 1 is the blocked alternate");
 	links_set(1 << 0);
-	for (int i = 0; i < 4; i++) { bpdu_in(&peer); tick(STP_HZ / 2); }
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&peer);
+		tick(STP_HZ / 2);
+	}
 	check(stp_root_port == 0, "port 1 is the root port within two seconds");
 	check_state(0, 3, "and already forwards");
 	stp_pcost[8] = 0;
@@ -987,24 +1280,33 @@ static void scen_rapid_failover(void)
 
 static void scen_rapid_reroot(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer;
+	int both = 0;
+
 	printf("30. the uplink coming back takes over without both ports forwarding\n");
-	struct sim_bpdu r, peer;
 	ring_with_uplink_on_9(&r, &peer);
 	stp_pcost[8] = 2000;
 	links_set(1 << 0);
-	for (int i = 0; i < 6; i++) { bpdu_in(&peer); tick(STP_HZ / 2); }
+	for (int i = 0; i < 6; i++) {
+		bpdu_in(&peer);
+		tick(STP_HZ / 2);
+	}
 	check(stp_root_port == 0 && port_state(0) == 3, "port 1 is the forwarding root port");
 	links_set((1 << 0) | (1 << 8));
-	int both = 0;
 	for (int i = 0; i < 12; i++) {
-		struct sim_bpdu p = r; p.flags = 0x3e;
+		struct sim_bpdu p = r;
+		p.flags = 0x3e;
 		bpdu_in(&p);
-		if (port_state(0) == 3 && port_state(8) == 3) both++;
+		if (port_state(0) == 3 && port_state(8) == 3)
+			both++;
 		bpdu_in(&peer);
-		if (port_state(0) == 3 && port_state(8) == 3) both++;
+		if (port_state(0) == 3 && port_state(8) == 3)
+			both++;
 		for (int k = 0; k < STP_HZ / 4; k++) {
 			tick(1);
-			if (port_state(0) == 3 && port_state(8) == 3) both++;
+			if (port_state(0) == 3 && port_state(8) == 3)
+				both++;
 		}
 	}
 	check(stp_root_port == 8, "port 9 is the root port again");
@@ -1016,17 +1318,23 @@ static void scen_rapid_reroot(void)
 
 static void scen_agreement_other_root(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu agree = {
+		.port = 1, .root_prio = 0x40, .root_cost = 22000, .br_prio = 0x80, .port_id = 3, .flags = 0x78
+	};
+
 	printf("31. an agreement for a different root does not open a port\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	links_set((1 << 1) | (1 << 8));
 	tick(STP_HZ + STP_HZ / 2);
-	struct sim_bpdu agree = { .port = 1, .root_prio = 0x40, .root_cost = 22000,
-				  .br_prio = 0x80, .port_id = 3, .flags = 0x78 };
 	memcpy(agree.root_mac, THIRD_MAC, 6);
 	memcpy(agree.br_mac, PEER_MAC, 6);
 	bpdu_in(&agree);
@@ -1036,31 +1344,40 @@ static void scen_agreement_other_root(void)
 
 static void scen_repeated_proposal(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu prop;
+	struct sim_bpdu agree = {
+		.port = 1, .root_prio = 0x40, .root_cost = 22000, .br_prio = 0x80, .port_id = 3, .flags = 0x78
+	};
+	int agreements = 0;
+
 	printf("32. a proposal repeated every hello syncs only once\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "designated port 2 forwards");
-	struct sim_bpdu prop = r; prop.flags = 0x3e;
+	prop = r;
+	prop.flags = 0x3e;
 	bpdu_in(&prop);
 	tick(2);
 	check_state(1, 1, "the first proposal syncs port 2");
-	struct sim_bpdu agree = { .port = 1, .root_prio = 0x40, .root_cost = 22000,
-				  .br_prio = 0x80, .port_id = 3, .flags = 0x78 };
 	memcpy(agree.root_mac, ROOT_MAC, 6);
 	memcpy(agree.br_mac, PEER_MAC, 6);
 	bpdu_in(&agree);
 	tick(2);
 	check_state(1, 3, "port 2 forwards again after its own agreement");
-	int agreements = 0;
 	for (int i = 0; i < 5; i++) {
 		int before = tx_frames[8];
 		bpdu_in(&prop);
 		tick(2);
-		if (tx_frames[8] > before && (last_tx[8].flags & 0x40)) agreements++;
+		if (tx_frames[8] > before && (last_tx[8].flags & 0x40))
+			agreements++;
 		secs(2);
 		check_state(1, 3, "a repeated proposal does not block port 2 again");
 	}
@@ -1069,82 +1386,125 @@ static void scen_repeated_proposal(void)
 
 static void scen_dispute(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu quiet = {
+		.port = 1, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x80, .port_id = 4, .flags = 0x0c
+	};
+	struct sim_bpdu claim;
+	int opened = 0;
+
 	printf("33. a worse neighbour that claims to forward as designated is disputed\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "designated port 2 forwards");
-	struct sim_bpdu quiet = { .port = 1, .root_prio = 0x40, .root_cost = 200000,
-				  .br_prio = 0x80, .port_id = 4, .flags = 0x0c };
 	memcpy(quiet.root_mac, ROOT_MAC, 6);
 	memcpy(quiet.br_mac, PEER_MAC, 6);
 	bpdu_in(&quiet);
 	tick(2);
 	check_state(1, 3, "worse designated info without the learning flag is no dispute");
-	struct sim_bpdu claim = quiet; claim.flags = 0x3c;
+	claim = quiet;
+	claim.flags = 0x3c;
 	bpdu_in(&claim);
 	tick(2);
 	check_state(1, 1, "with the learning flag set port 2 goes back to discarding");
-	int opened = 0;
 	for (int i = 0; i < 12; i++) {
 		bpdu_in(&r);
 		bpdu_in(&claim);
 		for (int k = 0; k < 2 * STP_HZ; k++) {
 			tick(1);
-			if (port_state(1) == 3) opened++;
+			if (port_state(1) == 3)
+				opened++;
 		}
 	}
 	check(opened == 0, "and never forwards while the dispute goes on");
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); bpdu_in(&quiet); secs(2); }
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		bpdu_in(&quiet);
+		secs(2);
+	}
 	check_state(1, 3, "once the neighbour stops claiming, port 2 forwards again");
 }
 
 static void scen_learning_state(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu claim = {
+		.port = 1, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x80, .port_id = 4, .flags = 0x3c
+	};
+
 	printf("34. without an agreement a port learns for one forward delay before it forwards\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	links_set((1 << 1) | (1 << 8));
-	for (int i = 0; i < 6; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 6; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 1, "port 2 discards for the first forward delay");
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 2, "then learns");
 	check((last_tx[1].flags & 0x30) == 0x10, "its BPDUs carry learning without forwarding");
-	struct sim_bpdu claim = { .port = 1, .root_prio = 0x40, .root_cost = 200000,
-				  .br_prio = 0x80, .port_id = 4, .flags = 0x3c };
 	memcpy(claim.root_mac, ROOT_MAC, 6);
 	memcpy(claim.br_mac, PEER_MAC, 6);
 	bpdu_in(&claim);
 	tick(2);
 	check_state(1, 1, "a dispute while learning sends it back to discarding");
-	for (int i = 0; i < 9; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 9; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 2, "after a full forward delay it learns again");
-	for (int i = 0; i < 8; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 8; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "and forwards after the second forward delay");
 }
 
 static void scen_reply_to_inferior(void)
 {
+	struct sim_bpdu r;
+	int n;
+	int guard = 0;
+	struct sim_bpdu worse = {
+		.port = 1, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x80, .port_id = 4, .flags = 0x0c
+	};
+	struct sim_bpdu same_root_better = {
+		.port = 1, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1, .flags = 0x0c
+	};
+
 	printf("35. a designated port answers worse information at once\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "designated port 2 forwards");
-	int n = tx_frames[1], guard = 0;
-	while (tx_frames[1] == n && guard++ < 3 * STP_HZ) tick(1);
+	n = tx_frames[1];
+	while (tx_frames[1] == n && guard++ < 3 * STP_HZ)
+		tick(1);
 	check(tx_frames[1] > n, "port 2 sent its regular hello");
-	struct sim_bpdu worse = { .port = 1, .root_prio = 0x40, .root_cost = 200000,
-				  .br_prio = 0x80, .port_id = 4, .flags = 0x0c };
 	memcpy(worse.root_mac, ROOT_MAC, 6);
 	memcpy(worse.br_mac, PEER_MAC, 6);
 	n = tx_frames[1];
@@ -1153,8 +1513,6 @@ static void scen_reply_to_inferior(void)
 	check(tx_frames[1] > n, "the worse BPDU is answered within two ticks, not at the next hello");
 	tick(STP_HZ / 2);
 	n = tx_frames[1];
-	struct sim_bpdu same_root_better = { .port = 1, .root_prio = 0x40, .root_cost = 2000,
-					     .br_prio = 0x80, .port_id = 1, .flags = 0x0c };
 	memcpy(same_root_better.root_mac, ROOT_MAC, 6);
 	memcpy(same_root_better.br_mac, PEER_MAC, 6);
 	bpdu_in(&same_root_better);
@@ -1164,18 +1522,22 @@ static void scen_reply_to_inferior(void)
 
 static void scen_backup_role(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu own = { .port = 2, .root_prio = 0x40, .root_cost = 20000, .br_prio = 0x80, .port_id = 4 };
+
 	printf("36. a port hearing another port of this bridge is a blocked backup\n");
 	reset_all();
 	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
 	stp_pflags[3] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 2) | (1 << 3) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(2, 3, "port 3 forwards");
 	check_state(3, 3, "port 4 forwards");
-	struct sim_bpdu own = { .port = 2, .root_prio = 0x40, .root_cost = 20000,
-				.br_prio = 0x80, .port_id = 4 };
 	memcpy(own.root_mac, ROOT_MAC, 6);
 	memcpy(own.br_mac, uip_ethaddr.addr, 6);
 	bpdu_in(&own);
@@ -1183,7 +1545,10 @@ static void scen_backup_role(void)
 	check_state(3, 1, "port 4, the worse of the two, is blocked");
 	check(((stp_backup >> 3) & 1) == 1, "and has the backup role");
 	check(((stp_backup >> 2) & 1) == 0, "port 3 is not a backup");
-	for (int i = 0; i < 20; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 20; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(3, 3, "once its own BPDUs stop coming back port 4 forwards again");
 	check(((stp_backup >> 3) & 1) == 0, "and is no longer a backup");
 	bpdu_in(&own);
@@ -1196,22 +1561,29 @@ static void scen_backup_role(void)
 
 static void migrate_to_stp(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu old = {
+		.port = 1, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x80, .port_id = 4, .legacy = 1
+	};
+
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(last_tx[1].version == 2, "port 2 starts with RST BPDUs");
-	struct sim_bpdu old = { .port = 1, .root_prio = 0x40, .root_cost = 200000,
-				.br_prio = 0x80, .port_id = 4, .legacy = 1 };
 	memcpy(old.root_mac, ROOT_MAC, 6);
 	memcpy(old.br_mac, PEER_MAC, 6);
 	bpdu_in(&old);
 	tick(2);
 	check(last_tx[1].version == 0 && last_tx[1].bpdu_type == 0, "after the 802.1D BPDU port 2 sends Config BPDUs");
 	check((last_tx[1].flags & 0x02) == 0, "without a proposal");
-	check(((stp_legacy >> 1) & 1) == 1 && ((stp_legacy >> 8) & 1) == 0, "only port 2 is switched, not the root port");
+	check(((stp_legacy >> 1) & 1) == 1 && ((stp_legacy >> 8) & 1) == 0,
+		"only port 2 is switched, not the root port");
 }
 
 static void scen_migrate_to_stp(void)
@@ -1222,25 +1594,34 @@ static void scen_migrate_to_stp(void)
 
 static void scen_migrate_back(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu old = {
+		.port = 1, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x80, .port_id = 4, .legacy = 1
+	};
+	struct sim_bpdu rst;
+
 	printf("38. mcheck and an RST neighbour bring the port back to RSTP\n");
 	migrate_to_stp();
-	struct sim_bpdu r = root_on(8);
+	r = root_on(8);
 	secs(4);
 	stp_port_mcheck(1);
 	tick(2);
 	check(last_tx[1].version == 2, "mcheck makes port 2 send RST BPDUs again");
-	struct sim_bpdu old = { .port = 1, .root_prio = 0x40, .root_cost = 200000,
-				.br_prio = 0x80, .port_id = 4, .legacy = 1 };
 	memcpy(old.root_mac, ROOT_MAC, 6);
 	memcpy(old.br_mac, PEER_MAC, 6);
 	bpdu_in(&old);
 	tick(STP_HZ);
 	check(last_tx[1].version == 2, "an 802.1D BPDU within the migrate time does not switch it yet");
-	for (int i = 0; i < 4; i++) { bpdu_in(&r); tick(STP_HZ / 2); }
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&r);
+		tick(STP_HZ / 2);
+	}
 	tick(2 * STP_HZ);
 	check(last_tx[1].version == 0, "once the migrate time is over it falls back to STP");
 	secs(4);
-	struct sim_bpdu rst = old; rst.legacy = 0; rst.flags = 0x0c;
+	rst = old;
+	rst.legacy = 0;
+	rst.flags = 0x0c;
 	bpdu_in(&rst);
 	tick(2);
 	check(last_tx[1].version == 2, "an RST BPDU after the migrate time switches it back to RSTP");
@@ -1248,20 +1629,35 @@ static void scen_migrate_back(void)
 
 static void scen_legacy_root_tcn(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu ack;
+	int tcn;
+
 	printf("39. behind an 802.1D root port a topology change goes out as TCN\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8); r.legacy = 1;
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	r.legacy = 1;
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(stp_root_port == 8, "port 9 is the root port");
-	struct sim_bpdu ack = r; ack.flags = 0x81;
+	ack = r;
+	ack.flags = 0x81;
 	bpdu_in(&ack);
-	for (int i = 0; i < 5; i++) { bpdu_in(&r); secs(2); }
-	int tcn = tcn_frames[8];
+	for (int i = 0; i < 5; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	tcn = tcn_frames[8];
 	links_set((1 << 1) | (1 << 8));
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check_state(1, 3, "port 2 came up and forwards");
 	check(tcn_frames[8] > tcn, "port 9 reports the change with TCN");
 	check(last_tx[1].version == 2, "port 2, with no 802.1D neighbour, sends RST BPDUs");
@@ -1269,16 +1665,25 @@ static void scen_legacy_root_tcn(void)
 
 static void scen_alternate_agrees(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer;
+	struct sim_bpdu prop;
+	int n;
+
 	printf("40. an alternate port answers a proposal with an agreement\n");
-	struct sim_bpdu r, peer;
 	ring_with_uplink_on_9(&r, &peer);
 	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 0) | (1 << 2) | (1 << 8));
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check(stp_root_port == 8 && port_state(0) == 1, "port 1 is the blocked alternate");
 	check_state(2, 3, "designated port 3 forwards");
-	struct sim_bpdu prop = peer; prop.flags = 0x3e;
-	int n = tx_frames[0];
+	prop = peer;
+	prop.flags = 0x3e;
+	n = tx_frames[0];
 	bpdu_in(&prop);
 	tick(2);
 	check(tx_frames[0] > n, "port 1 answers at once");
@@ -1288,7 +1693,11 @@ static void scen_alternate_agrees(void)
 	check_state(0, 1, "port 1 stays discarding");
 	check_state(8, 3, "the root port is not touched by the sync");
 	check_state(2, 1, "the first proposal syncs designated port 3");
-	for (int i = 0; i < 18; i++) { bpdu_in(&r); bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check_state(2, 3, "port 3 forwards again");
 	n = tx_frames[0];
 	bpdu_in(&prop);
@@ -1296,25 +1705,35 @@ static void scen_alternate_agrees(void)
 	check(tx_frames[0] > n && (last_tx[0].flags & 0x40), "a repeated proposal is answered again");
 	check_state(2, 3, "but does not sync port 3 a second time");
 	n = tx_frames[0];
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); bpdu_in(&peer); secs(2); }
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		bpdu_in(&peer);
+		secs(2);
+	}
 	check(tx_frames[0] == n, "without a proposal the alternate port stays silent");
 	stp_pcost[8] = 0;
 }
 
 static void scen_agreement_from_alternate(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu agree = {
+		.port = 1, .root_prio = 0x40, .root_cost = 22000, .br_prio = 0x80, .port_id = 3, .flags = 0x44
+	};
+
 	printf("41. an agreement from an alternate port opens a designated port\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	links_set((1 << 1) | (1 << 8));
 	tick(STP_HZ + STP_HZ / 2);
 	check_state(1, 1, "port 2 proposes from discarding");
-	struct sim_bpdu agree = { .port = 1, .root_prio = 0x40, .root_cost = 22000,
-				  .br_prio = 0x80, .port_id = 3, .flags = 0x44 };
 	memcpy(agree.root_mac, ROOT_MAC, 6);
 	memcpy(agree.br_mac, PEER_MAC, 6);
 	bpdu_in(&agree);
@@ -1351,41 +1770,52 @@ static void scen_timer_relation(void)
 	check(stp_maxage_s == 40 && stp_fwddelay_s == 30, "and keeps its values when the result is consistent");
 	sim_cmd("stp fwd 10");
 	stp_setup();
-	check(stp_hello_s == 2 && stp_maxage_s == 20 && stp_fwddelay_s == 15, "an inconsistent result falls back to 2/20/15 when STP starts");
+	check(stp_hello_s == 2 && stp_maxage_s == 20 && stp_fwddelay_s == 15,
+		"an inconsistent result falls back to 2/20/15 when STP starts");
 	save_cmd = 1;
 }
 
 static void scen_recent_root(void)
 {
+	struct sim_bpdu r9;
+	struct sim_bpdu r3;
+	struct sim_bpdu agree = {
+		.port = 1, .root_prio = 0x40, .root_cost = 22000, .br_prio = 0x80, .port_id = 3, .flags = 0x78
+	};
+
 	printf("43. ports that were root a moment ago are held back when a new root port forwards\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r9 = root_on(8);
-	for (int i = 0; i < 18; i++) { bpdu_in(&r9); secs(2); }
+	r9 = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r9);
+		secs(2);
+	}
 	check(stp_root_port == 8, "port 9 is the root port");
 	check_state(1, 3, "designated port 2 forwards");
 	stp_rrwhile[1] = 10 * STP_HZ;
 	stp_pcost[2] = 2000;
 	links_set((1 << 1) | (1 << 2) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r3 = root_on(2);
+	r3 = root_on(2);
 	bpdu_in(&r3);
 	tick(2);
 	check(stp_root_port == 2, "port 3, the cheaper path, is the new root port");
 	check_state(2, 3, "and forwards at once");
 	check_state(8, 1, "the old root port 9 is discarding");
 	check_state(1, 1, "port 2, a recent root port too, is put back to discarding");
-	struct sim_bpdu agree = { .port = 1, .root_prio = 0x40, .root_cost = 22000,
-				  .br_prio = 0x80, .port_id = 3, .flags = 0x78 };
 	memcpy(agree.root_mac, ROOT_MAC, 6);
 	memcpy(agree.br_mac, PEER_MAC, 6);
 	bpdu_in(&agree);
 	tick(2);
 	check_state(1, 1, "an agreement does not open it while it is a recent root");
-	for (int i = 0; i < 6; i++) { bpdu_in(&r3); secs(2); }
+	for (int i = 0; i < 6; i++) {
+		bpdu_in(&r3);
+		secs(2);
+	}
 	bpdu_in(&agree);
 	tick(2);
 	check_state(1, 3, "once that time is over the agreement opens it");
@@ -1394,34 +1824,48 @@ static void scen_recent_root(void)
 
 static void scen_recent_backup(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu r4;
+
 	printf("44. a port that was a backup a moment ago does not rush into forwarding as root\n");
 	reset_all();
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	stp_pflags[3] &= ~STP_PF_AUTOEDGE;
 	stp_pcost[3] = 2000;
 	stp_rbwhile[3] = 3 * STP_HZ;
 	links_set((1 << 3) | (1 << 8));
 	secs(1);
-	struct sim_bpdu r4 = root_on(3);
+	r4 = root_on(3);
 	bpdu_in(&r4);
 	tick(2);
 	check(stp_root_port == 3, "port 4 is the new root port");
 	check_state(3, 1, "but stays discarding while it is a recent backup");
-	for (int i = 0; i < 4; i++) { bpdu_in(&r4); secs(1); }
+	for (int i = 0; i < 4; i++) {
+		bpdu_in(&r4);
+		secs(1);
+	}
 	check_state(3, 3, "and forwards once that time is over");
 	stp_pcost[3] = 0;
 }
 
 static void scen_short_bpdu(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu c;
+	int n;
+	struct sim_bpdu tcn;
+
 	printf("45. BPDUs shorter than their type allows are ignored\n");
 	reset_all();
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
+	r = root_on(8);
 	r.msg_len = 38;
 	bpdu_in(&r);
 	check(stp_root_port == 0xff, "an RST BPDU of 38 bytes is ignored");
@@ -1431,14 +1875,18 @@ static void scen_short_bpdu(void)
 	reset_all();
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu c = root_on(8); c.legacy = 1; c.msg_len = 37;
+	c = root_on(8);
+	c.legacy = 1;
+	c.msg_len = 37;
 	bpdu_in(&c);
 	check(stp_root_port == 0xff, "a Config BPDU of 37 bytes is ignored");
 	c.msg_len = 0;
 	bpdu_in(&c);
 	check(stp_root_port == 8, "at 38 bytes it is taken");
-	int n = tx_frames[8];
-	struct sim_bpdu tcn = c; tcn.legacy = 2; tcn.msg_len = 6;
+	n = tx_frames[8];
+	tcn = c;
+	tcn.legacy = 2;
+	tcn.msg_len = 6;
 	bpdu_in(&tcn);
 	check(tx_frames[8] == n, "a TCN of 6 bytes gets no TCA");
 	tcn.msg_len = 0;
@@ -1448,8 +1896,10 @@ static void scen_short_bpdu(void)
 
 static void scen_port_roles(void)
 {
+	struct sim_bpdu r;
+	struct sim_bpdu peer;
+
 	printf("46. the reported role covers every port, a port without link is disabled\n");
-	struct sim_bpdu r, peer;
 	ring_with_uplink_on_9(&r, &peer);
 	check(stp_port_role(8) == 1, "port 9 is reported as root");
 	check(stp_port_role(0) == 3, "port 1 as alternate");
@@ -1465,35 +1915,53 @@ static void scen_port_roles(void)
 
 static void scen_no_tx_without_link(void)
 {
+	struct sim_bpdu r;
+
 	printf("47. no BPDU goes out on a port without link\n");
 	reset_all();
 	links_set(1 << 8);
 	secs(1);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 5; i++) { bpdu_in(&r); secs(2); }
+	r = root_on(8);
+	for (int i = 0; i < 5; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(tx_frames[1] == 0, "port 2 without link sent nothing in ten seconds");
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
-	for (int i = 0; i < 2; i++) { bpdu_in(&r); secs(2); }
+	for (int i = 0; i < 2; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
 	check(tx_frames[1] > 0, "once its link is up it sends");
 }
 
 static void scen_counters(void)
 {
+	struct sim_bpdu r;
+	int sent = 1;
+	int same = 1;
+	int any = 0;
+	struct sim_bpdu tcn;
+	int zero;
+
 	printf("48. per-port BPDU and TC counters, and stp clear\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 40; i++) { bpdu_in(&r); secs(1); }
-	check(stp_cnt[STP_CNT_RX][8] == 40 && stp_cnt[STP_CNT_RX][1] == 0, "each BPDU taken in is counted on its own port");
-	check(stp_cnt[STP_CNT_TX][1] > 0 && stp_cnt[STP_CNT_TX][0] == 0, "BPDUs sent are counted, none on a port without link");
-	int sent = 1;
+	r = root_on(8);
+	for (int i = 0; i < 40; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
+	check(stp_cnt[STP_CNT_RX][8] == 40 && stp_cnt[STP_CNT_RX][1] == 0,
+		"each BPDU taken in is counted on its own port");
+	check(stp_cnt[STP_CNT_TX][1] > 0 && stp_cnt[STP_CNT_TX][0] == 0,
+		"BPDUs sent are counted, none on a port without link");
 	for (int p = 0; p < NPORTS; p++)
 		sent &= stp_cnt[STP_CNT_TX][p] == (uint32_t)tx_frames[p];
 	check(sent, "BPDUs sent match the frames on the wire on every port");
 	check(stp_cnt[STP_CNT_TCRX][8] == 0, "a BPDU without the TC flag is not counted as TC");
-	int same = 1, any = 0;
 	for (int p = 0; p < NPORTS; p++) {
 		same &= stp_cnt[STP_CNT_TCTX][p] == (uint32_t)(tc_frames[p] + tcn_frames[p]);
 		any |= tc_frames[p] + tcn_frames[p];
@@ -1502,12 +1970,12 @@ static void scen_counters(void)
 	r.flags = 0x3d;
 	bpdu_in(&r);
 	check(stp_cnt[STP_CNT_TCRX][8] == 1, "a BPDU with the TC flag is counted as TC");
-	struct sim_bpdu tcn = r;
+	tcn = r;
 	tcn.legacy = 2;
 	bpdu_in(&tcn);
 	check(stp_cnt[STP_CNT_TCRX][8] == 2 && stp_cnt[STP_CNT_RX][8] == 42, "and so is a TCN");
 	sim_cmd("stp clear");
-	int zero = err_status == ERR_OK;
+	zero = err_status == ERR_OK;
 	for (int k = 0; k < STP_CNT_N; k++)
 		for (int p = 0; p < NPORTS; p++)
 			zero &= stp_cnt[k][p] == 0;
@@ -1516,18 +1984,29 @@ static void scen_counters(void)
 
 static void scen_path_cost_method(void)
 {
+	struct sim_bpdu r;
+
 	printf("49. short path costs follow 802.1D-1998\n");
 	reset_all();
 	links_set(1 << 8);
-	struct sim_bpdu r = root_on(8);
-	for (int i = 0; i < 3; i++) { bpdu_in(&r); secs(1); }
+	r = root_on(8);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check(be32(stp_rv[0].ext) == 20000, "long method: a 1G root port costs 20000");
 	sim_cmd("stp pathcost short");
 	check(err_status == ERR_OK && stp_pcost_short == 1, "stp pathcost short is accepted");
-	for (int i = 0; i < 2; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 2; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check(be32(stp_rv[0].ext) == 4, "short method: the same port costs 4");
 	sim_speed[8] = 4;
-	for (int i = 0; i < 2; i++) { bpdu_in(&r); secs(1); }
+	for (int i = 0; i < 2; i++) {
+		bpdu_in(&r);
+		secs(1);
+	}
 	check(be32(stp_rv[0].ext) == 2, "and a 10G port costs 2");
 	sim_cmd("stp pathcost medium");
 	check(err_status != ERR_OK && stp_pcost_short == 1, "an unknown method is refused");
@@ -1546,7 +2025,7 @@ static void scen_bpdu_handling(void)
 	l2mc_calls = 0;
 	sim_cmd("stp bpdu filter");
 	check(err_status == ERR_OK && l2mc_calls && l2mc_pmask == PMASK_CPU,
-	      "filter keeps them on the CPU, at once while STP is off");
+		"filter keeps them on the CPU, at once while STP is off");
 	stp_enabled = 1;
 	stp_setup();
 	l2mc_calls = 0;
@@ -1562,13 +2041,16 @@ static void scen_bpdu_handling(void)
 
 static void scen_last_tc(void)
 {
+	struct sim_bpdu tcn;
+	uint16_t before;
+
 	printf("51. time since the last topology change\n");
 	reset_all();
 	links_set(1 << 8);
-	struct sim_bpdu tcn = root_on(8);
+	tcn = root_on(8);
 	tcn.legacy = 2;
 	secs(3);
-	uint16_t before = stp_tc_count;
+	before = stp_tc_count;
 	bpdu_in(&tcn);
 	check(stp_tc_count != before, "a TCN moves the topology change counter");
 	secs(5);
@@ -1580,24 +2062,28 @@ static void scen_last_tc(void)
 
 static void scen_lag(void)
 {
+	struct sim_bpdu before;
+	struct sim_bpdu b;
+	struct sim_bpdu c;
+	struct sim_bpdu t;
+
 	printf("52. a link aggregation group is one port of the tree\n");
 	reset_all();
 	links_set((1 << 1) | (1 << 2) | (1 << 8));
 	secs(1);
-	struct sim_bpdu before = root_on(2);
+	before = root_on(2);
 	bpdu_in(&before);
 	check(stp_root_port == 2 && stp_info_while[2], "port 3 hears the root before it joins a group");
 	sim_lag[0] = (1 << 1) | (1 << 2);
 	secs(1);
 	check(stp_info_while[2] == 0, "joining the group drops what the port heard on its own");
-	check(stp_ent_id(STP_LAG_BASE) && !stp_ent_id(1) && !stp_ent_id(2),
-	      "the group replaces its member ports");
+	check(stp_ent_id(STP_LAG_BASE) && !stp_ent_id(1) && !stp_ent_id(2), "the group replaces its member ports");
 	check(port_state(1) == 1 && port_state(2) == 1, "both members start discarding together");
 
-	struct sim_bpdu b = root_on(2);
+	b = root_on(2);
 	bpdu_in(&b);
 	check(stp_root_port == STP_LAG_BASE, "a BPDU on either member reaches the group");
-	struct sim_bpdu c = root_on(1);
+	c = root_on(1);
 	c.root_cost = 4;
 	bpdu_in(&c);
 	check(stp_root_port == STP_LAG_BASE, "and the other member feeds the same port");
@@ -1614,7 +2100,7 @@ static void scen_lag(void)
 
 	memset(tx_frames, 0, sizeof(tx_frames));
 	tcn_frames[1] = 0;
-	struct sim_bpdu t = root_on(2);
+	t = root_on(2);
 	t.legacy = 2;
 	bpdu_in(&t);
 	check(tx_frames[1] == 1 && tx_frames[2] == 0, "a reply leaves through the lowest member");
@@ -1623,8 +2109,7 @@ static void scen_lag(void)
 	memset(flush_count, 0, sizeof(flush_count));
 	links_set((1 << 2) | (1 << 8));
 	secs(1);
-	check(port_state(2) == 3 && stp_root_port == STP_LAG_BASE,
-	      "losing one member keeps the group forwarding");
+	check(port_state(2) == 3 && stp_root_port == STP_LAG_BASE, "losing one member keeps the group forwarding");
 	check(flush_count[2] == 0, "and is no topology change");
 	memset(tx_frames, 0, sizeof(tx_frames));
 	bpdu_in(&t);
@@ -1633,8 +2118,7 @@ static void scen_lag(void)
 	sim_lag[0] = 0;
 	links_set((1 << 1) | (1 << 2) | (1 << 8));
 	secs(1);
-	check(!stp_ent_id(STP_LAG_BASE) && stp_ent_id(1) && stp_ent_id(2),
-	      "dissolving the group gives the ports back");
+	check(!stp_ent_id(STP_LAG_BASE) && stp_ent_id(1) && stp_ent_id(2), "dissolving the group gives the ports back");
 	check(stp_root_port != STP_LAG_BASE, "and the group stops being the root port");
 	check(port_state(1) == 1 && port_state(2) == 1, "the ports start over discarding");
 }
@@ -1649,14 +2133,19 @@ static int digest_is(const char *hex)
 
 static void scen_mstp_config(void)
 {
+	const char *bad[] = { "stp msti 16 vlan 5", "stp msti 0 vlan 5", "stp msti 1 vlan 4095", "stp msti 1 vlan 0",
+		"stp msti 1 vlan 20-10", "stp msti 1 vlan 5,", "stp msti 1 vlan 5x", "stp msti 1 vlan 5-",
+		"stp msti 1 port 5", "stp msti 1 vlan 5 6", "stp msti 1x vlan 5" };
+
 	printf("53. MST configuration table and its digest\n");
 	reset_all();
 	secs(3);
-	check(digest_is("ac36177f50283cd4b83821d8ab26de62"), "an empty table gives the digest every bridge starts with");
+	check(digest_is("ac36177f50283cd4b83821d8ab26de62"),
+		"an empty table gives the digest every bridge starts with");
 	sim_cmd("stp msti 1 vlan 10-20,30");
-	check(err_status == ERR_OK && mstp_vid_msti(10) == 1 && mstp_vid_msti(20) == 1
-	      && mstp_vid_msti(30) == 1 && mstp_vid_msti(21) == 0 && mstp_vid_msti(9) == 0,
-	      "a list of ranges maps its VLANs");
+	check(err_status == ERR_OK && mstp_vid_msti(10) == 1 && mstp_vid_msti(20) == 1 && mstp_vid_msti(30) == 1 &&
+			mstp_vid_msti(21) == 0 && mstp_vid_msti(9) == 0,
+		"a list of ranges maps its VLANs");
 	check(mstp_dg_step < MSTP_DG_DONE, "a change restarts the digest");
 	sim_cmd("stp msti 2 vlan 15");
 	check(mstp_vid_msti(15) == 2, "a VLAN moves to the instance named last");
@@ -1664,11 +2153,7 @@ static void scen_mstp_config(void)
 	check(digest_is("17cfd7ae0de29b9d28331b5b2d07b640"), "the digest follows the table");
 	sim_cmd("stp msti 1 vlan none");
 	check(err_status == ERR_OK && mstp_vid_msti(10) == 0 && mstp_vid_msti(15) == 2,
-	      "none gives back only the VLANs of that instance");
-	const char *bad[] = { "stp msti 16 vlan 5", "stp msti 0 vlan 5", "stp msti 1 vlan 4095",
-			      "stp msti 1 vlan 0", "stp msti 1 vlan 20-10", "stp msti 1 vlan 5,",
-			      "stp msti 1 vlan 5x", "stp msti 1 vlan 5-", "stp msti 1 port 5",
-			      "stp msti 1 vlan 5 6", "stp msti 1x vlan 5" };
+		"none gives back only the VLANs of that instance");
 	for (unsigned i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
 		sim_cmd(bad[i]);
 		check(err_status != ERR_OK && mstp_vid_msti(5) == 0, bad[i]);
@@ -1702,8 +2187,8 @@ extern uint8_t stp_t, stp_tb;
 static uint8_t sim_recs[16 * 15];
 static int sim_nrec;
 
-static void sim_rec(uint8_t mstid, uint8_t flags, uint8_t rr_prio, const uint8_t *rr_mac,
-		    uint32_t icost, uint8_t bprio, uint8_t pprio, uint8_t hops)
+static void sim_rec(uint8_t mstid, uint8_t flags, uint8_t rr_prio, const uint8_t *rr_mac, uint32_t icost, uint8_t bprio,
+	uint8_t pprio, uint8_t hops)
 {
 	uint8_t *r = sim_recs + 16 * sim_nrec++;
 	r[0] = flags;
@@ -1719,13 +2204,14 @@ static void sim_rec(uint8_t mstid, uint8_t flags, uint8_t rr_prio, const uint8_t
 	r[15] = hops;
 }
 
-static void mst_bpdu_in(const struct sim_bpdu *b, const char *region, uint32_t icost,
-			const uint8_t *cist_mac, uint8_t cist_prio, uint8_t hops,
-			const uint8_t *digest)
+static void mst_bpdu_in(const struct sim_bpdu *b, const char *region, uint32_t icost, const uint8_t *cist_mac,
+	uint8_t cist_prio, uint8_t hops, const uint8_t *digest)
 {
+	uint8_t *m;
+
 	struct sim_pkt_in *f = (struct sim_pkt_in *)uip_buf;
 	bpdu_fill(b);
-	uint8_t *m = (uint8_t *)&f->version1_length + 1;
+	m = (uint8_t *)&f->version1_length + 1;
 	f->version = 0x03;
 	f->msg_len = HTONS(105);
 	f->version1_length = 0;
@@ -1765,6 +2251,8 @@ static void mstp_setup(void)
 
 static void scen_mst_bpdu_out(void)
 {
+	uint8_t *m;
+
 	printf("54. an MSTP bridge sends MST BPDUs\n");
 	reset_all();
 	sim_cmd("stp version mstp");
@@ -1772,77 +2260,83 @@ static void scen_mst_bpdu_out(void)
 	sim_cmd("stp revision 3");
 	links_set(1 << 3);
 	secs(4);
-	uint8_t *m = last_mst[3];
+	m = last_mst[3];
 	check(tx_frames[3] > 0 && last_tx[3].version == 3, "the BPDU carries protocol version 3");
 	check(HTONS(last_tx[3].msg_len) == 105 && m[0] == 0 && m[1] == 64 && m[2] == 0,
-	      "with the MST part and no MSTI messages");
+		"with the MST part and no MSTI messages");
 	check(last_len[3] == (uint16_t)((uint8_t *)&last_tx[3].version1_length + 1 - (uint8_t *)&last_tx[3]) + 66,
-	      "and the frame ends after the hop count");
+		"and the frame ends after the hop count");
 	check(!memcmp(m + 3, "lab\0\0\0\0\0", 8) && m[35] == 0 && m[36] == 3, "the region name and revision");
 	check(!memcmp(m + 37, mstp_digest, 16) && digest_is("ac36177f50283cd4b83821d8ab26de62"),
-	      "the configuration digest");
+		"the configuration digest");
 	check(m[57] == 0x80 && m[58] == 0 && !memcmp(m + 59, uip_ethaddr.addr, 6) && m[65] == 20,
-	      "our bridge id and the full hop count");
+		"our bridge id and the full hop count");
 	check(!memcmp(&last_tx[3].bridge, &last_tx[3].root, 8), "a bridge on its own is its own regional root");
 }
 
 static void scen_mst_internal(void)
 {
+	struct sim_bpdu b;
+
 	printf("55. a neighbour in the same region is an internal port\n");
 	mstp_setup();
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check((stp_internal >> 8) & 1, "matching name, revision and digest make the port internal");
 	check(stp_root_port == 8, "the port becomes the root port");
-	check(be32(stp_rv[0].ext) == 0 && be32(stp_rv[0].icost) == 20000,
-	      "its cost counts as internal root path cost");
+	check(be32(stp_rv[0].ext) == 0 && be32(stp_rv[0].icost) == 20000, "its cost counts as internal root path cost");
 	check(!memcmp(stp_rv[0].rroot.mac, ROOT_MAC, 6), "the neighbour stays the regional root");
 	check(stp_rhops[0] == 19, "one hop is used up");
 	memset(tx_frames, 0, sizeof(tx_frames));
 	secs(3);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check(tx_frames[3] > 0 && be32(last_mst[3] + 53) == 20000 && last_mst[3][65] == 19,
-	      "a designated port passes on the internal cost and the hops left");
+		"a designated port passes on the internal cost and the hops left");
 	check(!memcmp(last_tx[3].bridge.mac, ROOT_MAC, 6) && last_tx[3].age == 0,
-	      "with the regional root, and the message age does not grow inside the region");
+		"with the regional root, and the message age does not grow inside the region");
 }
 
 static void scen_mst_boundary(void)
 {
+	struct sim_bpdu b;
+	struct sim_pkt_in *f;
+
 	printf("56. a neighbour from another region is a boundary port\n");
 	mstp_setup();
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	mst_bpdu_in(&b, "other", 0, ROOT_MAC, 0x40, 20, NULL);
 	check(!((stp_internal >> 8) & 1), "a different region name makes the port a boundary port");
 	check(stp_root_port == 8 && be32(stp_rv[0].ext) == 20000 && be32(stp_rv[0].icost) == 0,
-	      "the cost counts as external root path cost");
+		"the cost counts as external root path cost");
 	check(!memcmp(stp_rv[0].rroot.mac, uip_ethaddr.addr, 6), "this bridge is the regional root of its region");
 	check(stp_rhops[0] == 20, "and starts the hop count");
 	memset(tx_frames, 0, sizeof(tx_frames));
 	secs(3);
 	mst_bpdu_in(&b, "other", 0, ROOT_MAC, 0x40, 20, NULL);
 	check(tx_frames[3] > 0 && last_tx[3].age == 1 && !memcmp(last_tx[3].bridge.mac, uip_ethaddr.addr, 6),
-	      "the message age grows at the region boundary");
+		"the message age grows at the region boundary");
 	static const uint8_t bad[16] = { 1 };
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, bad);
 	check(!((stp_internal >> 8) & 1), "a different digest is another region too");
 	sim_cmd("stp revision 9");
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check((stp_internal >> 8) & 1, "the BPDU carries the same revision as ours here");
-	struct sim_pkt_in *f = (struct sim_pkt_in *)uip_buf;
+	f = (struct sim_pkt_in *)uip_buf;
 	bpdu_fill(&b);
 	f->version = 0x03;
 	uip_len = sizeof(struct sim_pkt_in);
 	stp_in();
 	check(!((stp_internal >> 8) & 1) && stp_root_port == 8,
-	      "a version 3 BPDU too short for the MST part is taken as RSTP");
+		"a version 3 BPDU too short for the MST part is taken as RSTP");
 }
 
 static void scen_mst_hops(void)
 {
+	struct sim_bpdu b;
+
 	printf("57. remaining hops limit how far information travels in a region\n");
 	mstp_setup();
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 1, NULL);
 	check(stp_info_while[8] == 0 && stp_root_port == 0xff, "information with one hop left is not taken");
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 2, NULL);
@@ -1851,35 +2345,40 @@ static void scen_mst_hops(void)
 
 static void scen_mst_rstp_neighbour(void)
 {
+	struct sim_bpdu b;
+
 	printf("58. an RSTP neighbour is a boundary port of an MSTP bridge\n");
 	mstp_setup();
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	bpdu_in(&b);
 	check(!((stp_internal >> 8) & 1) && stp_root_port == 8, "the RST BPDU is taken at a boundary port");
 	check(be32(stp_rv[0].ext) == 20000 && !memcmp(stp_rv[0].rroot.mac, uip_ethaddr.addr, 6),
-	      "with the external cost, this bridge the regional root");
+		"with the external cost, this bridge the regional root");
 	sim_cmd("stp version rstp");
 	memset(tx_frames, 0, sizeof(tx_frames));
 	secs(3);
 	bpdu_in(&b);
-	check(tx_frames[3] > 0 && last_tx[3].version == 2 && HTONS(last_tx[3].msg_len) == 39
-	      && !memcmp(last_tx[3].bridge.mac, uip_ethaddr.addr, 6),
-	      "back in RSTP the bridge sends plain RST BPDUs with its own id");
+	check(tx_frames[3] > 0 && last_tx[3].version == 2 && HTONS(last_tx[3].msg_len) == 39 &&
+			!memcmp(last_tx[3].bridge.mac, uip_ethaddr.addr, 6),
+		"back in RSTP the bridge sends plain RST BPDUs with its own id");
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check(!((stp_internal >> 8) & 1), "and no port is internal");
 }
 
 static void scen_mst_loop_field(void)
 {
+	struct sim_bpdu b;
+	struct sim_bpdu own;
+
 	printf("59. loops are told by the CIST bridge id, not the regional root\n");
 	mstp_setup();
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	b.br_prio = 0x80;
 	memcpy(b.br_mac, uip_ethaddr.addr, 6);
 	mst_bpdu_in(&b, "lab", 20000, PEER_MAC, 0x80, 19, NULL);
 	check(stp_info_while[8] != 0 && !stp_loop_held[8],
-	      "a neighbour naming us its regional root is taken as its information");
-	struct sim_bpdu own = root_on(3);
+		"a neighbour naming us its regional root is taken as its information");
+	own = root_on(3);
 	own.port_id = 9;
 	own.port_prio = 0x80;
 	mst_bpdu_in(&own, "lab", 0, uip_ethaddr.addr, 0x80, 20, NULL);
@@ -1888,6 +2387,8 @@ static void scen_mst_loop_field(void)
 
 static void scen_msti_runs(void)
 {
+	struct sim_bpdu b;
+
 	printf("60. an instance with VLANs runs a tree of its own\n");
 	mstp_setup();
 	check(stp_trees == 1, "no instance runs without VLANs");
@@ -1902,7 +2403,7 @@ static void scen_msti_runs(void)
 	check(port_state(5) == 3 && tree_state(1, 5) == 3, "and follows the CIST into forwarding");
 	secs(16);
 	check(tree_state(1, 5) == port_state(5), "without timers of its own in the instance");
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	for (int i = 0; i < 20; i++) {
 		mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 		secs(1);
@@ -1916,20 +2417,23 @@ static void scen_msti_runs(void)
 	check(tree_state(1, 8) == 3, "and forwards there once its own listen and learn periods end");
 	mst_bpdu_in(&b, "other", 0, ROOT_MAC, 0x40, 20, NULL);
 	check(!((stp_internal >> 8) & 1) && tree_state(1, 8) == port_state(8),
-	      "a port leaving the region takes the CIST state in the instance again");
+		"a port leaving the region takes the CIST state in the instance again");
 	sim_cmd("stp msti 1 vlan none");
 	check(stp_trees == 1, "an instance without VLANs stops");
 }
 
 static void scen_msti_boundary_alternate(void)
 {
+	struct sim_bpdu best;
+	struct sim_bpdu worse;
+
 	printf("62. an alternate boundary port stays discarding in the instance\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	memset(ever_state, 0, sizeof(ever_state));
 	links_set((1 << 5) | (1 << 8));
-	struct sim_bpdu best = root_on(8);
-	struct sim_bpdu worse = root_on(5);
+	best = root_on(8);
+	worse = root_on(5);
 	worse.port_id = 3;
 	for (int i = 0; i < 40; i++) {
 		bpdu_in(&best);
@@ -1954,53 +2458,61 @@ static void scen_msti_rstp_untouched(void)
 	secs(5);
 	check(stp_trees == 1 && port_state(3) == 3, "the CIST runs alone");
 	check(mstp_regs[1][0] == 0 && mstp_regs[1][3] == 0 && mstp_regs[1][2] == 0,
-	      "no port state is written to instance 1");
+		"no port state is written to instance 1");
 }
 
 static void scen_msti_records_out(void)
 {
+	uint8_t *m;
+
 	printf("63. MST BPDUs carry a message for every instance that runs\n");
 	mstp_setup();
 	sim_cmd("stp msti 2 vlan 20");
 	sim_cmd("stp msti 1 vlan 10");
 	memset(tx_frames, 0, sizeof(tx_frames));
 	secs(3);
-	uint8_t *m = last_mst[3];
+	m = last_mst[3];
 	check(tx_frames[3] > 0 && m[0] == 0 && m[1] == 96 && HTONS(last_tx[3].msg_len) == 137,
-	      "two instances, two messages");
+		"two instances, two messages");
 	check(last_len[3] == (uint16_t)((uint8_t *)&last_tx[3].version1_length + 1 - (uint8_t *)&last_tx[3]) + 66 + 32,
-	      "and the frame grows by 16 bytes for each");
+		"and the frame grows by 16 bytes for each");
 	check(m[66 + 2] == 1 && m[82 + 2] == 2, "in the order of the instance numbers");
 	check((m[66] & 0x0c) == 0x0c && m[66 + 13] == 0x80 && m[66 + 15] == 20,
-	      "a designated port with our priority and the full hop count");
+		"a designated port with our priority and the full hop count");
 	check(!memcmp(m + 66 + 3, uip_ethaddr.addr, 6) && (m[66 + 1] & 0xf0) == 0x80,
-	      "this bridge is the regional root of the instance");
+		"this bridge is the regional root of the instance");
 }
 
 static void scen_msti_root_from_records(void)
 {
+	struct sim_bpdu b;
+
 	printf("64. an instance takes its root from the message for it\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	sim_cmd("stp msti 2 vlan 20");
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	sim_rec(1, 0x3c, 0x10, PEER_MAC, 4000, 0x10, 0x80, 18);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	sim_nrec = 0;
 	check(stp_rport[1] == 8, "the instance with a message takes the port toward its regional root");
-	check(!memcmp(stp_rv[1].rroot.mac, PEER_MAC, 6) && stp_rv[1].rroot.ext == 1
-	      && be32(stp_rv[1].icost) == 24000, "adding the port cost to the internal cost");
+	check(!memcmp(stp_rv[1].rroot.mac, PEER_MAC, 6) && stp_rv[1].rroot.ext == 1 && be32(stp_rv[1].icost) == 24000,
+		"adding the port cost to the internal cost");
 	check(stp_rhops[1] == 17, "and using up one hop");
 	check(stp_rport[2] == 0xff, "the instance without a message stays its own root");
 }
 
 static void scen_msti_load_balance(void)
 {
+	struct sim_bpdu on8;
+	struct sim_bpdu on3;
+
 	printf("65. two instances can block different links\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	sim_cmd("stp msti 2 vlan 20");
-	struct sim_bpdu on8 = root_on(8), on3 = root_on(3);
+	on8 = root_on(8);
+	on3 = root_on(3);
 	on3.port_id = 3;
 	for (int i = 0; i < 40; i++) {
 		sim_nrec = 0;
@@ -2014,26 +2526,27 @@ static void scen_msti_load_balance(void)
 		secs(1);
 	}
 	sim_nrec = 0;
-	check(stp_root_port == 8 && port_state(8) == 3 && port_state(3) == 1,
-	      "the CIST uses port 9 and blocks port 4");
+	check(stp_root_port == 8 && port_state(8) == 3 && port_state(3) == 1, "the CIST uses port 9 and blocks port 4");
 	check(stp_rport[1] == 8 && tree_state(1, 8) == 3 && tree_state(1, 3) == 1, "instance 1 does the same");
 	check(stp_rport[2] == 3 && tree_state(2, 3) == 3 && tree_state(2, 8) == 1,
-	      "instance 2 takes port 4 for its port priority and blocks port 9");
+		"instance 2 takes port 4 for its port priority and blocks port 9");
 }
 
 static void scen_msti_agreement(void)
 {
+	struct sim_bpdu b;
+
 	printf("66. a proposal in an instance message is answered in that instance\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	sim_rec(1, 0x3c | 0x02, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	sim_nrec = 0;
 	memset(tx_frames, 0, sizeof(tx_frames));
 	tick(2);
 	check(stp_rport[1] == 8 && tx_frames[8] > 0 && (last_mst[8][66] & 0x40),
-	      "the instance message sent back carries the agreement");
+		"the instance message sent back carries the agreement");
 	check((last_mst[8][66] & 0x0c) == 0x08, "from the root port of the instance");
 }
 
@@ -2041,9 +2554,11 @@ static void scen_msti_agreement_cist(void)
 {
 	printf("68. an instance agreement counts only with the CIST information we hold\n");
 	for (int bad = 0; bad < 2; bad++) {
+		struct sim_bpdu down;
+
 		mstp_setup();
 		sim_cmd("stp msti 1 vlan 10");
-		struct sim_bpdu down = root_on(8);
+		down = root_on(8);
 		down.root_prio = 0x80;
 		memcpy(down.root_mac, uip_ethaddr.addr, 6);
 		down.root_cost = bad ? 999 : 0;
@@ -2056,21 +2571,25 @@ static void scen_msti_agreement_cist(void)
 		sim_nrec = 0;
 		if (!bad)
 			check((stp_internal >> 8) & 1 && tree_state(1, 8) == 3,
-			      "a downstream bridge agreeing in the instance lets the port forward at once");
+				"a downstream bridge agreeing in the instance lets the port forward at once");
 		else
 			check((stp_internal >> 8) & 1 && tree_state(1, 8) == 1,
-			      "not when its CIST information differs from ours");
+				"not when its CIST information differs from ours");
 	}
 }
 
 static void scen_msti_tc(void)
 {
+	struct sim_bpdu b;
+	struct sim_bpdu down;
+	struct sim_bpdu tc;
+
 	printf("67. topology changes travel within an instance\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	links_set((1 << 3) | (1 << 5) | (1 << 8));
-	struct sim_bpdu b = root_on(8);
-	struct sim_bpdu down = root_on(5);
+	b = root_on(8);
+	down = root_on(5);
 	memcpy(down.br_mac, PEER_MAC, 6);
 	down.br_prio = 0x90;
 	down.root_cost = 20000;
@@ -2085,14 +2604,14 @@ static void scen_msti_tc(void)
 		secs(1);
 	}
 	check((stp_internal >> 5) & 1 && tree_state(1, 5) == 3 && tree_state(1, 8) == 3,
-	      "an internal root port and an internal designated port forward in the instance");
+		"an internal root port and an internal designated port forward in the instance");
 	memset(flush_count, 0, sizeof(flush_count));
 	sim_nrec = 0;
 	sim_rec(1, 0x3c | 0x01, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	sim_nrec = 0;
 	check(stp_tcwhile[STP_ENTITIES + 5] != 0 && flush_count[5] > 0,
-	      "a change flagged in the instance message reaches the other port of the instance");
+		"a change flagged in the instance message reaches the other port of the instance");
 	check(stp_tcwhile[5] == 0, "without a change in the CIST");
 	for (int i = 0; i < 5; i++) {
 		sim_rec(1, 0x38, 0x10, PEER_MAC, 20000, 0x90, 0x80, 19);
@@ -2101,11 +2620,11 @@ static void scen_msti_tc(void)
 		secs(1);
 	}
 	check(stp_tcwhile[STP_ENTITIES + 5] == 0, "the change runs out");
-	struct sim_bpdu tc = root_on(8);
+	tc = root_on(8);
 	tc.flags = 0x3d;
 	bpdu_in(&tc);
 	check(!((stp_internal >> 8) & 1) && stp_tcwhile[STP_ENTITIES + 5] != 0,
-	      "a change heard at a boundary port reaches every instance");
+		"a change heard at a boundary port reaches every instance");
 }
 
 static void scen_msti_vlan_table(void)
@@ -2116,9 +2635,9 @@ static void scen_msti_vlan_table(void)
 	sim_vlan[20] = 0x02000200;
 	sim_cmd("stp version mstp");
 	sim_cmd("stp msti 1 vlan 10");
-	check(((sim_vlan[10] >> 20) & 15) == 1 && ((sim_vlan[20] >> 20) & 15) == 0
-	      && (sim_vlan[10] & 0xff0fffff) == 0x020a0200,
-	      "a running MSTP bridge writes the instance into the VLAN entry and nothing else");
+	check(((sim_vlan[10] >> 20) & 15) == 1 && ((sim_vlan[20] >> 20) & 15) == 0 &&
+			(sim_vlan[10] & 0xff0fffff) == 0x020a0200,
+		"a running MSTP bridge writes the instance into the VLAN entry and nothing else");
 	sim_cmd("stp off");
 	check(((sim_vlan[10] >> 20) & 15) == 0, "stopping STP gives every VLAN back to the CIST");
 	sim_cmd("stp on");
@@ -2130,7 +2649,7 @@ static void scen_msti_vlan_table(void)
 	check(((sim_vlan[40] >> 20) & 15) == 2, "a VLAN created while MSTP runs gets its instance at once");
 	sim_cmd("stp version rstp");
 	check(((sim_vlan[10] >> 20) & 15) == 0 && ((sim_vlan[40] >> 20) & 15) == 0,
-	      "back in RSTP no VLAN keeps an instance");
+		"back in RSTP no VLAN keeps an instance");
 	sim_vlan[50] = 0x02000200;
 	sim_cmd("stp msti 3 vlan 50");
 	vlan_settings.vlan = 50;
@@ -2140,26 +2659,31 @@ static void scen_msti_vlan_table(void)
 
 static void scen_msti_config(void)
 {
+	const char *bad[] = { "stp msti 1 prio 16", "stp msti 16 prio 1", "stp port 4 msti 0 cost 5",
+		"stp port 4 msti 1 cost", "stp port 4 msti 1 prio 33", "stp port 4 msti 1 speed 5",
+		"stp msti 1 prio 1x", "stp port 4 msti 1 cost 300000000", "stp port 4 cost 300000000" };
+	struct sim_bpdu b;
+	uint8_t master;
+	uint8_t desg;
+
 	printf("70. instances take their own priorities and port settings\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	sim_cmd("stp msti 1 prio 1");
-	check(err_status == ERR_OK && stp_bprio[1] == 0x10 && stp_bprio[0] == 0x80, "the bridge priority of an instance");
+	check(err_status == ERR_OK && stp_bprio[1] == 0x10 && stp_bprio[0] == 0x80,
+		"the bridge priority of an instance");
 	check(stp_rv[1].rroot.prio == 0x10 && stp_rv[1].rroot.ext == 1, "applies at once while the bridge is its root");
 	sim_cmd("stp port 4 msti 1 cost 1234");
 	check(err_status == ERR_OK && stp_pcost[STP_ENTITIES + 3] == 1234 && stp_pcost[3] == 0,
-	      "a port cost in one instance");
+		"a port cost in one instance");
 	sim_cmd("stp port 4 msti 1 prio 32");
 	check(err_status == ERR_OK && stp_pprio[STP_ENTITIES + 3] == 32 && stp_pprio[3] == 0x80,
-	      "a port priority in one instance");
+		"a port priority in one instance");
 	sim_cmd("stp lag 1 msti 2 cost 77");
 	check(err_status == ERR_OK && stp_pcost[2 * STP_ENTITIES + STP_LAG_BASE] == 77, "and for a group");
 	sim_cmd("stp port 4 cost 555");
 	check(err_status == ERR_OK && stp_pcost[3] == 555 && stp_pcost[STP_ENTITIES + 3] == 1234,
-	      "the CIST port cost stays apart");
-	const char *bad[] = { "stp msti 1 prio 16", "stp msti 16 prio 1", "stp port 4 msti 0 cost 5",
-			      "stp port 4 msti 1 cost", "stp port 4 msti 1 prio 33", "stp port 4 msti 1 speed 5",
-			      "stp msti 1 prio 1x", "stp port 4 msti 1 cost 300000000", "stp port 4 cost 300000000" };
+		"the CIST port cost stays apart");
 	for (unsigned i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
 		sim_cmd(bad[i]);
 		check(err_status != ERR_OK, bad[i]);
@@ -2171,12 +2695,13 @@ static void scen_msti_config(void)
 	check(cmd_quiet, "as is the MST configuration");
 	sim_cmd("stp msti 1 prio 2");
 	check(!cmd_quiet, "while a setting is kept");
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	mst_bpdu_in(&b, "other", 0, ROOT_MAC, 0x40, 20, NULL);
 	secs(1);
 	stp_t = 1;
 	stp_tb = STP_ENTITIES;
-	uint8_t master = stp_port_role(8), desg = stp_port_role(3);
+	master = stp_port_role(8);
+	desg = stp_port_role(3);
 	stp_t = 0;
 	stp_tb = 0;
 	check(stp_root_port == 8 && master == 5, "a boundary root port is a master port in the instance");
@@ -2185,10 +2710,14 @@ static void scen_msti_config(void)
 
 static void scen_msti_own_loop(void)
 {
+	struct sim_bpdu from3;
+	struct sim_bpdu from8;
+
 	printf("71. a loop between two ports blocks the instances too\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
-	struct sim_bpdu from3 = root_on(8), from8 = root_on(3);
+	from3 = root_on(8);
+	from8 = root_on(3);
 	from3.root_prio = from8.root_prio = 0x80;
 	memcpy(from3.root_mac, uip_ethaddr.addr, 6);
 	memcpy(from8.root_mac, uip_ethaddr.addr, 6);
@@ -2214,16 +2743,19 @@ static void scen_msti_own_loop(void)
 
 static void scen_msti_loop_shared(void)
 {
+	struct sim_bpdu own;
+	struct sim_bpdu peer;
+
 	printf("73. a port held for a loop stays held in the instances while a neighbour talks on it\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
-	struct sim_bpdu own = root_on(3);
+	own = root_on(3);
 	own.root_prio = 0x80;
 	memcpy(own.root_mac, uip_ethaddr.addr, 6);
 	own.br_prio = 0x80;
 	memcpy(own.br_mac, uip_ethaddr.addr, 6);
 	own.port_id = 9;
-	struct sim_bpdu peer = root_on(8);
+	peer = root_on(8);
 	peer.root_prio = 0x80;
 	memcpy(peer.root_mac, uip_ethaddr.addr, 6);
 	peer.root_cost = 20000;
@@ -2252,12 +2784,15 @@ static void scen_msti_loop_shared(void)
 
 static void scen_msti_sync_master(void)
 {
+	struct sim_bpdu b;
+	struct sim_bpdu down;
+
 	printf("74. a new regional root makes the instances sync their internal ports\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	links_set((1 << 5) | (1 << 8));
-	struct sim_bpdu b = root_on(8);
-	struct sim_bpdu down = root_on(5);
+	b = root_on(8);
+	down = root_on(5);
 	down.root_cost = 20000;
 	memcpy(down.br_mac, PEER_MAC, 6);
 	down.br_prio = 0x90;
@@ -2270,11 +2805,11 @@ static void scen_msti_sync_master(void)
 		secs(1);
 	}
 	sim_nrec = 0;
-	check(!((stp_internal >> 8) & 1) && !memcmp(stp_rv[0].rroot.mac, uip_ethaddr.addr, 6)
-	      && tree_state(1, 5) == 3, "with an RSTP root outside, this bridge is regional root and port 6 forwards in the instance");
+	check(!((stp_internal >> 8) & 1) && !memcmp(stp_rv[0].rroot.mac, uip_ethaddr.addr, 6) && tree_state(1, 5) == 3,
+		"with an RSTP root outside, this bridge is regional root and port 6 forwards in the instance");
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check(!memcmp(stp_rv[0].rroot.mac, ROOT_MAC, 6) && tree_state(1, 5) == 1,
-	      "when the root joins the region the instance port goes back to discarding to sync");
+		"when the root joins the region the instance port goes back to discarding to sync");
 }
 
 static void scen_version_switch(void)
@@ -2285,7 +2820,8 @@ static void scen_version_switch(void)
 	secs(5);
 	check(port_state(3) == 3, "the edge port forwards");
 	sim_cmd("stp version stp");
-	check(err_status == ERR_OK && port_state(3) == 3 && stp_rstp == 0, "and keeps forwarding after the switch to STP");
+	check(err_status == ERR_OK && port_state(3) == 3 && stp_rstp == 0,
+		"and keeps forwarding after the switch to STP");
 	sim_cmd("stp version rstp");
 	check(port_state(3) == 3 && stp_rstp == 1, "and back to RSTP");
 	sim_cmd("stp version mstp");
@@ -2294,12 +2830,16 @@ static void scen_version_switch(void)
 
 static void scen_msti_legacy_tcn(void)
 {
+	struct sim_bpdu b;
+	struct sim_bpdu down;
+	struct sim_bpdu tcn;
+
 	printf("72. a TCN from an 802.1D bridge reaches the instances\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	links_set((1 << 3) | (1 << 5) | (1 << 8));
-	struct sim_bpdu b = root_on(8);
-	struct sim_bpdu down = root_on(5);
+	b = root_on(8);
+	down = root_on(5);
 	memcpy(down.br_mac, PEER_MAC, 6);
 	down.br_prio = 0x90;
 	down.root_cost = 20000;
@@ -2314,7 +2854,7 @@ static void scen_msti_legacy_tcn(void)
 		secs(1);
 	}
 	sim_nrec = 0;
-	struct sim_bpdu tcn = root_on(3);
+	tcn = root_on(3);
 	tcn.legacy = 2;
 	bpdu_in(&tcn);
 	check(stp_tcwhile[STP_ENTITIES + 5] != 0, "a TCN on a boundary port starts a change in the instance");
@@ -2337,14 +2877,17 @@ static void converge_internal_root_on_8(void)
 
 static void scen_guards_all_trees(void)
 {
+	struct sim_bpdu b;
+
 	printf("76. a guard on an internal port acts in every tree\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	converge_internal_root_on_8();
-	check(((stp_internal >> 8) & 1) && stp_root_port == 8 && stp_rport[1] == 8
-	      && port_state(8) == 3 && tree_state(1, 8) == 3, "port 9 internal, root in CIST and MSTI 1, forwarding in both");
+	check(((stp_internal >> 8) & 1) && stp_root_port == 8 && stp_rport[1] == 8 && port_state(8) == 3 &&
+			tree_state(1, 8) == 3,
+		"port 9 internal, root in CIST and MSTI 1, forwarding in both");
 	sim_cmd("stp port 9 guard bpdu");
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	sim_rec(1, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	sim_nrec = 0;
@@ -2389,12 +2932,14 @@ static void scen_port_off_new_instance(void)
 
 static void scen_msti_info_from_root_role(void)
 {
+	struct sim_bpdu b;
+
 	printf("78. instance information from a neighbour whose CIST port is a root port\n");
-	memset(stp_rxhello, 0, STP_ENTITIES);	/* as after boot: no designated CIST information heard yet */
+	memset(stp_rxhello, 0, STP_ENTITIES); /* as after boot: no designated CIST information heard yet */
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
 	/* B: we are its CIST root and regional root; in MSTI 1 it is designated and the regional root */
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	b.root_prio = 0x80;
 	memcpy(b.root_mac, uip_ethaddr.addr, 6);
 	b.root_cost = 20000;
@@ -2415,6 +2960,9 @@ static void scen_msti_info_from_root_role(void)
 
 static void scen_msti_tc_boundary(void)
 {
+	struct sim_bpdu b;
+	struct sim_bpdu d;
+
 	printf("79. a topology change in an instance flushes its boundary ports\n");
 	mstp_setup();
 	for (uint16_t v = 2; v <= 40; v++)
@@ -2423,10 +2971,10 @@ static void scen_msti_tc_boundary(void)
 	sim_cmd("stp msti 1 vlan 10");
 	sim_cmd("stp msti 2 vlan 20");
 	secs(2);
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	/* An RSTP bridge outside the region on port 5, inferior to us: the port
 	 * is a designated boundary port, not an edge. */
-	struct sim_bpdu d = root_on(4);
+	d = root_on(4);
 	d.root_prio = 0x80;
 	d.br_prio = 0x80;
 	memcpy(d.br_mac, THIRD_MAC, 6);
@@ -2442,7 +2990,7 @@ static void scen_msti_tc_boundary(void)
 		secs(1);
 	}
 	check(tree_state(2, 4) == 3 && !((stp_internal >> 4) & 1) && !(stp_pflags[4] & STP_PF_OPEREDGE),
-	      "port 5 is a forwarding boundary port of MSTI 2");
+		"port 5 is a forwarding boundary port of MSTI 2");
 	memset(flush_count, 0, sizeof(flush_count));
 	sim_nrec = 0;
 	sim_rec(1, 0x3c | (0b11 << 2), 0x40, ROOT_MAC, 0, 0x40, 0x80, 20);
@@ -2459,11 +3007,11 @@ static void scen_digest_at_once(void)
 	printf("80. the digest is current the moment the table changes\n");
 	mstp_setup();
 	check(mstp_dg_step == MSTP_DG_DONE && digest_is("ac36177f50283cd4b83821d8ab26de62"),
-	      "the empty table's digest is known without computing it");
+		"the empty table's digest is known without computing it");
 	sim_cmd("stp msti 1 vlan 10-20,30");
 	sim_cmd("stp msti 2 vlan 15");
 	check(mstp_dg_step == MSTP_DG_DONE && digest_is("17cfd7ae0de29b9d28331b5b2d07b640"),
-	      "a change while MSTP runs is worked out before the command returns");
+		"a change while MSTP runs is worked out before the command returns");
 	sim_cmd("stp off");
 	sim_cmd("stp msti 1 vlan none");
 	check(mstp_dg_step < MSTP_DG_DONE, "a change while STP is off waits");
@@ -2473,21 +3021,23 @@ static void scen_digest_at_once(void)
 
 static void scen_region_changed(void)
 {
+	struct sim_bpdu b;
+
 	printf("81. a new region name gives up the old boundary at once\n");
 	mstp_setup();
 	links_set((1 << 3) | (1 << 8));
 	sim_cmd("stp msti 1 vlan 10");
-	struct sim_bpdu b = root_on(8);
+	b = root_on(8);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check((stp_internal >> 8) & 1, "the neighbour shares our region");
 	memset(tx_frames, 0, sizeof(tx_frames));
 	sim_cmd("stp region other");
 	check(!((stp_internal >> 8) & 1), "renaming the region drops the port out of it");
 	check(tree_state(1, 8) == port_state(8),
-	      "the port carries its CIST state in the instance, so nothing stops forwarding");
+		"the port carries its CIST state in the instance, so nothing stops forwarding");
 	secs(1);
 	check(tx_frames[3] > 0 && !memcmp(last_mst[3] + 3, "other\0\0\0", 8),
-	      "and the new name goes out without waiting for a change of its own");
+		"and the new name goes out without waiting for a change of its own");
 	mst_bpdu_in(&b, "other", 0, ROOT_MAC, 0x40, 20, NULL);
 	check((stp_internal >> 8) & 1, "a neighbour with the new name is internal again");
 	sim_cmd("stp revision 5");
