@@ -410,6 +410,16 @@ uint16_t strlen_x(__xdata const char *s)
 }
 
 
+uint16_t strcpy(__xdata uint8_t *dst, const char *s)
+{
+	__xdata uint8_t *b = dst;
+	while (*s)
+		*dst++ = *s++;
+	*dst = 0;
+	return dst - b;
+}
+
+
 char strcmp(__xdata const uint8_t *a, __code const uint8_t *b)
 {
 	uint8_t i = 0;
