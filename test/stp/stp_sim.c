@@ -397,9 +397,8 @@ static void scen_root_port(void)
 	check_state(8, 3, "root port forwards after the listen period");
 }
 
-static void scen_ring(void)
+static void ring(void)
 {
-	printf("3. a neighbour with a cheaper path to the root must block us\n");
 	reset_all();
 	links_set((1 << 0) | (1 << 8));
 	secs(1);
@@ -424,10 +423,16 @@ static void scen_ring(void)
 	check_state(0, 1, "port 1 is discarding (alternate)");
 }
 
+static void scen_ring(void)
+{
+	printf("3. a neighbour with a cheaper path to the root must block us\n");
+	ring();
+}
+
 static void scen_ring_clears(void)
 {
 	printf("4. when the better neighbour goes quiet the port comes back\n");
-	scen_ring();
+	ring();
 	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0,
 				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root.root_mac, ROOT_MAC, 6);
@@ -496,7 +501,7 @@ static void scen_we_are_better(void)
 static void scen_alt_survives_link_bounce(void)
 {
 	printf("7. a blocked port stays blocked when the carrier returns\n");
-	scen_ring();
+	ring();
 	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0,
 				      .br_prio = 0x40, .port_id = 2 };
 	memcpy(from_root.root_mac, ROOT_MAC, 6);
@@ -1189,9 +1194,8 @@ static void scen_backup_role(void)
 	check(((stp_backup >> 3) & 1) == 0, "losing the link clears the backup role");
 }
 
-static void scen_migrate_to_stp(void)
+static void migrate_to_stp(void)
 {
-	printf("37. a port that hears an 802.1D neighbour sends Config BPDUs\n");
 	reset_all();
 	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
 	links_set((1 << 1) | (1 << 8));
@@ -1210,10 +1214,16 @@ static void scen_migrate_to_stp(void)
 	check(((stp_legacy >> 1) & 1) == 1 && ((stp_legacy >> 8) & 1) == 0, "only port 2 is switched, not the root port");
 }
 
+static void scen_migrate_to_stp(void)
+{
+	printf("37. a port that hears an 802.1D neighbour sends Config BPDUs\n");
+	migrate_to_stp();
+}
+
 static void scen_migrate_back(void)
 {
 	printf("38. mcheck and an RST neighbour bring the port back to RSTP\n");
-	scen_migrate_to_stp();
+	migrate_to_stp();
 	struct sim_bpdu r = root_on(8);
 	secs(4);
 	stp_port_mcheck(1);
