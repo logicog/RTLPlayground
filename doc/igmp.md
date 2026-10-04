@@ -69,7 +69,7 @@ The code currently provides the following functions:
 void igmp_setup(void) __banked;
 void igmp_enable(void) __banked;
 void igmp_router_port_set(uint16_t pmask) __banked;
-void igmp_packet_handler(void) __banked;
+uint8_t igmp_packet_handler(void) __banked;
 void igmp_show(void) __banked;
 ```c
 `igmp_setup()` is called at boot-time and configures flooding of all IP-MC packets by
@@ -80,7 +80,11 @@ of IP-MC packets to be limited to only subscribed ports.
 
 `igmp_router_port_set()`configures forwarding ports for IGMP messages.
 
-`igmp_packet_handler()` implements handling of trapped IGMP packets by the CPU.
+`igmp_packet_handler()` implements handling of trapped IGMP packets by the CPU. It is called
+for frames to 01:00:5e:xx:xx:xx and returns 0 when the frame is not a trapped IGMP packet,
+so that it is passed on to the IP stack. IGMPv1/v2 reports (0x12, 0x16) join the group given
+in the IGMP header, IGMPv2 leaves (0x17) leave it, IGMPv3 reports use the first group record
+(type 4 joins, type 3 leaves). Trapped IGMP frames arrive without a VLAN tag.
 
 `igmp_show()` prints out the IGMP configuration on the CLI.
 
