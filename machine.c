@@ -936,15 +936,15 @@ __code const struct machine machine = {
     };
 
 #elif defined MACHINE_ONT_S207CW_62TS_SE
-// ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM
+// ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), Binardat 2G06-04210GS (unmanaged)
 // RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
-// Port mapping: reversed RJ45 ports
+// Custom configuration with correct port order and LED colors
 // Physical ports: 1-4 = RJ45, 5 = SFP (SDS0), 6 = SFP (SDS1)
-// Logical ports: 3 = SFP (SDS0), 8 = SFP (SDS1)
-// RJ45 ports: logical 4->phys 4, 5->phys 3, 6->phys 2, 7->phys 1
+// Logical ports: 3 = SFP (SDS0), 4-7 = RJ45, 8 = SFP (SDS1)
+// Port mapping: Phys 1->Log 7, 2->Log 6, 3->Log 5, 4->Log 4, 5->Log 3, 6->Log 8
 
 __code const struct machine machine = {
-    .machine_name = "ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM",
+    .machine_name = "ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM / Binardat 2G06-04210GS",
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
@@ -969,7 +969,7 @@ __code const struct machine machine = {
 
     .reset_pin = GPIO_NA,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
-    .port_led_set = { 0, 0, 0, 1, 0, 0, 2, 2, 1},
+    .port_led_set = { 0, 0, 0, 3, 0, 0, 2, 2, 3},
     .mac_flash_offset = 0x1FC000,
     .led_sets = {
         {
@@ -989,6 +989,12 @@ __code const struct machine machine = {
             LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,  // LED 1 (green): 1G/100M/10M
             LEDS_DUPLEX,                                             // LED 2
             0                                                        // LED 3
+        },
+        {
+            LEDS_10G | LEDS_LINK | LEDS_ACT,                         // LED 0 (green): 10G (SFP Port 6 swapped)
+            LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,              // LED 1 (orange): 2.5G/1G (SFP Port 6 swapped)
+            LEDS_2G5 | LEDS_LINK,                                    // LED 2
+            LEDS_COL | LEDS_DUPLEX                                 // LED 3
         },
     },
     .led_mux_custom = 1,

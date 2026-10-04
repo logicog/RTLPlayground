@@ -1,14 +1,17 @@
-# ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM
+# ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM / Binardat 2G06-04210GS
 
 ## Overview
 
-ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM are **managed switches with identical hardware**:
+ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS (unmanaged) are **switches with identical hardware**:
 - **CPU:** RTL8372N (confirmed via serial: "Detecting CPU: RTL8372N")
 - **Flash:** GD25Q128E (16MB)
 - **Ports:** 4x 2.5G RJ45 + 2x 10G SFP+
 - **Console:** 115200 baud (RTLPlayground firmware) / 9600 baud (stock firmware)
 
-**Note:** These devices use **PCB-SWTG024AS-A-2.0.1** hardware. The `MACHINE_ONT_S207CW_62TS_SE` definition uses the same port mapping and LED configuration as `MACHINE_PCB_SWTG024AS_A_2_0_1` (which was tested and confirmed working with all ports reliable).
+**Note:** These devices use **PCB-SWTG024AS-A-2.0.1** hardware. The `MACHINE_ONT_S207CW_62TS_SE` definition uses a **custom configuration** with:
+- Corrected port mapping (physical ports 1-4 = RJ45, 5-6 = SFP)
+- Optimized LED sets for different port wiring (RJ45 Ports 1-2 have reversed LED wiring)
+- Custom LED mux configuration from PCB-SWTG024AS-A-2.0.1
 
 ## Device Photos
 
@@ -53,7 +56,7 @@ ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM are **managed switches with identi
 
 ## LED Behavior
 
-### RJ45 Ports (Physical 1-4, Logical 0-3)
+### RJ45 Ports (Physical 1-4)
 
 | LED Color | Speed | Physical LED Position |
 |---|---|---|
@@ -61,7 +64,7 @@ ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM are **managed switches with identi
 | **Orange** | 1G / 100M / 10M | Left LED |
 | **Off** | No link | - |
 
-### SFP+ Ports (Physical 5-6, Logical 4-5)
+### SFP+ Ports (Physical 5-6)
 
 | LED Color | Speed | Physical LED Position |
 |---|---|---|
@@ -74,54 +77,74 @@ ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM are **managed switches with identi
 ### machine.h
 
 ```c
-// #define MACHINE_PCB_SWTG024AS_A_2_0_1  // Same config, confirmed working
 #define MACHINE_ONT_S207CW_62TS_SE
 // ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM
 // RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
-// Using PCB_SWTG024AS_A_2_0_1 config (all ports reliable, order was wrong)
+// Custom configuration with corrected port mapping and LED behavior
 // Physical ports: 1-4 = RJ45, 5 = SFP (SDS0), 6 = SFP (SDS1)
 // Logical ports: 3 = SFP (SDS0), 4-7 = RJ45, 8 = SFP (SDS1)
 ```
 
 ### machine.c Configuration
 
-Uses the same configuration as `MACHINE_PCB_SWTG024AS_A_2_0_1`:
+Custom configuration for ONT-S207CW-62TS-SE:
 
 ```c
-#elif defined MACHINE_PCB_SWTG024AS_A_2_0_1
+#elif defined MACHINE_ONT_S207CW_62TS_SE
 __code const struct machine machine = {
-    .machine_name = "PCB-SWTG024AS-A-2.0.1",
+    .machine_name = "ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM",
     .isRTL8373 = 0,
+    .mac_flash_offset = 0x1FC000,
     .min_port = 3,
     .max_port = 8,
     .n_sfp = 2,
-    .log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
-    .phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
+    .log_to_phys_port = {0, 0, 0, 5, 4, 3, 2, 1, 6},
+    .phys_to_log_port = {7, 6, 5, 4, 3, 8, 0, 0, 0},
     .is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
     
     // SFP port on SDS0 / logical port 3
     .sfp_port[0].pin_detect = GPIO37,
+    .sfp_port[0].pin_los = GPIO_NA,
+    .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 0,
-    .sfp_port[0].i2c = { .sda = GPIO41_I2C_SDA3_MDIO1, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
     
     // SFP port on SDS1 / logical port 8
     .sfp_port[1].pin_detect = GPIO38,
+    .sfp_port[1].pin_los = GPIO_NA,
+    .sfp_port[1].pin_tx_disable = GPIO_NA,
     .sfp_port[1].sds = 1,
-    .sfp_port[1].i2c = { .sda = GPIO39_I2C_SDA4, .scl = GPIO40_I2C_SCL3_MDC1 },
+    .sfp_port[1].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
     
     .reset_pin = GPIO_NA,
     .high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
-    .port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
+    .port_led_set = { 0, 0, 0, 3, 0, 0, 2, 2, 3},
     .led_sets = {
         {
+            // Set 0: RJ45 Ports 3-4 (normal wiring)
+            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+            LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+            LEDS_DUPLEX,
+            0
+        },
+        {
+            // Set 1: Unused
+            LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
+            LEDS_10G | LEDS_LINK | LEDS_ACT,
+            LEDS_2G5 | LEDS_LINK,
+            LEDS_COL | LEDS_DUPLEX
+        },
+        {
+            // Set 2: RJ45 Ports 1-2 (reversed wiring)
             LEDS_2G5 | LEDS_LINK | LEDS_ACT,
             LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
             LEDS_DUPLEX,
-            LEDS_2G5 | LEDS_LINK | LEDS_ACT
+            0
         },
         {
-            LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
+            // Set 3: SFP Ports 5-6 (reversed wiring for Port 6)
             LEDS_10G | LEDS_LINK | LEDS_ACT,
+            LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,
             LEDS_2G5 | LEDS_LINK,
             LEDS_COL | LEDS_DUPLEX
         },
@@ -133,34 +156,33 @@ __code const struct machine machine = {
     },
 };
 ```
-```
 
 ## Port to Logical Mapping
 
-Using `PCB_SWTG024AS_A_2_0_1` mapping (logical ports 3-8):
+Custom mapping for ONT-S207CW-62TS-SE:
 
 | Physical Port | Logical Port | Type | LED Set |
 |---|---|---|---|
-| 1 | 4 | RJ45 | 0 |
-| 2 | 5 | RJ45 | 0 |
-| 3 | 6 | RJ45 | 0 |
-| 4 | 7 | RJ45 | 0 |
-| 5 | 3 | SFP+ (SDS0) | 1 |
-| 6 | 8 | SFP+ (SDS1) | 1 |
+| 1 | 7 | RJ45 | 2 |
+| 2 | 6 | RJ45 | 2 |
+| 3 | 5 | RJ45 | 0 |
+| 4 | 4 | RJ45 | 0 |
+| 5 | 3 | SFP+ (SDS0) | 3 |
+| 6 | 8 | SFP+ (SDS1) | 3 |
 
-**Note:** The web UI will show ports in a different order due to this mapping. Ports will appear as 4321 for RJ45, but all ports will be functional and reliable. This is the same behavior as the original v10 build that worked correctly.
+**Note:** Ports 1-2 (RJ45) have reversed LED wiring and use LED-Set 2. SFP Ports 5-6 use LED-Set 3 to account for wiring differences.
 
 ## Firmware Files
 
 | File | Size | Purpose |
 |---|---|---|
-| `rtlplayground-ONT_S207CW_62TS_SE-v11.bin` | 524288 bytes | Direct flash via CH341A/SPI programmer |
-| `rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v11.bin` | 540710 bytes | OEM upgrade via web UI (Loader Mode) |
+| `ONT_S207CW_62TS_SE-v22.bin` | 524288 bytes | Direct flash via CH341A/SPI programmer |
+| `rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v22.bin` | 540710 bytes | OEM upgrade via web UI (Loader Mode) |
 
 ### Firmware Size Check
 - **Flash chip:** GD25Q128E = 16MB = 16777216 bytes
-- **Firmware size:** ~512KB-528KB
-- **Status:** ✅ **Plenty of space available** - No size issues with either old or new web UI
+- **Firmware size:** 524288 bytes (512KB)
+- **Status:** ✅ **Plenty of space available** - No size issues with old or new web UI
 
 ## Flashing Instructions
 
@@ -177,12 +199,12 @@ Using `PCB_SWTG024AS_A_2_0_1` mapping (logical ports 3-8):
 sudo apt install flashrom
 
 # Flash the firmware (may need sudo)
-flashrom -p ch341a_spi -c "GD25Q128E/GD25B128E/GD25R128E/GD25Q127C" -w rtlplayground-ONT_S207CW_62TS_SE-v11.bin --noverify-all
+flashrom -p ch341a_spi -c "GD25Q128E/GD25B128E/GD25R128E/GD25Q127C" -w ONT_S207CW_62TS_SE-v22.bin --noverify-all
 ```
 
 **Alternative command (if above fails):**
 ```bash
-flashrom -p ch341a_spi -c "GD25Q128E" -w rtlplayground-ONT_S207CW_62TS_SE-v11.bin
+flashrom -p ch341a_spi -c "GD25Q128E" -w ONT_S207CW_62TS_SE-v22.bin
 ```
 
 ### Via Loader Mode (Web UI Upgrade)
@@ -198,13 +220,13 @@ The OEM upgrade file can be flashed via the device's loader mode:
 
 2. **Upload via HTTP:**
    ```bash
-   curl -T rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v11.bin http://192.168.10.247/firmware
+   curl -T rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v22.bin http://192.168.10.247/firmware
    ```
 
 3. **Or via Web Browser:**
    - Access `http://192.168.10.247`
    - Use the firmware update function
-   - Upload `rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v11.bin`
+   - Upload `rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v22.bin`
    - Wait for completion and reboot
 
 ### Via RTLPlayground Web UI (After First Flash)
@@ -246,47 +268,20 @@ If flashing fails and the switch does not boot:
 | **CPU String** | "RTL8372N" |
 | **Loader Mode IP** | 192.168.10.247 |
 
-## Known Issues & Fixes
+## Configuration Details
 
-### ✅ Issue: LEDs showing wrong colors (FIXED in v11)
-**Symptom:** All RJ45 ports show green at all speeds, SFP LEDs incorrect
-**Root Cause:** Wrong LED mux configuration and LED set assignments
-**Fix:** Use v11 firmware with:
-- Original firmware LED mux values (extracted from stock firmware)
-- Correct LED set to physical port mapping
-- Proper LED color logic (Green=2.5G/10G, Orange=1G/2.5G/100M/10M)
-
-### ✅ Issue: Port order reversed in web UI (FIXED in v11)
-**Symptom:** Web UI shows ports as 4321 instead of 1234
-**Root Cause:** Incorrect log_to_phys_port and phys_to_log_port mapping
-**Fix:** Corrected mapping to preserve physical port order
-
-### ✅ Issue: No network connectivity after flash (FIXED)
-**Symptom:** Switch boots but no ping response
-**Root Cause:** Wrong CPU type configuration
-**Fix:** Ensure `.isRTL8373 = 0` (this is RTL8372N, not RTL8373)
-
-### ✅ Issue: SFP modules not detected (FIXED)
-**Symptom:** SFP ports not working
-**Root Cause:** Wrong SFP port SDS assignments
-**Fix:** Correct SDS0/SDS1 assignments and GPIO pins
-
-## Version History
-
-| Version | Date | Changes | Status |
-|---|---|---|---|
-| v3 | 2026-09-14 | Initial PCB_SWTG024AS_A_2_0_1 config | ⚠️ Port order wrong, but all ports worked |
-| v10 | 2026-09-17 | Various LED configs tested | ❌ Various issues |
-| v17+ | 2026-09-20 | **Returned to PCB_SWTG024AS_A_2_0_1 config** | ✅ All ports reliable (order wrong but functional) |
+- **CPU:** RTL8372N (`.isRTL8373 = 0`)
+- **SFP:** SDS0 on logical port 3 (GPIO37), SDS1 on logical port 8 (GPIO38)
+- **Port Mapping:** Physical 1-4 → Logical 7-4, Physical 5-6 → Logical 3,8
+- **LED Wiring:** RJ45 Ports 1-2 and SFP Port 6 have reversed LED pins (orange/green swapped)
+- **LED Sets:** 4 sets total - Set 0/1 unused, Set 2 for RJ45 1-2, Set 3 for SFP 5-6
 
 ## Notes
 
-- **ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM use identical PCB-SWTG024AS-A-2.0.1 hardware**
-- The `MACHINE_ONT_S207CW_62TS_SE` definition uses the **same configuration as `MACHINE_PCB_SWTG024AS_A_2_0_1`** which was confirmed working with all ports reliable
-- Port numbering in web UI will show as 4321 for RJ45 ports (order reversed) but all ports will function correctly
-- LED colors use the PCB_SWTG024AS_A_2_0_1 configuration
-- The **Loader Mode** always remains accessible at 192.168.10.247 for recovery
-- Serial console baud rate changes from 9600 (stock) to 115200 (RTLPlayground)
+- ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS (unmanaged) use **identical PCB-SWTG024AS-A-2.0.1 hardware**
+- Web UI shows correct physical port order (1-2-3-4 for RJ45, 5-6 for SFP)
+- Loader Mode always remains accessible at `192.168.10.247` for recovery
+- Serial console: 9600 baud (stock) → 115200 baud (RTLPlayground)
 
 ## References
 

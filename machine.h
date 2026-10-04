@@ -42,10 +42,10 @@
 // #define MACHINE_FNS1200P
 // #define MACHINE_PCB_SWTG024AS_A_2_0_1
 #define MACHINE_ONT_S207CW_62TS_SE
-// ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM
+// ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), Binardat 2G06-04210GS (unmanaged)
 // RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
 // Physical ports: 1-4 = RJ45, 5-6 = SFP
-// Using PCB_SWTG024AS_A_2_0_1 config (all ports reliable, order was wrong)
+// Custom configuration with correct port order and LED colors
 // Logical ports: 3-8, Port 3 = SFP (SDS0), Ports 4-7 = RJ45, Port 8 = SFP (SDS1)
 // #define MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
 // #define MACHINE_SWTG024AS_V2_0
