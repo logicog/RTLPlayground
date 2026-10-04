@@ -1044,7 +1044,11 @@ function renderInfo(){
     if(v==null||v==="")return;
     tb.appendChild(h("tr",null,[h("td",{class:"mut",text:t(r[0])}),h("td",{class:"mono",text:String(v)})]));
   });
-  if(S.info.hostname)$("brandname").textContent=$("brandname").title=S.info.hostname;
+  if(S.info.hostname){
+    $("brandname").textContent=$("brandname").title=document.title=S.info.hostname;
+    // Remembered per switch (each has its own origin) for the login page tab
+    try{localStorage.setItem("rtl_host",S.info.hostname);}catch(e){}
+  }
   if(S.info.sw_ver)$("fver").textContent="RTLPlayground "+S.info.sw_ver;
 }
 function pollInfo(){
