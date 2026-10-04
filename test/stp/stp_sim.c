@@ -33,7 +33,7 @@ uint16_t atoi_results_short;
 uint8_t cmd_quiet;
 
 static int verbose;
-void print_string(char *s) { if (verbose) fputs(s, stdout); }
+void print_string(const char *s) { if (verbose) fputs(s, stdout); }
 void print_byte(uint8_t b) { if (verbose) printf("%02x", b); }
 void print_short(uint16_t v) { if (verbose) printf("%04x", v); }
 void print_long(uint32_t v) { if (verbose) printf("%08x", v); }
@@ -43,7 +43,7 @@ void itoa_short(uint16_t v) { if (verbose) printf("%u", v); }
 void print_string_x(char *s) { if (verbose) fputs(s, stdout); }
 void print_reg(uint16_t reg) { (void)reg; }
 
-uint8_t cmd_compare(uint8_t start, uint8_t *cmd)
+uint8_t cmd_compare(uint8_t start, const uint8_t *cmd)
 {
 	if (start >= cmd_words_len)
 		return 0;
