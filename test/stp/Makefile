@@ -1,7 +1,16 @@
-CC ?= cc
-CFLAGS = -std=c11 -Wall -Wextra -Wno-unknown-pragmas -Wno-pointer-sign \
-         -D__xdata= -D__code= -D__banked= -D__reentrant= \
-         -Ishim -I../..
+CC      ?= cc
+SRCROOT  = ../..
+CFLAGS   = -std=c11 -g -O1 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unknown-pragmas \
+           -Wno-pointer-sign \
+           -DRTLP_HOST_TEST \
+           -fsanitize=address,undefined -fno-omit-frame-pointer \
+           -include ../sdcc_shim.h -I../stub -I$(SRCROOT) -I$(SRCROOT)/httpd -I$(SRCROOT)/uip
+ifeq ($(findstring clang,$(shell $(CC) --version 2>/dev/null)),)
+CFLAGS  += -Wno-builtin-declaration-mismatch
+endif
+LDFLAGS  = -fsanitize=address,undefined
+
+SRCS = stp_sim.c $(SRCROOT)/rtl837x_stp.c $(SRCROOT)/rtl837x_stp_cli.c $(SRCROOT)/rtl837x_mstp.c
 
 all: test
 
@@ -11,12 +20,9 @@ test: build/stp_sim
 verbose: build/stp_sim
 	./build/stp_sim -v
 
-build/stp_sim: stp_sim.c ../../rtl837x_stp.c ../../rtl837x_stp_cli.c ../../rtl837x_mstp.c ../../rtl837x_stp.h ../../rtl837x_mstp.h shim/*.h
+build/stp_sim: $(SRCS) $(SRCROOT)/rtl837x_stp.h $(SRCROOT)/rtl837x_mstp.h
 	mkdir -p build
-	cp ../../rtl837x_stp.c build/stp_under_test.c
-	cp ../../rtl837x_stp_cli.c build/stp_cli_under_test.c
-	cp ../../rtl837x_mstp.c build/mstp_under_test.c
-	$(CC) $(CFLAGS) -o $@ stp_sim.c build/stp_under_test.c build/stp_cli_under_test.c build/mstp_under_test.c
+	$(CC) $(CFLAGS) $(SRCS) -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf build
