@@ -9,6 +9,7 @@
 #define IPMC_USES_L3MC
 
 #include <stdint.h>
+#include <stddef.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
@@ -19,6 +20,7 @@ extern __code const struct machine machine;
 extern __xdata uint8_t igmpEnabled;
 
 #include "uip.h"
+#include "uip_arp.h"
 
 #pragma codeseg BANK1
 #pragma constseg BANK1
@@ -29,6 +31,13 @@ extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
 
 __xdata uint16_t idx;
+#define IGMP_IP_HDR		offsetof(struct igmp_pkt, hlen)
+#define IGMP_IP_IHL		0x0f
+#define IGMP_GROUP_OFS		4
+#define IGMP_V3_RECORD_OFS	8
+
+static __xdata uint8_t igmp_grp;
+static __xdata uint8_t igmp_join;
 
 #ifdef IPMC_USES_L3MC
 struct ipmc_table_entry {
@@ -198,8 +207,10 @@ void entry_to_l2mc(void)
 #endif
 
 
-void igmp_packet_handler(void) __banked
+uint8_t igmp_packet_handler(void) __banked
 {
+	if (IGMP_I->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_I->protocol != IGMP_PROTO)
+		return 0;
 	// By default we do not send anything out
 	uip_len = 0;
 
@@ -211,24 +222,40 @@ void igmp_packet_handler(void) __banked
 	}
 	write_char('\n');
 #endif
-	if (IGMP_I->protocol != 2)
-		return;
+	igmp_grp = IGMP_IP_HDR + ((IGMP_I->hlen & IGMP_IP_IHL) << 2);
 #ifdef DEBUG
-	print_string("Found IGMP, type: "); print_byte(IGMP_I->igmp_type); write_char('\n');
+	print_string("Found IGMP, type: "); print_byte(uip_buf[igmp_grp]); write_char('\n');
 #endif
-	// We react to IGMPv1/v2 and v3 membership reports
-	if (!(IGMP_I->igmp_type == 0x12 || IGMP_I->igmp_type == 0x16 || IGMP_I->igmp_type == 0x22))
-		return;
+	switch (uip_buf[igmp_grp]) {
+	case IGMP_V1_REPORT:
+	case IGMP_V2_REPORT:
+		igmp_join = 1;
+		break;
+	case IGMP_V2_LEAVE:
+		igmp_join = 0;
+		break;
+	case IGMP_V3_REPORT:
+		igmp_grp += IGMP_V3_RECORD_OFS;
+		if (uip_buf[igmp_grp] == IGMP_V3_TO_EXCLUDE)
+			igmp_join = 1;
+		else if (uip_buf[igmp_grp] == IGMP_V3_TO_INCLUDE)
+			igmp_join = 0;
+		else
+			return 1;
+		break;
+	default:
+		return 1;
+	}
+	igmp_grp += IGMP_GROUP_OFS;
 #ifdef DEBUG
-	print_string("IGMP membership report, type "); print_byte(IGMP_I->igmp_rtype); write_char('\n');
+	print_string("IGMP join "); print_byte(igmp_join); write_char('\n');
 #endif
 
 #ifdef IPMC_USES_L3MC
 	memset((__xdata uint8_t *)&entry, 0, sizeof(struct ipmc_table_entry));
 	// For IPv4 MC, the Source-IP is 0.0.0.0
-	entry.sip[0] = 0x00; entry.sip[1] = 0x00; entry.sip[2] = 0x00; entry.sip[3] = 0x00;
 	// For IPv4 MC, the Destination-IP is the IPv4 MC address
-	entry.dip[0] = IGMP_I->mc_ip[0]; entry.dip[1] = IGMP_I->mc_ip[1]; entry.dip[2] = IGMP_I->mc_ip[2]; entry.dip[3] = IGMP_I->mc_ip[3];
+	memcpy(entry.dip, &uip_buf[igmp_grp], sizeof(entry.dip));
 	entry_to_l3mc();
 #else
 	/* The L2 Multicast MAC for IP-Multicast is 01:00:5e:xx:yy:zz, where
@@ -238,7 +265,7 @@ void igmp_packet_handler(void) __banked
 	 */
 	memset((__xdata uint8_t *)&entry, 0, sizeof(struct l2mc_table_entry));
 	entry.mac[0] = 0x01; entry.mac[1] = 0x00; entry.mac[2] = 0x5e;
-	entry.mac[3] = IGMP_I->mc_ip[1] & 0x7f; entry.mac[4] = IGMP_I->mc_ip[2]; entry.mac[5] = IGMP_I->mc_ip[3];
+	entry.mac[3] = uip_buf[igmp_grp + 1] & 0x7f; entry.mac[4] = uip_buf[igmp_grp + 2]; entry.mac[5] = uip_buf[igmp_grp + 3];
 	entry.vlan = 1; //TODO: Get this out of the packet and compare with VLAN table!
 	entry_to_ipmc();
 #endif
@@ -286,7 +313,7 @@ void igmp_packet_handler(void) __banked
 	print_sfr_data();
 #endif
 	idx = ((sfr_data[2] & 0xf) << 8) | sfr_data[3];
-	if (IGMP_I->igmp_rtype == 0x4) {// Join group
+	if (igmp_join) {// Join group
 		if (sfr_data[2] & 0x10) {
 			print_string("\nIGMP-Entry FOUND\n");
 			reg_read_m(RTL837x_L2_DATA_OUT_B);
@@ -297,7 +324,7 @@ void igmp_packet_handler(void) __banked
 		// Update (found) entry with portmask from trapped Packet
 		entry.pmask |= ((uint16_t)1) << ((IGMP_I->rtl_tag.pmask >> 8) & 0x0f);  // Swap bytes from network order, only 4 LSB count
 //		print_string("\nPort-Mask: "); print_short(entry.pmask); write_char('\n');
-	} else if (IGMP_I->igmp_rtype == 0x3){  // Leave group
+	} else {  // Leave group
 		if (sfr_data[2] & 0x10) {
 			print_string("\nIGMP_Entry FOUND\n");
 			reg_read_m(RTL837x_L2_DATA_OUT_B);
@@ -316,7 +343,7 @@ void igmp_packet_handler(void) __banked
 //			print_string("\nPort-Mask: "); print_short(entry.pmask); write_char('\n');
 		} else {
 			print_string("IGMP Entry already deleted\n");
-			return;
+			return 1;
 		}
 		if (!entry.pmask && idx) { // No more ports in that group and an actual entry?
 			// Delete Entry
@@ -328,14 +355,12 @@ void igmp_packet_handler(void) __banked
 				reg_read_m(RTL837X_TBL_CTRL);
 			} while (sfr_data[3] & 0x1);
 			print_string("IGMP Entry deleted\n");
-			return;
+			return 1;
 		}
-	} else {  // Unknown message: ignore.
-		return;
 	}
 
 	if (!entry.pmask)
-		return;
+		return 1;
 	print_string("Updating IGMP entry\n");
 	// Write the updated entry
 #ifdef IPMC_USES_L3MC
@@ -372,4 +397,5 @@ void igmp_packet_handler(void) __banked
 	reg_read_m(RTL837x_TBL_DATA_0);
 	print_sfr_data();
 #endif
+	return 1;
 }

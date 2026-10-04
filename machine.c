@@ -237,9 +237,14 @@ __code const struct machine machine = {
 	},
 };
 
-#elif defined MACHINE_KP_9000_9XHML_X_V3_1
+#elif defined(MACHINE_KP_9000_9XHML_X_V3_1) || defined(MACHINE_KP_9000_9XHML_X_V3_2)
+// 2M-PCB23-V3.2 is wired like V3.1 (SFP detection, LEDs, factory MAC location)
 __code const struct machine machine = {
+#if defined(MACHINE_KP_9000_9XHML_X_V3_2)
+	.machine_name = "keepLink KP-9000-9XHML-X V3.2",
+#else
 	.machine_name = "keepLink KP-9000-9XHML-X V3.1",
+#endif
 	.isRTL8373 = 1,
 	.min_port = 0,
 	.max_port = 8,

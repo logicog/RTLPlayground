@@ -410,6 +410,16 @@ uint16_t strlen_x(__xdata const char *s)
 }
 
 
+uint16_t strcpy(__xdata uint8_t *dst, const char *s)
+{
+	__xdata uint8_t *b = dst;
+	while (*s)
+		*dst++ = *s++;
+	*dst = 0;
+	return dst - b;
+}
+
+
 char strcmp(__xdata const uint8_t *a, __code const uint8_t *b)
 {
 	uint8_t i = 0;
@@ -1052,8 +1062,7 @@ void handle_rx(void)
 				tcpip_output();
 			}
 		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
-			&& uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] == 0x16) {
-			igmp_packet_handler();
+			&& igmp_packet_handler()) {
 			if (uip_len) {
 				tcpip_output();
 			}
