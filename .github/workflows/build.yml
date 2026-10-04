@@ -43,10 +43,10 @@ jobs:
         run: cd main && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map /tmp/main.map
       - name: Calculate bank growth
         run: |
-          sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/MAIN_\1=\3/p' /tmp/main.map | sort | uniq >> "$GITHUB_ENV"
-          sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/BRANCH_\1=\3/p' /tmp/branch.map | sort | uniq >> "$GITHUB_ENV"
+          sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/MAIN_\1=\3/p' /tmp/main.map | sort -u >> "$GITHUB_ENV"
+          sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/BRANCH_\1=\3/p' /tmp/branch.map | sort -u >> "$GITHUB_ENV"
       - name: Update PR comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: Sizes
           message: |
