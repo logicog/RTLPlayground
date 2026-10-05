@@ -1,12 +1,14 @@
 // Sparse staging into free flash, see update_stage.h
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
+#include "update_pool.h"
 #include "update_stage.h"
 
 #pragma codeseg BANK3
 
 extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 extern __xdata struct flash_region_t flash_region;
+extern __xdata uint16_t crc_value;
 
 // Sector being received, its filled pages and the pool slot allotted to it
 static __xdata uint16_t stage_sec;
@@ -14,6 +16,7 @@ static __xdata uint8_t stage_upage;
 static __xdata uint8_t stage_pages;
 static __xdata uint32_t stage_slot;
 static __xdata uint32_t stage_bottom;
+static __xdata uint16_t stage_crc;	// CRC of the applied part of the image
 static __xdata uint8_t stage_error;
 
 // Records the sector just completed; an empty one is left out
@@ -23,7 +26,10 @@ static void stage_sector(void)
 		update_state.present[stage_sec >> 3] |= 1 << (stage_sec & 7);
 		update_state.staged++;
 	}
+	// the CRC of the sectors the apply writes is known right here
 	stage_sec++;
+	if (stage_sec == UPDATE_APPLY_SECTORS)
+		stage_crc = crc_value;
 	stage_upage = 0;
 	stage_pages = 0;
 	stage_slot = 0;
@@ -88,6 +94,7 @@ void update_stage_begin(uint32_t pool_bottom) __banked
 	stage_upage = 0;
 	stage_pages = 0;
 	stage_slot = 0;
+	stage_crc = 0;
 	stage_error = 0;
 	update_state_clear();	// the earlier attempt's record is stale now
 }
@@ -131,6 +138,7 @@ void update_stage_commit(uint16_t crc) __banked
 	update_state.magic = UPDATE_STATE_MAGIC;
 	update_state.flags = UPDATE_STATE_STAGING;
 	update_state.crc = crc;
+	update_state.crc_apply = stage_crc;
 	update_state.pool_bottom = stage_bottom;	// the apply reads the same pool
 	update_state_write();
 	stage_error = UPDATE_STAGE_OK;

@@ -84,7 +84,9 @@ SRCS += \
 	rtl837x_pins.c\
 	rtl837x_port.c \
 	rtl837x_stp.c \
-	rtl837x_storm.c
+	rtl837x_storm.c \
+	update_pool.c \
+	update_apply.c
 SRCS += \
 	httpd/httpd.c \
 	httpd/update_stage.c \
