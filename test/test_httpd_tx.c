@@ -94,6 +94,21 @@ void flash_sector_erase(void) { }
 void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
+
+/* Staging-pool bookkeeping from rtl837x_flash.c. This bench serves files, it
+ * does not stage images, so the pool is a plain address map here. */
+__xdata update_state_t update_state;
+void update_state_read(void) { }
+void update_state_write(void) { }
+void update_state_clear(void) { memset(&update_state, 0, sizeof(update_state)); }
+uint32_t update_pool_set_bottom(uint32_t bottom) { return bottom; }
+uint32_t update_pool_addr(uint16_t staged_idx)
+{
+	return 0x28000u + (uint32_t)staged_idx * FLASH_SECTOR_SIZE;
+}
+uint16_t update_pool_index(uint16_t sector) { return sector; }
+uint8_t update_pool_conflict(uint32_t addr) { (void)addr; return 0; }
+uint8_t update_pool_target(uint16_t sector) { (void)sector; return 0; }
 void reset_chip(void) { }
 void delay(uint16_t t) { (void)t; }
 void write_char(char c) { (void)c; }

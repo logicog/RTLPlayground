@@ -389,31 +389,42 @@ void update_state_clear(void)
 	update_state.flags = 0;
 	update_state.staged = 0;
 	update_state.crc = 0;
+	update_state.pool_bottom = 0;
 	for (i = 0; i < sizeof(update_state.present); i++)
 		update_state.present[i] = 0;
 	update_state_write();
 }
 
 /*
- * The staging pool is the free space of the running image below the config
- * sectors: above the web UI and, when that is not enough, between the code and
- * the web UI. Staged sectors are placed from the top of each chunk downwards,
- * so the pool grows away from the code and web UI growth frontiers.
+ * The staging pool, see rtl837x_flash.h. The first chunk is the flash between
+ * the code banks and the web UI, which no build can use, the second one the
+ * space above the web UI up to the default configuration. Staged sectors are
+ * placed from the top of each chunk downwards.
  */
-#define POOL_CHUNK_TOP	0x6f000u	// above the web UI, up to DEFAULT_CONFIG_START
-#define POOL_CHUNK_LEN	0x21000u	// 132 KiB
-#define POOL_CHUNK2_TOP	0x40000u	// below the web UI (HTML_LOCATION)
-#define POOL_CHUNK2_LEN	0x21000u	// 132 KiB
-#define POOL_CHUNK_SECTORS (POOL_CHUNK_LEN / FLASH_SECTOR_SIZE)
-#define POOL_SECTORS (POOL_CHUNK_SECTORS + (POOL_CHUNK2_LEN / FLASH_SECTOR_SIZE))
+#define POOL_A_TOP	0x40000u
+#define POOL_A_BOTTOM	0x28000u	// bank 3 ends here, see imagebuilder.c
+#define POOL_B_TOP	0x6f000u	// up to DEFAULT_CONFIG_START
+#define POOL_A_SECTORS	((POOL_A_TOP - POOL_A_BOTTOM) / FLASH_SECTOR_SIZE)
+
+// First sector above the web UI of the running image
+static __xdata uint32_t pool_bottom = POOL_A_TOP;
+
+uint32_t update_pool_set_bottom(uint32_t bottom)
+{
+	/* Rounded up: a slot holds a whole sector and the UI does not end on a
+	 * sector boundary. */
+	pool_bottom = (bottom + FLASH_SECTOR_SIZE - 1) & ~((uint32_t)FLASH_SECTOR_SIZE - 1);
+	return pool_bottom;
+}
 
 uint32_t update_pool_addr(uint16_t staged_idx)
 {
-	if (staged_idx < POOL_CHUNK_SECTORS)
-		return POOL_CHUNK_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
-	staged_idx -= POOL_CHUNK_SECTORS;
-	if (staged_idx < (POOL_CHUNK2_LEN / FLASH_SECTOR_SIZE))
-		return POOL_CHUNK2_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
+	if (staged_idx < POOL_A_SECTORS)
+		return POOL_A_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
+	staged_idx -= POOL_A_SECTORS;
+	if (pool_bottom < POOL_B_TOP
+	    && staged_idx < (uint16_t)((POOL_B_TOP - pool_bottom) >> 12))
+		return POOL_B_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
 	return 0;	// no room left
 }
 
@@ -427,20 +438,31 @@ uint16_t update_pool_index(uint16_t sector)
 	return n;
 }
 
+/*
+ * Whether an image sector is already staged as the target of the copy back.
+ * A pool slot must not be placed on such an address: the copy back would then
+ * write over the staged data of another sector (or of itself), which makes the
+ * update depend on the order the sectors are written in.
+ */
+uint8_t update_pool_target(uint16_t sector)
+{
+	return (update_state.present[sector >> 3] >> (sector & 7)) & 1;
+}
+
 uint8_t update_pool_conflict(uint32_t addr)
 {
 	uint32_t end = addr + FLASH_SECTOR_SIZE;
 	__xdata uint16_t n = update_state.staged;
 
-	if (n > POOL_CHUNK_SECTORS) {
-		uint32_t lo = POOL_CHUNK2_TOP - (uint32_t)(n - POOL_CHUNK_SECTORS) * FLASH_SECTOR_SIZE;
-		if (addr < POOL_CHUNK2_TOP && end > lo)
+	if (n > POOL_A_SECTORS) {
+		uint32_t lo = POOL_B_TOP - (uint32_t)(n - POOL_A_SECTORS) * FLASH_SECTOR_SIZE;
+		if (pool_bottom < POOL_B_TOP && addr < POOL_B_TOP && end > lo)
 			return 1;
-		n = POOL_CHUNK_SECTORS;
+		n = POOL_A_SECTORS;
 	}
 	if (n) {
-		uint32_t lo = POOL_CHUNK_TOP - (uint32_t)n * FLASH_SECTOR_SIZE;
-		if (addr < POOL_CHUNK_TOP && end > lo)
+		uint32_t lo = POOL_A_TOP - (uint32_t)n * FLASH_SECTOR_SIZE;
+		if (addr < POOL_A_TOP && end > lo)
 			return 1;
 	}
 	return 0;

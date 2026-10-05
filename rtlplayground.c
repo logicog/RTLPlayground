@@ -1549,25 +1549,207 @@ void setup_serial_timer1(void)
 }
 
 
+/* 512-byte blocks in one flash sector, the granularity the flash routines work
+ * in */
+#define SECTOR_BLOCKS (FLASH_SECTOR_SIZE / FLASH_BUF_SIZE)
+
+/*
+ * Reads one block of an image sector of the staged image into flash_buf: from
+ * its place in the staging pool when the sector was staged, from the pool's
+ * implied zeros otherwise.
+ */
+static void read_image_block(uint16_t sector, uint8_t block)
+{
+	__xdata uint16_t i;
+
+	if (update_state.present[sector >> 3] & (1 << (sector & 7))) {
+		flash_region.addr = update_pool_addr(update_pool_index(sector))
+				    + (uint32_t)block * FLASH_BUF_SIZE;
+		flash_region.len = FLASH_BUF_SIZE;
+		flash_read_bulk(flash_buf);
+		return;
+	}
+	for (i = 0; i < FLASH_BUF_SIZE; i++)
+		flash_buf[i] = 0;
+}
+
+/* CRC16 over the whole staged image, the same verdict the upload computed */
+static uint16_t staged_image_crc(void)
+{
+	__xdata uint16_t sector, i;
+	__xdata uint8_t block;
+	__xdata uint8_t * __xdata bptr;
+
+	crc_value = 0;
+	for (sector = 0; sector < UPDATE_APPLY_SECTORS; sector++) {
+		for (block = 0; block < SECTOR_BLOCKS; block++) {
+			read_image_block(sector, block);
+			bptr = flash_buf;
+			for (i = 0; i < FLASH_BUF_SIZE; i++)
+				crc16_bank1(bptr++);
+		}
+		if ((sector & 0x0F) == 0)
+			write_char('.');
+	}
+	return crc_value;
+}
+
+/*
+ * Copies the staged image over the running one, highest sector first, so the
+ * prefetch header and reset vector in sector 0 are written last: an interrupted
+ * copy still boots into a runnable image that resumes the update instead of
+ * booting a half-written one. Only the sectors that hold something are written;
+ * the ones the image does not use are zeroed afterwards.
+ */
+static void copy_staged_image(void)
+{
+	__xdata uint16_t sector;
+	__xdata uint8_t block;
+	__xdata uint32_t dest;
+
+	for (sector = UPDATE_APPLY_SECTORS; sector > 0; sector--) {
+		if (!(update_state.present[(sector - 1) >> 3] & (1 << ((sector - 1) & 7))))
+			continue;
+		dest = (uint32_t)(sector - 1) * FLASH_SECTOR_SIZE;
+		for (block = 0; block < SECTOR_BLOCKS; block++) {
+			read_image_block(sector - 1, block);
+			if (!block) {
+				flash_region.addr = dest;
+				flash_sector_erase();
+			}
+			flash_region.addr = dest + (uint32_t)block * FLASH_BUF_SIZE;
+			flash_region.len = FLASH_BUF_SIZE;
+			flash_write_bytes(flash_buf);
+		}
+	}
+}
+
+/*
+ * Writes zeros to the image sectors that were not staged, since the image reads
+ * zero there. Sectors that already read zero are left alone, and the ones the
+ * staging pool occupies are zeroed as well, so the flash reads like a freshly
+ * written image afterwards.
+ */
+static void zero_unstaged_sectors(void)
+{
+	__xdata uint16_t sector, i;
+	__xdata uint8_t block, used;
+	__xdata uint8_t * __xdata bptr;
+	__xdata uint32_t dest;
+
+	for (sector = UPDATE_APPLY_SECTORS; sector > 0; sector--) {
+		if (update_state.present[(sector - 1) >> 3] & (1 << ((sector - 1) & 7)))
+			continue;
+		dest = (uint32_t)(sector - 1) * FLASH_SECTOR_SIZE;
+		used = 0;
+		for (block = 0; block < SECTOR_BLOCKS; block++) {
+			flash_region.addr = dest + (uint32_t)block * FLASH_BUF_SIZE;
+			flash_region.len = FLASH_BUF_SIZE;
+			flash_read_bulk(flash_buf);
+			bptr = flash_buf;
+			for (i = 0; i < FLASH_BUF_SIZE; i++) {
+				if (*bptr++) {
+					used = 1;
+					break;
+				}
+			}
+			if (used)
+				break;
+		}
+		if (!used)
+			continue;
+		flash_region.addr = dest;
+		flash_sector_erase();
+		for (i = 0; i < FLASH_BUF_SIZE; i++)
+			flash_buf[i] = 0;
+		for (block = 0; block < SECTOR_BLOCKS; block++) {
+			flash_region.addr = dest + (uint32_t)block * FLASH_BUF_SIZE;
+			flash_region.len = FLASH_BUF_SIZE;
+			flash_write_bytes(flash_buf);
+		}
+	}
+}
+
+/*
+ * Applies an image that was staged into the free flash of the running image:
+ * verify it, copy it over the running one, then write zeros to the parts the
+ * image does not use. The state record says how far an earlier attempt got, so
+ * a reset in the middle resumes instead of starting over, and it is only
+ * cleared once the image is complete. Returns when the staged image is
+ * unusable, leaving the running image untouched.
+ */
+static void apply_staged_image(void)
+{
+	update_pool_set_bottom(update_state.pool_bottom);
+	if (!(update_state.flags & UPDATE_STATE_APPLY)) {
+		print_string("Checking staged image");
+		set_sys_led_state(SYS_LED_FAST);
+		if (staged_image_crc() != update_state.crc || update_state.crc != 0xb001) {
+			print_string("\nStaged image is damaged, discarding it\n");
+			update_state_clear();
+			return;
+		}
+		/* A usable image holds its prefetch header in the first sector;
+		 * without it the switch would keep running the old bank 0 and boot
+		 * a mix of both images. */
+		if (!(update_state.present[0] & 1)) {
+			print_string("\nStaged image has no reset vector, discarding it\n");
+			update_state_clear();
+			return;
+		}
+		print_string("\n");
+		/* Until this record is written a reset leaves the running image
+		 * untouched: the copy below is the first thing that changes it. */
+		update_state.flags |= UPDATE_STATE_APPLY;
+		update_state_write();
+	}
+	if (!(update_state.flags & UPDATE_STATE_ZEROING)) {
+		/* The staged sectors are still in the pool now: copy them before
+		 * anything writes to the flash they sit in. */
+		print_string("Copying update into place\n");
+		copy_staged_image();
+		update_state.flags |= UPDATE_STATE_ZEROING;
+		update_state_write();
+	}
+	print_string("Writing zeros to the rest of the image\n");
+	zero_unstaged_sectors();
+	update_state_clear();
+	print_string("Update complete, resetting now\n");
+	delay(200);
+	reset_chip();
+}
+
+
 void check_and_flash_update_image(void)
 {
 	flash_read_jedecid(); // This initializes also __xdata flash_size variable
 
-	print_string(get_flash_size_str()); print_string(" flash size detected. (1 MB is needed for image updating)\n");
-	if (flash_size < FIRMWARE_UPLOAD_START*2) {
-		print_string("Flash too small for updating; skipping update check\n");
-		return;
-	}
+	print_string(get_flash_size_str()); print_string(" flash size detected.\n");
 
 	update_state_read();
+	if (update_state.magic == UPDATE_STATE_MAGIC
+	    && (update_state.flags & UPDATE_STATE_STAGING)) {
+		if (update_state.flags & (UPDATE_STATE_APPLY | UPDATE_STATE_ZEROING))
+			print_string("Update was interrupted by a reset, resuming\n");
+		apply_staged_image();
+		print_string("Continuing with the running image\n");
+		return;
+	}
 	if (update_state.magic == UPDATE_STATE_MAGIC && (update_state.flags & UPDATE_STATE_APPLY))
 		print_string("Update was interrupted by a reset, resuming\n");
 
 	print_string("Checking for update image in flash... ");
-	// Check if an update image is in flash
-	flash_region.addr = FIRMWARE_UPLOAD_START;
-	flash_region.len = 0x100;
-	flash_read_bulk(flash_buf);
+	// Check if an update image is in flash: parts with room hold a complete
+	// second image above the running one, everything else is staged into the
+	// free flash of the running image and never reaches this point
+	if (flash_size >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+		flash_region.addr = FIRMWARE_UPLOAD_START;
+		flash_region.len = 0x100;
+		flash_read_bulk(flash_buf);
+	} else {
+		flash_buf[0] = 0;
+		flash_buf[1] = 0;
+	}
 	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40)
 	{
 		// Yes, flash the new image to the start of flash and reset

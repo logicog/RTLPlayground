@@ -87,6 +87,7 @@ SRCS += \
 	rtl837x_storm.c
 SRCS += \
 	httpd/httpd.c \
+	httpd/update_stage.c \
 	httpd/page_impl.c
 SRCS += \
 	uip/timer.c \

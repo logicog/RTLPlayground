@@ -36,6 +36,7 @@ typedef struct {
 	uint8_t flags;
 	uint16_t staged;			// image sectors stored in the pool
 	uint16_t crc;				// CRC16 of the complete image (0xb001)
+	uint32_t pool_bottom;			// where the pool of this staging starts
 	uint8_t present[UPDATE_SECTORS/8];	// image sector -> stored in pool
 } update_state_t;
 
@@ -52,7 +53,20 @@ void update_state_clear(void);
  * all zero are stored, so the pool only needs to hold the parts of the image
  * that are actually used.
  */
-uint32_t update_pool_addr(uint16_t staged_idx);	uint16_t update_pool_index(uint16_t sector);	uint8_t update_pool_conflict(uint32_t addr);
+/*
+ * The staging pool is the flash the running image does not occupy: first the
+ * space between the code banks and the web UI, then the space above the web UI,
+ * which the UI grows into from release to release. update_pool_set_bottom()
+ * tells the pool where the web UI of the running image ends before the first
+ * sector is staged and returns the rounded-up address, so that a staged sector
+ * can never land on data the running image still serves.
+ */
+uint32_t update_pool_set_bottom(uint32_t bottom);
+
+uint32_t update_pool_addr(uint16_t staged_idx);
+uint16_t update_pool_index(uint16_t sector);
+uint8_t update_pool_conflict(uint32_t addr);
+uint8_t update_pool_target(uint16_t sector);
 
 #endif
 

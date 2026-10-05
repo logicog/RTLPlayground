@@ -54,9 +54,10 @@ $(BUILDDIR)/test_tick_gate: test_tick_gate.c support.c $(SRCROOT)/cmd_editor.c |
 $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-# httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
-# this test carries the environment below them itself.
-$(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
+# httpd/httpd.c, httpd/update_stage.c and uip/uip.c are compiled UNMODIFIED from
+# the firmware tree; this test carries the environment below them itself.
+$(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c \
+                          $(SRCROOT)/httpd/update_stage.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 run: $(TESTS)
