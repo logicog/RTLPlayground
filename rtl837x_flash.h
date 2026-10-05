@@ -22,14 +22,9 @@ void flash_write_bytes(__xdata uint8_t *ptr);
 __code const char* get_flash_size_str(void);
 
 /*
- * In-band update state, kept in the flash sector at UPDATE_STATE_START so it
- * survives the reset that applies an update.
- *
- * UPDATE_STATE_APPLY: a staged image has been verified and the copy down to
- * address 0 has started (resumed after a reset).
- * UPDATE_STATE_STAGING: an image was staged into the sparse staging pool -
- * present[] marks the image sectors held there, the rest of the image being
- * all zero - and the copy has not started yet.
+ * Update state, kept in one flash sector so it survives the reset that applies
+ * an update. STAGING: the image is in the pool, present[] marks its sectors.
+ * APPLY: the copy over the running image has started.
  */
 typedef struct {
 	uint32_t magic;
@@ -53,14 +48,8 @@ void update_state_clear(void);
  * all zero are stored, so the pool only needs to hold the parts of the image
  * that are actually used.
  */
-/*
- * The staging pool is the flash the running image does not occupy: first the
- * space between the code banks and the web UI, then the space above the web UI,
- * which the UI grows into from release to release. update_pool_set_bottom()
- * tells the pool where the web UI of the running image ends before the first
- * sector is staged and returns the rounded-up address, so that a staged sector
- * can never land on data the running image still serves.
- */
+// The pool is flash that neither a code bank nor (above bottom) served UI data
+// sits in. Returns the sector the pool starts on.
 uint32_t update_pool_set_bottom(uint32_t bottom);
 
 uint32_t update_pool_addr(uint16_t staged_idx);

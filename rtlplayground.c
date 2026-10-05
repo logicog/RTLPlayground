@@ -1549,15 +1549,9 @@ void setup_serial_timer1(void)
 }
 
 
-/* 512-byte blocks in one flash sector, the granularity the flash routines work
- * in */
-#define SECTOR_BLOCKS (FLASH_SECTOR_SIZE / FLASH_BUF_SIZE)
+#define SECTOR_BLOCKS (FLASH_SECTOR_SIZE / FLASH_BUF_SIZE)	// flash write granularity
 
-/*
- * Reads one block of an image sector of the staged image into flash_buf: from
- * its place in the staging pool when the sector was staged, from the pool's
- * implied zeros otherwise.
- */
+// One block of a staged image sector into flash_buf: from the pool, else zeros
 static void read_image_block(uint16_t sector, uint8_t block)
 {
 	__xdata uint16_t i;
@@ -1573,7 +1567,7 @@ static void read_image_block(uint16_t sector, uint8_t block)
 		flash_buf[i] = 0;
 }
 
-/* CRC16 over the whole staged image, the same verdict the upload computed */
+// CRC16 over the staged image, as the upload computed it
 static uint16_t staged_image_crc(void)
 {
 	__xdata uint16_t sector, i;
@@ -1595,11 +1589,9 @@ static uint16_t staged_image_crc(void)
 }
 
 /*
- * Copies the staged image over the running one, highest sector first, so the
- * prefetch header and reset vector in sector 0 are written last: an interrupted
- * copy still boots into a runnable image that resumes the update instead of
- * booting a half-written one. Only the sectors that hold something are written;
- * the ones the image does not use are zeroed afterwards.
+ * Copies the staged sectors over the running image, highest first: sector 0
+ * holds the prefetch header and is written last, so an interrupted copy still
+ * boots and resumes. The sectors the image does not use follow as zeros.
  */
 static void copy_staged_image(void)
 {
@@ -1624,12 +1616,8 @@ static void copy_staged_image(void)
 	}
 }
 
-/*
- * Writes zeros to the image sectors that were not staged, since the image reads
- * zero there. Sectors that already read zero are left alone, and the ones the
- * staging pool occupies are zeroed as well, so the flash reads like a freshly
- * written image afterwards.
- */
+// Zeros to the image sectors that were not staged, skipping the ones that
+// already read zero; this also clears the staging pool
 static void zero_unstaged_sectors(void)
 {
 	__xdata uint16_t sector, i;
@@ -1671,12 +1659,9 @@ static void zero_unstaged_sectors(void)
 }
 
 /*
- * Applies an image that was staged into the free flash of the running image:
- * verify it, copy it over the running one, then write zeros to the parts the
- * image does not use. The state record says how far an earlier attempt got, so
- * a reset in the middle resumes instead of starting over, and it is only
- * cleared once the image is complete. Returns when the staged image is
- * unusable, leaving the running image untouched.
+ * Applies a staged image: verify it, copy the staged sectors, zero the rest. The
+ * state record resumes an interrupted run. Returns without touching the running
+ * image when the staged one is unusable.
  */
 static void apply_staged_image(void)
 {
@@ -1689,23 +1674,19 @@ static void apply_staged_image(void)
 			update_state_clear();
 			return;
 		}
-		/* A usable image holds its prefetch header in the first sector;
-		 * without it the switch would keep running the old bank 0 and boot
-		 * a mix of both images. */
+		// an image without the prefetch header would boot a mix of both
 		if (!(update_state.present[0] & 1)) {
 			print_string("\nStaged image has no reset vector, discarding it\n");
 			update_state_clear();
 			return;
 		}
 		print_string("\n");
-		/* Until this record is written a reset leaves the running image
-		 * untouched: the copy below is the first thing that changes it. */
+		// before this record a reset leaves the running image untouched
 		update_state.flags |= UPDATE_STATE_APPLY;
 		update_state_write();
 	}
 	if (!(update_state.flags & UPDATE_STATE_ZEROING)) {
-		/* The staged sectors are still in the pool now: copy them before
-		 * anything writes to the flash they sit in. */
+		// the staged sectors are still in the pool here; copy them first
 		print_string("Copying update into place\n");
 		copy_staged_image();
 		update_state.flags |= UPDATE_STATE_ZEROING;
@@ -1739,9 +1720,7 @@ void check_and_flash_update_image(void)
 		print_string("Update was interrupted by a reset, resuming\n");
 
 	print_string("Checking for update image in flash... ");
-	// Check if an update image is in flash: parts with room hold a complete
-	// second image above the running one, everything else is staged into the
-	// free flash of the running image and never reaches this point
+	// parts with room hold a complete second image above the running one
 	if (flash_size >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
 		flash_region.addr = FIRMWARE_UPLOAD_START;
 		flash_region.len = 0x100;

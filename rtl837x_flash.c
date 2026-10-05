@@ -358,11 +358,7 @@ void flash_write_bytes(__xdata uint8_t *ptr)
 }
 
 
-/*
- * State of an in-band update, see rtl837x_flash.h. The sector holding it is in
- * the padding at the end of the image, above the live configuration, so it
- * survives the reset that applies the update.
- */
+// Update state, see rtl837x_flash.h
 __xdata update_state_t update_state;
 
 void update_state_read(void)
@@ -396,23 +392,20 @@ void update_state_clear(void)
 }
 
 /*
- * The staging pool, see rtl837x_flash.h. The first chunk is the flash between
- * the code banks and the web UI, which no build can use, the second one the
- * space above the web UI up to the default configuration. Staged sectors are
- * placed from the top of each chunk downwards.
+ * Staging pool, see rtl837x_flash.h: A is the flash between the code banks and
+ * the UI, which no build can use, B the flash above the UI. Both are filled
+ * from the top downwards.
  */
 #define POOL_A_TOP	0x40000u
 #define POOL_A_BOTTOM	0x28000u	// bank 3 ends here, see imagebuilder.c
 #define POOL_B_TOP	0x6f000u	// up to DEFAULT_CONFIG_START
 #define POOL_A_SECTORS	((POOL_A_TOP - POOL_A_BOTTOM) / FLASH_SECTOR_SIZE)
 
-// First sector above the web UI of the running image
 static __xdata uint32_t pool_bottom = POOL_A_TOP;
 
 uint32_t update_pool_set_bottom(uint32_t bottom)
 {
-	/* Rounded up: a slot holds a whole sector and the UI does not end on a
-	 * sector boundary. */
+	// rounded up: a slot is a whole sector, the UI end is not sector aligned
 	pool_bottom = (bottom + FLASH_SECTOR_SIZE - 1) & ~((uint32_t)FLASH_SECTOR_SIZE - 1);
 	return pool_bottom;
 }
@@ -438,12 +431,8 @@ uint16_t update_pool_index(uint16_t sector)
 	return n;
 }
 
-/*
- * Whether an image sector is already staged as the target of the copy back.
- * A pool slot must not be placed on such an address: the copy back would then
- * write over the staged data of another sector (or of itself), which makes the
- * update depend on the order the sectors are written in.
- */
+// 1 when the sector is already staged: a slot placed on it would be overwritten
+// by its own copy back, making the apply order dependent
 uint8_t update_pool_target(uint16_t sector)
 {
 	return (update_state.present[sector >> 3] >> (sector & 7)) & 1;

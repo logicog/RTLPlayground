@@ -105,26 +105,21 @@ struct vlan_tag {
 // Store update image after running image
 #define FIRMWARE_UPLOAD_START 0x80000
 
-// State of an update in progress, kept in one flash sector inside the padding
-// at the end of the image, above the live configuration and below the two bytes
-// the build puts on the very end of the image. It survives the reset that
-// applies an update, so an interrupted copy is resumed on the next boot instead
-// of booting a half-written image.
+// State of an update in progress: one sector in the padding at the end of the
+// image, above the live configuration and below the two trailer bytes
 #define UPDATE_STATE_START 0x7e000
 #define UPDATE_STATE_MAGIC 0x52505531	// "RPU1"
-#define UPDATE_STATE_APPLY 0x01		// staged image verified, copy started
-#define UPDATE_STATE_STAGING 0x02	// sparse staging in the pool is complete
+#define UPDATE_STATE_APPLY 0x01		// image verified, copy started
+#define UPDATE_STATE_STAGING 0x02	// image staged in the pool
 #define UPDATE_STATE_ZEROING 0x04	// staged sectors copied, zeroing the rest
 
-// Number of 4 KiB sectors in a firmware image, see Makefile IMAGESIZE
+// 4 KiB sectors in a firmware image, see Makefile IMAGESIZE
 #define UPDATE_SECTORS 128
 
-// Size of a firmware image, see Makefile IMAGESIZE. A device with less flash
-// cannot run this firmware at all, and has no room for a second image either.
+// A firmware image, see Makefile IMAGESIZE; less flash cannot hold it
 #define IMAGE_SIZE ((uint32_t)UPDATE_SECTORS * FLASH_SECTOR_SIZE)
 
-// Sectors the apply copies back; the two configuration sectors and everything
-// above them keep the running configuration
+// Sectors the apply writes; the config sectors and above keep the running one
 #define UPDATE_APPLY_SECTORS (CONFIG_START / FLASH_SECTOR_SIZE)
 
 // Constants for the circular command buffer, the size must be 2^n

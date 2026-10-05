@@ -475,20 +475,11 @@ __xdata struct {
 	uint16_t plen;
 } upload_settings;
 
-/*
- * Devices with room for a second full image stage the upload above the running
- * image; everything else stages the parts of it that are in use into the free
- * flash of the running image, see update_stage.c. Both paths verify the same
- * stream, so the image checksum stays the one verdict for the whole upload.
- */
+// Devices without room for a second image stage into free flash, update_stage.c
 __xdata uint8_t stage_sparse;
-__xdata uint8_t upload_error;		// why staging stopped, 0 while it goes on
+__xdata uint8_t upload_error;
 
-/*
- * The sparse staging pool has to stay above the web UI of the running image:
- * the UI is read from flash while the switch serves pages and the pool is
- * erased sector by sector. Returns where the UI of this build ends.
- */
+// End of the web UI; the staging pool stays above it
 uint32_t ui_pool_bottom(void)
 {
 	__xdata uint32_t end = 0;
@@ -499,6 +490,102 @@ uint32_t ui_pool_bottom(void)
 			end = f_data[i].start + f_data[i].len;
 	}
 	return end;
+}
+
+/*
+ * Finishes one assembled 256-byte page of the upload. Returns 1 when it cannot
+ * go on, in which case the reply is already built.
+ */
+static uint8_t upload_page(void)
+{
+	if (stage_sparse) {
+		upload_error = update_stage_page();
+		if (!upload_error)
+			return 0;
+		if (upload_error == UPDATE_STAGE_NO_ROOM) {
+			print_string("Image does not fit into the free flash space!\n");
+			slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 37\r\n"
+				"Content-Type: text/plain\r\n\r\n"
+				"NO: image does not fit in free flash\n");
+		} else {
+			print_string("Image would be staged on top of itself!\n");
+			slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 36\r\n"
+				"Content-Type: text/plain\r\n\r\n"
+				"NO: image overlaps its staging area\n");
+		}
+		return 1;
+	}
+	// The staged image spans FIRMWARE_UPLOAD_START to twice that, the span
+	// the boot code reads back; nothing else bounds uptr
+	if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+		print_string("Upload runs past the image area! Aborting.\n");
+		slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
+			"Content-Type: text/plain\r\n\r\n"
+			"NO: upload exceeds image area\n");
+		return 1;
+	}
+	dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
+	dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
+	if (uptr % FLASH_SECTOR_SIZE == 0) {
+		flash_region.addr = uptr;
+		flash_sector_erase();
+	}
+	flash_region.addr = uptr;
+	flash_region.len = FLASH_PAGE_SIZE;
+	flash_write_bytes(flash_buf);
+	uptr += FLASH_PAGE_SIZE;
+	return 0;
+}
+
+// The multipart part is complete: finish the write and check the checksum
+static void upload_part_done(void)
+{
+	__xdata uint16_t i;
+
+	if (stage_sparse) {
+		if (write_len) {	// truncated body, fails the checksum below
+			for (i = write_len; i < FLASH_PAGE_SIZE; i++)
+				flash_buf[i] = 0;
+			upload_error = update_stage_page();
+		}
+		if (!upload_error)
+			upload_error = update_stage_end();
+	} else {
+		flash_region.addr = uptr;
+		flash_region.len = write_len;
+		flash_write_bytes(flash_buf);
+		uptr += write_len;
+		// NUL after the staged image, as the legacy path always left it
+		if (uptr < flash_size) {
+			flash_buf[0] = 0;
+			flash_region.addr = uptr;
+			flash_region.len = 1;
+			flash_write_bytes(flash_buf);
+		}
+	}
+	write_len = 0;
+	if (!verify_crc)
+		return;
+	// Content-Length lets the browser finish the reply without waiting for
+	// the close, which the reset would swallow
+	if (crc_final == 0xb001 && !upload_error) {
+		if (stage_sparse)
+			update_stage_commit(crc_final);
+		print_string("Checksum OK.\nUpload to flash done, will reset!\n");
+		slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 33\r\n"
+			"Content-Type: text/plain\r\n\r\n"
+			"OK: checksum verified, rebooting\n");
+		fw_reset_pending = 1;
+		return;
+	}
+	if (stage_sparse) {
+		print_string("Discarding staged image\n");
+		update_stage_discard();
+	}
+	print_string("Checksum incorrect! Aborting.\n");
+	slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 33\r\n"
+		"Content-Type: text/plain\r\n\r\n"
+		"NO: checksum failed, not applied\n");
 }
 
 uint8_t stream_upload(void)
@@ -517,57 +604,7 @@ uint8_t stream_upload(void)
 		if (!boundary[bindex]) {
 			s->tstate = TSTATE_NONE;
 			dbg_string("len 2: "); dbg_short(write_len); dbg_char(' ');
-			if (stage_sparse) {
-				if (write_len) {
-					__xdata uint16_t i;
-
-					/* Pad a body that stopped inside a page; it
-					 * fails the checksum below. */
-					for (i = write_len; i < FLASH_PAGE_SIZE; i++)
-						flash_buf[i] = 0;
-					upload_error = update_stage_page();
-				}
-				if (!upload_error)
-					upload_error = update_stage_end();
-			} else {
-				flash_region.addr = uptr;
-				flash_region.len = write_len;
-				flash_write_bytes(flash_buf);
-				uptr += write_len;
-			}
-			write_len = 0;
-			if (verify_crc) {
-				dbg_string("CRC16: "); dbg_short(crc_final); dbg_char('\n');
-				// Both bodies are 33 bytes; Content-Length lets the
-				// browser complete the response without waiting for
-				// the connection close (which a reset would swallow)
-				if (crc_final == 0xb001 && !upload_error) {
-					if (stage_sparse)
-						/* From here on the boot code can apply the
-						 * staged image, or resume a started apply. */
-						update_stage_commit(crc_final);
-					print_string("Checksum OK.\nUpload to flash done, will reset!\n");
-					slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 33\r\n"
-						"Content-Type: text/plain\r\n\r\n"
-						"OK: checksum verified, rebooting\n");
-					// Reset once the response is fully ACKed
-					fw_reset_pending = 1;
-				} else {
-					if (stage_sparse) {
-						print_string("Discarding staged image\n");
-						update_stage_discard();
-					}
-					print_string("Checksum incorrect! Aborting.\n");
-					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 33\r\n"
-						"Content-Type: text/plain\r\n\r\n"
-						"NO: checksum failed, not applied\n");
-				}
-			}
-			// Make sure there is a 0 at the end of the uploaded data
-			flash_buf[0] = 0;
-			flash_region.addr = uptr;
-			flash_region.len = 1;
-			flash_write_bytes(flash_buf);
+			upload_part_done();
 			if (upload_settings.bptr >= upload_settings.plen)
 				return 0;
 			return 1;
@@ -587,47 +624,9 @@ uint8_t stream_upload(void)
 			crc16_bank1(upload_settings.p + upload_settings.bptr);
 			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
-				if (stage_sparse) {
-					upload_error = update_stage_page();
-					if (upload_error) {
-						if (upload_error == UPDATE_STAGE_NO_ROOM) {
-							print_string("Image does not fit into the free flash space!\n");
-							slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 37\r\n"
-								"Content-Type: text/plain\r\n\r\n"
-								"NO: image does not fit in free flash\n");
-						} else {
-							print_string("Image would be staged on top of itself!\n");
-							slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 36\r\n"
-								"Content-Type: text/plain\r\n\r\n"
-								"NO: image overlaps its staging area\n");
-						}
-						s->tstate = TSTATE_NONE;
-						return 0;
-					}
-				} else {
-					/* The staged image spans FIRMWARE_UPLOAD_START to twice
-					 * that, the span check_and_flash_update_image() reads back.
-					 * Nothing else bounds uptr: a body whose closing boundary
-					 * never arrives keeps writing, and on a flash exactly this
-					 * size the address wraps onto the running image at zero. */
-					if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
-						print_string("Upload runs past the image area! Aborting.\n");
-						slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
-							"Content-Type: text/plain\r\n\r\n"
-							"NO: upload exceeds image area\n");
-						s->tstate = TSTATE_NONE;
-						return 0;
-					}
-					dbg_string("len: "); dbg_short(write_len); dbg_char(' ');
-					dbg_string("CRC16: "); dbg_short(crc_value); dbg_char('\n');
-					if (uptr % FLASH_SECTOR_SIZE == 0) {
-						flash_region.addr = uptr;
-						flash_sector_erase();
-					}
-					flash_region.addr = uptr;
-					flash_region.len = FLASH_PAGE_SIZE;
-					flash_write_bytes(flash_buf);
-					uptr += FLASH_PAGE_SIZE;
+				if (upload_page()) {
+					s->tstate = TSTATE_NONE;
+					return 0;
 				}
 				write_len -= FLASH_PAGE_SIZE;
 
@@ -843,13 +842,12 @@ void handle_post(void)
 				send_unauthorized();
 				return;
 			}
-			/* A device that cannot hold a second full image stages the
-			 * upload into the free space of the running image. */
 			if (flash_size < IMAGE_SIZE) {
 				print_string("Flash too small for this firmware image!\n");
 				send_bad_request();
 				return;
 			}
+			// no second image slot: stage into the free flash instead
 			stage_sparse = flash_size < (uint32_t)FIRMWARE_UPLOAD_START * 2;
 			if (stage_sparse) {
 				print_string("Firmware upload started, staging into free flash\n");

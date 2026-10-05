@@ -95,8 +95,7 @@ void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
 
-/* Staging-pool bookkeeping from rtl837x_flash.c. This bench serves files, it
- * does not stage images, so the pool is a plain address map here. */
+// Pool bookkeeping from rtl837x_flash.c, as a plain address map
 __xdata update_state_t update_state;
 void update_state_read(void) { }
 void update_state_write(void) { }

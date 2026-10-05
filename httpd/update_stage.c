@@ -1,8 +1,4 @@
-/*
- * Sparse staging of a firmware image into the free flash of the running image,
- * see update_stage.h. The pool never covers the flash a code bank occupies, so
- * this code, which lives in BANK3, cannot erase itself.
- */
+// Sparse staging into free flash, see update_stage.h
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
 #include "update_stage.h"
@@ -12,16 +8,15 @@
 extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 extern __xdata struct flash_region_t flash_region;
 
-// The image sector being received and how much of it is already staged
+// Sector being received, its filled pages and the pool slot allotted to it
 static __xdata uint16_t stage_sec;
-static __xdata uint8_t stage_upage;	// 256 byte pages of it filled so far
-static __xdata uint8_t stage_pages;	// pages of it already in the pool
-static __xdata uint32_t stage_slot;	// pool address, 0 while the sector is empty
-static __xdata uint32_t stage_bottom;	// start of the pool of this staging
+static __xdata uint8_t stage_upage;
+static __xdata uint8_t stage_pages;
+static __xdata uint32_t stage_slot;
+static __xdata uint32_t stage_bottom;
 static __xdata uint8_t stage_error;
 
-/* Records a completely received image sector in the staging manifest. A sector
- * that never held anything is left out: the apply writes zeros there. */
+// Records the sector just completed; an empty one is left out
 static void stage_sector(void)
 {
 	if (stage_slot) {
@@ -34,12 +29,7 @@ static void stage_sector(void)
 	stage_slot = 0;
 }
 
-/*
- * Stages the 256-byte page just assembled in flash_buf. Returns UPDATE_STAGE_OK
- * when it was staged, UPDATE_STAGE_NO_ROOM when the free flash is used up and
- * UPDATE_STAGE_OVERLAP when staging it would sit on an address the copy back has
- * to write.
- */
+// Stages the page in flash_buf, see update_stage.h for the return values
 static uint8_t stage_page(void)
 {
 	__xdata uint16_t i;
@@ -51,12 +41,11 @@ static uint8_t stage_page(void)
 			break;
 		}
 	}
-	// Above the configuration the image is not applied, so not staged either
+	// above the configuration nothing is applied, so nothing is staged
 	if (stage_sec >= UPDATE_APPLY_SECTORS)
 		return UPDATE_STAGE_OK;
 	if (nonzero && !stage_slot) {
-		/* Refuse before anything is written when this sector cannot be
-		 * staged without the copy back spoiling the pool. */
+		// would the copy back write over the pool, or the pool over it?
 		if (update_pool_target(stage_sec))
 			return UPDATE_STAGE_OVERLAP;
 		if (update_pool_conflict((uint32_t)stage_sec * FLASH_SECTOR_SIZE))
@@ -71,8 +60,7 @@ static uint8_t stage_page(void)
 	if (!stage_slot)
 		return UPDATE_STAGE_OK;	// an all-zero sector costs no pool space
 	if (!nonzero) {
-		/* A zero page inside a used sector has to be programmed: the
-		 * slot was erased and the apply copies it back verbatim. */
+		// the slot is erased, so zero pages of a used sector must be written
 		for (i = 0; i < FLASH_PAGE_SIZE; i++)
 			flash_buf[i] = 0;
 	}
@@ -80,8 +68,7 @@ static uint8_t stage_page(void)
 	flash_region.len = FLASH_PAGE_SIZE;
 	flash_write_bytes(flash_buf);
 	if (stage_pages < stage_upage) {
-		/* Pages that filled up while the sector still looked empty were
-		 * dropped; they are part of the sector, so write them as zeros. */
+		// pages dropped while the sector still looked empty
 		for (i = 0; i < FLASH_PAGE_SIZE; i++)
 			flash_buf[i] = 0;
 		for (i = stage_pages; i < stage_upage; i++) {
@@ -102,9 +89,7 @@ void update_stage_begin(uint32_t pool_bottom) __banked
 	stage_pages = 0;
 	stage_slot = 0;
 	stage_error = 0;
-	/* Invalidate the record of an earlier attempt: its staged sectors are
-	 * overwritten from now on. */
-	update_state_clear();
+	update_state_clear();	// the earlier attempt's record is stale now
 }
 
 uint8_t update_stage_page(void) __banked
@@ -125,8 +110,7 @@ uint8_t update_stage_end(void) __banked
 
 	if (stage_error)
 		return stage_error;
-	/* Whole pages were staged, so a partially received sector is left over
-	 * only when the body ended early, which fails the checksum. */
+	// a partial sector is left only by a body that ended early
 	if (stage_upage) {
 		if (stage_slot) {
 			for (i = 0; i < FLASH_PAGE_SIZE; i++)
@@ -147,8 +131,7 @@ void update_stage_commit(uint16_t crc) __banked
 	update_state.magic = UPDATE_STATE_MAGIC;
 	update_state.flags = UPDATE_STATE_STAGING;
 	update_state.crc = crc;
-	/* The apply reads the staged sectors back through the same pool */
-	update_state.pool_bottom = stage_bottom;
+	update_state.pool_bottom = stage_bottom;	// the apply reads the same pool
 	update_state_write();
 	stage_error = UPDATE_STAGE_OK;
 }
