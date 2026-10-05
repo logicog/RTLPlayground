@@ -30,7 +30,8 @@ Changes I found with my board vs [Managed version](https://github.com/up-n-atom/
 * R95: Installed (SFP2 (J2) signal RX-LOS), means that the managed-version can´t use the RX-LOS function.
 * R270: Installed (SFP1 (J4) signal RX-LOS), same here as above.
 * R268: Installed (SFP2 (J2) signal TX-DISABLE, but R262 200R pull-down is to high to drive by the SOC, needs mod!)
-* U5: Flash is only 512 KiB instead of 2/4 MiB.
+* U5: Flash is only 512 KiB instead of 2/4 MiB. Online updates work (the image is
+  staged into the free flash of the running one), see [Firmware Updates](../update.md).
 
 ### Notes
 * `TX-Disable`-SFP2 and Button `K1` share the same GPIO pin via `R105` and `R85`.

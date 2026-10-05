@@ -4,9 +4,11 @@ Following is documentation for unmanaged switch marked as `HYWS-SGT0108S`.
 
 Original software is running UART on 9600 baud rate. Output is very minimal.
 
-Using SPI clamp in-board is the only method for initial installation and update.
+Using SPI clamp in-board is the only method for initial installation.
 
-Stock flash chip is 512KB in size. Consider replacing for update through Web UI.
+Stock flash chip is 512KB in size. Online updates work by staging the new image
+into the flash the running one leaves free, see [Firmware Updates](../update.md);
+a larger chip is only needed for the usual reasons.
 
 - Header for uart is clearly identified.
 - The red LED act as a powered-on LED.

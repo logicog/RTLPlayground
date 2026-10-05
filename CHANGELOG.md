@@ -9,6 +9,12 @@
   - Replace the multi-page UI with a themed single-page app: light, dark and Selenized themes following the browser by default,
     English, Japanese and Chinese, save to flash merges the command log into the startup config and verifies the write,
     firmware images are checked in the browser before upload. #429
+- Firmware update
+  - Devices with only `512 KiB` of flash can be updated over the web UI: the image is staged into
+    the flash the running image leaves free (only its used sectors), copied back on the next boot
+    and resumed when a reset interrupts the copy. The web UI names the reason when an image does
+    not fit, and a device with a `1 MiB` or larger flash keeps the complete second image above the
+    running one.
 
 ## Changed
 

@@ -20,7 +20,8 @@ The device is fully supported:
 - ALL 2.5GBASE-T RJ45 ports work at 10/100/1000/2500 Mbps
 - The SFP+ port supports 1G, 2.5G and 10G modules 
 - LEDs work with the same indiciations as the OEM firmware
-- Online update does not work with 512KiB flash.
+- Online update works with 512KiB flash: the image is staged into the flash the
+  running image leaves free, see [Firmware Updates](../update.md).
 ### PCB overview
 
 **Board markings**
