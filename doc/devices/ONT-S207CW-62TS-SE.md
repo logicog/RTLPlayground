@@ -8,10 +8,10 @@ ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS 
 - **Ports:** 4x 2.5G RJ45 + 2x 10G SFP+
 - **Console:** 115200 baud (RTLPlayground firmware) / 9600 baud (stock firmware)
 
-**Note:** These devices use **PCB-SWTG024AS-A-2.0.1** hardware. The `MACHINE_ONT_S207CW_62TS_SE` definition uses a **custom configuration** with:
+**Note:** These devices are **RTL8372N-based** with **LAN ports mounted upside-down on the PCB**, requiring a custom configuration. The `MACHINE_ONT_S207CW_62TS_SE` definition uses a **custom configuration** with:
 - Corrected port mapping (physical ports 1-4 = RJ45, 5-6 = SFP)
 - Optimized LED sets for different port wiring (RJ45 Ports 1-2 have reversed LED wiring)
-- Custom LED mux configuration from PCB-SWTG024AS-A-2.0.1
+- Custom LED mux configuration
 
 ## Device Photos
 
@@ -72,91 +72,6 @@ ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS 
 | **Orange** | 2.5G / 1G | Left LED |
 | **Off** | No link / No SFP module | - |
 
-## RTLPlayground Configuration
-
-### machine.h
-
-```c
-#define MACHINE_ONT_S207CW_62TS_SE
-// ONT-S207CW-62TS-SE and Binardat 2G06-04210GSM
-// RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
-// Custom configuration with corrected port mapping and LED behavior
-// Physical ports: 1-4 = RJ45, 5 = SFP (SDS0), 6 = SFP (SDS1)
-// Logical ports: 3 = SFP (SDS0), 4-7 = RJ45, 8 = SFP (SDS1)
-```
-
-### machine.c Configuration
-
-Custom configuration for ONT-S207CW-62TS-SE:
-
-```c
-#elif defined MACHINE_ONT_S207CW_62TS_SE
-__code const struct machine machine = {
-    .machine_name = "ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM",
-    .isRTL8373 = 0,
-    .mac_flash_offset = 0x1FC000,
-    .min_port = 3,
-    .max_port = 8,
-    .n_sfp = 2,
-    .log_to_phys_port = {0, 0, 0, 5, 4, 3, 2, 1, 6},
-    .phys_to_log_port = {7, 6, 5, 4, 3, 8, 0, 0, 0},
-    .is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
-    
-    // SFP port on SDS0 / logical port 3
-    .sfp_port[0].pin_detect = GPIO37,
-    .sfp_port[0].pin_los = GPIO_NA,
-    .sfp_port[0].pin_tx_disable = GPIO_NA,
-    .sfp_port[0].sds = 0,
-    .sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
-    
-    // SFP port on SDS1 / logical port 8
-    .sfp_port[1].pin_detect = GPIO38,
-    .sfp_port[1].pin_los = GPIO_NA,
-    .sfp_port[1].pin_tx_disable = GPIO_NA,
-    .sfp_port[1].sds = 1,
-    .sfp_port[1].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
-    
-    .reset_pin = GPIO_NA,
-    .high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
-    .port_led_set = { 0, 0, 0, 3, 0, 0, 2, 2, 3},
-    .led_sets = {
-        {
-            // Set 0: RJ45 Ports 3-4 (normal wiring)
-            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
-            LEDS_2G5 | LEDS_LINK | LEDS_ACT,
-            LEDS_DUPLEX,
-            0
-        },
-        {
-            // Set 1: Unused
-            LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
-            LEDS_10G | LEDS_LINK | LEDS_ACT,
-            LEDS_2G5 | LEDS_LINK,
-            LEDS_COL | LEDS_DUPLEX
-        },
-        {
-            // Set 2: RJ45 Ports 1-2 (reversed wiring)
-            LEDS_2G5 | LEDS_LINK | LEDS_ACT,
-            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
-            LEDS_DUPLEX,
-            0
-        },
-        {
-            // Set 3: SFP Ports 5-6 (reversed wiring for Port 6)
-            LEDS_10G | LEDS_LINK | LEDS_ACT,
-            LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,
-            LEDS_2G5 | LEDS_LINK,
-            LEDS_COL | LEDS_DUPLEX
-        },
-    },
-    .led_mux_custom = 1,
-    .led_mux = {
-        0x00,0x01,0x04,0x05,0x08,0x09,0x0c,0x3f,0x0d,0x10,0x11,0x0e,0x14,0x11,0x12,0x15,
-        0x15,0x16,0x18,0x19,0x1a,0x19,0x1d,0x1e,0x1c,0x1d,0x20,0x21
-    },
-};
-```
-
 ## Port to Logical Mapping
 
 Custom mapping for ONT-S207CW-62TS-SE:
@@ -171,18 +86,6 @@ Custom mapping for ONT-S207CW-62TS-SE:
 | 6 | 8 | SFP+ (SDS1) | 3 |
 
 **Note:** Ports 1-2 (RJ45) have reversed LED wiring and use LED-Set 2. SFP Ports 5-6 use LED-Set 3 to account for wiring differences.
-
-## Firmware Files
-
-| File | Size | Purpose |
-|---|---|---|
-| `ONT_S207CW_62TS_SE-v22.bin` | 524288 bytes | Direct flash via CH341A/SPI programmer |
-| `rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v22.bin` | 540710 bytes | OEM upgrade via web UI (Loader Mode) |
-
-### Firmware Size Check
-- **Flash chip:** GD25Q128E = 16MB = 16777216 bytes
-- **Firmware size:** 524288 bytes (512KB)
-- **Status:** ✅ **Plenty of space available** - No size issues with old or new web UI
 
 ## Flashing Instructions
 
@@ -199,17 +102,17 @@ Custom mapping for ONT-S207CW-62TS-SE:
 sudo apt install flashrom
 
 # Flash the firmware (may need sudo)
-flashrom -p ch341a_spi -c "GD25Q128E/GD25B128E/GD25R128E/GD25Q127C" -w ONT_S207CW_62TS_SE-v22.bin --noverify-all
+flashrom -p ch341a_spi -c "GD25Q128E/GD25B128E/GD25R128E/GD25Q127C" -w firmware.bin --noverify-all
 ```
 
 **Alternative command (if above fails):**
 ```bash
-flashrom -p ch341a_spi -c "GD25Q128E" -w ONT_S207CW_62TS_SE-v22.bin
+flashrom -p ch341a_spi -c "GD25Q128E" -w firmware.bin
 ```
 
 ### Via Loader Mode (Web UI Upgrade)
 
-The OEM upgrade file can be flashed via the device's loader mode:
+The firmware can be flashed via the device's loader mode:
 
 1. **Enter Loader Mode:**
    - Power off the switch
@@ -220,13 +123,13 @@ The OEM upgrade file can be flashed via the device's loader mode:
 
 2. **Upload via HTTP:**
    ```bash
-   curl -T rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v22.bin http://192.168.10.247/firmware
+   curl -T firmware.bin http://192.168.10.247/firmware
    ```
 
 3. **Or via Web Browser:**
    - Access `http://192.168.10.247`
    - Use the firmware update function
-   - Upload `rtlplayground_oem_upgrade-ONT_S207CW_62TS_SE-v22.bin`
+   - Upload the firmware file
    - Wait for completion and reboot
 
 ### Via RTLPlayground Web UI (After First Flash)
@@ -234,7 +137,7 @@ The OEM upgrade file can be flashed via the device's loader mode:
 Once RTLPlayground firmware is running:
 1. Access web interface at `http://192.168.2.1`
 2. Navigate to **System > Firmware Update**
-3. Upload the `.bin` file
+3. Upload the firmware file
 4. Wait for flash completion and reboot
 
 ## Recovery
@@ -278,7 +181,7 @@ If flashing fails and the switch does not boot:
 
 ## Notes
 
-- ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS (unmanaged) use **identical PCB-SWTG024AS-A-2.0.1 hardware**
+- ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS (unmanaged) are **RTL8372N-based** with **LAN ports mounted upside-down on the PCB**
 - Web UI shows correct physical port order (1-2-3-4 for RJ45, 5-6 for SFP)
 - Loader Mode always remains accessible at `192.168.10.247` for recovery
 - Serial console: 9600 baud (stock) → 115200 baud (RTLPlayground)

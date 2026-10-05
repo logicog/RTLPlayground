@@ -938,6 +938,7 @@ __code const struct machine machine = {
 #elif defined MACHINE_ONT_S207CW_62TS_SE
 // ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), Binardat 2G06-04210GS (unmanaged)
 // RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
+// LAN ports mounted upside-down on PCB
 // Custom configuration with correct port order and LED colors
 // Physical ports: 1-4 = RJ45, 5 = SFP (SDS0), 6 = SFP (SDS1)
 // Logical ports: 3 = SFP (SDS0), 4-7 = RJ45, 8 = SFP (SDS1)
