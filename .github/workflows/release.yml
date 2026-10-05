@@ -32,6 +32,7 @@ jobs:
       machines: ${{ steps.machines.outputs.list }}
       tag: ${{ steps.vars.outputs.tag }}
       version: ${{ steps.vars.outputs.version }}
+      name: ${{ steps.vars.outputs.name }}
       epoch: ${{ steps.vars.outputs.epoch }}
     steps:
       - uses: actions/checkout@v6
@@ -71,16 +72,23 @@ jobs:
           if [ "${{ github.ref_type }}" = "tag" ]; then
             tag="${{ github.ref_name }}"
             version="$(normalize "$tag")"
+            name="$version"
           else
+            # Nightly: the semver stays clean (the Makefile appends the short
+            # commit hash to VERSION_SW itself), but the release-facing build
+            # name carries the hash so successive nightly builds can be told
+            # apart, e.g. 0.1.0-nightly-892da3c.
             tag="nightly"
             version="0.1.0-nightly"
+            name="$version-$(git rev-parse --short HEAD)"
           fi
           {
             echo "tag=$tag"
             echo "version=$version"
+            echo "name=$name"
             echo "epoch=$(git show -s --format=%ct HEAD)"
           } >> "$GITHUB_OUTPUT"
-          echo "Tag: $tag | VERSION: $version"
+          echo "Tag: $tag | VERSION: $version | BUILD: $name"
 
       - name: Enumerate machines
         id: machines
@@ -163,7 +171,7 @@ jobs:
         run: |
           set -euo pipefail
           m="${{ matrix.machine }}"
-          v="${{ needs.meta.outputs.version }}"
+          v="${{ needs.meta.outputs.name }}"
           stage="pkg/$m"
           mkdir -p "$stage"
           # output/rtlplayground.bin is the symlink the Makefile points at the
@@ -197,7 +205,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          v="${{ needs.meta.outputs.version }}"
+          v="${{ needs.meta.outputs.name }}"
           (cd assets && zip -9 -r "$GITHUB_WORKSPACE/rtlplayground-$v-all-platforms.zip" .)
           # Checksums over every per-platform zip plus the combined archive.
           (cd assets && sha256sum ./*.zip) | sed 's#  \./#  #' > SHA256SUMS
@@ -210,11 +218,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.meta.outputs.tag }}
-          VERSION: ${{ needs.meta.outputs.version }}
+          NAME: ${{ needs.meta.outputs.name }}
         run: |
           set -euo pipefail
           if [ "$TAG" = "nightly" ]; then
-            notes="Nightly build of \`main\` at \`${GITHUB_SHA}\` ($(date -u +%Y-%m-%dT%H:%MZ)). Version: \`${VERSION}\`."
+            notes="Nightly build of \`main\` at \`${GITHUB_SHA}\` ($(date -u +%Y-%m-%dT%H:%MZ)). Version: \`${NAME}\`."
             if gh release view "$TAG" >/dev/null 2>&1; then
               gh release edit "$TAG" --title "Nightly (main)" --prerelease --notes "$notes"
             else
@@ -235,7 +243,7 @@ jobs:
             fi
           fi
           gh release upload "$TAG" assets/*.zip \
-            "rtlplayground-$VERSION-all-platforms.zip" SHA256SUMS --clobber
+            "rtlplayground-$NAME-all-platforms.zip" SHA256SUMS --clobber
 
       - name: Remove stale nightly assets
         if: needs.meta.outputs.tag == 'nightly'
@@ -243,12 +251,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          VERSION: ${{ needs.meta.outputs.version }}
+          NAME: ${{ needs.meta.outputs.name }}
         run: |
           set -euo pipefail
           keep="$(
             { (cd assets && printf '%s\n' *.zip)
-              printf '%s\n' "rtlplayground-$VERSION-all-platforms.zip" SHA256SUMS
+              printf '%s\n' "rtlplayground-$NAME-all-platforms.zip" SHA256SUMS
             } | sort
           )"
           gh release view nightly --json assets --jq '.assets[].name' | while read -r name; do
