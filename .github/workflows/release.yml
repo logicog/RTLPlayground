@@ -221,6 +221,12 @@ jobs:
               gh release create "$TAG" --title "Nightly (main)" --prerelease \
                 --notes "$notes" --target "$GITHUB_SHA"
             fi
+            # GitHub sorts the release list by created_at, which is the date of
+            # the commit the release's tag points at (not when it was published).
+            # Force-move the tag onto this run's commit so the nightly release
+            # stays on top, as OrcaSlicer's nightly does.
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/nightly" \
+              -f sha="$GITHUB_SHA" -F force=true
           else
             if gh release view "$TAG" >/dev/null 2>&1; then
               gh release edit "$TAG" --title "$TAG"
