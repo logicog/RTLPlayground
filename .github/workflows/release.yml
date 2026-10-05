@@ -235,12 +235,6 @@ jobs:
               gh release create "$TAG" --title "Nightly (main)" --prerelease \
                 --notes "$notes" --target "$GITHUB_SHA"
             fi
-            # GitHub sorts the release list by created_at, which is the date of
-            # the commit the release's tag points at (not when it was published).
-            # Force-move the tag onto this run's commit so the nightly release
-            # stays on top, as OrcaSlicer's nightly does.
-            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/nightly" \
-              -f sha="$GITHUB_SHA" -F force=true
           else
             if gh release view "$TAG" >/dev/null 2>&1; then
               gh release edit "$TAG" --title "$TAG"
@@ -250,6 +244,20 @@ jobs:
           fi
           gh release upload "$TAG" assets/*.zip \
             "rtlplayground-$NAME-all-platforms.zip" SHA256SUMS --clobber
+
+          if [ "$TAG" = "nightly" ]; then
+            # A release's created_at - the attribute the releases list is
+            # ordered by - is the date of the *tag object* it points at, not of
+            # the commit. Recreate the nightly tag as an annotated tag on every
+            # run (the way OrcaSlicer recreates its nightly-builds tag) so that
+            # created_at is always the time of the run and the nightly sorts
+            # above the released versions.
+            tag_obj="$(gh api "repos/$GH_REPO/git/tags" \
+              -f tag=nightly -f message=nightly \
+              -f object="$GITHUB_SHA" -f type=commit --jq .sha)"
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/nightly" \
+              -f sha="$tag_obj" -F force=true
+          fi
 
       - name: Remove stale nightly assets
         if: needs.meta.outputs.tag == 'nightly'
