@@ -160,7 +160,18 @@ int gzipBuffer(int addr, int len)
 	int out_len = zs.total_out;
 	deflateEnd(&zs);
 
+	if (out_len >= len) {
+		fprintf(stderr, "gzip: no gain (%d -> %d bytes), leaving data uncompressed\n",
+			len, out_len);
+		free(out);
+		return len;
+	}
 	memcpy(&buffer[addr], out, out_len);
+	/* The compressed copy is written over the front of the uncompressed data;
+	 * clear the tail it leaves behind. The httpd only serves FDATA_SIZE_*
+	 * bytes, but the leftovers would still be flashed, would show up in image
+	 * diffs and would break the assumption that unused image space is zero. */
+	memset(&buffer[addr + out_len], 0, len - out_len);
 	free(out);
 	return out_len;
 }
