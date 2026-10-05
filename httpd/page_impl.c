@@ -1118,8 +1118,7 @@ void send_vlanlist(void)
 	slen += strtox(outbuf + slen, ",\"vlan\":[");
 
 	for (i = 1; i < 4095; i++) {
-		if (vlan_get(i) < 0)
-			continue;
+		vlan_get(i);
 		if (!(sfr_data[0] & 0x02)) /* bit 1: VLAN table entry valid */
 			continue;
 
