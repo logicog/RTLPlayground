@@ -112,6 +112,10 @@ struct vlan_tag {
 #define UPDATE_STATE_START 0x7f000
 #define UPDATE_STATE_MAGIC 0x52505531	// "RPU1"
 #define UPDATE_STATE_APPLY 0x01		// staged image verified, copy started
+#define UPDATE_STATE_STAGING 0x02	// sparse staging in the pool is complete
+
+// Number of 4 KiB sectors in a firmware image, see Makefile IMAGESIZE
+#define UPDATE_SECTORS 128
 
 // Constants for the circular command buffer, the size must be 2^n
 #define CMD_HISTORY_SIZE 0x800

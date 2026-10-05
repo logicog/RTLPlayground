@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include "rtl837x_common.h"
+#include "rtl837x_flash.h"
 #include "rtl837x_sfr.h"
 
 __xdata uint8_t dio_enabled;
@@ -354,4 +355,93 @@ void flash_write_bytes(__xdata uint8_t *ptr)
     
     while (flash_read_status() & STATUS_REG_BUSY_MASK);
     flash_configure_mmio();
+}
+
+
+/*
+ * State of an in-band update, see rtl837x_flash.h. The sector holding it is in
+ * the padding at the end of the image, above the live configuration, so it
+ * survives the reset that applies the update.
+ */
+__xdata update_state_t update_state;
+
+void update_state_read(void)
+{
+	flash_region.addr = UPDATE_STATE_START;
+	flash_region.len = sizeof(update_state);
+	flash_read_bulk((__xdata uint8_t *)&update_state);
+}
+
+void update_state_write(void)
+{
+	flash_region.addr = UPDATE_STATE_START;
+	flash_sector_erase();
+	flash_region.addr = UPDATE_STATE_START;
+	flash_region.len = sizeof(update_state);
+	flash_write_bytes((__xdata uint8_t *)&update_state);
+}
+
+void update_state_clear(void)
+{
+	__xdata uint8_t i;
+
+	update_state.magic = 0;
+	update_state.flags = 0;
+	update_state.staged = 0;
+	update_state.crc = 0;
+	for (i = 0; i < sizeof(update_state.present); i++)
+		update_state.present[i] = 0;
+	update_state_write();
+}
+
+/*
+ * The staging pool is the free space of the running image below the config
+ * sectors: above the web UI and, when that is not enough, between the code and
+ * the web UI. Staged sectors are placed from the top of each chunk downwards,
+ * so the pool grows away from the code and web UI growth frontiers.
+ */
+#define POOL_CHUNK_TOP	0x6f000u	// above the web UI, up to DEFAULT_CONFIG_START
+#define POOL_CHUNK_LEN	0x21000u	// 132 KiB
+#define POOL_CHUNK2_TOP	0x40000u	// below the web UI (HTML_LOCATION)
+#define POOL_CHUNK2_LEN	0x21000u	// 132 KiB
+#define POOL_CHUNK_SECTORS (POOL_CHUNK_LEN / FLASH_SECTOR_SIZE)
+#define POOL_SECTORS (POOL_CHUNK_SECTORS + (POOL_CHUNK2_LEN / FLASH_SECTOR_SIZE))
+
+uint32_t update_pool_addr(uint16_t staged_idx)
+{
+	if (staged_idx < POOL_CHUNK_SECTORS)
+		return POOL_CHUNK_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
+	staged_idx -= POOL_CHUNK_SECTORS;
+	if (staged_idx < (POOL_CHUNK2_LEN / FLASH_SECTOR_SIZE))
+		return POOL_CHUNK2_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
+	return 0;	// no room left
+}
+
+uint16_t update_pool_index(uint16_t sector)
+{
+	__xdata uint16_t i, n = 0;
+
+	for (i = 0; i < sector; i++)
+		if (update_state.present[i >> 3] & (1 << (i & 7)))
+			n++;
+	return n;
+}
+
+uint8_t update_pool_conflict(uint32_t addr)
+{
+	uint32_t end = addr + FLASH_SECTOR_SIZE;
+	__xdata uint16_t n = update_state.staged;
+
+	if (n > POOL_CHUNK_SECTORS) {
+		uint32_t lo = POOL_CHUNK2_TOP - (uint32_t)(n - POOL_CHUNK_SECTORS) * FLASH_SECTOR_SIZE;
+		if (addr < POOL_CHUNK2_TOP && end > lo)
+			return 1;
+		n = POOL_CHUNK_SECTORS;
+	}
+	if (n) {
+		uint32_t lo = POOL_CHUNK_TOP - (uint32_t)n * FLASH_SECTOR_SIZE;
+		if (addr < POOL_CHUNK_TOP && end > lo)
+			return 1;
+	}
+	return 0;
 }

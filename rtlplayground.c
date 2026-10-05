@@ -1549,47 +1549,6 @@ void setup_serial_timer1(void)
 }
 
 
-/* State of an update that is being applied, kept in one flash sector inside the
- * padding at the end of the image. It survives the reset that applies the
- * update, so the copy can be resumed after a power loss instead of booting a
- * half-written image. Change the magic when the layout below changes. */
-typedef struct {
-	uint32_t magic;
-	uint8_t flags;
-	uint8_t reserved;
-	uint16_t crc;
-} update_state_t;
-
-static __xdata update_state_t update_state;
-
-static void update_state_read(void)
-{
-	flash_region.addr = UPDATE_STATE_START;
-	flash_region.len = sizeof(update_state);
-	flash_read_bulk((__xdata uint8_t *)&update_state);
-}
-
-static void update_state_write(void)
-{
-	flash_region.addr = UPDATE_STATE_START;
-	flash_sector_erase();
-	flash_region.addr = UPDATE_STATE_START;
-	flash_region.len = sizeof(update_state);
-	flash_write_bytes((__xdata uint8_t *)&update_state);
-}
-
-static void update_state_clear(void)
-{
-	/* Leave the sector holding zeros: that is what a flashed image has in this
-	 * padding area, so an updated device matches a flashed one. */
-	update_state.magic = 0;
-	update_state.flags = 0;
-	update_state.reserved = 0;
-	update_state.crc = 0;
-	update_state_write();
-}
-
-
 void check_and_flash_update_image(void)
 {
 	flash_read_jedecid(); // This initializes also __xdata flash_size variable
@@ -1640,7 +1599,6 @@ void check_and_flash_update_image(void)
 			 * image. */
 			update_state.magic = UPDATE_STATE_MAGIC;
 			update_state.flags = UPDATE_STATE_APPLY;
-			update_state.reserved = 0;
 			update_state.crc = crc_value;
 			update_state_write();
 			/* Copy from the top down, so the very last thing written is the
