@@ -29,6 +29,11 @@ fires — so it drops straight into CI.
 - **`env_tables.c`** carries the globals and leaf calls those two modules link
   against; **`stub/`** stands in for the two headers only a firmware build
   generates, so the harness needs no SDCC build first.
+- **`flash_mock.c` / `flash_mock.h`** are the SPI flash: 1 MiB of memory, erase
+  sets a sector to `0xff`, programming only clears bits and wraps inside the
+  256-byte page the command started in. The update code is compiled against it
+  unmodified, so a write that skips an erase or crosses a page fails the test
+  instead of passing silently.
 - **`support.c` / `support.h`** mock the hardware edges: the 16-byte serial ring
   (`sbuf`), the command/history buffers, and the character-output sink
   (`write_char` etc.). Buffers are sized **exactly** as on target, so ASan
@@ -47,7 +52,7 @@ fires — so it drops straight into CI.
 | `test_cmd_editor` | `cmd_editor.c` | **C4** — full-line hang + `cmd_buffer` 1-byte overflow; basic entry & backspace regressions |
 | `test_port_tables` | `rtl837x_port.c` | VLAN entry layout and round trip, PVID register sharing, static multicast and management entries, per-port flush, trunk membership and hash seed |
 | `test_page_json` | `httpd/page_impl.c` + `rtl837x_port.c` | `/vlan.json`, `/vlanlist`, `/l2.json` (walk, wrap marker, paging inside `outbuf`), 64-bit counters in `/status.json` and `/counters.json` |
-| `test_httpd_tx` | `httpd/httpd.c` + `uip/uip.c` | a GET of a static file against a client that moves its receive window: ACK accounting, continuation chunks out of flash, retransmission |
+| `test_httpd_tx` | `httpd/httpd.c` + `uip/uip.c`, `httpd/update_stage.c`, `update_pool.c`, `update_apply.c` | a GET of a static file against a client that moves its receive window: ACK accounting, continuation chunks out of flash, retransmission. Firmware update over the same connection: multipart upload, sparse staging into the pool, the record and the refusals (overlap, checksum, too small a part), the apply, a reset in the middle of the copy and of the zeroing, a damaged staged image, a 1 MiB part keeping the legacy path |
 
 ## Adding a test for another module
 1. Write `test_<module>.c` with `main()` driving the module's entry points and

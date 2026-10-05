@@ -1,11 +1,15 @@
 /*
- * Host-side bench for the httpd transmit path.
+ * Host-side bench for httpd.
  *
- * Compiles the UNMODIFIED httpd/httpd.c and uip/uip.c and drives them through a
- * real handshake and a real GET from a client that moves its receive window.
- * Everything below the two modules - flash, console, JSON pages - is mocked
- * here, so what the bench observes is the byte stream the firmware would put on
- * the wire.
+ * The transmit path: compiles the UNMODIFIED httpd/httpd.c and uip/uip.c and
+ * drives them through a real handshake and a real GET from a client that moves
+ * its receive window. Everything below the two modules - flash, console, JSON
+ * pages - is mocked here, so what the bench observes is the byte stream the
+ * firmware would put on the wire.
+ *
+ * The firmware update: httpd/update_stage.c, update_pool.c and update_apply.c
+ * are compiled in UNMODIFIED too, over the flash model in flash_mock.c, and the
+ * upload is driven through the real multipart POST handler.
  *
  * The file served out of the simulated flash carries a position-dependent
  * pattern, so a duplicated or skipped range shows up as a mismatch at a known
@@ -13,6 +17,7 @@
  *
  * Run: make -C test    (exit code 0 = all scenarios pass)
  */
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,8 +33,11 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_flash.h"
+#include "update_pool.h"
+#include "update_apply.h"
 #include "page_impl.h"
 #include "html_data.h"
+#include "flash_mock.h"
 
 /* Private to uip.c, and the client needs them to build segments. */
 #define TCP_SYN 0x02
@@ -83,36 +91,48 @@ const struct f_data f_data[] = {
 	{ 0, 0, 0, mime_HTML, 0 },
 };
 
-void flash_read_bulk(uint8_t *dst)
+/* The flash below the firmware is test/flash_mock.c; the file the bench serves
+ * is written into it by session_start(). */
+
+/* CRC16 as the firmware's crc16_bank1 and the browser implement it */
+void crc16_bank1(uint8_t *p)
 {
-	for (uint16_t i = 0; i < flash_region.len; i++)
-		dst[i] = pattern(flash_region.addr + i);
+	crc_value ^= *p;
+	for (int i = 0; i < 8; i++)
+		crc_value = (crc_value & 1) ? (crc_value >> 1) ^ 0xA001
+					    : crc_value >> 1;
 }
 
-void flash_init(uint8_t enable_dio) { (void)enable_dio; }
-void flash_sector_erase(void) { }
-void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
-const char *get_flash_size_str(void) { return "512 kB"; }
-void crc16_bank1(uint8_t *v) { (void)v; }
-
-// Pool bookkeeping from rtl837x_flash.c, as a plain address map
-__xdata update_state_t update_state;
-void update_state_read(void) { }
-void update_state_write(void) { }
-void update_state_clear(void) { memset(&update_state, 0, sizeof(update_state)); }
-uint32_t update_pool_set_bottom(uint32_t bottom) { return bottom; }
-uint32_t update_pool_addr(uint16_t staged_idx)
+/* The file the bench serves, in the flash model */
+static void load_served_file(void)
 {
-	return 0x28000u + (uint32_t)staged_idx * FLASH_SECTOR_SIZE;
+	for (int i = 0; i < FILE_LEN; i++)
+		flash_mock[FILE_START + i] = pattern(FILE_START + i);
 }
-uint16_t update_pool_index(uint16_t sector) { return sector; }
-uint8_t update_pool_conflict(uint32_t addr) { (void)addr; return 0; }
-uint8_t update_pool_target(uint16_t sector) { (void)sector; return 0; }
-void reset_chip(void) { }
+static int reset_chip_calls;
+void reset_chip(void) { reset_chip_calls++; }
 void delay(uint16_t t) { (void)t; }
 void write_char(char c) { (void)c; }
 void write_char_no_syslog(char c) { (void)c; }
-void print_string(const char *p) { (void)p; }
+
+/* What the switch would print, so a scenario can look for it */
+static char console[8192];
+static int console_len;
+
+void print_string(const char *p)
+{
+	int n = (int)strlen(p);
+
+	if (console_len + n >= (int)sizeof(console))
+		return;
+	memcpy(console + console_len, p, n);
+	console_len += n;
+	console[console_len] = 0;
+}
+
+static void console_clear(void) { console_len = 0; console[0] = 0; }
+static int console_has(const char *s) { return strstr(console, s) != 0; }
+
 void print_string_newline_no_syslog(const char *p) { (void)p; }
 void set_sys_led_state(uint8_t state) { (void)state; }
 void cmd_parser(void) { }
@@ -256,7 +276,7 @@ static int harvest(void)
 	return plen;
 }
 
-static void client_send(uint8_t flags, const char *payload, int plen)
+static void client_send(uint8_t flags, const void *payload, int plen)
 {
 	int hlen = 20;
 
@@ -321,6 +341,8 @@ static void run_periodic(int rounds)
 
 static void session_start(uint16_t window)
 {
+	flash_mock_reset();
+	load_served_file();
 	uip_init();
 	httpd_init();
 	authenticated = 1;
@@ -505,10 +527,394 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+/* ---- firmware update ---------------------------------------------------- */
+
+#define IMG_BYTES	524288u			/* one firmware image */
+#define UI_BYTES	0x1000u			/* the "web UI" inside the image */
+#define UI_END		(FILE_START + FILE_LEN)
+#define POOL_FLOOR	((UI_END + FLASH_SECTOR_SIZE - 1) & ~(FLASH_SECTOR_SIZE - 1))
+#define SESSION		"0123456789ab"
+#define TOKEN		"RTLPbench"
+
+extern char session_id[];
+
+static uint8_t image[IMG_BYTES];		/* the image a scenario uploads */
+static uint8_t cut_phase;			/* cut once this state flag is set */
+static uint32_t cut_at;
+static int cut_active;
+static jmp_buf cut;
+
+/* Called after every flash write; a scenario cuts the power here */
+static void cut_after_write(void)
+{
+	if (!cut_active || flash_mock_writes < cut_at)
+		return;
+	if (cut_phase && !(update_state.flags & cut_phase))
+		return;
+	longjmp(cut, 1);
+}
+
+/* Appends the CRC the build puts on the end of an image: the complement of the
+ * CRC of the rest, so that the whole image checksums to 0xb001, the verdict
+ * both the upload and the apply look for. */
+static void image_fix_crc(void)
+{
+	crc_value = 0;
+	for (uint32_t i = 0; i < IMG_BYTES - 2; i++)
+		crc16_bank1(&image[i]);
+	crc_value ^= 0xffff;
+	image[IMG_BYTES - 2] = (uint8_t)crc_value;
+	image[IMG_BYTES - 1] = (uint8_t)(crc_value >> 8);
+}
+
+/* One image: code sectors at the bottom, a UI block, the default configuration
+ * sector, zeros everywhere else. */
+static void image_build(unsigned code_sectors)
+{
+	memset(image, 0, sizeof(image));
+	image[0] = 0x00;			/* the prefetch header the next boot wants */
+	image[1] = 0x40;
+	image[2] = 0x02;			/* the LJMP it jumps to */
+	for (uint32_t i = 3; i < (uint32_t)code_sectors * FLASH_SECTOR_SIZE; i++)
+		image[i] = (uint8_t)(i * 7 + 3);
+	for (uint32_t i = 0; i < UI_BYTES; i++)
+		image[FILE_START + i] = (uint8_t)(i ^ 0x5a);
+	image[DEFAULT_CONFIG_START] = 'i';
+	image[DEFAULT_CONFIG_START + 1] = 'p';
+	image_fix_crc();
+}
+
+static uint16_t image_crc(void)
+{
+	crc_value = 0;
+	for (uint32_t i = 0; i < IMG_BYTES; i++)
+		crc16_bank1(&image[i]);
+	return crc_value;
+}
+
+/* CRC over the part of the image the apply writes */
+static uint16_t image_apply_crc(void)
+{
+	crc_value = 0;
+	for (uint32_t i = 0; i < CONFIG_START; i++)
+		crc16_bank1(&image[i]);
+	return crc_value;
+}
+
+/* The flash must hold the image below the configuration, the rest untouched */
+static int image_in_place(void)
+{
+	for (uint32_t i = 0; i < CONFIG_START; i++)
+		if (flash_mock[i] != image[i])
+			return (int)i;
+	return -1;
+}
+
+static int all_ff(uint32_t addr, uint32_t len)
+{
+	for (uint32_t i = 0; i < len; i++)
+		if (flash_mock[addr + i] != 0xff)
+			return 0;
+	return 1;
+}
+
+/* Fresh flash with the served file in it, a session and an image to upload */
+static void upload_setup(void)
+{
+	memcpy(session_id, SESSION, sizeof(SESSION));
+	memset(&update_state, 0, sizeof(update_state));
+	image_build(3);
+	console_clear();
+	reset_chip_calls = 0;
+	cut_active = 0;
+	session_start(MSS_FULL);
+}
+
+static const char upload_head[] =
+	"POST /upload HTTP/1.1\r\nHost: sw\r\n"
+	"Cookie: session=" SESSION "\r\n"
+	"Content-Type: multipart/form-data; boundary=" TOKEN "\r\n\r\n";
+static const char part_head[] =
+	"--" TOKEN "\r\n"
+	"Content-Disposition: form-data; name=\"uploadedfile\"; filename=\"img.bin\"\r\n"
+	"Content-Type: application/octet-stream\r\n\r\n";
+static const char part_tail[] = "\r\n--" TOKEN "--\r\n";
+
+/* POST /upload with `len` bytes of `img`, in the segments a browser would send,
+ * and the reply drained. Returns the HTTP status, 0 when none arrived. */
+static int upload_post(const uint8_t *img, uint32_t len, int send_tail)
+{
+	static uint8_t seg[MSS_FULL];
+	uint32_t i, n;
+
+	memcpy(seg, upload_head, sizeof(upload_head) - 1);
+	n = sizeof(upload_head) - 1;
+	memcpy(seg + n, part_head, sizeof(part_head) - 1);
+	n += sizeof(part_head) - 1;
+	i = len < MSS_FULL - n ? len : MSS_FULL - n;
+	memcpy(seg + n, img, i);
+	n += i;
+	client_send(TCP_ACK | TCP_PSH, seg, (int)n);
+	while (i < len) {
+		uint32_t take = len - i < MSS_FULL ? len - i : MSS_FULL;
+
+		client_send(TCP_ACK | TCP_PSH, img + i, (int)take);
+		i += take;
+	}
+	if (send_tail)
+		client_send(TCP_ACK | TCP_PSH, part_tail, (int)(sizeof(part_tail) - 1));
+	drain(MSS_FULL);
+
+	if (stream_len < 12 || memcmp(stream, "HTTP/1.1 ", 9))
+		return 0;
+	return atoi((const char *)stream + 9);
+}
+
+/* The reason the switch put in the reply body */
+static const char *upload_reason(void)
+{
+	int off = body_offset();
+
+	return off < 0 ? "" : (const char *)stream + off;
+}
+
+/* The pool layout the upload and the apply have to agree on */
+static void scenario_pool_geometry(void)
+{
+	memset(&update_state, 0, sizeof(update_state));
+
+	CHECK(update_pool_set_bottom(UI_END) == POOL_FLOOR,
+	      "pool: the floor is rounded up to a sector");
+	CHECK(update_pool_addr(0) == 0x3f000 && update_pool_addr(23) == 0x28000,
+	      "pool: the first chunk is the dead space below the UI");
+	CHECK(update_pool_addr(24) == 0x6e000 && update_pool_addr(68) == POOL_FLOOR,
+	      "pool: the second chunk ends above the UI");
+	CHECK(update_pool_addr(69) == 0, "pool: there is no room beyond it");
+	CHECK(update_pool_set_bottom(0x4d457) == 0x4e000
+	      && update_pool_addr(56) == 0x4e000 && update_pool_addr(57) == 0,
+	      "pool: a taller UI moves the floor and shrinks the second chunk");
+
+	update_pool_set_bottom(UI_END);
+	update_state.present[64 >> 3] = 1 << (64 & 7);
+	update_state.staged = 1;
+	CHECK(update_pool_target(64) == 1 && update_pool_target(65) == 0,
+	      "pool: a staged sector is recognised as a copy back target");
+	CHECK(update_pool_index(64) == 0 && update_pool_index(65) == 1,
+	      "pool: the manifest numbers the slots");
+	CHECK(update_pool_conflict(0x3f000) == 1 && update_pool_conflict(0x20000) == 0,
+	      "pool: a target inside the used pool is a conflict");
+	memset(&update_state, 0, sizeof(update_state));
+	update_pool_set_bottom(0);
+}
+
+/* Staging: the sectors that hold data land in the pool, the record is written,
+ * the running image is untouched. */
+static void scenario_update_stage(void)
+{
+	int st;
+
+	upload_setup();
+	st = upload_post(image, IMG_BYTES, 1);
+
+	CHECK(image_crc() == 0xb001, "staging: the fixture image checksums to 0xb001");
+	CHECK(st == 200, "staging: the upload is accepted");
+	CHECK(update_state.magic == UPDATE_STATE_MAGIC
+	      && update_state.flags == UPDATE_STATE_STAGING,
+	      "staging: the update record is committed");
+	CHECK(update_state.crc == 0xb001 && update_state.crc_apply == image_apply_crc(),
+	      "staging: the record carries the checksum of the applied part");
+	CHECK(update_state.staged == 5, "staging: five image sectors hold data");
+	CHECK(update_state.pool_bottom == POOL_FLOOR,
+	      "staging: the pool starts above the web UI");
+	CHECK(update_pool_addr(0) == 0x3f000 && update_pool_addr(4) == 0x3b000,
+	      "staging: the slots are filled from the top downwards");
+	CHECK(update_pool_index(64) == 3 && update_pool_index(111) == 4,
+	      "staging: the manifest maps image sectors to slots");
+	CHECK(!memcmp(flash_mock + 0x3f000, image, FLASH_SECTOR_SIZE)
+	      && !memcmp(flash_mock + 0x3c000, image + 64 * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE)
+	      && !memcmp(flash_mock + 0x3b000, image + 111 * FLASH_SECTOR_SIZE, FLASH_SECTOR_SIZE),
+	      "staging: the pool holds the staged sectors");
+	CHECK(all_ff(0, 0x28000), "staging: the running image is untouched");
+	CHECK(flash_mock[FILE_START] == pattern(FILE_START),
+	      "staging: the running web UI is untouched");
+}
+
+/* An image that grew into the pool would be overwritten by its own copy back */
+static void scenario_update_refuse_overlap(void)
+{
+	int st;
+
+	upload_setup();
+	memset(image + 0x3f000, 0x11, 0x100);
+	image_fix_crc();
+	st = upload_post(image, IMG_BYTES, 1);
+
+	CHECK(st == 400, "refusal: an image that reaches into the pool is rejected");
+	CHECK(strstr(upload_reason(), "overlaps its staging area") != 0,
+	      "refusal: the reason names the overlap");
+	CHECK(update_state.magic == 0, "refusal: no update record is left");
+	CHECK(all_ff(0, 0x28000), "refusal: the running image is untouched");
+}
+
+/* A body that does not check out leaves nothing behind */
+static void scenario_update_refuse_checksum(void)
+{
+	int st;
+
+	upload_setup();
+	image[0x100] ^= 0xff;
+	st = upload_post(image, IMG_BYTES, 1);
+
+	CHECK(st == 400, "refusal: a corrupted image is rejected");
+	CHECK(strstr(upload_reason(), "checksum failed") != 0,
+	      "refusal: the reason names the checksum");
+	CHECK(update_state.magic == 0, "refusal: no update record is left");
+}
+
+/* A part that cannot hold the image at all is refused before the body */
+static void scenario_update_refuse_small_flash(void)
+{
+	int st;
+
+	upload_setup();
+	flash_size = 0x40000;
+	st = upload_post(image, 0, 0);
+	flash_size = 0x80000;
+
+	CHECK(st == 400, "refusal: a part smaller than the image is refused");
+	CHECK(console_has("Flash too small"), "refusal: the console says why");
+}
+
+/* The apply: verify, copy the staged sectors, zero the rest, keep the
+ * configuration, clear the record. */
+static void scenario_update_apply(void)
+{
+	int resets;
+
+	upload_setup();
+	if (upload_post(image, IMG_BYTES, 1) != 200) {
+		CHECK(0, "apply: the staging upload was accepted");
+		return;
+	}
+	flash_mock[CONFIG_START + 5] = 0xaa;	/* the live configuration */
+	console_clear();
+	resets = reset_chip_calls;
+	update_apply_staged();
+
+	CHECK(image_in_place() == -1, "apply: the image below the configuration is in place");
+	CHECK(flash_mock[CONFIG_START + 5] == 0xaa, "apply: the live configuration is kept");
+	CHECK(update_state.magic == 0, "apply: the record is cleared");
+	CHECK(reset_chip_calls == resets + 1, "apply: the switch is reset to boot the image");
+	CHECK(console_has("Checking staged image") && console_has("Copying update")
+	      && console_has("Writing zeros"),
+	      "apply: it verifies, copies and zeroes");
+	CHECK(flash_mock_nonzero(0x28000, 0x18000) == 0,
+	      "apply: the pool and the space around it read zero again");
+}
+
+/* A reset in the middle of the copy: the next boot resumes it */
+static void scenario_update_resume_copy(void)
+{
+	upload_setup();
+	if (upload_post(image, IMG_BYTES, 1) != 200) {
+		CHECK(0, "resume: the staging upload was accepted");
+		return;
+	}
+	cut_at = flash_mock_writes + 4;	/* into the first staged sector */
+	cut_phase = 0;
+	cut_active = 1;
+	if (setjmp(cut) == 0) {
+		update_apply_staged();
+		CHECK(0, "resume: the copy is interrupted");
+	}
+	cut_active = 0;
+
+	CHECK(update_state.flags == (UPDATE_STATE_STAGING | UPDATE_STATE_APPLY),
+	      "resume: the record says the copy started");
+	CHECK(image_in_place() != -1, "resume: the copy stopped part way");
+
+	console_clear();
+	memset(&update_state, 0, sizeof(update_state));	/* a reset loses xdata */
+	update_state_read();
+	update_apply_staged();
+
+	CHECK(image_in_place() == -1, "resume: the next boot completes the image");
+	CHECK(console_has("resuming"), "resume: the boot says it resumes");
+	CHECK(!console_has("Checking staged image"), "resume: the image is not verified again");
+	CHECK(console_has("Copying update"), "resume: the copy is repeated");
+}
+
+/* A reset in the middle of the zeroing: the pool is already gone, so the next
+ * boot must not go back to it. */
+static void scenario_update_resume_zeroing(void)
+{
+	upload_setup();
+	if (upload_post(image, IMG_BYTES, 1) != 200) {
+		CHECK(0, "resume2: the staging upload was accepted");
+		return;
+	}
+	cut_at = flash_mock_writes + 2;	/* the record write and the first zero */
+	cut_phase = UPDATE_STATE_ZEROING;
+	cut_active = 1;
+	if (setjmp(cut) == 0) {
+		update_apply_staged();
+		CHECK(0, "resume2: the zeroing is interrupted");
+	}
+	cut_active = 0;
+
+	CHECK(update_state.flags == (UPDATE_STATE_STAGING | UPDATE_STATE_APPLY
+				     | UPDATE_STATE_ZEROING),
+	      "resume2: the record says the copy is done");
+	console_clear();
+	memset(&update_state, 0, sizeof(update_state));
+	update_state_read();
+	update_apply_staged();
+
+	CHECK(image_in_place() == -1, "resume2: the next boot finishes the image");
+	CHECK(!console_has("Copying update"), "resume2: the staged sectors are not copied again");
+	CHECK(console_has("Writing zeros"), "resume2: the zeroing is repeated");
+}
+
+/* A damaged staged image is refused, and the running one is left alone */
+static void scenario_update_damaged(void)
+{
+	upload_setup();
+	if (upload_post(image, IMG_BYTES, 1) != 200) {
+		CHECK(0, "damaged: the staging upload was accepted");
+		return;
+	}
+	flash_mock[0x3f000 + 0x40] ^= 0xff;	/* a sector that wore out */
+	console_clear();
+	update_apply_staged();
+
+	CHECK(console_has("damaged"), "damaged: the staged image is rejected");
+	CHECK(all_ff(0, 0x28000), "damaged: the running image is left alone");
+	CHECK(update_state.magic == 0, "damaged: the record is cleared");
+}
+
+/* A part with room for a second complete image keeps the old upload path */
+static void scenario_update_legacy(void)
+{
+	int st;
+
+	upload_setup();
+	flash_size = 0x100000;
+	st = upload_post(image, IMG_BYTES, 1);
+	flash_size = 0x80000;
+
+	CHECK(st == 200, "legacy: the upload is accepted");
+	CHECK(!memcmp(flash_mock + FIRMWARE_UPLOAD_START, image, IMG_BYTES),
+	      "legacy: the image is written above the running one");
+	CHECK(update_state.magic == 0, "legacy: the staging pool is not used");
+	CHECK(flash_mock[0] == 0xff, "legacy: nothing is written at address 0");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
 		verbose = 1;
+
+	flash_mock_after_write = cut_after_write;
 
 	printf("== httpd: accounting for the bytes actually sent ==\n");
 	scenario_steady_window();
@@ -516,6 +922,18 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+
+	printf("\n== httpd: firmware update ==\n");
+	scenario_pool_geometry();
+	scenario_update_stage();
+	scenario_update_refuse_overlap();
+	scenario_update_refuse_checksum();
+	scenario_update_refuse_small_flash();
+	scenario_update_apply();
+	scenario_update_resume_copy();
+	scenario_update_resume_zeroing();
+	scenario_update_damaged();
+	scenario_update_legacy();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",

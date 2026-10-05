@@ -35,6 +35,10 @@ or when the free flash runs out. Nothing is written to the running image in that
 case; the web UI shows the reason and the same sentence goes to the console. A
 device at that limit is updated over the serial programmer, as in the README.
 
+The switch checks the image twice: while it receives, the CRC16 of the complete
+upload - the same `0xb001` the browser checks - and at boot the CRC of the part
+the copy writes, which is what the staged flash has to still match.
+
 ## Interrupted updates
 
 The copy ends with the write of the first flash sector (prefetch header and
@@ -45,3 +49,7 @@ not overwrite, and cleared when the image is complete.
 
 A device must already run firmware that knows about the pool, so 512 KiB boards
 need the serial programmer once, as with any first installation.
+
+The copy leaves the live configuration, the two trailer bytes the build puts on
+the end of the image and everything above them as they are, so reading the flash
+back and comparing it with the `.bin` has to mask those, as for any update.
