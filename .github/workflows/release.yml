@@ -250,8 +250,9 @@ jobs:
             # ordered by - is the date of the *tag object* it points at, not of
             # the commit. Recreate the nightly tag as an annotated tag on every
             # run (the way OrcaSlicer recreates its nightly-builds tag) so that
-            # created_at is always the time of the run and the nightly sorts
-            # above the released versions.
+            # created_at is always the time of the run. The list only compares
+            # dates, so this puts the nightly above older releases; only a
+            # release published on the very same day can still outrank it.
             tag_obj="$(gh api "repos/$GH_REPO/git/tags" \
               -f tag=nightly -f message=nightly \
               -f object="$GITHUB_SHA" -f type=commit --jq .sha)"
