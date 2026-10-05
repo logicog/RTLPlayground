@@ -33,6 +33,7 @@ jobs:
       tag: ${{ steps.vars.outputs.tag }}
       version: ${{ steps.vars.outputs.version }}
       name: ${{ steps.vars.outputs.name }}
+      hash: ${{ steps.vars.outputs.hash }}
       epoch: ${{ steps.vars.outputs.epoch }}
     steps:
       - uses: actions/checkout@v6
@@ -69,26 +70,28 @@ jobs:
             printf '%s\n' "$v"
           }
 
+          hash="$(git rev-parse --short HEAD)"
+
           if [ "${{ github.ref_type }}" = "tag" ]; then
             tag="${{ github.ref_name }}"
             version="$(normalize "$tag")"
             name="$version"
           else
-            # Nightly: the semver stays clean (the Makefile appends the short
-            # commit hash to VERSION_SW itself), but the release-facing build
-            # name carries the hash so successive nightly builds can be told
+            # Nightly: the semver stays clean while the release-facing build
+            # name carries the hash, so successive nightly builds can be told
             # apart, e.g. 0.1.0-nightly-892da3c.
             tag="nightly"
             version="0.1.0-nightly"
-            name="$version-$(git rev-parse --short HEAD)"
+            name="$version-$hash"
           fi
           {
             echo "tag=$tag"
             echo "version=$version"
             echo "name=$name"
+            echo "hash=$hash"
             echo "epoch=$(git show -s --format=%ct HEAD)"
           } >> "$GITHUB_OUTPUT"
-          echo "Tag: $tag | VERSION: $version | BUILD: $name"
+          echo "Tag: $tag | VERSION: $version | BUILD: $name | COMMIT: $hash"
 
       - name: Enumerate machines
         id: machines
@@ -158,9 +161,12 @@ jobs:
 
       - name: Build firmware
         run: |
+          # The container has no .git, so point the Makefile at the commit this
+          # build came from; otherwise VERSION_SW is stamped without its hash.
           make -j"$(nproc)" CI=1 \
             MACHINE="${{ matrix.machine }}" \
             VERSION="${{ needs.meta.outputs.version }}" \
+            GIT_VERSION="${{ needs.meta.outputs.hash }}" \
             SOURCE_DATE_EPOCH="${{ needs.meta.outputs.epoch }}"
 
       - name: Build OEM upgrade image
