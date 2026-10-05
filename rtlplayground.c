@@ -1549,6 +1549,47 @@ void setup_serial_timer1(void)
 }
 
 
+/* State of an update that is being applied, kept in one flash sector inside the
+ * padding at the end of the image. It survives the reset that applies the
+ * update, so the copy can be resumed after a power loss instead of booting a
+ * half-written image. Change the magic when the layout below changes. */
+typedef struct {
+	uint32_t magic;
+	uint8_t flags;
+	uint8_t reserved;
+	uint16_t crc;
+} update_state_t;
+
+static __xdata update_state_t update_state;
+
+static void update_state_read(void)
+{
+	flash_region.addr = UPDATE_STATE_START;
+	flash_region.len = sizeof(update_state);
+	flash_read_bulk((__xdata uint8_t *)&update_state);
+}
+
+static void update_state_write(void)
+{
+	flash_region.addr = UPDATE_STATE_START;
+	flash_sector_erase();
+	flash_region.addr = UPDATE_STATE_START;
+	flash_region.len = sizeof(update_state);
+	flash_write_bytes((__xdata uint8_t *)&update_state);
+}
+
+static void update_state_clear(void)
+{
+	/* Leave the sector holding zeros: that is what a flashed image has in this
+	 * padding area, so an updated device matches a flashed one. */
+	update_state.magic = 0;
+	update_state.flags = 0;
+	update_state.reserved = 0;
+	update_state.crc = 0;
+	update_state_write();
+}
+
+
 void check_and_flash_update_image(void)
 {
 	flash_read_jedecid(); // This initializes also __xdata flash_size variable
@@ -1558,6 +1599,10 @@ void check_and_flash_update_image(void)
 		print_string("Flash too small for updating; skipping update check\n");
 		return;
 	}
+
+	update_state_read();
+	if (update_state.magic == UPDATE_STATE_MAGIC && (update_state.flags & UPDATE_STATE_APPLY))
+		print_string("Update was interrupted by a reset, resuming\n");
 
 	print_string("Checking for update image in flash... ");
 	// Check if an update image is in flash
@@ -1589,24 +1634,42 @@ void check_and_flash_update_image(void)
 		}
 		if (crc_value == 0xb001) {
 			print_string("Checksum OK.\nUpdate in progress, moving firmware to start of flash");
-			source = FIRMWARE_UPLOAD_START;
-			// Don't copy the config area at the end of flash
-			for (i = 0; i < CONFIG_START/FLASH_BUF_SIZE; i++) {
+			/* Mark the copy as running before the first erase: if the switch is
+			 * reset while it runs, the staged image is still in flash and the
+			 * copy is redone on the next boot rather than booting a half-written
+			 * image. */
+			update_state.magic = UPDATE_STATE_MAGIC;
+			update_state.flags = UPDATE_STATE_APPLY;
+			update_state.reserved = 0;
+			update_state.crc = crc_value;
+			update_state_write();
+			/* Copy from the top down, so the very last thing written is the
+			 * prefetch header and reset vector in bank 0 sector 0: an
+			 * interrupted copy then still leaves a bootable image that resumes
+			 * the update. The config area at the end of flash stays untouched. */
+			source = FIRMWARE_UPLOAD_START + CONFIG_START - FLASH_BUF_SIZE;
+			dest = CONFIG_START - FLASH_BUF_SIZE;
+			for (i = CONFIG_START/FLASH_BUF_SIZE; i > 0; i--) {
 				flash_region.addr = source;
 				flash_region.len = FLASH_BUF_SIZE;
 				flash_read_bulk(flash_buf);
-				if (i%8 == 0) {
+				/* Erase a sector when its highest block comes around */
+				if ((dest & (FLASH_SECTOR_SIZE - 1)) == FLASH_SECTOR_SIZE - FLASH_BUF_SIZE) {
 					flash_region.addr = dest;
 					flash_sector_erase();
-					if (i%16 == 0) write_char('.');
 				}
+				if ((i & 0x0F) == 0) write_char('.');
 				flash_region.addr = dest;
 				flash_region.len = FLASH_BUF_SIZE;
 				flash_write_bytes(flash_buf);
-				dest += FLASH_BUF_SIZE;
-				source += FLASH_BUF_SIZE;
+				dest -= FLASH_BUF_SIZE;
+				source -= FLASH_BUF_SIZE;
 			}
-			print_string("Done.\nDeleting uploaded flash image");
+			print_string("Done.\n");
+			/* The image is complete now; clear the marker before the staging
+			 * area is erased, so a reset during that erase is harmless. */
+			update_state_clear();
+			print_string("Deleting uploaded flash image");
 			dest = FIRMWARE_UPLOAD_START;
 			for (register uint8_t i=0; i < 128; i++) // TODO: Erasing the entire 512kByte upload area is probably not necessary
 			{
@@ -1630,6 +1693,10 @@ void check_and_flash_update_image(void)
 	}
 	else
 	{
+		if (update_state.magic == UPDATE_STATE_MAGIC && (update_state.flags & UPDATE_STATE_APPLY)) {
+			print_string("staged image gone, cannot resume; clearing update state\n");
+			update_state_clear();
+		}
 		print_string("no update image found.\n");
 	}
 }

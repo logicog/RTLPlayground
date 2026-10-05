@@ -105,6 +105,14 @@ struct vlan_tag {
 // Store update image after running image
 #define FIRMWARE_UPLOAD_START 0x80000
 
+// State of an update in progress, kept in one flash sector inside the padding
+// at the end of the image, above the live configuration. It survives the reset
+// that applies an update, so an interrupted copy is resumed on the next boot
+// instead of booting a half-written image.
+#define UPDATE_STATE_START 0x7f000
+#define UPDATE_STATE_MAGIC 0x52505531	// "RPU1"
+#define UPDATE_STATE_APPLY 0x01		// staged image verified, copy started
+
 // Constants for the circular command buffer, the size must be 2^n
 #define CMD_HISTORY_SIZE 0x800
 #define CMD_HISTORY_MASK (CMD_HISTORY_SIZE - 1)
