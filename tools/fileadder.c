@@ -128,9 +128,10 @@ int addfile(const char *name, int addr)
 /*
  * gzip-compresses the data at buffer[addr] in place (gzip format, as
  * expected by the Content-Encoding: gzip header the httpd serves it
- * with).  Returns the compressed size.
+ * with).  Returns the length to store and sets *gzipped to whether the data
+ * really is compressed: data that does not get smaller is left as it is.
  */
-int gzipBuffer(int addr, int len)
+int gzipBuffer(int addr, int len, int *gzipped)
 {
 	uLong bound = compressBound(len);
 	unsigned char *out = malloc(bound);
@@ -161,9 +162,10 @@ int gzipBuffer(int addr, int len)
 	deflateEnd(&zs);
 
 	if (out_len >= len) {
-		fprintf(stderr, "gzip: no gain (%d -> %d bytes), leaving data uncompressed\n",
+		fprintf(stderr, "gzip: no gain (%d -> %d bytes), keeping it uncompressed\n",
 			len, out_len);
 		free(out);
+		*gzipped = 0;
 		return len;
 	}
 	memcpy(&buffer[addr], out, out_len);
@@ -173,6 +175,7 @@ int gzipBuffer(int addr, int len)
 	 * diffs and would break the assumption that unused image space is zero. */
 	memset(&buffer[addr + out_len], 0, len - out_len);
 	free(out);
+	*gzipped = 1;
 	return out_len;
 }
 
@@ -210,7 +213,7 @@ char *getMime(const char *name)
 }
 
 
-int addidx(const char *name, int addr, int len)
+int addidx(const char *name, int addr, int len, int gzipped)
 {
 	char s[256];
 	int i = 0;
@@ -223,9 +226,9 @@ int addidx(const char *name, int addr, int len)
 
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "#define FDATA_START_%s 0x%x\n", s, addr);
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "#define FDATA_SIZE_%s %d\n", s, len);
-	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/%s\", FDATA_START_%s, FDATA_SIZE_%s, %s, %d},\n", name, s, s, getMime(name), arguments.gzip? 1 : 0);
+	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/%s\", FDATA_START_%s, FDATA_SIZE_%s, %s, %d},\n", name, s, s, getMime(name), gzipped? 1 : 0);
 	if (!strcmp(name, "index.html"))
-		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/\", FDATA_START_%s, FDATA_SIZE_%s, mime_HTML, %d},\n", s, s, arguments.gzip? 1 : 0);
+		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/\", FDATA_START_%s, FDATA_SIZE_%s, mime_HTML, %d},\n", s, s, gzipped? 1 : 0);
 	return 0;
 }
 
@@ -384,9 +387,10 @@ int main(int argc, char **argv)
 			data_read = replaceCalls(addr, file_len);
 			if (old_len > data_read)
 				memset(buffer + addr + data_read, 0, old_len - data_read);
+			int gzipped = 0;
 			if (arguments.gzip)
-				data_read = gzipBuffer(addr, data_read);
-			addidx(in_file->d_name, addr, data_read);
+				data_read = gzipBuffer(addr, data_read, &gzipped);
+			addidx(in_file->d_name, addr, data_read, gzipped);
 			addr += data_read;
 		}
 		for (int e = 0; e < n_entries; e++)
