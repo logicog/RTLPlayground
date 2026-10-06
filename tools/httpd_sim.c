@@ -459,7 +459,19 @@ void send_lldp(int s)
 	char *header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
-	char *body = "{\"on\": 1,\"port_status\":[1,1,0,1,1,1,1,0,0]}";
+	//portNum represents physical ports
+	char *body = "{\"on\": 1,\"portStatus\":[\
+		{\"portNum\":1,\"logPort\":1,\"name\":\"PC\",\"enabled\":1},\
+		{\"portNum\":2,\"logPort\":2,\"name\":\"\",\"enabled\":1},\
+		{\"portNum\":3,\"logPort\":3,\"name\":\"\",\"enabled\":1},\
+		{\"portNum\":4,\"logPort\":4,\"name\":\"\",\"enabled\":0},\
+		{\"portNum\":5,\"logPort\":5,\"name\":\"\",\"enabled\":1},\
+		{\"portNum\":6,\"logPort\":6,\"name\":\"TV\",\"enabled\":1},\
+		{\"portNum\":7,\"logPort\":7,\"name\":\"\",\"enabled\":0},\
+		{\"portNum\":8,\"logPort\":8,\"name\":\"Router\",\"enabled\":1},\
+		{\"portNum\":9,\"logPort\":9,\"name\":\"\",\"enabled\":1},\
+		{\"portNum\":10,\"logPort\":10,\"name\":\"Uplink\",\"enabled\":1}\
+	]}";
 
 	write(s, header, strlen(header));
 	write(s, body, strlen(body));

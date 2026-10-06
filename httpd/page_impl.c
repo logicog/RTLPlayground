@@ -743,14 +743,30 @@ void send_lldp(void)
 
 	slen += strtox(outbuf + slen, "{\"on\":");
 	bool_to_html(lldp_enabled);
-	slen += strtox(outbuf + slen, ",\"port_status\":[");
+	slen += strtox(outbuf + slen, ",\"portStatus\":[");
 
-	for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
-		bool_to_html((1 << port) & lldp_logical_port_status);
-		slen += strtox(outbuf + slen, ",");
-    }
-	slen--; //overwrite the last comma
-	slen += strtox(outbuf + slen, "]}");
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+
+		slen += strtox(outbuf + slen, ",\"logPort\":");
+		itoa_html(i);
+		slen += strtox(outbuf + slen, ",\"name\":\"");
+		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
+			json_char_to_html(port_names[i][j]);
+		}
+		slen += strtox(outbuf + slen, "\"");
+
+		slen += strtox(outbuf + slen, ",\"enabled\":\"");
+		bool_to_html(1 & (lldp_logical_port_status >> i));
+		slen += strtox(outbuf + slen, "\"}");
+
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+	char_to_html('}');
 }
 
 void send_eee(void)

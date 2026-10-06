@@ -1843,36 +1843,26 @@ function lldpLoad(){
   return getJSON("/lldp.json").then(function(s){
     $("lldp_en").checked=s.on;
     var tb=$("lldp_table").tBodies[0];tb.innerHTML="";
-    if(tb.rows.length!==S.n){
-      tb.innerHTML="";
-      for(var i=0;i<S.n;i++)(function(i){
-        var tr=tb.insertRow();
-        tr.insertCell();
-        tr.insertCell();
-        tr.insertCell();
-      })(i);
-    }
-    S.ports.forEach(function(p){
-      var r=tb.rows[p.portNum-1];
-      if(!r)return;
-      r.cells[0].textContent=p.portNum+(p.isSFP?" (SFP)":"");
-      r.cells[1].textContent=p.name||"";
+    byPort(s.portStatus).forEach(function(p){
+      var tr=tb.insertRow();
+      tr.insertCell().textContent=p.portNum;
+      tr.insertCell().textContent=p.name;
       var sw=h("label",{class:"switch"},[
         h("input",{type:"checkbox",onchange:function(){
           postCmd("port "+p.portNum+" lldp "+(this.checked?"permit":"block"))
             .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
         }}),h("i")]);
-      sw.firstChild.checked=s.port_status[p.portNum-1];
-      r.cells[2].appendChild(sw);
+      sw.firstChild.checked=p.enabled;
+      tr.insertCell().appendChild(sw);
     });
-  }).catch(function(e){console.log("ERROR!"); console.log(e)});
+  });
 }
 
 $("lldp_en").addEventListener("change",function(){
   var el=this;
   postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
-tabHooks.lldp={enter:needPorts(lldpLoad)};
+tabHooks.lldp={enter:lldpLoad};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);

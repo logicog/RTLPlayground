@@ -914,6 +914,14 @@ void parse_port(void)
 		print_string("\nName set to: \"");
 		print_string_x(port_names[phy_settings.port]);
 		print_string("\"\n");
+	} else if (cmd_compare(2, "lldp")) {
+		if (cmd_compare(3, "block")){
+			lldp_logical_port_status &= ~((uint16_t)1 << phy_settings.port);
+		} else if (cmd_compare(3, "permit")) {
+			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
+		} else {
+			print_string ("Unknown port <port> lldp [block|permit] command\n");
+		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
 	} else if (cmd_compare(2, "10m")) {
@@ -967,14 +975,6 @@ void parse_port(void)
 		else
 			phy_settings.duplex = PHY_DUPLEX_HALF;
 		phy_set_duplex();
-	} else if (cmd_compare(2, "lldp")) {
-		if (cmd_compare(3, "block")){
-			lldp_logical_port_status &= ~(1 << phy_settings.port);
-		} else if (cmd_compare(3, "permit")) {
-			lldp_logical_port_status |= 1 << phy_settings.port;
-		} else {
-			print_string ("Unknown port <port> lldp [block|permit] command\n");
-		}
 	} else {
 		cmd_error("Unknown port command\n");
 	}
