@@ -1,7 +1,7 @@
 # Firmware Updates
 
-The web UI uploads a complete image (`output/<machine>/rtlplayground<b>_<machine>.bin`,
-512 KiB) and the switch applies it on the next reset. How the uploaded image is
+The web UI uploads a complete image (`output/<machine>/rtlplayground-*.bin`, 512
+KiB) and the switch applies it on the next reset. How the uploaded image is
 held until then depends on the flash size:
 
 | flash | uploaded image | cost |
@@ -13,6 +13,11 @@ Everything else is the same in both cases: the browser checks size, LJMP magic
 and CRC16 before uploading, the switch accumulates the same CRC16 while it
 receives and answers `OK: checksum verified, rebooting`, then resets, lets the
 boot code verify the staged image again and copies it into place.
+
+Browsers do not agree on what to call the uploaded part: Chrome sends
+`application/macbinary` for a `.bin` file on macOS, Firefox
+`application/octet-stream`, and anything else is possible. The part's headers are
+therefore located by position, their `Content-Type` is never read.
 
 ## The staging pool of a 512 KiB device
 

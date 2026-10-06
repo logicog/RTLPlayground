@@ -52,8 +52,6 @@ static uint8_t stage_page(void)
 		return UPDATE_STAGE_OK;
 	if (nonzero && !stage_slot) {
 		// would the copy back write over the pool, or the pool over it?
-		if (update_pool_target(stage_sec))
-			return UPDATE_STAGE_OVERLAP;
 		if (update_pool_conflict((uint32_t)stage_sec * FLASH_SECTOR_SIZE))
 			return UPDATE_STAGE_OVERLAP;
 		stage_slot = update_pool_addr(update_state.staged);

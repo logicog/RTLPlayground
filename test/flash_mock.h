@@ -12,14 +12,12 @@
 #define FLASH_MOCK_SIZE	0x100000u
 
 extern uint8_t flash_mock[FLASH_MOCK_SIZE];
-extern uint32_t flash_mock_erases;
 extern uint32_t flash_mock_writes;
 
 // Called after every flash_write_bytes(); a test cuts the power here
 extern void (*flash_mock_after_write)(void);
 
 void flash_mock_reset(void);
-void flash_mock_load(uint32_t addr, const void *src, uint32_t len);
 uint32_t flash_mock_nonzero(uint32_t addr, uint32_t len);
 
 #endif

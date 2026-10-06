@@ -6,7 +6,6 @@
 #include "flash_mock.h"
 
 uint8_t flash_mock[FLASH_MOCK_SIZE];
-uint32_t flash_mock_erases;
 uint32_t flash_mock_writes;
 
 extern __xdata struct flash_region_t flash_region;
@@ -17,13 +16,7 @@ void (*flash_mock_after_write)(void) = flash_mock_nothing;
 void flash_mock_reset(void)
 {
 	memset(flash_mock, 0xff, sizeof(flash_mock));
-	flash_mock_erases = 0;
 	flash_mock_writes = 0;
-}
-
-void flash_mock_load(uint32_t addr, const void *src, uint32_t len)
-{
-	memcpy(flash_mock + addr, src, len);
 }
 
 uint32_t flash_mock_nonzero(uint32_t addr, uint32_t len)
@@ -47,7 +40,6 @@ void flash_read_bulk(uint8_t *dst)
 
 void flash_sector_erase(void)
 {
-	flash_mock_erases++;
 	memset(flash_mock + (flash_region.addr & ~(FLASH_SECTOR_SIZE - 1)), 0xff,
 	       FLASH_SECTOR_SIZE);
 }

@@ -1563,9 +1563,6 @@ void check_and_flash_update_image(void)
 		update_apply_staged();
 		return;
 	}
-	if (update_state.magic == UPDATE_STATE_MAGIC && (update_state.flags & UPDATE_STATE_APPLY))
-		print_string("Update was interrupted by a reset, resuming\n");
-
 	print_string("Checking for update image in flash... ");
 	// parts with room hold a complete second image above the running one
 	if (flash_size >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
@@ -1599,7 +1596,7 @@ void check_and_flash_update_image(void)
 			source += FLASH_BUF_SIZE;
 			if (i%16 == 0) write_char('.');
 		}
-		if (crc_value == 0xb001) {
+		if (crc_value == IMAGE_CRC) {
 			print_string("Checksum OK.\nUpdate in progress, moving firmware to start of flash");
 			/* Mark the copy as running before the first erase: if the switch is
 			 * reset while it runs, the staged image is still in flash and the

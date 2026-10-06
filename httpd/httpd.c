@@ -79,6 +79,9 @@ __xdata char passwd[21];
 // Set when a verified firmware upload awaits its response ACK, after
 // which the chip resets to apply the staged image
 __xdata uint8_t fw_reset_pending;
+// Set when a request has been answered before its body was read: the rest of
+// the body belongs to that request, it is not a request of its own
+__xdata uint8_t discard_body;
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
@@ -255,8 +258,13 @@ uint8_t parse_short(__xdata uint8_t *p)
 }
 
 
+/* A request answered before its body was read leaves the rest of that body
+ * coming. It belongs to the refused request, not to a new one, so each of these
+ * replies sets discard_body and httpd_appcall() drops what follows - answering
+ * every segment of it again helps nobody and confuses the client. */
 void send_not_found(void)
 {
+	discard_body = 1;
 	slen = strtox(outbuf, "HTTP/1.1 404 Not found\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n" \
 			      "<!DOCTYPE HTML PUBLIC>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n");
 }
@@ -264,6 +272,7 @@ void send_not_found(void)
 
 void send_bad_request(void)
 {
+	discard_body = 1;
 	slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n" \
 			      "<!DOCTYPE HTML PUBLIC>\n<title>400 Bad Request</title>\n<h1>Bad Request</h1>\n");
 }
@@ -278,12 +287,14 @@ void send_to_login(void)
 
 void send_unauthorized(void)
 {
+	discard_body = 1;
 	slen = strtox(outbuf, "HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
 }
 
 
 void send_length_required(void)
 {
+	discard_body = 1;
 	slen = strtox(outbuf, "HTTP/1.1 411 Length Required\r\nConnection: close\r\n\r\n");
 }
 
@@ -448,18 +459,18 @@ static uint8_t config_take(void)
 }
 
 
-// unlike scan_header(), keeps no auth state, so it may run on every buffered segment
+// Where the first part's payload starts: after the blank line that ends the
+// part headers. Their Content-Type is not ours to choose - Chrome sends
+// application/macbinary for a .bin file, Firefox application/octet-stream - so
+// the headers are located, not read. Unlike scan_header(), this keeps no auth
+// state, so it may run on every buffered segment.
 static uint16_t preamble_payload_start(uint16_t n)
 {
-	uint16_t pos;
+	uint16_t pos = 0;
 
-	for (pos = 0; pos + 24 <= n; pos++) {
-		if (strstart(&config_buf[pos], "application/octet-stream"))
-			break;
-	}
-	if (pos + 24 > n)
-		return 0;
-	pos += 24;
+	// the request's own terminator is the one blank line before the part
+	if (n >= 4 && strstart(config_buf, "\r\n\r\n"))
+		pos = 4;
 	while (pos + 3 < n && !strstart(&config_buf[pos], "\r\n\r\n"))
 		pos++;
 	if (pos + 3 >= n)
@@ -502,6 +513,7 @@ static uint8_t upload_page(void)
 		upload_error = update_stage_page();
 		if (!upload_error)
 			return 0;
+		discard_body = 1;
 		if (upload_error == UPDATE_STAGE_NO_ROOM) {
 			print_string("Image does not fit into the free flash space!\n");
 			slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 37\r\n"
@@ -519,6 +531,7 @@ static uint8_t upload_page(void)
 	// the boot code reads back; nothing else bounds uptr
 	if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
 		print_string("Upload runs past the image area! Aborting.\n");
+		discard_body = 1;
 		slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
 			"Content-Type: text/plain\r\n\r\n"
 			"NO: upload exceeds image area\n");
@@ -568,7 +581,7 @@ static void upload_part_done(void)
 		return;
 	// Content-Length lets the browser finish the reply without waiting for
 	// the close, which the reset would swallow
-	if (crc_final == 0xb001 && !upload_error) {
+	if (crc_final == IMAGE_CRC && !upload_error) {
 		if (stage_sparse)
 			update_stage_commit(crc_final);
 		print_string("Checksum OK.\nUpload to flash done, will reset!\n");
@@ -583,6 +596,7 @@ static void upload_part_done(void)
 		update_stage_discard();
 	}
 	print_string("Checksum incorrect! Aborting.\n");
+	discard_body = 1;
 	slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 33\r\n"
 		"Content-Type: text/plain\r\n\r\n"
 		"NO: checksum failed, not applied\n");
@@ -844,7 +858,10 @@ void handle_post(void)
 			}
 			if (flash_size < IMAGE_SIZE) {
 				print_string("Flash too small for this firmware image!\n");
-				send_bad_request();
+				discard_body = 1;
+				slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 40\r\n"
+					"Content-Type: text/plain\r\n\r\n"
+					"NO: flash too small for a 512 KiB image\n");
 				return;
 			}
 			// no second image slot: stage into the free flash instead
@@ -946,13 +963,16 @@ void httpd_appcall(void)
 	if(uip_connected() && s->tstate == TSTATE_CLOSED) {
 		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
+		discard_body = 0;
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
+		discard_body = 0;
 	} else if (uip_aborted() || uip_timedout()) {
 		dbg_string("Connection aborted\n");
 		uip_close();
 		s->tstate = TSTATE_CLOSED;
+		discard_body = 0;
 	} else if (uip_poll()) {
 		uip_len = 0;
 		if (s->tstate == TSTATE_ACKED) {
@@ -1003,6 +1023,10 @@ void httpd_appcall(void)
 			print_string("Resetting to apply update\n");
 			reset_chip();
 		}
+	} else if (uip_newdata() && discard_body) {
+		// Answering a request while its body is still coming makes the
+		// client stop reading; the rest of the body must go nowhere
+		uip_len = 0;
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		if (config_upload || uip_len <= max_upload) {
 			if (!config_upload)

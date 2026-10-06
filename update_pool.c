@@ -44,7 +44,7 @@ void update_state_clear(void)
  */
 #define POOL_A_TOP	0x40000u
 #define POOL_A_BOTTOM	0x28000u	// bank 3 ends here, see imagebuilder.c
-#define POOL_B_TOP	0x6f000u	// up to DEFAULT_CONFIG_START
+#define POOL_B_TOP	DEFAULT_CONFIG_START
 #define POOL_A_SECTORS	((POOL_A_TOP - POOL_A_BOTTOM) / FLASH_SECTOR_SIZE)
 
 static __xdata uint32_t pool_bottom = POOL_A_TOP;
@@ -62,7 +62,7 @@ uint32_t update_pool_addr(uint16_t staged_idx)
 		return POOL_A_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
 	staged_idx -= POOL_A_SECTORS;
 	if (pool_bottom < POOL_B_TOP
-	    && staged_idx < (uint16_t)((POOL_B_TOP - pool_bottom) >> 12))
+	    && staged_idx < (uint16_t)((POOL_B_TOP - pool_bottom) / FLASH_SECTOR_SIZE))
 		return POOL_B_TOP - (uint32_t)(staged_idx + 1) * FLASH_SECTOR_SIZE;
 	return 0;	// no room left
 }
@@ -75,13 +75,6 @@ uint16_t update_pool_index(uint16_t sector)
 		if (update_state.present[i >> 3] & (1 << (i & 7)))
 			n++;
 	return n;
-}
-
-// 1 when the sector is already staged: a slot placed on it would be overwritten
-// by its own copy back, making the apply order dependent
-uint8_t update_pool_target(uint16_t sector)
-{
-	return (update_state.present[sector >> 3] >> (sector & 7)) & 1;
 }
 
 uint8_t update_pool_conflict(uint32_t addr)

@@ -119,7 +119,10 @@ struct vlan_tag {
 // A firmware image, see Makefile IMAGESIZE; less flash cannot hold it
 #define IMAGE_SIZE ((uint32_t)UPDATE_SECTORS * FLASH_SECTOR_SIZE)
 
-// Sectors the apply writes; the config sectors and above keep the running one
+// A complete image checksums to this; the browser and the switch check it
+#define IMAGE_CRC 0xb001
+
+// Sectors the apply writes; the live configuration and above keep the running one
 #define UPDATE_APPLY_SECTORS (CONFIG_START / FLASH_SECTOR_SIZE)
 
 // Constants for the circular command buffer, the size must be 2^n

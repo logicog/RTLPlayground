@@ -131,7 +131,7 @@ static void apply_staged_image(void)
 		print_string("Checking staged image");
 		set_sys_led_state(SYS_LED_FAST);
 		if (staged_image_crc() != update_state.crc_apply
-		    || update_state.crc != 0xb001) {
+		    || update_state.crc != IMAGE_CRC) {
 			print_string("\nStaged image is damaged, discarding it\n");
 			update_state_clear();
 			return;

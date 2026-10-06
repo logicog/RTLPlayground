@@ -634,10 +634,13 @@ static const char upload_head[] =
 	"POST /upload HTTP/1.1\r\nHost: sw\r\n"
 	"Cookie: session=" SESSION "\r\n"
 	"Content-Type: multipart/form-data; boundary=" TOKEN "\r\n\r\n";
+/* Chrome labels a .bin file application/macbinary on macOS and Firefox
+ * application/octet-stream: the part headers are found by position, never read,
+ * so every type has to work */
 static const char part_head[] =
 	"--" TOKEN "\r\n"
 	"Content-Disposition: form-data; name=\"uploadedfile\"; filename=\"img.bin\"\r\n"
-	"Content-Type: application/octet-stream\r\n\r\n";
+	"Content-Type: application/macbinary\r\n\r\n";
 static const char part_tail[] = "\r\n--" TOKEN "--\r\n";
 
 /* POST /upload with `len` bytes of `img`, in the segments a browser would send,
@@ -697,8 +700,6 @@ static void scenario_pool_geometry(void)
 	update_pool_set_bottom(UI_END);
 	update_state.present[64 >> 3] = 1 << (64 & 7);
 	update_state.staged = 1;
-	CHECK(update_pool_target(64) == 1 && update_pool_target(65) == 0,
-	      "pool: a staged sector is recognised as a copy back target");
 	CHECK(update_pool_index(64) == 0 && update_pool_index(65) == 1,
 	      "pool: the manifest numbers the slots");
 	CHECK(update_pool_conflict(0x3f000) == 1 && update_pool_conflict(0x20000) == 0,
@@ -716,12 +717,12 @@ static void scenario_update_stage(void)
 	upload_setup();
 	st = upload_post(image, IMG_BYTES, 1);
 
-	CHECK(image_crc() == 0xb001, "staging: the fixture image checksums to 0xb001");
+	CHECK(image_crc() == IMAGE_CRC, "staging: the fixture image checksums to IMAGE_CRC");
 	CHECK(st == 200, "staging: the upload is accepted");
 	CHECK(update_state.magic == UPDATE_STATE_MAGIC
 	      && update_state.flags == UPDATE_STATE_STAGING,
 	      "staging: the update record is committed");
-	CHECK(update_state.crc == 0xb001 && update_state.crc_apply == image_apply_crc(),
+	CHECK(update_state.crc == IMAGE_CRC && update_state.crc_apply == image_apply_crc(),
 	      "staging: the record carries the checksum of the applied part");
 	CHECK(update_state.staged == 5, "staging: five image sectors hold data");
 	CHECK(update_state.pool_bottom == POOL_FLOOR,
@@ -783,6 +784,8 @@ static void scenario_update_refuse_small_flash(void)
 
 	CHECK(st == 400, "refusal: a part smaller than the image is refused");
 	CHECK(console_has("Flash too small"), "refusal: the console says why");
+	CHECK(strstr(upload_reason(), "flash too small for a 512 KiB image") != 0,
+	      "refusal: the reply carries a reason the web UI can show");
 }
 
 /* The apply: verify, copy the staged sectors, zero the rest, keep the
@@ -892,6 +895,46 @@ static void scenario_update_damaged(void)
 	CHECK(update_state.magic == 0, "damaged: the record is cleared");
 }
 
+/* A request answered before its body was read: the rest of the body belongs to
+ * that request and must not be parsed - and answered - on its own */
+static void scenario_update_refused_body(void)
+{
+	static uint8_t seg[MSS_FULL];
+	uint32_t head, n, i, sent, take;
+	const char *p;
+	int replies = 0;
+
+	upload_setup();
+	session_id[0] = 'x';		/* the cookie no longer matches */
+
+	head = sizeof(upload_head) - 1 + sizeof(part_head) - 1;
+	memcpy(seg, upload_head, sizeof(upload_head) - 1);
+	memcpy(seg + sizeof(upload_head) - 1, part_head, sizeof(part_head) - 1);
+	n = head;
+	i = n < MSS_FULL ? MSS_FULL - n : 0;
+	memcpy(seg + n, image, i);
+	n += i;
+	client_send(TCP_ACK | TCP_PSH, seg, (int)n);
+
+	/* what the browser keeps sending while the reply is on its way */
+	for (sent = i; sent < 6 * MSS_FULL; sent += take) {
+		take = 6 * MSS_FULL - sent;
+		if (take > MSS_FULL)
+			take = MSS_FULL;
+		client_send(TCP_ACK | TCP_PSH, image + sent, (int)take);
+	}
+	drain(MSS_FULL);
+
+	for (p = (const char *)stream; (p = strstr(p, "HTTP/1.1 ")) != 0; p++)
+		replies++;
+	CHECK(replies == 1, "refused: the rest of the body is answered once");
+	CHECK(stream_len >= 12 && atoi((const char *)stream + 9) == 401,
+	      "refused: the one reply is the 401");
+	CHECK(update_state.staged == 0 && update_state.magic == 0,
+	      "refused: nothing is staged");
+	CHECK(update_state.present[0] == 0, "refused: the pool manifest stays empty");
+}
+
 /* A part with room for a second complete image keeps the old upload path */
 static void scenario_update_legacy(void)
 {
@@ -929,6 +972,7 @@ int main(int argc, char **argv)
 	scenario_update_refuse_overlap();
 	scenario_update_refuse_checksum();
 	scenario_update_refuse_small_flash();
+	scenario_update_refused_body();
 	scenario_update_apply();
 	scenario_update_resume_copy();
 	scenario_update_resume_zeroing();

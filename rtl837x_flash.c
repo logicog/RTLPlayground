@@ -356,4 +356,3 @@ void flash_write_bytes(__xdata uint8_t *ptr)
     while (flash_read_status() & STATUS_REG_BUSY_MASK);
     flash_configure_mmio();
 }
-

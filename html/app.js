@@ -121,7 +121,7 @@ fw_noreboot:"no reboot detected: the image was most likely rejected. If updating
 fw_applied:"update applied",fw_done_t:"Firmware updated",
 fw_done:"The switch verified the image and rebooted into it. The session was reset, so you will be asked to log in again.",
 fw_login:"Go to login",fw_rebooting:"switch is rebooting...",
-fw_timeout:"switch has not come back after 150 s: check power / serial console"
+fw_timeout:"switch has not come back after {s} s: check power / serial console"
 },
 ja:{
 nav_dash:"ダッシュボード",nav_ports:"ポート",nav_stp:"スパニングツリー",nav_stats:"統計",
@@ -238,7 +238,7 @@ fw_noreboot:"再起動が検出されませんでした。イメージは拒否�
 fw_applied:"更新を適用しました",fw_done_t:"ファームウェアを更新しました",
 fw_done:"スイッチはイメージを検証し、新しいイメージで再起動しました。セッションがリセットされたため、再度ログインが必要です。",
 fw_login:"ログインへ",fw_rebooting:"スイッチを再起動中...",
-fw_timeout:"150 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください"
+fw_timeout:"{s} 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください"
 },
 zh:{
 nav_dash:"仪表盘",nav_ports:"端口",nav_stp:"生成树",nav_stats:"统计",
@@ -355,7 +355,7 @@ fw_noreboot:"未检测到重启: 镜像很可能被拒绝。若从旧固件升�
 fw_applied:"升级已应用",fw_done_t:"固件已升级",
 fw_done:"交换机已校验镜像并以新镜像重启。会话已重置，需要重新登录。",
 fw_login:"前往登录",fw_rebooting:"交换机正在重启...",
-fw_timeout:"150 秒后交换机仍未恢复: 请检查电源 / 串口控制台"
+fw_timeout:"{s} 秒后交换机仍未恢复: 请检查电源 / 串口控制台"
 },
 es:{
 nav_dash:"Panel",nav_ports:"Puertos",nav_stp:"Árbol de expansión",nav_stats:"Estadísticas",
@@ -471,7 +471,7 @@ fw_noreboot:"no se detectó reinicio: lo más probable es que la imagen fuera re
 fw_applied:"actualización aplicada",fw_done_t:"Firmware actualizado",
 fw_done:"El switch verificó la imagen y se reinició con ella. La sesión se restableció, así que se te pedirá que vuelvas a iniciar sesión.",
 fw_login:"Ir al inicio de sesión",fw_rebooting:"el switch se está reiniciando...",
-fw_timeout:"el switch no ha vuelto tras 150 s: comprueba la alimentación / consola serie"
+fw_timeout:"el switch no ha vuelto tras {s} s: comprueba la alimentación / consola serie"
 },
 fr:{
 nav_dash:"Tableau de bord",nav_ports:"Ports",nav_stp:"Arborescence",nav_stats:"Statistiques",
@@ -588,7 +588,7 @@ fw_noreboot:"Pas de redemarrage détecté: l'image a certainement été refusée
 fw_applied:"Mise à jour effectuée",fw_done_t:"Firmware mis à jour",
 fw_done:"Le commutateur a vérifié l'image et vient de redémarrer. La session a été remise à zero, vous devez vous reconnecter.",
 fw_login:"Vers l'écran de connection",fw_rebooting:"Le commutateur redémarre...",
-fw_timeout:"Le commutateur n'est plus joignable depuis 150 s: verifiez l'alimentation ou utilisez la console série"
+fw_timeout:"Le commutateur n'est plus joignable depuis {s} s: verifiez l'alimentation ou utilisez la console série"
 },
 de:{
 nav_dash:"Übersicht",nav_ports:"Ports",nav_stp:"Spanning Tree",nav_stats:"Statistik",
@@ -708,7 +708,7 @@ fw_noreboot:"kein Neustart erkannt: Das Image wurde sehr wahrscheinlich abgelehn
 fw_applied:"Update übernommen",fw_done_t:"Firmware aktualisiert",
 fw_done:"Der Switch hat das Image geprüft und damit neu gestartet. Die Sitzung wurde zurückgesetzt, du wirst erneut zur Anmeldung aufgefordert.",
 fw_login:"Zur Anmeldung",fw_rebooting:"Switch startet neu...",
-fw_timeout:"Der Switch ist nach 150 s nicht zurück: Stromversorgung / serielle Konsole prüfen"
+fw_timeout:"Der Switch ist nach {s} s nicht zurück: Stromversorgung / serielle Konsole prüfen"
 }
 };
 var rtlLang=(function(){
@@ -2299,7 +2299,10 @@ $("fwfile").addEventListener("change",function(){
 });
 $("fwup").addEventListener("click",function(){
   if(!fwBuf)return;
-  confirmModal(t("fw_q"),t("fw_d"),function(){
+  /* An upload runs for minutes and the session that lets it in may have run
+   * out while the file was picked; the refusal that follows cannot be told
+   * apart from a bad image, so ask first: api() redirects on a 401. */
+  function startUpload(){
     var form=new FormData();
     form.append("uploadedfile",fwBuf,fwBuf.name);
     var xhr=new XMLHttpRequest();
@@ -2330,6 +2333,8 @@ $("fwup").addEventListener("click",function(){
       if(xhr.status===200){
         st.textContent=t("fw_verified");
         fwSettle(st,true);
+      }else if(xhr.status===401){
+        location.href="/login.html";
       }else{
         var why=(xhr.responseText||"").trim().split("\n")[0].replace(/^NO:\s*/,"");
         var key=fwReason(why);
@@ -2343,8 +2348,17 @@ $("fwup").addEventListener("click",function(){
     })};
     xhr.open("POST","/upload");
     xhr.send(form);
+  }
+  confirmModal(t("fw_q"),t("fw_d"),function(){
+    api("/information.json").then(startUpload,function(){});
   });
 });
+/* An update keeps the switch off the network while it copies the staged sectors
+ * and clears the staging pool: measured ~210 s for a full image on a 512 KiB
+ * board, ~270 s with every pool sector in use. The wait below is generous on
+ * purpose - a message that fires during a healthy update is worse than a slow
+ * one. */
+var FW_WAIT_MAX=420;
 /* knownGood: the firmware answered 200, so an early reply only means the
  * reset is still pending. Without a verdict an early reply means no reboot
  * happened, i.e. the image was rejected. Raw fetch: a 401 from the fresh
@@ -2373,8 +2387,8 @@ function fwSettle(st,knownGood){
       down=true;
       waited+=3;
       st.textContent=t("fw_rebooting");
-      if(waited>150){
-        st.textContent=t("fw_timeout");
+      if(waited>FW_WAIT_MAX){
+        st.textContent=t("fw_timeout",{s:FW_WAIT_MAX});
         $("fwup").disabled=false;
         return;
       }
