@@ -936,13 +936,6 @@ __code const struct machine machine = {
     };
 
 #elif defined MACHINE_ONT_S207CW_62TS_SE
-// ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), Binardat 2G06-04210GS (unmanaged)
-// RTL8372N, 4x2.5G RJ45 + 2x10G SFP+, GD25Q128E (16MB)
-// LAN ports mounted upside-down on PCB
-// Custom configuration with correct port order and LED colors
-// Physical ports: 1-4 = RJ45, 5 = SFP (SDS0), 6 = SFP (SDS1)
-// Logical ports: 3 = SFP (SDS0), 4-7 = RJ45, 8 = SFP (SDS1)
-// Port mapping: Phys 1->Log 7, 2->Log 6, 3->Log 5, 4->Log 4, 5->Log 3, 6->Log 8
 
 __code const struct machine machine = {
     .machine_name = "ONT-S207CW-62TS-SE / Binardat 2G06-04210GSM / Binardat 2G06-04210GS",
@@ -954,14 +947,12 @@ __code const struct machine machine = {
     .phys_to_log_port = {7, 6, 5, 4, 3, 8, 0, 0, 0},
     .is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
 
-    // SFP port on SDS0 / logical port 3
     .sfp_port[0].pin_detect = GPIO37,
     .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 0,
     .sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
-    // SFP port on SDS1 / logical port 8
     .sfp_port[1].pin_detect = GPIO38,
     .sfp_port[1].pin_los = GPIO_NA,
     .sfp_port[1].pin_tx_disable = GPIO_NA,
@@ -974,28 +965,28 @@ __code const struct machine machine = {
     .mac_flash_offset = 0x1FC000,
     .led_sets = {
         {
-            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,  // LED 0 (orange): 1G/100M/10M
-            LEDS_2G5 | LEDS_LINK | LEDS_ACT,                         // LED 1 (green): 2.5G
-            LEDS_DUPLEX,                                             // LED 2
-            0                                                        // LED 3
+            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+            LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+            0,
+            0
         },
         {
-            LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,              // LED 0 (orange): 2.5G/1G
-            LEDS_10G | LEDS_LINK | LEDS_ACT,                         // LED 1 (green): 10G
-            LEDS_2G5 | LEDS_LINK,                                    // LED 2
-            LEDS_COL | LEDS_DUPLEX                                 // LED 3
+            0,
+            0,
+            0,
+            0
         },
         {
-            LEDS_2G5 | LEDS_LINK | LEDS_ACT,                         // LED 0 (orange): 2.5G
-            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,  // LED 1 (green): 1G/100M/10M
-            LEDS_DUPLEX,                                             // LED 2
-            0                                                        // LED 3
+            LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+            LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+            0,
+            0
         },
         {
-            LEDS_10G | LEDS_LINK | LEDS_ACT,                         // LED 0 (green): 10G (SFP Port 6 swapped)
-            LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,              // LED 1 (orange): 2.5G/1G (SFP Port 6 swapped)
-            LEDS_2G5 | LEDS_LINK,                                    // LED 2
-            LEDS_COL | LEDS_DUPLEX                                 // LED 3
+            LEDS_10G | LEDS_LINK | LEDS_ACT,
+            LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,
+            0,
+            0                                 // LED 3
         },
     },
     .led_mux_custom = 1,

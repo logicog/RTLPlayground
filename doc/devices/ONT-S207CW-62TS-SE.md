@@ -58,19 +58,19 @@ ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS 
 
 ### RJ45 Ports (Physical 1-4)
 
-| LED Color | Speed | Physical LED Position |
-|---|---|---|
-| **Green** | 2.5G | Right LED |
-| **Orange** | 1G / 100M / 10M | Left LED |
-| **Off** | No link | - |
+| LED Color | Speed |
+|---|---|
+| **Green** | 2.5G |
+| **Orange** | 1G / 100M / 10M |
+| **Off** | No link |
 
 ### SFP+ Ports (Physical 5-6)
 
-| LED Color | Speed | Physical LED Position |
-|---|---|---|
-| **Green** | 10G | Right LED |
-| **Orange** | 2.5G / 1G | Left LED |
-| **Off** | No link / No SFP module | - |
+| LED Color | Speed |
+|---|---|
+| **Green** | 10G |
+| **Orange** | 2.5G / 1G |
+| **Off** | No link / No SFP module |
 
 ## Port to Logical Mapping
 
@@ -89,77 +89,7 @@ Custom mapping for ONT-S207CW-62TS-SE:
 
 ## Flashing Instructions
 
-### Prerequisites
-- **GD25Q128E** flash chip (16MB)
-- **CH341A** SPI programmer (recommended)
-- **flashrom** tool (Linux) or **Flashrom GUI** (Windows)
-
-### Via CH341A (Direct Flash)
-
-**Linux (flashrom):**
-```bash
-# Install flashrom first
-sudo apt install flashrom
-
-# Flash the firmware (may need sudo)
-flashrom -p ch341a_spi -c "GD25Q128E/GD25B128E/GD25R128E/GD25Q127C" -w firmware.bin --noverify-all
-```
-
-**Alternative command (if above fails):**
-```bash
-flashrom -p ch341a_spi -c "GD25Q128E" -w firmware.bin
-```
-
-### Via Loader Mode (Web UI Upgrade)
-
-The firmware can be flashed via the device's loader mode:
-
-1. **Enter Loader Mode:**
-   - Power off the switch
-   - Hold the reset button
-   - Power on while holding reset
-   - Release after ~5 seconds
-   - Switch should be accessible at `192.168.10.247`
-
-2. **Upload via HTTP:**
-   ```bash
-   curl -T firmware.bin http://192.168.10.247/firmware
-   ```
-
-3. **Or via Web Browser:**
-   - Access `http://192.168.10.247`
-   - Use the firmware update function
-   - Upload the firmware file
-   - Wait for completion and reboot
-
-### Via RTLPlayground Web UI (After First Flash)
-
-Once RTLPlayground firmware is running:
-1. Access web interface at `http://192.168.2.1`
-2. Navigate to **System > Firmware Update**
-3. Upload the firmware file
-4. Wait for flash completion and reboot
-
-## Recovery
-
-If flashing fails and the switch does not boot:
-
-### Method 1: Loader Mode Recovery
-- The loader mode always remains accessible
-- Switch boots to `192.168.10.247` when in loader mode
-- Flash via: `curl -T firmware.bin http://192.168.10.247/firmware`
-
-### Method 2: Serial Recovery (if loader mode fails)
-- Connect UART: 115200 baud, 8N1
-- Use CH341A to flash directly:
-  ```bash
-  flashrom -p ch341a_spi -c "GD25Q128E" -w firmware.bin
-  ```
-
-### Method 3: SOIC8 Clip
-- Connect SOIC8 clip to CH341A
-- Use flashrom as above
-- Chip: GD25Q128E (16MB)
+See the [README.md](../../README.md) for general flashing instructions.
 
 ## Stock Firmware Information
 
@@ -173,11 +103,11 @@ If flashing fails and the switch does not boot:
 
 ## Configuration Details
 
-- **CPU:** RTL8372N (`.isRTL8373 = 0`)
+- **CPU:** RTL8372N
 - **SFP:** SDS0 on logical port 3 (GPIO37), SDS1 on logical port 8 (GPIO38)
 - **Port Mapping:** Physical 1-4 → Logical 7-4, Physical 5-6 → Logical 3,8
 - **LED Wiring:** RJ45 Ports 1-2 and SFP Port 6 have reversed LED pins (orange/green swapped)
-- **LED Sets:** 4 sets total - Set 0/1 unused, Set 2 for RJ45 1-2, Set 3 for SFP 5-6
+- **LED Sets:** Set 0 for RJ45 Ports 3-4, Set 1 unused, Set 2 for RJ45 Ports 1-2, Set 3 for SFP Ports 5-6
 
 ## Notes
 
