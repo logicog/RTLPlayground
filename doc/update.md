@@ -28,10 +28,13 @@ The pool is flash that the running image does not occupy:
 - From the end of the web UI up to `0x6efff`, the space the UI grows into
   between releases. The pool starts above whatever the running image serves, so
   a staged sector never lands on data the switch is serving.
+- `0x71000-0x7dfff`, between the live configuration and the update record, which
+  is the padding a `512 KiB` image has at its end. It lies above every address
+  the copy writes, so a slot there never covers a sector of the update itself.
 
 Sectors are placed from the top of each area downwards. For a build of today's
-size that is 57 sectors (228 KiB) of pool for 47 sectors (188 KiB) of content,
-about 40 KiB of headroom; the pool shrinks as the web UI grows.
+size that is 70 sectors (280 KiB) of pool for 46 sectors (184 KiB) of content,
+about 96 KiB of headroom; the pool shrinks as the web UI grows.
 
 ## Refusals
 

@@ -34,6 +34,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_flash.h"
 #include "update_pool.h"
+#include "update_stage.h"
 #include "update_apply.h"
 #include "page_impl.h"
 #include "html_data.h"
@@ -684,17 +685,26 @@ static const char *upload_reason(void)
 /* The pool layout the upload and the apply have to agree on */
 static void scenario_pool_geometry(void)
 {
+	__xdata uint16_t b_slots = (uint16_t)((DEFAULT_CONFIG_START - POOL_FLOOR)
+					      / FLASH_SECTOR_SIZE);
+	__xdata uint16_t last = 24 + b_slots - 1;
+
 	memset(&update_state, 0, sizeof(update_state));
 
 	CHECK(update_pool_set_bottom(UI_END) == POOL_FLOOR,
 	      "pool: the floor is rounded up to a sector");
 	CHECK(update_pool_addr(0) == 0x3f000 && update_pool_addr(23) == 0x28000,
 	      "pool: the first chunk is the dead space below the UI");
-	CHECK(update_pool_addr(24) == 0x6e000 && update_pool_addr(68) == POOL_FLOOR,
+	CHECK(update_pool_addr(24) == 0x6e000 && update_pool_addr(last) == POOL_FLOOR,
 	      "pool: the second chunk ends above the UI");
-	CHECK(update_pool_addr(69) == 0, "pool: there is no room beyond it");
+	CHECK(update_pool_addr(last + 1) == 0x7d000
+	      && update_pool_addr(last + 13) == 0x71000,
+	      "pool: the third chunk is the padding above the live configuration");
+	CHECK(update_pool_addr(last + 14) == 0,
+	      "pool: there is no room beyond the third chunk");
 	CHECK(update_pool_set_bottom(0x4d457) == 0x4e000
-	      && update_pool_addr(56) == 0x4e000 && update_pool_addr(57) == 0,
+	      && update_pool_addr(24) == 0x6e000 && update_pool_addr(56) == 0x4e000
+	      && update_pool_addr(57) == 0x7d000,
 	      "pool: a taller UI moves the floor and shrinks the second chunk");
 
 	update_pool_set_bottom(UI_END);
@@ -738,6 +748,42 @@ static void scenario_update_stage(void)
 	CHECK(all_ff(0, 0x28000), "staging: the running image is untouched");
 	CHECK(flash_mock[FILE_START] == pattern(FILE_START),
 	      "staging: the running web UI is untouched");
+}
+
+/*
+ * The third chunk is what makes an image of this size stageable at all. A board
+ * whose running UI ends high up leaves only a few slots above it, so this drives
+ * the staging directly with that floor: 39 sectors do not fit into the two
+ * chunks below, they need the padding above the live configuration.
+ */
+static void scenario_update_stage_tail(void)
+{
+	__xdata uint16_t s, p;
+
+	upload_setup();
+	image_build(37);			/* 37 code + the UI + the configuration */
+	CHECK(update_pool_set_bottom(0x61000) == 0x61000,
+	      "tail: the floor is where a tall running UI ends");
+
+	update_stage_begin(0x61000);
+	for (s = 0; s < UPDATE_APPLY_SECTORS; s++) {
+		for (p = 0; p < FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE; p++) {
+			memcpy(flash_buf, image + (uint32_t)s * FLASH_SECTOR_SIZE
+			       + (uint32_t)p * FLASH_PAGE_SIZE, FLASH_PAGE_SIZE);
+			if (update_stage_page()) {
+				CHECK(0, "tail: the staging does not run out of room");
+				return;
+			}
+		}
+	}
+	CHECK(update_stage_end() == UPDATE_STAGE_OK, "tail: the image is staged completely");
+	CHECK(update_state.staged == 39, "tail: every sector that holds data is staged");
+	CHECK(update_pool_addr(24) == 0x6e000 && update_pool_addr(37) == 0x61000,
+	      "tail: the second chunk is the short one here");
+	CHECK(update_pool_addr(38) == 0x7d000,
+	      "tail: the slot that would not fit lands in the third chunk");
+	CHECK(!memcmp(flash_mock + 0x7d000, image + DEFAULT_CONFIG_START, FLASH_SECTOR_SIZE),
+	      "tail: it holds the sector that needed it");
 }
 
 /* An image that grew into the pool would be overwritten by its own copy back */
@@ -969,6 +1015,7 @@ int main(int argc, char **argv)
 	printf("\n== httpd: firmware update ==\n");
 	scenario_pool_geometry();
 	scenario_update_stage();
+	scenario_update_stage_tail();
 	scenario_update_refuse_overlap();
 	scenario_update_refuse_checksum();
 	scenario_update_refuse_small_flash();

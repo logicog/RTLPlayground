@@ -12,9 +12,10 @@
 - Firmware update
   - Devices with only `512 KiB` of flash can be updated over the web UI: the image is staged into
     the flash the running image leaves free (only its used sectors), copied back on the next boot
-    and resumed when a reset interrupts the copy. The web UI names the reason when an image does
-    not fit, and a device with a `1 MiB` or larger flash keeps the complete second image above the
-    running one.
+    and resumed when a reset interrupts the copy. Staging uses the padding between the live
+    configuration and the update record as well, which a board with a large running web UI needs.
+    The web UI names the reason when an image does not fit, and a device with a `1 MiB` or larger
+    flash keeps the complete second image above the running one.
 
 ## Changed
 
