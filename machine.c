@@ -947,12 +947,14 @@ __code const struct machine machine = {
     .phys_to_log_port = {7, 6, 5, 4, 3, 8, 0, 0, 0},
     .is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
 
+    // SFP port on SDS0 / logical port 3
     .sfp_port[0].pin_detect = GPIO37,
     .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 0,
     .sfp_port[0].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 
+    // SFP port on SDS1 / logical port 8
     .sfp_port[1].pin_detect = GPIO38,
     .sfp_port[1].pin_los = GPIO_NA,
     .sfp_port[1].pin_tx_disable = GPIO_NA,
@@ -964,29 +966,29 @@ __code const struct machine machine = {
     .port_led_set = { 0, 0, 0, 3, 0, 0, 2, 2, 3},
     .mac_flash_offset = 0x1FC000,
     .led_sets = {
-        {
+        { // RJ45 Ports 3-4 (normal wiring)
             LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
             LEDS_2G5 | LEDS_LINK | LEDS_ACT,
             0,
             0
         },
-        {
+        { // Unused
             0,
             0,
             0,
             0
         },
-        {
+        { // RJ45 Ports 1-2 (reversed wiring)
             LEDS_2G5 | LEDS_LINK | LEDS_ACT,
             LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
             0,
             0
         },
-        {
+        { // SFP Ports 5-6
             LEDS_10G | LEDS_LINK | LEDS_ACT,
             LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,
             0,
-            0                                 // LED 3
+            0
         },
     },
     .led_mux_custom = 1,
