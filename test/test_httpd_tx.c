@@ -150,6 +150,7 @@ void send_config(void) { }
 void send_cmd_log(void) { }
 void send_lag(void) { }
 void send_stp(void) { }
+void rldp_json(void) { }
 void send_stp_counters(void) { }
 void send_vlanlist(void) { }
 

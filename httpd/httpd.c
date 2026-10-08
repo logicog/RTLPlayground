@@ -3,6 +3,7 @@
 #include "page_impl.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_rldp.h"
 #include "cmd_parser.h"
 #include "rtl837x_flash.h"
 #include "uip.h"
@@ -1018,6 +1019,8 @@ void httpd_appcall(void)
 				send_bandwidth();
 			} else if (is_word(q, "/storm.json")) {
 				send_storm();
+			} else if (is_word(q, "/rldp.json")) {
+				rldp_json();
 			} else if (is_word(q, "/l2.json")) {
 				parse_short(q + 13); // e.g.: /l2.json?idx=10
 				send_l2(short_parsed);
