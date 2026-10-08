@@ -14,6 +14,8 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_acl.h"
+#include "rtl837x_dhcp_snoop.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_storm.h"
@@ -587,6 +589,56 @@ void parse_lag_hash(void)
 	return;
 err:
 	cmd_error("laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
+}
+
+
+void parse_acl(void)
+{
+	acl_cmd();
+}
+
+
+void parse_dhcp_snooping(void)
+{
+	if (cmd_words_len < 2 || !cmd_compare(1, "snooping"))
+		goto err;
+	if (cmd_words_len == 2) {
+		print_string(dhcp_snoop_on ? "DHCP snooping on, trusted ports:" : "DHCP snooping off, trusted ports:");
+		for (uint8_t p = machine.min_port; p <= machine.max_port; p++) {
+			if (dhcp_snoop_trust & ((uint16_t)1 << p)) {
+				write_char(' ');
+				write_char('0' + machine.log_to_phys_port[p]);
+			}
+		}
+		write_char('\n');
+		return;
+	}
+	if (cmd_words_len == 3 && cmd_compare(2, "on")) {
+		dhcp_snoop_on = 1;
+		if (!dhcp_snoop_trust)
+			print_string("DHCP snooping: no trusted port, replies are not filtered until one is set\n");
+	} else if (cmd_words_len == 3 && cmd_compare(2, "off")) {
+		dhcp_snoop_on = 0;
+	} else if (cmd_words_len == 3 && cmd_compare(2, "binding")) {
+		dhcp_snoop_show();
+		return;
+	} else if (cmd_words_len == 4 && cmd_compare(2, "trust") && cmd_compare(3, "none")) {
+		dhcp_snoop_trust = 0;
+	} else if (cmd_words_len >= 4 && cmd_compare(2, "trust")) {
+		uint16_t trust = 0;
+		for (uint8_t w = 3; w < cmd_words_len; w++) {
+			if (!cmd_parse_port_separator(cmd_words_b[w]))
+				goto err;
+			trust |= (uint16_t)1 << atoi_results_u8;
+		}
+		dhcp_snoop_trust = trust;
+	} else {
+		goto err;
+	}
+	dhcp_snoop_apply();
+	return;
+err:
+	cmd_error("dhcp snooping [on | off | binding | trust (none | <port>...)]\n");
 }
 
 
@@ -1972,6 +2024,10 @@ void cmd_parser(void) __banked
 			parse_lag();
 		} else if (cmd_compare(0, "laghash")) {
 			parse_lag_hash();
+		} else if (cmd_compare(0, "acl")) {
+			parse_acl();
+		} else if (cmd_compare(0, "dhcp")) {
+			parse_dhcp_snooping();
 		} else if (cmd_compare(0, "sds")) {
 			print_reg(RTL837X_REG_SDS_MODES);
 			write_char('\n');

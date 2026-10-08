@@ -11,6 +11,7 @@
 #include "rtl837x_pins.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
+#include "rtl837x_trap.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
@@ -28,6 +29,8 @@
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
+#include "rtl837x_acl.h"
+#include "rtl837x_dhcp_snoop.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -1072,7 +1075,10 @@ void handle_rx(void)
 			    tcpip_output();
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0800)) { // IPv4
-			if (!management_vlan || management_vlan == rx_packet_vlan) {
+			if (dhcp_snoop_on)
+				dhcp_snoop_in();
+			if ((!management_vlan || management_vlan == rx_packet_vlan)
+			    && ((uip_buf[0] & 1) || !memcmp(uip_buf, uip_ethaddr.addr, 6))) {
 				uip_arp_ipin();
 				uip_input();
 				if (uip_len) {
@@ -1257,6 +1263,9 @@ static void handle_tick(void)
 
 		// Check for button presses once a second
 		handle_button();
+		acl_poll();
+		if (dhcp_snoop_on)
+			dhcp_snoop_tick();
 		link_irq = 1;
 		// Age the ARP cache: uip_arp_timer() expects a 10 s cadence
 		if (++arp_age_secs >= 10) {
@@ -1785,6 +1794,7 @@ void main(void)
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	nic_setup();
 	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
+	trap_init();
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
