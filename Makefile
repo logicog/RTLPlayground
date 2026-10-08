@@ -74,6 +74,8 @@ SRCS = \
 
 # RTL837x
 SRCS += \
+	rtl837x_acl.c \
+	rtl837x_acl_cmd.c \
 	rtl837x_bandwidth.c \
 	rtl837x_flash.c \
 	rtl837x_igmp.c \
@@ -84,7 +86,8 @@ SRCS += \
 	rtl837x_pins.c\
 	rtl837x_port.c \
 	rtl837x_stp.c \
-	rtl837x_storm.c
+	rtl837x_storm.c \
+	rtl837x_trap.c
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c
