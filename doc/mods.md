@@ -2,7 +2,7 @@
 
 ## SPI-Flash Memory
 
-SPI-Flash memory can be replaced with an other type. Because the chip is defect, like #69 & #70 or you have an unmanaged-switch with a small flash size, and want to convert it to a managed-variant to run `RTLPlayground` software on it. Currently `RTLPlayground`-firmware expects `8 MBit / 1 MiB`.
+SPI-Flash memory can be replaced with an other type. Because the chip is defect, like #69 & #70 or you have an unmanaged-switch with a small flash size, and want to convert it to a managed-variant to run `RTLPlayground` software on it. `RTLPlayground` runs from `4 MBit / 512 KiB`; on such a chip an online update is staged into the flash the running image leaves free, see [Firmware Updates](update.md).
 
 ### Size
 
@@ -25,7 +25,7 @@ Most use package are `SO8`-type may also called `SOIC8`-type. Which can also hav
 
 ### Specification
 
-1. Size: At least `8 MBit / 1 MiB` (theoretic max. `128 MBit / 16 MiB`, but is not *tested*!)
+1. Size: At least `4 MBit / 512 KiB` (theoretic max. `128 MBit / 16 MiB`, but is not *tested*!). `8 MBit / 1 MiB` and above keep a complete second image above the running one, so an online update never runs out of room, see [Firmware Updates](update.md).
 2. Speed: `62.5 MHz` or better.
 3. Support for `DUAL SPI operation`.
    Device need support for command `BBh`, `Dual I/O Fast Read` or `Fast Read Dual I/O`.

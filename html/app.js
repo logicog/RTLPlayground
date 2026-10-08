@@ -113,11 +113,15 @@ fw_finishing:"finishing flash write... {s} s",fw_uploading:"uploading... {p}% / 
 fw_verified:"checksum verified, the switch is rebooting...",
 fw_rejected:"the switch rejected the image (bad checksum), nothing was applied",
 fw_lost:"upload failed: connection lost mid-transfer",
+fw_nospace:"not enough free flash to stage this image - use the serial programmer",
+fw_overlap:"this image does not fit the free flash of the running one - use the serial programmer",
+fw_big:"the image does not fit the upload area of this device",
+fw_small:"this device's flash is too small for a 512 KiB image",
 fw_noreboot:"no reboot detected: the image was most likely rejected. If updating from old firmware, verify the version in the sidebar after logging in again.",
 fw_applied:"update applied",fw_done_t:"Firmware updated",
 fw_done:"The switch verified the image and rebooted into it. The session was reset, so you will be asked to log in again.",
 fw_login:"Go to login",fw_rebooting:"switch is rebooting...",
-fw_timeout:"switch has not come back after 150 s: check power / serial console"
+fw_timeout:"switch has not come back after {s} s: check power / serial console"
 },
 ja:{
 nav_dash:"ダッシュボード",nav_ports:"ポート",nav_stp:"スパニングツリー",nav_stats:"統計",
@@ -226,11 +230,15 @@ fw_finishing:"フラッシュ書き込みを完了中... {s} 秒",fw_uploading:"
 fw_verified:"チェックサム検証済み。スイッチを再起動しています...",
 fw_rejected:"スイッチがイメージを拒否しました (チェックサム不正)。何も適用されていません",
 fw_lost:"アップロード失敗: 転送中に接続が切れました",
+fw_nospace:"このイメージを置く空きフラッシュが足りません - シリアルプログラマを使用してください",
+fw_overlap:"このイメージは実行中のイメージの空きフラッシュに収まりません - シリアルプログラマを使用してください",
+fw_big:"イメージがこのデバイスのアップロード領域に収まりません",
+fw_small:"このデバイスのフラッシュは 512 KiB のイメージには小さすぎます",
 fw_noreboot:"再起動が検出されませんでした。イメージは拒否された可能性が高いです。旧ファームウェアからの更新の場合は、再ログイン後にサイドバーのバージョンを確認してください。",
 fw_applied:"更新を適用しました",fw_done_t:"ファームウェアを更新しました",
 fw_done:"スイッチはイメージを検証し、新しいイメージで再起動しました。セッションがリセットされたため、再度ログインが必要です。",
 fw_login:"ログインへ",fw_rebooting:"スイッチを再起動中...",
-fw_timeout:"150 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください"
+fw_timeout:"{s} 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください"
 },
 zh:{
 nav_dash:"仪表盘",nav_ports:"端口",nav_stp:"生成树",nav_stats:"统计",
@@ -339,11 +347,15 @@ fw_finishing:"正在完成 Flash 写入... {s} 秒",fw_uploading:"上传中... {
 fw_verified:"校验和通过，交换机正在重启...",
 fw_rejected:"交换机拒绝了该镜像 (校验和错误)，未做任何更改",
 fw_lost:"上传失败: 传输中连接断开",
+fw_nospace:"空闲 Flash 不足，无法暂存此镜像 - 请使用串口编程器",
+fw_overlap:"此镜像与运行中镜像的空闲 Flash 区域重叠 - 请使用串口编程器",
+fw_big:"镜像超出本机的上传区域",
+fw_small:"本机 Flash 太小，无法容纳 512 KiB 镜像",
 fw_noreboot:"未检测到重启: 镜像很可能被拒绝。若从旧固件升级，请重新登录后在侧边栏确认版本。",
 fw_applied:"升级已应用",fw_done_t:"固件已升级",
 fw_done:"交换机已校验镜像并以新镜像重启。会话已重置，需要重新登录。",
 fw_login:"前往登录",fw_rebooting:"交换机正在重启...",
-fw_timeout:"150 秒后交换机仍未恢复: 请检查电源 / 串口控制台"
+fw_timeout:"{s} 秒后交换机仍未恢复: 请检查电源 / 串口控制台"
 },
 es:{
 nav_dash:"Panel",nav_ports:"Puertos",nav_stp:"Árbol de expansión",nav_stats:"Estadísticas",
@@ -451,11 +463,15 @@ fw_finishing:"terminando escritura en flash... {s} s",fw_uploading:"subiendo... 
 fw_verified:"suma de comprobación verificada, el switch se está reiniciando...",
 fw_rejected:"el switch rechazó la imagen (suma de comprobación incorrecta), no se aplicó nada",
 fw_lost:"error de subida: conexión perdida durante la transferencia",
+fw_nospace:"no hay suficiente flash libre para esta imagen - usa el programador serie",
+fw_overlap:"esta imagen no cabe en la flash libre de la imagen en ejecución - usa el programador serie",
+fw_big:"la imagen no cabe en el área de subida de este dispositivo",
+fw_small:"la flash de este dispositivo es demasiado pequeña para una imagen de 512 KiB",
 fw_noreboot:"no se detectó reinicio: lo más probable es que la imagen fuera rechazada. Si actualizas desde un firmware antiguo, verifica la versión en la barra lateral tras volver a iniciar sesión.",
 fw_applied:"actualización aplicada",fw_done_t:"Firmware actualizado",
 fw_done:"El switch verificó la imagen y se reinició con ella. La sesión se restableció, así que se te pedirá que vuelvas a iniciar sesión.",
 fw_login:"Ir al inicio de sesión",fw_rebooting:"el switch se está reiniciando...",
-fw_timeout:"el switch no ha vuelto tras 150 s: comprueba la alimentación / consola serie"
+fw_timeout:"el switch no ha vuelto tras {s} s: comprueba la alimentación / consola serie"
 },
 fr:{
 nav_dash:"Tableau de bord",nav_ports:"Ports",nav_stp:"Arborescence",nav_stats:"Statistiques",
@@ -564,11 +580,15 @@ fw_finishing:"Fin d'écriture en mémoire flash... {s} s",fw_uploading:"Chargeme
 fw_verified:"Somme de contrôle vérifiée, le commutateur redémarre...",
 fw_rejected:"L'image est rejettée en raison d'une somme de contrôle incorrecte, rien n'a été appliqué",
 fw_lost:"Erreur lors du chargement: connection perdue à mi-transfert",
+fw_nospace:"pas assez de flash libre pour cette image - utilisez le programmateur série",
+fw_overlap:"cette image ne tient pas dans la flash libre de l'image en cours - utilisez le programmateur série",
+fw_big:"l'image ne tient pas dans la zone de chargement de cet appareil",
+fw_small:"la flash de cet appareil est trop petite pour une image de 512 KiB",
 fw_noreboot:"Pas de redemarrage détecté: l'image a certainement été refusée. Si vous chargesz un ancien firmware, verifiez la version affichée après l'écran de connection.",
 fw_applied:"Mise à jour effectuée",fw_done_t:"Firmware mis à jour",
 fw_done:"Le commutateur a vérifié l'image et vient de redémarrer. La session a été remise à zero, vous devez vous reconnecter.",
 fw_login:"Vers l'écran de connection",fw_rebooting:"Le commutateur redémarre...",
-fw_timeout:"Le commutateur n'est plus joignable depuis 150 s: verifiez l'alimentation ou utilisez la console série"
+fw_timeout:"Le commutateur n'est plus joignable depuis {s} s: verifiez l'alimentation ou utilisez la console série"
 },
 de:{
 nav_dash:"Übersicht",nav_ports:"Ports",nav_stp:"Spanning Tree",nav_stats:"Statistik",
@@ -680,11 +700,15 @@ fw_finishing:"Flash wird fertig beschrieben... {s} s",fw_uploading:"wird hochgel
 fw_verified:"Prüfsumme bestätigt, der Switch startet neu...",
 fw_rejected:"der Switch hat das Image abgelehnt (falsche Prüfsumme), es wurde nichts übernommen",
 fw_lost:"Hochladen fehlgeschlagen: Verbindung während der Übertragung abgebrochen",
+fw_nospace:"zu wenig freier Flash für dieses Image - bitte den seriellen Programmer verwenden",
+fw_overlap:"dieses Image passt nicht in den freien Flash des laufenden - bitte den seriellen Programmer verwenden",
+fw_big:"das Image passt nicht in den Upload-Bereich dieses Geräts",
+fw_small:"der Flash dieses Geräts ist zu klein für ein 512-KiB-Image",
 fw_noreboot:"kein Neustart erkannt: Das Image wurde sehr wahrscheinlich abgelehnt. Bei einem Update von alter Firmware nach dem erneuten Anmelden die Version in der Seitenleiste prüfen.",
 fw_applied:"Update übernommen",fw_done_t:"Firmware aktualisiert",
 fw_done:"Der Switch hat das Image geprüft und damit neu gestartet. Die Sitzung wurde zurückgesetzt, du wirst erneut zur Anmeldung aufgefordert.",
 fw_login:"Zur Anmeldung",fw_rebooting:"Switch startet neu...",
-fw_timeout:"Der Switch ist nach 150 s nicht zurück: Stromversorgung / serielle Konsole prüfen"
+fw_timeout:"Der Switch ist nach {s} s nicht zurück: Stromversorgung / serielle Konsole prüfen"
 }
 };
 var rtlLang=(function(){
@@ -2232,6 +2256,18 @@ $("saveBtn").addEventListener("click",function(){
 });
 
 var fwBuf=null;
+/* The switch answers a refused upload in English; the ones the user can act on
+ * are shown translated, anything else as the switch said it. */
+var FW_REASONS=[["does not fit in free flash","fw_nospace"],
+                ["overlaps its staging area","fw_overlap"],
+                ["checksum failed","fw_crc_err"],
+                ["flash too small","fw_small"],
+                ["exceeds image area","fw_big"]];
+function fwReason(why){
+  for(var i=0;i<FW_REASONS.length;i++)
+    if(why.indexOf(FW_REASONS[i][0])>=0)return FW_REASONS[i][1];
+  return null;
+}
 $("fwfile").addEventListener("change",function(){
   var f=this.files[0];
   fwBuf=null;
@@ -2263,7 +2299,10 @@ $("fwfile").addEventListener("change",function(){
 });
 $("fwup").addEventListener("click",function(){
   if(!fwBuf)return;
-  confirmModal(t("fw_q"),t("fw_d"),function(){
+  /* An upload runs for minutes and the session that lets it in may have run
+   * out while the file was picked; the refusal that follows cannot be told
+   * apart from a bad image, so ask first: api() redirects on a 401. */
+  function startUpload(){
     var form=new FormData();
     form.append("uploadedfile",fwBuf,fwBuf.name);
     var xhr=new XMLHttpRequest();
@@ -2294,9 +2333,12 @@ $("fwup").addEventListener("click",function(){
       if(xhr.status===200){
         st.textContent=t("fw_verified");
         fwSettle(st,true);
+      }else if(xhr.status===401){
+        location.href="/login.html";
       }else{
-        var why=(xhr.responseText||"").trim().split("\n")[0];
-        st.textContent="\u2715 "+t("fw_rejected")+" (HTTP "+xhr.status+(why?": "+why:"")+")";
+        var why=(xhr.responseText||"").trim().split("\n")[0].replace(/^NO:\s*/,"");
+        var key=fwReason(why);
+        st.textContent="\u2715 "+(key?t(key):t("fw_rejected")+" (HTTP "+xhr.status+(why?": "+why:"")+")");
         $("fwup").disabled=false;
       }
     })};
@@ -2306,8 +2348,17 @@ $("fwup").addEventListener("click",function(){
     })};
     xhr.open("POST","/upload");
     xhr.send(form);
+  }
+  confirmModal(t("fw_q"),t("fw_d"),function(){
+    api("/information.json").then(startUpload,function(){});
   });
 });
+/* An update keeps the switch off the network while it copies the staged sectors
+ * and clears the staging pool: measured ~210 s for a full image on a 512 KiB
+ * board, ~270 s with every pool sector in use. The wait below is generous on
+ * purpose - a message that fires during a healthy update is worse than a slow
+ * one. */
+var FW_WAIT_MAX=420;
 /* knownGood: the firmware answered 200, so an early reply only means the
  * reset is still pending. Without a verdict an early reply means no reboot
  * happened, i.e. the image was rejected. Raw fetch: a 401 from the fresh
@@ -2336,8 +2387,8 @@ function fwSettle(st,knownGood){
       down=true;
       waited+=3;
       st.textContent=t("fw_rebooting");
-      if(waited>150){
-        st.textContent=t("fw_timeout");
+      if(waited>FW_WAIT_MAX){
+        st.textContent=t("fw_timeout",{s:FW_WAIT_MAX});
         $("fwup").disabled=false;
         return;
       }

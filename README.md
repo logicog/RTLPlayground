@@ -192,6 +192,11 @@ Go to "Firmware update" tab, select the correct file.
 > Check one more time that your device matches the machine type before flashing.
 > Be sure you have a backup of the original firmware before diving in RTLPlayground.
 
+> [!NOTE]
+> On a `512 KiB` flash there is no room for a second complete image. The upload is then
+> staged into the flash the running image leaves free, which is refused with a reason in the
+> web UI when the image no longer fits; see [Firmware Updates](doc/update.md).
+
 Finally, push the Upload File Button and you're done !
 
 

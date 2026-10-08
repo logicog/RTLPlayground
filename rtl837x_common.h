@@ -105,6 +105,26 @@ struct vlan_tag {
 // Store update image after running image
 #define FIRMWARE_UPLOAD_START 0x80000
 
+// State of an update in progress: one sector in the padding at the end of the
+// image, above the live configuration and below the two trailer bytes
+#define UPDATE_STATE_START 0x7e000
+#define UPDATE_STATE_MAGIC 0x52505531	// "RPU1"
+#define UPDATE_STATE_APPLY 0x01		// image verified, copy started
+#define UPDATE_STATE_STAGING 0x02	// image staged in the pool
+#define UPDATE_STATE_ZEROING 0x04	// staged sectors copied, zeroing the rest
+
+// 4 KiB sectors in a firmware image, see Makefile IMAGESIZE
+#define UPDATE_SECTORS 128
+
+// A firmware image, see Makefile IMAGESIZE; less flash cannot hold it
+#define IMAGE_SIZE ((uint32_t)UPDATE_SECTORS * FLASH_SECTOR_SIZE)
+
+// A complete image checksums to this; the browser and the switch check it
+#define IMAGE_CRC 0xb001
+
+// Sectors the apply writes; the live configuration and above keep the running one
+#define UPDATE_APPLY_SECTORS (CONFIG_START / FLASH_SECTOR_SIZE)
+
 // Constants for the circular command buffer, the size must be 2^n
 #define CMD_HISTORY_SIZE 0x800
 #define CMD_HISTORY_MASK (CMD_HISTORY_SIZE - 1)

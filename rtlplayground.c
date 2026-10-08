@@ -8,6 +8,8 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
+#include "update_pool.h"
+#include "update_apply.h"
 #include "rtl837x_pins.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
@@ -1553,17 +1555,24 @@ void check_and_flash_update_image(void)
 {
 	flash_read_jedecid(); // This initializes also __xdata flash_size variable
 
-	print_string(get_flash_size_str()); print_string(" flash size detected. (1 MB is needed for image updating)\n");
-	if (flash_size < FIRMWARE_UPLOAD_START*2) {
-		print_string("Flash too small for updating; skipping update check\n");
+	print_string(get_flash_size_str()); print_string(" flash size detected.\n");
+
+	update_state_read();
+	if (update_state.magic == UPDATE_STATE_MAGIC
+	    && (update_state.flags & UPDATE_STATE_STAGING)) {
+		update_apply_staged();
 		return;
 	}
-
 	print_string("Checking for update image in flash... ");
-	// Check if an update image is in flash
-	flash_region.addr = FIRMWARE_UPLOAD_START;
-	flash_region.len = 0x100;
-	flash_read_bulk(flash_buf);
+	// parts with room hold a complete second image above the running one
+	if (flash_size >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+		flash_region.addr = FIRMWARE_UPLOAD_START;
+		flash_region.len = 0x100;
+		flash_read_bulk(flash_buf);
+	} else {
+		flash_buf[0] = 0;
+		flash_buf[1] = 0;
+	}
 	if (flash_buf[0] == 0x00 && flash_buf[1] == 0x40)
 	{
 		// Yes, flash the new image to the start of flash and reset
@@ -1587,26 +1596,43 @@ void check_and_flash_update_image(void)
 			source += FLASH_BUF_SIZE;
 			if (i%16 == 0) write_char('.');
 		}
-		if (crc_value == 0xb001) {
+		if (crc_value == IMAGE_CRC) {
 			print_string("Checksum OK.\nUpdate in progress, moving firmware to start of flash");
-			source = FIRMWARE_UPLOAD_START;
-			// Don't copy the config area at the end of flash
-			for (i = 0; i < CONFIG_START/FLASH_BUF_SIZE; i++) {
+			/* Mark the copy as running before the first erase: if the switch is
+			 * reset while it runs, the staged image is still in flash and the
+			 * copy is redone on the next boot rather than booting a half-written
+			 * image. */
+			update_state.magic = UPDATE_STATE_MAGIC;
+			update_state.flags = UPDATE_STATE_APPLY;
+			update_state.crc = crc_value;
+			update_state_write();
+			/* Copy from the top down, so the very last thing written is the
+			 * prefetch header and reset vector in bank 0 sector 0: an
+			 * interrupted copy then still leaves a bootable image that resumes
+			 * the update. The config area at the end of flash stays untouched. */
+			source = FIRMWARE_UPLOAD_START + CONFIG_START - FLASH_BUF_SIZE;
+			dest = CONFIG_START - FLASH_BUF_SIZE;
+			for (i = CONFIG_START/FLASH_BUF_SIZE; i > 0; i--) {
 				flash_region.addr = source;
 				flash_region.len = FLASH_BUF_SIZE;
 				flash_read_bulk(flash_buf);
-				if (i%8 == 0) {
+				/* Erase a sector when its highest block comes around */
+				if ((dest & (FLASH_SECTOR_SIZE - 1)) == FLASH_SECTOR_SIZE - FLASH_BUF_SIZE) {
 					flash_region.addr = dest;
 					flash_sector_erase();
-					if (i%16 == 0) write_char('.');
 				}
+				if ((i & 0x0F) == 0) write_char('.');
 				flash_region.addr = dest;
 				flash_region.len = FLASH_BUF_SIZE;
 				flash_write_bytes(flash_buf);
-				dest += FLASH_BUF_SIZE;
-				source += FLASH_BUF_SIZE;
+				dest -= FLASH_BUF_SIZE;
+				source -= FLASH_BUF_SIZE;
 			}
-			print_string("Done.\nDeleting uploaded flash image");
+			print_string("Done.\n");
+			/* The image is complete now; clear the marker before the staging
+			 * area is erased, so a reset during that erase is harmless. */
+			update_state_clear();
+			print_string("Deleting uploaded flash image");
 			dest = FIRMWARE_UPLOAD_START;
 			for (register uint8_t i=0; i < 128; i++) // TODO: Erasing the entire 512kByte upload area is probably not necessary
 			{
@@ -1630,6 +1656,10 @@ void check_and_flash_update_image(void)
 	}
 	else
 	{
+		if (update_state.magic == UPDATE_STATE_MAGIC && (update_state.flags & UPDATE_STATE_APPLY)) {
+			print_string("staged image gone, cannot resume; clearing update state\n");
+			update_state_clear();
+		}
 		print_string("no update image found.\n");
 	}
 }

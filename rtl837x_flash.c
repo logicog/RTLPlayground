@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include "rtl837x_common.h"
+#include "rtl837x_flash.h"
 #include "rtl837x_sfr.h"
 
 __xdata uint8_t dio_enabled;

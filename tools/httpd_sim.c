@@ -825,15 +825,15 @@ void launch(struct Server *server)
 						send_bad_request(new_socket);
 						goto done;
 					}
-					// We skip the intial parts as part of the header
-					do {
-						p = skip_boundary(p);
-						if (!*p)
-							goto bad_request;
-						p = scan_header(p);
-						if (!*p || !content_type)
-							goto bad_request;
-					} while (!is_word(content_type, "application/octet-stream"));
+					// The first part is the file, whatever Content-Type the
+					// client typed for it: Chrome sends application/macbinary
+					// for a .bin, Firefox application/octet-stream
+					p = skip_boundary(p);
+					if (!*p)
+						goto bad_request;
+					p = scan_header(p);
+					if (!*p || !content_type)
+						goto bad_request;
 					printf("Have content: >%s<\n", content_type);
 
 					p += 4; // Skip \r\n\r\n after content type
