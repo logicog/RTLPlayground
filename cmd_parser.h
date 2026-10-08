@@ -8,6 +8,7 @@
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __bit __at(0x03) cmd_available;
 extern __xdata uint8_t err_status;
+extern __xdata uint8_t cmd_quiet;
 
 /* Health instrumentation, built with HEALTH=1. Without it the hooks below
  * compile to nothing and the "health" command does not exist. */
