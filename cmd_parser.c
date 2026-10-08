@@ -14,6 +14,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_rma.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_storm.h"
@@ -1951,6 +1952,8 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "stp")) {
 			stp_parse();
+		} else if (cmd_compare(0, "rma")) {
+			rma_cmd();
 #ifdef HEALTH
 		} else if (cmd_compare(0, "health")) {
 			health_show();
