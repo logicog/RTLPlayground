@@ -1612,14 +1612,16 @@ void parse_storm(void)
 	if (cmd_compare(4, "pps")) {
 		if (!rate || rate > 0xfffff)
 			goto err;
-		storm_set(port, type, rate, 1);
+		d = 1;
 	} else if (cmd_compare(4, "kbps")) {
 		if (!rate || rate > 10000000)
 			goto err;
-		storm_set(port, type, rate, 0);
+		d = 0;
 	} else {
 		goto err;
 	}
+	if (!storm_set(port, type, rate, d))
+		print_string("storm: no free meter\n");
 	return;
 
 err:

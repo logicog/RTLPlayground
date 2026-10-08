@@ -843,12 +843,12 @@ void send_storm(void)
 			char_to_html(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? '1' : '0');
 		slen += strtox(outbuf + slen, "\",\"pps\":\"");
 		for (t = 0; t < STORM_TYPES; t++) {
-			idx = STORM_METER(i, t);
+			idx = storm_meter(i, t);
 			char_to_html(reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f) ? '1' : '0');
 		}
 		slen += strtox(outbuf + slen, "\",\"rate\":\"");
 		for (t = 0; t < STORM_TYPES; t++) {
-			reg_read_m(RTL837X_METER_RATE + (STORM_METER(i, t) << 2));
+			reg_read_m(RTL837X_METER_RATE + (storm_meter(i, t) << 2));
 			byte_to_html(sfr_data[1]);
 			byte_to_html(sfr_data[2]);
 			byte_to_html(sfr_data[3]);
