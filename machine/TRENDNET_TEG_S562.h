@@ -1,6 +1,0 @@
-#ifndef _MACHINE_TRENDNET_TEG_S562_H_
-#define _MACHINE_TRENDNET_TEG_S562_H_
-
-#define MACHINE_MODEL "Trendnet TEG-S562"
-
-#endif

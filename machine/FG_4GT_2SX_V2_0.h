@@ -1,6 +1,0 @@
-#ifndef _MACHINE_FG_4GT_2SX_V2_0_H_
-#define _MACHINE_FG_4GT_2SX_V2_0_H_
-
-#define MACHINE_MODEL "FG-4GT-2SX_V2.0"
-
-#endif

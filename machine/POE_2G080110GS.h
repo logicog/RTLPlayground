@@ -1,6 +1,0 @@
-#ifndef _MACHINE_POE_2G080110GS_H_
-#define _MACHINE_POE_2G080110GS_H_
-
-#define MACHINE_MODEL "MokerLink POE-2G080110GS"
-
-#endif

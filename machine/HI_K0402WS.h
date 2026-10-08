@@ -1,6 +1,0 @@
-#ifndef _MACHINE_HI_K0402WS_H_
-#define _MACHINE_HI_K0402WS_H_
-
-#define MACHINE_MODEL "PCB-K0402WS-V3.0"
-
-#endif

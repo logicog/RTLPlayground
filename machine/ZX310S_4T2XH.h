@@ -1,6 +1,0 @@
-#ifndef _MACHINE_ZX310S_4T2XH_H_
-#define _MACHINE_ZX310S_4T2XH_H_
-
-#define MACHINE_MODEL "ZX310S-4T2XH"
-
-#endif

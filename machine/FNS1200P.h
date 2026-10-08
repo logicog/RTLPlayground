@@ -1,6 +1,0 @@
-#ifndef _MACHINE_FNS1200P_H_
-#define _MACHINE_FNS1200P_H_
-
-#define MACHINE_MODEL "FNS-1200P"
-
-#endif

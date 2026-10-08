@@ -1,6 +1,0 @@
-#ifndef _MACHINE_SWTG018AS_A_V_2_0_H_
-#define _MACHINE_SWTG018AS_A_V_2_0_H_
-
-#define MACHINE_MODEL "SWTG018AS-A V2.0"
-
-#endif

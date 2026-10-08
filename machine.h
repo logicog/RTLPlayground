@@ -3,19 +3,54 @@
 
 #include <stdint.h>
 
-#define MACHINE_STR_HELPER(x)  #x
-#define MACHINE_STR(x) MACHINE_STR_HELPER(x)
+/*
+ * Select your machine type below
+ */
+// Legacy KP-9000 4+2 targets. Prefer the PCB-revision-specific targets below.
+// #define MACHINE_KP_9000_6XHML_X2
+// #define MACHINE_KP_9000_6XH_X2
 
+// KP-9000 4+2 targets by PCB silkscreen revision.
+// #define MACHINE_KP_9000_6XH_X2_V1_1
+// #define MACHINE_KP_9000_6XHML_X2_V1_1
+// #define MACHINE_KP_9000_6XH_X2_V1_2
+// #define MACHINE_KP_9000_6XHML_X2_V1_2
+// #define MACHINE_KP_9000_6XH_X2_V2_1
+// #define MACHINE_KP_9000_6XHML_X2_V2_1
 
-#define MACHINE_DEF_DIR machine
-
-#ifndef MACHINE_NAME
-	#define MACHINE_NAME default_machine
-#endif
-
-#define MACHINE_INC(dir,file) MACHINE_STR(dir/file)
-
-#include  MACHINE_INC(MACHINE_DEF_DIR,MACHINE_NAME.h)
+// #define MACHINE_KP_9000_6XH_X
+// #define MACHINE_KP_9000_9XH_X_EU
+// #define MACHINE_KP_9000_9XHML_X_V2_2
+// #define MACHINE_KP_9000_9XHML_X_V3_1
+// #define MACHINE_KP_9000_9XHML_X_V3_2
+// #define MACHINE_SWGT024_V2_0_MANAGED
+// #define MACHINE_SWGT024_V2_0_UNMANAGED
+// #define MACHINE_TRENDNET_TEG_S562
+// #define MACHINE_HG0402XG_V1_1
+// #define MACHINE_SWTG018AS_A_V_2_0
+// #define MACHINE_SWTGW218AS
+// #define MACHINE_PCB_SWTG018AS_V2_1_0
+// #define MACHINE_PCB_K0402WS_V3
+// #define MACHINE_PCB_K0402WS_V2
+// #define MACHINE_K0501W_V2_0
+// #define MACHINE_LIANGUO_ZX_SWTGW215AS
+// #define MACHINE_ZX310S_4T2XH
+// #define MACHINE_ZX310S_4T2XT
+// #define MACHINE_STEAMEMO_IG204_V1
+// #define MACHINE_DEFAULT_8C_1SFP
+// #define MACHINE_HI_K0801WS
+// #define MACHINE_FNS1200P
+// #define MACHINE_PCB_SWTG024AS_A_2_0_1
+// #define MACHINE_SWTG024AS_A_2_0_1_5C_1SFP
+// #define MACHINE_SWTG024AS_V2_0
+// #define MACHINE_FG_4GT_2SX_V2_0
+// #define MACHINE_FG_8GT_1SX
+// #define MACHINE_LIANGUO_HYWS_SGT0108S
+// #define MACHINE_POE_2G080110GS
+// #define MACHINE_PB_2132
+// #define MACHINE_HASIVO_S600W_4GT_2XGT_SE
+// #define MACHINE_HASIVO_S1100WP_8GT_1SX_SE
+// #define MACHINE_F7008_2_5
 
 #define LED_27 1
 // SYSTEM LED

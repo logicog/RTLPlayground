@@ -1,6 +1,0 @@
-#ifndef _MACHINE_KP_9000_9XHML_X_V3_2_H_
-#define _MACHINE_KP_9000_9XHML_X_V3_2_H_
-
-#define MACHINE_MODEL "keepLink KP-9000-9XHML-X V3.2"
-
-#endif

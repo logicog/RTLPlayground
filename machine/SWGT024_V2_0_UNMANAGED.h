@@ -1,6 +1,0 @@
-#ifndef _MACHINE_SWGT024_V2_0_UNMANAGED_H_
-#define _MACHINE_SWGT024_V2_0_UNMANAGED_H_
-
-#define MACHINE_MODEL "SWGT024 V2.0 Unmanaged"
-
-#endif

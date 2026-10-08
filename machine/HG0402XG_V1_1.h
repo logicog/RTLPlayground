@@ -1,6 +1,0 @@
-#ifndef _MACHINE_HG0402XG_V1_1_H_
-#define _MACHINE_HG0402XG_V1_1_H_
-
-#define MACHINE_MODEL "HG0402XG V1.1"
-
-#endif

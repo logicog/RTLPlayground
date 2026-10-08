@@ -1,6 +1,0 @@
-#ifndef _MACHINE_KP_9000_6XH_X2_V2_1_H_
-#define _MACHINE_KP_9000_6XH_X2_V2_1_H_
-
-#define MACHINE_MODEL "keepLink KP-9000-6XH-X2 V2.1"
-
-#endif
