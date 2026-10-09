@@ -5,6 +5,7 @@ __sfr16 __at(0xa2a3) SFR_REG_ADDR_U16;
 __sfr __at(0xa2) SFR_REG_ADDRH;
 __sfr __at(0xa3) SFR_REG_ADDRL;
 __sfr16 __at(0xa6a7) SFR_DATA_U16;
+__sfr16 __at(0xa7a6) SFR_DATA_U16LE;
 // Disabling until the SDCC bug #4070 is fixed.
 // Generate wrong address for `a4` location.
 // Both read from and write to `SFR_DATA_U32`.

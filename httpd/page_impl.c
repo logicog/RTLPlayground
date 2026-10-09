@@ -233,7 +233,7 @@ void send_sfp_info(uint8_t sfp)
 			return;
 		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
 			continue;
-		uint8_t c = sfp_buf[i & 0xf];
+		uint8_t c = i2c_buf[i & 0xf];
 		if (c)
 			json_char_to_html(c);
 	}
@@ -250,7 +250,7 @@ void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 		return;
 
 	for (uint8_t i = 0; i < len; i++)
-		byte_to_html(sfp_buf[i]);
+		byte_to_html(i2c_buf[i]);
 }
 
 
@@ -305,16 +305,19 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
 
-	if (machine.n_sfp) {
+
+	/* TODO: Now mimics the old situation, need to replace with other solution. */
+	bool sds0_is_sfp = is_slot_sfp(0);
+	bool sds1_is_sfp = is_slot_sfp(1);
+	if (sds0_is_sfp || sds1_is_sfp) {
 		slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
-		send_sfp_info(0);
-		if (machine.n_sfp == 2) {
+		send_sfp_info(!sds0_is_sfp);
+		if (sds0_is_sfp && sds1_is_sfp) {
 			slen += strtox(outbuf + slen, "\",\"sfp_slot_1\":\"");
 			send_sfp_info(1);
 		}
 	}
 	char_to_html('"');
-
 	char_to_html('}');
 }
 
@@ -352,10 +355,9 @@ void send_vlan(uint16_t vlan)
  */
 bool send_counters(uint8_t phys_port)
 {
-	uint8_t phys_port_idx = phys_port - 1;
-	if (phys_port_idx > (machine.max_port - machine.min_port))
+	uint8_t log_port = phys_to_log_port(phys_port);
+	if (IS_PHYS_PORT_INVALID(log_port))
 		goto err;
-	uint8_t log_port = machine.phys_to_log_port[phys_port_idx];
 
 	dbg_string("send_counters called: "); dbg_byte(phys_port_idx); dbg_char('\n');
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -748,9 +750,11 @@ void send_eee(void)
 	char_to_html('[');
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
-		itoa_html(machine.log_to_phys_port[i]);
 
-		if (machine.is_sfp[i]) {
+		uint8_t phys_port = machine.log_to_phys_port[i];
+		itoa_html(phys_port);
+
+		if (port_to_sds_usage(i) == SDS_SFP) {
 			slen += strtox(outbuf + slen, ",\"isSFP\":1");
 		} else {
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"eee\":\"");
@@ -926,8 +930,9 @@ void send_status(void)
 		}
 		slen += strtox(outbuf + slen, "\"");
 
-		if (machine.is_sfp[i]) {
-			uint8_t sfp = machine.is_sfp[i] - 1;
+		int8_t sds = port_to_sds(i);
+		if (sds >= 0 && machine.sds_settings[sds].usage == SDS_SFP) {
+			uint8_t sfp = (uint8_t)sds;
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
 				bool_to_html(1);
@@ -967,7 +972,7 @@ void send_status(void)
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
 				str_x_to_html(sfp_module_serial[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
-				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
+				if (machine.sds_settings[sfp].sds_settings_t.sfp.pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");
 				} else {
 					bool_to_html(sfp_pins_last & (0x2 << (sfp << 2)));

@@ -2,6 +2,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_i2c.h"
 #include "machine.h"
 
 extern __code const struct machine machine;
@@ -97,52 +98,14 @@ void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) __banked{
 
 
 /*
- * Read up to 16 consecutive registers of the EEPROM via I2C into sfp_buf
+ * Read up to 16 consecutive registers of the EEPROM via I2C into i2c_buf
  */
 bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
 {
 	uint8_t dev;
-	uint8_t val;
-
-	len--;
-	if (len > 15)
-		return false;
 
 	dev = (reg & 0x80) ? 0x51 : 0x50;	// 0x51 holds the diagnostics, 0x50 the module data
 	reg &= 0x7f;
 
-	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
-
-	REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00,
-		  0x1 << (I2C_MEM_ADDR_WIDTH - 16) | len,
-		  (dev >> 5) | machine.sfp_port[slot].i2c,
-		  ((dev << 3) & 0xff) | 0x1);
-
-	do {
-		reg_read(RTL837X_REG_I2C_CTRL);
-	} while (SFR_DATA_0 & 0x1);
-
-	if (SFR_DATA_0 & 0x2)
-		return false;
-
-	for (uint8_t i = 0; i <= len; i++) {
-		switch (i & 0x3) {
-		case 0:
-			reg_read(RTL837X_REG_I2C_OUT + i);
-			val = SFR_DATA_0;
-			break;
-		case 1:
-			val = SFR_DATA_8;
-			break;
-		case 2:
-			val = SFR_DATA_16;
-			break;
-		default:
-			val = SFR_DATA_24;
-			break;
-		}
-		sfp_buf[i] = val;
-	}
-
-	return true;
+	return i2c_read(slot, dev, reg, len);
 }
