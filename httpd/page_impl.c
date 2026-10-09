@@ -755,11 +755,10 @@ void send_lldp(void)
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
 			json_char_to_html(port_names[i][j]);
 		}
-		slen += strtox(outbuf + slen, "\"");
 
-		slen += strtox(outbuf + slen, ",\"enabled\":\"");
+		slen += strtox(outbuf + slen, "\",\"permitted\":");
 		bool_to_html(1 & (lldp_logical_port_status >> i));
-		slen += strtox(outbuf + slen, "\"}");
+		slen += strtox(outbuf + slen, "}");
 
 		if (i < machine.max_port)
 			char_to_html(',');
