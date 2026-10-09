@@ -185,6 +185,23 @@ static void t_l2_page(void)
 	CHECK(balanced(), "every page is valid JSON");
 }
 
+static void t_status_macs(void)
+{
+	const char *p1, *end, *mac;
+
+	printf("[test] /status.json reports the MAC addresses learned on each port\n");
+	hw_reset(); out_reset();
+	hw_reg_set(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (1 << 2), 0x21);
+	send_status();
+	p1 = strstr(body(), "\"logPort\":1,");
+	end = p1 ? strchr(p1, '}') : NULL;
+	mac = p1 ? strstr(p1, "\"macs\":\"0x21\"") : NULL;
+	CHECK(mac && mac < end, "port 1 shows its learned count");
+	CHECK(has("\"macs\":\"0x0\""), "a port without learned addresses shows 0");
+	CHECK(slen <= TCP_OUTBUF_SIZE, "fits the buffer");
+	CHECK(balanced(), "valid JSON");
+}
+
 static void t_status_counters(void)
 {
 	printf("[test] /status.json prints 64-bit packet counters in full\n");
@@ -211,6 +228,7 @@ int main(void)
 	t_l2();
 	t_l2_page();
 	t_status_counters();
+	t_status_macs();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }
