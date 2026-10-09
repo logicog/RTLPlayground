@@ -447,7 +447,7 @@ void send_mtu(int s)
 		json_object_object_add(v, "mtu", json_object_new_string(mtu));
 		json_object_array_add(mtus, v);
 	}
-        write(s, header, strlen(header));
+	write(s, header, strlen(header));
 
 	jstring = json_object_to_json_string_ext(mtus, JSON_C_TO_STRING_PLAIN);
         write(s, jstring, strlen(jstring));
@@ -456,25 +456,31 @@ void send_mtu(int s)
 
 void send_lldp(int s)
 {
+	struct json_object *c, *portStatuses, *p;
+	const char *jstring;
 	char *header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
-	//portNum represents physical ports
-	char *body = "{\"on\": 1,\"portStatus\":[\
-		{\"portNum\":1,\"logPort\":1,\"name\":\"PC\",\"enabled\":1},\
-		{\"portNum\":2,\"logPort\":2,\"name\":\"\",\"enabled\":1},\
-		{\"portNum\":3,\"logPort\":3,\"name\":\"\",\"enabled\":1},\
-		{\"portNum\":4,\"logPort\":4,\"name\":\"\",\"enabled\":0},\
-		{\"portNum\":5,\"logPort\":5,\"name\":\"\",\"enabled\":1},\
-		{\"portNum\":6,\"logPort\":6,\"name\":\"TV\",\"enabled\":1},\
-		{\"portNum\":7,\"logPort\":7,\"name\":\"\",\"enabled\":0},\
-		{\"portNum\":8,\"logPort\":8,\"name\":\"Router\",\"enabled\":1},\
-		{\"portNum\":9,\"logPort\":9,\"name\":\"\",\"enabled\":1},\
-		{\"portNum\":10,\"logPort\":10,\"name\":\"Uplink\",\"enabled\":1}\
-	]}";
+	c = json_object_new_object();
+	json_object_object_add(c, "on", json_object_new_int(1));
+	portStatuses = json_object_new_array_ext(PORTS);
+
+	for (int i = 1; i <= PORTS; i++) {
+		p = json_object_new_object();
+		json_object_object_add(p, "portNum", json_object_new_int(i));
+		json_object_object_add(p, "logPort", json_object_new_int(i-1));
+		json_object_object_add(p, "name", json_object_new_string(""));
+		json_object_object_add(p, "permitted", json_object_new_int(1));
+		json_object_array_add(portStatuses, p);
+	}
+
+	json_object_object_add(c, "portStatus", portStatuses);
 
 	write(s, header, strlen(header));
-	write(s, body, strlen(body));
+
+	jstring = json_object_to_json_string_ext(c, JSON_C_TO_STRING_PLAIN);
+	write(s, jstring, strlen(jstring));
+	json_object_put(c);
 }
 
 void send_cmd_log(int s)

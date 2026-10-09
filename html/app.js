@@ -1852,7 +1852,7 @@ function lldpLoad(){
           postCmd("port "+p.portNum+" lldp "+(this.checked?"permit":"block"))
             .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
         }}),h("i")]);
-      sw.firstChild.checked=p.enabled;
+      sw.firstChild.checked=p.permitted;
       tr.insertCell().appendChild(sw);
     });
   });
