@@ -200,6 +200,18 @@ void dns_show(void) __banked
 	print_string(", from DHCP ");
 	print_ip(dhcp_state.dns);
 	write_char('\n');
+	if (!dns_state.name[0])
+		return;
+	print_string("Last lookup ");
+	print_string_x(dns_state.name);
+	print_string(": ");
+	if (dns_state.status == DNS_DONE)
+		print_ip(dns_state.addr);
+	else if (dns_state.status == DNS_PENDING)
+		print_string("pending");
+	else
+		print_string("failed");
+	write_char('\n');
 }
 
 

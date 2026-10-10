@@ -6,8 +6,12 @@ for anything else that is given a name instead of an address.
 ```
 dns server <ip> [<ip>]   # one or two servers, 0.0.0.0 removes them
 dns lookup <name>        # resolve a name and print the address
-dns                      # show the servers
+dns                      # show the servers and the last lookup
 ```
+
+The answer to a lookup arrives after the command has returned, so it is
+printed on the serial console and in the syslog. In the console of the web
+interface, run `dns` afterwards to see it.
 
 Without a configured server the resolver uses the one handed out by DHCP.
 Only address records are looked up; a query goes to the servers in turn,
