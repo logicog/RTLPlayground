@@ -1,6 +1,7 @@
 .gitignore
 .idea/
 output/
+output-main/
 html_data.c
 html_data.h
 version.h

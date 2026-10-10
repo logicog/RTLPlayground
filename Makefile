@@ -34,7 +34,10 @@ endif
 # The board definition being built: one file per MACHINE_* symbol in machine.h.
 MACHINE_SRC = machine/$(MACHINE).c
 
-BUILDDIR = output/$(MACHINE)
+ifndef BUILDDIR
+	BUILDDIR = output/$(MACHINE)
+endif
+
 VERSION_HEADER := version.h
 
 GIT_VERSION := $(shell git rev-parse --short HEAD)
