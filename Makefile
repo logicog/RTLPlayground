@@ -7,17 +7,20 @@ HTML_LOCATION = 262144
 ifeq ($(origin CC),default)
 CC = sdcc
 endif
-CC_FLAGS = -mmcs51 -I. -Ihttpd -Iuip
+CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
 ASM ?= sdas8051
 AFLAGS= -plosgff
 
 SUBDIRS := tools
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
-ifeq ($(MACHINE),)
-	MACHINE:= $(shell grep "^\s*#define MACHINE_" machine.h | sed "s/^\s*#define MACHINE_//")
-else
+# $MACHINE selects machine/$(MACHINE).c as the board definition and is passed
+# on as -DMACHINE_$(MACHINE), which the rest of the firmware tests with
+# #if defined(MACHINE_...), and as -DMACHINE_NAME, which machine.h uses to
+# include machine/$(MACHINE).h. Both take the same value, so they cannot drift.
+ifneq ($(MACHINE),)
 	CC_FLAGS += -DMACHINE_$(MACHINE)
+	CC_FLAGS += -DMACHINE_NAME=$(MACHINE)
 endif
 # Health instrumentation and the "health" console command: HEALTH=1 gmake ...
 ifneq ($(HEALTH),)
@@ -27,6 +30,9 @@ endif
 ifeq ($(CI),1)
 	CC_FLAGS += --Werror
 endif
+
+# The board definition being built: one file per MACHINE_* symbol in machine.h.
+MACHINE_SRC = machine/$(MACHINE).c
 
 BUILDDIR = output/$(MACHINE)
 VERSION_HEADER := version.h
@@ -51,16 +57,30 @@ BUILD_DATE := $(shell date -u -d @$(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S" 2>/d
 	|| date -u -r $(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S")
 endif
 
-all: create_build_dir $(VERSION_HEADER) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
+# $(MACHINE_SRC) is listed here so an unknown $MACHINE fails before anything else
+# is built, including the tools/ subdirectory.
+all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
 create_build_dir:
 	mkdir -p "$(BUILDDIR)"
 	mkdir -p "$(BUILDDIR)/uip"
 	mkdir -p "$(BUILDDIR)/httpd"
+	mkdir -p "$(BUILDDIR)/machine"
 
-# Keep machine.c in first position to fail immediately on invalid $MACHINE value
+# Every machine is a pair machine/<MACHINE>.c + machine/<MACHINE>.h. Selecting
+# them by name means no #if/#elif chain, so an unknown or empty $MACHINE is
+# caught here instead of by a #error further down the build.
+$(MACHINE_SRC):
+	@echo "ERROR: MACHINE='$(MACHINE)' has no definition (expected $(MACHINE_SRC))." >&2
+	@echo "       Every machine is one file pair under machine/, named after the" >&2
+	@echo "       MACHINE_* symbol it defines; see machine/*.c for the full list." >&2
+	@echo "       Example: make MACHINE=KP_9000_6XHML_X2" >&2
+	@false
+
+# Keep the per-machine definition in first position to fail immediately on an
+# invalid $MACHINE value
 SRCS = \
-	machine.c \
+	$(MACHINE_SRC) \
 	machine_init.c \
 	cmd_editor.c \
 	cmd_parser.c \
@@ -174,15 +194,22 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
+# Every machine/ definition is compiled, so a machine added to machine/ is
+# covered without registering it anywhere. The machine-specific defines are
+# filtered out of $(CC_FLAGS) and supplied per iteration instead, so this also
+# works as "make machine_check MACHINE=...".
+MACHINE_DEFS := $(sort $(patsubst machine/%.c,%,$(wildcard machine/*.c)))
+MACHINE_LESS_CC_FLAGS = $(filter-out -DMACHINE_%,$(CC_FLAGS))
+
 .PHONY:
 machine_check:
 	@mkdir -p $(BUILDDIR)/tmp
 	@set -eo pipefail; \
-	for MACHINE in `grep -E '^[[:space:]]*(//[[:space:]]*)?#define MACHINE_' machine.h | sed -E 's%^[[:space:]]*(//[[:space:]]*)?#define MACHINE_%%' | awk '{print $$1}' | sort -u`; \
+	for MACHINE in $(MACHINE_DEFS); \
 	do \
 	echo "Checking $${MACHINE}"; \
-	$(CC) $(CC_FLAGS) -DMACHINE_$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine.c; \
-	$(CC) $(CC_FLAGS) -DMACHINE_$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine_init.c; \
+	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_$${MACHINE} -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine/$${MACHINE}.c; \
+	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_$${MACHINE} -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine_init.c; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
 

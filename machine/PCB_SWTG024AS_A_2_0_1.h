@@ -1,0 +1,6 @@
+#ifndef _MACHINE_PCB_SWTG024AS_A_2_0_1_H_
+#define _MACHINE_PCB_SWTG024AS_A_2_0_1_H_
+
+#define MACHINE_MODEL "PCB-SWTG024AS-A-2.0.1"
+
+#endif
