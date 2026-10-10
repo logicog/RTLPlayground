@@ -66,6 +66,8 @@ var LANG = {
         i_mac: "MAC",
         i_fw: "Firmware",
         i_built: "Built",
+        i_uptime: "Uptime",
+        i_uptime_d: "{d} d {t}",
         i_hw: "Hardware",
         i_pcb: "PCB",
         i_temp: "Temperature",
@@ -448,6 +450,8 @@ var LANG = {
         i_mac: "MAC",
         i_fw: "ファームウェア",
         i_built: "ビルド日",
+        i_uptime: "稼働時間",
+        i_uptime_d: "{d}日 {t}",
         i_hw: "ハードウェア",
         i_pcb: "PCB",
         i_temp: "温度",
@@ -755,6 +759,8 @@ var LANG = {
         i_mac: "MAC",
         i_fw: "固件",
         i_built: "构建日期",
+        i_uptime: "运行时间",
+        i_uptime_d: "{d}天 {t}",
         i_hw: "硬件",
         i_pcb: "PCB",
         i_temp: "温度",
@@ -1136,6 +1142,8 @@ var LANG = {
         i_mac: "MAC",
         i_fw: "Firmware",
         i_built: "Compilado",
+        i_uptime: "Tiempo en marcha",
+        i_uptime_d: "{d} d {t}",
         i_hw: "Hardware",
         i_pcb: "PCB",
         i_flash: "Flash",
@@ -1522,6 +1530,8 @@ var LANG = {
         i_mac: "Adresse MAC",
         i_fw: "Micro logiciel",
         i_built: "Compilé le",
+        i_uptime: "Temps de fonctionnement",
+        i_uptime_d: "{d} j {t}",
         i_hw: "Matériel",
         i_pcb: "PCB",
         i_temp: "Température",
@@ -1869,6 +1879,8 @@ var LANG = {
         i_mac: "MAC",
         i_fw: "Firmware",
         i_built: "Erstellt",
+        i_uptime: "Betriebszeit",
+        i_uptime_d: "{d} T {t}",
         i_hw: "Hardware",
         i_pcb: "PCB",
         i_temp: "Temperatur",
@@ -2872,6 +2884,22 @@ function portDetail(i) {
     S.detail = i;
 }
 
+/* "0x00015180" seconds -> "1 d 00:00:00" in the page language */
+function fmtUptime(hex) {
+    var s = parseInt(hex, 16);
+    if (isNaN(s)) return "";
+
+    function p(n) {
+        return (n < 10 ? "0" : "") + n
+    }
+    var t3 = p(Math.floor(s / 3600) % 24) + ":" + p(Math.floor(s / 60) % 60) + ":" + p(s % 60),
+        d = Math.floor(s / 86400);
+    return d ? t("i_uptime_d", {
+        d: d,
+        t: t3
+    }) : t3;
+}
+
 function renderInfo() {
     var m = [
         ["i_host", "hostname"],
@@ -2881,6 +2909,7 @@ function renderInfo() {
         ["i_mac", "mac_address"],
         ["i_fw", "sw_ver"],
         ["i_built", "build_date"],
+        ["i_uptime", "uptime"],
         ["i_hw", "hw_ver"],
         ["i_pcb", "pcb_ver"],
         ["i_temp", "chip_temp"],
@@ -2891,6 +2920,7 @@ function renderInfo() {
     tb.innerHTML = "";
     m.forEach(function(r) {
         var v = S.info[r[1]];
+        if (r[1] === "uptime" && v != null) v = fmtUptime(v);
         if (v == null || v === "") return;
         tb.appendChild(h("tr", null, [h("td", {
             class: "mut",
