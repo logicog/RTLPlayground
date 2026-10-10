@@ -447,13 +447,41 @@ void send_mtu(int s)
 		json_object_object_add(v, "mtu", json_object_new_string(mtu));
 		json_object_array_add(mtus, v);
 	}
-        write(s, header, strlen(header));
+	write(s, header, strlen(header));
 
 	jstring = json_object_to_json_string_ext(mtus, JSON_C_TO_STRING_PLAIN);
         write(s, jstring, strlen(jstring));
 	json_object_put(mtus);
 }
 
+void send_lldp(int s)
+{
+	struct json_object *c, *portStatuses, *p;
+	const char *jstring;
+	char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	c = json_object_new_object();
+	json_object_object_add(c, "on", json_object_new_int(1));
+	portStatuses = json_object_new_array_ext(PORTS);
+
+	for (int i = 1; i <= PORTS; i++) {
+		p = json_object_new_object();
+		json_object_object_add(p, "portNum", json_object_new_int(i));
+		json_object_object_add(p, "logPort", json_object_new_int(i-1));
+		json_object_object_add(p, "name", json_object_new_string(""));
+		json_object_object_add(p, "permitted", json_object_new_int(1));
+		json_object_array_add(portStatuses, p);
+	}
+
+	json_object_object_add(c, "portStatus", portStatuses);
+
+	write(s, header, strlen(header));
+
+	jstring = json_object_to_json_string_ext(c, JSON_C_TO_STRING_PLAIN);
+	write(s, jstring, strlen(jstring));
+	json_object_put(c);
+}
 
 void send_cmd_log(int s)
 {
@@ -467,7 +495,6 @@ void send_cmd_log(int s)
 		printf("%d: %s\n", i, cmd_history[i]);
 	}
 }
-
 
 void send_config(int s)
 {
@@ -700,6 +727,13 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_vlan(new_socket, vlan);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/lldp.json", 10)) {
+					printf("LLDP request");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_lldp(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/cmd_log", 8)) {
 					printf("Request cmd_log\n");
