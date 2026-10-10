@@ -732,9 +732,13 @@ __code const struct machine machine = {
 		    },
 };
 
-#elif defined MACHINE_STEAMEMO_IG204_V1
+#elif defined(MACHINE_STEAMEMO_IG204_V1) || defined(MACHINE_GOALAKE_IG204_V1)
 __code const struct machine machine = {
+#if defined(MACHINE_STEAMEMO_IG204_V1)
 	.machine_name = "Steamemo IG204 V1",
+#else
+	.machine_name = "Goalake IG204 V1",
+#endif
 	.isRTL8373 = 0,
 	.min_port = 3,
 	.max_port = 8,
