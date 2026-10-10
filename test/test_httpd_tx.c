@@ -36,6 +36,9 @@
 #define TCP_PSH 0x08
 #define TCP_ACK 0x10
 
+#define TSTATE_NONE	0
+#define TSTATE_POST	4
+
 #define TCPH		((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define MSS_FULL	1460
@@ -501,6 +504,77 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+extern uint32_t uptr;
+extern uint16_t write_len;
+extern uint8_t boundary[72];
+extern uint16_t bindex;
+extern uint8_t verify_crc;
+extern struct {
+	uint8_t *p;
+	uint16_t bptr;
+	uint16_t plen;
+} upload_settings;
+uint8_t stream_upload(void);
+
+#define UPLOAD_LEN	600
+#define UPLOAD_BOUNDARY	"\r\n--XyZ"
+#define UPLOAD_TRAILER	UPLOAD_BOUNDARY "--\r\n"
+
+static int upload_in_two(uint8_t *body, uint16_t body_len, uint16_t split)
+{
+	uptr = 0;
+	write_len = 0;
+	bindex = 0;
+	verify_crc = 0;
+	memset(staged, 0xff, sizeof(staged));
+	strcpy((char *)boundary, UPLOAD_BOUNDARY);
+	uip_conn = &uip_conns[0];
+	uip_conn->appstate.tstate = TSTATE_POST;
+
+	upload_settings.p = body;
+	upload_settings.bptr = 0;
+	upload_settings.plen = split;
+	stream_upload();
+	if (uip_conn->appstate.tstate == TSTATE_POST) {
+		upload_settings.p = body + split;
+		upload_settings.bptr = 0;
+		upload_settings.plen = body_len - split;
+		stream_upload();
+	}
+	return uip_conn->appstate.tstate == TSTATE_NONE && uptr == UPLOAD_LEN
+		&& !staged[UPLOAD_LEN];
+}
+
+static void scenario_upload_cr_before_boundary(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len, split;
+	int completed = 0, intact = 0, splits = 0;
+
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = pattern(i);
+	body[UPLOAD_LEN - 2] = 'x';
+	body[UPLOAD_LEN - 1] = '\r';
+	body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+
+	for (split = 0; split <= body_len; split++) {
+		splits++;
+		if (upload_in_two(body, body_len, split)) {
+			completed++;
+			if (!memcmp(staged, body, UPLOAD_LEN))
+				intact++;
+		}
+	}
+	if (verbose)
+		printf("      %d of %d splits complete, %d intact\n", completed, splits, intact);
+
+	CHECK(completed == splits,
+	      "upload: an image ending in CR still finds the closing boundary");
+	CHECK(intact == splits,
+	      "upload: the CR and the bytes before it reach the flash unchanged");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -512,6 +586,7 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_upload_cr_before_boundary();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
