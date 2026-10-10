@@ -109,6 +109,7 @@ fw_intro:"Upload an RTLPlayground image (512 KiB .bin). The image is staged to f
 fw_upload:"Upload",fw_checking:"{f}: {n} bytes. Checking...",fw_size_err:"size is {n}, expected 524288 (512 KiB)",
 fw_magic_err:"missing bank header / LJMP magic: not a firmware image",fw_crc_err:"CRC16 check failed: corrupt image",
 fw_valid:"valid RTLPlayground image (size, magic and CRC16 OK)",fw_q:"Upload firmware?",
+fw_other:"This image was not built for this switch ({m}): its SFP, LED and button pins may differ. Upload it only if you are sure.",
 fw_d:"On a good checksum the switch resets itself and applies the image during boot (the startup config is preserved). Do not power it off until it comes back.",
 fw_finishing:"finishing flash write... {s} s",fw_uploading:"uploading... {p}% / {s} s",
 fw_verified:"checksum verified, the switch is rebooting...",
@@ -676,6 +677,7 @@ fw_intro:"Ein RTLPlayground-Image hochladen (.bin, 512 KiB). Das Image wird im F
 fw_upload:"Hochladen",fw_checking:"{f}: {n} Bytes. Wird geprüft...",fw_size_err:"Grösse ist {n}, erwartet 524288 (512 KiB)",
 fw_magic_err:"Bank-Header / LJMP-Kennung fehlt: kein Firmware-Image",fw_crc_err:"CRC16-Prüfung fehlgeschlagen: Image beschädigt",
 fw_valid:"gültiges RTLPlayground-Image (Grösse, Kennung und CRC16 in Ordnung)",fw_q:"Firmware hochladen?",
+fw_other:"Dieses Image wurde nicht für diesen Switch ({m}) gebaut: SFP-, LED- und Tasten-Pins können abweichen. Nur hochladen, wenn du sicher bist.",
 fw_d:"Ist die Prüfsumme korrekt, startet der Switch neu und übernimmt das Image beim Hochfahren (die Startkonfiguration bleibt erhalten). Nicht vom Strom trennen, bis er wieder erreichbar ist.",
 fw_finishing:"Flash wird fertig beschrieben... {s} s",fw_uploading:"wird hochgeladen... {p}% / {s} s",
 fw_verified:"Prüfsumme bestätigt, der Switch startet neu...",
@@ -2260,10 +2262,26 @@ $("saveBtn").addEventListener("click",function(){
   });
 });
 
-var fwBuf=null;
+var fwBuf=null,fwOther=false;
+// Every image carries its machine name as a NUL-terminated string, the same
+// one the running switch reports as hw_ver: an image without it was built
+// for another board (SFP, LED and button pins differ between machines).
+function fwForThisSwitch(u){
+  var name=S.info.hw_ver;
+  if(!name)return true;
+  var n=[];
+  for(var i=0;i<name.length;i++)n.push(name.charCodeAt(i)&0xff);
+  n.push(0);
+  outer:for(var p=0;p<=u.length-n.length;p++){
+    for(var k=0;k<n.length;k++)if(u[p+k]!==n[k])continue outer;
+    return true;
+  }
+  return false;
+}
 $("fwfile").addEventListener("change",function(){
   var f=this.files[0];
   fwBuf=null;
+  fwOther=false;
   $("fwup").disabled=true;
   $("fwinfo").textContent="";
   if(!f)return;
@@ -2286,13 +2304,15 @@ $("fwfile").addEventListener("change",function(){
       return;
     }
     fwBuf=f;
-    info.innerHTML='<span style="color:var(--ok)">\u2713 '+esc(t("fw_valid"))+"</span>";
+    fwOther=!fwForThisSwitch(u);
+    info.innerHTML='<span style="color:var(--ok)">\u2713 '+esc(t("fw_valid"))+"</span>"+
+      (fwOther?'<br><span style="color:var(--warn)">\u26a0 '+esc(t("fw_other",{m:S.info.hw_ver}))+"</span>":"");
     $("fwup").disabled=false;
   });
 });
 $("fwup").addEventListener("click",function(){
   if(!fwBuf)return;
-  confirmModal(t("fw_q"),t("fw_d"),function(){
+  confirmModal(t("fw_q"),(fwOther?t("fw_other",{m:S.info.hw_ver})+" ":"")+t("fw_d"),function(){
     var form=new FormData();
     form.append("uploadedfile",fwBuf,fwBuf.name);
     var xhr=new XMLHttpRequest();
