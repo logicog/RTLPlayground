@@ -38,7 +38,16 @@ __xdata struct machine_runtime machine_detected;
 void crc16_bank1(__xdata uint8_t *v) __naked;
 
 // See setup_serial_timer1() for valid baudrate settings!
+#if defined(BOARD_BOOT_SINGLE_IO)
+// Board profiles select the clock while preserving SIO and the boot SPI bit.
+#define SERIAL_BAUD_RATE BOARD_SERIAL_BAUD_RATE
+#define CLOCK_HZ BOARD_CPU_HZ
+#define BOOT_FLASH_DIO 0
+#else
 #define SERIAL_BAUD_RATE 115200
+#define CLOCK_HZ 125000000
+#define BOOT_FLASH_DIO 1
+#endif
 
 /* All RTL839x switches have an external 25MHz Oscillator,
    VALID RTL8372/3 CPU frequencies found in switches are:
@@ -49,9 +58,6 @@ void crc16_bank1(__xdata uint8_t *v) __naked;
    For the following frequencies, divider settings are known
    and can be selected on all known HW (Register 0x6040)
 */
-#define CLOCK_HZ 125000000
-//#define CLOCK_HZ 20800000
-
 // Derive the divider settings for the internal clock
 #if CLOCK_HZ == 20800000
 #define CLOCK_DIV 3
@@ -1376,12 +1382,16 @@ void setup_clock(void)
 {
 	reg_read_m(RTL837X_REG_HW_CONF);
 	sfr_mask_data(0, 0x30, 0);
-#if CLOCK_DIV != 0
+#if CLOCK_DIV != 0 || defined(BOARD_BOOT_SINGLE_IO)
 	 // Divider in bits 4 & 5
+	 // Keep the zero-value call in SIO profiles so linked code stays comparable.
 	sfr_mask_data(0, 0, CLOCK_DIV << 4);
 #endif
+// These SIO board profiles only change the clock divider.
+#if !defined(BOARD_BOOT_SINGLE_IO)
 	// Bit 8 is set in managed mode 125MHz to use fast SPI mode
 	sfr_mask_data(1, 0, 0x01);
+#endif
 	reg_write_m(RTL837X_REG_HW_CONF);
 
 	// Enable serial interface, set bit 0
@@ -1518,7 +1528,10 @@ void set_sys_led_state(uint8_t state)
  * |    57600 |   1   |   4 |    34 | 0xde |  57444.9 | −0.27% |
  * |   115200 |   1   |   4 |    17 | 0xef | 114889.7 | −0.27% |
  */
-#if CLOCK_HZ != 125000000
+#if CLOCK_HZ == 20800000 && SERIAL_BAUD_RATE == 9600
+// Timer1 uses F_SYS/4 and SMOD=1: TH1=0xde gives 9558.8 baud (-0.43%).
+// Keep the existing rounding formula for this explicitly supported pair.
+#elif CLOCK_HZ != 125000000
 #warning "SERIAL 0 baudrate setting may only valid for F_CPU = 125 MHz!"
 #endif
 void setup_serial_timer1(void)
@@ -1671,7 +1684,7 @@ void main(void)
 	// Flash controller should be initialized before any code in other banks is being fetched
 	// See this issue: https://github.com/logicog/RTLPlayground/issues/70
 	print_string("\nInitializing Flash controller\n");
-	flash_init(1);
+	flash_init(BOOT_FLASH_DIO);
 
 	// Set default for SFP pins so we can start up a module already inserted
 	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)

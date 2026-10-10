@@ -43,6 +43,14 @@ The following devices have been tested and are fully working:
 | Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5.md)                                | 8M    | 8 + 1 |
 
+Additional 4+2 board profiles and their validation status are documented in
+[Lianguo and SEEKER build profiles](adapted_targets.md):
+
+- [Lianguo 2G5F4_10G2 V1.01](devices/LIANGUO_2G5F4_10G2_V1_01.md):
+  512 KiB Flash; 20.8 MHz basic functions confirmed by the owner, 125 MHz boot confirmed.
+- [SEEKER RTL-4GT-2S+ V1.03](devices/SEEKER_RTL_4GT_2S_PLUS_V1_03.md):
+  2 MiB Flash; experimental, hardware validation pending at both frequencies.
+
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label
 alone does not identify the wiring.
