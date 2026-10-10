@@ -107,8 +107,7 @@ void igmp_setup(void) __banked
 	REG_SET(RTL837X_IPV4_UNKN_MC_FLD_PMSK, mask);
 	REG_SET(RTL837X_IPV6_UNKN_MC_FLD_PMSK, mask);
 
-	// Enable lookup of IPv4 MC addresses in table
-	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
+	reg_bit_clear(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
 
 	/* Configure per-port IGMP operations when protocol messages are received
 	 * bits 0-9 enable MC protocol snooping
@@ -145,6 +144,8 @@ void igmp_enable(void) __banked
 {
 	print_string("igmp_enable called\n");
 	igmpEnabled = 1;
+	// Enable lookup of IPv4 MC addresses in table
+	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
 	// Configure trapping of unhandled IGMP protocol packets to CPU
 	REG_SET(RTL837X_IGMP_TRAP_CFG, IGMP_CPU_PORT | IGMP_TRAP_PRIORITY);
 

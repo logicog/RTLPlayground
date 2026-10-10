@@ -73,7 +73,8 @@ uint8_t igmp_packet_handler(void) __banked;
 void igmp_show(void) __banked;
 ```c
 `igmp_setup()` is called at boot-time and configures flooding of all IP-MC packets by
-default, as otherwise no IP-MC would be possible in the network.
+default, as otherwise no IP-MC would be possible in the network. `igmp off` calls it as
+well; groups learned while IGMP was on stay in the table, but are no longer looked up.
 
 `igmp_enable()`starts IGMP which cause IGMP packets to be handled by the CPU and forwarding
 of IP-MC packets to be limited to only subscribed ports.
