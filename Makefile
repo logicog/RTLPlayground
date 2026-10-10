@@ -64,6 +64,9 @@ endif
 # is built, including the tools/ subdirectory.
 all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
+bank_size:
+	tools/bank_occupancy.sh "$(MACHINE)"
+
 create_build_dir:
 	mkdir -p "$(BUILDDIR)"
 	mkdir -p "$(BUILDDIR)/uip"
