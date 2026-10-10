@@ -20,6 +20,7 @@ extern __xdata uint8_t err_status;
 #define HEALTH_PH_STP	4
 #define HEALTH_PH_CMD	5
 #define HEALTH_PHASES	6
+#define HEALTH_LLDP     7
 
 extern __xdata uint16_t health_rx_frames;
 #define health_rx_frame()	health_rx_frames++
