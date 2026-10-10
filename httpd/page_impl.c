@@ -1032,6 +1032,9 @@ void send_status(void)
 		slen += strtox(outbuf + slen, "\",\"rxB\":\"0x");
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
 		reg_to_html(RTL837X_STAT_V_HIGH);	// 32bit RX packet errors
+
+		slen += strtox(outbuf + slen, "\",\"macs\":\"0x");
+		reg_to_html(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (i << 2));
 		slen += strtox(outbuf + slen, "\"}");
 		if (i < machine.max_port)
 			char_to_html(',');
