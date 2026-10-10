@@ -91,7 +91,16 @@ void flash_read_bulk(uint8_t *dst)
 
 void flash_init(uint8_t enable_dio) { (void)enable_dio; }
 void flash_sector_erase(void) { }
-void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
+
+#define STAGED_MAX	2048
+static uint8_t staged[STAGED_MAX];
+
+void flash_write_bytes(uint8_t *ptr)
+{
+	if (flash_region.addr + flash_region.len <= STAGED_MAX)
+		memcpy(staged + flash_region.addr, ptr, flash_region.len);
+}
+
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
 void reset_chip(void) { }
