@@ -539,9 +539,10 @@ uint8_t stream_upload(void)
 				memcpy(flash_buf + write_len, boundary, bindex);
 				write_len += bindex;
 				bindex = 0;
+			} else {
+				crc16_bank1(upload_settings.p + upload_settings.bptr);
+				flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			}
-			crc16_bank1(upload_settings.p + upload_settings.bptr);
-			flash_buf[write_len++] = upload_settings.p[upload_settings.bptr++];
 			if (write_len >= FLASH_PAGE_SIZE) {
 				/* The staged image spans FIRMWARE_UPLOAD_START to twice that,
 				 * the span check_and_flash_update_image() reads back. Nothing
@@ -573,7 +574,6 @@ uint8_t stream_upload(void)
 					memcpy(flash_buf, flash_buf + FLASH_PAGE_SIZE, write_len);
 				}
 			}
-			bindex = 0;
 		}
 	} while(1);
 }
