@@ -43,7 +43,7 @@ For the initial flash (at least with flashrom), the bin file produced by the bui
 ### PCB overview
 
 **Board markings**  
-- Top silkscreen: PCB-KO4022W-V3.0 / DIP-KO4022WS-V3.0  
+- Top silkscreen: PCB-K0402W-V3.0 / DIP-K0402WS-V3.0  
 
 Top side
 
