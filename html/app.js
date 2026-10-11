@@ -564,6 +564,7 @@ fw_intro:"Charge une image RTLPlayground (512 KiB .bin). L'image est envoée en 
 fw_upload:"Charger",fw_checking:"{f}: {n} bytes. Vérification...",fw_size_err:"la taille est {n} alors que nous attendons 524288 (512 KiB)",
 fw_magic_err:"Entête de banque de donnée manquant / contrôle LJMP: ce n'est pas une image de firmware",fw_crc_err:"Somme de contrôle erronée: image corrompue",
 fw_valid:"Image RTLPlayground valide (taille, LJMP et somme de contrôle OK)",fw_q:"Chargement du firmware?",
+fw_other:"Cette image n'a pas été prévue pour ce commutateur({m}): La puce, les LED et les boouton peuvent être différents. Poursuivez seulement si vous êtes sûrs de vous.",
 fw_d:"Si la somme de contrôle est correcte, le commutateur va redémarrer tout seul et charger la nouvelle image lors du démarrage (la configuration est préservée). Ne pas éteindre l'appareil avant que les voyants ne s'éteignent.",
 fw_finishing:"Fin d'écriture en mémoire flash... {s} s",fw_uploading:"Chargement... {p}% / {s} s",
 fw_verified:"Somme de contrôle vérifiée, le commutateur redémarre...",
