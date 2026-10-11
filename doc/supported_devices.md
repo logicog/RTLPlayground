@@ -36,7 +36,7 @@ The following devices have been tested and are fully working:
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/ONT-S207CW-62TS-SE.md)                    | 0.5M  | 4 + 2 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                             | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                       | 1M    | 8 + 1 |
-| SiscoLink | SL-G0402F      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
+| SICSOLINK| SL-G0402F       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 2M    | 4 + 2 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/STEAMEMO_IG204_V1.md)                                   |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [TEG-S563/EU H/W: V1.0R](devices/TEG-S562.md)                             | 2M    | 4 + 2 |
