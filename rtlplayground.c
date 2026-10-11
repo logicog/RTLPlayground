@@ -16,6 +16,7 @@
 #include "rtl837x_leds.h"
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_init.h"
+#include "rtl837x_lldp.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
 #include "cmd_editor.h"
@@ -25,6 +26,7 @@
 #include "machine.h"
 #include "phy.h"
 #include "syslog.h"
+#include "dns.h"
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
@@ -127,6 +129,7 @@ __xdata uint8_t tx_seq;
 
 __xdata bool stp_enabled;
 __xdata uint8_t igmpEnabled;
+__xdata bool lldp_enabled;
 __xdata char hostname[24];	/* device hostname, default set at boot, see rtl837x_common.h */
 
 __code const uint16_t bit_mask[16] = {
@@ -1286,6 +1289,8 @@ static void handle_tick(void)
 		}
 	}
 	health_phase(HEALTH_PH_STP);
+	lldp_tick();
+	health_phase(HEALTH_LLDP);
 }
 
 
@@ -1763,6 +1768,7 @@ void main(void)
 	check_and_flash_update_image();
 
 	syslog_init();
+	dns_init();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
@@ -1792,6 +1798,7 @@ void main(void)
 	uip_init();
 	uip_arp_init();
 	httpd_init();
+	lldp_init();
 
 	management_vlan = 1; // Default management VLAN is 1
 

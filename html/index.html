@@ -331,6 +331,17 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       </div>
     </section>
 
+    <section class="tab" id="tab-lldp">
+      <div class="card"><h2 data-i18n="lldp_title">LLDP</h2>
+        <label class="row"><span class="lb" data-i18n="lldp_enabled">Enabled</span>
+          <span class="switch"><input type="checkbox" id="lldp_en"><i></i></span>
+        </label>
+        <div class="scrollx"><table class="t" id="lldp_table">
+          <thead><tr><th data-i18n="c_port">Port Number</th><th data-i18n="lldp_portname">Name</th><th data-i18n="lldp_enable">Send Frames</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-isolate">
       <div class="card"><h2 data-i18n="iso_title">Port isolation</h2>
         <p class="small mut" style="margin-bottom:10px" data-i18n="iso_intro">A frame entering a port may only leave through the ports ticked in its row.</p>
@@ -378,6 +389,9 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <label class="row"><span class="lb" data-i18n="i_ip">IP address</span><input class="in" id="sy-ip" size="15"></label>
           <label class="row"><span class="lb" data-i18n="i_mask">Netmask</span><input class="in" id="sy-mask" size="15"></label>
           <label class="row"><span class="lb" data-i18n="i_gw">Gateway</span><input class="in" id="sy-gw" size="15"></label>
+          <label class="row"><span class="lb" data-i18n="sy_dns1">DNS server</span><input class="in" id="sy-dns1" size="15"></label>
+          <label class="row"><span class="lb" data-i18n="sy_dns2">Second DNS</span><input class="in" id="sy-dns2" size="15"></label>
+          <p class="small mut" id="sy-dnsdhcp"></p>
           <div style="display:flex;gap:10px;margin-top:12px">
             <button class="ctl pri" id="sy-apply" data-i18n="c_apply">Apply</button>
             <button class="ctl" id="sy-dhcp" data-i18n="sy_dhcp" data-i18n-t="sy_dhcp_t">Use DHCP</button>

@@ -269,6 +269,7 @@ void flash_read_security(void)
 
 	// Set slow read mode
 	SFR_FLASH_CMD_R = CMD_READ_SECURITY_REGS;		// read security register
+	SFR_FLASH_DUMMYCYCLES = 8;
 
 	// Transfer 4 bytes (command + 3byte address)
 	SFR_FLASH_TCONF = 4;
