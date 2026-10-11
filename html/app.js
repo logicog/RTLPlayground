@@ -675,7 +675,7 @@ sy_ip_err:"Ungültige IP / Netzmaske / Gateway",sy_host_err:"Hostname: 1-23 druc
 sy_net_q:"Netzwerkeinstellungen übernehmen?",sy_net_d:"Die Management-IP ändert sich auf {ip}: Diese Seite muss dort neu geöffnet werden.",
 sy_ip_changed:"IP geändert, neu verbinden unter http://{ip}/",sy_dhcp_q:"Auf DHCP umstellen?",
 sy_dhcp_d:"Der Switch bezieht seine Adresse per DHCP. Du musst seine neue IP herausfinden, um dich wieder zu verbinden.",
-sy_sysip_err:"Ungültige IP des Syslog-Servers",sy_sysport_err:"Syslog-Port muss zwischen 1 und 65535 liegen",
+sy_sysip_err:"Ungültige IP des Syslog-Servers",sy_dns1:"DNS-Server",sy_dns2:"Zweiter DNS-Server",sy_dns_err:"Ungültige IP des DNS-Servers",sy_dns_dhcp:"von DHCP: {ip}",sy_sysport_err:"Syslog-Port muss zwischen 1 und 65535 liegen",
 sy_pw_len:"Passwort: 1-20 Zeichen",sy_pw_space:"Das Passwort darf keine Leerzeichen enthalten",sy_pw_match:"Die Passwörter stimmen nicht überein",
 sy_pw_q:"Admin-Passwort ändern?",sy_pw_d:"Gilt sofort für neue Anmeldungen. Im Flash speichern, damit es erhalten bleibt.",
 sy_reboot_q:"Switch neu starten?",sy_reboot_d:"Es gibt UNGESPEICHERTE Änderungen, sie gehen verloren. Zuerst im Flash speichern, wenn du sie behalten willst.",
