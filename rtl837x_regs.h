@@ -284,10 +284,6 @@
  * Loop detection / STP
  */
 #define RTL8373_RLDP_TIMER		0x1074
-/* Per reserved-multicast-address action. The registers are packed and
- * consecutive by ENTRY rather than by the byte of the address: entry 0 is
- * 01:80:C2:00:00:00 at 0x4ecc and entry 2 is ...:02 (Slow Protocols / LACP)
- * at 0x4ed4, but entry 5 is ...:08, so the step of 4 counts entries. */
 #define RTL837X_RMA0_CONF		0x4ecc
 #define RTL837X_RMA0E_CONF		0x4ee8
 #define RTL837X_RMA2_CONF		0x4ed4

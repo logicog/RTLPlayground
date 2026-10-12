@@ -737,9 +737,6 @@ void send_stp(void)
 	slen += strtox(outbuf + slen, "]}");
 }
 
-/* LACP protocol status for the LAG page ("/lacp.json"). State variables are
- * exported read-only via rtl837x_lacp.h; hardware trunk membership itself is
- * already visible through send_lag() (it reads the trunk registers). */
 void send_lacp(void)
 {
 	dbg_string("send_lacp called\n");
@@ -747,7 +744,6 @@ void send_lacp(void)
 
 	slen += strtox(outbuf + slen, "{\"on\":");
 	bool_to_html(lacpEnabled);
-	/* Per-LAG section: candidate ports, elected aggregator, trunk members. */
 	slen += strtox(outbuf + slen, ",\"lags\":[");
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
 		slen += strtox(outbuf + slen, "{\"cfg\":\"");
@@ -768,7 +764,6 @@ void send_lacp(void)
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"p\":");
 		itoa_html(machine.log_to_phys_port[i]);
-		/* Which LACP LAG this port belongs to; 255 = none */
 		slen += strtox(outbuf + slen, ",\"lag\":");
 		itoa_html(lacp_port_lag[i]);
 		slen += strtox(outbuf + slen, ",\"a\":\"");
@@ -777,8 +772,6 @@ void send_lacp(void)
 		byte_to_html(lacp_partner_state[i]);
 		slen += strtox(outbuf + slen, "\",\"rs\":");
 		itoa_html(lacp_rx_state[i]);
-		/* rx as 4-digit hex: itoa16_html() only renders values up to 9999
-		 * correctly (see its VLAN-ID comment), the counter goes to 65535 */
 		slen += strtox(outbuf + slen, ",\"rx\":\"");
 		byte_to_html(lacp_rx_count[i] >> 8);
 		byte_to_html(lacp_rx_count[i]);

@@ -1062,14 +1062,14 @@ void handle_rx(void)
 		print_string(" MGMT-VLAN: "); print_short(management_vlan); write_char('\n');
 #endif
 		if ((stp_enabled || lacpEnabled) && uip_buf[0] == 0x01 && uip_buf[1] == 0x80
-			&& uip_buf[2] == 0xc2 && uip_buf[3] == 0x00 && uip_buf[4] == 0x00) { // 01:80:C2:00:00:0x
-			if (stp_enabled && uip_buf[5] == 0x00) {		// STP/RSTP BPDU
+			&& uip_buf[2] == 0xc2 && uip_buf[3] == 0x00 && uip_buf[4] == 0x00) {
+			if (stp_enabled && uip_buf[5] == 0x00) {
 				stp_in();
 				if (uip_len) {
 					print_string("STP TX\n");
 					tcpip_output();
 				}
-			} else if (lacpEnabled && uip_buf[5] == 0x02) {	// LACPDU (slow protocols)
+			} else if (lacpEnabled && uip_buf[5] == 0x02) {
 				lacp_in();
 			}
 		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
@@ -1296,7 +1296,6 @@ static void handle_tick(void)
 			stp_timers();
 		}
 	}
-	// If LACP enabled, drive its machines (own tick divider lives in the banked module)
 	if (lacpEnabled)
 		lacp_timers();
 	health_phase(HEALTH_PH_STP);
@@ -1802,7 +1801,7 @@ void main(void)
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	lacpEnabled = 0;
-	lacp_init();		/* clear per-LAG state (port->LAG map = NONE) before any config replay */
+	lacp_init();
 	nic_setup();
 	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
 	trap_init();

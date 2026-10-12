@@ -540,8 +540,6 @@ void parse_lag(void)
 		return;
 	}
 
-	/* "lag <n> lacp [port]..." - run LACP on this LAG with the given candidate
-	 * ports; "lag <n> lacp off" (or no ports) removes the LAG from LACP. */
 	uint8_t w = 2;
 	__xdata uint8_t lacp_mode = 0;
 	if (cmd_words_len > 2 && cmd_compare(2, "lacp")) {
@@ -560,7 +558,7 @@ void parse_lag(void)
 		members |= ((uint16_t)1) << atoi_results_u8;
 	}
 	if (lacp_mode) {
-		lacp_lag_set(group, members);	/* 0 ports also valid: removes the LAG */
+		lacp_lag_set(group, members);
 	} else {
 		lacp_lag_set(group, 0);
 		port_lag_members_set(group, members);
