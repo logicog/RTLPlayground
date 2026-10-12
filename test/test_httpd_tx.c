@@ -494,6 +494,8 @@ static void scenario_bad_l4_checksum(void)
 }
 
 
+/* Private HTTP lifecycle values; drive the real callback, not a model. */
+enum { TSTATE_TX = 1, TSTATE_CLOSED = 3 };
 extern uint16_t slen, cont_len, sent_len, bindex, crc_final, write_len;
 extern uint8_t boundary[], verify_crc;
 extern struct { uint8_t *p; uint16_t bptr, plen; } upload_settings;
