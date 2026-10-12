@@ -1843,6 +1843,7 @@ function buildLag(){
   })(g);
 }
 var lacpCfg=[0,0,0,0,0];
+function maskPorts(m){var r=[];for(var p=1;p<=S.n;p++)if((m>>S.physToLog[p-1])&1)r.push(p);return r.length?r.join(" "):"-"}
 function lagLoad(){
   return getJSON("/lacp.json").then(function(c){
     var tb=$("lacptbl").tBodies[0];
@@ -1852,7 +1853,7 @@ function lagLoad(){
       lacpCfg[g]=parseInt(lg.cfg,16);
       if($("lgm"+g).closest(".card").dataset.dirty)return;
       $("lgm"+g).value=lacpCfg[g]?"lacp":"static";
-      $("lgs"+g).textContent=lacpCfg[g]?"LACP: "+t("lacp_agg")+" "+(lg.aggValid?lg.agg:"("+t("lacp_neg")+")")+", "+t("lacp_members")+" 0x"+lg.members:"";
+      $("lgs"+g).textContent=lacpCfg[g]?"LACP: "+t("lacp_agg")+" "+(lg.aggValid?lg.agg:"("+t("lacp_neg")+")")+", "+t("lacp_members")+" "+maskPorts(parseInt(lg.members,16)):"";
     });
     if(c.on)c.ports.forEach(function(p){
       if(p.lag===255)return;
