@@ -284,12 +284,12 @@ void lacp_in(void) __banked
 	/* Per rtl837x_common.h, pmask carries a 4-bit port number on RX
 	 * (hardware-verified on RTL8373: per-port rx counters track the actual
 	 * ingress port through full LACP convergence). */
-	uint8_t port = ((uint8_t)HTONS(LACP_H->rtl_tag.pmask)) & 0x0f;
+	__xdata uint8_t port = ((uint8_t)HTONS(LACP_H->rtl_tag.pmask)) & 0x0f;
 	if (port < machine.min_port || port > machine.max_port)
 		return;
 
 	/* Only ports assigned to a LACP-mode LAG participate in the protocol. */
-	uint8_t lag = lacp_port_lag[port];
+	__xdata uint8_t lag = lacp_port_lag[port];
 	if (lag == LACP_LAG_NONE)
 		return;
 	if (lacp_sys_eq(LACP_I->actor.sys, uip_ethaddr.addr))
@@ -305,10 +305,14 @@ void lacp_in(void) __banked
 
 	/* Record partner = the remote's Actor block (802.3ad 43.4.9 recordPDU) */
 	memcpy(lacp_partner_sys[port], LACP_I->actor.sys, 6);
-	lacp_partner_key[port]       = HTONS(LACP_I->actor.key);
-	lacp_partner_port[port]      = HTONS(LACP_I->actor.port);
-	lacp_partner_sys_prio[port]  = HTONS(LACP_I->actor.sys_prio);
-	lacp_partner_port_prio[port] = HTONS(LACP_I->actor.port_prio);
+	lacp_scratch_mask = HTONS(LACP_I->actor.key);
+	lacp_partner_key[port] = lacp_scratch_mask;
+	lacp_scratch_mask = HTONS(LACP_I->actor.port);
+	lacp_partner_port[port] = lacp_scratch_mask;
+	lacp_scratch_mask = HTONS(LACP_I->actor.sys_prio);
+	lacp_partner_sys_prio[port] = lacp_scratch_mask;
+	lacp_scratch_mask = HTONS(LACP_I->actor.port_prio);
+	lacp_partner_port_prio[port] = lacp_scratch_mask;
 	lacp_partner_state[port]     = LACP_I->actor.state;
 
 	/* Receive machine -> CURRENT, (re)arm partner timeout (43.4.12) */
@@ -508,7 +512,7 @@ void lacp_init(void) __banked
  * The engine's RMA trap is enabled on the first LACP LAG and torn down with the
  * last. Never wipes a static "lag" the user configured on a different group.
  */
-void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
+void lacp_lag_set(uint8_t lag, __xdata uint16_t ports) __banked
 {
 	if (lag >= LACP_NUM_LAGS)
 		return;
@@ -542,9 +546,11 @@ void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
 		if (!(ports & port_bit(i)))
 			continue;
 		lacp_scratch_lag = lacp_port_lag[i];
+		lacp_port_lag[i] = lag;
 		if (lacp_scratch_lag != LACP_LAG_NONE && lacp_scratch_lag != lag) {
-			lacp_lag_ports[lacp_scratch_lag] &= ~port_bit(i);
-			if (!lacp_lag_ports[lacp_scratch_lag]) {
+			lacp_scratch_mask = lacp_lag_ports[lacp_scratch_lag] & ~port_bit(i);
+			lacp_lag_ports[lacp_scratch_lag] = lacp_scratch_mask;
+			if (!lacp_scratch_mask) {
 				lacp_agg_valid[lacp_scratch_lag] = 0;
 				if (lacp_members_last[lacp_scratch_lag]) {
 					lacp_members_last[lacp_scratch_lag] = 0;
@@ -552,7 +558,6 @@ void lacp_lag_set(uint8_t lag, uint16_t ports) __banked
 				}
 			}
 		}
-		lacp_port_lag[i] = lag;
 		lacp_port_init(i);
 	}
 
