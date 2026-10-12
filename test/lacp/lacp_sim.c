@@ -458,6 +458,23 @@ int main(int argc, char **argv)
 	      "T22 truncated LACPDU ignored: the port does not record it");
 	lacp_lag_set(1, 0);
 
+	/* T23: the partner asks for the long timeout (Linux's default slow rate).
+	 * current_while is armed from OUR LACP_Timeout, which is short, so a
+	 * partner that stops speaking LACP with the link up is dropped after the
+	 * short timeout, not after two minutes. */
+	lacp_lag_set(1, 0x0030);
+	step(8);
+	for (int r = 0; r < 2; r++) {
+		partner_frame(4, SYS_A, P_ACT|P_AGG|P_SYNC, 1);
+		partner_frame(5, SYS_A, P_ACT|P_AGG|P_SYNC, 1);
+		step(8);
+	}
+	int slow_converged = hw_members_lag[1] == 0x0030;
+	step(4 * LACP_SHORT_TIMEOUT + 64);
+	CHECK(slow_converged && hw_members_lag[1] == 0,
+	      "T23 partner on slow rate goes quiet: dropped after our short timeout");
+	lacp_lag_set(1, 0);
+
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
 	return failures ? 1 : 0;
