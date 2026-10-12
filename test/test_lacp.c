@@ -1,13 +1,3 @@
-/*
- * Host-side sandbox for the RTL837x LACP implementation.
- *
- * Compiles the UNMODIFIED rtl837x_lacp.c against shim headers (see shim/) and
- * drives it with synthetic LACPDUs from a simulated partner switch/bond. This
- * exercises the real state machines that ship in the firmware image - only
- * the platform below them (frame I/O, trunk registers, console) is mocked.
- *
- * Run: make -C test/lacp    (exit code 0 = all scenarios pass)
- */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,7 +21,7 @@ uint8_t lacpEnabled;
 uint16_t management_vlan;	/* mocked; slow-protocol path zeroes it per-frame */
 
 static int verbose = 0;
-void print_string(char *s) { if (verbose) fputs(s, stdout); }
+void print_string(const char *s) { if (verbose) fputs(s, stdout); }
 void print_byte(uint8_t b) { if (verbose) printf("%02x", b); }
 void print_short(uint16_t v) { if (verbose) printf("%04x", v); }
 void write_char(char c) { if (verbose) putchar(c); }
