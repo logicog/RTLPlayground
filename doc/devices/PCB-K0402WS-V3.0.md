@@ -87,5 +87,5 @@ A reset button can be easily added by soldering a push button from TP131 (near t
 
 Photo of the mod
 
-<img src="photos/PCB-K0402WS-V3.0/PCB-bottom.jpg" width="300" />
+<img src="photos/PCB-K0402WS-V3.0/Reset_mod.jpg" width="300" />
 
