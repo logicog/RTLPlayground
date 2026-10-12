@@ -12,6 +12,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_port.h"
+#include "rtl837x_trap.h"
 #include "uip.h"
 #include "machine.h"
 
@@ -85,6 +86,7 @@ __xdata uint16_t stp_link_now;
 
 __xdata uint8_t  stp_scratch;
 __xdata uint8_t  stp_tx_flags_extra;	/* one-shot flags OR-ed into the next BPDU (TCA) */
+__xdata uint8_t  stp_rxbody;
 __xdata uint16_t stp_rxlen;		/* received frame length, saved before uip_len is consumed */
 __xdata uint8_t  stp_msg_age;		/* message age of the root info we hold, seconds */
 __xdata uint16_t stp_tc_while;		/* ticks left to set the TC flag in our BPDUs */
@@ -121,11 +123,13 @@ struct stp_pkt {
 	uint8_t version1_length;	/* RST BPDU only: length of the (empty) v1 part */
 };
 
-struct stp_pkt_in {
+struct stp_pkt_in_hdr {
 	uint8_t stp_addr[6];
 	uint8_t src_addr[6];
 	struct rtl_tag rtl_tag;
-	struct vlan_tag vlan_tag;
+};
+
+struct stp_pkt_in {
 	uint16_t msg_len;
 	uint8_t dsap;
 	uint8_t ssap;
@@ -147,7 +151,8 @@ struct stp_pkt_in {
 };
 
 #define STP_O ((__xdata struct stp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
-#define STP_I ((__xdata struct stp_pkt_in *)&uip_buf[0])
+#define STP_H ((__xdata struct stp_pkt_in_hdr *)&uip_buf[0])
+#define STP_I ((__xdata struct stp_pkt_in *)&uip_buf[stp_rxbody])
 
 #define BPDU_VER_STP		0x00
 #define BPDU_VER_RSTP		0x02
@@ -158,7 +163,8 @@ struct stp_pkt_in {
 
 #define BPDU_LEN_CONFIG		0x26	// LLC and a 35 byte body
 #define BPDU_LEN_RST		0x27	// LLC and a 36 byte body
-#define BPDU_LEN_MIN_HEADER	33	// addresses through bpdu_type
+#define BPDU_LEN_MIN_BODY	9
+#define BPDU_LEN_FULL_BODY	40
 
 #define BPDU_FLAG_TC		0x01
 #define BPDU_FLAG_LEARNING	0x10
@@ -547,7 +553,8 @@ void stp_in(void) __banked
 {
 	uint8_t port;
 
-	if (uip_len < BPDU_LEN_MIN_HEADER) {
+	stp_rxbody = TRAP_RX_BODY();
+	if (uip_len < stp_rxbody + BPDU_LEN_MIN_BODY) {
 		uip_len = 0;
 		return;
 	}
@@ -557,7 +564,7 @@ void stp_in(void) __banked
 	uip_len = 0;
 
 	/* Ingress port: low nibble of the CPU tag's pmask on RX */
-	stp_scratch = ((uint8_t)HTONS(STP_I->rtl_tag.pmask)) & 0x0f;
+	stp_scratch = ((uint8_t)HTONS(STP_H->rtl_tag.pmask)) & 0x0f;
 	if (stp_scratch < machine.min_port || stp_scratch > machine.max_port)
 		return;
 	port = stp_ent_of[stp_scratch];
@@ -607,7 +614,7 @@ void stp_in(void) __banked
 	}
 
 	/* Everything below reads the full Config/RST body. */
-	if (stp_rxlen < 64)
+	if (stp_rxlen < stp_rxbody + BPDU_LEN_FULL_BODY)
 		return;
 
 	/* Our own BPDU coming back: two of our ports sit on one segment. Only
@@ -865,8 +872,7 @@ void stp_defaults(void) __banked
 
 
 /*
- * Steer BPDUs while STP runs, and restore flooding when it stops.
- * Changing a port's PVID while STP runs needs "stp off" then "stp on".
+ * Restore BPDU flooding when STP stops.
  */
 static void stp_fdb_update(__xdata uint16_t pmask)
 {
@@ -928,16 +934,6 @@ void stp_setup(void) __banked
 
 	print_reg(RTL837X_MSTP_STATES); write_char('\n');
 
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
-		if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
-			continue;
-		if (port_ingress_filter_get(stp_i) != VLAN_TAGGED)
-			continue;
-		print_string("STP: port ");
-		write_char('0' + machine.log_to_phys_port[stp_i]);
-		print_string(" admits tagged frames only - BPDUs are untagged and will not arrive\n");
-	}
-
 	/* Seed the carrier bitmap, so turning STP on does not report every
 	 * port that was already down as a fresh topology change. */
 	reg_read_m(RTL837X_REG_LINKS_STS);
@@ -949,8 +945,7 @@ void stp_setup(void) __banked
 
 	stp_claim_root();
 
-	/* Take BPDUs to the CPU only - we are a participating bridge now. */
-	stp_fdb_update(PMASK_CPU);
+	trap_rma_set(RTL837X_RMA0_CONF, RTL837X_RMA_ACT_TRAP);
 }
 
 
@@ -972,6 +967,7 @@ void stp_off(void) __banked
 
 	/* Restore BPDU transparency: flood them again like an unmanaged switch. */
 	stp_fdb_update(PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
+	trap_rma_set(RTL837X_RMA0_CONF, RTL837X_RMA_ACT_FORWARD);
 }
 
 
