@@ -475,6 +475,15 @@ int main(int argc, char **argv)
 	      "T23 partner on slow rate goes quiet: dropped after our short timeout");
 	lacp_lag_set(1, 0);
 
+	/* T24: a LACPDU carrying our own system id (two ports of one group
+	 * cabled to each other) must not be taken for a partner. */
+	lacp_lag_set(1, 0x0030);
+	step(8);
+	partner_frame(4, uip_ethaddr.addr, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+	CHECK(lacp_rx_count[4] == 0 && lacp_rx_state[4] == LACP_RX_INITIALIZE,
+	      "T24 own system id: LACPDU ignored");
+	lacp_lag_set(1, 0);
+
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
 	return failures ? 1 : 0;

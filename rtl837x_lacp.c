@@ -292,6 +292,8 @@ void lacp_in(void) __banked
 	uint8_t lag = lacp_port_lag[port];
 	if (lag == LACP_LAG_NONE)
 		return;
+	if (lacp_sys_eq(LACP_I->actor.sys, uip_ethaddr.addr))
+		return;
 
 
 #ifdef DEBUG
