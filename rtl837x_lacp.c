@@ -270,6 +270,8 @@ void lacp_send(uint8_t port) __banked
  */
 void lacp_in(void) __banked
 {
+	__xdata uint8_t port, lag;
+
 	lacp_rxbody = TRAP_RX_BODY();
 	if (uip_len < lacp_rxbody + sizeof(struct lacpdu_in)) {
 		uip_len = 0;
@@ -284,12 +286,12 @@ void lacp_in(void) __banked
 	/* Per rtl837x_common.h, pmask carries a 4-bit port number on RX
 	 * (hardware-verified on RTL8373: per-port rx counters track the actual
 	 * ingress port through full LACP convergence). */
-	__xdata uint8_t port = ((uint8_t)HTONS(LACP_H->rtl_tag.pmask)) & 0x0f;
+	port = ((uint8_t)HTONS(LACP_H->rtl_tag.pmask)) & 0x0f;
 	if (port < machine.min_port || port > machine.max_port)
 		return;
 
 	/* Only ports assigned to a LACP-mode LAG participate in the protocol. */
-	__xdata uint8_t lag = lacp_port_lag[port];
+	lag = lacp_port_lag[port];
 	if (lag == LACP_LAG_NONE)
 		return;
 	if (lacp_sys_eq(LACP_I->actor.sys, uip_ethaddr.addr))
