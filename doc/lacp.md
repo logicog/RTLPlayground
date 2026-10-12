@@ -96,7 +96,6 @@ mismatch should be rejected or applied to the whole group.
 #define LACP_FAST_PERIODIC	0x0032	/* fast TX 1 s; partner expires at 3 s   */
 #define LACP_SLOW_PERIODIC	0x05dc	/* slow TX 30 s; partner expires at 90 s */
 #define LACP_SHORT_TIMEOUT	0x00c8	/* silent partner dropped after 4 s   (802.3ad: 3 s)  */
-#define LACP_LONG_TIMEOUT	0x1770	/* long-timeout variant, after 120 s  (802.3ad: 90 s) */
 ```
 
 One unit is one step of the LACP timers, taken every four system ticks, so 50
