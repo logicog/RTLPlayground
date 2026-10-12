@@ -1071,8 +1071,6 @@ void handle_rx(void)
 				}
 			} else if (lacpEnabled && uip_buf[5] == 0x02) {	// LACPDU (slow protocols)
 				lacp_in();
-				if (uip_len)
-					tcpip_output();
 			}
 		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
 			&& igmp_packet_handler()) {

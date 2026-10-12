@@ -228,4 +228,6 @@ the dead member.
 * No Churn Detection machines and no Marker protocol.
 * Coupled Mux: collecting and distributing are enabled together.
 * One aggregator per group.
+* Selection compares the partner's system only, not its key: two aggregates
+  that one partner system offers on the same group land in one trunk here.
 * Member compatibility is not validated; see #377.
