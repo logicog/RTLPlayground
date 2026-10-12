@@ -16,7 +16,7 @@ void lacp_show(void) __banked;		/* "lacp show" - per-port state + RX counters */
 /* Assign a candidate-port mask to a LACP-mode LAG (`lag <n> lacp <ports>`).
  * ports == 0 removes the LAG from LACP management. Enables the engine on first
  * LACP LAG and tears it down when the last one goes away. */
-void lacp_lag_set(uint8_t lag, uint16_t ports) __banked;
+void lacp_lag_set(uint8_t lag, __xdata uint16_t ports) __banked;
 
 /*
  * Per-LAG LACP: each of the 4 hardware trunk groups (0-3) can independently run
@@ -89,7 +89,6 @@ extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];/* trunk members we las
 #define LACP_FAST_PERIODIC	0x0032	/* fast TX 1 s; partner expires at 3 s   */
 #define LACP_SLOW_PERIODIC	0x05dc	/* slow TX 30 s; partner expires at 90 s */
 #define LACP_SHORT_TIMEOUT	0x00c8	/* silent partner dropped after 4 s   (802.3ad: 3 s)  */
-#define LACP_LONG_TIMEOUT	0x1770	/* long-timeout variant, after 120 s  (802.3ad: 90 s) */
 
 /* Per-port LACP receive-machine state (802.3ad 43.4.12) */
 #define LACP_RX_INITIALIZE	0
