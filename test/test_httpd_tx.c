@@ -94,7 +94,8 @@ void flash_sector_erase(void) { }
 void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
-void reset_chip(void) { }
+static unsigned reset_calls;
+void reset_chip(void) { reset_calls++; }
 void delay(uint16_t t) { (void)t; }
 void write_char(char c) { (void)c; }
 void write_char_no_syslog(char c) { (void)c; }
@@ -492,6 +493,51 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+
+extern uint16_t slen, cont_len, sent_len, bindex, crc_final, write_len;
+extern uint8_t boundary[], verify_crc;
+extern struct { uint8_t *p; uint16_t bptr, plen; } upload_settings;
+extern uint8_t stream_upload(void);
+static void scenario_upload_reset_owner(void)
+{
+    struct uip_conn owner = {0}, unrelated = {0};
+    uint8_t byte = 0;
+    uip_conn = &owner;
+    owner.appstate.tstate = TSTATE_CLOSED;
+    owner.appstate.fw_reset_pending = 0xaa;
+    uip_flags = UIP_CONNECTED; httpd_appcall();
+    CHECK(owner.appstate.fw_reset_pending == 0, "connect initializes reset ownership");
+    /* End-of-part verdict with flash/CRC hardware edges mocked. */
+    boundary[0] = 0; bindex = 0; verify_crc = 1; crc_final = 0xb001; write_len = 0;
+    upload_settings.p = &byte; upload_settings.bptr = 0; upload_settings.plen = 1;
+    stream_upload();
+    CHECK(owner.appstate.fw_reset_pending == 1, "verified upload belongs to its connection");
+    uip_conn = &unrelated; unrelated.appstate.tstate = TSTATE_TX;
+    slen = 0; cont_len = 0; sent_len = 0; reset_calls = 0;
+    uip_flags = UIP_ACKDATA; httpd_appcall();
+    CHECK(reset_calls == 0, "unrelated ACK cannot reset staged upload");
+    uip_conn = &owner; owner.appstate.tstate = TSTATE_TX;
+    slen = 10; sent_len = 5; cont_len = 0; owner.mss = MSS_FULL;
+    uip_flags = UIP_ACKDATA; httpd_appcall();
+    CHECK(reset_calls == 0 && slen == 5, "partial verdict ACK does not reset");
+    slen = 0; cont_len = 0; sent_len = 0; owner.appstate.tstate = TSTATE_TX;
+    uip_flags = UIP_ACKDATA; httpd_appcall();
+    CHECK(reset_calls == 1, "owner final verdict ACK resets");
+    for (unsigned i = 0; i < 2; i++) {
+        owner.appstate.tstate = TSTATE_TX; owner.appstate.fw_reset_pending = 1;
+        reset_calls = 0; uip_flags = i ? UIP_TIMEDOUT : UIP_ABORT; httpd_appcall();
+        CHECK(reset_calls == 0, "abort/timeout does not reset");
+        uip_flags = UIP_CONNECTED; httpd_appcall();
+        CHECK(owner.appstate.fw_reset_pending == 0, "reused connection clears old upload intent");
+        owner.appstate.tstate = TSTATE_TX; slen = cont_len = sent_len = 0;
+        uip_flags = UIP_ACKDATA; httpd_appcall();
+        CHECK(reset_calls == 0, "new connection ACK cannot inherit reset");
+    }
+    owner.appstate.fw_reset_pending = 0; crc_final = 0; bindex = 0;
+    stream_upload();
+    CHECK(owner.appstate.fw_reset_pending == 0, "failed CRC does not request reset");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -503,6 +549,7 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_upload_reset_owner();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
