@@ -2116,7 +2116,7 @@ void execute_config(void) __banked
 				skipping = 1;
 			}
 			c = flash_buf[cfg_idx++];
-			if (c == 0 || c == '\n') {
+			if (c == 0 || c == '\n' || c == '\r') {
 				if (skipping) {
 					skipping = 0;
 				} else {
