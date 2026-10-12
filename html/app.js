@@ -11,7 +11,7 @@ th_sel_light:"Selenized Light",th_sel_dark:"Selenized Dark",
 c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Apply",c_cancel:"Cancel",c_confirm:"Confirm",
 c_close:"Close",c_refresh:"Refresh",c_off:"off",c_offc:"Off",c_down:"down",c_on:"On",c_auto:"Auto",c_delete:"Delete",
 c_type:"Type",c_state:"State",c_enabled:"Enabled",c_load:"Load",c_disable:"Disable",c_sfp:"SFP",
-c_full:"full",c_half:"half",c_devices:"devices",c_yes:"yes",c_no:"no",
+c_full:"full",c_half:"half",c_yes:"yes",c_no:"no",
 d_ports:"Ports",d_ports_h:"click a port for details",d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
@@ -130,7 +130,7 @@ th_sel_light:"Selenized ライト",th_sel_dark:"Selenized ダーク",
 c_port:"ポート",c_name:"名前",c_link:"リンク",c_apply:"適用",c_cancel:"キャンセル",c_confirm:"確認",
 c_close:"閉じる",c_refresh:"更新",c_off:"オフ",c_offc:"オフ",c_down:"リンクダウン",c_on:"オン",c_auto:"自動",c_delete:"削除",
 c_type:"タイプ",c_state:"状態",c_enabled:"有効",c_load:"読み込み",c_disable:"無効化",c_sfp:"SFP",
-c_full:"全二重",c_half:"半二重",c_devices:"デバイス",c_yes:"はい",c_no:"いいえ",
+c_full:"全二重",c_half:"半二重",c_yes:"はい",c_no:"いいえ",
 d_ports:"ポート",d_ports_h:"ポートをクリックすると詳細を表示",d_system:"システム",d_traffic:"トラフィック",
 d_traffic_h:"パケット/秒、リアルタイム",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 異常",d_rxbad:"RX 異常",
 i_host:"ホスト名",i_ip:"IP アドレス",i_mask:"ネットマスク",i_gw:"ゲートウェイ",i_mac:"MAC",i_fw:"ファームウェア",
@@ -243,7 +243,7 @@ th_sel_light:"Selenized 浅色",th_sel_dark:"Selenized 深色",
 c_port:"端口",c_name:"名称",c_link:"链路",c_apply:"应用",c_cancel:"取消",c_confirm:"确认",
 c_close:"关闭",c_refresh:"刷新",c_off:"关",c_offc:"关",c_down:"未连接",c_on:"开",c_auto:"自动",c_delete:"删除",
 c_type:"类型",c_state:"状态",c_enabled:"启用",c_load:"读取",c_disable:"禁用",c_sfp:"SFP",
-c_full:"全双工",c_half:"半双工",c_devices:"台设备",c_yes:"是",c_no:"否",
+c_full:"全双工",c_half:"半双工",c_yes:"是",c_no:"否",
 d_ports:"端口",d_ports_h:"点击端口查看详情",d_system:"系统",d_traffic:"流量",
 d_traffic_h:"包/秒，实时",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 错误",d_rxbad:"RX 错误",
 i_host:"主机名",i_ip:"IP 地址",i_mask:"子网掩码",i_gw:"网关",i_mac:"MAC",i_fw:"固件",
@@ -356,7 +356,7 @@ th_sel_light:"Selenized claro",th_sel_dark:"Selenized oscuro",
 c_port:"Puerto",c_name:"Nombre",c_link:"Enlace",c_apply:"Aplicar",c_cancel:"Cancelar",c_confirm:"Confirmar",
 c_close:"Cerrar",c_refresh:"Actualizar",c_off:"apagado",c_offc:"Apagado",c_down:"caído",c_on:"Encendido",c_auto:"Auto",c_delete:"Eliminar",
 c_type:"Tipo",c_state:"Estado",c_enabled:"Habilitado",c_load:"Cargar",c_disable:"Deshabilitar",c_sfp:"SFP",
-c_full:"dúplex completo",c_half:"semidúplex",c_devices:"dispositivos",c_yes:"sí",c_no:"no",
+c_full:"dúplex completo",c_half:"semidúplex",c_yes:"sí",c_no:"no",
 d_ports:"Puertos",d_ports_h:"pulsa un puerto para ver detalles",d_system:"Sistema",d_traffic:"Tráfico",
 d_traffic_h:"paquetes/s, en vivo",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX erróneos",d_rxbad:"RX erróneos",
 i_host:"Nombre de host",i_ip:"Dirección IP",i_mask:"Máscara de red",i_gw:"Puerta de enlace",i_mac:"MAC",i_fw:"Firmware",
@@ -468,7 +468,7 @@ th_sel_light:"Clair (sélénisé)",th_sel_dark:"Sombre (sélénisé)",
 c_port:"Port",c_name:"Nom",c_link:"Lien",c_apply:"Appliquer",c_cancel:"Annuler",c_confirm:"Confirmer",
 c_close:"Fermer",c_refresh:"Raffraichir",c_off:"arrêt",c_offc:"Arrêt",c_down:"arrêt",c_on:"Marche",c_auto:"Auto",c_delete:"Supprimer",
 c_type:"Type",c_state:"Etat",c_enabled:"Activé",c_load:"Charger",c_disable:"Désactivé",c_sfp:"SFP",
-c_full:"full",c_half:"half",c_devices:"Equipements",c_yes:"oui",c_no:"non",
+c_full:"full",c_half:"half",c_yes:"oui",c_no:"non",
 d_ports:"Ports",d_ports_h:"Cliquez ou survollez pour plus de détails",d_system:"Système",d_traffic:"Trafic",
 d_traffic_h:"paquets/s (en direct)",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX KO",d_rxbad:"RX KO",
 i_host:"Nom d'hote",i_ip:"Adresse IP",i_mask:"Masque réseau",i_gw:"Passerelle",i_mac:"Adresse MAC",i_fw:"Micro logiciel",
@@ -581,7 +581,7 @@ th_sel_light:"Selenized Hell",th_sel_dark:"Selenized Dunkel",
 c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Übernehmen",c_cancel:"Abbrechen",c_confirm:"Bestätigen",
 c_close:"Schliessen",c_refresh:"Aktualisieren",c_off:"aus",c_offc:"Aus",c_down:"getrennt",c_on:"Ein",c_auto:"Auto",c_delete:"Löschen",
 c_type:"Typ",c_state:"Zustand",c_enabled:"Aktiviert",c_load:"Laden",c_disable:"Deaktivieren",c_sfp:"SFP",
-c_full:"voll",c_half:"halb",c_devices:"Geräte",c_yes:"ja",c_no:"nein",
+c_full:"voll",c_half:"halb",c_yes:"ja",c_no:"nein",
 d_ports:"Ports",d_ports_h:"Port anklicken für Details",d_system:"System",d_traffic:"Datenverkehr",
 d_traffic_h:"Pakete/s, live",d_txpps:"TX Pakete/s",d_rxpps:"RX Pakete/s",d_txbad:"TX fehlerhaft",d_rxbad:"RX fehlerhaft",
 i_host:"Hostname",i_ip:"IP-Adresse",i_mask:"Netzmaske",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
@@ -1121,31 +1121,12 @@ function loadMtu(){
     });
   });
 }
-/* One learned MAC is the attached device; several means a switch or AP
- * sits behind the port, so only the count is shown. */
-function portsMacs(){
-  l2Load().then(function(all){
-    var by={};
-    all.forEach(function(e){
-      if(e.pport==="CPU")return;
-      var l=by[e.pport]=by[e.pport]||[];
-      if(l.indexOf(e.mac)<0)l.push(e.mac);
-    });
-    S.ports.forEach(function(p){
-      var el=$("pmac"+(p.portNum-1));
-      if(!el)return;
-      var m=by[p.portNum]||[];
-      el.textContent=!m.length?"-":(m.length===1?m[0]:m.length+" "+t("c_devices"));
-      el.title=m.join("\n");
-    });
-  }).catch(function(){});
-}
-var _macTick=0;
 function portsStatus(){
   buildPorts();
-  if(++_macTick%10===0)portsMacs();
   S.ports.forEach(function(p){
     var i=p.portNum-1,el=$("plink"+i);
+    var mc=$("pmac"+i);
+    if(mc)mc.textContent=parseInt(p.macs,16)&0x1fff;
     if(el)el.innerHTML=linkBadge(p);
     var sel=$("pspd"+i),v=p.isSFP?0:ADVSEL[parseInt(p.adv,2)];
     if(sel&&v&&document.activeElement!==sel)sel.value=v;
@@ -1173,8 +1154,8 @@ function applyPort(i){
   postCmds(cmds).then(loadMtu).catch(function(){});
 }
 tabHooks.ports={
-  enter:function(){statusPoller.start();needPorts(function(){buildPorts();portsMacs()})},
-  leave:function(){statusPoller.stop();l2Gen++},
+  enter:function(){statusPoller.start();needPorts(buildPorts)},
+  leave:function(){statusPoller.stop()},
   status:portsStatus,
 };
 
