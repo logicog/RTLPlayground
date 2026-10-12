@@ -227,3 +227,7 @@ iperf Done.
 ```
 As you can see, the total throughput was 4.71 GBit/sec which is close to the
 maximum possible with a single 5GBit link.
+
+## LACP
+
+Dynamic aggregation with LACP is described in [lacp.md](lacp.md).
