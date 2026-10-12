@@ -535,6 +535,7 @@ void parse_lag(void)
 		goto err;
 
 	if (cmd_compare(2, "d")) {
+		lacp_lag_set(group, 0);
 		port_lag_members_set(group, 0);
 		return;
 	}
@@ -558,10 +559,12 @@ void parse_lag(void)
 
 		members |= ((uint16_t)1) << atoi_results_u8;
 	}
-	if (lacp_mode)
+	if (lacp_mode) {
 		lacp_lag_set(group, members);	/* 0 ports also valid: removes the LAG */
-	else
+	} else {
+		lacp_lag_set(group, 0);
 		port_lag_members_set(group, members);
+	}
 	return;
 err:
 	cmd_error("lag (show | <1-4> (d | [lacp] <port>...))\n");
