@@ -311,8 +311,7 @@ void lacp_in(void) __banked
 
 	/* Receive machine -> CURRENT, (re)arm partner timeout (43.4.12) */
 	lacp_rx_state[port] = LACP_RX_CURRENT;
-	lacp_timeout[port] = (LACP_I->actor.state & LACP_STATE_TIMEOUT)
-	                   ? LACP_SHORT_TIMEOUT : LACP_LONG_TIMEOUT;
+	lacp_timeout[port] = LACP_SHORT_TIMEOUT;
 
 	/* Elect this LAG's aggregator partner system on first contact (43.4.14) */
 	if (!lacp_agg_valid[lag]) {
