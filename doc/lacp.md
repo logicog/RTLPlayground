@@ -129,7 +129,7 @@ longer keeps hashing traffic onto a member that no longer agrees to carry it.
 ```
 void lacp_init(void) __banked;	/* boot init: clear per-LAG state */
 void lacp_off(void) __banked;
-void lacp_lag_set(uint8_t lag, uint16_t ports) __banked;
+void lacp_lag_set(uint8_t lag, __xdata uint16_t ports) __banked;
 void lacp_in(void) __banked;
 void lacp_timers(void) __banked;
 void lacp_show(void) __banked;
@@ -145,19 +145,20 @@ A group is put under LACP by adding `lacp` to the `lag` command:
 
 ```
 lag 1 lacp 7 8      # ports 7 and 8 become LACP candidates of group 1
-lag 1 lacp off      # group 1 goes back to static (so does "lag 1 lacp")
+lag 1 lacp off      # group 1 leaves LACP, its trunk is cleared (so does "lag 1 lacp")
+lag 1 d             # group 1 disabled, whether it ran LACP or not
 lag 1 7 8           # plain static aggregation, no protocol
 ```
 
 A group put under LACP gives up the static trunk it had: the hardware trunk is
-cleared and rebuilt from the ports that converge. A port named in another LACP
-group moves to the new one. The protocol starts with the first group put under
-LACP and stops when the last one is taken out; there is no separate switch for
-it. Two commands act on
-the whole engine:
+cleared and rebuilt from the ports that converge. The other way round, `lag 1 d`
+and a static member list take the group out of LACP before they touch the
+trunk. A port named in another LACP group moves to the new one. The protocol
+starts with the first group put under LACP and stops when the last one is taken
+out; there is no separate switch for it. Two commands act on the whole engine:
 
 ```
-lacp off            # every group back to static, protocol stopped
+lacp off            # every group leaves LACP, protocol stopped
 lacp show
 ```
 
