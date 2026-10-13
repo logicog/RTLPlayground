@@ -321,6 +321,7 @@ static void bpdu_in(const struct sim_bpdu *b)
 	struct sim_pkt_in *f = (struct sim_pkt_in *)uip_buf;
 
 	memset(uip_buf, 0, sizeof(uip_buf));
+	f->vlan_tag.svlan = HTONS(0x8100);
 	memcpy(f->stp_addr, "\x01\x80\xc2\x00\x00\x00", 6);
 	memcpy(f->src_addr, b->br_mac, 6);
 	f->rtl_tag.pmask = HTONS(b->port);
