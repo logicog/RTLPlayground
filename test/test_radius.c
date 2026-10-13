@@ -186,6 +186,33 @@ static void t_timeout(void)
 	CHECK(radius_request(5, "bob", mac, eap, sizeof(eap), 0, 0), "and the client is free again");
 }
 
+static void t_pap(void)
+{
+	uint8_t mac[6] = { 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x0f };
+	const uint8_t *a;
+	uint8_t clear[16];
+	int i;
+
+	setup();
+	CHECK(radius_request_pap(3, "aabbccddee0f", mac), "a MAC request is accepted when idle");
+	poll();
+	a = attr(sent, sent_len, RADIUS_ATTR_USER_NAME);
+	CHECK(a && a[1] == 14 && memcmp(a + 2, "aabbccddee0f", 12) == 0, "User-Name is the address");
+	a = attr(sent, sent_len, RADIUS_ATTR_SERVICE_TYPE);
+	CHECK(a && a[5] == RADIUS_SERVICE_TYPE_CALL_CHECK, "Service-Type Call-Check marks a MAC check");
+	CHECK(attr(sent, sent_len, RADIUS_ATTR_EAP_MESSAGE) == 0, "no EAP-Message");
+	a = attr(sent, sent_len, RADIUS_ATTR_USER_PASSWORD);
+	CHECK(a && a[1] == 18, "User-Password is one 16-octet block");
+	md5_init(&ctx); md5_update(&ctx, (const uint8_t *)"testing123", 10); md5_update(&ctx, sent + 4, 16); md5_final(&ctx, digest);
+	for (i = 0; i < 16; i++) clear[i] = a[2 + i] ^ digest[i];
+	CHECK(memcmp(clear, "aabbccddee0f\0\0\0\0", 16) == 0, "User-Password is the address under MD5(secret + authenticator)");
+	a = attr(sent, sent_len, RADIUS_ATTR_CALLING_STATION_ID);
+	CHECK(a && memcmp(a + 2, "aa-bb-cc-dd-ee-0f", 17) == 0, "Calling-Station-Id is the address");
+	build_reply(RADIUS_CODE_ACCESS_ACCEPT, "testing123", 0, 0, 0, 0);
+	deliver(reply, reply_len);
+	CHECK(results == 1 && result_code == RADIUS_CODE_ACCESS_ACCEPT && result_port == 3, "Access-Accept without EAP reaches the authenticator");
+}
+
 static void t_unconfigured(void)
 {
 	uint8_t mac[6] = { 1, 2, 3, 4, 5, 6 };
@@ -202,6 +229,7 @@ int main(void)
 	t_challenge();
 	t_rejected_replies();
 	t_timeout();
+	t_pap();
 	t_unconfigured();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
