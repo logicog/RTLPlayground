@@ -54,7 +54,7 @@ struct lldp_pkt {
 // the length at any point
 #define LLDP_TYPE(value) (value << 1)
 
-void lldp_send(void) __banked __reentrant
+static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant
 {
     __xdata uint8_t *p;
     uint8_t port_position;
@@ -84,8 +84,8 @@ void lldp_send(void) __banked __reentrant
     //TTL
     *p++ = LLDP_TYPE(LLDP_TTL_TLV_TYPE);
     *p++ = LLDP_TTL_TLV_LENGTH;
-    *p++ = 0x00; //padding
-    *p++ = LLDP_TTL_TTL_SECONDS;
+    *p++ = ttl >> 8;
+    *p++ = ttl & 0xff;
 
     p += lldp_sysname(p);
     p += lldp_sysdesc(p);
@@ -136,13 +136,23 @@ void lldp_send(void) __banked __reentrant
 
     for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
 
-        if ((1 << port) & lldp_logical_port_status) {
+        if ((1 << port) & ports) {
             LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
             LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 
             tcpip_output();
         }
     }
+}
+
+void lldp_send(void) __banked __reentrant
+{
+    lldp_send_ports(LLDP_TTL_TTL_SECONDS, lldp_logical_port_status);
+}
+
+void lldp_shutdown(uint16_t ports) __banked __reentrant
+{
+    lldp_send_ports(0, ports);
 }
 
 void lldp_set_addresses(void) __banked {
