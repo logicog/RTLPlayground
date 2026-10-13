@@ -16,6 +16,8 @@
 #define TICKS_DUE(last, period)	((uint8_t)((uint8_t)ticks - (last)) >= (period))
 
 #define CPU_PORT        9
+#define MAC_ADDR_LEN    6
+#define PORT_BIT(p)     ((uint16_t)1 << (p))
 #define NUL			'\0'
 
 // Define Port-masks for 9-port devices and 6-port devices

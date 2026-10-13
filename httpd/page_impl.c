@@ -752,7 +752,7 @@ void send_lacp(void)
 		slen += strtox(outbuf + slen, "\",\"aggValid\":");
 		bool_to_html(lacp_agg_valid[l]);
 		slen += strtox(outbuf + slen, ",\"agg\":\"");
-		for (uint8_t j = 0; j < 6; j++)
+		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
 			byte_to_html(lacp_agg_sys[l][j]);
 		slen += strtox(outbuf + slen, "\",\"members\":\"");
 		byte_to_html(lacp_members_last[l] >> 8);
@@ -776,7 +776,7 @@ void send_lacp(void)
 		byte_to_html(lacp_rx_count[i] >> 8);
 		byte_to_html(lacp_rx_count[i]);
 		slen += strtox(outbuf + slen, "\",\"psys\":\"");
-		for (uint8_t j = 0; j < 6; j++)
+		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
 			byte_to_html(lacp_partner_sys[i][j]);
 		slen += strtox(outbuf + slen, "\"},");
 	}

@@ -56,7 +56,7 @@ void trap_rma_set(uint16_t reg, uint8_t act)
 
 struct wire_info {
 	uint16_t sys_prio;
-	uint8_t  sys[6];
+	uint8_t  sys[MAC_ADDR_LEN];
 	uint16_t key;
 	uint16_t port_prio;
 	uint16_t port;
@@ -65,8 +65,8 @@ struct wire_info {
 };
 
 struct wire_pdu_out {		/* what lacp_send() writes at uip_buf+12 */
-	uint8_t  dst[6];
-	uint8_t  src[6];
+	uint8_t  dst[MAC_ADDR_LEN];
+	uint8_t  src[MAC_ADDR_LEN];
 	struct rtl_tag rtl_tag;
 	uint16_t ethertype;
 	uint8_t  subtype;
@@ -83,8 +83,8 @@ struct wire_pdu_out {		/* what lacp_send() writes at uip_buf+12 */
 };
 
 struct wire_pdu_in {		/* forwarded form: the hardware inserts a VLAN tag */
-	uint8_t  dst[6];
-	uint8_t  src[6];
+	uint8_t  dst[MAC_ADDR_LEN];
+	uint8_t  src[MAC_ADDR_LEN];
 	struct rtl_tag rtl_tag;
 	struct vlan_tag vlan_tag;
 	uint16_t ethertype;
@@ -123,14 +123,14 @@ void tcpip_output(void)
 /* Deliver a LACPDU into the switch on `port`, from partner system `sys`.
  * pstate = partner's Actor_State flags. If `echo`, the partner echoes the
  * switch's last-seen actor block back (fresh view) - required for quiescence. */
-static void partner_frame_full(uint8_t port, const uint8_t sys[6], uint8_t pstate,
+static void partner_frame_full(uint8_t port, const uint8_t sys[MAC_ADDR_LEN], uint8_t pstate,
 			       int echo, uint16_t len, int tagged)
 {
 	struct wire_pdu_in in;
 	memset(&in, 0, sizeof(in));
 
 	in.dst[0]=0x01; in.dst[1]=0x80; in.dst[2]=0xc2; in.dst[5]=0x02;
-	memcpy(in.src, sys, 6);
+	memcpy(in.src, sys, MAC_ADDR_LEN);
 	in.rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	in.rtl_tag.pmask = HTONS(port);		/* RX: 4-bit ingress port */
 	in.vlan_tag.svlan = HTONS(0x8100);	/* the tag's TPID, which marks the body offset */
@@ -140,7 +140,7 @@ static void partner_frame_full(uint8_t port, const uint8_t sys[6], uint8_t pstat
 
 	in.tlv_actor = 0x01; in.actor_len = 0x14;
 	in.actor.sys_prio = HTONS(0x8000);
-	memcpy(in.actor.sys, sys, 6);
+	memcpy(in.actor.sys, sys, MAC_ADDR_LEN);
 	in.actor.key = HTONS(0x0011);
 	in.actor.port_prio = HTONS(0x00ff);
 	in.actor.port = HTONS((uint16_t)port + 101);
@@ -149,7 +149,7 @@ static void partner_frame_full(uint8_t port, const uint8_t sys[6], uint8_t pstat
 	in.tlv_partner = 0x02; in.partner_len = 0x14;
 	if (echo) {			/* fresh view of us, from our last TX */
 		in.partner.sys_prio = last_tx[port].actor.sys_prio;
-		memcpy(in.partner.sys, last_tx[port].actor.sys, 6);
+		memcpy(in.partner.sys, last_tx[port].actor.sys, MAC_ADDR_LEN);
 		in.partner.key = last_tx[port].actor.key;
 		in.partner.port = last_tx[port].actor.port;
 		in.partner.state = last_tx[port].actor.state;
@@ -166,18 +166,18 @@ static void partner_frame_full(uint8_t port, const uint8_t sys[6], uint8_t pstat
 	lacp_in();
 }
 
-static void partner_frame_len(uint8_t port, const uint8_t sys[6], uint8_t pstate, int echo, uint16_t len)
+static void partner_frame_len(uint8_t port, const uint8_t sys[MAC_ADDR_LEN], uint8_t pstate, int echo, uint16_t len)
 {
 	partner_frame_full(port, sys, pstate, echo, len, 1);
 }
 
-static void partner_frame(uint8_t port, const uint8_t sys[6], uint8_t pstate, int echo)
+static void partner_frame(uint8_t port, const uint8_t sys[MAC_ADDR_LEN], uint8_t pstate, int echo)
 {
 	partner_frame_full(port, sys, pstate, echo, sizeof(struct wire_pdu_in), 1);
 }
 
 /* The same LACPDU as the reserved-multicast trap delivers it. */
-static void partner_frame_trap(uint8_t port, const uint8_t sys[6], uint8_t pstate, int echo)
+static void partner_frame_trap(uint8_t port, const uint8_t sys[MAC_ADDR_LEN], uint8_t pstate, int echo)
 {
 	partner_frame_full(port, sys, pstate, echo, sizeof(struct wire_pdu_in), 0);
 }
@@ -201,8 +201,8 @@ static int failures;
 #define P_DIST  LACP_STATE_DISTRIBUTING
 #define P_TO    LACP_STATE_TIMEOUT	/* partner requests short (fast) timeout */
 
-static const uint8_t SYS_A[6] = {0x02,0xaa,0xaa,0xaa,0xaa,0x01};
-static const uint8_t SYS_B[6] = {0x02,0xbb,0xbb,0xbb,0xbb,0x02};
+static const uint8_t SYS_A[MAC_ADDR_LEN] = {0x02,0xaa,0xaa,0xaa,0xaa,0x01};
+static const uint8_t SYS_B[MAC_ADDR_LEN] = {0x02,0xbb,0xbb,0xbb,0xbb,0x02};
 
 int main(int argc, char **argv)
 {
@@ -342,11 +342,11 @@ int main(int argc, char **argv)
 	 * carries, so its body sits four bytes earlier. Both forms must parse. */
 	uint16_t rx_before = lacp_rx_count[0];
 	lacp_partner_state[0] = 0;		/* all three are written past the ethertype gate */
-	memset(lacp_partner_sys[0], 0, 6);
+	memset(lacp_partner_sys[0], 0, MAC_ADDR_LEN);
 	partner_frame_trap(0, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
 	int trap_ok = lacp_rx_count[0] == (uint16_t)(rx_before + 1)
 		   && lacp_partner_state[0] == (P_ACT|P_AGG|P_TO|P_SYNC)
-		   && !memcmp(lacp_partner_sys[0], SYS_A, 6);
+		   && !memcmp(lacp_partner_sys[0], SYS_A, MAC_ADDR_LEN);
 	partner_frame(0, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
 	CHECK(trap_ok && lacp_rx_count[0] == (uint16_t)(rx_before + 2),
 	      "T15 trapped LACPDU parses like a forwarded one");
@@ -376,7 +376,7 @@ int main(int argc, char **argv)
 		partner_frame(1, SYS_B, P_ACT|P_AGG|P_TO|P_SYNC, 1);
 		step(4 * 40);
 	}
-	CHECK(stayed_out && hw_members == 0x0003 && !memcmp(lacp_agg_sys[0], SYS_B, 6),
+	CHECK(stayed_out && hw_members == 0x0003 && !memcmp(lacp_agg_sys[0], SYS_B, MAC_ADDR_LEN),
 	      "T16 re-cabling one port at a time: aggregator moves from A to B");
 
 	/* T17: a group that already has a STATIC trunk is put under LACP with the
@@ -420,7 +420,7 @@ int main(int argc, char **argv)
 	int had_partner = lacp_rx_state[4] == LACP_RX_CURRENT && lacp_rx_count[4] > 0;
 	lacp_lag_set(1, 0);
 	CHECK(had_partner && lacp_partner_state[4] == 0 && lacp_rx_state[4] == LACP_RX_INITIALIZE
-	      && lacp_rx_count[4] == 0 && !memcmp(lacp_partner_sys[4], "\0\0\0\0\0\0", 6),
+	      && lacp_rx_count[4] == 0 && !memcmp(lacp_partner_sys[4], "\0\0\0\0\0\0", MAC_ADDR_LEN),
 	      "T20 release: partner state, rx state, counter and system cleared");
 
 	/* T21: applying the same candidate set again (the LAG page resends it
