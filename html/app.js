@@ -15,7 +15,7 @@ c_full:"full",c_half:"half",c_devices:"devices",c_yes:"yes",c_no:"no",
 d_ports:"Ports",d_ports_h:"click a port for details",d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
-i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
+i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",i_lldp:"LLDP neighbours",
 p_state:"State",p_disabled:"disabled",p_up:"up",p_txgb:"TX good / bad",p_rxgb:"RX good / bad",
 p_pkts:"pkts",p_module:"Module",p_temp:"Temperature",p_vcc:"Vcc",p_txbias:"TX bias",p_txpower:"TX power",
 p_rxpower:"RX power",p_txfault:"TX fault",p_txdis:"TX disabled",p_rxlos:"RX LOS",p_adv:"Advertising",
@@ -1064,7 +1064,8 @@ function portDetail(i){
 function renderInfo(){
   var m=[["i_host","hostname"],["i_ip","ip_address"],["i_mask","ip_netmask"],
     ["i_gw","ip_gateway"],["i_mac","mac_address"],["i_fw","sw_ver"],["i_built","build_date"],
-    ["i_hw","hw_ver"],["i_temp","chip_temp"],["i_flash","flash_size"],["i_syslog","syslog_server"]];
+    ["i_hw","hw_ver"],["i_temp","chip_temp"],["i_flash","flash_size"],["i_syslog","syslog_server"],
+    ["i_lldp","lldp_neighbors"]];
   var tb=$("sysinfo");tb.innerHTML="";
   m.forEach(function(r){
     var v=S.info[r[1]];

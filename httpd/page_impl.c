@@ -304,7 +304,9 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, BUILD_DATE);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
-	slen += strtox(outbuf + slen, "\",\"chip_temp\":\"");
+	slen += strtox(outbuf + slen, "\",\"lldp_neighbors\":");
+	itoa_html(lldp_neighbor_count());
+	slen += strtox(outbuf + slen, ",\"chip_temp\":\"");
 	temp_to_html();
 	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
