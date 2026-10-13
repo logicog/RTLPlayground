@@ -45,6 +45,10 @@ Devices sold usually have a fairly common design, however there may be differenc
 configuration (switches have LEDs with different colours and use types of LEDs). The list
 of tested devices can be found in [Supported devices](doc/supported_devices.md).
 
+Lianguo and SEEKER board targets, including selectable 20.8/125 MHz
+profiles and `make MACHINE=...` commands, are documented in
+[Lianguo and SEEKER build profiles](doc/adapted_targets.md).
+
 To do meaningful development you will need to use a serial console, so soldering skills
 are required. Flashing must be done via a SOIC-8 PatchClamp or by soldering a socket
 for the flash chip.

@@ -25,6 +25,20 @@ void machine_custom_init(void) __banked
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
 }
 
+#elif defined(MACHINE_SEEKER_RTL_4GT_2S_PLUS_V1_03) || defined(MACHINE_SEEKER_RTL_4GT_2S_PLUS_V1_03_125MHZ)
+// Preserve unrelated fields; reproduce the working reference's low LED pins.
+void machine_custom_init(void) __banked
+{
+	reg_read_m(RTL837X_REG_LED_GLB_IO_EN);
+	sfr_mask_data(0, 0xff, 0);
+	sfr_mask_data(1, 0x01, 0);
+	reg_write_m(RTL837X_REG_LED_GLB_IO_EN);
+	reg_read_m(RTL837X_PIN_MUX_0);
+	sfr_mask_data(0, 0xff, 0xff);
+	sfr_mask_data(1, 0x01, 0x01);
+	reg_write_m(RTL837X_PIN_MUX_0);
+}
+
 #elif defined MACHINE_PCB_SWTG018AS_V2_1_0
 // Stock-firmware values for what the LED-set encoding cannot express: the
 // bi-color SFP LED (blue pin at 10G) and the PIN_MUX_0 routing of that pin

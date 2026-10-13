@@ -25,6 +25,10 @@
 // #define MACHINE_KP_9000_9XHML_X_V3_2
 // #define MACHINE_SWGT024_V2_0_MANAGED
 // #define MACHINE_SWGT024_V2_0_UNMANAGED
+// #define MACHINE_LIANGUO_2G5F4_10G2_V1_01
+// #define MACHINE_LIANGUO_2G5F4_10G2_V1_01_125MHZ
+// #define MACHINE_SEEKER_RTL_4GT_2S_PLUS_V1_03
+// #define MACHINE_SEEKER_RTL_4GT_2S_PLUS_V1_03_125MHZ
 // #define MACHINE_TRENDNET_TEG_S562
 // #define MACHINE_HG0402XG_V1_1
 // #define MACHINE_SWTG018AS_A_V_2_0
@@ -52,6 +56,25 @@
 // #define MACHINE_HASIVO_S600W_4GT_2XGT_SE
 // #define MACHINE_HASIVO_S1100WP_8GT_1SX_SE
 // #define MACHINE_F7008_2_5
+
+/* Lianguo and SEEKER 4+2 profiles: the unsuffixed targets retain the 20.8 MHz reference
+ * settings. Explicit _125MHZ targets share the same board wiring and SIO
+ * policy. Do not name these derived flags MACHINE_*: the Makefile enumerates
+ * that prefix as selectable board targets. See doc/adapted_targets.md.
+ */
+#if defined(MACHINE_LIANGUO_2G5F4_10G2_V1_01) || \
+    defined(MACHINE_LIANGUO_2G5F4_10G2_V1_01_125MHZ) || \
+    defined(MACHINE_SEEKER_RTL_4GT_2S_PLUS_V1_03) || \
+    defined(MACHINE_SEEKER_RTL_4GT_2S_PLUS_V1_03_125MHZ)
+#define BOARD_BOOT_SINGLE_IO 1
+#define BOARD_SERIAL_BAUD_RATE 9600
+#if defined(MACHINE_LIANGUO_2G5F4_10G2_V1_01_125MHZ) || \
+    defined(MACHINE_SEEKER_RTL_4GT_2S_PLUS_V1_03_125MHZ)
+#define BOARD_CPU_HZ 125000000
+#else
+#define BOARD_CPU_HZ 20800000
+#endif
+#endif
 
 #define LED_27 1
 // SYSTEM LED
