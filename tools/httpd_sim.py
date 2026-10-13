@@ -579,6 +579,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "port": i,
                     "name": "",
                     "permitted": True,
+                    "listening": True,
                 }
                 for i in range(1, PORTS + 1)
             ],

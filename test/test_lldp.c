@@ -218,6 +218,18 @@ int main(void)
 	CHECK(lldp_nb[0].port == 3 && tx_port[3] == 1,
 	      "L16 a neighbour that pushes the oldest out of a full table gets no fast frames");
 
+	reset(true, 0x01ff);
+	lldp_rx_port_status = 0xffff & ~((uint16_t)1 << 7);
+	CHECK(frame(7, LLDP_PORT_ID_SUBTYPE_MAC, (const char *)ap_mac, MAC_ADDR_LEN) && lldp_nb[0].ttl == 0,
+	      "L17 a frame on a port that is not listening is taken and dropped");
+	CHECK(frame(8, LLDP_PORT_ID_SUBTYPE_MAC, (const char *)ap_mac, MAC_ADDR_LEN) && lldp_nb[0].port == 8,
+	      "L18 while a listening port still fills the table");
+	lldp_rx_port_status = 0xffff;
+	put(0, 7, 120);
+	put(1, 8, 120);
+	lldp_forget_port(7);
+	CHECK(lldp_nb[0].ttl == 0 && lldp_nb[1].ttl == 120, "L19 ignoring a port frees its neighbours and nobody else's");
+
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
 	return failures ? 1 : 0;

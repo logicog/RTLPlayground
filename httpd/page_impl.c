@@ -678,6 +678,8 @@ void send_lldp(void)
 
 		str_code_to_html("\"," JSONQUOTE("permitted") ":");
 		bool_to_json(1 & (lldp_logical_port_status >> i));
+		str_code_to_html("," JSONQUOTE("listening") ":");
+		bool_to_json(1 & (lldp_rx_port_status >> i));
 		char_to_html('}');
 
 		if (i < MACHINE_MAX_PORT)
