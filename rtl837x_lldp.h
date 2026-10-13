@@ -64,6 +64,18 @@
 #define LLDP_SYSNAME_TLV_TYPE 5
 #define LLDP_SYSDESC_TLV_TYPE 6
 
+#define LLDP_CAPABILITIES_TLV_TYPE 7
+#define LLDP_CAPABILITIES_TLV_LENGTH 4
+#define LLDP_CAPABILITY_BRIDGE 0x0004
+
+#define LLDP_MGMT_ADDR_TLV_TYPE 8
+#define LLDP_MGMT_ADDR_TLV_LENGTH 12
+#define LLDP_MGMT_ADDR_STR_LENGTH 5
+#define LLDP_MGMT_ADDR_SUBTYPE_IPV4 1
+#define LLDP_MGMT_IF_NUMBERING_UNKNOWN 1
+
+#define LLDP_MAX_PAYLOAD 128
+
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
 void lldp_send(void) __banked;

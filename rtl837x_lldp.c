@@ -48,7 +48,7 @@ struct lldp_pkt {
     struct rtl_tag rtl_tag;
     uint16_t ether_type;
 
-    uint8_t payload[64];
+    uint8_t payload[LLDP_MAX_PAYLOAD];
 };
 
 #define LLDP_O ((__xdata struct lldp_pkt *)&uip_buf[RTL_FRAME_DESC_SIZE])
@@ -96,6 +96,30 @@ void lldp_send(void) __banked __reentrant
 
     p += lldp_sysname(p);
     p += lldp_sysdesc(p);
+
+    //System Capabilities: supported, enabled
+    *p++ = LLDP_TYPE(LLDP_CAPABILITIES_TLV_TYPE);
+    *p++ = LLDP_CAPABILITIES_TLV_LENGTH;
+    *p++ = LLDP_CAPABILITY_BRIDGE >> 8;
+    *p++ = LLDP_CAPABILITY_BRIDGE & 0xff;
+    *p++ = LLDP_CAPABILITY_BRIDGE >> 8;
+    *p++ = LLDP_CAPABILITY_BRIDGE & 0xff;
+
+    //Management Address: IPv4
+    if (uip_hostaddr[0] | uip_hostaddr[1]) {
+        *p++ = LLDP_TYPE(LLDP_MGMT_ADDR_TLV_TYPE);
+        *p++ = LLDP_MGMT_ADDR_TLV_LENGTH;
+        *p++ = LLDP_MGMT_ADDR_STR_LENGTH;
+        *p++ = LLDP_MGMT_ADDR_SUBTYPE_IPV4;
+        memcpy(p, (__xdata uint8_t *)uip_hostaddr, sizeof(uip_ipaddr_t));
+        p += sizeof(uip_ipaddr_t);
+        *p++ = LLDP_MGMT_IF_NUMBERING_UNKNOWN;
+        *p++ = 0; //interface number
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0; //OID length
+    }
     tail = p;
 
     for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
