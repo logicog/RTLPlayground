@@ -669,6 +669,8 @@ void send_lldp(void)
 
 		slen += strtox(outbuf + slen, "\",\"permitted\":");
 		bool_to_html(1 & (lldp_logical_port_status >> i));
+		slen += strtox(outbuf + slen, ",\"listening\":");
+		bool_to_html(1 & (lldp_rx_port_status >> i));
 		slen += strtox(outbuf + slen, "}");
 
 		if (i < MACHINE_MAX_PORT)

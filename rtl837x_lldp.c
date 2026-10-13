@@ -25,6 +25,7 @@ extern volatile __xdata uint32_t ticks;
 __xdata uint8_t lldp_tick_last;
 __xdata uint8_t lldp_seconds;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
+__xdata uint16_t lldp_rx_port_status = 0xffff;
 __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
 static __xdata struct lldp_neighbor lldp_tmp;
 
@@ -325,6 +326,8 @@ bool lldp_in(void) __banked __reentrant
     lldp_tmp.port = ((uint8_t)HTONS(LLDP_RX_TAG->pmask)) & 0x0f;
     if (!MACHINE_PORT_VALID(lldp_tmp.port))
         return true;
+    if (!(((uint16_t)1 << lldp_tmp.port) & lldp_rx_port_status))
+        return true;
     lldp_tmp.ttl = LLDP_TTL_TTL_SECONDS;
 
     p = &uip_buf[body + LLDP_ETHERTYPE_LENGTH];
@@ -450,6 +453,16 @@ void lldp_neighbors_to_html(void) __banked __reentrant
         lldp_put('}', true);
     }
     lldp_put(']', true);
+}
+
+void lldp_forget_port(uint8_t port) __banked __reentrant
+{
+    uint8_t i;
+
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (lldp_nb[i].port == port)
+            lldp_nb[i].ttl = 0;
+    }
 }
 
 void lldp_show(void) __banked __reentrant

@@ -40,7 +40,7 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
-lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",lldp_listen:"Receive",
 stp_pcs:"Path cost",stp_pcs_long:"Long (32 bit)",stp_pcs_short:"Short (16 bit)",
 stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
 stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
@@ -831,7 +831,7 @@ var CONF_CMDS=[
   /^ingress(\s+\d+[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d+\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d+\s+name\s+\S+$/,
-  /^port\s+\d+\s+lldp\s+(permit|block)+$/,
+  /^port\s+\d+\s+lldp\s+(permit|block|listen|ignore)$/,
   /^eee\s+(on|off)(\s+\d+)?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d+)(\s+\d+[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d+)+$/,/^lag\s+[1-4]\s+d$/,
@@ -2103,6 +2103,13 @@ function lldpLoad(){
         }}),h("i")]);
       sw.firstChild.checked=p.permitted;
       tr.insertCell().appendChild(sw);
+      var rx=h("label",{class:"switch"},[
+        h("input",{type:"checkbox",onchange:function(){
+          postCmd("port "+p.portNum+" lldp "+(this.checked?"listen":"ignore"))
+            .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
+        }}),h("i")]);
+      rx.firstChild.checked=p.listening!==0;
+      tr.insertCell().appendChild(rx);
     });
     var nb=$("lldp_nb_table").tBodies[0];nb.innerHTML="";
     (s.neighbors||[]).sort(function(a,b){return a.port-b.port}).forEach(function(n){
@@ -2508,6 +2515,10 @@ function mergeConf(base,texts){
         if(m[1]==="out"||m[3]==="off")drop(new RegExp(pre));
         else if(m[3]==="drop"||m[3]==="fc")drop(new RegExp(pre+"(drop|fc)$"));
         else drop(new RegExp(pre+"(off|[0-9a-f]+)$"));
+        conf.push(line);return;
+      }
+      if((m=line.match(/^port (\d{1,2}) lldp (permit|block|listen|ignore)$/))){
+        drop(new RegExp("^port "+m[1]+" lldp ("+(m[2]==="listen"||m[2]==="ignore"?"listen|ignore":"permit|block")+")$"));
         conf.push(line);return;
       }
       for(var i=0;i<CONF_TOGGLE.length;i++){
