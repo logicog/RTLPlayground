@@ -471,6 +471,7 @@ void send_lldp(int s)
 		json_object_object_add(p, "logPort", json_object_new_int(i-1));
 		json_object_object_add(p, "name", json_object_new_string(""));
 		json_object_object_add(p, "permitted", json_object_new_int(1));
+		json_object_object_add(p, "listening", json_object_new_int(1));
 		json_object_array_add(portStatuses, p);
 	}
 
