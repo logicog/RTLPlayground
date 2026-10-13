@@ -1,6 +1,7 @@
 "use strict";
 var LANG={
 en:{
+ROBTODO:"TODOTODOTODO",
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
 nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_isolate:"Isolation",nav_lag:"LAG",nav_eee:"EEE",
 nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",nav_lldp:"LLDP",
@@ -47,8 +48,8 @@ st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed 
 v_title:"VLANs",v_vid:"VID",v_members:"Members",v_tagged:"Tagged",v_untagged:"Untagged",v_pvid_on:"PVID on",
 v_empty:"No VLANs configured.",v_mgmt:"Management VLAN",v_mgmt_none:"untagged",v_editor:"VLAN editor",
 v_optional:"optional",v_setmgmt:"Set as mgmt VLAN",v_setmgmt_t:"Make this the management VLAN",
-v_member:"Member",v_pvid:"PVID",
-v_legend:"U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.",
+v_member:"Member",v_pvid:"PVID",v_add:"Add a new VLAN",
+v_legend:"U = untagged member, T = tagged member, - = not a member. PVID is automatically assigned based on the untagged membership.",
 v_ingress:"Ingress filtering",v_ingress_h:"write-only: the state is not readable from the switch",
 v_accept:"Accept",v_ing_all:"All",v_ing_apply:"Apply ingress modes",v_del_t:"Delete VLAN",
 v_del_q:"Delete VLAN {n}?",v_del_d:"Ports keep their PVID until reassigned.",
@@ -1461,60 +1462,103 @@ function rangeStr(list){
   }
   return parts.join(", ");
 }
-function vlanRefresh(){
-  var tb=$("vtable").tBodies[0];
-  return getJSON("/vlanlist").then(function(d){
-    var vl=d.vlan||[];
-    $("vmgmtcur").textContent=d.mgmt?String(d.mgmt):t("v_mgmt_none");
-    $("vempty").style.display=vl.length?"none":"";
-    tb.innerHTML="";
-    var p=Promise.resolve();
-    vl.forEach(function(v){
-      p=p.then(function(){return getJSON("/vlan.json?vid="+v.id).catch(function(){return null})}).then(function(d){
-        var tr=tb.insertRow();
-        tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),onclick:function(e){
-          e.preventDefault();$("vvid").value=v.id;vlanLoad();
-        }}));
-        tr.insertCell().textContent=v.name||"";
-        if(!d){for(var c=0;c<4;c++)tr.insertCell().textContent="?";}
-        else{
-          var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
-          var pv=parseInt(d.pvid,16)&0x3ff;
-          tr.insertCell().textContent=rangeStr(maskToPorts(mem));
-          tr.insertCell().textContent=rangeStr(maskToPorts(mem&~unt));
-          tr.insertCell().textContent=rangeStr(maskToPorts(unt));
-          tr.insertCell().textContent=rangeStr(maskToPorts(pv));
+//ROBSTART
+function vlanRefresh() {
+  var tb = $("vtable").tBodies[0];
+  return getJSON("/vlanlist").then(function(d) {
+    var vl = d.vlan || [];
+    $("vmgmtcur").textContent = d.mgmt ? String(d.mgmt) : t("v_mgmt_none");
+    $("vempty").style.display = vl.length ? "none" : "";
+    tb.innerHTML = "";
+    var p = Promise.resolve();
+    vl.forEach(function(v) {
+      p = p.then(function() {
+        return getJSON("/vlan.json?vid=" + v.id).catch(function() {
+          return null
+        })
+      }).then(function(d) {
+        var tr = tb.insertRow();
+        var l = h("a", {
+          href: "#vlan",
+          text: String(v.id),
+          "data-id": v.id,
+          "data-name": v.name,
+          onclick: function(e) {
+            e.preventDefault();
+            vlanLoad(v.id);
+          }
+        });
+        tr.insertCell().appendChild(l);
+        tr.insertCell().textContent = v.name || "";
+        if (!d) {
+          for (var c = 0; c < 4; c++) tr.insertCell().textContent = "?";
+        } else {
+          var m = parseInt(d.members, 16),
+            mem = m & 0x3ff,
+            unt = ((m >> 10) & 0x3ff) & mem,
+            tag = mem & ~unt;
+          var pv = parseInt(d.pvid, 16) & 0x3ff;
+          tr.insertCell().textContent = rangeStr(maskToPorts(mem));
+          tr.insertCell().textContent = rangeStr(maskToPorts(tag));
+          tr.insertCell().textContent = rangeStr(maskToPorts(unt));
+          tr.insertCell().textContent = rangeStr(maskToPorts(pv));
+          l.dataset.t = maskToPorts(tag);
+          l.dataset.u = maskToPorts(unt);
         }
-        var del=tr.insertCell();
-        if(v.id!==1)del.appendChild(h("button",{class:"ctl",text:"\u2715",title:t("v_del_t"),onclick:function(){
-          confirmModal(t("v_del_q",{n:v.id}),t("v_del_d"),function(){
-            postCmd("vlan "+v.id+" d").then(vlanRefresh).catch(function(){});
-          });
-        }}));
-      }).catch(function(){});
+        var del = tr.insertCell();
+        if (v.id !== 1) del.appendChild(h("button", {
+          class: "ctl",
+          text: "\u2715",
+          title: t("v_del_t"),
+          onclick: function() {
+            confirmModal(t("v_del_q", {
+              n: v.id
+            }), t("v_del_d"), function() {
+              postCmd("vlan " + v.id + " d").then(vlanRefresh).catch(function() {});
+            });
+          }
+        }));
+      }).catch(function() {});
     });
     return p;
   });
 }
-function buildVlanEdit(){
-  var tb=$("vedit").tBodies[0];
-  if(tb.rows.length||!S.n)return;
-  var hd=tb.insertRow();hd.insertCell().className="mut";
-  var rM=tb.insertRow();rM.insertCell().textContent=t("v_member");
-  var rP=tb.insertRow();rP.insertCell().textContent=t("v_pvid");
-  for(var p=1;p<=S.n;p++)(function(p){
-    hd.insertCell().innerHTML='<b>'+p+'</b>';
-    var seg=h("span",{class:"seg",id:"vm"+p});
-    ["-","U","T"].forEach(function(s,ix){
-      seg.appendChild(h("button",{text:s,"data-v":ix,onclick:function(){
-        seg.querySelectorAll("button").forEach(function(b){b.classList.remove("on")});
-        this.classList.add("on");
-      }}));
+
+function buildVlanEdit() {
+  var tb = $("vedit").tBodies[0];
+  if (tb.rows.length || !S.n) return;
+  var hd = tb.insertRow();
+  hd.insertCell().className = "mut";
+  var rM = tb.insertRow();
+  rM.insertCell().textContent = t("v_member");
+  var rP = tb.insertRow();
+  rP.insertCell().textContent = t("v_pvid");
+  for (var p = 1; p <= S.n; p++)(function(p) {
+    hd.insertCell().innerHTML = '<b>' + p + '</b>';
+    var seg = h("span", {
+      class: "seg",
+      id: "vm" + p
+    });
+    ["-", "U", "T"].forEach(function(s, ix) {
+      seg.appendChild(h("button", {
+        text: s,
+        "data-v": ix,
+        onclick: function() {
+          seg.querySelectorAll("button").forEach(function(b) {
+            b.classList.remove("on")
+          });
+          this.classList.add("on");
+        }
+      }));
     });
     seg.children[0].classList.add("on");
     rM.insertCell().appendChild(seg);
-    rP.insertCell().appendChild(h("input",{type:"checkbox",id:"vp"+p}));
+    rP.insertCell().appendChild(h("span", {
+      id: "vp" + p
+    }));
   })(p);
+  //ROBTEST TODO
+  /*
   var it=$("ingress").tBodies[0];
   var ih=it.insertRow();ih.insertCell().className="mut";
   var ir=it.insertRow();ir.insertCell().textContent=t("v_accept");
@@ -1525,67 +1569,200 @@ function buildVlanEdit(){
       sel.appendChild(h("option",{value:o[0],text:o[1]}));
     });
     ir.insertCell().appendChild(sel);
-  })(q);
+  })(q);*/
 }
-function segVal(p){
-  return Number($("vm"+p).querySelector("button.on").getAttribute("data-v"));
+
+function segVal(p) {
+  return Number($("vm" + p).querySelector("button.on").getAttribute("data-v"));
 }
-function segSet(p,v){
-  $("vm"+p).querySelectorAll("button").forEach(function(b,i){b.classList.toggle("on",i===v)});
+
+function segSet(p, v) {
+  $("vm" + p).querySelectorAll("button").forEach(function(b, i) {
+    b.classList.toggle("on", i === v)
+  });
 }
-function vlanLoad(){
-  var vid=parseInt($("vvid").value,10);
-  if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  getJSON("/vlan.json?vid="+vid).then(function(d){
-    $("vname").value=d.name||"";
-    var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
-    var pv=parseInt(d.pvid,16)&0x3ff;
-    for(var p=1;p<=S.n;p++){
-      var bit=S.physToLog[p-1];
-      segSet(p,(mem>>bit)&1?(((unt>>bit)&1)?1:2):0);
-      $("vp"+p).checked=!!((pv>>bit)&1);
+
+function vlanLoad(vid) {
+  if (!vid || vid < 1 || vid > 4094) {
+    toast(t("v_vid_err"), "err");
+    return;
+  }
+  getJSON("/vlan.json?vid=" + vid).then(function(d) {
+    $("vtitle").innerText = "VLAN " + vid + (d.name ? " (" + (d.name) + ")" : "");
+    $("vtitle").dataset.id = vid;
+    $("vtitle").dataset.name = d.name;
+    var m = parseInt(d.members, 16),
+      mem = m & 0x3ff,
+      unt = ((m >> 10) & 0x3ff) & mem;
+    var pv = parseInt(d.pvid, 16) & 0x3ff;
+    for (var p = 1; p <= S.n; p++) {
+      var bit = S.physToLog[p - 1];
+      segSet(p, (mem >> bit) & 1 ? (((unt >> bit) & 1) ? 1 : 2) : 0);
+      $("vp" + p).innerText = !!((pv >> bit) & 1);
     }
-    toast(t("v_loaded",{n:vid}),"ok");
-  }).catch(function(){toast(t("v_notfound",{n:vid}),"err")});
+    toast(t("v_loaded", {
+      n: vid
+    }), "ok");
+  }).catch(function() {
+    toast(t("v_notfound", {
+      n: vid
+    }), "err")
+  });
 }
-function vlanApply(){
-  var vid=parseInt($("vvid").value,10);
-  if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  var name=$("vname").value.trim();
-  if(name&&!/^[a-zA-Z]\w*$/.test(name)){toast(t("v_name_err"),"err");return;}
-  var cmd="vlan "+vid+(name?" "+name:""),members=0;
-  for(var p=1;p<=S.n;p++){
-    var v=segVal(p);
-    if(v===1){cmd+=" "+p;members++;}
-    else if(v===2){cmd+=" "+p+"t";members++;}
+
+function vlan2str(i, n, t, u) {
+  return ("vlan " + i + (n ? " " + n : "") + " " + t.map((x)=>x+"t").concat(u).join(" ")).trim();
+}
+function pvidcmd(i, p){
+  return "pvid " + p + " " + i;
+}
+function vlanApply() {
+  var vid = $("vtitle").dataset.id;
+  var vname = $("vtitle").dataset.name;
+  if (!vid || vid < 1 || vid > 4094) {
+    toast(t("v_vid_err"), "err");
+    return;
   }
-  if(!members){toast(t("v_nomember"),"err");return;}
-  var cmds=[cmd];
-  for(var q=1;q<=S.n;q++)if($("vp"+q).checked)cmds.push("pvid "+q+" "+vid);
-  postCmds(cmds).then(vlanRefresh).catch(function(){});
-}
-function ingressApply(){
-  var cmd="ingress",any=false;
-  for(var p=1;p<=S.n;p++){
-    var v=$("ing"+p).value;
-    if(v){cmd+=" "+p+v;any=true;}
+  var top_cmds = [],
+    tail_cmds = [],
+    thisVlanInStructure={id:vid, tagged:[], untagged:[]};
+  
+  for (var p = 1; p <= S.n; p++) {
+    var v = segVal(p);
+    if (v === 1) {
+      thisVlanInStructure.untagged.push(p);
+    } else if (v === 2) {
+      thisVlanInStructure.tagged.push(p);
+    }
   }
-  if(!any){toast(t("v_ing_none"),"err");return;}
-  postCmd(cmd).catch(function(){});
+  if (thisVlanInStructure.tagged.length + thisVlanInStructure.untagged.length == 0) {
+    toast(t("v_nomember"), "err");
+    return;
+  }
+  function mySplit(a){
+    if(a=="") return [];
+    return a.split(",");
+  }
+  for(const vlanRow of $("vtable").tBodies[0].rows){
+    var rowData = vlanRow.firstChild.firstChild.dataset,
+      rowUntagged = mySplit(rowData.u),
+      rowTagged = mySplit(rowData.t);
+      if(rowData.id == vid) continue;
+    for(const newVlanPort of thisVlanInStructure.untagged) {
+      if(rowUntagged.includes(""+newVlanPort)){
+        rowUntagged.splice(rowUntagged.indexOf(""+newVlanPort),1);
+      }
+    }
+    top_cmds.push(vlan2str(rowData.id,rowData.name,rowTagged,rowUntagged));
+  }
+  tail_cmds.push(vlan2str(vid, vname, thisVlanInStructure.tagged, thisVlanInStructure.untagged));
+  //TODO: if the PVID is equal to this vid, we need to set it something else (probably 1)
+  
+  for(const up of thisVlanInStructure.untagged){
+    tail_cmds.push(pvidcmd(vid,up));
+  }
+
+  var cmds = top_cmds.concat(tail_cmds);
+  console.log(cmds);
+
+  postCmds(cmds).then(vlanRefresh).catch(function() {}).then(function() {
+    vlanLoad(vid)
+  });
 }
-$("vload").addEventListener("click",vlanLoad);
-$("vapply").addEventListener("click",vlanApply);
-$("ingapply").addEventListener("click",ingressApply);
+
+function ingressApply() {
+  var cmd = "ingress",
+    any = false;
+  for (var p = 1; p <= S.n; p++) {
+    var v = $("ing" + p).value;
+    if (v) {
+      cmd += " " + p + v;
+      any = true;
+    }
+  }
+  if (!any) {
+    toast(t("v_ing_none"), "err");
+    return;
+  }
+  postCmd(cmd).catch(function() {});
+}
+$("vapply").addEventListener("click", vlanApply);
+$("vlan_add").addEventListener("click", function() {
+  var body = h("div");
+  body.appendChild(document.createTextNode("ROBTODO: styling,layout etc"));
+  body.appendChild(h("p", null, [
+    h("label", null, [document.createTextNode(t("v_vid"))]),
+    h("input", {
+      id: "nvlid",
+      class: "in sm",
+      type: "number",
+      min: "1",
+      max: "4094"
+    })
+  ]));
+  body.appendChild(h("p", null, [
+    h("label", null, [document.createTextNode(t("c_name"))]),
+    h("input", {
+      id: "nvlname",
+      class: "in",
+      size: "12",
+      maxlength: "15",
+      "data-i18n-p": "v_opt      ional"
+    })
+  ]));
+  modal("Add VLAN", body, [h("button", {
+    class: "ctl pri",
+    text: t("ROBTODO"),
+    onclick: function() {
+      addVlan()
+    }
+  })]);
+});
+
+function addVlan() {
+  var vid = parseInt($("nvlid").value, 10);
+  for (const r of $("vtable").tBodies[0].rows) {
+    if (r.firstChild.firstChild.dataset.id == vid) {
+      toast(t("ROBTODO"), "err");
+      return;
+    }
+  }
+  var name = $("nvlname").value;
+  if (name && !/^[a-zA-Z]\w*$/.test(name)) {
+    toast(t("v_name_err"), "err");
+    return;
+  }
+  var cmd = "vlan " + vid + (name ? " " + name : "");
+  postCmd(cmd).then(function() {
+    closeModal();
+    vlanRefresh()
+  }).catch(function() {});
+}
+//ROBTODO
+/*
+//$("ingapply").addEventListener("click",ingressApply);
 $("vmgmt").addEventListener("click",function(){
   var vid=parseInt($("vvid").value,10);
   if(!vid){toast(t("v_vid_first"),"err");return;}
   confirmModal(t("v_mgmt_q",{n:vid}),t("v_mgmt_d"),
     function(){postCmd("vlan "+vid+" mgmt").then(vlanRefresh).catch(function(){})});
 });
-tabHooks.vlan={
-  enter:function(){needPorts(function(){buildVlanEdit();vlanRefresh().catch(function(){})})},
+*/
+tabHooks.vlan = {
+  enter: function() {
+    needPorts(function() {
+      buildVlanEdit();
+      vlanRefresh().catch(function() {}).then(function() {
+        VlanInit();
+      })
+    })
+  },
 };
 
+function VlanInit() {
+  $("vtable").tBodies[0].firstChild.firstChild.firstChild.click();
+};
+//ROBSTOP
 var l2Rows=[],l2SortCol="pport",l2SortDir=1,l2Gen=0;
 function l2Load(){
   var seen={},all=[],idx=0,guard=0,gen=++l2Gen;

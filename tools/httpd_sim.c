@@ -19,7 +19,9 @@
 #define NSFP 1
 
 #define N_COUNTERS 52
-#define VLAN_MAX 1
+#define VLAN_MAX_ID 4094
+
+int currentVLANCount = 1;
 
 #if PORTS == 9
 const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -27,6 +29,14 @@ const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
 const uint8_t physToLogPort[] = { 4, 5, 6, 7, 3, 8};
 #endif
 
+struct mem_vlan {
+	bool active;
+	char name[20];
+	bool untagged[PORTS];
+	bool tagged[PORTS];
+};
+struct mem_vlan mem_vlans[VLAN_MAX_ID+1];
+//mem_vlans[1] = {.active=true, .name="", .untagged={}, .tagged={}};
 struct l2_entry {
 	char mac[18];
 	char vlan[4];
@@ -135,13 +145,20 @@ void send_vlan(int s, int vlan)
 		       "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
 	v = json_object_new_object();
+	if(vlan == 1) {
+		sprintf(num_buff, "0x%08x", 0x207ffff);
+		json_object_object_add(v, "members", json_object_new_string(num_buff));
+
+		json_object_object_add(v, "name", json_object_new_string("native"));
+		json_object_object_add(v, "pvid", json_object_new_string("0x01ff"));
+	} else {
+		if(mem_vlans[vlan].active) {
+			json_object_object_add(v, "name", json_object_new_string(mem_vlans[vlan].name));
+			json_object_object_add(v, "members", json_object_new_string("0x0000"));
+			json_object_object_add(v, "pvid", json_object_new_string("0x0000"));
+		}
+	}
 	
-	sprintf(num_buff, "0x%08x", 0x207ffff);
-	json_object_object_add(v, "members", json_object_new_string(num_buff));
-
-	json_object_object_add(v, "name", json_object_new_string(""));
-	json_object_object_add(v, "pvid", json_object_new_string("0x01ff"));
-
 	write(s, header, strlen(header));
 
 	jstring = json_object_to_json_string_ext(v, JSON_C_TO_STRING_PLAIN);
@@ -160,17 +177,18 @@ void send_vlanlist(int s)
 	
 	json_object_object_add(v, "mgmt", json_object_new_int(1));
 
-	vlans = json_object_new_array_ext(VLAN_MAX);
+	vlans = json_object_new_array_ext(currentVLANCount);
 	
 	//foreach VLAN
-	for (int x=1;x<=VLAN_MAX;++x) {
+	for (int x=1;x<=VLAN_MAX_ID;++x) {
 		vlan = json_object_new_object();
-		json_object_object_add(vlan, "id", json_object_new_int(x));
-		json_object_object_add(vlan, "name", json_object_new_string(""));
+		if(x ==1 || mem_vlans[x].active) {
+			json_object_object_add(vlan, "id", json_object_new_int(x));
+			json_object_object_add(vlan, "name", json_object_new_string(mem_vlans[x].name));
 
-		json_object_array_add(vlans, vlan);
+			json_object_array_add(vlans, vlan);
+		}
 	}
-	
 
 	json_object_object_add(v, "vlan", vlans);
 	
@@ -680,6 +698,65 @@ void print_cmd_history(void)
 		printf("%d: %s\n", i, cmd_history[i]);
 }
 
+void delete_vlan(int vid) {
+	mem_vlans[vid] = (struct mem_vlan){};
+	currentVLANCount--;
+}
+
+void parse_cmd(char* cmd)
+{
+	char *token = strtok(cmd, " ");
+	char *name;
+	printf("\t OK FIRST TOKEN: '%s'\n",token);
+	if (!strncmp(token, "vlan", 4)) {
+		printf("\t OK IT IS VLAN\n");
+		token = strtok(NULL, " ");
+		int vid = atoi(token);
+		if (vid<1 || vid > VLAN_MAX_ID) {
+			printf("\t REJECT BECAUSE OF VID:%d\n",vid);
+			return;
+		}
+
+		token = strtok(NULL, " ");
+		if(!strncmp(token,"mgmt",4)) {
+			printf("\t MGMT LEAVE:\n");
+			return;	//TODO
+		} else if (!strncmp(token,"d",1)) {
+			printf("\t DELETE VID %d:\n",vid);
+			delete_vlan(vid);
+		} else {
+			if (token[0] >= 'A' && token[0] <= 'z' ){
+				name = token;
+				token = strtok(NULL, " ");
+
+				printf("\tIS NAME %s:\n", name);
+			}
+
+			struct mem_vlan newvlan = {.active=true};
+			strcpy(newvlan.name, name);
+
+			// a string of [0-9][t]?
+			printf("\t TOKEN: %s:\n", token);
+			while(token != NULL) {
+				int portNum = atoi(token);
+				bool isTagged = token[strlen(token)] == 't';
+				printf("\tVLAN: %d Name: %s Port: %d tagged:%d\n", vid, name, portNum, isTagged);
+				token = strtok(NULL, " ");
+				if(isTagged) {
+					newvlan.tagged[portNum] = true;
+				} else {
+					newvlan.untagged[portNum] = true;
+				}
+			}
+
+			mem_vlans[vid] = newvlan;
+			currentVLANCount++;
+		}
+	} else {
+
+	}
+}
+
 void launch(struct Server *server)
 {
     char buffer[BUFFER_SIZE];
@@ -872,6 +949,8 @@ void launch(struct Server *server)
 					printf("POST cmd\n");
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
+					printf("\t GOING TO PARSE THIS: %s\n", p+4);
+					parse_cmd(p+4);
 					cmd_ptr++;
 					print_cmd_history();
 					char *response = "HTTP/1.1 200 OK\r\n"
