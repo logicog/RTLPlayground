@@ -44,6 +44,10 @@ struct eapol_port {
     char identity[EAPOL_IDENTITY_MAX + 1];	/* NUL terminated EAP identity */
     uint8_t rstate[RADIUS_STATE_MAX];	/* RADIUS State to echo in the next request */
     uint8_t rstate_len;
+    uint8_t mab;		/* 1 = fall back to MAC authentication when no supplicant answers */
+    uint8_t via_mab;		/* 1 = the running or last authentication was by MAC */
+    uint16_t ok;		/* successful authentications since boot */
+    uint16_t fail;		/* rejected or timed out authentications since boot */
 };
 
 extern __xdata struct eapol_port eapol_ports[DOT1X_PORTS];
@@ -53,6 +57,7 @@ bool eapol_in(void) __banked __reentrant;
 void eapol_poll(void) __banked __reentrant;
 void eapol_tick(void) __banked __reentrant;
 void eapol_port_reset(uint8_t port) __banked __reentrant;
+void eapol_port_mab(uint8_t port, bool on) __banked __reentrant;
 void eapol_radius_result(uint8_t port, uint8_t code, __xdata const uint8_t *state, uint8_t state_len) __banked __reentrant;
 __code const char *eapol_state_name(uint8_t port) __banked __reentrant;
 

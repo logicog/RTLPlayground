@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_dot1x.h"
+#include "eapol.h"
 #include "radius.h"
 #include "rtl837x_storm.h"
 #include "rtl837x_trap.h"
@@ -913,7 +914,7 @@ void parse_port(void)
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
 					 "\nport <port> lldp [block|permit]" \
 					 "\nport <port> cabletest [show]" \
-					 "\nport <port> dot1x [off|auto|force-auth|force-unauth|action drop|guest]" \
+					 "\nport <port> dot1x [off|auto|force-auth|force-unauth|action drop|guest|mab on|off]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
 	}
@@ -954,6 +955,13 @@ void parse_port(void)
 				dot1x_port_action(phy_settings.port, DOT1X_UNAUTH_GUEST);
 			else
 				print_string("Unknown port <port> dot1x action [drop|guest] command\n");
+		} else if (cmd_compare(3, "mab")) {
+			if (cmd_compare(4, "on"))
+				eapol_port_mab(phy_settings.port, true);
+			else if (cmd_compare(4, "off"))
+				eapol_port_mab(phy_settings.port, false);
+			else
+				print_string("Unknown port <port> dot1x mab [on|off] command\n");
 		} else if (cmd_compare(3, "off")) {
 			dot1x_port_mode(phy_settings.port, DOT1X_PORT_OFF);
 		} else if (cmd_compare(3, "auto")) {
@@ -965,7 +973,7 @@ void parse_port(void)
 		} else if (cmd_compare(3, "force-unauth")) {
 			dot1x_port_mode(phy_settings.port, DOT1X_PORT_FORCE_UNAUTH);
 		} else {
-			print_string("Unknown port <port> dot1x [off|auto|force-auth|force-unauth|action drop|guest] command\n");
+			print_string("Unknown port <port> dot1x [off|auto|force-auth|force-unauth|action drop|guest|mab on|off] command\n");
 		}
 	} else if (cmd_compare(2, "lldp")) {
 		if (cmd_compare(3, "block")){
