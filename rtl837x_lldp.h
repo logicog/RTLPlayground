@@ -44,14 +44,21 @@
 #define LLDP_END_TLV_TYPE 0
 #define LLDP_MULTICAST_ADDR "\x01\x80\xc2\x00\x00\x0e"
 
+#define LLDP_CHASSIS_ID_SUBTYPE_NETWORK_ADDR 5
+#define LLDP_ADDR_FAMILY_IPV4 1
+#define LLDP_NETWORK_ADDR_IPV4_LENGTH 5
+
 #define LLDP_NB_MAX 16
+#define LLDP_NB_CHASSIS_LENGTH 16
 #define LLDP_NB_PORT_ID_LENGTH 12
 #define LLDP_NB_SYS_NAME_LENGTH 16
 #define LLDP_NB_JSON_LENGTH 112	/* separator + worst-case neighbour entry in /lldp.json */
 
 struct lldp_neighbor {
     uint8_t port;		/* logical ingress port */
-    uint8_t chassis[MAC_ADDR_LEN];	/* Chassis ID, MAC address subtype */
+    uint8_t chassis_subtype;	/* Chassis ID subtype, 4 = MAC address, 5 = network address */
+    uint8_t chassis_len;	/* bytes used in chassis[] */
+    uint8_t chassis[LLDP_NB_CHASSIS_LENGTH];	/* Chassis ID without the subtype byte */
     uint8_t port_id_mac;	/* 1 = port_id holds a MAC address, subtype 3 */
     char port_id[LLDP_NB_PORT_ID_LENGTH + 1];	/* NUL terminated, printable ASCII, or the MAC address */
     char sys_name[LLDP_NB_SYS_NAME_LENGTH + 1];	/* NUL terminated, printable ASCII */
