@@ -41,7 +41,7 @@ stp_en_d:"Ports start blocked and take up to twice the forward delay to reach fo
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
 lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
-lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_portdesc:"Port Description",lldp_nb_addr:"Address",lldp_nb_caps:"Capabilities",lldp_nb_ttl:"TTL",
+lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_portdesc:"Port Description",lldp_nb_addr:"Address",lldp_nb_caps:"Capabilities",lldp_nb_pvid:"PVID",lldp_nb_mtu:"MTU",lldp_nb_lag:"LAG",lldp_nb_warn:"Warnings",lldp_w_mtu:"MTU differs",lldp_w_lag:"LAG only on one side",lldp_w_dup:"same neighbour on another port",lldp_nb_ttl:"TTL",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -1925,6 +1925,13 @@ function lldpLoad(){
       var ac=tr.insertCell();
       if(n.mgmtAddr)ac.appendChild(h("a",{href:"http://"+n.mgmtAddr,target:"_blank",rel:"noopener",text:n.mgmtAddr}));
       tr.insertCell().textContent=lldpCaps(n.caps);
+      tr.insertCell().textContent=n.pvid||"-";
+      tr.insertCell().textContent=n.mtu||"-";
+      tr.insertCell().textContent=n.agg?(n.agg===2?t("c_yes"):t("c_no")):"-";
+      var wc=tr.insertCell();
+      [[1,"lldp_w_mtu"],[2,"lldp_w_lag"],[4,"lldp_w_dup"]].forEach(function(w){
+        if(n.warn&w[0])wc.appendChild(h("span",{class:"badge bad",text:t(w[1])}));
+      });
       tr.insertCell().textContent=n.ttl;
     });
   });
