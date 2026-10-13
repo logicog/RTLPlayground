@@ -25,5 +25,7 @@ void dot1x_port_action(uint8_t port, uint8_t action) __banked;
 void dot1x_guest_vlan(uint16_t vid) __banked;
 void dot1x_show(void) __banked;
 void dot1x_to_html(void) __banked;
+void dot1x_authorize(uint8_t port, bool on) __banked;
+void dot1x_tick(void) __banked;
 
 #endif
