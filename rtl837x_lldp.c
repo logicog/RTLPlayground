@@ -291,18 +291,35 @@ static __xdata struct lldp_neighbor *lldp_find(void) __reentrant
     return 0;
 }
 
+static uint8_t lldp_port_count(uint8_t port) __reentrant
+{
+    uint8_t i;
+    uint8_t n = 0;
+
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (lldp_nb[i].ttl && lldp_nb[i].port == port)
+            n++;
+    }
+    return n;
+}
+
 static __xdata struct lldp_neighbor *lldp_slot(void) __reentrant
 {
     uint8_t i;
-    __xdata struct lldp_neighbor *oldest = &lldp_nb[0];
+    uint8_t crowd;
+    uint8_t victim_crowd = 0;
+    __xdata struct lldp_neighbor *victim = &lldp_nb[0];
 
     for (i = 0; i < LLDP_NB_MAX; i++) {
         if (!lldp_nb[i].ttl)
             return &lldp_nb[i];
-        if (lldp_nb[i].ttl < oldest->ttl)
-            oldest = &lldp_nb[i];
+        crowd = lldp_port_count(lldp_nb[i].port);
+        if (crowd > victim_crowd || (crowd == victim_crowd && lldp_nb[i].ttl < victim->ttl)) {
+            victim = &lldp_nb[i];
+            victim_crowd = crowd;
+        }
     }
-    return oldest;
+    return victim;
 }
 
 bool lldp_in(void) __banked __reentrant
@@ -370,8 +387,11 @@ bool lldp_in(void) __banked __reentrant
             nb->ttl = 0;
         return true;
     }
-    if (!nb)
+    if (!nb) {
+        if (lldp_port_count(lldp_tmp.port) >= LLDP_NB_PER_PORT_MAX)
+            return true;
         nb = lldp_slot();
+    }
     memcpy(nb, &lldp_tmp, sizeof(lldp_tmp));
     return true;
 }
