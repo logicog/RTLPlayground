@@ -411,6 +411,8 @@ void lldp_neighbors_to_html(void) __banked __reentrant
     for (i = 0; i < LLDP_NB_MAX; i++) {
         if (!lldp_nb[i].ttl)
             continue;
+        if (slen + LLDP_NB_JSON_LENGTH + 2 > TCP_OUTBUF_SIZE)
+            break;
         if (!first)
             lldp_put(',', true);
         first = false;
