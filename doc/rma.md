@@ -51,6 +51,10 @@ rma 00 storm off
 | `csstp` | 01:00:0C:CC:CC:CD | Cisco PVST+ |
 | `lldp` | LLDP by EtherType 88cc | used instead of the address entries while `lldpmatch` is on |
 
+The chip has an entry only for the addresses listed: there is none for
+`01:80:C2:00:00:05` through `07`, for instance. The step of 4 between the
+registers counts entries, not the last octet of the address.
+
 The actions:
 
 | action | effect |
