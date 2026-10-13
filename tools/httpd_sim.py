@@ -581,11 +581,17 @@ class Handler(SimpleHTTPRequestHandler):
                 "action": "guest" if i == 3 else "drop",
                 "authorized": 1 if i == 2 else 0,
             }
+            if i == 2:
+                p["state"] = "authenticated"
+                p["identity"] = "alice"
             ports.append(p)
         return {
             "on": 1,
             "guest": 99,
             "ports": ports,
+            "server": "192.168.1.10",
+            "serverPort": 1812,
+            "secretSet": 1,
         }
 
     def _api_lldp(self):
