@@ -26,6 +26,7 @@ void send_stp(void) __banked;
 void send_lldp(void);
 void send_lacp(void);
 void send_stp_counters(void) __banked;
+void send_dot1x(void);
 void send_vlanlist(void);
 
 /*  Convert only the lower nibble to ascii HEX char.

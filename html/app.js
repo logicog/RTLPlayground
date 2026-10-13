@@ -2,7 +2,7 @@
 var LANG={
 en:{
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
-nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_isolate:"Isolation",nav_lag:"LAG",nav_eee:"EEE",
+nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_isolate:"Isolation",nav_lag:"LAG",nav_dot1x:"802.1X",nav_eee:"EEE",
 nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",nav_lldp:"LLDP",
 hdr_dirty:"unsaved changes",hdr_dirty_t:"Running config differs from startup config",
 hdr_save:"Save to flash",hdr_save_t:"Persist running configuration to flash",
@@ -40,6 +40,9 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
+x_title:"802.1X port authentication",x_enabled:"Enabled",x_guest:"Guest VLAN",x_mode:"Mode",x_action:"Unauthorized traffic",x_status:"Status",
+x_open:"open",x_auth:"authorized",x_unauth:"unauthorized",x_off:"off",x_auto:"auto",x_fauth:"force authorized",x_funauth:"force unauthorized",x_drop:"drop",x_gvlan:"guest VLAN",
+x_note:"auto waits for a supplicant on the port, force-auth and force-unauth set the state by hand. Unauthorized traffic is dropped or moved to the guest VLAN (0 = none).",
 lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
 stp_pcs:"Path cost",stp_pcs_long:"Long (32 bit)",stp_pcs_short:"Short (16 bit)",
 stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
@@ -839,6 +842,10 @@ var CONF_CMDS=[
   /^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d+(\s+(off|\d+))+$/,
   /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d+$/,
+  /^port\s+\d{1,2}\s+dot1x\s+(off|auto|force-auth|force-unauth)$/,
+  /^port\s+\d{1,2}\s+dot1x\s+action\s+(drop|guest)$/,
+  /^dot1x\s+(on|off)$/,
+  /^dot1x\s+guest\s+\d{1,4}$/,
   /^stp\s+version\s+(rstp|stp)$/,
   /^stp\s+pathcost\s+(long|short)$/,
   /^stp\s+bpdu\s+(filter|flood)$/,
@@ -914,6 +921,7 @@ var TABS=[
   {id:"isolate",icon:"M4 4h6v6H4zM14 14h6v6h-6zM14 4h6v6h-6zM4 14h6v6H4z"},
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
   {id:"lldp",  icon:"M11 12a1 1 0 002 0 1 1 0 00-2 0M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"},
+  {id:"dot1x", icon:"M12 2a5 5 0 00-5 5v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7a5 5 0 00-5-5zm-3 8V7a3 3 0 016 0v3H9z"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
   {id:"system",icon:"M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"},
@@ -2118,6 +2126,43 @@ function eeeFlags(bits){
     return(b&(4>>i))?s:null;
   }).filter(Boolean).join(", ")||"-";
 }
+var X_MODES=[["off","x_off"],["auto","x_auto"],["force-auth","x_fauth"],["force-unauth","x_funauth"]];
+var X_ACTS=[["drop","x_drop"],["guest","x_gvlan"]];
+function xSel(opts,cur,fn){
+  var s=h("select",{class:"in",onchange:function(){fn(this.value)}});
+  opts.forEach(function(o){s.appendChild(h("option",{value:o[0],text:t(o[1])}))});
+  s.value=cur;return s;
+}
+function dot1xLoad(){
+  return getJSON("/dot1x.json").then(function(s){
+    $("x_en").checked=!!s.on;
+    if(document.activeElement!==$("x_guest"))$("x_guest").value=s.guest;
+    var tb=$("x_table").tBodies[0];tb.innerHTML="";
+    byPort(s.ports).forEach(function(p){
+      var tr=tb.insertRow();
+      tr.insertCell().textContent=p.portNum;
+      tr.insertCell().appendChild(xSel(X_MODES,p.mode,function(v){
+        postCmd("port "+p.portNum+" dot1x "+v).then(function(){setTimeout(dot1xLoad,300)}).catch(function(){});
+      }));
+      tr.insertCell().appendChild(xSel(X_ACTS,p.action,function(v){
+        postCmd("port "+p.portNum+" dot1x action "+v).then(function(){setTimeout(dot1xLoad,300)}).catch(function(){});
+      }));
+      var st=tr.insertCell();
+      if(!s.on||p.mode==="off")st.innerHTML=badge(t("x_open"));
+      else st.innerHTML=p.authorized?badge(t("x_auth"),"ok"):badge(t("x_unauth"),"bad");
+    });
+  });
+}
+$("x_en").addEventListener("change",function(){
+  var el=this;
+  postCmd("dot1x "+(el.checked?"on":"off")).then(function(){setTimeout(dot1xLoad,300)}).catch(function(){el.checked=!el.checked});
+});
+$("x_guest_apply").addEventListener("click",function(){
+  postCmd("dot1x guest "+($("x_guest").value||0)).then(function(){setTimeout(dot1xLoad,300)}).catch(function(){});
+});
+var dot1xPoller=new Poller(dot1xLoad,3000);
+tabHooks.dot1x={enter:function(){dot1xLoad().catch(function(){});dot1xPoller.start()},leave:function(){dot1xPoller.stop()}};
+
 function eeeLoad(){
   return getJSON("/eee.json").then(function(s){
     var tb=$("etable").tBodies[0];tb.innerHTML="";
@@ -2450,14 +2495,15 @@ var CONF_OVERWRITE=[
   /^ntp\s+server\b/,/^ntp\s+interval\b/,/^ntp\s+timezone\b/,/^ntp\s+dst\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
-  /^port\s+\d{1,2}(?!\s+(name|lldp)\b)/,/^port\s+\d{1,2}\s+name\b/,
+  /^dot1x\s+guest\b/,
+  /^port\s+\d{1,2}(?!\s+(name|lldp|dot1x)\b)/,/^port\s+\d{1,2}\s+name\b/,
   /^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(dot1x)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
@@ -2499,6 +2545,10 @@ function mergeConf(base,texts){
         else drop(new RegExp(pre+"(off|[0-9a-f]+)$"));
         conf.push(line);return;
       }
+      if((m=line.match(/^port (\d{1,2}) dot1x (action )?(\S+)$/))){
+        drop(new RegExp("^port "+m[1]+" dot1x "+(m[2]?"action \\S+":"(off|auto|force-auth|force-unauth)")+"$"));
+        conf.push(line);return;
+      }
       for(var i=0;i<CONF_TOGGLE.length;i++){
         if((m=line.match(CONF_TOGGLE[i]))){drop(new RegExp("^"+m[1]+" (on|off)$"));break;}
       }
@@ -2508,7 +2558,7 @@ function mergeConf(base,texts){
           var key=line.match(rx)[0];
           conf=conf.filter(function(item){
             return!(item===key||(item.indexOf(key+" ")===0
-              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0&&item.indexOf(key+" lldp ")!==0));
+              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0&&item.indexOf(key+" lldp ")!==0&&item.indexOf(key+" dot1x ")!==0));
           });
           break;
         }

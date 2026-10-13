@@ -50,6 +50,7 @@ extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
 
+#include "rtl837x_dot1x.h"
 extern __xdata uint16_t lldp_logical_port_status;
 extern __xdata bool lldp_enabled;
 
@@ -676,6 +677,12 @@ void send_lldp(void)
 	}
 	char_to_html(']');
 	char_to_html('}');
+}
+
+void send_dot1x(void)
+{
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	dot1x_to_html();
 }
 
 
