@@ -163,6 +163,10 @@ var LANG = {
         stp_ctrx: "TC received",
         stp_cttx: "TC sent",
         stp_cage: "Last BPDU [s]",
+        lldp_c_tx: "TX",
+        lldp_c_rx: "RX",
+        lldp_c_disc: "Discarded",
+        lldp_c_age: "Age-outs",
         lldp_nb_title: "Neighbours",
         lldp_nb_chassis: "Chassis ID",
         lldp_nb_portid: "Port ID",
@@ -4490,6 +4494,10 @@ function lldpLoad() {
         $("lldp_en").checked = s.on;
         var tb = $("lldp_table").tBodies[0];
         tb.innerHTML = "";
+        var cnt = {};
+        (s.counters || []).forEach(function(c) {
+            cnt[c.port] = c
+        });
         byPort(s.portStatus).forEach(function(p) {
             var tr = tb.insertRow();
             tr.insertCell().textContent = p.portNum;
@@ -4509,6 +4517,10 @@ function lldpLoad() {
             ]);
             sw.firstChild.checked = p.permitted;
             tr.insertCell().appendChild(sw);
+            var c = cnt[p.portNum] || {};
+            ["tx", "rx", "discarded", "ageouts"].forEach(function(k) {
+                tr.insertCell().textContent = c[k] == null ? "-" : c[k]
+            });
         });
         var nb = $("lldp_nb_table").tBodies[0];
         nb.innerHTML = "";
