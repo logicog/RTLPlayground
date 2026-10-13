@@ -964,6 +964,7 @@ function pollStatus(){
   });
 }
 var statusPoller=new Poller(pollStatus,2500);
+statusPoller.start();
 function needPorts(fn){
   if(S.n)return fn();
   pollStatus().then(fn).catch(function(){});
@@ -1108,8 +1109,7 @@ function dashStatus(){
   });
 }
 tabHooks.dash={
-  enter:function(){statusPoller.start();pollInfo().catch(function(){})},
-  leave:function(){statusPoller.stop()},
+  enter:function(){pollInfo().catch(function(){})},
   status:dashStatus,
 };
 
@@ -1186,8 +1186,7 @@ function applyPort(i){
   postCmds(cmds).then(loadMtu).catch(function(){});
 }
 tabHooks.ports={
-  enter:function(){statusPoller.start();needPorts(buildPorts)},
-  leave:function(){statusPoller.stop()},
+  enter:function(){needPorts(buildPorts)},
   status:portsStatus,
 };
 
@@ -1443,8 +1442,7 @@ function statsStatus(){
   });
 }
 tabHooks.stats={
-  enter:function(){statusPoller.start()},
-  leave:function(){statusPoller.stop();if(ctrPoll)ctrPoll.stop()},
+  leave:function(){if(ctrPoll)ctrPoll.stop()},
   status:statsStatus,
 };
 
