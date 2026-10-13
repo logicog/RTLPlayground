@@ -8,6 +8,8 @@
 #include "uip.h"
 #include "uip/uip.h"
 #include "machine.h"
+#include "rtl837x_port.h"
+#include "page_impl.h"
 #include "eapol.h"
 
 extern __code const struct machine machine;
@@ -117,8 +119,41 @@ void eapol_init(void) __banked __reentrant
 
 void eapol_port_reset(uint8_t port) __banked __reentrant
 {
-    memset(&eapol_ports[port], 0, sizeof(struct eapol_port));
+    __xdata struct eapol_port *e = &eapol_ports[port];
+    uint8_t mab = e->mab;
+    uint16_t ok = e->ok;
+    uint16_t fail = e->fail;
+
+    memset(e, 0, sizeof(struct eapol_port));
+    e->mab = mab;
+    e->ok = ok;
+    e->fail = fail;
     dot1x_authorize(port, false);
+}
+
+void eapol_port_mab(uint8_t port, bool on) __banked __reentrant
+{
+    eapol_ports[port].mab = on;
+}
+
+static void eapol_try_mab(uint8_t port) __reentrant
+{
+    __xdata struct eapol_port *e = &eapol_ports[port];
+    uint8_t i;
+
+    if (!port_l2_mac_on_port(port, e->mac))
+        return;
+    for (i = 0; i < 6; i++) {
+        e->identity[2 * i] = itohex(e->mac[i] >> 4);
+        e->identity[2 * i + 1] = itohex(e->mac[i]);
+    }
+    e->identity[12] = 0;
+    e->rstate_len = 0;
+    if (radius_request_pap(port, e->identity, e->mac)) {
+        e->via_mab = 1;
+        e->state = EAPOL_STATE_AUTHENTICATING;
+        e->timer = EAPOL_SERVER_TIMEOUT_S;
+    }
 }
 
 static uint16_t eapol_links(void) __reentrant
@@ -178,6 +213,7 @@ bool eapol_in(void) __banked __reentrant
     }
     if (radius_request(port, e->identity, e->mac, p, len, e->rstate, e->rstate_len)) {
         e->resp_id = p[1];
+        e->via_mab = 0;
         e->state = EAPOL_STATE_AUTHENTICATING;
         e->timer = EAPOL_SERVER_TIMEOUT_S;
     }
@@ -201,20 +237,24 @@ void eapol_radius_result(uint8_t port, uint8_t code, __xdata const uint8_t *stat
         e->timer = EAPOL_SERVER_TIMEOUT_S;
         return;
     case RADIUS_CODE_ACCESS_ACCEPT:
-        eapol_queue(port, EAP_CODE_SUCCESS, e->resp_id);
+        if (!e->via_mab)
+            eapol_queue(port, EAP_CODE_SUCCESS, e->resp_id);
         dot1x_authorize(port, true);
         e->state = EAPOL_STATE_AUTHENTICATED;
         e->timer = EAPOL_REAUTH_S;
         e->tries = 0;
         e->rstate_len = 0;
-        eapol_log(port, "authorized");
+        e->ok++;
+        eapol_log(port, e->via_mab ? "authorized by address" : "authorized");
         return;
     default:
-        eapol_queue(port, EAP_CODE_FAILURE, e->resp_id);
+        if (!e->via_mab)
+            eapol_queue(port, EAP_CODE_FAILURE, e->resp_id);
         dot1x_authorize(port, false);
         e->state = EAPOL_STATE_HELD;
         e->timer = EAPOL_QUIET_S;
         e->rstate_len = 0;
+        e->fail++;
         eapol_log(port, code == RADIUS_CODE_TIMEOUT ? "no answer from the server for" : "rejected");
         return;
     }
@@ -259,8 +299,14 @@ void eapol_tick(void) __banked __reentrant
             continue;
         switch (e->state) {
         case EAPOL_STATE_CONNECTING:
-            if (e->tries >= EAPOL_MAX_REQUESTS)
+            if (e->tries >= EAPOL_MAX_REQUESTS) {
                 e->tries = 0;
+                if (e->mab) {
+                    eapol_try_mab(port);
+                    if (e->state == EAPOL_STATE_AUTHENTICATING)
+                        break;
+                }
+            }
             eapol_request_identity(port);
             break;
         case EAPOL_STATE_AUTHENTICATING:

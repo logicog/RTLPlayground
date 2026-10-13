@@ -584,6 +584,10 @@ class Handler(SimpleHTTPRequestHandler):
             if i == 2:
                 p["state"] = "authenticated"
                 p["identity"] = "alice"
+                p["mab"] = 1
+                p["viaMab"] = 0
+                p["ok"] = 3
+                p["fail"] = 1
             ports.append(p)
         return {
             "on": 1,

@@ -95,9 +95,9 @@ static uint8_t radius_secret_len(void) __reentrant
     return strlen_x(radius_cfg.secret);
 }
 
-bool radius_request(uint8_t port, __xdata const char *identity, __xdata const uint8_t *mac,
-                    __xdata const uint8_t *eap, uint16_t eap_len,
-                    __xdata const uint8_t *state, uint8_t state_len) __banked __reentrant
+static bool radius_build(uint8_t port, __xdata const char *identity, __xdata const uint8_t *mac,
+                         __xdata const uint8_t *eap, uint16_t eap_len,
+                         __xdata const uint8_t *state, uint8_t state_len, bool pap) __reentrant
 {
     __xdata uint8_t *p = radius_req;
     __xdata uint8_t *ma;
@@ -118,6 +118,17 @@ bool radius_request(uint8_t port, __xdata const char *identity, __xdata const ui
         p += 4;
     }
     p = radius_attr(p, RADIUS_ATTR_USER_NAME, (__xdata const uint8_t *)identity, strlen_x(identity));
+    if (pap) {
+        md5_init(&radius_md5);
+        md5_update(&radius_md5, (__xdata const uint8_t *)radius_cfg.secret, radius_secret_len());
+        md5_update(&radius_md5, radius_req + 4, RADIUS_AUTHENTICATOR_LENGTH);
+        md5_final(&radius_md5, radius_digest);
+        *p++ = RADIUS_ATTR_USER_PASSWORD;
+        *p++ = 2 + RADIUS_PASSWORD_BLOCK;
+        for (i = 0; i < RADIUS_PASSWORD_BLOCK; i++)
+            *p++ = (i < strlen_x(identity) ? identity[i] : 0) ^ radius_digest[i];
+        p = radius_attr_u32(p, RADIUS_ATTR_SERVICE_TYPE, RADIUS_SERVICE_TYPE_CALL_CHECK);
+    }
     p = radius_attr(p, RADIUS_ATTR_NAS_IP_ADDRESS, (__xdata const uint8_t *)uip_hostaddr, 4);
     p = radius_attr_u32(p, RADIUS_ATTR_NAS_PORT, machine.log_to_phys_port[port]);
     p = radius_attr_u32(p, RADIUS_ATTR_NAS_PORT_TYPE, RADIUS_NAS_PORT_TYPE_ETHERNET);
@@ -153,6 +164,18 @@ bool radius_request(uint8_t port, __xdata const char *identity, __xdata const ui
     radius_tries = 0;
     radius_phase = RADIUS_PHASE_SEND;
     return true;
+}
+
+bool radius_request(uint8_t port, __xdata const char *identity, __xdata const uint8_t *mac,
+                    __xdata const uint8_t *eap, uint16_t eap_len,
+                    __xdata const uint8_t *state, uint8_t state_len) __banked __reentrant
+{
+    return radius_build(port, identity, mac, eap, eap_len, state, state_len, false);
+}
+
+bool radius_request_pap(uint8_t port, __xdata const char *user, __xdata const uint8_t *mac) __banked __reentrant
+{
+    return radius_build(port, user, mac, 0, 0, 0, 0, true);
 }
 
 static void radius_finish(uint8_t code) __reentrant
