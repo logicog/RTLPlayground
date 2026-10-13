@@ -179,6 +179,13 @@ void port_l2mc_set(uint8_t mac_last, uint16_t vid, uint16_t pmask)
 	l2mc_pmask = pmask;
 }
 
+void trap_rma_set(uint16_t reg, uint8_t act)
+{
+	(void)reg;
+	(void)act;
+}
+
+
 uint8_t port_ingress_filter_get(uint8_t port)
 {
 	(void)port;
