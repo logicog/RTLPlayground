@@ -13,6 +13,8 @@
 #include "version.h"
 #include "rtl837x_trap.h"
 #include "page_impl.h"
+#include "rtl837x_regs.h"
+#include "rtl837x_port.h"
 
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
@@ -27,6 +29,59 @@ __xdata uint8_t lldp_seconds;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
 static __xdata struct lldp_neighbor lldp_tmp;
+static __code const uint8_t lldp_oui_8021[3] = {0x00, 0x80, 0xc2};
+static __code const uint8_t lldp_oui_8023[3] = {0x00, 0x12, 0x0f};
+
+static void lldp_put_dec(uint16_t v, bool html) __reentrant;
+static bool lldp_bytes_eq(__xdata uint8_t *a, __xdata uint8_t *b, uint8_t n) __reentrant;
+
+static bool lldp_oui_is(__xdata uint8_t *p, __code const uint8_t *oui) __reentrant
+{
+    return p[0] == oui[0] && p[1] == oui[1] && p[2] == oui[2];
+}
+
+static uint16_t lldp_port_mtu(uint8_t port) __reentrant
+{
+    reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t)port << 8));
+    return SFR_DATA_U16 & PORT_MAX_LEN_MASK;
+}
+
+static uint8_t lldp_warnings(__xdata struct lldp_neighbor *nb) __reentrant
+{
+    uint8_t i;
+    uint8_t lag;
+    uint8_t w = 0;
+
+    if (nb->mtu && nb->mtu > lldp_port_mtu(nb->port))
+        w |= LLDP_WARN_MTU;
+    lag = port_lag_of(nb->port);
+    if ((nb->agg & LLDP_AGG_ANNOUNCED) && ((nb->agg & LLDP_AGG_ACTIVE) != 0) != (lag != PORT_LAG_NONE))
+        w |= LLDP_WARN_AGG;
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (&lldp_nb[i] == nb || !lldp_nb[i].ttl || lldp_nb[i].port == nb->port)
+            continue;
+        if (lldp_nb[i].chassis_subtype != nb->chassis_subtype || lldp_nb[i].chassis_len != nb->chassis_len
+            || !lldp_bytes_eq(lldp_nb[i].chassis, nb->chassis, nb->chassis_len))
+            continue;
+        if (lag == PORT_LAG_NONE || port_lag_of(lldp_nb[i].port) != lag)
+            w |= LLDP_WARN_DUPLICATE;
+    }
+    return w;
+}
+
+static void lldp_log_warnings(__xdata struct lldp_neighbor *nb) __reentrant
+{
+    print_string("LLDP: port ");
+    lldp_put_dec(machine.log_to_phys_port[nb->port], false);
+    print_string(" mismatch:");
+    if (nb->warn & LLDP_WARN_MTU)
+        print_string(" MTU");
+    if (nb->warn & LLDP_WARN_AGG)
+        print_string(" LAG");
+    if (nb->warn & LLDP_WARN_DUPLICATE)
+        print_string(" same-neighbour-twice");
+    write_char('\n');
+}
 
 void lldp_init(void) __banked
 {
@@ -370,6 +425,16 @@ bool lldp_in(void) __banked __reentrant
                 && p[1] == LLDP_MGMT_ADDR_SUBTYPE_IPV4)
                 memcpy(lldp_tmp.mgmt_addr, p + 2, sizeof(lldp_tmp.mgmt_addr));
             break;
+        case LLDP_ORG_TLV_TYPE:
+            if (len < LLDP_ORG_TLV_HEADER_LENGTH)
+                break;
+            if (lldp_oui_is(p, lldp_oui_8021) && p[3] == LLDP_8021_SUBTYPE_PVID && len == LLDP_ORG_TLV_HEADER_LENGTH + 2)
+                lldp_tmp.pvid = ((uint16_t)p[4] << 8) | p[5];
+            else if (lldp_oui_is(p, lldp_oui_8023) && p[3] == LLDP_8023_SUBTYPE_MAX_FRAME && len == LLDP_ORG_TLV_HEADER_LENGTH + 2)
+                lldp_tmp.mtu = ((uint16_t)p[4] << 8) | p[5];
+            else if (lldp_oui_is(p, lldp_oui_8023) && p[3] == LLDP_8023_SUBTYPE_LINK_AGG && len > LLDP_ORG_TLV_HEADER_LENGTH)
+                lldp_tmp.agg = (p[4] & (LLDP_AGG_CAPABLE | LLDP_AGG_ACTIVE)) | LLDP_AGG_ANNOUNCED;
+            break;
         }
         p += len;
     }
@@ -383,9 +448,16 @@ bool lldp_in(void) __banked __reentrant
             nb->ttl = 0;
         return true;
     }
+    lldp_tmp.warn = nb ? nb->warn : 0;
     if (!nb)
         nb = lldp_slot();
     memcpy(nb, &lldp_tmp, sizeof(lldp_tmp));
+    type = lldp_warnings(nb);
+    if (type != nb->warn) {
+        nb->warn = type;
+        if (type)
+            lldp_log_warnings(nb);
+    }
     return true;
 }
 
@@ -498,6 +570,14 @@ void lldp_neighbors_to_html(void) __banked __reentrant
         lldp_put_addr(lldp_nb[i].mgmt_addr, true);
         slen += strtox(outbuf + slen, "\",\"caps\":");
         lldp_put_dec(lldp_nb[i].caps, true);
+        slen += strtox(outbuf + slen, ",\"pvid\":");
+        lldp_put_dec(lldp_nb[i].pvid, true);
+        slen += strtox(outbuf + slen, ",\"mtu\":");
+        lldp_put_dec(lldp_nb[i].mtu, true);
+        slen += strtox(outbuf + slen, ",\"agg\":");
+        lldp_put_dec((lldp_nb[i].agg & LLDP_AGG_ANNOUNCED) ? ((lldp_nb[i].agg & LLDP_AGG_ACTIVE) ? 2 : 1) : 0, true);
+        slen += strtox(outbuf + slen, ",\"warn\":");
+        lldp_put_dec(lldp_warnings(&lldp_nb[i]), true);
         slen += strtox(outbuf + slen, ",\"ttl\":");
         lldp_put_dec(lldp_nb[i].ttl, true);
         lldp_put('}', true);
@@ -524,8 +604,14 @@ void lldp_show(void) __banked __reentrant
         lldp_put_string(lldp_nb[i].port_desc, false);
         print_string("  ");
         lldp_put_addr(lldp_nb[i].mgmt_addr, false);
+        print_string("  pvid ");
+        lldp_put_dec(lldp_nb[i].pvid, false);
+        print_string(" mtu ");
+        lldp_put_dec(lldp_nb[i].mtu, false);
+        print_string((lldp_nb[i].agg & LLDP_AGG_ACTIVE) ? " lag" : "");
         print_string("  ");
         lldp_put_dec(lldp_nb[i].ttl, false);
-        print_string("s\n");
+        print_string("s");
+        print_string(lldp_warnings(&lldp_nb[i]) ? "  MISMATCH\n" : "\n");
     }
 }
