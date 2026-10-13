@@ -46,7 +46,7 @@ stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
 stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
 stp_mcheck:"Check",stp_mcheck_t:"Send RST BPDUs again to find out whether the neighbour still needs 802.1D",
 stp_cnt:"Counters",stp_crx:"BPDUs received",stp_ctx:"BPDUs sent",stp_ctrx:"TC received",stp_cttx:"TC sent",stp_cage:"Last BPDU [s]",
-lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_ttl:"TTL",
+lldp_c_tx:"TX",lldp_c_rx:"RX",lldp_c_disc:"Discarded",lldp_c_age:"Age-outs",lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_ttl:"TTL",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -2092,6 +2092,7 @@ function lldpLoad(){
   return getJSON("/lldp.json").then(function(s){
     $("lldp_en").checked=s.on;
     var tb=$("lldp_table").tBodies[0];tb.innerHTML="";
+    var cnt={};(s.counters||[]).forEach(function(c){cnt[c.port]=c});
     byPort(s.portStatus).forEach(function(p){
       var tr=tb.insertRow();
       tr.insertCell().textContent=p.portNum;
@@ -2103,6 +2104,8 @@ function lldpLoad(){
         }}),h("i")]);
       sw.firstChild.checked=p.permitted;
       tr.insertCell().appendChild(sw);
+      var c=cnt[p.portNum]||{};
+      ["tx","rx","discarded","ageouts"].forEach(function(k){tr.insertCell().textContent=c[k]==null?"-":c[k]});
     });
     var nb=$("lldp_nb_table").tBodies[0];nb.innerHTML="";
     (s.neighbors||[]).sort(function(a,b){return a.port-b.port}).forEach(function(n){

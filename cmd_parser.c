@@ -2098,8 +2098,10 @@ void cmd_parser(void) __banked
 				lldp_init();
 			} else if (cmd_compare(1, "show")) {
 				lldp_show();
+			} else if (cmd_compare(1, "counters")) {
+				lldp_counters();
 			} else {
-				cmd_error("Usage: lldp [on|off|show]\n");
+				cmd_error("Usage: lldp [on|off|show|counters]\n");
 			}
 		}
 		else {
