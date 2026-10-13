@@ -1186,9 +1186,23 @@ function applyPort(i){
   }
   postCmds(cmds).then(loadMtu).catch(function(){});
 }
+var lldpTipT=0;
+function portsLldp(){
+  lldpTipT=Date.now();
+  return getJSON("/lldp.json").then(function(s){
+    var tip={};
+    (s.neighbors||[]).forEach(function(n){
+      tip[n.port]=(tip[n.port]?tip[n.port]+"\n":"")+(n.sysName||n.chassis)+" ("+n.portId+")";
+    });
+    S.ports.forEach(function(p){
+      var el=$("plink"+(p.portNum-1));
+      if(el)el.title=tip[p.portNum]?"LLDP: "+tip[p.portNum]:"";
+    });
+  }).catch(function(){});
+}
 tabHooks.ports={
-  enter:function(){needPorts(buildPorts)},
-  status:portsStatus,
+  enter:function(){needPorts(function(){buildPorts();portsLldp()})},
+  status:function(){portsStatus();if(Date.now()-lldpTipT>30000)portsLldp()},
 };
 
 var STP_PF={EN:1,ADMEDGE:2,AUTOEDGE:4,BPDUG:8,ROOTG:16,FILTER:32,OPEREDGE:64,TRIP:128};
