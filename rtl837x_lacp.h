@@ -7,6 +7,7 @@
  */
 
 #include <stdint.h>
+#include "rtl837x_common.h"
 
 void lacp_init(void) __banked;
 void lacp_in(void) __banked;
@@ -22,11 +23,11 @@ extern __xdata uint8_t  lacpEnabled;
 extern __xdata uint8_t  lacp_actor_state[10];
 extern __xdata uint8_t  lacp_partner_state[10];
 extern __xdata uint8_t  lacp_rx_state[10];
-extern __xdata uint8_t  lacp_partner_sys[10][6];
+extern __xdata uint8_t  lacp_partner_sys[10][MAC_ADDR_LEN];
 extern __xdata uint16_t lacp_rx_count[10];
 extern __xdata uint8_t  lacp_port_lag[10];
 extern __xdata uint16_t lacp_lag_ports[LACP_NUM_LAGS];
-extern __xdata uint8_t  lacp_agg_sys[LACP_NUM_LAGS][6];
+extern __xdata uint8_t  lacp_agg_sys[LACP_NUM_LAGS][MAC_ADDR_LEN];
 extern __xdata uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
 extern __xdata uint16_t lacp_members_last[LACP_NUM_LAGS];
 

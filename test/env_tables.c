@@ -130,13 +130,10 @@ uint8_t  lacpEnabled;
 uint8_t  lacp_actor_state[10];
 uint8_t  lacp_partner_state[10];
 uint8_t  lacp_rx_state[10];
-uint8_t  lacp_partner_sys[10][6];
+uint8_t  lacp_partner_sys[10][MAC_ADDR_LEN];
 uint16_t lacp_rx_count[10];
-uint8_t  lacp_port_lag[10] = {
-	LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE,
-	LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE, LACP_LAG_NONE,
-};
+uint8_t  lacp_port_lag[10];
 uint16_t lacp_lag_ports[LACP_NUM_LAGS];
-uint8_t  lacp_agg_sys[LACP_NUM_LAGS][6];
+uint8_t  lacp_agg_sys[LACP_NUM_LAGS][MAC_ADDR_LEN];
 uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
 uint16_t lacp_members_last[LACP_NUM_LAGS];
