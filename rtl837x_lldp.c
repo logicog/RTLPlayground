@@ -10,27 +10,41 @@
 #include "uip/uip.h"
 #include "machine.h"
 #include "version.h"
+#include "rtl837x_trap.h"
+#include "page_impl.h"
 
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
+extern __xdata uint8_t outbuf[];
+extern __xdata uint16_t slen;
 
 extern volatile __xdata uint32_t ticks;
 
 __xdata uint8_t lldp_tick_last;
 __xdata uint8_t lldp_seconds;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
+__xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
+static __xdata struct lldp_neighbor lldp_tmp;
 
 void lldp_init(void) __banked
 {
     lldp_tick_last = (uint8_t)ticks;
     lldp_seconds = 0;
+    memset(lldp_nb, 0, sizeof(lldp_nb));
 }
 
 void lldp_tick(void) __banked
 {
+    uint8_t i;
+
     if (!TICKS_DUE(lldp_tick_last, SYS_TICK_HZ))
         return;
     lldp_tick_last += SYS_TICK_HZ;
+
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (lldp_nb[i].ttl)
+            lldp_nb[i].ttl--;
+    }
 
     if (++lldp_seconds < LLDP_TX_INTERVAL_S)
         return;
@@ -169,7 +183,7 @@ void lldp_shutdown(uint16_t ports) __banked __reentrant
 
 void lldp_set_addresses(void) __banked {
     // LLDP destination multicast addr: 01:80:c2:00:00:0e
-    memcpyc(LLDP_O->dst.addr, "\x01\x80\xc2\x00\x00\x0e", MAC_ADDR_LEN);
+    memcpyc(LLDP_O->dst.addr, LLDP_MULTICAST_ADDR, MAC_ADDR_LEN);
     memcpy(LLDP_O->src.addr, uip_ethaddr.addr, MAC_ADDR_LEN);
 }
 
@@ -222,4 +236,216 @@ uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked
     *p++ = name_length;
     memcpy(p, port_names[port], name_length);
     return name_length + 2;
+}
+
+#define LLDP_RX_TAG ((__xdata struct rtl_tag *)&uip_buf[2 * MAC_ADDR_LEN])
+
+static uint8_t lldp_printable(uint8_t c) __reentrant
+{
+    if (c < ' ' || c > '~' || c == '"' || c == '\\')
+        return '.';
+    return c;
+}
+
+static void lldp_copy_string(__xdata char *dst, __xdata uint8_t *src, uint16_t len, uint8_t max) __reentrant
+{
+    uint8_t i;
+
+    if (len > max)
+        len = max;
+    for (i = 0; i < len; i++)
+        dst[i] = lldp_printable(src[i]);
+    dst[i] = 0;
+}
+
+static bool lldp_mac_eq(__xdata uint8_t *a, __xdata uint8_t *b) __reentrant
+{
+    uint8_t i;
+
+    for (i = 0; i < MAC_ADDR_LEN; i++) {
+        if (a[i] != b[i])
+            return false;
+    }
+    return true;
+}
+
+static __xdata struct lldp_neighbor *lldp_find(void) __reentrant
+{
+    uint8_t i;
+
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (lldp_nb[i].ttl && lldp_nb[i].port == lldp_tmp.port
+            && lldp_mac_eq(lldp_nb[i].chassis, lldp_tmp.chassis))
+            return &lldp_nb[i];
+    }
+    return 0;
+}
+
+static __xdata struct lldp_neighbor *lldp_slot(void) __reentrant
+{
+    uint8_t i;
+    __xdata struct lldp_neighbor *oldest = &lldp_nb[0];
+
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (!lldp_nb[i].ttl)
+            return &lldp_nb[i];
+        if (lldp_nb[i].ttl < oldest->ttl)
+            oldest = &lldp_nb[i];
+    }
+    return oldest;
+}
+
+bool lldp_in(void) __banked __reentrant
+{
+    __xdata uint8_t *p;
+    __xdata uint8_t *end;
+    __xdata struct lldp_neighbor *nb;
+    uint8_t type;
+    uint8_t any;
+    uint16_t len;
+    uint8_t body = TRAP_RX_BODY();
+
+    memcpyc(lldp_tmp.chassis, LLDP_MULTICAST_ADDR, MAC_ADDR_LEN);
+    if (!lldp_mac_eq(uip_buf, lldp_tmp.chassis))
+        return false;
+    if (uip_buf[body] != (LLDP_ETHERTYPE >> 8) || uip_buf[body + 1] != (LLDP_ETHERTYPE & 0xff))
+        return false;
+
+    memset(&lldp_tmp, 0, sizeof(lldp_tmp));
+    lldp_tmp.port = ((uint8_t)HTONS(LLDP_RX_TAG->pmask)) & 0x0f;
+    if (!MACHINE_PORT_VALID(lldp_tmp.port))
+        return true;
+    lldp_tmp.ttl = LLDP_TTL_TTL_SECONDS;
+
+    p = &uip_buf[body + LLDP_ETHERTYPE_LENGTH];
+    end = &uip_buf[uip_len];
+    while (p + 2 <= end) {
+        type = p[0] >> 1;
+        len = ((uint16_t)(p[0] & 1) << 8) | p[1];
+        p += 2;
+        if (type == LLDP_END_TLV_TYPE || p + len > end)
+            break;
+        switch (type) {
+        case LLDP_CHASSIS_ID_TLV_TYPE:
+            if (len == LLDP_CHASSIS_ID_TLV_LENGTH && p[0] == LLDP_CHASSIS_ID_TLV_SUBTYPE)
+                memcpy(lldp_tmp.chassis, p + 1, MAC_ADDR_LEN);
+            break;
+        case LLDP_PORT_ID_TLV_TYPE:
+            if (len > 1)
+                lldp_copy_string(lldp_tmp.port_id, p + 1, len - 1, LLDP_NB_PORT_ID_LENGTH);
+            break;
+        case LLDP_TTL_TLV_TYPE:
+            if (len == LLDP_TTL_TLV_LENGTH)
+                lldp_tmp.ttl = ((uint16_t)p[0] << 8) | p[1];
+            break;
+        case LLDP_SYSNAME_TLV_TYPE:
+            lldp_copy_string(lldp_tmp.sys_name, p, len, LLDP_NB_SYS_NAME_LENGTH);
+            break;
+        }
+        p += len;
+    }
+
+    any = 0;
+    for (type = 0; type < MAC_ADDR_LEN; type++)
+        any |= lldp_tmp.chassis[type];
+    if (!any)
+        return true;
+
+    nb = lldp_find();
+    if (!lldp_tmp.ttl) {
+        if (nb)
+            nb->ttl = 0;
+        return true;
+    }
+    if (!nb)
+        nb = lldp_slot();
+    memcpy(nb, &lldp_tmp, sizeof(lldp_tmp));
+    return true;
+}
+
+static void lldp_put(uint8_t c, bool html) __reentrant
+{
+    if (html)
+        outbuf[slen++] = c;
+    else
+        write_char(c);
+}
+
+static void lldp_put_dec(uint16_t v, bool html) __reentrant
+{
+    uint8_t digits[5];
+    uint8_t n = 0;
+
+    do {
+        digits[n++] = '0' + v % 10;
+        v /= 10;
+    } while (v);
+    while (n)
+        lldp_put(digits[--n], html);
+}
+
+static void lldp_put_string(__xdata char *s, bool html) __reentrant
+{
+    while (*s)
+        lldp_put(*s++, html);
+}
+
+static void lldp_put_mac(__xdata uint8_t *mac, bool html) __reentrant
+{
+    uint8_t i;
+
+    for (i = 0; i < MAC_ADDR_LEN; i++) {
+        if (i)
+            lldp_put(':', html);
+        lldp_put(itohex(mac[i] >> 4), html);
+        lldp_put(itohex(mac[i]), html);
+    }
+}
+
+void lldp_neighbors_to_html(void) __banked __reentrant
+{
+    uint8_t i;
+    bool first = true;
+
+    slen += strtox(outbuf + slen, ",\"neighbors\":[");
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (!lldp_nb[i].ttl)
+            continue;
+        if (!first)
+            lldp_put(',', true);
+        first = false;
+        slen += strtox(outbuf + slen, "{\"port\":");
+        lldp_put_dec(machine.log_to_phys_port[lldp_nb[i].port], true);
+        slen += strtox(outbuf + slen, ",\"chassis\":\"");
+        lldp_put_mac(lldp_nb[i].chassis, true);
+        slen += strtox(outbuf + slen, "\",\"portId\":\"");
+        lldp_put_string(lldp_nb[i].port_id, true);
+        slen += strtox(outbuf + slen, "\",\"sysName\":\"");
+        lldp_put_string(lldp_nb[i].sys_name, true);
+        slen += strtox(outbuf + slen, "\",\"ttl\":");
+        lldp_put_dec(lldp_nb[i].ttl, true);
+        lldp_put('}', true);
+    }
+    lldp_put(']', true);
+}
+
+void lldp_show(void) __banked __reentrant
+{
+    uint8_t i;
+
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (!lldp_nb[i].ttl)
+            continue;
+        print_string("Port ");
+        lldp_put_dec(machine.log_to_phys_port[lldp_nb[i].port], false);
+        print_string("  ");
+        lldp_put_mac(lldp_nb[i].chassis, false);
+        print_string("  ");
+        lldp_put_string(lldp_nb[i].port_id, false);
+        print_string("  ");
+        lldp_put_string(lldp_nb[i].sys_name, false);
+        print_string("  ");
+        lldp_put_dec(lldp_nb[i].ttl, false);
+        print_string("s\n");
+    }
 }
