@@ -67,6 +67,7 @@ void lldp_shutdown(uint16_t ports) __banked;
 bool lldp_in(void) __banked;
 void lldp_neighbors_to_html(void) __banked;
 void lldp_show(void) __banked;
+uint8_t lldp_neighbor_count(void) __banked;
 void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;

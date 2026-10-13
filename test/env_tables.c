@@ -145,3 +145,4 @@ uint8_t  lacp_agg_sys[LACP_NUM_LAGS][MAC_ADDR_LEN];
 uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
 uint16_t lacp_members_last[LACP_NUM_LAGS];
 void lldp_neighbors_to_html(void) {}
+uint8_t lldp_neighbor_count(void) { return 0; }

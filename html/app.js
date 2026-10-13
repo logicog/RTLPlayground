@@ -70,6 +70,7 @@ var LANG = {
         i_temp: "Temperature",
         i_flash: "Flash",
         i_syslog: "Syslog",
+        i_lldp: "LLDP neighbours",
         p_state: "State",
         p_disabled: "disabled",
         p_up: "up",
@@ -2877,7 +2878,8 @@ function renderInfo() {
         ["i_hw", "hw_ver"],
         ["i_temp", "chip_temp"],
         ["i_flash", "flash_size"],
-        ["i_syslog", "syslog_server"]
+        ["i_syslog", "syslog_server"],
+        ["i_lldp", "lldp_neighbors"]
     ];
     var tb = $("sysinfo");
     tb.innerHTML = "";
