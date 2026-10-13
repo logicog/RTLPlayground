@@ -25,6 +25,22 @@ __xdata uint16_t lldp_logical_port_status = 0xffff;
 __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
 static __xdata struct lldp_neighbor lldp_tmp;
 
+static void lldp_put_dec(uint16_t v, bool html) __reentrant;
+static void lldp_put_string(__xdata char *s, bool html) __reentrant;
+
+static void lldp_log(__xdata struct lldp_neighbor *nb, __code const char *what) __reentrant
+{
+    print_string("LLDP: neighbour ");
+    print_string(what);
+    print_string(" on port ");
+    lldp_put_dec(machine.log_to_phys_port[nb->port], false);
+    print_string(": ");
+    lldp_put_string(nb->sys_name, false);
+    print_string(" (");
+    lldp_put_string(nb->port_id, false);
+    print_string(")\n");
+}
+
 void lldp_init(void) __banked
 {
     lldp_tick_last = (uint8_t)ticks;
@@ -41,8 +57,8 @@ void lldp_tick(void) __banked
     lldp_tick_last += SYS_TICK_HZ;
 
     for (i = 0; i < LLDP_NB_MAX; i++) {
-        if (lldp_nb[i].ttl)
-            lldp_nb[i].ttl--;
+        if (lldp_nb[i].ttl && --lldp_nb[i].ttl == 0)
+            lldp_log(&lldp_nb[i], "expired");
     }
 
     if (++lldp_seconds < LLDP_TX_INTERVAL_S)
@@ -294,13 +310,21 @@ bool lldp_in(void) __banked __reentrant
 
     nb = lldp_find();
     if (!lldp_tmp.ttl) {
-        if (nb)
+        if (nb) {
+            lldp_log(nb, "gone");
             nb->ttl = 0;
+        }
         return true;
     }
-    if (!nb)
-        nb = lldp_slot();
+    if (nb) {
+        memcpy(nb, &lldp_tmp, sizeof(lldp_tmp));
+        return true;
+    }
+    nb = lldp_slot();
+    if (nb->ttl)
+        lldp_log(nb, "evicted");
     memcpy(nb, &lldp_tmp, sizeof(lldp_tmp));
+    lldp_log(nb, "found");
     return true;
 }
 
