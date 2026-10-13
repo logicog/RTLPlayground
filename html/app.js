@@ -47,7 +47,7 @@ st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed 
 v_title:"VLANs",v_vid:"VID",v_members:"Members",v_tagged:"Tagged",v_untagged:"Untagged",v_pvid_on:"PVID on",
 v_empty:"No VLANs configured.",v_mgmt:"Management VLAN",v_mgmt_none:"untagged",v_editor:"VLAN editor",
 v_optional:"optional",v_setmgmt:"Set as mgmt VLAN",v_setmgmt_t:"Make this the management VLAN",
-v_member:"Member",v_pvid:"PVID",
+v_member:"Member",v_pvid:"PVID",v_add:"Add a new VLAN",
 v_legend:"U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.",
 v_ingress:"Ingress filtering",v_ingress_h:"write-only: the state is not readable from the switch",
 v_accept:"Accept",v_ing_all:"All",v_ing_apply:"Apply ingress modes",v_del_t:"Delete VLAN",
@@ -1515,6 +1515,9 @@ function buildVlanEdit(){
     rM.insertCell().appendChild(seg);
     rP.insertCell().appendChild(h("input",{type:"checkbox",id:"vp"+p}));
   })(p);
+  
+  //ROBTEST TODO
+  /*
   var it=$("ingress").tBodies[0];
   var ih=it.insertRow();ih.insertCell().className="mut";
   var ir=it.insertRow();ir.insertCell().textContent=t("v_accept");
@@ -1525,7 +1528,7 @@ function buildVlanEdit(){
       sel.appendChild(h("option",{value:o[0],text:o[1]}));
     });
     ir.insertCell().appendChild(sel);
-  })(q);
+  })(q);*/
 }
 function segVal(p){
   return Number($("vm"+p).querySelector("button.on").getAttribute("data-v"));
@@ -1536,7 +1539,8 @@ function segSet(p,v){
 function vlanLoad(vid){
   if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
   getJSON("/vlan.json?vid="+vid).then(function(d){
-    $("vname").value=d.name||"";
+    $("vtitle").innerText="VLAN "+vid + (d.name ? " ("+(d.name)+")" : "" );
+    $("vtitle").dataset.id=vid;
     var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
     var pv=parseInt(d.pvid,16)&0x3ff;
     for(var p=1;p<=S.n;p++){
@@ -1548,9 +1552,11 @@ function vlanLoad(vid){
   }).catch(function(){toast(t("v_notfound",{n:vid}),"err")});
 }
 function vlanApply(){
-  var vid=parseInt($("vvid").value,10);
+  var vid=$("vtitle").dataset.id;
   if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  var name=$("vname").value.trim();
+  //TODO
+  //var name=$("vname").value.trim();
+  var name="";
   if(name&&!/^[a-zA-Z]\w*$/.test(name)){toast(t("v_name_err"),"err");return;}
   var cmd="vlan "+vid+(name?" "+name:""),members=0;
   for(var p=1;p<=S.n;p++){
@@ -1573,22 +1579,19 @@ function ingressApply(){
   postCmd(cmd).catch(function(){});
 }
 $("vapply").addEventListener("click",vlanApply);
-$("ingapply").addEventListener("click",ingressApply);
+$("vlan_add").addEventListener("click",function(){alert("TODO! POPUP with modal to create new VLAN")});
+//ROBTODO
+/*
+//$("ingapply").addEventListener("click",ingressApply);
 $("vmgmt").addEventListener("click",function(){
   var vid=parseInt($("vvid").value,10);
   if(!vid){toast(t("v_vid_first"),"err");return;}
   confirmModal(t("v_mgmt_q",{n:vid}),t("v_mgmt_d"),
     function(){postCmd("vlan "+vid+" mgmt").then(vlanRefresh).catch(function(){})});
 });
+*/
 tabHooks.vlan={
-  enter:function(){
-    needPorts(function(){
-      buildVlanEdit();
-      vlanRefresh().catch(function(){}).then(function(){
-        VlanInit();
-      })
-    })
-  },
+  enter:function(){needPorts(function(){buildVlanEdit();vlanRefresh().catch(function(){}).then(function(){VlanInit();})})},
 };
 function VlanInit() {
   $("vtable").tBodies[0].firstChild.firstChild.firstChild.click();

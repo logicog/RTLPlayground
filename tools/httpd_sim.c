@@ -139,7 +139,7 @@ void send_vlan(int s, int vlan)
 	sprintf(num_buff, "0x%08x", 0x207ffff);
 	json_object_object_add(v, "members", json_object_new_string(num_buff));
 
-	json_object_object_add(v, "name", json_object_new_string(""));
+	json_object_object_add(v, "name", json_object_new_string("native"));
 	json_object_object_add(v, "pvid", json_object_new_string("0x01ff"));
 
 	write(s, header, strlen(header));
