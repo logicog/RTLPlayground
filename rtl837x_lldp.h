@@ -44,11 +44,24 @@ struct lldp_neighbor {
 
 extern __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
 
+#define LLDP_PORTS 10
+
+struct lldp_port_counters {
+    uint16_t tx;		/* LLDPDUs sent on the port */
+    uint16_t rx;		/* LLDPDUs received on the port */
+    uint16_t discarded;	/* received frames without a usable Chassis ID */
+    uint16_t ageouts;	/* neighbours expired on the port */
+};
+
+extern __xdata struct lldp_port_counters lldp_cnt[LLDP_PORTS];
+
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
 void lldp_send(void) __banked;
 bool lldp_in(void) __banked;
 void lldp_neighbors_to_html(void) __banked;
+void lldp_counters_to_html(void) __banked;
+void lldp_counters(void) __banked;
 void lldp_show(void) __banked;
 void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
