@@ -46,7 +46,7 @@ stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
 stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
 stp_mcheck:"Check",stp_mcheck_t:"Send RST BPDUs again to find out whether the neighbour still needs 802.1D",
 stp_cnt:"Counters",stp_crx:"BPDUs received",stp_ctx:"BPDUs sent",stp_ctrx:"TC received",stp_cttx:"TC sent",stp_cage:"Last BPDU [s]",
-lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_ttl:"TTL",
+lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_portdesc:"Port Description",lldp_nb_addr:"Address",lldp_nb_caps:"Capabilities",lldp_nb_ttl:"TTL",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -2088,6 +2088,8 @@ var lagPoller=new Poller(function(){return lagLoad().catch(function(){})},3000);
 tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagPoller.start()})},leave:function(){lagPoller.stop()}};
 
 
+var LLDP_CAPS=[[1,"Other"],[2,"Repeater"],[4,"Bridge"],[8,"WLAN AP"],[16,"Router"],[32,"Telephone"],[64,"DOCSIS"],[128,"Station"]];
+function lldpCaps(c){return LLDP_CAPS.filter(function(x){return c&x[0]}).map(function(x){return x[1]}).join(", ")}
 function lldpLoad(){
   return getJSON("/lldp.json").then(function(s){
     $("lldp_en").checked=s.on;
@@ -2111,6 +2113,10 @@ function lldpLoad(){
       tr.insertCell().textContent=n.chassis;
       tr.insertCell().textContent=n.portId;
       tr.insertCell().textContent=n.sysName;
+      tr.insertCell().textContent=n.portDesc||"";
+      var ac=tr.insertCell();
+      if(n.mgmtAddr)ac.appendChild(h("a",{href:"http://"+n.mgmtAddr,target:"_blank",rel:"noopener",text:n.mgmtAddr}));
+      tr.insertCell().textContent=lldpCaps(n.caps);
       tr.insertCell().textContent=n.ttl;
     });
   });

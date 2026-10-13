@@ -358,6 +358,18 @@ bool lldp_in(void) __banked __reentrant
         case LLDP_SYSNAME_TLV_TYPE:
             lldp_copy_string(lldp_tmp.sys_name, p, len, LLDP_NB_SYS_NAME_LENGTH);
             break;
+        case LLDP_PORT_DESC_TLV_TYPE:
+            lldp_copy_string(lldp_tmp.port_desc, p, len, LLDP_NB_PORT_DESC_LENGTH);
+            break;
+        case LLDP_CAPABILITIES_TLV_TYPE:
+            if (len == LLDP_CAPABILITIES_TLV_LENGTH)
+                lldp_tmp.caps = ((uint16_t)p[2] << 8) | p[3];
+            break;
+        case LLDP_MGMT_ADDR_TLV_TYPE:
+            if (len > LLDP_MGMT_ADDR_IPV4_LENGTH && p[0] == LLDP_MGMT_ADDR_IPV4_LENGTH
+                && p[1] == LLDP_MGMT_ADDR_SUBTYPE_IPV4)
+                memcpy(lldp_tmp.mgmt_addr, p + 2, sizeof(lldp_tmp.mgmt_addr));
+            break;
         }
         p += len;
     }
@@ -416,6 +428,19 @@ static void lldp_put_mac(__xdata uint8_t *mac, bool html) __reentrant
     }
 }
 
+static void lldp_put_addr(__xdata uint8_t *addr, bool html) __reentrant
+{
+    uint8_t i;
+
+    if (!(addr[0] | addr[1] | addr[2] | addr[3]))
+        return;
+    for (i = 0; i < sizeof(lldp_tmp.mgmt_addr); i++) {
+        if (i)
+            lldp_put('.', html);
+        lldp_put_dec(addr[i], html);
+    }
+}
+
 static void lldp_put_chassis(__xdata struct lldp_neighbor *nb, bool html) __reentrant
 {
     uint8_t i;
@@ -467,7 +492,13 @@ void lldp_neighbors_to_html(void) __banked __reentrant
         lldp_put_port_id(i, true);
         slen += strtox(outbuf + slen, "\",\"sysName\":\"");
         lldp_put_string(lldp_nb[i].sys_name, true);
-        slen += strtox(outbuf + slen, "\",\"ttl\":");
+        slen += strtox(outbuf + slen, "\",\"portDesc\":\"");
+        lldp_put_string(lldp_nb[i].port_desc, true);
+        slen += strtox(outbuf + slen, "\",\"mgmtAddr\":\"");
+        lldp_put_addr(lldp_nb[i].mgmt_addr, true);
+        slen += strtox(outbuf + slen, "\",\"caps\":");
+        lldp_put_dec(lldp_nb[i].caps, true);
+        slen += strtox(outbuf + slen, ",\"ttl\":");
         lldp_put_dec(lldp_nb[i].ttl, true);
         lldp_put('}', true);
     }
@@ -489,6 +520,10 @@ void lldp_show(void) __banked __reentrant
         lldp_put_port_id(i, false);
         print_string("  ");
         lldp_put_string(lldp_nb[i].sys_name, false);
+        print_string("  ");
+        lldp_put_string(lldp_nb[i].port_desc, false);
+        print_string("  ");
+        lldp_put_addr(lldp_nb[i].mgmt_addr, false);
         print_string("  ");
         lldp_put_dec(lldp_nb[i].ttl, false);
         print_string("s\n");
