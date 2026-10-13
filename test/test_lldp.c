@@ -8,6 +8,7 @@
 #include "uip.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_trap.h"
+#include "rtl837x_port.h"
 
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;

@@ -591,6 +591,10 @@ class Handler(SimpleHTTPRequestHandler):
                     "portDesc": "onboard nic",
                     "mgmtAddr": "10.0.0.7",
                     "caps": 128,
+                    "pvid": 20,
+                    "mtu": 1518,
+                    "agg": 1,
+                    "warn": 3,
                     "ttl": 117,
                 }
             ],
