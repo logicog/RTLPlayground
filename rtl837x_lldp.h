@@ -29,6 +29,7 @@
 #define LLDP_PORT_DESC_TLV_TYPE 4
 #define LLDP_SYSNAME_TLV_TYPE 5
 #define LLDP_SYSDESC_TLV_TYPE 6
+#define LLDP_MGMT_ADDR_IPV4_LENGTH 5
 
 #define LLDP_CAPABILITIES_TLV_TYPE 7
 #define LLDP_CAPABILITIES_TLV_LENGTH 4
@@ -52,7 +53,8 @@
 #define LLDP_NB_CHASSIS_LENGTH 17
 #define LLDP_NB_PORT_ID_LENGTH 12
 #define LLDP_NB_SYS_NAME_LENGTH 16
-#define LLDP_NB_JSON_LENGTH 112	/* separator + worst-case neighbour entry in /lldp.json */
+#define LLDP_NB_PORT_DESC_LENGTH 16
+#define LLDP_NB_JSON_LENGTH 184	/* separator + worst-case neighbour entry in /lldp.json */
 
 struct lldp_neighbor {
     uint8_t port;		/* logical ingress port */
@@ -62,6 +64,9 @@ struct lldp_neighbor {
     uint8_t port_id_mac;	/* 1 = port_id holds a MAC address, subtype 3 */
     char port_id[LLDP_NB_PORT_ID_LENGTH + 1];	/* NUL terminated, printable ASCII, or the MAC address */
     char sys_name[LLDP_NB_SYS_NAME_LENGTH + 1];	/* NUL terminated, printable ASCII */
+    char port_desc[LLDP_NB_PORT_DESC_LENGTH + 1];	/* NUL terminated, printable ASCII */
+    uint8_t mgmt_addr[4];	/* IPv4 management address, all zero = none */
+    uint16_t caps;		/* enabled System Capabilities bits */
     uint16_t ttl;		/* seconds until the entry expires, 0 = free slot */
 };
 
