@@ -8,6 +8,7 @@
 #include "uip.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_trap.h"
+#include "rtl837x_port.h"
 
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
@@ -22,6 +23,7 @@ uint16_t slen;
 volatile uint32_t ticks;
 bool lldp_enabled;
 uint8_t sfr_data[4];
+volatile uint16_t SFR_DATA_U16;
 
 static uint32_t links_sts;
 static int reg_reads, tx_frames;
@@ -29,6 +31,7 @@ static int reg_reads, tx_frames;
 void print_string(const char *s) { (void)s; }
 void write_char(char c) { (void)c; }
 void tcpip_output(void) { tx_frames++; }
+uint8_t port_lag_of(uint8_t port) { (void)port; return PORT_LAG_NONE; }
 
 void reg_read_m(uint16_t reg_addr)
 {

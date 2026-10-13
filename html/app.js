@@ -170,6 +170,13 @@ var LANG = {
         lldp_nb_portdesc: "Port Description",
         lldp_nb_addr: "Address",
         lldp_nb_caps: "Capabilities",
+        lldp_nb_pvid: "PVID",
+        lldp_nb_mtu: "MTU",
+        lldp_nb_lag: "LAG",
+        lldp_nb_warn: "Warnings",
+        lldp_w_mtu: "MTU larger than ours",
+        lldp_w_lag: "LAG only on one side",
+        lldp_w_dup: "same neighbour on another port",
         lldp_nb_ttl: "TTL",
         st_title: "Port statistics",
         st_h: "totals since boot",
@@ -4551,6 +4558,20 @@ function lldpLoad() {
                 text: n.mgmtAddr
             }));
             tr.insertCell().textContent = lldpCaps(n.caps);
+            tr.insertCell().textContent = n.pvid || "-";
+            tr.insertCell().textContent = n.mtu || "-";
+            tr.insertCell().textContent = n.agg ? (n.agg === 2 ? t("c_yes") : t("c_no")) : "-";
+            var wc = tr.insertCell();
+            [
+                [1, "lldp_w_mtu"],
+                [2, "lldp_w_lag"],
+                [4, "lldp_w_dup"]
+            ].forEach(function(w) {
+                if (n.warn & w[0]) wc.appendChild(h("span", {
+                    class: "badge bad",
+                    text: t(w[1])
+                }));
+            });
             tr.insertCell().textContent = n.ttl;
         });
     });
