@@ -149,6 +149,7 @@ SRCS += \
 	rtl837x_stp.c \
 	rtl837x_lldp.c \
 	rtl837x_dot1x.c \
+	md5.c \
 	rtl837x_storm.c \
 	rtl837x_lacp.c \
 	rtl837x_trap.c \
