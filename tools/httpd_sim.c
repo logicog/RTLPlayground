@@ -483,6 +483,7 @@ void send_lldp(int s)
 	json_object_object_add(p, "portId", json_object_new_string("eth0"));
 	json_object_object_add(p, "sysName", json_object_new_string("desk-pc"));
 	json_object_object_add(p, "ttl", json_object_new_int(117));
+	json_object_object_add(p, "age", json_object_new_int(3));
 	json_object_array_add(neighbors, p);
 	json_object_object_add(c, "neighbors", neighbors);
 

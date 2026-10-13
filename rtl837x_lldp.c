@@ -23,6 +23,7 @@ __xdata uint8_t lldp_tick_last;
 __xdata uint8_t lldp_seconds;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
+__xdata uint16_t lldp_uptime_s;
 static __xdata struct lldp_neighbor lldp_tmp;
 
 void lldp_init(void) __banked
@@ -39,6 +40,7 @@ void lldp_tick(void) __banked
     if (!TICKS_DUE(lldp_tick_last, SYS_TICK_HZ))
         return;
     lldp_tick_last += SYS_TICK_HZ;
+    lldp_uptime_s++;
 
     for (i = 0; i < LLDP_NB_MAX; i++) {
         if (lldp_nb[i].ttl)
@@ -257,6 +259,7 @@ bool lldp_in(void) __banked __reentrant
     if (lldp_tmp.port < machine.min_port || lldp_tmp.port > machine.max_port)
         return true;
     lldp_tmp.ttl = LLDP_TTL_TTL_SECONDS;
+    lldp_tmp.seen = lldp_uptime_s;
 
     p = &uip_buf[body + LLDP_ETHERTYPE_LENGTH];
     end = &uip_buf[uip_len];
@@ -367,6 +370,8 @@ void lldp_neighbors_to_html(void) __banked __reentrant
         lldp_put_string(lldp_nb[i].sys_name, true);
         slen += strtox(outbuf + slen, "\",\"ttl\":");
         lldp_put_dec(lldp_nb[i].ttl, true);
+        slen += strtox(outbuf + slen, ",\"age\":");
+        lldp_put_dec(lldp_uptime_s - lldp_nb[i].seen, true);
         lldp_put('}', true);
     }
     lldp_put(']', true);
@@ -389,6 +394,8 @@ void lldp_show(void) __banked __reentrant
         lldp_put_string(lldp_nb[i].sys_name, false);
         print_string("  ");
         lldp_put_dec(lldp_nb[i].ttl, false);
-        print_string("s\n");
+        print_string("s  seen ");
+        lldp_put_dec(lldp_uptime_s - lldp_nb[i].seen, false);
+        print_string("s ago\n");
     }
 }
