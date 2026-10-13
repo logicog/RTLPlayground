@@ -36,7 +36,8 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_nic_rx \
         $(BUILDDIR)/test_lacp \
         $(BUILDDIR)/test_igmp \
-        $(BUILDDIR)/test_lldp
+        $(BUILDDIR)/test_lldp \
+        $(BUILDDIR)/test_lldp_rx
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -81,6 +82,10 @@ $(BUILDDIR)/test_igmp: test_igmp.c $(SRCROOT)/rtl837x_igmp.c | $(BUILDDIR)
 
 $(BUILDDIR)/test_lldp: test_lldp.c $(SRCROOT)/rtl837x_lldp.c $(SRCROOT)/timer.c fw_memset.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) -include fw_memset.h test_lldp.c $(SRCROOT)/rtl837x_lldp.c $(SRCROOT)/timer.c -o $@ $(LDFLAGS)
+
+# rtl837x_lldp.c is compiled UNMODIFIED from the firmware tree.
+$(BUILDDIR)/test_lldp_rx: test_lldp_rx.c support.c hw_mock.c env_tables.c hw_mock.h $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_lldp.c $(SRCROOT)/timer.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
 # this test carries the environment below them itself.
