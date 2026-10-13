@@ -242,7 +242,7 @@ static uint8_t acl_range_alloc(uint8_t idx, __xdata struct acl_req *req) __reent
 	if (slot == ACL_RANGES)
 		return 0;
 	acl_range[kind].owner[slot] = idx + 1;
-	acl_range[kind].bits |= (uint16_t)1 << slot;
+	acl_range[kind].bits |= 1u << slot;
 	acl_range_addr(kind, slot);
 	if (kind == ACL_RANGE_VID) {
 		lo = req->lo;
@@ -332,7 +332,7 @@ static uint8_t acl_encode(uint8_t idx, uint8_t tmpl) __reentrant
 	acl_put(ACL_SLOT_INFO, tmpl, ACL_INFO_TMPL);
 	acl_put(ACL_SLOT_INFO, acl_info_v, acl_info_m);
 	ports = ~(acl_in_pmask ? acl_in_pmask : ACL_PORTS) & ACL_ALL;
-	acl_y.info &= ~(uint16_t)(ports << ACL_INFO_PORT_SHIFT);
+	acl_y.info &= ~(ports << ACL_INFO_PORT_SHIFT);
 	acl_y.info_hi &= ~(ports >> (16 - ACL_INFO_PORT_SHIFT));
 	return 1;
 }
@@ -398,7 +398,7 @@ found:
 		return ACL_ERR_RANGE;
 
 	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_act);
-	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2), acl_ctrl);
+	REG_SET(RTL837X_ACL_ACT_CTRL + (idx << 2), acl_ctrl);
 	acl_entry_write(idx, (__xdata uint16_t *)&acl_x, (__xdata uint16_t *)&acl_y);
 
 	ACL_SET_USED(idx);
@@ -411,7 +411,7 @@ void acl_rule_clear(uint8_t idx) __banked __reentrant
 {
 	acl_entry_write(idx, (__xdata uint16_t *)&acl_zero, (__xdata uint16_t *)&acl_zero);
 	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_zero);
-	REG_SET(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2), ACL_ACT_CTRL_OFF);
+	REG_SET(RTL837X_ACL_ACT_CTRL + (idx << 2), ACL_ACT_CTRL_OFF);
 	ACL_CLR_USED(idx);
 	acl_range_free(idx);
 	acl_ports_update();
@@ -442,6 +442,6 @@ uint8_t acl_rule_is_and(uint8_t idx) __banked
 {
 	if (!ACL_IS_USED(idx))
 		return 0;
-	reg_read_m(RTL837X_ACL_ACT_CTRL + ((uint16_t)idx << 2));
+	reg_read_m(RTL837X_ACL_ACT_CTRL + (idx << 2));
 	return !(sfr_data[0] | sfr_data[1] | sfr_data[2] | sfr_data[3]);
 }
