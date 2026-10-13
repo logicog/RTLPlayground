@@ -1473,7 +1473,7 @@ function vlanRefresh(){
       p=p.then(function(){return getJSON("/vlan.json?vid="+v.id).catch(function(){return null})}).then(function(d){
         var tr=tb.insertRow();
         tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),onclick:function(e){
-          e.preventDefault();$("vvid").value=v.id;vlanLoad();
+          e.preventDefault();vlanLoad(v.id);
         }}));
         tr.insertCell().textContent=v.name||"";
         if(!d){for(var c=0;c<4;c++)tr.insertCell().textContent="?";}
@@ -1533,8 +1533,7 @@ function segVal(p){
 function segSet(p,v){
   $("vm"+p).querySelectorAll("button").forEach(function(b,i){b.classList.toggle("on",i===v)});
 }
-function vlanLoad(){
-  var vid=parseInt($("vvid").value,10);
+function vlanLoad(vid){
   if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
   getJSON("/vlan.json?vid="+vid).then(function(d){
     $("vname").value=d.name||"";
@@ -1573,7 +1572,6 @@ function ingressApply(){
   if(!any){toast(t("v_ing_none"),"err");return;}
   postCmd(cmd).catch(function(){});
 }
-$("vload").addEventListener("click",vlanLoad);
 $("vapply").addEventListener("click",vlanApply);
 $("ingapply").addEventListener("click",ingressApply);
 $("vmgmt").addEventListener("click",function(){
@@ -1583,9 +1581,18 @@ $("vmgmt").addEventListener("click",function(){
     function(){postCmd("vlan "+vid+" mgmt").then(vlanRefresh).catch(function(){})});
 });
 tabHooks.vlan={
-  enter:function(){needPorts(function(){buildVlanEdit();vlanRefresh().catch(function(){})})},
+  enter:function(){
+    needPorts(function(){
+      buildVlanEdit();
+      vlanRefresh().catch(function(){}).then(function(){
+        VlanInit();
+      })
+    })
+  },
 };
-
+function VlanInit() {
+  $("vtable").tBodies[0].firstChild.firstChild.firstChild.click();
+};
 var l2Rows=[],l2SortCol="pport",l2SortDir=1,l2Gen=0;
 function l2Load(){
   var seen={},all=[],idx=0,guard=0,gen=++l2Gen;
