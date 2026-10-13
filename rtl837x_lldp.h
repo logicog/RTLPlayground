@@ -23,8 +23,14 @@
 #define LLDP_CHASSIS_ID_TLV_LENGTH 7
 #define LLDP_CHASSIS_ID_TLV_SUBTYPE 4
 
+#define LLDP_PORT_DESC_TLV_TYPE 4
 #define LLDP_SYSNAME_TLV_TYPE 5
 #define LLDP_SYSDESC_TLV_TYPE 6
+#define LLDP_CAPABILITIES_TLV_TYPE 7
+#define LLDP_CAPABILITIES_TLV_LENGTH 4
+#define LLDP_MGMT_ADDR_TLV_TYPE 8
+#define LLDP_MGMT_ADDR_SUBTYPE_IPV4 1
+#define LLDP_MGMT_ADDR_IPV4_LENGTH 5
 
 #define LLDP_END_TLV_TYPE 0
 #define LLDP_MULTICAST_ADDR "\x01\x80\xc2\x00\x00\x0e"
@@ -37,7 +43,8 @@
 #define LLDP_NB_CHASSIS_LENGTH 16
 #define LLDP_NB_PORT_ID_LENGTH 12
 #define LLDP_NB_SYS_NAME_LENGTH 16
-#define LLDP_NB_JSON_LENGTH 107	/* separator + worst-case neighbour entry in /lldp.json */
+#define LLDP_NB_PORT_DESC_LENGTH 16
+#define LLDP_NB_JSON_LENGTH 179	/* separator + worst-case neighbour entry in /lldp.json */
 
 struct lldp_neighbor {
     uint8_t port;		/* logical ingress port */
@@ -46,6 +53,9 @@ struct lldp_neighbor {
     uint8_t chassis[LLDP_NB_CHASSIS_LENGTH];	/* Chassis ID without the subtype byte */
     char port_id[LLDP_NB_PORT_ID_LENGTH + 1];	/* NUL terminated, printable ASCII */
     char sys_name[LLDP_NB_SYS_NAME_LENGTH + 1];	/* NUL terminated, printable ASCII */
+    char port_desc[LLDP_NB_PORT_DESC_LENGTH + 1];	/* NUL terminated, printable ASCII */
+    uint8_t mgmt_addr[4];	/* IPv4 management address, all zero = none */
+    uint16_t caps;		/* enabled System Capabilities bits */
     uint16_t ttl;		/* seconds until the entry expires, 0 = free slot */
 };
 
