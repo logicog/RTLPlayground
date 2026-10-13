@@ -83,6 +83,8 @@ void lldp_send(void) __banked __reentrant
     *p++ = LLDP_TYPE(LLDP_PORT_ID_TLV_TYPE);
     *p++ = LLDP_PORT_ID_TLV_LENGTH;
     *p++ = LLDP_PORT_ID_TLV_SUBTYPE;
+    memcpyc(p, LLDP_PORT_ID_PREFIX, LLDP_PORT_ID_PREFIX_LENGTH);
+    p += LLDP_PORT_ID_PREFIX_LENGTH;
     port_position = (p-LLDP_O->payload);
 	*p++ = '0';       // filled in per port below
 
