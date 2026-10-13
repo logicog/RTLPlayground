@@ -483,6 +483,16 @@ void send_lldp(int s)
 
 	json_object_object_add(c, "portStatus", portStatuses);
 
+	struct json_object *neighbors = json_object_new_array();
+	p = json_object_new_object();
+	json_object_object_add(p, "port", json_object_new_int(3));
+	json_object_object_add(p, "chassis", json_object_new_string("00:11:22:33:44:55"));
+	json_object_object_add(p, "portId", json_object_new_string("eth0"));
+	json_object_object_add(p, "sysName", json_object_new_string("desk-pc"));
+	json_object_object_add(p, "ttl", json_object_new_int(117));
+	json_object_array_add(neighbors, p);
+	json_object_object_add(c, "neighbors", neighbors);
+
 	write(s, header, strlen(header));
 
 	jstring = json_object_to_json_string_ext(c, JSON_C_TO_STRING_PLAIN);
