@@ -33,6 +33,7 @@ static __xdata uint8_t lldp_fast[MACHINE_MAX_PORT + 1];
 static __xdata uint16_t lldp_new;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
+__xdata struct lldp_port_counters lldp_cnt[LLDP_PORTS];
 static __xdata struct lldp_neighbor lldp_tmp;
 
 static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant;
@@ -47,6 +48,7 @@ void lldp_init(void) __banked
     lldp_new = 0;
     for (i = 0; i < LLDP_NB_MAX; i++)
         lldp_nb[i].ttl = 0;
+    memset(lldp_cnt, 0, sizeof(lldp_cnt));
 }
 
 void lldp_tick(void) __banked
@@ -66,9 +68,10 @@ void lldp_tick(void) __banked
     for (i = 0; i < LLDP_NB_MAX; i++) {
         if (!lldp_nb[i].ttl)
             continue;
-        if ((links >> lldp_nb[i].port) & 1)
-            lldp_nb[i].ttl--;
-        else
+        if ((links >> lldp_nb[i].port) & 1) {
+            if (!--lldp_nb[i].ttl)
+                lldp_cnt[lldp_nb[i].port].ageouts++;
+        } else
             lldp_nb[i].ttl = 0;
     }
 
@@ -211,6 +214,7 @@ static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant
             uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + (p - LLDP_O->payload);
 
             tcpip_output();
+            lldp_cnt[port].tx++;
         }
     }
 }
@@ -459,6 +463,7 @@ bool lldp_in(void) __banked __reentrant
     lldp_tmp.port = ((uint8_t)HTONS(LLDP_RX_TAG->pmask)) & 0x0f;
     if (!MACHINE_PORT_VALID(lldp_tmp.port))
         return true;
+    lldp_cnt[lldp_tmp.port].rx++;
     lldp_tmp.ttl = LLDP_TTL_TTL_SECONDS;
 
     p = &uip_buf[body + LLDP_ETHERTYPE_LENGTH];
@@ -495,8 +500,10 @@ bool lldp_in(void) __banked __reentrant
     any = 0;
     for (type = 0; type < MAC_ADDR_LEN; type++)
         any |= lldp_tmp.chassis[type];
-    if (!any)
+    if (!any) {
+        lldp_cnt[lldp_tmp.port].discarded++;
         return true;
+    }
 
     nb = lldp_find();
     if (!lldp_tmp.ttl) {
@@ -587,6 +594,53 @@ void lldp_neighbors_to_html(void) __banked __reentrant
         lldp_put('}', true);
     }
     lldp_put(']', true);
+}
+
+static void lldp_put_counters(uint8_t port, bool html) __reentrant
+{
+    lldp_put_dec(lldp_cnt[port].tx, html);
+    lldp_put(html ? ',' : ' ', html);
+    if (html)
+        slen += strtox(outbuf + slen, "\"rx\":");
+    lldp_put_dec(lldp_cnt[port].rx, html);
+    lldp_put(html ? ',' : ' ', html);
+    if (html)
+        slen += strtox(outbuf + slen, "\"discarded\":");
+    lldp_put_dec(lldp_cnt[port].discarded, html);
+    lldp_put(html ? ',' : ' ', html);
+    if (html)
+        slen += strtox(outbuf + slen, "\"ageouts\":");
+    lldp_put_dec(lldp_cnt[port].ageouts, html);
+}
+
+void lldp_counters_to_html(void) __banked __reentrant
+{
+    uint8_t port;
+
+    slen += strtox(outbuf + slen, ",\"counters\":[");
+    for (port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
+        if (port > MACHINE_MIN_PORT)
+            lldp_put(',', true);
+        slen += strtox(outbuf + slen, "{\"port\":");
+        lldp_put_dec(machine.log_to_phys_port[port], true);
+        slen += strtox(outbuf + slen, ",\"tx\":");
+        lldp_put_counters(port, true);
+        lldp_put('}', true);
+    }
+    lldp_put(']', true);
+}
+
+void lldp_counters(void) __banked __reentrant
+{
+    uint8_t port;
+
+    print_string("Port  TX  RX  Discarded  Ageouts\n");
+    for (port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
+        lldp_put_dec(machine.log_to_phys_port[port], false);
+        print_string("  ");
+        lldp_put_counters(port, false);
+        write_char('\n');
+    }
 }
 
 void lldp_show(void) __banked __reentrant
