@@ -589,6 +589,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "portId": "eth0",
                     "sysName": "desk-pc",
                     "ttl": 117,
+                    "age": 3,
                 }
             ],
         }
