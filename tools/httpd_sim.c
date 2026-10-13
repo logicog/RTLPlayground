@@ -19,6 +19,7 @@
 #define NSFP 1
 
 #define N_COUNTERS 52
+#define VLAN_MAX 1
 
 #if PORTS == 9
 const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -135,16 +136,49 @@ void send_vlan(int s, int vlan)
 
 	v = json_object_new_object();
 	
-	sprintf(num_buff, "0x%08x", 0x00060011);
+	sprintf(num_buff, "0x%08x", 0x207ffff);
 	json_object_object_add(v, "members", json_object_new_string(num_buff));
 
-        write(s, header, strlen(header));
+	json_object_object_add(v, "name", json_object_new_string(""));
+	json_object_object_add(v, "pvid", json_object_new_string("0x01ff"));
+
+	write(s, header, strlen(header));
 
 	jstring = json_object_to_json_string_ext(v, JSON_C_TO_STRING_PLAIN);
-        write(s, jstring, strlen(jstring));
+	write(s, jstring, strlen(jstring));
 	json_object_put(v);
 }
 
+void send_vlanlist(int s)
+{
+	struct json_object *v, *vlans, *vlan;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+		       "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	v = json_object_new_object();
+	
+	json_object_object_add(v, "mgmt", json_object_new_int(1));
+
+	vlans = json_object_new_array_ext(VLAN_MAX);
+	
+	//foreach VLAN
+	for (int x=1;x<=VLAN_MAX;++x) {
+		vlan = json_object_new_object();
+		json_object_object_add(vlan, "id", json_object_new_int(x));
+		json_object_object_add(vlan, "name", json_object_new_string(""));
+
+		json_object_array_add(vlans, vlan);
+	}
+	
+
+	json_object_object_add(v, "vlan", vlans);
+	
+	write(s, header, strlen(header));
+	jstring = json_object_to_json_string_ext(v, JSON_C_TO_STRING_PLAIN);
+    write(s, jstring, strlen(jstring));
+	json_object_put(v);
+}
 
 void send_status(int s)
 {
@@ -734,6 +768,13 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_vlan(new_socket, vlan);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/vlanlist", 9)) {
+					printf("request for vlan list");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_vlanlist(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/lldp.json", 10)) {
 					printf("LLDP request");
