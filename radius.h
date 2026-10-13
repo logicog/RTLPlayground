@@ -13,6 +13,8 @@
 #define RADIUS_CODE_TIMEOUT 0
 
 #define RADIUS_ATTR_USER_NAME 1
+#define RADIUS_ATTR_USER_PASSWORD 2
+#define RADIUS_ATTR_SERVICE_TYPE 6
 #define RADIUS_ATTR_NAS_IP_ADDRESS 4
 #define RADIUS_ATTR_NAS_PORT 5
 #define RADIUS_ATTR_FRAMED_MTU 12
@@ -23,6 +25,8 @@
 #define RADIUS_ATTR_MESSAGE_AUTHENTICATOR 80
 
 #define RADIUS_NAS_PORT_TYPE_ETHERNET 15
+#define RADIUS_SERVICE_TYPE_CALL_CHECK 10
+#define RADIUS_PASSWORD_BLOCK 16
 #define RADIUS_FRAMED_MTU 1400
 
 #define RADIUS_HEADER_LENGTH 20
@@ -51,6 +55,7 @@ bool radius_configured(void) __banked __reentrant;
 bool radius_request(uint8_t port, __xdata const char *identity, __xdata const uint8_t *mac,
                     __xdata const uint8_t *eap, uint16_t eap_len,
                     __xdata const uint8_t *state, uint8_t state_len) __banked __reentrant;
+bool radius_request_pap(uint8_t port, __xdata const char *user, __xdata const uint8_t *mac) __banked __reentrant;
 void radius_callback(uint16_t lport) __banked __reentrant;
 void radius_tick(void) __banked __reentrant;
 
