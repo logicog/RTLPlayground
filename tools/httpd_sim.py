@@ -588,6 +588,9 @@ class Handler(SimpleHTTPRequestHandler):
                     "chassis": "00:11:22:33:44:55",
                     "portId": "eth0",
                     "sysName": "desk-pc",
+                    "portDesc": "onboard nic",
+                    "mgmtAddr": "10.0.0.7",
+                    "caps": 128,
                     "ttl": 117,
                 }
             ],
