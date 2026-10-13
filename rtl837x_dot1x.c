@@ -189,6 +189,11 @@ void dot1x_show(void) __banked __reentrant
             print_string(eapol_state_name(port));
             print_string(" ");
             print_string_x(eapol_ports[port].identity);
+            print_string(eapol_ports[port].mab ? "  mab" : "");
+            print_string("  ok ");
+            dot1x_put_dec(eapol_ports[port].ok, false);
+            print_string(" fail ");
+            dot1x_put_dec(eapol_ports[port].fail, false);
         }
         write_char('\n');
     }
@@ -225,6 +230,14 @@ void dot1x_to_html(void) __banked __reentrant
                           || eapol_ports[port].identity[i] == '"' || eapol_ports[port].identity[i] == '\\'
                           ? '.' : eapol_ports[port].identity[i], true);
             dot1x_put('"', true);
+            dot1x_put_code(",\"mab\":", true);
+            dot1x_put('0' + eapol_ports[port].mab, true);
+            dot1x_put_code(",\"viaMab\":", true);
+            dot1x_put('0' + eapol_ports[port].via_mab, true);
+            dot1x_put_code(",\"ok\":", true);
+            dot1x_put_dec(eapol_ports[port].ok, true);
+            dot1x_put_code(",\"fail\":", true);
+            dot1x_put_dec(eapol_ports[port].fail, true);
         }
         dot1x_put('}', true);
     }

@@ -158,6 +158,9 @@ var LANG = {
         x_secret_set: "secret set",
         x_secret_none: "no secret",
         x_supplicant: "Supplicant",
+        x_mab: "MAC bypass",
+        x_counts: "OK / fail",
+        x_by_mac: "by address",
         x_off: "off",
         x_auto: "auto",
         x_fauth: "force authorized",
@@ -2422,6 +2425,7 @@ var CONF_CMDS = [
     /^stp\s+(on|off)$/, /^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d+$/,
     /^port\s+\d{1,2}\s+dot1x\s+(off|auto|force-auth|force-unauth)$/,
     /^port\s+\d{1,2}\s+dot1x\s+action\s+(drop|guest)$/,
+    /^port\s+\d{1,2}\s+dot1x\s+mab\s+(on|off)$/,
     /^dot1x\s+(on|off)$/,
     /^dot1x\s+guest\s+\d{1,4}$/,
     /^dot1x\s+server\s+\d{1,3}(\.\d{1,3}){3}(\s+\d{1,5})?$/,
@@ -4646,10 +4650,26 @@ function dot1xLoad() {
                     setTimeout(dot1xLoad, 300)
                 }).catch(function() {});
             }));
+            var mc = tr.insertCell();
+            if (p.mode === "auto") {
+                var mb = h("label", {
+                    class: "switch"
+                }, [h("input", {
+                    type: "checkbox",
+                    onchange: function() {
+                        postCmd("port " + p.portNum + " dot1x mab " + (this.checked ? "on" : "off")).then(function() {
+                            setTimeout(dot1xLoad, 300)
+                        }).catch(function() {});
+                    }
+                }), h("i")]);
+                mb.firstChild.checked = !!p.mab;
+                mc.appendChild(mb);
+            } else mc.textContent = "-";
             var st = tr.insertCell();
             if (!s.on || p.mode === "off") st.innerHTML = badge(t("x_open"));
             else st.innerHTML = p.authorized ? badge(t("x_auth"), "ok") : badge(t("x_unauth"), "bad");
-            tr.insertCell().textContent = p.state ? (p.identity ? p.identity + " (" + p.state + ")" : p.state) : "-";
+            tr.insertCell().textContent = p.state ? (p.identity ? p.identity + (p.viaMab ? " " + t("x_by_mac") : "") + " (" + p.state + ")" : p.state) : "-";
+            tr.insertCell().textContent = p.state ? p.ok + " / " + p.fail : "-";
         });
         if (document.activeElement !== $("x_server") && document.activeElement !== $("x_sport")) {
             $("x_server").value = s.server === "0.0.0.0" ? "" : s.server;
@@ -5380,8 +5400,8 @@ function mergeConf(base, texts) {
                 conf.push(line);
                 return;
             }
-            if ((m = line.match(/^port (\d{1,2}) dot1x (action )?(\S+)$/))) {
-                drop(new RegExp("^port " + m[1] + " dot1x " + (m[2] ? "action \\S+" : "(off|auto|force-auth|force-unauth)") + "$"));
+            if ((m = line.match(/^port (\d{1,2}) dot1x (?:(action|mab) )?(\S+)$/))) {
+                drop(new RegExp("^port " + m[1] + " dot1x " + (m[2] ? m[2] + " \\S+" : "(off|auto|force-auth|force-unauth)") + "$"));
                 conf.push(line);
                 return;
             }

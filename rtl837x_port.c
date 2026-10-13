@@ -433,6 +433,44 @@ void port_l2_learned(void) __banked
 }
 
 
+bool port_l2_mac_on_port(uint8_t port, __xdata uint8_t *mac) __banked
+{
+	__xdata uint16_t entry = 0;
+	__xdata uint16_t first_entry = 0xffff;
+	uint8_t entry_port;
+
+	wait_table_ready();
+	while (1) {
+		reg_read_m(RTL837x_TBL_DATA_0);
+		REG_WRITE(RTL837x_TBL_DATA_0, sfr_data[0], sfr_data[1], sfr_data[2] | 0xc0, sfr_data[3]);
+		REG_WRITE(RTL837X_TBL_CTRL, (entry >> 8) & 0xf, entry, TBL_L2_UNICAST, TBL_EXECUTE);
+		wait_table_ready();
+		reg_read_m(RTL837x_TBL_DATA_0);
+		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
+		if (first_entry == 0xffff)
+			first_entry = entry;
+		else if (first_entry == entry)
+			return false;
+		reg_read_m(RTL837x_L2_DATA_OUT_B);
+		if (sfr_data[0] & 0x20) {
+			entry_port = (sfr_data[0] >> 6) & 0x3;
+			mac[0] = sfr_data[2];
+			mac[1] = sfr_data[3];
+			reg_read_m(RTL837x_L2_DATA_OUT_C);
+			entry_port |= (sfr_data[3] & 0x3) << 2;
+			if (entry_port == port && !(sfr_data[1] & 0x1) && !(mac[0] & 0x1)) {
+				reg_read_m(RTL837x_L2_DATA_OUT_A);
+				mac[2] = sfr_data[0];
+				mac[3] = sfr_data[1];
+				mac[4] = sfr_data[2];
+				mac[5] = sfr_data[3];
+				return true;
+			}
+		}
+		entry++;
+	}
+}
+
 /*
  * Static L2 multicast entry for the link-local group 01:80:C2:00:00:<mac_last>
  * in VLAN `vid`, with member portmask `pmask` (bit 9 = CPU port).
