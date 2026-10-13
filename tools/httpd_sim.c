@@ -474,6 +474,10 @@ void send_dot1x(int s)
 		if (i == 2) {
 			json_object_object_add(p, "state", json_object_new_string("authenticated"));
 			json_object_object_add(p, "identity", json_object_new_string("alice"));
+			json_object_object_add(p, "mab", json_object_new_int(1));
+			json_object_object_add(p, "viaMab", json_object_new_int(0));
+			json_object_object_add(p, "ok", json_object_new_int(3));
+			json_object_object_add(p, "fail", json_object_new_int(1));
 		}
 		json_object_array_add(ports, p);
 	}
