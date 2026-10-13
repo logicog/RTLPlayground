@@ -452,6 +452,18 @@ void lldp_neighbors_to_html(void) __banked __reentrant
     lldp_put(']', true);
 }
 
+uint8_t lldp_neighbor_count(void) __banked __reentrant
+{
+    uint8_t i;
+    uint8_t n = 0;
+
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (lldp_nb[i].ttl)
+            n++;
+    }
+    return n;
+}
+
 void lldp_show(void) __banked __reentrant
 {
     uint8_t i;
