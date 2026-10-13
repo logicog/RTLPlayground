@@ -168,6 +168,8 @@ var LANG = {
         lldp_nb_portid: "Port ID",
         lldp_nb_sysname: "System Name",
         lldp_nb_ttl: "TTL",
+        lldp_nb_seen: "Last seen",
+        lldp_s_ago: "{s} s ago",
         st_title: "Port statistics",
         st_h: "totals since boot",
         st_txg: "TX good",
@@ -4521,6 +4523,9 @@ function lldpLoad() {
             tr.insertCell().textContent = n.portId;
             tr.insertCell().textContent = n.sysName;
             tr.insertCell().textContent = n.ttl;
+            tr.insertCell().textContent = t("lldp_s_ago", {
+                s: n.age
+            });
         });
     });
 }

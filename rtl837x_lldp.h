@@ -47,7 +47,7 @@
 #define LLDP_NB_MAX 16
 #define LLDP_NB_PORT_ID_LENGTH 12
 #define LLDP_NB_SYS_NAME_LENGTH 16
-#define LLDP_NB_JSON_LENGTH 112	/* separator + worst-case neighbour entry in /lldp.json */
+#define LLDP_NB_JSON_LENGTH 124	/* separator + worst-case neighbour entry in /lldp.json */
 
 struct lldp_neighbor {
     uint8_t port;		/* logical ingress port */
@@ -56,7 +56,10 @@ struct lldp_neighbor {
     char port_id[LLDP_NB_PORT_ID_LENGTH + 1];	/* NUL terminated, printable ASCII, or the MAC address */
     char sys_name[LLDP_NB_SYS_NAME_LENGTH + 1];	/* NUL terminated, printable ASCII */
     uint16_t ttl;		/* seconds until the entry expires, 0 = free slot */
+    uint16_t seen;		/* lldp_uptime_s when the last frame arrived */
 };
+
+extern __xdata uint16_t lldp_uptime_s;
 
 extern __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
 
