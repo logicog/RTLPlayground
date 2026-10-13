@@ -21,6 +21,7 @@
 #include "rtl837x_storm.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
+#include "rtl837x_pktgen.h"
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
@@ -902,6 +903,98 @@ err:
 	return;
 }
 
+
+static __xdata uint16_t pktgen_arg[3];
+
+static void parse_pktgen(void)
+{
+	uint8_t g;
+	uint8_t n;
+
+	if (cmd_words_len == 2 && cmd_compare(1, "show")) {
+		pktgen_show();
+		return;
+	}
+	if (cmd_words_len >= 3 && cmd_compare(1, "payload")) {
+		if (atoi_hex(cmd_words_b[2]) != 1)
+			goto err;
+		g = hexvalue[0];
+		if (cmd_words_len == 3) {
+			pktgen_payload_read(g);
+			return;
+		}
+		n = atoi_hex(cmd_words_b[3]);
+		if (n == 0)
+			goto err;
+		pktgen_payload_write(g, hexvalue, n);
+		return;
+	}
+	if (cmd_words_len < 3)
+		goto err;
+	g = cmd_buffer[cmd_words_b[1]] - '0';
+	if (g >= PKTGEN_COUNT || cmd_buffer[cmd_words_b[1] + 1] != ' ')
+		goto err;
+	if (cmd_compare(2, "start")) {
+		pktgen_run(g, true);
+	} else if (cmd_compare(2, "stop")) {
+		pktgen_run(g, false);
+	} else if (cmd_compare(2, "clock") && cmd_words_len == 4) {
+		if (cmd_compare(3, "xg"))
+			pktgen_clock(g, true);
+		else if (cmd_compare(3, "ge"))
+			pktgen_clock(g, false);
+		else
+			goto err;
+	} else if (cmd_compare(2, "dmac") || cmd_compare(2, "smac")) {
+		if (cmd_words_len != 4 || parse_mac(cmd_words_b[3]) == 0)
+			goto err;
+		pktgen_mac(g, cmd_compare(2, "dmac"), mac_parse_result);
+	} else if (cmd_compare(2, "type")) {
+		if (cmd_words_len == 4 && cmd_compare(3, "off")) {
+			pktgen_type(g, 0, false);
+			return;
+		}
+		if (cmd_words_len != 4 || atoi_hex(cmd_words_b[3]) != 2)
+			goto err;
+		pktgen_type(g, ((uint16_t)hexvalue[0] << 8) | hexvalue[1], true);
+	} else {
+		if (cmd_words_len < 4 || cmd_words_len > 6)
+			goto err;
+		pktgen_arg[1] = 0;
+		pktgen_arg[2] = 0;
+		for (n = 3; n < cmd_words_len; n++) {
+			if (atoi_short(cmd_words_b[n]) == 0)
+				goto err;
+			pktgen_arg[n - 3] = atoi_results_short;
+		}
+		if (cmd_compare(2, "sel") && cmd_words_len == 4 && pktgen_arg[0] < 4)
+			pktgen_sel(g, pktgen_arg[0]);
+		else if (cmd_compare(2, "gap") && cmd_words_len == 4)
+			pktgen_gap(g, pktgen_arg[0]);
+		else if (cmd_compare(2, "burst") && cmd_words_len == 5)
+			pktgen_burst(g, pktgen_arg[0], pktgen_arg[1]);
+		else if (cmd_compare(2, "len") && cmd_words_len >= 5)
+			pktgen_len(g, pktgen_arg[0], pktgen_arg[1], pktgen_arg[2]);
+		else if (cmd_compare(2, "pmode") && cmd_words_len == 5)
+			pktgen_payload_mode(g, pktgen_arg[0], pktgen_arg[1]);
+		else
+			goto err;
+	}
+	return;
+err:
+	cmd_error("\nUsage:" \
+		  "\npktgen show" \
+		  "\npktgen payload <hexaddr> [hexbytes]" \
+		  "\npktgen <0-3> start|stop" \
+		  "\npktgen <0-3> sel <0-3>" \
+		  "\npktgen <0-3> clock ge|xg" \
+		  "\npktgen <0-3> burst <count> <size>" \
+		  "\npktgen <0-3> gap <len>" \
+		  "\npktgen <0-3> len <min> <max> [mode]" \
+		  "\npktgen <0-3> type <hex16>|off" \
+		  "\npktgen <0-3> pmode <mode> <mask>" \
+		  "\npktgen <0-3> dmac|smac <mac>\n");
+}
 
 void parse_port(void)
 {
@@ -2084,6 +2177,8 @@ void cmd_parser(void) __banked
 			parse_ingress();
 		} else if (cmd_compare(0, "session")) {
 			parse_session();
+		} else if (cmd_compare(0, "pktgen")) {
+			parse_pktgen();
 		} else if (cmd_compare(0, "lldp")) {
 			if (cmd_compare(1, "on")) {
 				print_string("LLDP enabled\n");
