@@ -43,6 +43,7 @@ struct lldp_neighbor {
 };
 
 extern __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
+extern __xdata uint16_t lldp_rx_port_status;
 
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
@@ -50,6 +51,7 @@ void lldp_send(void) __banked;
 bool lldp_in(void) __banked;
 void lldp_neighbors_to_html(void) __banked;
 void lldp_show(void) __banked;
+void lldp_forget_port(uint8_t port) __banked;
 void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;

@@ -908,7 +908,7 @@ void parse_port(void)
 		cmd_error("\nUsage:" \
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
-					 "\nport <port> lldp [block|permit]" \
+					 "\nport <port> lldp [block|permit|ignore|listen]" \
 					 "\nport <port> cabletest [show]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
@@ -947,8 +947,13 @@ void parse_port(void)
 			lldp_logical_port_status &= ~((uint16_t)1 << phy_settings.port);
 		} else if (cmd_compare(3, "permit")) {
 			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
+		} else if (cmd_compare(3, "ignore")) {
+			lldp_rx_port_status &= ~((uint16_t)1 << phy_settings.port);
+			lldp_forget_port(phy_settings.port);
+		} else if (cmd_compare(3, "listen")) {
+			lldp_rx_port_status |= (uint16_t)1 << phy_settings.port;
 		} else {
-			print_string ("Unknown port <port> lldp [block|permit] command\n");
+			print_string ("Unknown port <port> lldp [block|permit|ignore|listen] command\n");
 		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
