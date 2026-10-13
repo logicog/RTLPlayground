@@ -102,10 +102,11 @@ static void acl_tbl_write(uint8_t sel, uint8_t words, uint8_t addr, __xdata uint
 	acl_tbl_wait();
 }
 
-static void acl_entry_write(uint8_t idx, __xdata uint16_t *x, __xdata uint16_t *y) __reentrant
+static void acl_entry_write(uint8_t idx, __xdata struct acl_rule_entry *x,
+			    __xdata struct acl_rule_entry *y) __reentrant
 {
-	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, idx, x);
-	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, ACL_TBL_Y | idx, y);
+	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, idx, (__xdata uint16_t *)x);
+	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, ACL_TBL_Y | idx, (__xdata uint16_t *)y);
 }
 
 static uint8_t acl_any(void)
@@ -399,7 +400,7 @@ found:
 
 	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_act);
 	REG_SET(RTL837X_ACL_ACT_CTRL + (idx << 2), acl_ctrl);
-	acl_entry_write(idx, (__xdata uint16_t *)&acl_x, (__xdata uint16_t *)&acl_y);
+	acl_entry_write(idx, &acl_x, &acl_y);
 
 	ACL_SET_USED(idx);
 	acl_rule_tmpl[idx] = tmpl;
@@ -409,7 +410,7 @@ found:
 
 void acl_rule_clear(uint8_t idx) __banked __reentrant
 {
-	acl_entry_write(idx, (__xdata uint16_t *)&acl_zero, (__xdata uint16_t *)&acl_zero);
+	acl_entry_write(idx, &acl_zero, &acl_zero);
 	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_zero);
 	REG_SET(RTL837X_ACL_ACT_CTRL + (idx << 2), ACL_ACT_CTRL_OFF);
 	ACL_CLR_USED(idx);
