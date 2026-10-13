@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_dot1x.h"
+#include "radius.h"
 #include "rtl837x_storm.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
@@ -956,6 +957,8 @@ void parse_port(void)
 			dot1x_port_mode(phy_settings.port, DOT1X_PORT_OFF);
 		} else if (cmd_compare(3, "auto")) {
 			dot1x_port_mode(phy_settings.port, DOT1X_PORT_AUTO);
+			if (!radius_configured())
+				print_string("No RADIUS server configured: the port stays unauthorized until dot1x server and dot1x secret are set\n");
 		} else if (cmd_compare(3, "force-auth")) {
 			dot1x_port_mode(phy_settings.port, DOT1X_PORT_FORCE_AUTH);
 		} else if (cmd_compare(3, "force-unauth")) {
@@ -2107,8 +2110,20 @@ void cmd_parser(void) __banked
 			} else if (cmd_compare(1, "guest") && cmd_words_len >= 3
 				   && atoi_short(cmd_words_b[2]) && atoi_results_short <= 4094) {
 				dot1x_guest_vlan(atoi_results_short);
+			} else if (cmd_compare(1, "server") && cmd_words_len >= 3 && parse_ip(cmd_words_b[2])) {
+				uint16_t port = RADIUS_PORT_DEFAULT;
+				if (cmd_words_len >= 4 && atoi_short(cmd_words_b[3]))
+					port = atoi_results_short;
+				radius_server(ip, port);
+			} else if (cmd_compare(1, "secret") && cmd_words_len >= 3) {
+				uint8_t i = 0;
+				while (i < RADIUS_SECRET_MAX && cmd_buffer[cmd_words_b[2] + i] > ' ') {
+					radius_cfg.secret[i] = cmd_buffer[cmd_words_b[2] + i];
+					i++;
+				}
+				radius_cfg.secret[i] = NUL;
 			} else {
-				cmd_error("Usage: dot1x [on|off|show|guest <vid>]\n");
+				cmd_error("Usage: dot1x [on|off|show|guest <vid>|server <ip> [port]|secret <text>]\n");
 			}
 		} else if (cmd_compare(0, "lldp")) {
 			if (cmd_compare(1, "on")) {

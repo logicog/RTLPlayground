@@ -7,11 +7,17 @@
 #include "rtl837x_trap.h"
 #include "rtl837x_dot1x.h"
 #include "machine.h"
+#include "cmd_parser.h"
+#include "eapol.h"
+#include "radius.h"
 
 extern __code const struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata uint8_t outbuf[];
 extern __xdata uint16_t slen;
+extern volatile __xdata uint32_t ticks;
+
+static __xdata uint8_t dot1x_tick_last;
 
 __xdata bool dot1x_enabled;
 __xdata uint8_t dot1x_mode[DOT1X_PORTS];
@@ -68,7 +74,26 @@ void dot1x_init(void) __banked
     dot1x_enabled = false;
     for (port = 0; port < DOT1X_PORTS; port++)
         dot1x_mode[port] = DOT1X_PORT_OFF;
+    dot1x_tick_last = (uint8_t)ticks;
+    radius_init();
+    eapol_init();
     dot1x_enable(false);
+}
+
+void dot1x_authorize(uint8_t port, bool on) __banked
+{
+    if (dot1x_mode[port] == DOT1X_PORT_AUTO)
+        dot1x_reg_bit(RTL837X_DOT1X_PORT_AUTH, port, on);
+}
+
+void dot1x_tick(void) __banked
+{
+    eapol_poll();
+    if (!TICKS_DUE(dot1x_tick_last, SYS_TICK_HZ))
+        return;
+    dot1x_tick_last += SYS_TICK_HZ;
+    radius_tick();
+    eapol_tick();
 }
 
 void dot1x_enable(bool on) __banked
@@ -84,6 +109,7 @@ void dot1x_enable(bool on) __banked
 void dot1x_port_mode(uint8_t port, uint8_t mode) __banked
 {
     dot1x_mode[port] = mode;
+    eapol_port_reset(port);
     dot1x_apply(port);
 }
 
@@ -141,7 +167,12 @@ void dot1x_show(void) __banked __reentrant
 
     print_string(dot1x_enabled ? "802.1X on, guest VLAN " : "802.1X off, guest VLAN ");
     dot1x_put_dec(dot1x_guest_get(), false);
-    print_string("\nPort  Mode  Unauthorized  Status\n");
+    print_string(", RADIUS ");
+    print_ip(radius_cfg.server);
+    write_char(':');
+    dot1x_put_dec(radius_cfg.port, false);
+    print_string(radius_cfg.secret[0] ? " with secret" : " without secret");
+    print_string("\nPort  Mode  Unauthorized  Status  Supplicant\n");
     for (port = machine.min_port; port <= machine.max_port; port++) {
         dot1x_put_dec(machine.log_to_phys_port[port], false);
         print_string("  ");
@@ -150,15 +181,23 @@ void dot1x_show(void) __banked __reentrant
         print_string(dot1x_action_names[dot1x_action_get(port)]);
         print_string("  ");
         if (!dot1x_enabled || dot1x_mode[port] == DOT1X_PORT_OFF)
-            print_string("open\n");
+            print_string("open");
         else
-            print_string(dot1x_reg_bit_get(RTL837X_DOT1X_PORT_AUTH, port) ? "authorized\n" : "unauthorized\n");
+            print_string(dot1x_reg_bit_get(RTL837X_DOT1X_PORT_AUTH, port) ? "authorized" : "unauthorized");
+        if (dot1x_mode[port] == DOT1X_PORT_AUTO) {
+            print_string("  ");
+            print_string(eapol_state_name(port));
+            print_string(" ");
+            print_string_x(eapol_ports[port].identity);
+        }
+        write_char('\n');
     }
 }
 
 void dot1x_to_html(void) __banked __reentrant
 {
     uint8_t port;
+    uint8_t i;
 
     dot1x_put_code("{\"on\":", true);
     dot1x_put('0' + dot1x_enabled, true);
@@ -177,7 +216,27 @@ void dot1x_to_html(void) __banked __reentrant
         dot1x_put_code("\",\"authorized\":", true);
         dot1x_put('0' + (!dot1x_enabled || dot1x_mode[port] == DOT1X_PORT_OFF
                          || dot1x_reg_bit_get(RTL837X_DOT1X_PORT_AUTH, port)), true);
+        if (dot1x_mode[port] == DOT1X_PORT_AUTO) {
+            dot1x_put_code(",\"state\":\"", true);
+            dot1x_put_code(eapol_state_name(port), true);
+            dot1x_put_code("\",\"identity\":\"", true);
+            for (i = 0; eapol_ports[port].identity[i]; i++)
+                dot1x_put(eapol_ports[port].identity[i] < ' ' || eapol_ports[port].identity[i] > '~'
+                          || eapol_ports[port].identity[i] == '"' || eapol_ports[port].identity[i] == '\\'
+                          ? '.' : eapol_ports[port].identity[i], true);
+            dot1x_put('"', true);
+        }
         dot1x_put('}', true);
     }
-    dot1x_put_code("]}", true);
+    dot1x_put_code("],\"server\":\"", true);
+    for (i = 0; i < 4; i++) {
+        if (i)
+            dot1x_put('.', true);
+        dot1x_put_dec(radius_cfg.server[i], true);
+    }
+    dot1x_put_code("\",\"serverPort\":", true);
+    dot1x_put_dec(radius_cfg.port, true);
+    dot1x_put_code(",\"secretSet\":", true);
+    dot1x_put('0' + (radius_cfg.secret[0] != 0), true);
+    dot1x_put('}', true);
 }

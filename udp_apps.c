@@ -1,4 +1,5 @@
 
+#include "radius.h"
 #include "uip/uip.h"
 #include "udp_apps.h"
 
@@ -8,4 +9,5 @@ void udp_callbacks(void)
 	syslog_callback(uip_udp_conn->lport);	// let the application decide if this is for it or not
 	dns_callback(uip_udp_conn->lport);
 	ntp_callback(uip_udp_conn->lport);
+	radius_callback(uip_udp_conn->lport);
 }
