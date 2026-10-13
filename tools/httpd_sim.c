@@ -471,9 +471,16 @@ void send_dot1x(int s)
 		json_object_object_add(p, "mode", json_object_new_string(i == 2 ? "auto" : i == 3 ? "force-unauth" : "off"));
 		json_object_object_add(p, "action", json_object_new_string(i == 3 ? "guest" : "drop"));
 		json_object_object_add(p, "authorized", json_object_new_int(i == 2 ? 1 : 0));
+		if (i == 2) {
+			json_object_object_add(p, "state", json_object_new_string("authenticated"));
+			json_object_object_add(p, "identity", json_object_new_string("alice"));
+		}
 		json_object_array_add(ports, p);
 	}
 	json_object_object_add(c, "ports", ports);
+	json_object_object_add(c, "server", json_object_new_string("10.0.2.220"));
+	json_object_object_add(c, "serverPort", json_object_new_int(1812));
+	json_object_object_add(c, "secretSet", json_object_new_int(1));
 	jstring = json_object_to_json_string_ext(c, JSON_C_TO_STRING_PLAIN);
 	send(s, header, strlen(header), 0);
 	send(s, jstring, strlen(jstring), 0);

@@ -41,7 +41,7 @@ stp_en_d:"Ports start blocked and take up to twice the forward delay to reach fo
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
 x_title:"802.1X port authentication",x_enabled:"Enabled",x_guest:"Guest VLAN",x_mode:"Mode",x_action:"Unauthorized traffic",x_status:"Status",
-x_open:"open",x_auth:"authorized",x_unauth:"unauthorized",x_off:"off",x_auto:"auto",x_fauth:"force authorized",x_funauth:"force unauthorized",x_drop:"drop",x_gvlan:"guest VLAN",
+x_open:"open",x_auth:"authorized",x_unauth:"unauthorized",x_server:"RADIUS server",x_secret_p:"shared secret",x_secret_set:"secret set",x_secret_none:"no secret",x_supplicant:"Supplicant",x_off:"off",x_auto:"auto",x_fauth:"force authorized",x_funauth:"force unauthorized",x_drop:"drop",x_gvlan:"guest VLAN",
 x_note:"auto waits for a supplicant on the port, force-auth and force-unauth set the state by hand. Unauthorized traffic is dropped or moved to the guest VLAN (0 = none).",
 lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
@@ -812,8 +812,12 @@ var CONF_CMDS=[
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
   /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
-  /^port\s+\d{1,2}\s+dot1x\s+(off|auto|force-auth|force-unauth)$/,/^port\s+\d{1,2}\s+dot1x\s+action\s+(drop|guest)$/,
-  /^dot1x\s+(on|off)$/,/^dot1x\s+guest\s+\d{1,4}$/,
+  /^port\s+\d{1,2}\s+dot1x\s+(off|auto|force-auth|force-unauth)$/,
+  /^port\s+\d{1,2}\s+dot1x\s+action\s+(drop|guest)$/,
+  /^dot1x\s+(on|off)$/,
+  /^dot1x\s+guest\s+\d{1,4}$/,
+  /^dot1x\s+server\s+\d{1,3}(\.\d{1,3}){3}(\s+\d{1,5})?$/,
+  /^dot1x\s+secret\s+\S+$/,
   /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
@@ -1956,9 +1960,22 @@ function dot1xLoad(){
       var st=tr.insertCell();
       if(!s.on||p.mode==="off")st.innerHTML=badge(t("x_open"));
       else st.innerHTML=p.authorized?badge(t("x_auth"),"ok"):badge(t("x_unauth"),"bad");
+      tr.insertCell().textContent=p.state?(p.identity?p.identity+" ("+p.state+")":p.state):"-";
     });
+    if(document.activeElement!==$("x_server")&&document.activeElement!==$("x_sport")){
+      $("x_server").value=s.server==="0.0.0.0"?"":s.server;$("x_sport").value=s.serverPort||1812;
+    }
+    $("x_secret").placeholder=t(s.secretSet?"x_secret_set":"x_secret_none");
   });
 }
+$("x_server_apply").addEventListener("click",function(){
+  var ip=$("x_server").value.trim(),port=$("x_sport").value||1812,sec=$("x_secret").value;
+  var cmds=[];
+  if(ip)cmds.push("dot1x server "+ip+" "+port);
+  if(sec)cmds.push("dot1x secret "+sec);
+  if(!cmds.length)return;
+  postCmds(cmds).then(function(){$("x_secret").value="";setTimeout(dot1xLoad,300)}).catch(function(){});
+});
 $("x_en").addEventListener("change",function(){
   var el=this;
   postCmd("dot1x "+(el.checked?"on":"off")).then(function(){setTimeout(dot1xLoad,300)}).catch(function(){el.checked=!el.checked});
@@ -2302,6 +2319,8 @@ var CONF_OVERWRITE=[
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
   /^dot1x\s+guest\b/,
+  /^dot1x\s+server\b/,
+  /^dot1x\s+secret\b/,
   /^port\s+\d{1,2}(?!\s+(name|dot1x)\b)/,/^port\s+\d{1,2}\s+name\b/,
   /^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
