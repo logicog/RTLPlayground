@@ -79,6 +79,7 @@
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
 void lldp_send(void) __banked;
+void lldp_shutdown(uint16_t ports) __banked;
 void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;
