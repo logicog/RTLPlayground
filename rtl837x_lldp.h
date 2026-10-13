@@ -9,6 +9,7 @@
 #define LLDP_MAX_FRAME       256
 #define LLDP_TX_INTERVAL_S   30
 #define LLDP_HOLD_MULTIPLIER 4
+#define LLDP_FAST_TX_COUNT   4
 
 #define LLDP_PORT_ID_TLV_TYPE 2
 #define LLDP_PORT_ID_PREFIX "Port "

@@ -4,6 +4,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_sfr.h"
+#include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 #include "dhcp.h"
 #include "uip.h"
@@ -12,25 +13,55 @@
 #include "version.h"
 
 extern __xdata bool lldp_enabled;
+extern __xdata uint8_t sfr_data[4];
 extern __code const struct machine machine;
 
 extern volatile __xdata uint32_t ticks;
 
 __xdata uint8_t lldp_tick_last;
 __xdata uint8_t lldp_seconds;
+__xdata uint8_t lldp_fast;
+__xdata bool lldp_was_enabled;
+__xdata uint16_t lldp_links_last;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 
 void lldp_init(void) __banked
 {
     lldp_tick_last = (uint8_t)ticks;
     lldp_seconds = 0;
+    lldp_fast = 0;
+    lldp_was_enabled = false;
+    lldp_links_last = 0;
+}
+
+static uint16_t lldp_links(void) __reentrant
+{
+    reg_read_m(RTL837X_REG_LINKS_STS);
+    return ((uint16_t)sfr_data[2] << 8) | sfr_data[1];
 }
 
 void lldp_tick(void) __banked
 {
+    uint16_t links;
+
     if (!TICKS_DUE(lldp_tick_last, SYS_TICK_HZ))
         return;
     lldp_tick_last += SYS_TICK_HZ;
+
+    links = lldp_links();
+    if (!lldp_enabled)
+        lldp_fast = 0;
+    else if (!lldp_was_enabled || (links & ~lldp_links_last & lldp_logical_port_status))
+        lldp_fast = LLDP_FAST_TX_COUNT;
+    lldp_links_last = links;
+    lldp_was_enabled = lldp_enabled;
+
+    if (lldp_fast) {
+        lldp_fast--;
+        lldp_seconds = 0;
+        lldp_send();
+        return;
+    }
 
     if (++lldp_seconds < LLDP_TX_INTERVAL_S)
         return;
