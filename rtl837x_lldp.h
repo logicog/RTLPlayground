@@ -46,6 +46,7 @@
 #define LLDP_NB_MAX 16
 #define LLDP_NB_PORT_ID_LENGTH 12
 #define LLDP_NB_SYS_NAME_LENGTH 16
+#define LLDP_NB_JSON_LENGTH 107	/* separator + worst-case neighbour entry in /lldp.json */
 
 struct lldp_neighbor {
     uint8_t port;		/* logical ingress port */
