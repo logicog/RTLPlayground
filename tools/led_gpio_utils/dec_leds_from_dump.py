@@ -7,7 +7,7 @@ glb_mux = 0x65E0
 led3_0_set1 = 0x6528
 led1_0_set0 = 0x6548
 led_port_sel = 0x654C
-
+isRTL8373 = regs[0x6] == 0x73
 
 def get_word(i):
     val = (regs[i + 3] << 24) + (regs[i + 2] << 16) + (regs[i + 1] << 8) + regs[i]
@@ -110,6 +110,7 @@ for i in range(4):
     # print(f"{idvalstr}")
 
 portsel = get_word(led_port_sel)
-for i in range(3, 9):
+startport = 0 if isRTL8373 else 3
+for i in range(startport, 9):
     sel = (portsel >> (i << 1)) & 3
     print(f"Port {i}: SET {sel}: {', '.join(led_set_str[sel])}")
