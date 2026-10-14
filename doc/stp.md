@@ -154,9 +154,10 @@ BPDUs toward the root, so the change reaches the rest of the network. With
 `stp version stp` the root port sends TCN instead, until a Config BPDU with
 TCA comes back.
 
-A TC flag received on a root or designated port is passed on the same way to
-the other ports, not back to the port it came in on. A legacy TCN is
-acknowledged with TCA and then treated like a received TC. A port that turns
+A TC flag received on a forwarding root or designated port is passed on the
+same way to the other ports, not back to the port it came in on; a port that
+is still discarding or learning drops it. A legacy TCN is acknowledged with
+TCA and then treated like a received TC. A port that turns
 alternate, loses its link, or is blocked for a loop flushes its own addresses
 without raising a topology change, and an edge port never raises one.
 

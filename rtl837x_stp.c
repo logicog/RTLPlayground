@@ -1018,6 +1018,8 @@ void stp_in(void) __banked
 		return;
 
 	if (STP_I->bpdu_type == BPDU_TYPE_TCN) {
+		if (stp_state_get(port) != 0b11)
+			return;
 		stp_tx_flags_extra = BPDU_FLAG_TCACK;
 		stp_cnf_send(port);
 		uip_len = 0;
@@ -1063,7 +1065,7 @@ void stp_in(void) __banked
 
 	if ((STP_I->flags & BPDU_FLAG_TCACK) && port == stp_root_port)
 		stp_tcwhile[port] = 0;
-	if ((STP_I->flags & BPDU_FLAG_TC) && !((stp_alt >> port) & 1) && stp_tc_prop(port))
+	if ((STP_I->flags & BPDU_FLAG_TC) && stp_state_get(port) == 0b11 && stp_tc_prop(port))
 		stp_tc_count++;
 
 	if ((stp_pflags[port] & STP_PF_ROOTGUARD)
