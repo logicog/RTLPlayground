@@ -342,6 +342,17 @@
 #define EGBW_INC_IFG			0x02
 #define EGBW_CPUMODE			0x01
 
+/*
+ * Priority and queue scheduling
+ */
+#define RTL837X_SCHED_PORT_Q_CTRL	0x1d28
+#define SCHED_Q_STRICT			0x80
+#define RTL837X_DOT1Q_PRI_REMAP		0x5174
+#define PRI_REMAP_MASK			0x07
+#define RTL837X_PRI_WEIGHT		0x5198
+#define PRI_WEIGHT_MASK			0x1f
+#define PRI_WEIGHT_DOT1Q		0x01
+
 #ifdef REGDBG
 
 #define REG_SET(r, v) do { \
