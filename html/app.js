@@ -1,6 +1,7 @@
 "use strict";
 var LANG={
 en:{
+ROBTODO:"TODOTODOTODO",
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
 nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_isolate:"Isolation",nav_lag:"LAG",nav_eee:"EEE",
 nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",nav_lldp:"LLDP",
@@ -1472,7 +1473,7 @@ function vlanRefresh(){
     vl.forEach(function(v){
       p=p.then(function(){return getJSON("/vlan.json?vid="+v.id).catch(function(){return null})}).then(function(d){
         var tr=tb.insertRow();
-        tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),onclick:function(e){
+        tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),"data-id":v.id,onclick:function(e){
           e.preventDefault();vlanLoad(v.id);
         }}));
         tr.insertCell().textContent=v.name||"";
@@ -1554,11 +1555,7 @@ function vlanLoad(vid){
 function vlanApply(){
   var vid=$("vtitle").dataset.id;
   if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  //TODO
-  //var name=$("vname").value.trim();
-  var name="";
-  if(name&&!/^[a-zA-Z]\w*$/.test(name)){toast(t("v_name_err"),"err");return;}
-  var cmd="vlan "+vid+(name?" "+name:""),members=0;
+  var cmd="",members=0;
   for(var p=1;p<=S.n;p++){
     var v=segVal(p);
     if(v===1){cmd+=" "+p;members++;}
@@ -1581,7 +1578,27 @@ function ingressApply(){
   postCmd(cmd).catch(function(){});
 }
 $("vapply").addEventListener("click",vlanApply);
-$("vlan_add").addEventListener("click",function(){alert("TODO! POPUP with modal to create new VLAN")});
+$("vlan_add").addEventListener("click",function(){
+  var body=h("div");
+  body.appendChild(document.createTextNode("ROBTODO: styling,layout etc"));
+  body.appendChild( h("p",null,[
+    h("label",null,[document.createTextNode(t("v_vid"))]),
+    h("input",{id:"nvlid", class:"in sm",type:"number",min:"1",max:"4094"})
+  ]));
+  body.appendChild( h("p",null,[
+    h("label",null,[document.createTextNode(t("c_name"))]),
+    h("input",{id:"nvlname", class:"in",size:"12",maxlength:"15","data-i18n-p":"v_optional"})
+  ]));
+  modal("Add VLAN", body,[h("button",{class:"ctl pri",text:t("ROBTODO"),onclick:function(){addVlan()}})]);
+});
+function addVlan() {
+  var vid=parseInt($("nvlid").value,10);
+  for(const r of $("vtable").tBodies[0].rows){if(r.firstChild.firstChild.dataset.id==vid){toast(t("ROBTODO"),"err");return;}}
+  var name=$("nvlname").value;
+  if(name&&!/^[a-zA-Z]\w*$/.test(name)){toast(t("v_name_err"),"err");return;}
+  var cmd="vlan "+vid+(name?" "+name:"");
+  postCmd(cmd).then(function(){closeModal();vlanRefresh()}).catch(function(){});
+}
 //ROBTODO
 /*
 //$("ingapply").addEventListener("click",ingressApply);
