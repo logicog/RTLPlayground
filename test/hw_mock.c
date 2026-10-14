@@ -340,3 +340,8 @@ void sfr_mask_data(uint8_t n, uint8_t mask, uint8_t set)
 {
 	sfr_data[3 - n] = (sfr_data[3 - n] & ~mask) | set;
 }
+
+void sfr_set_zero(void)
+{
+	memset(sfr_data, 0, sizeof(sfr_data));
+}

@@ -1695,6 +1695,23 @@ void parse_qos(void)
 		return qos_pcp_set(idx, atoi_results_u8);
 	}
 
+	if (cmd_compare(1, "dscp")) {
+		if (cmd_words_len == 3) {
+			if (cmd_compare(2, "on"))
+				return qos_dscp_weight_set(1);
+			if (cmd_compare(2, "off"))
+				return qos_dscp_weight_set(0);
+			goto err;
+		}
+		if (cmd_words_len != 4 || !atoi_byte(cmd_words_b[2])
+		    || atoi_results_u8 >= QOS_DSCP_VALUES)
+			goto err;
+		idx = atoi_results_u8;
+		if (!atoi_byte(cmd_words_b[3]) || atoi_results_u8 >= QOS_PRIORITIES)
+			goto err;
+		return qos_dscp_set(idx, atoi_results_u8);
+	}
+
 	if (cmd_compare(1, "queue")) {
 		if (cmd_words_len != 5 || !cmd_parse_port_separator(cmd_words_b[2]))
 			goto err;
@@ -1715,7 +1732,8 @@ void parse_qos(void)
 	}
 
 err:
-	print_string("usage: qos [on|off|pcp <pcp> <priority>|queue <port> <queue> <weight|sp>]\n");
+	print_string("usage: qos [on|off|dscp on|off|pcp <pcp> <priority>|dscp <dscp> <priority>"
+		     "|queue <port> <queue> <weight|sp>]\n");
 }
 
 void parse_syslog(void)
