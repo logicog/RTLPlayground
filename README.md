@@ -359,6 +359,7 @@ The following documents give further documentation on specific features of the R
 - [IGMP (IP-MC streaming)](doc/igmp.md)
 - [SFP+ ports](doc/sfp.md) 
 - [Trunking aka. port aggregation](doc/trunking.md)
+- [LACP (802.3ad link aggregation)](doc/lacp.md)
 - [VLAN](doc/vlan.md)
 - [Storm control](doc/storm_control.md)
 - [Modifications and Flash replacement](doc/mods.md)

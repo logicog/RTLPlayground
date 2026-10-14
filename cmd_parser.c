@@ -14,6 +14,7 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
@@ -534,11 +535,21 @@ void parse_lag(void)
 		goto err;
 
 	if (cmd_compare(2, "d")) {
+		lacp_lag_set(group, 0);
 		port_lag_members_set(group, 0);
 		return;
 	}
 
 	uint8_t w = 2;
+	__xdata uint8_t lacp_mode = 0;
+	if (cmd_words_len > 2 && cmd_compare(2, "lacp")) {
+		lacp_mode = 1;
+		w = 3;
+		if (cmd_words_len > 3 && cmd_compare(3, "off")) {
+			lacp_lag_set(group, 0);
+			return;
+		}
+	}
 	while (w < cmd_words_len) {
 		// Parse port.
 		if (cmd_parse_port_separator(cmd_words_b[w++]) == 0)
@@ -546,10 +557,15 @@ void parse_lag(void)
 
 		members |= ((uint16_t)1) << atoi_results_u8;
 	}
-	port_lag_members_set(group, members);
+	if (lacp_mode) {
+		lacp_lag_set(group, members);
+	} else {
+		lacp_lag_set(group, 0);
+		port_lag_members_set(group, members);
+	}
 	return;
 err:
-	cmd_error("lag (show | <1-4> (d | <port>...))\n");
+	cmd_error("lag (show | <1-4> (d | [lacp] <port>...))\n");
 }
 
 
@@ -1974,6 +1990,13 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "health")) {
 			health_show();
 #endif
+		} else if (cmd_compare(0, "lacp")) {
+			if (cmd_compare(1, "show"))
+				lacp_show();
+			else if (cmd_compare(1, "off"))
+				lacp_off();
+			else
+				cmd_error("lacp (show | off); a group starts LACP with: lag <1-4> lacp <port>...\n");
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
