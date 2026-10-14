@@ -1,7 +1,7 @@
 #include "machine_defs.h"
 
 __code const struct machine machine = {
-	.machine_name = MACHINE_MODEL,
+    .machine_name = MACHINE_MODEL,
     .isRTL8373 = 0,
     .min_port = 3,
     .max_port = 8,
