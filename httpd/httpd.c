@@ -1012,6 +1012,8 @@ void httpd_appcall(void)
 				uint8_t cport = q[20] - '0';
 				if (send_counters(cport))
 					send_bad_request();
+			} else if (is_word(q, "/dot1x.json")) {
+				send_dot1x();
 			} else if (is_word(q, "/eee.json")) {
 				send_eee();
 			} else if (is_word(q, "/bandwidth.json")) {
