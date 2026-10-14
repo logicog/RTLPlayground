@@ -28,7 +28,10 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_port_tables \
         $(BUILDDIR)/test_page_json \
         $(BUILDDIR)/test_httpd_tx \
-        $(BUILDDIR)/test_tick_gate
+        $(BUILDDIR)/test_tick_gate \
+        $(BUILDDIR)/test_cpu_vlan_full \
+        $(BUILDDIR)/test_cpu_vlan_restricted \
+        $(BUILDDIR)/test_cpu_vlan_8372
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -57,6 +60,12 @@ $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
 # this test carries the environment below them itself.
 $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+# CPU VLAN initialization with full and reduced user-port ranges.
+$(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DRTLP_TEST_MAX_PORT=7
+$(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DRTLP_TEST_MAX_PORT=7 -DRTLP_TEST_MIN_PORT=3 -DRTLP_TEST_IS8373=0
+$(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 run: $(TESTS)
