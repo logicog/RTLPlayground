@@ -654,6 +654,7 @@ iso_intro:"Ein Paket, das über einen Port hereinkommt, darf den Switch nur übe
 iso_legend:"Das Feld des Ports selbst ist immer erlaubt. Eine rote Portnummer markiert einen Port, der nicht ganz offen ist.",
 lag_hash:"Hash:",lag_note:"Eine LAG braucht mindestens ein Mitglied, um in der Startkonfiguration gespeichert zu werden; eine leere Gruppe zu übernehmen löscht sie.",
 lag_clear_q:"LAG {n} auflösen?",lag_clear_d:"Alle Mitglieds-Ports kehren in den Normalbetrieb zurück.",
+lacp_heading:"LACP (802.3ad)",lag_mode:"Modus",lag_static:"Statisch",lacp_neg:"wird ausgehandelt",lacp_agg:"Aggregator",lacp_members:"aktive Mitglieder",lacp_hint:"LACP: Ports auswählen und Übernehmen drücken, um die Aushandlung zu starten",lacp_actor:"Lokal",lacp_partner:"Partner",lacp_rxstate:"Empfangsstatus",lacp_rx:"Empfangene LACPDUs",lacp_psys:"Partner-System",
 e_title:"Energy Efficient Ethernet",e_adv:"Angeboten",e_lp:"Gegenstelle",e_active:"Aktiv",e_enable:"Aktivieren",
 e_note:"Angebotene und von der Gegenstelle unterstützte Stufen je Geschwindigkeit: 100M, 1G, 2.5G. SFP-Ports unterstützen kein EEE.",
 e_idle:"inaktiv",e_na:"k. A.",
