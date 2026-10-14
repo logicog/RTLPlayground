@@ -341,6 +341,8 @@
 #define RTL837X_METER_MODE		0x5ef0
 #define EGBW_INC_IFG			0x02
 #define EGBW_CPUMODE			0x01
+#define BW_RATE_MAX			0x0fffff
+#define BW_LB_EN			0x10
 
 /*
  * Priority and queue scheduling
