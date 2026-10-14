@@ -660,7 +660,7 @@ static void stp_reselect(void)
 			continue;
 		if (!(stp_pflags[stp_j] & STP_PF_ENABLED) || (stp_pflags[stp_j] & STP_PF_ROOTGUARD))
 			continue;
-		if (!stp_info_fresh(stp_j))
+		if (!((stp_link_now >> stp_j) & 1) || !stp_info_fresh(stp_j))
 			continue;
 		if (!cmpBytes(stp_dbridge[stp_j].mac, uip_ethaddr.addr, 6))
 			continue;
