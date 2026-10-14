@@ -42,6 +42,18 @@ void print_long(uint32_t v) { (void)v; }
 void print_reg(uint16_t r) { (void)r; }
 
 #define QUEUE_CTRL(port, queue)	(RTL837X_SCHED_PORT_Q_CTRL + (port) * 1024 + ((queue) << 2))
+#define DSCP_WORD(dscp)		(RTL837X_DSCP_PRI_REMAP + ((dscp) / QOS_DSCP_PER_WORD) * 4)
+
+/* Ten values per line, four on the last one: the table ends at DSCP 63. */
+#define SHOW_DSCP_EMPTY \
+	"\ndscp: off" \
+	"\n0: 0 0 0 0 0 0 0 0 0 0" \
+	"\n10: 0 0 0 0 0 0 0 0 0 0" \
+	"\n20: 0 0 0 0 0 0 0 0 0 0" \
+	"\n30: 0 0 0 0 0 0 0 0 0 0" \
+	"\n40: 0 0 0 0 0 0 0 0 0 0" \
+	"\n50: 0 0 0 0 0 0 0 0 0 0" \
+	"\n60: 0 0 0 0"
 
 static int fails;
 
@@ -118,7 +130,9 @@ static void test_show_factory(void)
 		return;
 	}
 	if (t_strcmp(out_buf,
-		     "802.1p priority: off\npcp: 0 1 2 3 4 5 6 7\nqueue weights\n"
+		     "802.1p priority: off\npcp: 0 1 2 3 4 5 6 7"
+		     SHOW_DSCP_EMPTY
+		     "\nqueue weights\n"
 		     "port 5 1 1 1 1 1 1 1 1\n"
 		     "port 1 1 1 1 1 1 1 1 1\n"
 		     "port 2 1 1 1 1 1 1 1 1\n"
@@ -147,7 +161,9 @@ static void test_show_strict(void)
 	out_reset();
 	qos_show();
 	if (t_strcmp(out_buf,
-		     "802.1p priority: on\npcp: 0 1 2 3 4 5 6 7\nqueue weights\n"
+		     "802.1p priority: on\npcp: 0 1 2 3 4 5 6 7"
+		     SHOW_DSCP_EMPTY
+		     "\nqueue weights\n"
 		     "port 5 4 4 4 4 4 4 4 sp\n"
 		     "port 1 0 0 0 0 0 0 0 0\n"
 		     "port 2 0 0 0 0 0 0 0 0\n"
@@ -161,13 +177,153 @@ static void test_show_strict(void)
 	}
 }
 
+/* The DSCP weight is bits 10 to 14 of PRI_WEIGHT. */
+static void test_dscp_weight(void)
+{
+	hw_reset();
+	hw_reg_set(RTL837X_PRI_WEIGHT, 0x01ff83ff);
+	qos_dscp_weight_set(1);
+	check_u32("dscp weight on", hw_reg_get(RTL837X_PRI_WEIGHT), 0x01ff87ff);
+	qos_dscp_weight_set(0);
+	check_u32("dscp weight off", hw_reg_get(RTL837X_PRI_WEIGHT), 0x01ff83ff);
+
+	hw_reset();
+	qos_dot1q_set(1);
+	qos_dscp_weight_set(1);
+	check_u32("both sources", hw_reg_get(RTL837X_PRI_WEIGHT), 0x00000401);
+}
+
+/* Ten entries of three bits share a word, so two of them cross a byte boundary:
+ * entry 2 covers bits 6 to 8 and entry 5 covers bits 15 to 17. */
+static void test_dscp_map(void)
+{
+	hw_reset();
+	qos_dscp_set(0, 7);
+	check_u32("dscp 0", hw_reg_get(DSCP_WORD(0)), 0x00000007);
+
+	hw_reset();
+	qos_dscp_set(2, 7);
+	check_u32("dscp 2 crosses byte 0 and 1", hw_reg_get(DSCP_WORD(2)), 0x000001c0);
+
+	hw_reset();
+	qos_dscp_set(5, 7);
+	check_u32("dscp 5 crosses byte 1 and 2", hw_reg_get(DSCP_WORD(5)), 0x00038000);
+
+	hw_reset();
+	qos_dscp_set(9, 7);
+	check_u32("dscp 9", hw_reg_get(DSCP_WORD(9)), 0x38000000);
+
+	hw_reset();
+	qos_dscp_set(10, 3);
+	check_u32("dscp 10 is the second word", hw_reg_get(DSCP_WORD(10)), 0x00000003);
+	check_u32("dscp 10 leaves the first word", hw_reg_get(DSCP_WORD(0)), 0);
+	qos_dscp_set(63, 5);
+	check_u32("dscp 63 is the last word", hw_reg_get(DSCP_WORD(63)), 0x00000a00);
+
+	hw_reset();
+	hw_reg_set(DSCP_WORD(2), 0xffffffff);
+	qos_dscp_set(2, 0);
+	check_u32("dscp 2 clears only its own bits", hw_reg_get(DSCP_WORD(2)), 0xfffffe3f);
+}
+
+#define DSCP_WORDS	((QOS_DSCP_VALUES + QOS_DSCP_PER_WORD - 1) / QOS_DSCP_PER_WORD)
+#define DSCP_ALL_SEVEN	0x3fffffff
+
+/* Entry n of a word occupies bits n * 3 to n * 3 + 2, counted from the least
+ * significant end. */
+static uint8_t dscp_field_of(uint32_t word, uint8_t entry)
+{
+	return (word >> (entry * 3)) & 7;
+}
+
+static void test_dscp_map_exhaustive(void)
+{
+	uint8_t dscp, pri, w, i, want;
+	uint32_t v;
+
+	for (dscp = 0; dscp < QOS_DSCP_VALUES; dscp++) {
+		for (pri = 0; pri < QOS_PRIORITIES; pri++) {
+			hw_reset();
+			for (w = 0; w < DSCP_WORDS; w++)
+				hw_reg_set(RTL837X_DSCP_PRI_REMAP + w * 4, DSCP_ALL_SEVEN);
+
+			qos_dscp_set(dscp, pri);
+
+			for (w = 0; w < DSCP_WORDS; w++) {
+				v = hw_reg_get(RTL837X_DSCP_PRI_REMAP + w * 4);
+				for (i = 0; i < QOS_DSCP_PER_WORD; i++) {
+					want = 7;
+					if (w == dscp / QOS_DSCP_PER_WORD
+					    && i == dscp % QOS_DSCP_PER_WORD)
+						want = pri;
+					if (dscp_field_of(v, i) == want)
+						continue;
+					printf("FAIL dscp %u -> %u: word %u entry %u is %u, want %u\n",
+					       dscp, pri, w, i, dscp_field_of(v, i), want);
+					fails++;
+					return;
+				}
+			}
+		}
+	}
+}
+
+/* Word 0 holds DSCP 0 to 9, word 4 holds 40 to 49, word 6 holds 60 to 63. */
+static void test_dscp_defaults(void)
+{
+	hw_reset();
+	qos_defaults();
+	check_u32("default word 0", hw_reg_get(DSCP_WORD(0)), 0x09000000);
+	check_u32("default word 4", hw_reg_get(DSCP_WORD(40)), 0x36b6db6d);
+	check_u32("default word 6", hw_reg_get(DSCP_WORD(60)), 0x00000fff);
+	check_u32("nothing past the table", hw_reg_get(DSCP_WORD(60) + 4), 0);
+}
+
+static void test_show_dscp_defaults(void)
+{
+	hw_reset();
+	hw_reg_set(RTL837X_DOT1Q_PRI_REMAP, 0x76543210);
+	hw_reg_set(RTL837X_PRI_WEIGHT, 0x00000400);
+	qos_defaults();
+
+	out_reset();
+	qos_show();
+	if (t_strcmp(out_buf,
+		     "802.1p priority: off\npcp: 0 1 2 3 4 5 6 7"
+		     "\ndscp: on"
+		     "\n0: 0 0 0 0 0 0 0 0 1 1"
+		     "\n10: 1 1 1 1 1 1 2 2 2 2"
+		     "\n20: 2 2 2 2 3 3 3 3 3 3"
+		     "\n30: 3 3 4 4 4 4 4 4 4 4"
+		     "\n40: 5 5 5 5 5 5 5 5 6 6"
+		     "\n50: 6 6 6 6 6 6 7 7 7 7"
+		     "\n60: 7 7 7 7"
+		     "\nqueue weights\n"
+		     "port 5 0 0 0 0 0 0 0 0\n"
+		     "port 1 0 0 0 0 0 0 0 0\n"
+		     "port 2 0 0 0 0 0 0 0 0\n"
+		     "port 3 0 0 0 0 0 0 0 0\n"
+		     "port 4 0 0 0 0 0 0 0 0\n"
+		     "port 6 0 0 0 0 0 0 0 0\n"
+		     "port 7 0 0 0 0 0 0 0 0\n"
+		     "port 8 0 0 0 0 0 0 0 0\n")) {
+		printf("FAIL show dscp defaults, got:\n%s", out_buf);
+		fails++;
+	}
+}
+
 int main(void)
 {
 	test_dot1q_weight();
+	test_dscp_weight();
 	test_pcp_map();
+	test_dscp_map();
+	test_dscp_map_exhaustive();
+	test_dscp_defaults();
 	test_queue_ctrl();
 	test_show_factory();
 	test_show_strict();
+	test_show_dscp_defaults();
 	printf(fails ? "test_qos: FAILED\n" : "test_qos: ok\n");
 	return fails ? 1 : 0;
 }
