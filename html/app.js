@@ -48,7 +48,7 @@ v_title:"VLANs",v_vid:"VID",v_members:"Members",v_tagged:"Tagged",v_untagged:"Un
 v_empty:"No VLANs configured.",v_mgmt:"Management VLAN",v_mgmt_none:"untagged",v_editor:"VLAN editor",
 v_optional:"optional",v_setmgmt:"Set as mgmt VLAN",v_setmgmt_t:"Make this the management VLAN",
 v_member:"Member",v_pvid:"PVID",v_add:"Add a new VLAN",
-v_legend:"U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.",
+v_legend:"U = untagged member, T = tagged member, - = not a member. PVID is automatically assigned based on the untagged membership.",
 v_ingress:"Ingress filtering",v_ingress_h:"write-only: the state is not readable from the switch",
 v_accept:"Accept",v_ing_all:"All",v_ing_apply:"Apply ingress modes",v_del_t:"Delete VLAN",
 v_del_q:"Delete VLAN {n}?",v_del_d:"Ports keep their PVID until reassigned.",
@@ -1513,7 +1513,7 @@ function buildVlanEdit(){
     });
     seg.children[0].classList.add("on");
     rM.insertCell().appendChild(seg);
-    rP.insertCell().appendChild(h("input",{type:"checkbox",id:"vp"+p}));
+    rP.insertCell().appendChild(h("span",{id:"vp"+p}));
   })(p);
   
   //ROBTEST TODO
@@ -1546,7 +1546,7 @@ function vlanLoad(vid){
     for(var p=1;p<=S.n;p++){
       var bit=S.physToLog[p-1];
       segSet(p,(mem>>bit)&1?(((unt>>bit)&1)?1:2):0);
-      $("vp"+p).checked=!!((pv>>bit)&1);
+      $("vp"+p).innerText = !!((pv>>bit)&1);
     }
     toast(t("v_loaded",{n:vid}),"ok");
   }).catch(function(){toast(t("v_notfound",{n:vid}),"err")});
@@ -1566,7 +1566,9 @@ function vlanApply(){
   }
   if(!members){toast(t("v_nomember"),"err");return;}
   var cmds=[cmd];
-  for(var q=1;q<=S.n;q++)if($("vp"+q).checked)cmds.push("pvid "+q+" "+vid);
+  //TODO set the PID
+  //for(var q=1;q<=S.n;q++)if($("vp"+q).checked)cmds.push("pvid "+q+" "+vid);
+
   postCmds(cmds).then(vlanRefresh).catch(function(){});
 }
 function ingressApply(){
