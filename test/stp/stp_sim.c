@@ -1988,7 +1988,7 @@ static void scen_last_tc(void)
 	links_set(1 << 8);
 	tcn = root_on(8);
 	tcn.legacy = 2;
-	secs(3);
+	secs(4);
 	before = stp_tc_count;
 	bpdu_in(&tcn);
 	check(stp_tc_count != before, "a TCN moves the topology change counter");
@@ -2062,6 +2062,57 @@ static void scen_lag(void)
 	check(port_state(1) == 1 && port_state(2) == 1, "the ports start over discarding");
 }
 
+static void scen_tc_needs_forwarding(void)
+{
+	struct sim_bpdu r;
+	struct sim_bpdu worse = {
+		.port = 2, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x80, .port_id = 4, .flags = 0x3d
+	};
+	struct sim_bpdu tcn;
+	int tc;
+
+	printf("53. a topology change heard on a port that does not forward yet is not passed on\n");
+	reset_all();
+	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 0) | (1 << 2));
+	secs(1);
+	r = root_on(0);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	check_state(0, 3, "root port 1 forwards");
+	check_state(2, 1, "port 3 is still discarding");
+	memcpy(worse.root_mac, ROOT_MAC, 6);
+	memcpy(worse.br_mac, PEER_MAC, 6);
+	memset(flush_count, 0, sizeof(flush_count));
+	tc = stp_tc_count;
+	bpdu_in(&worse);
+	tick(2);
+	check(stp_tc_count == tc, "a TC flag on the discarding port raises no topology change");
+	check(flush_count[0] == 0, "and the root port keeps its addresses");
+	tcn = worse;
+	tcn.legacy = 2;
+	memset(last_tx, 0, sizeof(last_tx));
+	bpdu_in(&tcn);
+	tick(2);
+	check(stp_tc_count == tc, "a TCN on the discarding port raises none either");
+	check((last_tx[2].flags & 0x80) == 0, "and is not acknowledged");
+	for (int i = 0; i < 16; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	check_state(2, 3, "port 3 forwards after both forward delays");
+	for (int i = 0; i < 2; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	tc = stp_tc_count;
+	bpdu_in(&worse);
+	tick(2);
+	check(stp_tc_count == tc + 1 && flush_count[0] > 0, "now the same TC is passed on");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2117,6 +2168,7 @@ int main(int argc, char **argv)
 	scen_bpdu_handling();
 	scen_last_tc();
 	scen_lag();
+	scen_tc_needs_forwarding();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
