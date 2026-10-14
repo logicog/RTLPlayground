@@ -1473,7 +1473,7 @@ function vlanRefresh(){
     vl.forEach(function(v){
       p=p.then(function(){return getJSON("/vlan.json?vid="+v.id).catch(function(){return null})}).then(function(d){
         var tr=tb.insertRow();
-        tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),"data-id":v.id,onclick:function(e){
+        tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),"data-id":v.id,"data-name":v.name,onclick:function(e){
           e.preventDefault();vlanLoad(v.id);
         }}));
         tr.insertCell().textContent=v.name||"";
@@ -1554,8 +1554,9 @@ function vlanLoad(vid){
 }
 function vlanApply(){
   var vid=$("vtitle").dataset.id;
+  var vname=$("vtitle").dataset.name;
   if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  var cmd="",members=0;
+  var cmd="vlan "+vid+(vname?" "+vname:""),members=0;
   for(var p=1;p<=S.n;p++){
     var v=segVal(p);
     if(v===1){cmd+=" "+p;members++;}
@@ -1565,7 +1566,6 @@ function vlanApply(){
   var cmds=[cmd];
   //TODO set the PID
   //for(var q=1;q<=S.n;q++)if($("vp"+q).checked)cmds.push("pvid "+q+" "+vid);
-
   postCmds(cmds).then(vlanRefresh).catch(function(){});
 }
 function ingressApply(){
