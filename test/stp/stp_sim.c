@@ -2113,6 +2113,24 @@ static void scen_tc_needs_forwarding(void)
 	check(stp_tc_count == tc + 1 && flush_count[0] > 0, "now the same TC is passed on");
 }
 
+static void scen_root_port_needs_link(void)
+{
+	struct sim_bpdu r;
+
+	printf("54. a BPDU credited to a port without carrier does not pick the root port\n");
+	reset_all();
+	links_set(1 << 2);
+	secs(1);
+	r = root_on(0);
+	bpdu_in(&r);
+	tick(2);
+	check(stp_root_port == 0xff, "the bridge stays its own root");
+	links_set((1 << 0) | (1 << 2));
+	secs(1);
+	check(stp_root_port == 0, "once the carrier is seen the port becomes the root port");
+	check_state(0, 3, "and forwards");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2169,6 +2187,7 @@ int main(int argc, char **argv)
 	scen_last_tc();
 	scen_lag();
 	scen_tc_needs_forwarding();
+	scen_root_port_needs_link();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
