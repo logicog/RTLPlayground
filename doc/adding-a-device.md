@@ -1,16 +1,11 @@
 # Adding a new device
 
 A device is supported by adding one board definition under `machine/`. 
-the build selects the definition by name, and CI compiles every file it finds.
+the build selects the definition by name.
 
 ```
 make MACHINE=<NAME>
 ```
-
-`MACHINE=<NAME>` selects `machine/<NAME>.c` and is passed on to the compiler as
-both `-DMACHINE_<NAME>` (for the `#if defined(MACHINE_...)` blocks in the rest
-of the firmware) and `-DMACHINE_NAME=<NAME>` (which `machine.h` uses to include
-`machine/<NAME>.h`). The two always take the same value, so they cannot drift.
 
 ## What a new device consists of
 
@@ -39,8 +34,6 @@ the template:
 ```
 
 The header is what the UI and the CLI print; `machine.h` includes it by name.
-Nothing else belongs here — the machine is selected by the build, not by a
-`#define` in the header.
 
 > [!NOTE]
 > `machine_name` is a `char[30]` and `MACHINE_MODEL` is copied into it at
@@ -136,8 +129,7 @@ ln -s KP_9000_6XHML_X2.c machine/MY_BOARD_1_0.c
 The new board still needs `machine/MY_BOARD_1_0.h` with its own
 `MACHINE_MODEL`, because `MACHINE_MODEL` is what distinguishes the products.
 Existing examples: `machine/PCB_K0402WS_V3.c`, `machine/KP_9000_9XHML_X_V3_2.c`
-and the six `KP_9000_*` revision variants. `git ls-files -s machine` shows these
-as mode `120000`.
+and the six `KP_9000_*` revision variants.
 
 Two files that differ only in whitespace or comments are duplicates and should
 be collapsed this way.
