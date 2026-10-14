@@ -355,6 +355,7 @@ Enjoy playing!
 The following documents give further documentation on specific features of the RTL837x SoCs:
 - [RTL8372/3 Feature support](doc/hardware.md)
 - [CPU Port](doc/CpuPort.md)
+- [Reserved multicast](doc/rma.md)
 - [L2 learning](doc/l2.md) 
 - [IGMP (IP-MC streaming)](doc/igmp.md)
 - [SFP+ ports](doc/sfp.md) 

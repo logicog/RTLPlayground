@@ -43,6 +43,33 @@ starts. A documentation can be found here:
 After copying over header and frame, the frame is marked read in the ring
 buffer on the ASIC side by writing 0x1 to RTL837X_REG_RX_DONE (0x784c).
 
+On receive, the tag reads `88 99 04 RR` followed by the `flags` and `pmask`
+words: version 4, a reason code `RR`, and the ingress port in the low four
+bits of `pmask`. A forwarded frame has reason 0 and the tag is followed by
+an 802.1Q tag the ASIC inserts, even for a frame that arrived untagged, and
+only then by the EtherType.
+
+## Trapped frames
+
+Frames can also be trapped to the CPU instead of forwarded, for example a
+reserved multicast address (`01:80:C2:00:00:xx`) whose RMA action is TRAP.
+A trapped frame goes to the port named in `EXT_CPU_CTRL` (0x6724). Its reset
+value 0xf names no port, and with it the trapped frame is dropped at ingress,
+so `trap_init()` sets it to `CPU_PORT` (9) at startup. doc/stp.md describes
+the trap used for BPDUs.
+
+A trapped frame differs from a forwarded one:
+
+* the tag carries a reason code, 0x5f for a reserved multicast address
+  (0x64 for a PTP trap, 0x67 for an ACL trap);
+* the low three bits of the first `flags` byte hold the priority of the trap,
+  set with `rma priority` and `rma ptp priority` (rma.md);
+* no 802.1Q tag is inserted, so the EtherType follows the RTL tag directly
+  and the payload starts four bytes earlier; `TRAP_RX_BODY()` returns the
+  payload offset for either form;
+* bit 6 of the fourth byte of the frame header is set (0xc2 instead of 0x82
+  for a frame from port 2).
+
 ## Transmissing packets
 Packets are transmitted by preparing a frame-header plus frame in xdata memory
 and transferring both to the ASIC side via the SFRs. The ASIC will transmit
