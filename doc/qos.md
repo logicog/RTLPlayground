@@ -22,14 +22,15 @@ DSCP shifted right by three. That happens at startup and before any `qos ...` li
 of the startup configuration is replayed, so a line that changes one entry keeps
 its effect whatever order the lines come in.
 
-RTLPlayground drives the 802.1p and DSCP sources, the scheduler weights and the
-rate limiters of every queue. The port-based source and priority and DSCP
+RTLPlayground drives the 802.1p and DSCP sources, the scheduler and its weights,
+and the rate limiters of every queue. The port-based source and priority and DSCP
 remarking are not implemented.
 
 ## Registers
 ```
 #define RTL837X_SCHED_PORT_Q_CTRL	0x1d28
 #define SCHED_Q_STRICT			0x80
+#define RTL837X_SCHED_PORT_ALGO_CTRL	0x4534
 #define RTL837X_DOT1Q_PRI_REMAP		0x5174
 #define PRI_REMAP_MASK			0x07
 #define RTL837X_DSCP_PRI_REMAP		0x5178
@@ -63,7 +64,16 @@ over bits 15 to 17, so they cannot be reached with a single `sfr_mask_data()`.
 `RTL837X_SCHED_PORT_Q_CTRL` is the scheduler entry of one queue, at
 `0x1d28 + port * 1024 + queue * 4`. Its lowest byte carries the weight of the queue
 in bits 0 to 6, and `SCHED_Q_STRICT` in bit 7 marks the queue as strict priority
-instead of giving it a share of the weighted round robin.
+instead of giving it a share of the weighted scheduler.
+
+`RTL837X_SCHED_PORT_ALGO_CTRL` holds one bit per port, the port number is the bit
+number, and selects what the weights of that port share. With the bit clear, the
+reset value, a port shares its bandwidth by bytes, as in weighted fair queueing:
+two queues of equal weight send the same number of bytes whatever the size of
+their packets. With the bit set the port shares it by packets, as in weighted
+round robin: two queues of equal weight send the same number of packets, so a
+queue of large packets takes more of the port. The bytes counted are those of the
+frame, without preamble and interframe gap.
 
 A queue has two rate limiters of its own. `RTL837X_EGBW_PORT_Q_MAX` at
 `0x1c3c + port * 1024 + queue * 8` caps what the queue may send and
@@ -75,8 +85,7 @@ the stride: the maximum takes two words per queue, the second one its burst,
 while the assured rate takes one.
 
 The remaining registers of the block are left as they are: the internal priority to
-queue table at `0x51a4 + port * 4`, the port-based source at `0x5170`, and the
-scheduler algorithm bit per port at `0x4534`.
+queue table at `0x51a4 + port * 4` and the port-based source at `0x5170`.
 
 ## API
 ```
@@ -86,6 +95,7 @@ void qos_dscp_weight_set(uint8_t on) __banked;
 void qos_pcp_set(uint8_t pcp, uint8_t priority) __banked;
 void qos_dscp_set(uint8_t dscp, uint8_t priority) __banked;
 void qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked;
+void qos_sched_set(uint8_t port, uint8_t wrr) __banked;
 void qos_queue_max_set(uint8_t port, uint8_t queue, __xdata uint32_t bw) __banked;
 void qos_queue_min_set(uint8_t port, uint8_t queue, __xdata uint32_t bw) __banked;
 void qos_show(void) __banked;
@@ -101,18 +111,21 @@ one DSCP value.
 `qos_queue_set()` writes the scheduler entry of one queue of one port, either a
 weight from 1 to `QOS_WEIGHT_MAX` or `SCHED_Q_STRICT`.
 
+`qos_sched_set()` makes the weights of one port share packets instead of bytes,
+or bytes again.
+
 `qos_queue_max_set()` and `qos_queue_min_set()` set the two rate limiters of one
 queue; a rate of 0 switches the limiter off.
 
 `qos_show()` prints which of the two sources have a weight, both of their tables,
-the weights of all queues of every port, and every queue limiter that is switched
-on.
+the scheduler and the weights of all queues of every port, and every queue limiter
+that is switched on.
 
 ## Configuration on the Serial Console
 ```
 > qos
-  Shows both mappings, which sources have a weight, the queue weights of
-  every port, and the queue limits that are set
+  Shows both mappings, which sources have a weight, the scheduler and queue
+  weights of every port, and the queue limits that are set
 > qos on|off
   Lets the 802.1p priority of a packet decide its queue, or stops it from deciding
 > qos dscp on|off
@@ -123,6 +136,8 @@ on.
   Maps one DSCP value to an internal priority, 0 to 63 and 0 to 7
 > qos queue <port> <queue> <weight|sp>
   Sets the scheduler weight of a queue, 1 to 127, or strict priority
+> qos sched <port> wfq|wrr
+  Lets the weights of a port share bytes, the default, or packets
 > qos max <port> <queue> <hexvalue|off>
   Caps a queue, the rate in Kbit/s as for bw, or lifts the cap
 > qos min <port> <queue> <hexvalue|off>
