@@ -1,8 +1,10 @@
 # Adding a new device
 
-A device is supported by adding one board definition under `machine/`. 
-the build selects the definition by name.
+A device is supported by adding one board definition `.h` and board configuration `.c` file
+under `machine/`. 
+the build selects the definition by name, and CI compiles every file it finds.
 
+To compile for your added device, do:
 ```
 make MACHINE=<NAME>
 ```
@@ -13,7 +15,7 @@ make MACHINE=<NAME>
 |------|---------|
 | `machine/<NAME>.c` | the `struct machine machine` board definition |
 | `machine/<NAME>.h` | `MACHINE_MODEL`, the model string shown in the UI and the CLI |
-| `doc/devices/<name>.md` + `doc/supported_devices.md` | (only if the board is verified) user-facing documentation |
+| `doc/devices/<name>.md` + `doc/supported_devices.md` | (only if the board is verified and you want to support it publicly) user-facing documentation |
 
 `<NAME>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
 passed exactly as spelled on the command line: `make MACHINE=MY_BOARD_1_0`
@@ -33,7 +35,7 @@ the template:
 #endif
 ```
 
-The header is what the UI and the CLI print; `machine.h` includes it by name.
+The device product string is what the CLI or the Web-Interface will print to identify the device; `machine.h` includes it by name.
 
 > [!NOTE]
 > `machine_name` is a `char[30]` and `MACHINE_MODEL` is copied into it at
@@ -46,6 +48,8 @@ The header is what the UI and the CLI print; `machine.h` includes it by name.
 `machine/<NAME>.c` starts with the shared prelude and then defines the single
 `machine` object. Copy the closest existing board and adjust it — do not start
 from a blank file, the field meanings are easier to see in a real example.
+The best choice is usually a device that has the same number and type of Ethernet
+ports and the same number of SFP+ cages.
 
 ```c
 #include "machine_defs.h"
@@ -91,17 +95,17 @@ __code const struct machine machine = {
 |-------|---------|
 | `machine_name` | always `MACHINE_MODEL` |
 | `isRTL8373` | `1` for an RTL8373 SoC, `0` for RTL8372 |
-| `min_port` / `max_port` | range of logical port numbers the device has; `min_port` is `0` for RTL8373 boards and `3` for RTL8372 boards (logical ports 1–2 are the SoC's internal ports on the 8372) |
+| `min_port` / `max_port` | range of logical port numbers the device has; `min_port` is `0` for RTL8373 boards and `3` for RTL8372 boards (logical ports 1–2 are the SoC's internal ports on the 8372), `max_port` is usually 8. |
 | `n_sfp` | number of SFP+ cages |
 | `n_10g` | SerDes 10G capability used by the RTL837xN init: `0` none, `1` one, `2` two 10G-capable SerDes |
 | `log_to_phys_port[9]` | logical port (0-based index) → physical front-panel port number |
 | `phys_to_log_port[9]` | the inverse, physical port 1 is index 0, unused slots are 0 |
-| `is_sfp[9]` | `0` for copper, `1`/`2` for the I2C bus number of the SFP on that port |
+| `is_sfp[9]` | `0` for copper, `1` for left slot and `2` for right slot |
 | `sfp_port[2]` | per-cage wiring, `sfp_port[0]` is the leftmost cage |
 | `reset_pin` | GPIO of the reset button, `GPIO_NA` if unpopulated |
 | `high_leds` | mux/enable for the LED pins 27–29 (`LED_27`, `LED_28_SYS`, `LED_29`) |
 | `port_led_set[9]` | which LED set (0–3) each logical port uses |
-| `led_sets[4][4]` | the 4 LED combinations per set; which of the 4 is used depends on how the LED is wired |
+| `led_sets[4][4]` | Each port can have up to 4 GPIO output pins assigned. 4 sets of LEDs with 4 LED-conditions per set; the conditions define which GPIO pins become active for a port given a port link-state. Which LEDs are then enabled depends on the wiring of the pins to up to 3 LEDs for that port, which can make a logical combination of the 4 LED output-pins. |
 | `led_mux_custom` / `led_mux[28]` | `1` plus the 28 mux values when the stock LED muxing does not fit the board |
 | `mac_flash_offset` | flash offset of the factory MAC address, omit or `0` if the board does not store one |
 
@@ -126,7 +130,7 @@ apart:
 ln -s KP_9000_6XHML_X2.c machine/MY_BOARD_1_0.c
 ```
 
-The new board still needs `machine/MY_BOARD_1_0.h` with its own
+The new board still needs `machine/MY_BOARD_1_0.h` (pick the version number on the PCB) with its own
 `MACHINE_MODEL`, because `MACHINE_MODEL` is what distinguishes the products.
 Existing examples: `machine/PCB_K0402WS_V3.c`, `machine/KP_9000_9XHML_X_V3_2.c`
 and the six `KP_9000_*` revision variants.
@@ -140,7 +144,7 @@ be collapsed this way.
 make MACHINE=MY_BOARD_1_0
 ```
 
-The image appears as `output/rtlplayground-<version>-MY_BOARD_1_0.bin`. An
+The generated flash image appears as `output/rtlplayground-<version>-MY_BOARD_1_0.bin`. An
 unknown or empty `MACHINE` fails immediately with a message naming the expected
 file, before anything is compiled.
 
@@ -158,7 +162,7 @@ request, alongside full builds for a 4+2 and an 8+1 board.
 
 A successful compile only proves the definition is syntactically valid. The
 actual behaviour — port numbering, SFP detection, LEDs — has to be confirmed on
-hardware, and the console commands (`port`, `stat`, `sfp`, `leds_dump`) are the
+hardware, and the console commands (`port`, `stat`, `sfp`, `leds`) are the
 tools for that.
 
 ## Step 4: documentation
