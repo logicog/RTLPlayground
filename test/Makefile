@@ -66,8 +66,8 @@ $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR
 $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-# rtl837x_qos.c is compiled UNMODIFIED from the firmware tree.
-$(BUILDDIR)/test_qos: test_qos.c hw_mock.c $(SRCROOT)/rtl837x_qos.c | $(BUILDDIR)
+# rtl837x_qos.c and rtl837x_bandwidth.c are compiled UNMODIFIED from the firmware tree.
+$(BUILDDIR)/test_qos: test_qos.c hw_mock.c $(SRCROOT)/rtl837x_qos.c $(SRCROOT)/rtl837x_bandwidth.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
