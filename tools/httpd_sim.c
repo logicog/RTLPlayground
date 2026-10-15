@@ -20,6 +20,7 @@
 
 #define N_COUNTERS 52
 #define VLAN_MAX 1
+#define VLAN_MAX_ID 4094
 
 #if PORTS == 9
 const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -686,6 +687,39 @@ void print_cmd_history(void)
 		printf("%d: %s\n", i, cmd_history[i]);
 }
 
+void parse_cmd(char* cmd)
+{
+	char *token = strtok(cmd, " ");
+	char *name;
+	if (strncmp(token, "vlan", 4)) {
+		token = strtok(NULL, " ");
+		int vid = atoi(token);
+		if (vid<1 || vid > VLAN_MAX_ID)
+			return;
+
+		token = strtok(NULL, " ");
+		if(strncmp(token,"mgmt",4)) {
+			return;	//TODO
+		} else if (strncmp(token,"d",1)) {
+			//delete_vlan(vid);
+		} else {
+			if (token[0] >= 'A' && token[0] <= 'z' ){
+				name = token;
+				token = strtok(NULL, " ");
+			}
+			// a string of [0-9][t]?
+			while(token != NULL) {
+				int portNum = atoi(token);
+				bool isTagged = token[strlen(token)] == 't';
+				printf("VLAN: %d Name: %s Port: %d tagged:%d", vid, name, portNum, isTagged);
+				token = strtok(NULL, " ");
+			}
+		}
+	} else {
+
+	}
+}
+
 void launch(struct Server *server)
 {
     char buffer[BUFFER_SIZE];
@@ -878,6 +912,7 @@ void launch(struct Server *server)
 					printf("POST cmd\n");
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
+					parse_cmd(p+4);
 					cmd_ptr++;
 					print_cmd_history();
 					char *response = "HTTP/1.1 200 OK\r\n"
