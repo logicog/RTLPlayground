@@ -1,0 +1,286 @@
+name: Release
+
+# Publishes prebuilt firmware for every MACHINE_* target in machine.h:
+#   * push a tag   -> create/update the release for that tag
+#   * push to main -> create/update the "nightly" pre-release
+#
+# Each platform is attached as a zip holding the firmware, the OEM web-upgrade
+# image and the default config.txt. A combined archive and SHA256SUMS are
+# attached as well. This workflow is self-contained: it needs no extra files.
+on:
+  push:
+    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Build dependencies. Keep in sync with the cache key below.
+  DEPS: make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev zip git
+
+jobs:
+  meta:
+    name: Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      machines: ${{ steps.machines.outputs.list }}
+      tag: ${{ steps.vars.outputs.tag }}
+      version: ${{ steps.vars.outputs.version }}
+      name: ${{ steps.vars.outputs.name }}
+      hash: ${{ steps.vars.outputs.hash }}
+      epoch: ${{ steps.vars.outputs.epoch }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compute tag, version and epoch
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Tag -> semver, keeping an alphanumeric suffix as a pre-release:
+          #   v0_1_alpha -> 0.1.0-alpha, v1.2 -> 1.2.0, v2 -> 2.0.0
+          normalize() {
+            local tag="$1" v core suffix
+            local -a p
+            v="${tag#[vV]}"
+            v="${v//_/.}"
+            core="$(printf '%s' "$v" | sed -E 's/^([0-9]+(\.[0-9]+)*).*/\1/')"
+            suffix="$(printf '%s' "$v" | sed -E 's/^[0-9]+(\.[0-9]+)*//')"
+            printf '%s' "$core" | grep -Eq '^[0-9]+(\.[0-9]+)*$' \
+              || { echo "error: cannot normalize tag '$tag' to semver" >&2; return 1; }
+            IFS='.' read -r -a p <<< "$core"
+            core="${p[0]:-0}.${p[1]:-0}.${p[2]:-0}"
+            if [ -n "$suffix" ]; then
+              suffix="${suffix#[-.]}"
+              suffix="${suffix//_/-}"
+              suffix="${suffix//./-}"
+              v="$core${suffix:+-$suffix}"
+            else
+              v="$core"
+            fi
+            printf '%s' "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' \
+              || { echo "error: tag '$tag' normalized to '$v', not valid semver" >&2; return 1; }
+            printf '%s\n' "$v"
+          }
+
+          hash="$(git rev-parse --short HEAD)"
+
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            tag="${{ github.ref_name }}"
+            version="$(normalize "$tag")"
+            name="$version"
+          else
+            # Nightly: the semver stays clean while the release-facing build
+            # name carries the hash, so successive nightly builds can be told
+            # apart, e.g. 0.1.0-nightly-892da3c.
+            tag="nightly"
+            version="0.1.0-nightly"
+            name="$version-$hash"
+          fi
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "name=$name"
+            echo "hash=$hash"
+            echo "epoch=$(git show -s --format=%ct HEAD)"
+          } >> "$GITHUB_OUTPUT"
+          echo "Tag: $tag | VERSION: $version | BUILD: $name | COMMIT: $hash"
+
+      - name: Enumerate machines
+        id: machines
+        shell: bash
+        run: |
+          set -euo pipefail
+          list="$(grep -E '^[[:space:]]*(//[[:space:]]*)?#define[[:space:]]+MACHINE_' machine.h \
+            | sed -E 's%^[[:space:]]*(//[[:space:]]*)?#define[[:space:]]+MACHINE_%%' \
+            | awk '{print $1}' | sort -u \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$list" | jq -r '"\(length) machines"'
+
+  test:
+    name: Tests
+    needs: meta
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache apt
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives
+            /var/lib/apt/lists
+          key: apt-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: apt-
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y ${{ env.DEPS }}
+
+      - name: Host unit tests
+        run: make -C test
+
+      - name: machine_check (all targets)
+        run: make machine_check
+
+  build:
+    name: Build ${{ matrix.machine }}
+    needs: [meta, test]
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: ${{ fromJSON(needs.meta.outputs.machines) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache apt
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives
+            /var/lib/apt/lists
+          key: apt-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: apt-
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y ${{ env.DEPS }}
+
+      - name: Build firmware
+        run: |
+          # The container has no .git, so point the Makefile at the commit this
+          # build came from; otherwise VERSION_SW is stamped without its hash.
+          make -j"$(nproc)" CI=1 \
+            MACHINE="${{ matrix.machine }}" \
+            VERSION="${{ needs.meta.outputs.version }}" \
+            GIT_VERSION="${{ needs.meta.outputs.hash }}" \
+            SOURCE_DATE_EPOCH="${{ needs.meta.outputs.epoch }}"
+
+      - name: Build OEM upgrade image
+        run: make -C installer
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          m="${{ matrix.machine }}"
+          v="${{ needs.meta.outputs.name }}"
+          stage="pkg/$m"
+          mkdir -p "$stage"
+          # output/rtlplayground.bin is the symlink the Makefile points at the
+          # image just built for $m.
+          cp output/rtlplayground.bin "$stage/rtlplayground-$v-$m.bin"
+          cp installer/output/rtlplayground_oem_upgrade.bin \
+             "$stage/rtlplayground_oem_upgrade-$v-$m.bin"
+          cp config.txt "$stage/config.txt"
+          (cd "$stage" && zip -9 -r "$GITHUB_WORKSPACE/rtlplayground-$v-$m.zip" .)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fw-${{ matrix.machine }}
+          path: rtlplayground-*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish release
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Assemble combined archive and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          v="${{ needs.meta.outputs.name }}"
+          (cd assets && zip -9 -r "$GITHUB_WORKSPACE/rtlplayground-$v-all-platforms.zip" .)
+          # Checksums over every per-platform zip plus the combined archive.
+          (cd assets && sha256sum ./*.zip) | sed 's#  \./#  #' > SHA256SUMS
+          sha256sum "rtlplayground-$v-all-platforms.zip" >> SHA256SUMS
+          wc -l SHA256SUMS
+
+      - name: Create or update the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          NAME: ${{ needs.meta.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [ "$TAG" = "nightly" ]; then
+            notes="Nightly build of \`main\` at \`${GITHUB_SHA}\` ($(date -u +%Y-%m-%dT%H:%MZ)). Version: \`${NAME}\`."
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release edit "$TAG" --title "Nightly (main)" --prerelease --notes "$notes"
+            else
+              gh release create "$TAG" --title "Nightly (main)" --prerelease \
+                --notes "$notes" --target "$GITHUB_SHA"
+            fi
+          else
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release edit "$TAG" --title "$TAG"
+            else
+              gh release create "$TAG" --title "$TAG" --generate-notes
+            fi
+          fi
+          gh release upload "$TAG" assets/*.zip \
+            "rtlplayground-$NAME-all-platforms.zip" SHA256SUMS --clobber
+
+          if [ "$TAG" = "nightly" ]; then
+            # A release's created_at - the attribute the releases list is
+            # ordered by - is the date of the *tag object* it points at, not of
+            # the commit. Recreate the nightly tag as an annotated tag on every
+            # run (the way OrcaSlicer recreates its nightly-builds tag) so that
+            # created_at is always the time of the run. The list only compares
+            # dates, so this puts the nightly above older releases; only a
+            # release published on the very same day can still outrank it.
+            tag_obj="$(gh api "repos/$GH_REPO/git/tags" \
+              -f tag=nightly -f message=nightly \
+              -f object="$GITHUB_SHA" -f type=commit --jq .sha)"
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/nightly" \
+              -f sha="$tag_obj" -F force=true
+          fi
+
+      - name: Remove stale nightly assets
+        if: needs.meta.outputs.tag == 'nightly'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NAME: ${{ needs.meta.outputs.name }}
+        run: |
+          set -euo pipefail
+          keep="$(
+            { (cd assets && printf '%s\n' *.zip)
+              printf '%s\n' "rtlplayground-$NAME-all-platforms.zip" SHA256SUMS
+            } | sort
+          )"
+          gh release view nightly --json assets --jq '.assets[].name' | while read -r name; do
+            case "$name" in
+              rtlplayground-*.zip|SHA256SUMS)
+                if ! printf '%s\n' "$keep" | grep -qxF "$name"; then
+                  echo "Removing stale asset: $name"
+                  gh release delete-asset nightly "$name" --yes
+                fi
+                ;;
+            esac
+          done
