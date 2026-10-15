@@ -47,6 +47,7 @@ static void out_putc(char c) {
 }
 
 /* --- mocked print helpers (signatures match rtl837x_common.h post-shim) ---- */
+void write_char_no_syslog(char c) { out_putc(c); }
 void write_char(char c)            { out_putc(c); }
 void print_string(const char *p)   { while (*p) out_putc(*p++); }
 void print_string_x(char *p)       { while (*p) out_putc(*p++); }

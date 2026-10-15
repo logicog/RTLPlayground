@@ -7,6 +7,9 @@
 #include "rtl837x_flash.h"
 #include "uip.h"
 #include "html_data.h"
+#ifdef SNMP
+#include "snmp.h"
+#endif
 
 // #define DEBUG
 #include "debug.h"
@@ -957,7 +960,7 @@ void httpd_appcall(void)
 		__xdata uint8_t *p = uip_appdata;
 		// Mark end of request header with \0
 		p[uip_len] = 0;
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(SNMP)
 		while (*p)
 			dbg_char(*p++);
 		dbg_char('\n');
@@ -1040,6 +1043,10 @@ void httpd_appcall(void)
 				send_lacp();
 			} else if (is_word(q, "/vlanlist")) {
 				send_vlanlist();
+#ifdef SNMP
+			} else if (is_word(q, "/snmp_config")) {
+				snmp_export_config();
+#endif
 			} else if (is_word(q, "/config")) {
 				send_config();
 			} else if (is_word(q, "/cmd_log")) {

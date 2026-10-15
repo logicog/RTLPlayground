@@ -86,6 +86,10 @@ const struct f_data f_data[] = {
 
 void flash_read_bulk(uint8_t *dst)
 {
+#ifdef SNMP_REAL_REPLAY
+    extern uint8_t replay_image[CONFIG_LEN];
+    if(flash_region.addr>=CONFIG_START&&flash_region.addr<CONFIG_START+CONFIG_LEN){memcpy(dst,replay_image+(flash_region.addr-CONFIG_START),flash_region.len);return;}
+#endif
 	for (uint16_t i = 0; i < flash_region.len; i++)
 		dst[i] = pattern(flash_region.addr + i);
 }
@@ -97,14 +101,41 @@ const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
 void reset_chip(void) { }
 void delay(uint16_t t) { (void)t; }
-void write_char(char c) { (void)c; }
+void write_char(char c) {
+#ifdef SNMP_CONTROL_TEST
+    extern void control_console_char(char c);control_console_char(c);
+#else
+    (void)c;
+#endif
+}
 void write_char_no_syslog(char c) { (void)c; }
 void print_string(const char *p) { (void)p; }
 void print_string_newline_no_syslog(const char *p) { (void)p; }
 void set_sys_led_state(uint8_t state) { (void)state; }
+#ifndef SNMP_REAL_REPLAY
 void cmd_parser(void) { }
 void execute_config(void) { }
-void execute_commands(uint8_t *p) { (void)p; }
+#endif
+static unsigned command_calls;
+void execute_commands(uint8_t *p) { (void)p;command_calls++; }
+#ifdef SNMP
+#include "ntp.h"
+#include "cmd_parser.h"
+uint8_t cmd_buffer[CMD_BUF_SIZE],cmd_words_len,cmd_words_b[15],save_cmd=1;
+#ifndef SNMP_REAL_REPLAY
+uint8_t cmd_compare(uint8_t start,const uint8_t *word) {
+    if(start>=cmd_words_len)return 0;
+    const uint8_t *p=cmd_buffer+cmd_words_b[start];size_t n=strlen((const char *)word);
+    return !memcmp(p,word,n)&&(p[n]==0||p[n]==' ');
+}
+#endif
+#if !defined(SNMP_TRANSPORT_TEST) || defined(SNMP_HORACO_CONTROL_CLOCK)
+struct ntp_state ntp_state;
+static uint32_t control_seconds=100;
+void reg_read_m(uint16_t reg) {(void)reg;sfr_data[0]=control_seconds>>24;sfr_data[1]=control_seconds>>16;sfr_data[2]=control_seconds>>8;sfr_data[3]=control_seconds;}
+#endif
+#endif
+
 void clear_command_history(void) { }
 static unsigned udp_dispatch_calls;
 void udp_callbacks(void) { udp_dispatch_calls++; }
@@ -139,7 +170,13 @@ bool strstart_x(const uint8_t *a, const uint8_t *b) { return strstart(a, b); }
 bool send_counters(uint8_t phys_port) { (void)phys_port; return false; }
 void send_status(void) { }
 void send_vlan(uint16_t vlan) { (void)vlan; }
-void send_basic_info(void) { }
+extern uint8_t outbuf[TCP_OUTBUF_SIZE];
+extern uint16_t slen;
+static unsigned information_calls;
+void send_basic_info(void) {
+    information_calls++;
+    slen=strtox(outbuf,"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n{}\n");
+}
 void send_bandwidth(void) { }
 void send_storm(void) { }
 void send_isolation(void) { }
@@ -148,7 +185,11 @@ void send_l2(uint16_t idx) { (void)idx; }
 void l2_delete(uint16_t idx) { (void)idx; }
 void send_mirror(void) { }
 void send_mtu(void) { }
-void send_config(void) { }
+static unsigned configuration_reads;
+void send_config(void) {
+    configuration_reads++;
+    slen=strtox(outbuf,"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\nip 192.0.2.1\n");
+}
 void send_cmd_log(void) { }
 void send_lacp(void) { }
 void send_lag(void) { }
@@ -495,6 +536,8 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+
+/* Same UDP length guard must protect services with SNMP compiled out. */
 static void scenario_udp_lengths(void)
 {
     const unsigned lengths[]={7,9,11,8};
@@ -512,18 +555,51 @@ static void scenario_udp_lengths(void)
     uip_init();
 }
 
+static void scenario_information_auth(void)
+{
+    extern char session_id[13];extern uint32_t last_session_use;
+    const char *denied="GET /information.json HTTP/1.1\r\nHost: sw\r\n\r\n";
+    const char *allowed="GET /information.json HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\n\r\n";
+    session_start(MSS_FULL);information_calls=0;
+    client_send(TCP_ACK|TCP_PSH,denied,strlen(denied));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"401 Unauthorized") && !information_calls,"information.json requires authentication before serialization");
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use=0;
+    client_send(TCP_ACK|TCP_PSH,allowed,strlen(allowed));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"200 OK") && information_calls==1,"authenticated information.json reaches existing serializer");
+    const char *config="GET /config HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\n\r\n";
+    session_start(MSS_FULL);configuration_reads=0;
+    client_send(TCP_ACK|TCP_PSH,config,strlen(config));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"200 OK") && strstr((char *)stream,"ip 192.0.2.1") &&
+          configuration_reads==1,"existing authenticated configuration-read endpoint remains routed correctly");
+    const char *snmp_denied="POST /cmd HTTP/1.1\r\nHost: sw\r\nContent-Type: text/plain\r\nContent-Length: 8\r\n\r\nsnmp off";
+    const char *snmp_allowed="POST /cmd HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\nContent-Type: text/plain\r\nContent-Length: 8\r\n\r\nsnmp off";
+    session_start(MSS_FULL);command_calls=0;
+    client_send(TCP_ACK|TCP_PSH,snmp_denied,strlen(snmp_denied));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"401 Unauthorized")&&!command_calls,"SNMP toggle command requires authentication");
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use=0;
+    client_send(TCP_ACK|TCP_PSH,snmp_allowed,strlen(snmp_allowed));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"200 OK")&&command_calls==1,"authenticated SNMP toggle command uses existing command endpoint");
+    session_id[0]=0;
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
 		verbose = 1;
 
 	printf("== httpd: accounting for the bytes actually sent ==\n");
-	scenario_udp_lengths();
 	scenario_steady_window();
 	scenario_shrinking_window();
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_information_auth();
+	scenario_udp_lengths();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",

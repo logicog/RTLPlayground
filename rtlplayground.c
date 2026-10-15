@@ -92,6 +92,10 @@ __code const uint8_t netmask[] = { 255, 255, 255, 0};
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
+#ifdef SNMP
+#include "snmp.h"
+extern volatile __xdata uint32_t snmp_uptime;
+#endif
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_tick_last;
@@ -211,6 +215,9 @@ void isr_timer0(void) __interrupt(1)
 void isr_timer2(void) __interrupt(5)
 {
 	ticks++;
+#ifdef SNMP
+    if (!(ticks & 1)) snmp_uptime++;
+#endif
 	tick_pending = 1;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
@@ -1813,6 +1820,9 @@ void main(void)
 	bandwidth_setup();
 	uip_init();
 	uip_arp_init();
+#ifdef SNMP
+    snmp_init();
+#endif
 	httpd_init();
 	lldp_init();
 

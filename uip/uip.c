@@ -87,6 +87,9 @@
 #include "uip_arch.h"
 #include <stddef.h>
 
+#ifdef SNMP
+#include "snmp.h"
+#endif
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
@@ -1190,10 +1193,16 @@ uip_process(u8_t flag) __banked
   UDPBUF->udpchksum = 0;
 
   BUF->srcport  = uip_udp_conn->lport;
+#ifndef SNMP
   BUF->destport = uip_udp_conn->rport;
+#endif
 
   uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
+#ifdef SNMP
+  snmp_udp_address();
+#else
   uip_ipaddr_copy(BUF->destipaddr, uip_udp_conn->ripaddr);
+#endif
    
   uip_appdata = &uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN];
 

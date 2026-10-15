@@ -1,0 +1,30 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const src=fs.readFileSync('html/app.js','utf8'),nodes={};
+const $=id=>nodes[id]??={style:{},textContent:'',addEventListener(type,fn){this.handler=fn}};
+let fail=false,posted=[],server=true;
+const S={info:{snmp:[1,1,192,0,2,250,255,255,255,255]}};
+const context={$,S,postCmd(cmd){posted.push(cmd);if(fail)return Promise.reject(new Error('denied'));server=cmd==='snmp on';return Promise.resolve()},pollInfo(){S.info.snmp[0]=server?1:0;context.renderSnmp(S.info.snmp);return Promise.resolve()}};
+vm.createContext(context);
+vm.runInContext(src.slice(src.indexOf('var CONF_CMDS='),src.indexOf('function setDirty(')),context);
+vm.runInContext(src.slice(src.indexOf('var CONF_OVERWRITE='),src.indexOf('function writeConfig(')),context);
+vm.runInContext(src.slice(src.indexOf('var snmpPending='),src.indexOf('function okIp(')),context);
+assert(context.isConfCmd('snmp on'));assert(context.isConfCmd('snmp off'));
+assert(context.isConfCmd('snmp community a-secret'));assert(!context.isConfCmd('snmp on extra'));
+assert.deepEqual(Array.from(context.mergeConf(['ip 192.0.2.1','snmp on'],['snmp off\nsnmp on\nsnmp off'])),['ip 192.0.2.1','snmp off']);
+assert.deepEqual(Array.from(context.mergeConf(['snmp off'],['snmp on'])),['snmp on']);
+assert.deepEqual(Array.from(context.mergeConf(['hostname lab'],['snmp community a-secret'])),['hostname lab','snmp community a-secret']);
+(async()=>{
+ context.renderSnmp(S.info.snmp);assert.equal($('sy-snmp-toggle').checked,true);
+ $('sy-snmp-toggle').checked=false;const done=context.snmpToggle();assert.equal($('sy-snmp-toggle').disabled,true);await done;
+ assert.deepEqual(posted,['snmp off']);assert.equal(server,false);assert.equal($('sy-snmp-toggle').checked,false);
+ assert.equal($('sy-snmp-toggle').disabled,false);assert.equal($('sy-snmp-network').textContent,'192.0.2.250');
+ fail=true;$('sy-snmp-toggle').checked=true;await context.snmpToggle();assert.equal($('sy-snmp-toggle').checked,false);assert.equal(server,false);
+ fail=false;$('sy-snmp-toggle').checked=true;await context.snmpToggle();assert.equal(server,true);assert.equal($('sy-snmp-toggle').checked,true);
+ context.renderSnmp([0,0,0,0,0,0,0,0,0,0]);assert.equal($('sy-snmp-toggle').disabled,true);
+ context.renderSnmp(undefined);assert.equal($('sy-snmp').style.display,'none');
+ // Save reads current firmware state, including when command history has rotated.
+ const save=src.slice(src.indexOf('$("saveBtn").addEventListener('),src.indexOf('var fwBuf='));
+ assert(save.includes('getText("/snmp_config")'));
+ assert(save.includes('mergeConf(merged.filter'));assert(save.includes('[r[2]]'));
+ console.log('PASS SNMP switch success/failure, bounded commands, credential-free persistence merge and disabled-build omission');
+})().catch(e=>{console.error(e);process.exitCode=1});
