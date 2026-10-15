@@ -156,6 +156,7 @@ void send_vlanlist(void) { }
 void send_lldp(void) {}
 
 extern uint8_t authenticated;
+extern char passwd[21];
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
  * to confirm the port httpd_init() asked for is the one uIP is watching. */
@@ -362,6 +363,22 @@ static int first_body_mismatch(void)
 	return -1;
 }
 
+static int stream_contains(const char *needle)
+{
+	size_t n = strlen(needle);
+
+	for (int i = 0; i + (int)n <= stream_len; i++)
+		if (!memcmp(stream + i, needle, n))
+			return 1;
+	return 0;
+}
+
+static void login_session_start(void)
+{
+	session_start(MSS_FULL);
+	strcpy(passwd, "1234");
+}
+
 static void report(const char *tag)
 {
 	if (verbose)
@@ -493,6 +510,157 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+
+static void scenario_fragmented_post_header(void)
+{
+	static const char first[] =
+		"POST /login HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Content-Len";
+	static const char second[] =
+		"gth: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=1234";
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "fragmented header: incomplete first fragment has no response");
+
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 302 Found\r\n"),
+	      "fragmented header: split Content-Length is accepted");
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "fragmented header: login body is parsed after reassembly");
+}
+
+static void scenario_split_content_type(void)
+{
+	static const char first[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Ty";
+	static const char second[] =
+		"pe: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=1234";
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "split Content-Type: incomplete header has no response");
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "split Content-Type: field name can span receive events");
+}
+
+static void scenario_split_header_terminator(void)
+{
+	static const char first[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r";
+	static const char second[] = "\npwd=1234";
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "split terminator: CRLFCR fragment has no premature response");
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "split terminator: CRLFCRLF can span receive events");
+}
+
+static void scenario_header_then_body(void)
+{
+	static const char header[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n";
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, header, (int)strlen(header));
+	CHECK(stream_len == 0,
+	      "header-only segment: waits for the declared body");
+	client_send(TCP_ACK | TCP_PSH, "pwd=1234", 8);
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "header-only segment: following body completes login");
+}
+
+static void scenario_header_with_partial_body(void)
+{
+	static const char first[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=";
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "partial body: waits when final header segment has only part of body");
+	client_send(TCP_ACK | TCP_PSH, "1234", 4);
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "partial body: existing body reassembly takes over correctly");
+}
+
+static void scenario_post_header_timeout(void)
+{
+	static const char partial[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n";
+
+	login_session_start();
+	ticks = 0;
+	client_send(TCP_ACK | TCP_PSH, partial, (int)strlen(partial));
+	CHECK(stream_len == 0,
+	      "header timeout: incomplete header has no immediate response");
+
+	/* The firmware timeout is 5 seconds; 2000 host ticks is safely beyond it. */
+	ticks = 2000;
+	run_periodic(1);
+	CHECK(!uip_conn_active(0),
+	      "header timeout: connection is aborted when the header never completes");
+}
+
+static void scenario_oversized_post_header(void)
+{
+	static const char start[] =
+		"POST /login HTTP/1.1\r\n"
+		"X-Fill: ";
+	char fill[1200];
+
+	login_session_start();
+	memset(fill, 'a', sizeof(fill));
+	client_send(TCP_ACK | TCP_PSH, start, (int)strlen(start));
+
+	/* Keep extending a header with no CRLFCRLF until the fixed buffer refuses it. */
+	for (int i = 0; i < 16 && !stream_contains("400 Bad Request"); i++)
+		client_send(TCP_ACK | TCP_PSH, fill, (int)sizeof(fill));
+
+	CHECK(stream_contains("HTTP/1.1 400 Bad Request\r\n"),
+	      "oversized header: rejected before the header buffer overflows");
+}
+
+static void scenario_fragmented_missing_content_length(void)
+{
+	static const char first[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n";
+	static const char second[] = "\r\npwd=1234";
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 411 Length Required\r\n"),
+	      "fragmented header: missing Content-Length still returns 411");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -504,6 +672,14 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_fragmented_post_header();
+	scenario_split_content_type();
+	scenario_split_header_terminator();
+	scenario_header_then_body();
+	scenario_header_with_partial_body();
+	scenario_post_header_timeout();
+	scenario_oversized_post_header();
+	scenario_fragmented_missing_content_length();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
