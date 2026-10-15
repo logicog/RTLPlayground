@@ -22,9 +22,9 @@ DSCP shifted right by three. That happens at startup and before any `qos ...` li
 of the startup configuration is replayed, so a line that changes one entry keeps
 its effect whatever order the lines come in.
 
-RTLPlayground drives the 802.1p and DSCP sources and the scheduler weights. The
-port-based source, priority and DSCP remarking, and rate control per queue are not
-implemented.
+RTLPlayground drives the 802.1p and DSCP sources, the scheduler weights and the
+rate limiters of every queue. The port-based source and priority and DSCP
+remarking are not implemented.
 
 ## Registers
 ```
@@ -33,6 +33,8 @@ implemented.
 #define RTL837X_DOT1Q_PRI_REMAP		0x5174
 #define PRI_REMAP_MASK			0x07
 #define RTL837X_DSCP_PRI_REMAP		0x5178
+#define RTL837X_EGBW_PORT_Q_MAX		0x1c3c
+#define RTL837X_EGBW_PORT_Q_ASSURED	0x1ca0
 #define RTL837X_PRI_WEIGHT		0x5198
 #define PRI_WEIGHT_MASK			0x1f
 #define PRI_WEIGHT_DOT1Q		0x01
@@ -63,6 +65,15 @@ over bits 15 to 17, so they cannot be reached with a single `sfr_mask_data()`.
 in bits 0 to 6, and `SCHED_Q_STRICT` in bit 7 marks the queue as strict priority
 instead of giving it a share of the weighted round robin.
 
+A queue has two rate limiters of its own. `RTL837X_EGBW_PORT_Q_MAX` at
+`0x1c3c + port * 1024 + queue * 8` caps what the queue may send and
+`RTL837X_EGBW_PORT_Q_ASSURED` at `0x1ca0 + port * 1024 + queue * 4` is the rate
+it is given before the other queues are served. Both hold a rate in the lowest
+20 bits and `BW_LB_EN` in bit 20, the same layout as the per-port limiter in
+[bandwidth.md](bandwidth.md), so `bandwidth_rate_set()` writes all three. Note
+the stride: the maximum takes two words per queue, the second one its burst,
+while the assured rate takes one.
+
 The remaining registers of the block are left as they are: the internal priority to
 queue table at `0x51a4 + port * 4`, the port-based source at `0x5170`, and the
 scheduler algorithm bit per port at `0x4534`.
@@ -75,6 +86,8 @@ void qos_dscp_weight_set(uint8_t on) __banked;
 void qos_pcp_set(uint8_t pcp, uint8_t priority) __banked;
 void qos_dscp_set(uint8_t dscp, uint8_t priority) __banked;
 void qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked;
+void qos_queue_max_set(uint8_t port, uint8_t queue, __xdata uint32_t bw) __banked;
+void qos_queue_min_set(uint8_t port, uint8_t queue, __xdata uint32_t bw) __banked;
 void qos_show(void) __banked;
 ```
 `qos_defaults()` writes the class selector mapping into the DSCP table.
@@ -88,14 +101,18 @@ one DSCP value.
 `qos_queue_set()` writes the scheduler entry of one queue of one port, either a
 weight from 1 to `QOS_WEIGHT_MAX` or `SCHED_Q_STRICT`.
 
-`qos_show()` prints which of the two sources have a weight, both of their tables, and
-the weights of all queues of every port.
+`qos_queue_max_set()` and `qos_queue_min_set()` set the two rate limiters of one
+queue; a rate of 0 switches the limiter off.
+
+`qos_show()` prints which of the two sources have a weight, both of their tables,
+the weights of all queues of every port, and every queue limiter that is switched
+on.
 
 ## Configuration on the Serial Console
 ```
 > qos
-  Shows both mappings, which sources have a weight, and the queue weights of
-  every port
+  Shows both mappings, which sources have a weight, the queue weights of
+  every port, and the queue limits that are set
 > qos on|off
   Lets the 802.1p priority of a packet decide its queue, or stops it from deciding
 > qos dscp on|off
@@ -106,6 +123,10 @@ the weights of all queues of every port.
   Maps one DSCP value to an internal priority, 0 to 63 and 0 to 7
 > qos queue <port> <queue> <weight|sp>
   Sets the scheduler weight of a queue, 1 to 127, or strict priority
+> qos max <port> <queue> <hexvalue|off>
+  Caps a queue, the rate in Kbit/s as for bw, or lifts the cap
+> qos min <port> <queue> <hexvalue|off>
+  Gives a queue a rate before the others are served, or takes it away
 ```
 To put voice traffic tagged with 802.1p priority 5 into a queue that is served before
 the others, and let the rest share the port in equal parts:
@@ -126,6 +147,13 @@ forwarding, in queue 5, so letting the DSCP field decide takes one line:
 To send that one code point to queue 6 and leave the rest of the mapping alone:
 ```
 > qos dscp 46 6
+```
+
+A queue with a small weight gets little of a busy port. An assured rate gives it
+a rate of its own whatever the weights, here 4 Mbit/s for queue 0 of port 1:
+```
+> qos queue 1 5 127
+> qos min 1 0 0fa0
 ```
 
 ## Configuration via the Web Interface
