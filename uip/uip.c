@@ -472,6 +472,8 @@ uip_connect(__xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 #endif /* UIP_ACTIVE_OPEN */
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
+/* SDCC codeseg is translation-unit-wide. Keep this generic allocator in
+ * the BANK1 selected above, independently of optional applications. */
 __xdata struct uip_udp_conn *
 uip_udp_new(__xdata uip_ipaddr_t * __xdata ripaddr, __xdata u16_t rport) __banked
 {
