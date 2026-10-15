@@ -1741,6 +1741,15 @@ void parse_qos(void)
 		return qos_queue_max_set(port, idx, rate);
 	}
 
+	if (cmd_compare(1, "sched")) {
+		if (cmd_words_len != 4 || !cmd_parse_port_separator(cmd_words_b[2]))
+			goto err;
+		n = cmd_compare(3, "wrr");
+		if (!n && !cmd_compare(3, "wfq"))
+			goto err;
+		return qos_sched_set(atoi_results_u8, n);
+	}
+
 	if (cmd_compare(1, "queue")) {
 		if (cmd_words_len != 5 || !cmd_parse_port_separator(cmd_words_b[2]))
 			goto err;
@@ -1762,7 +1771,8 @@ void parse_qos(void)
 
 err:
 	print_string("usage: qos [on|off|dscp on|off|pcp <pcp> <priority>|dscp <dscp> <priority>"
-		     "|queue <port> <queue> <weight|sp>|max|min <port> <queue> <hexvalue|off>]\n");
+		     "|queue <port> <queue> <weight|sp>|sched <port> wfq|wrr"
+		     "|max|min <port> <queue> <hexvalue|off>]\n");
 }
 
 void parse_syslog(void)
