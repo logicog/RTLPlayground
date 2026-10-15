@@ -4,7 +4,7 @@
 |---------|------------------|-------|------------------|-----------------|---------------|
 | Ampcom  | SWTG018AS-A V2.0 | No    | SWTG018AS-A V2.0 | 2MB             | 8273N + 8224N |
 | Horaco  | HC-SWTGW218AS-A  | Yes   | SWTG018AS-A V2.0 | 2MB(25Q16JVSIQ) | 8273N + 8224N |
-| GoodTop | GT-ST018M        | Yes   | SWTG018AS-A V2.0 | ?               | 8273N + 8224N |
+| GoodTop | GT-ST018M        | Yes   | SWTG018AS-A V2.0 | 2MB             | 8273N + 8224N |
 
 
 The following is a documentation for the unmanaged switch marked as `SWTG018AS-A V2.0`.
@@ -14,7 +14,7 @@ The original software is running UART on 9600 baud rate.
 
 Using a SOIC clamp in-board is the only method for initial installation.
 
-The board has a single flash chips `BS` with 4M-bit size. The front switch, switches between the two flash chips.
+The board has a single flash chips `BS` with 2M-byte size. The front switch, switches between the two flash chips.
 These can be programed independently by using said switch - so it is e.g. possible to run the original and new firmware in parallel.
 
 ### Label specifications
