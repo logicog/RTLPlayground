@@ -91,6 +91,7 @@ __xdata uint32_t last_session_use;
 #define TSTATE_MULTIPART	5
 #define TSTATE_POSTBODY		6
 #define TSTATE_POSTHEADER	7
+#define TSTATE_GETHEADER	8
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
@@ -749,13 +750,13 @@ static void post_body_continue(void)
 
 
 /*
- * Buffer a POST request header across TCP receive events. Stop copying at
+ * Buffer an HTTP request header across TCP receive events. Stop copying at
  * CRLFCRLF so any body bytes in the final segment stay in uip_appdata.
  *
  * Return the body offset in the current receive buffer, 0 while incomplete,
  * or 0xffff after sending an error response.
  */
-static uint16_t post_header_take(void)
+static uint16_t request_header_take(uint8_t pending_state)
 {
 	uint16_t i;
 
@@ -778,7 +779,7 @@ static uint16_t post_header_take(void)
 	}
 
 	postbody_start = ticks;
-	uip_conn->appstate.tstate = TSTATE_POSTHEADER;
+	uip_conn->appstate.tstate = pending_state;
 	return 0;
 }
 
@@ -798,7 +799,7 @@ void handle_post(void)
 	if (s->tstate != TSTATE_MULTIPART) {
 		if (s->tstate != TSTATE_POSTHEADER)
 			pre_acc = 0;
-		body_off = post_header_take();
+		body_off = request_header_take(TSTATE_POSTHEADER);
 		if (!body_off || body_off == 0xffff)
 			return;
 		p = config_buf;
@@ -936,9 +937,10 @@ void httpd_appcall(void)
 			dbg_string("Closing because everything has been transmitted\n");
 			uip_close();
 			s->tstate = TSTATE_CLOSED;
-		} else if ((s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_POSTHEADER)
+		} else if ((s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_POSTHEADER
+			    || s->tstate == TSTATE_GETHEADER)
 			   && (uint16_t)ticks - postbody_start > POSTBODY_TIMEOUT) {
-			dbg_string("POST request never completed\n");
+			dbg_string("HTTP request never completed\n");
 			uip_abort();
 			s->tstate = TSTATE_CLOSED;
 		}
@@ -1021,12 +1023,23 @@ void httpd_appcall(void)
 			goto do_send;
 		}
 
-		// We only expect a GET request here.
-		if (!is_word(p, "GET")) {
+		/* GET headers can be fragmented too. In particular, an SSH forward can
+		 * put the Cookie header in a later receive event than the request line. */
+		if (s->tstate != TSTATE_GETHEADER && !is_word(p, "GET")) {
 			send_bad_request();
 			goto do_send;
 		}
+		if (s->tstate != TSTATE_GETHEADER)
+			pre_acc = 0;
+		uint16_t header_end = request_header_take(TSTATE_GETHEADER);
+		if (!header_end) {
+			uip_len = 0;
+			return;
+		}
+		if (header_end == 0xffff)
+			goto do_send;
 
+		p = config_buf;
 		dbg_string("GET request ");
 		p += 4;
 		scan_header(p);

@@ -46,6 +46,9 @@
 #define FILE_START	FDATA_START_login_html
 #define FILE_NAME	"/login.html"
 #define FILE_LEN	6000
+#define PROTECTED_FILE_NAME	"/index.html"
+#define PROTECTED_FILE_START	(FILE_START + FILE_LEN + 64)
+#define PROTECTED_FILE_LEN	64
 #define STREAM_MAX	16384
 
 static int failures;
@@ -80,6 +83,7 @@ const char * const mime_strings[] = { "text/html", "image/svg+xml", "image/x-ico
 
 const struct f_data f_data[] = {
 	{ FILE_NAME, FILE_START, FILE_LEN, mime_HTML, 0 },
+	{ PROTECTED_FILE_NAME, PROTECTED_FILE_START, PROTECTED_FILE_LEN, mime_HTML, 0 },
 	{ 0, 0, 0, mime_HTML, 0 },
 };
 
@@ -156,6 +160,7 @@ void send_vlanlist(void) { }
 void send_lldp(void) {}
 
 extern uint8_t authenticated;
+extern char session_id[];
 extern char passwd[21];
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
@@ -661,6 +666,128 @@ static void scenario_fragmented_missing_content_length(void)
 	      "fragmented header: missing Content-Length still returns 411");
 }
 
+
+static void scenario_fragmented_get_cookie(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cook";
+	static const char second[] =
+		"ie: session=0123456789ab\r\n"
+		"\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "fragmented GET cookie: no redirect before the header completes");
+
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n"),
+	      "fragmented GET cookie: protected index is served");
+	CHECK(!stream_contains("Location: login.html\r\n"),
+	      "fragmented GET cookie: session is not lost on the redirected GET");
+}
+
+static void scenario_fragmented_get_cookie_value(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: session=012345";
+	static const char second[] =
+		"6789ab\r\n"
+		"\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "fragmented GET cookie value: waits for the rest of the header");
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n"),
+	      "fragmented GET cookie value: split session value authenticates");
+}
+
+static void scenario_split_get_header_terminator(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"\r";
+	static const char second[] = "\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "fragmented GET terminator: CRLFCR does not trigger parsing");
+	client_send(TCP_ACK | TCP_PSH, second, 1);
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n"),
+	      "fragmented GET terminator: CRLFCRLF may span receive events");
+}
+
+static void scenario_fragmented_get_without_cookie(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n";
+	static const char second[] = "\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 302 Found\r\n"),
+	      "fragmented GET without cookie: protected file still redirects");
+	CHECK(stream_contains("Location: login.html\r\n"),
+	      "fragmented GET without cookie: authentication is not carried over");
+}
+
+static void scenario_get_header_timeout(void)
+{
+	static const char partial[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: session=012345";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	ticks = 0;
+
+	client_send(TCP_ACK | TCP_PSH, partial, (int)strlen(partial));
+	CHECK(stream_len == 0,
+	      "fragmented GET timeout: incomplete header has no immediate response");
+
+	ticks = 2000;
+	run_periodic(1);
+	CHECK(!uip_conn_active(0),
+	      "fragmented GET timeout: incomplete request is eventually aborted");
+}
+
+static void scenario_oversized_get_header(void)
+{
+	static const char start[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"X-Fill: ";
+	char fill[1200];
+
+	session_start(MSS_FULL);
+	memset(fill, 'a', sizeof(fill));
+
+	client_send(TCP_ACK | TCP_PSH, start, (int)strlen(start));
+	for (int i = 0; i < 16 && !stream_contains("400 Bad Request"); i++)
+		client_send(TCP_ACK | TCP_PSH, fill, (int)sizeof(fill));
+
+	CHECK(stream_contains("HTTP/1.1 400 Bad Request\r\n"),
+	      "oversized GET header: fixed header buffer is bounds checked");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -680,6 +807,12 @@ int main(int argc, char **argv)
 	scenario_post_header_timeout();
 	scenario_oversized_post_header();
 	scenario_fragmented_missing_content_length();
+	scenario_fragmented_get_cookie();
+	scenario_fragmented_get_cookie_value();
+	scenario_split_get_header_terminator();
+	scenario_fragmented_get_without_cookie();
+	scenario_get_header_timeout();
+	scenario_oversized_get_header();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
