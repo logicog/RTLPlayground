@@ -93,6 +93,14 @@ void qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked
 	REG_SET(RTL837X_SCHED_PORT_Q_CTRL + port * 1024 + (queue << 2), weight);
 }
 
+void qos_sched_set(uint8_t port, uint8_t wrr) __banked
+{
+	if (wrr)
+		reg_bit_set(RTL837X_SCHED_PORT_ALGO_CTRL, port);
+	else
+		reg_bit_clear(RTL837X_SCHED_PORT_ALGO_CTRL, port);
+}
+
 
 static void print_queue_limit(uint8_t port, uint8_t queue, uint8_t is_min)
 {
@@ -168,6 +176,8 @@ void qos_show(void) __banked
 	for (port = machine.min_port; port <= machine.max_port; port++) {
 		print_string("port ");
 		print_phys_port(port);
+		reg_read_m(RTL837X_SCHED_PORT_ALGO_CTRL);
+		print_string((sfr_data[3 - (port >> 3)] >> (port & 7)) & 1 ? " wrr" : " wfq");
 		for (i = 0; i < QOS_QUEUES; i++) {
 			reg_read_m(RTL837X_SCHED_PORT_Q_CTRL + port * 1024 + (i << 2));
 			write_char(' ');

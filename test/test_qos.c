@@ -135,14 +135,14 @@ static void test_show_factory(void)
 		     "802.1p priority: off\npcp: 0 1 2 3 4 5 6 7"
 		     SHOW_DSCP_EMPTY
 		     "\nqueue weights\n"
-		     "port 5 1 1 1 1 1 1 1 1\n"
-		     "port 1 1 1 1 1 1 1 1 1\n"
-		     "port 2 1 1 1 1 1 1 1 1\n"
-		     "port 3 1 1 1 1 1 1 1 1\n"
-		     "port 4 1 1 1 1 1 1 1 1\n"
-		     "port 6 1 1 1 1 1 1 1 1\n"
-		     "port 7 1 1 1 1 1 1 1 1\n"
-		     "port 8 1 1 1 1 1 1 1 1\n"
+		     "port 5 wfq 1 1 1 1 1 1 1 1\n"
+		     "port 1 wfq 1 1 1 1 1 1 1 1\n"
+		     "port 2 wfq 1 1 1 1 1 1 1 1\n"
+		     "port 3 wfq 1 1 1 1 1 1 1 1\n"
+		     "port 4 wfq 1 1 1 1 1 1 1 1\n"
+		     "port 6 wfq 1 1 1 1 1 1 1 1\n"
+		     "port 7 wfq 1 1 1 1 1 1 1 1\n"
+		     "port 8 wfq 1 1 1 1 1 1 1 1\n"
 		     "queue limits\n")) {
 		printf("FAIL show, got:\n%s", out_buf);
 		fails++;
@@ -167,14 +167,14 @@ static void test_show_strict(void)
 		     "802.1p priority: on\npcp: 0 1 2 3 4 5 6 7"
 		     SHOW_DSCP_EMPTY
 		     "\nqueue weights\n"
-		     "port 5 4 4 4 4 4 4 4 sp\n"
-		     "port 1 0 0 0 0 0 0 0 0\n"
-		     "port 2 0 0 0 0 0 0 0 0\n"
-		     "port 3 0 0 0 0 0 0 0 0\n"
-		     "port 4 0 0 0 0 0 0 0 0\n"
-		     "port 6 0 0 0 0 0 0 0 0\n"
-		     "port 7 0 0 0 0 0 0 0 0\n"
-		     "port 8 0 0 0 0 0 0 0 0\n"
+		     "port 5 wfq 4 4 4 4 4 4 4 sp\n"
+		     "port 1 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 2 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 3 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 4 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 6 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 7 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 8 wfq 0 0 0 0 0 0 0 0\n"
 		     "queue limits\n")) {
 		printf("FAIL show strict, got:\n%s", out_buf);
 		fails++;
@@ -303,14 +303,14 @@ static void test_show_dscp_defaults(void)
 		     "\n50: 6 6 6 6 6 6 7 7 7 7"
 		     "\n60: 7 7 7 7"
 		     "\nqueue weights\n"
-		     "port 5 0 0 0 0 0 0 0 0\n"
-		     "port 1 0 0 0 0 0 0 0 0\n"
-		     "port 2 0 0 0 0 0 0 0 0\n"
-		     "port 3 0 0 0 0 0 0 0 0\n"
-		     "port 4 0 0 0 0 0 0 0 0\n"
-		     "port 6 0 0 0 0 0 0 0 0\n"
-		     "port 7 0 0 0 0 0 0 0 0\n"
-		     "port 8 0 0 0 0 0 0 0 0\n"
+		     "port 5 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 1 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 2 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 3 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 4 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 6 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 7 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 8 wfq 0 0 0 0 0 0 0 0\n"
 		     "queue limits\n")) {
 		printf("FAIL show dscp defaults, got:\n%s", out_buf);
 		fails++;
@@ -347,6 +347,46 @@ static void test_queue_rate(void)
 	check_u32("widest rate", hw_reg_get(Q_MAX(0, 0)), 0x001fffff);
 }
 
+/* One bit per port picks the scheduler, measured on an RTL8373: 0 shares the
+ * port by bytes, 1 by packets. */
+static void test_sched(void)
+{
+	hw_reset();
+	qos_sched_set(2, 1);
+	check_u32("port 2 wrr", hw_reg_get(RTL837X_SCHED_PORT_ALGO_CTRL), 0x004);
+	qos_sched_set(9, 1);
+	check_u32("port 9 wrr, port 2 kept", hw_reg_get(RTL837X_SCHED_PORT_ALGO_CTRL), 0x204);
+	qos_sched_set(2, 0);
+	check_u32("port 2 back to wfq", hw_reg_get(RTL837X_SCHED_PORT_ALGO_CTRL), 0x200);
+}
+
+/* A port on wrr says so in the line of its weights. */
+static void test_show_sched(void)
+{
+	hw_reset();
+	hw_reg_set(RTL837X_DOT1Q_PRI_REMAP, 0x76543210);
+	hw_reg_set(RTL837X_SCHED_PORT_ALGO_CTRL, 0x081);
+
+	out_reset();
+	qos_show();
+	if (t_strcmp(out_buf,
+		     "802.1p priority: off\npcp: 0 1 2 3 4 5 6 7"
+		     SHOW_DSCP_EMPTY
+		     "\nqueue weights\n"
+		     "port 5 wrr 0 0 0 0 0 0 0 0\n"
+		     "port 1 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 2 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 3 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 4 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 6 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 7 wfq 0 0 0 0 0 0 0 0\n"
+		     "port 8 wrr 0 0 0 0 0 0 0 0\n"
+		     "queue limits\n")) {
+		printf("FAIL show sched, got:\n%s", out_buf);
+		fails++;
+	}
+}
+
 int main(void)
 {
 	test_dot1q_weight();
@@ -357,9 +397,11 @@ int main(void)
 	test_dscp_defaults();
 	test_queue_ctrl();
 	test_queue_rate();
+	test_sched();
 	test_show_factory();
 	test_show_strict();
 	test_show_dscp_defaults();
+	test_show_sched();
 	printf(fails ? "test_qos: FAILED\n" : "test_qos: ok\n");
 	return fails ? 1 : 0;
 }
