@@ -23,19 +23,20 @@ void cmd_error(const char *s){(void)s;err_status=ERR_SYNTAX;}
 '''.replace('ERR_SYNTAX','3')+function('uint8_t cmd_compare(')+function('void cmd_tokenize(')
 code+='void cmd_parser(void){if(cmd_compare(0,"snmp")){'+branch+'}}\n'+function('void execute_config(')
 code+='''
-static void boot(const char *s){memset(replay_image,0,sizeof replay_image);memcpy(replay_image,s,strlen(s));execute_config();assert(save_cmd==1);}
+static void boot(const char *s){uip_init();snmp_init();memset(replay_image,0,sizeof replay_image);memcpy(replay_image,s,strlen(s));execute_config();assert(save_cmd==1);}
 int main(void){
 assert(cli_original_main()==0);
 uip_init();snmp_init();assert(test_snmp_configure(comm,sizeof(comm)-1,network,acl));
 boot("snmp manager 192.0.3.9/32\\r\\nsnmp community timed-community\\r\\nsnmp changed 1735689600\\r\\nsnmp off\\r\\n");
 assert(!snmp_agent_enabled);
 assert(!memcmp(snmp_community,"timed-community",15)&&snmp_network[2]==3&&snmp_network[3]==9);
-boot("snmp community timed-community\\nsnmp changed unknown\\nsnmp on\\n");assert(snmp_agent_enabled);
+boot("snmp manager 192.0.3.9/32\\nsnmp community timed-community\\nsnmp changed unknown\\nsnmp on\\n");assert(snmp_agent_enabled);
 /* Cross a Flash burst boundary and exercise CRLF/no final newline. */
 char cross[600];memset(cross,'\\n',255);strcpy(cross+255,"snmp manager 192.0.2.250/32\\nsnmp community restored-value\\nsnmp changed 1735689600\\nsnmp off");
 boot(cross);assert(!snmp_agent_enabled&&snmp_network[2]==2&&snmp_network[3]==250);
 assert(!memcmp(snmp_community,"restored-value",14));
-uip_init();snmp_init();assert(test_snmp_configure(comm,sizeof(comm)-1,network,acl));boot("hostname legacy\\n");assert(snmp_agent_enabled&&!memcmp(snmp_community,comm,sizeof(comm)-1));
+boot("hostname legacy\\n");assert(!snmp_agent_enabled&&!snmp_community_length&&!snmp_listener);
+boot("snmp community restored-value\\nsnmp on\\n");assert(!snmp_agent_enabled); /* Missing ACL fails closed. */
 strcpy((char*)cmd_buffer,"snmp on extra");cmd_tokenize();cmd_parser();assert(err_status);
 puts("PASS real Flash replay: live engine, CRLF, burst boundary, legacy defaults, legacy metadata ignored, configuration restored");return 0;}
 '''
