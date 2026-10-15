@@ -28,6 +28,13 @@ const uint8_t physToLogPort[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8};
 const uint8_t physToLogPort[] = { 4, 5, 6, 7, 3, 8};
 #endif
 
+struct mem_vlan {
+	char name[20];
+	bool untagged[PORTS];
+	bool tagged[PORTS];
+};
+struct mem_vlan mem_vlans[VLAN_MAX_ID];
+
 struct l2_entry {
 	char mac[18];
 	char vlan[4];
@@ -691,28 +698,46 @@ void parse_cmd(char* cmd)
 {
 	char *token = strtok(cmd, " ");
 	char *name;
-	if (strncmp(token, "vlan", 4)) {
+	printf("\t OK FIRST TOKEN: '%s'\n",token);
+	if (!strncmp(token, "vlan", 4)) {
+		printf("\t OK IT IS VLAN\n");
 		token = strtok(NULL, " ");
 		int vid = atoi(token);
-		if (vid<1 || vid > VLAN_MAX_ID)
+		if (vid<1 || vid > VLAN_MAX_ID) {
+			printf("\t REJECT BECAUSE OF VID:%d\n",vid);
 			return;
+		}
 
 		token = strtok(NULL, " ");
-		if(strncmp(token,"mgmt",4)) {
+		if(!strncmp(token,"mgmt",4)) {
+			printf("\t MGMT LEAVE:\n");
 			return;	//TODO
-		} else if (strncmp(token,"d",1)) {
+		} else if (!strncmp(token,"d",1)) {
+			printf("\t DELETE VID %d:\n",vid);
 			//delete_vlan(vid);
 		} else {
 			if (token[0] >= 'A' && token[0] <= 'z' ){
 				name = token;
 				token = strtok(NULL, " ");
+
+				printf("\tIS NAME %s:\n", name);
 			}
+
+			struct mem_vlan newvlan = {};
+			strcpy(newvlan.name, name);
+
 			// a string of [0-9][t]?
+			printf("\t TOKEN: %s:\n", token);
 			while(token != NULL) {
 				int portNum = atoi(token);
 				bool isTagged = token[strlen(token)] == 't';
-				printf("VLAN: %d Name: %s Port: %d tagged:%d", vid, name, portNum, isTagged);
+				printf("\tVLAN: %d Name: %s Port: %d tagged:%d\n", vid, name, portNum, isTagged);
 				token = strtok(NULL, " ");
+				if(isTagged) {
+					newvlan.tagged[portNum] = true;
+				} else {
+					newvlan.untagged[portNum] = true;
+				}
 			}
 		}
 	} else {
@@ -912,6 +937,7 @@ void launch(struct Server *server)
 					printf("POST cmd\n");
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
+					printf("\t GOING TO PARSE THIS: %s\n", p+4);
 					parse_cmd(p+4);
 					cmd_ptr++;
 					print_cmd_history();
