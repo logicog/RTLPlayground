@@ -44,6 +44,7 @@ The following devices have been tested and are fully working:
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V1.0](devices/PCB-K0402WS-V1.0.md)                           | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           | 2M    | 4 + 2 |
+| YuanLey | YS25-0402M       | Yes     | [SIRIVISION_S25G2206FP_V1_1](devices/SIRIVISION_S25G2206FP_V1_1.md)       | 2M    | 4 + 2 |
 | Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
