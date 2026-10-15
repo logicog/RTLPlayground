@@ -1,3 +1,4 @@
+.DEFAULT_GOAL := all
 # Host unit-test harness for RTLPlayground firmware logic.
 #
 # Compiles selected firmware translation units with host gcc + AddressSanitizer,
@@ -35,6 +36,11 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
 # stands in for the two headers a firmware build generates.
 TABLE_ENV = support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c \
             $(SRCROOT)/rtl837x_port.c $(SRCROOT)/httpd/page_impl.c
+
+TESTS += $(BUILDDIR)/test_rx_bounds
+
+$(BUILDDIR)/test_rx_bounds: test_rx_bounds.c $(SRCROOT)/uip/uip_rx.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 all: run
 

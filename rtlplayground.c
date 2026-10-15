@@ -1,3 +1,4 @@
+#include "uip/uip_rx.h"
 #include <8051.h>
 #include <stdint.h>
 
@@ -750,6 +751,8 @@ bool nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
 	SFR_NIC_RING_U16LE = ring_ptr;
 
 	uint16_t len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
+	if (!uip_rx_dma_fits(len))
+		return false;
 	len += 7;
 	len >>= 3;
 #ifdef RXTXDBG
@@ -1084,8 +1087,7 @@ void handle_rx(void)
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0800)) { // IPv4
 			if (!management_vlan || management_vlan == rx_packet_vlan) {
-				uip_arp_ipin();
-				uip_input();
+				uip_rx_ip_input();
 				if (uip_len) {
 					// Add ethernet frame
 					uip_arp_out();
