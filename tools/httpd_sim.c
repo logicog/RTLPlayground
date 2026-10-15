@@ -152,10 +152,11 @@ void send_vlan(int s, int vlan)
 		json_object_object_add(v, "name", json_object_new_string("native"));
 		json_object_object_add(v, "pvid", json_object_new_string("0x01ff"));
 	} else {
-		sprintf(num_buff, "vlan %d", vlan);
-		json_object_object_add(v, "name", json_object_new_string(num_buff));
-		json_object_object_add(v, "members", json_object_new_string("0x0000"));
-		json_object_object_add(v, "pvid", json_object_new_string("0x0000"));
+		if(mem_vlans[vlan].active) {
+			json_object_object_add(v, "name", json_object_new_string(mem_vlans[vlan].name));
+			json_object_object_add(v, "members", json_object_new_string("0x0000"));
+			json_object_object_add(v, "pvid", json_object_new_string("0x0000"));
+		}
 	}
 	
 	write(s, header, strlen(header));

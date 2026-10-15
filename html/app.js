@@ -1542,6 +1542,7 @@ function vlanLoad(vid){
   getJSON("/vlan.json?vid="+vid).then(function(d){
     $("vtitle").innerText="VLAN "+vid + (d.name ? " ("+(d.name)+")" : "" );
     $("vtitle").dataset.id=vid;
+    $("vtitle").dataset.name=d.name;
     var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
     var pv=parseInt(d.pvid,16)&0x3ff;
     for(var p=1;p<=S.n;p++){
@@ -1556,17 +1557,15 @@ function vlanApply(){
   var vid=$("vtitle").dataset.id;
   var vname=$("vtitle").dataset.name;
   if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  var cmd="vlan "+vid+(vname?" "+vname:""),members=0;
+  var cmd="vlan "+vid+(vname?" "+vname:""),members=0,cmdp="";
   for(var p=1;p<=S.n;p++){
     var v=segVal(p);
-    if(v===1){cmd+=" "+p;members++;}
-    else if(v===2){cmd+=" "+p+"t";members++;}
+    if(v===1){cmd+=" "+p;cmdp+="pvid "+p+" "+vid;members++;}
+    else if(v===2){cmd+=" "+p+"t";members++;}//TODO: if the PVID is equal to this vid, we need to set it something else (probably 1)
   }
   if(!members){toast(t("v_nomember"),"err");return;}
-  var cmds=[cmd];
-  //TODO set the PID
-  //for(var q=1;q<=S.n;q++)if($("vp"+q).checked)cmds.push("pvid "+q+" "+vid);
-  postCmds(cmds).then(vlanRefresh).catch(function(){});
+  var cmds=[cmd, cmdp];
+  postCmds(cmds).then(vlanRefresh).catch(function(){}).then(function(){vlanLoad(vid)});
 }
 function ingressApply(){
   var cmd="ingress",any=false;
