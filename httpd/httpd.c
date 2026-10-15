@@ -55,8 +55,8 @@ __xdata uint8_t boundary[72];
 #define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
-// bytes buffered in config_buf so far (config body, or a firmware part
-// header); accumulates across TCP segments
+// bytes buffered in config_buf so far (HTTP header, POST body, or a firmware
+// part header); accumulates across TCP segments
 __xdata uint16_t pre_acc;
 __xdata uint8_t * __xdata content_type = 0;
 __xdata uint8_t * __xdata session = 0;
@@ -90,7 +90,7 @@ __xdata uint32_t last_session_use;
 #define TSTATE_POST 		4
 #define TSTATE_MULTIPART	5
 #define TSTATE_POSTBODY		6
-#define TSTATE_POSTHEADER	7
+#define TSTATE_HEADER		7
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
@@ -749,13 +749,13 @@ static void post_body_continue(void)
 
 
 /*
- * Buffer a POST request header across TCP receive events. Stop copying at
+ * Buffer an HTTP request header across TCP receive events. Stop copying at
  * CRLFCRLF so any body bytes in the final segment stay in uip_appdata.
  *
  * Return the body offset in the current receive buffer, 0 while incomplete,
  * or 0xffff after sending an error response.
  */
-static uint16_t post_header_take(void)
+static uint16_t request_header_take(void)
 {
 	uint16_t i;
 
@@ -778,16 +778,15 @@ static uint16_t post_header_take(void)
 	}
 
 	postbody_start = ticks;
-	uip_conn->appstate.tstate = TSTATE_POSTHEADER;
+	uip_conn->appstate.tstate = TSTATE_HEADER;
 	return 0;
 }
 
-void handle_post(void)
+void handle_post(uint16_t body_off)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint8_t *p = uip_appdata;
 	__xdata uint8_t *request_path = p + 6;
-	uint16_t body_off;
 
 	if (s->tstate == TSTATE_POSTBODY) {
 		post_body_continue();
@@ -796,11 +795,6 @@ void handle_post(void)
 
 	// Was the multipart header sent in multiple packets?
 	if (s->tstate != TSTATE_MULTIPART) {
-		if (s->tstate != TSTATE_POSTHEADER)
-			pre_acc = 0;
-		body_off = post_header_take();
-		if (!body_off || body_off == 0xffff)
-			return;
 		p = config_buf;
 		request_path = p + 6;
 
@@ -848,7 +842,10 @@ void handle_post(void)
 			dbg_string("Configuration upload\n");
 			verify_crc = 0;
 			config_upload = 1;
-			pre_acc = 0;
+			// config_take() matches CRLF-prefixed delimiters, including the first.
+			config_buf[0] = '\r';
+			config_buf[1] = '\n';
+			pre_acc = 2;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -936,9 +933,9 @@ void httpd_appcall(void)
 			dbg_string("Closing because everything has been transmitted\n");
 			uip_close();
 			s->tstate = TSTATE_CLOSED;
-		} else if ((s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_POSTHEADER)
+		} else if ((s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_HEADER)
 			   && (uint16_t)ticks - postbody_start > POSTBODY_TIMEOUT) {
-			dbg_string("POST request never completed\n");
+			dbg_string("HTTP request never completed\n");
 			uip_abort();
 			s->tstate = TSTATE_CLOSED;
 		}
@@ -1001,6 +998,7 @@ void httpd_appcall(void)
 		cont_len = 0;
 		dbg_char('<'); dbg_short(uip_len); dbg_char('\n');
 		__xdata uint8_t *p = uip_appdata;
+		uint16_t body_off = 0;
 		// Mark end of request header with \0
 		p[uip_len] = 0;
 #ifdef DEBUG
@@ -1009,24 +1007,35 @@ void httpd_appcall(void)
 		dbg_char('\n');
 #endif
 		p = uip_appdata;
-		if (is_word(p, "POST") || s->tstate == TSTATE_MULTIPART
-		    || s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_POSTHEADER) {
-			handle_post();
+		if (s->tstate != TSTATE_MULTIPART && s->tstate != TSTATE_POSTBODY) {
+			if (s->tstate != TSTATE_HEADER)
+				pre_acc = 0;
+			body_off = request_header_take();
+			if (!body_off) {
+				uip_len = 0;
+				return;
+			}
+			if (body_off == 0xffff)
+				goto do_send;
+		}
+
+		if (s->tstate == TSTATE_MULTIPART || s->tstate == TSTATE_POSTBODY
+		    || is_word(config_buf, "POST")) {
+			handle_post(body_off);
 			// If this is an ongoing post stream, then wait for the next packet
 			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART
-			    || s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_POSTHEADER) {
+			    || s->tstate == TSTATE_POSTBODY) {
 				uip_len = 0;
 				return;
 			}
 			goto do_send;
 		}
 
-		// We only expect a GET request here.
+		p = config_buf;
 		if (!is_word(p, "GET")) {
 			send_bad_request();
 			goto do_send;
 		}
-
 		dbg_string("GET request ");
 		p += 4;
 		scan_header(p);

@@ -46,6 +46,9 @@
 #define FILE_START	FDATA_START_login_html
 #define FILE_NAME	"/login.html"
 #define FILE_LEN	6000
+#define PROTECTED_FILE_NAME	"/index.html"
+#define PROTECTED_FILE_START	(FILE_START + FILE_LEN + 64)
+#define PROTECTED_FILE_LEN	64
 #define STREAM_MAX	16384
 
 static int failures;
@@ -75,11 +78,17 @@ uint8_t flash_buf[FLASH_BUF_SIZE];
 uint8_t rx_headers[16];
 struct flash_region_t flash_region;
 
+static uint8_t written_config[CONFIG_LEN];
+static uint16_t written_config_len;
+static uint32_t config_erase_addr, config_write_addr;
+static int config_erases, config_writes;
+
 const char * const mime_strings[] = { "text/html", "image/svg+xml", "image/x-icon",
 			 "image/png", "text/javascript", "text/css", "text/plain" };
 
 const struct f_data f_data[] = {
 	{ FILE_NAME, FILE_START, FILE_LEN, mime_HTML, 0 },
+	{ PROTECTED_FILE_NAME, PROTECTED_FILE_START, PROTECTED_FILE_LEN, mime_HTML, 0 },
 	{ 0, 0, 0, mime_HTML, 0 },
 };
 
@@ -90,8 +99,20 @@ void flash_read_bulk(uint8_t *dst)
 }
 
 void flash_init(uint8_t enable_dio) { (void)enable_dio; }
-void flash_sector_erase(void) { }
-void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
+void flash_sector_erase(void)
+{
+	config_erases++;
+	config_erase_addr = flash_region.addr;
+}
+
+void flash_write_bytes(uint8_t *ptr)
+{
+	config_writes++;
+	config_write_addr = flash_region.addr;
+	written_config_len = flash_region.len;
+	if (written_config_len <= sizeof(written_config))
+		memcpy(written_config, ptr, written_config_len);
+}
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
 void reset_chip(void) { }
@@ -156,6 +177,7 @@ void send_vlanlist(void) { }
 void send_lldp(void) {}
 
 extern uint8_t authenticated;
+extern char session_id[];
 extern char passwd[21];
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
@@ -661,6 +683,220 @@ static void scenario_fragmented_missing_content_length(void)
 	      "fragmented header: missing Content-Length still returns 411");
 }
 
+
+static void scenario_fragmented_get_cookie(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cook";
+	static const char second[] =
+		"ie: session=0123456789ab\r\n"
+		"\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "fragmented GET cookie: no redirect before the header completes");
+
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n"),
+	      "fragmented GET cookie: protected index is served");
+	CHECK(!stream_contains("Location: login.html\r\n"),
+	      "fragmented GET cookie: session is not lost on the redirected GET");
+}
+
+static void scenario_fragmented_get_cookie_value(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: session=012345";
+	static const char second[] =
+		"6789ab\r\n"
+		"\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "fragmented GET cookie value: waits for the rest of the header");
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n"),
+	      "fragmented GET cookie value: split session value authenticates");
+}
+
+static void scenario_split_get_header_terminator(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"\r";
+	static const char second[] = "\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	CHECK(stream_len == 0,
+	      "fragmented GET terminator: CRLFCR does not trigger parsing");
+	client_send(TCP_ACK | TCP_PSH, second, 1);
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n"),
+	      "fragmented GET terminator: CRLFCRLF may span receive events");
+}
+
+static void scenario_fragmented_get_without_cookie(void)
+{
+	static const char first[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n";
+	static const char second[] = "\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
+	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
+	CHECK(stream_contains("HTTP/1.1 302 Found\r\n"),
+	      "fragmented GET without cookie: protected file still redirects");
+	CHECK(stream_contains("Location: login.html\r\n"),
+	      "fragmented GET without cookie: authentication is not carried over");
+}
+
+static void scenario_get_header_timeout(void)
+{
+	static const char partial[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: session=012345";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	ticks = 0;
+
+	client_send(TCP_ACK | TCP_PSH, partial, (int)strlen(partial));
+	CHECK(stream_len == 0,
+	      "fragmented GET timeout: incomplete header has no immediate response");
+
+	ticks = 2000;
+	run_periodic(1);
+	CHECK(!uip_conn_active(0),
+	      "fragmented GET timeout: incomplete request is eventually aborted");
+}
+
+static void scenario_oversized_get_header(void)
+{
+	static const char start[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"X-Fill: ";
+	char fill[1200];
+
+	session_start(MSS_FULL);
+	memset(fill, 'a', sizeof(fill));
+
+	client_send(TCP_ACK | TCP_PSH, start, (int)strlen(start));
+	for (int i = 0; i < 16 && !stream_contains("400 Bad Request"); i++)
+		client_send(TCP_ACK | TCP_PSH, fill, (int)sizeof(fill));
+
+	CHECK(stream_contains("HTTP/1.1 400 Bad Request\r\n"),
+	      "oversized GET header: fixed header buffer is bounds checked");
+}
+
+static void scenario_split_method_names(void)
+{
+	static const char get[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Cookie: session=0123456789ab\r\n\r\n";
+	static const char post[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n\r\n"
+		"pwd=1234";
+	int get_waits = 1, get_ok = 1, post_waits = 1, post_ok = 1;
+
+	for (int split = 1; split < 3; split++) {
+		session_start(MSS_FULL);
+		strcpy(session_id, "0123456789ab");
+		client_send(TCP_ACK | TCP_PSH, get, split);
+		if (stream_len)
+			get_waits = 0;
+		client_send(TCP_ACK | TCP_PSH, get + split, (int)strlen(get) - split);
+		if (!stream_contains("HTTP/1.1 200 OK\r\n"))
+			get_ok = 0;
+	}
+	CHECK(get_waits, "split GET method: incomplete verb waits for the header");
+	CHECK(get_ok, "split GET method: every split inside GET serves the file");
+
+	for (int split = 1; split < 4; split++) {
+		login_session_start();
+		client_send(TCP_ACK | TCP_PSH, post, split);
+		if (stream_len)
+			post_waits = 0;
+		client_send(TCP_ACK | TCP_PSH, post + split, (int)strlen(post) - split);
+		if (!stream_contains("Location: index.html\r\n"))
+			post_ok = 0;
+	}
+	CHECK(post_waits, "split POST method: incomplete verb waits for the header");
+	CHECK(post_ok, "split POST method: every split inside POST completes login");
+}
+
+static void scenario_config_upload(void)
+{
+	static const char expected[] = "hostname upload-test\nip 10.0.0.1\n";
+	static const char body[] =
+		"--upload-boundary\r\n"
+		"Content-Disposition: form-data; name=\"file\"; filename=\"config.txt\"\r\n"
+		"Content-Type: text/plain\r\n\r\n"
+		"hostname upload-test\nip 10.0.0.1\n"
+		"\r\n--upload-boundary--\r\n";
+	char request[768];
+	int request_len, first_bad_response = -1, first_bad_flash = -1;
+
+	request_len = snprintf(request, sizeof(request),
+		"POST /config HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"Content-Type: multipart/form-data; boundary=upload-boundary\r\n"
+		"Content-Length: %zu\r\n\r\n%s", sizeof(body) - 1, body);
+	if (request_len < 0 || request_len >= (int)sizeof(request)) {
+		CHECK(0, "multipart/config: test request fits the client buffer");
+		return;
+	}
+
+	/* The same well-formed request must work in one event and with a split
+	 * anywhere in its HTTP header, first multipart delimiter, part headers,
+	 * configuration, or closing delimiter. No extra CRLF is added to the body. */
+	for (int split = 0; split <= request_len; split++) {
+		session_start(MSS_FULL);
+		strcpy(session_id, "0123456789ab");
+		config_erases = config_writes = 0;
+		written_config_len = 0;
+		memset(written_config, 0xa5, sizeof(written_config));
+		if (split)
+			client_send(TCP_ACK | TCP_PSH, request, split);
+		if (split < request_len)
+			client_send(TCP_ACK | TCP_PSH, request + split, request_len - split);
+		if (!stream_contains("HTTP/1.1 200 OK\r\n") && first_bad_response < 0)
+			first_bad_response = split;
+		if ((config_erases != 1 || config_writes != 1
+		     || config_erase_addr != CONFIG_START || config_write_addr != CONFIG_START
+		     || written_config_len != sizeof(expected)
+		     || memcmp(written_config, expected, sizeof(expected))) && first_bad_flash < 0)
+			first_bad_flash = split;
+	}
+	if (first_bad_response >= 0)
+		printf("      multipart/config: first rejected request split at byte %d\n", first_bad_response);
+	if (first_bad_flash >= 0)
+		printf("      multipart/config: first incorrect flash write at split %d\n", first_bad_flash);
+	CHECK(first_bad_response < 0,
+	      "multipart/config: complete request and every two-event split return 200");
+	CHECK(first_bad_flash < 0,
+	      "multipart/config: every split writes the exact configuration and NUL to its sector");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -680,6 +916,14 @@ int main(int argc, char **argv)
 	scenario_post_header_timeout();
 	scenario_oversized_post_header();
 	scenario_fragmented_missing_content_length();
+	scenario_fragmented_get_cookie();
+	scenario_fragmented_get_cookie_value();
+	scenario_split_get_header_terminator();
+	scenario_fragmented_get_without_cookie();
+	scenario_get_header_timeout();
+	scenario_oversized_get_header();
+	scenario_split_method_names();
+	scenario_config_upload();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
