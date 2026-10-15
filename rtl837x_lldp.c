@@ -9,6 +9,7 @@
 #include "uip.h"
 #include "uip/uip.h"
 #include "machine.h"
+#include "version.h"
 
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
@@ -152,10 +153,14 @@ uint8_t lldp_sysname(__xdata uint8_t *p) __banked
 
 uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked
 {
-    uint16_t machine_name_length = strlen(machine.machine_name);
+    uint8_t machine_name_length = strlen(machine.machine_name);
+    uint8_t version_length = strlen(VERSION_SW);
 
     *p++ = LLDP_TYPE(LLDP_SYSDESC_TLV_TYPE);
-    *p++ = machine_name_length;
+    *p++ = machine_name_length + 1 + version_length;
     memcpyc(p, machine.machine_name, machine_name_length);
-    return machine_name_length + 2; 
+    p += machine_name_length;
+    *p++ = ' ';
+    memcpyc(p, VERSION_SW, version_length);
+    return machine_name_length + 1 + version_length + 2;
 }
