@@ -38,4 +38,5 @@ __code const struct machine machine = {
 			0,
 		},
 	},
+	.mac_flash_offset = 0x1FC000,
 };
