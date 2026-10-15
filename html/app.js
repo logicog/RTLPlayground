@@ -859,6 +859,7 @@ var CONF_CMDS=[
   /^qos\s+pcp\s+[0-7]\s+[0-7]$/,
   /^qos\s+dscp\s+\d{1,2}\s+[0-7]$/,
   /^qos\s+queue\s+\d{1,2}\s+[0-7]\s+(sp|[1-9]\d{0,2})$/,
+  /^qos\s+(max|min)\s+\d{1,2}\s+[0-7]\s+\S+$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -2504,6 +2505,11 @@ function mergeConf(base,texts){
         else if(m[3]==="drop"||m[3]==="fc")drop(new RegExp(pre+"(drop|fc)$"));
         else drop(new RegExp(pre+"(off|[0-9a-f]+)$"));
         conf.push(line);return;
+      }
+      if((m=line.match(/^qos (max|min) (\d{1,2}) ([0-7]) (\S+)$/))){
+        drop(new RegExp("^qos "+m[1]+" "+m[2]+" "+m[3]+" "));
+        if(m[4]!=="off")conf.push(line);
+        return;
       }
       for(var i=0;i<CONF_TOGGLE.length;i++){
         if((m=line.match(CONF_TOGGLE[i]))){drop(new RegExp("^"+m[1]+" (on|off)$"));break;}
