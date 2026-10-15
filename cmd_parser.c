@@ -1660,7 +1660,8 @@ err:
 
 void parse_qos(void)
 {
-	uint8_t port, idx, weight;
+	uint8_t port, idx, weight, n;
+	__xdata uint32_t rate;
 
 	if (cmd_words_len == 1)
 		return qos_show();
@@ -1700,6 +1701,34 @@ void parse_qos(void)
 		return qos_dscp_set(idx, atoi_results_u8);
 	}
 
+	if (cmd_compare(1, "max") || cmd_compare(1, "min")) {
+		__bit is_min = cmd_compare(1, "min") != 0;
+
+		if (cmd_words_len != 5 || !cmd_parse_port_separator(cmd_words_b[2]))
+			goto err;
+		port = atoi_results_u8;
+		if (!atoi_byte(cmd_words_b[3]) || atoi_results_u8 >= QOS_QUEUES)
+			goto err;
+		idx = atoi_results_u8;
+
+		rate = 0;
+		if (!cmd_compare(4, "off")) {
+			n = atoi_hex(cmd_words_b[4]);
+			if (n == 0 || n > 4)
+				goto err;
+			weight = 0;
+			do {
+				n--;
+				*(((uint8_t *) &rate) + n) = hexvalue[weight++];
+			} while (n);
+			if (!rate)
+				goto err;
+		}
+		if (is_min)
+			return qos_queue_min_set(port, idx, rate);
+		return qos_queue_max_set(port, idx, rate);
+	}
+
 	if (cmd_compare(1, "queue")) {
 		if (cmd_words_len != 5 || !cmd_parse_port_separator(cmd_words_b[2]))
 			goto err;
@@ -1721,7 +1750,7 @@ void parse_qos(void)
 
 err:
 	print_string("usage: qos [on|off|dscp on|off|pcp <pcp> <priority>|dscp <dscp> <priority>"
-		     "|queue <port> <queue> <weight|sp>]\n");
+		     "|queue <port> <queue> <weight|sp>|max|min <port> <queue> <hexvalue|off>]\n");
 }
 
 void parse_syslog(void)

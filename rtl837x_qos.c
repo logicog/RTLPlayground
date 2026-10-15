@@ -2,6 +2,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
+#include "rtl837x_bandwidth.h"
 #include "rtl837x_qos.h"
 #include "machine.h"
 
@@ -93,6 +94,44 @@ void qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked
 }
 
 
+static void print_queue_limit(uint8_t port, uint8_t queue, uint8_t is_min)
+{
+	print_string("port ");
+	print_phys_port(port);
+	print_string(" q");
+	write_char('0' + queue);
+	print_string(is_min ? " min 0x" : " max 0x");
+	sfr_data[1] &= ~BW_LB_EN;
+	print_byte(sfr_data[1]);
+	print_byte(sfr_data[2]);
+	print_byte(sfr_data[3]);
+	write_char('0');
+	write_char('\n');
+}
+
+
+void qos_queue_max_set(uint8_t port, uint8_t queue, __xdata uint32_t bw) __banked
+{
+	uint16_t reg = RTL837X_EGBW_PORT_Q_MAX + port * 1024 + (queue << 3);
+
+	if (bw)
+		bandwidth_rate_set(reg, bw);
+	else
+		bandwidth_rate_off(reg);
+}
+
+
+void qos_queue_min_set(uint8_t port, uint8_t queue, __xdata uint32_t bw) __banked
+{
+	uint16_t reg = RTL837X_EGBW_PORT_Q_ASSURED + port * 1024 + (queue << 2);
+
+	if (bw)
+		bandwidth_rate_set(reg, bw);
+	else
+		bandwidth_rate_off(reg);
+}
+
+
 void qos_show(void) __banked
 {
 	uint8_t port, i, dscp, word;
@@ -138,5 +177,17 @@ void qos_show(void) __banked
 				itoa(sfr_data[3]);
 		}
 		write_char('\n');
+	}
+
+	print_string("queue limits\n");
+	for (port = machine.min_port; port <= machine.max_port; port++) {
+		for (i = 0; i < QOS_QUEUES; i++) {
+			reg_read_m(RTL837X_EGBW_PORT_Q_MAX + port * 1024 + (i << 3));
+			if (sfr_data[1] & BW_LB_EN)
+				print_queue_limit(port, i, 0);
+			reg_read_m(RTL837X_EGBW_PORT_Q_ASSURED + port * 1024 + (i << 2));
+			if (sfr_data[1] & BW_LB_EN)
+				print_queue_limit(port, i, 1);
+		}
 	}
 }

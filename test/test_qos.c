@@ -42,6 +42,8 @@ void print_long(uint32_t v) { (void)v; }
 void print_reg(uint16_t r) { (void)r; }
 
 #define QUEUE_CTRL(port, queue)	(RTL837X_SCHED_PORT_Q_CTRL + (port) * 1024 + ((queue) << 2))
+#define Q_MAX(port, queue)	(RTL837X_EGBW_PORT_Q_MAX + (port) * 1024 + ((queue) << 3))
+#define Q_MIN(port, queue)	(RTL837X_EGBW_PORT_Q_ASSURED + (port) * 1024 + ((queue) << 2))
 #define DSCP_WORD(dscp)		(RTL837X_DSCP_PRI_REMAP + ((dscp) / QOS_DSCP_PER_WORD) * 4)
 
 /* Ten values per line, four on the last one: the table ends at DSCP 63. */
@@ -140,7 +142,8 @@ static void test_show_factory(void)
 		     "port 4 1 1 1 1 1 1 1 1\n"
 		     "port 6 1 1 1 1 1 1 1 1\n"
 		     "port 7 1 1 1 1 1 1 1 1\n"
-		     "port 8 1 1 1 1 1 1 1 1\n")) {
+		     "port 8 1 1 1 1 1 1 1 1\n"
+		     "queue limits\n")) {
 		printf("FAIL show, got:\n%s", out_buf);
 		fails++;
 	}
@@ -171,7 +174,8 @@ static void test_show_strict(void)
 		     "port 4 0 0 0 0 0 0 0 0\n"
 		     "port 6 0 0 0 0 0 0 0 0\n"
 		     "port 7 0 0 0 0 0 0 0 0\n"
-		     "port 8 0 0 0 0 0 0 0 0\n")) {
+		     "port 8 0 0 0 0 0 0 0 0\n"
+		     "queue limits\n")) {
 		printf("FAIL show strict, got:\n%s", out_buf);
 		fails++;
 	}
@@ -306,10 +310,41 @@ static void test_show_dscp_defaults(void)
 		     "port 4 0 0 0 0 0 0 0 0\n"
 		     "port 6 0 0 0 0 0 0 0 0\n"
 		     "port 7 0 0 0 0 0 0 0 0\n"
-		     "port 8 0 0 0 0 0 0 0 0\n")) {
+		     "port 8 0 0 0 0 0 0 0 0\n"
+		     "queue limits\n")) {
 		printf("FAIL show dscp defaults, got:\n%s", out_buf);
 		fails++;
 	}
+}
+
+/* A rate holds Kbit/s divided by 16 in the lowest 20 bits, BW_LB_EN in bit 20.
+ * The maximum takes two words per queue, the second one its burst; the assured
+ * rate takes one. */
+static void test_queue_rate(void)
+{
+	hw_reset();
+	qos_queue_max_set(3, 5, 2000);
+	check_u32("max of port 3 queue 5", hw_reg_get(Q_MAX(3, 5)), 0x0010007d);
+	check_u32("max leaves queue 4", hw_reg_get(Q_MAX(3, 4)), 0);
+	check_u32("max leaves its own burst word", hw_reg_get(Q_MAX(3, 5) + 4), 0);
+	check_u32("max leaves the assured rate", hw_reg_get(Q_MIN(3, 5)), 0);
+	check_u32("max leaves port 2", hw_reg_get(Q_MAX(2, 5)), 0);
+
+	qos_queue_max_set(3, 5, 0);
+	check_u32("max off", hw_reg_get(Q_MAX(3, 5)), BW_RATE_MAX);
+
+	hw_reset();
+	qos_queue_min_set(3, 5, 2000);
+	check_u32("min of port 3 queue 5", hw_reg_get(Q_MIN(3, 5)), 0x0010007d);
+	check_u32("min leaves queue 4", hw_reg_get(Q_MIN(3, 4)), 0);
+	check_u32("min leaves the maximum", hw_reg_get(Q_MAX(3, 5)), 0);
+	qos_queue_min_set(3, 5, 0);
+	check_u32("min off", hw_reg_get(Q_MIN(3, 5)), BW_RATE_MAX);
+
+	/* The widest rate the field holds, and the port shaper for comparison. */
+	hw_reset();
+	qos_queue_max_set(0, 0, 0xfffff0);
+	check_u32("widest rate", hw_reg_get(Q_MAX(0, 0)), 0x001fffff);
 }
 
 int main(void)
@@ -321,6 +356,7 @@ int main(void)
 	test_dscp_map_exhaustive();
 	test_dscp_defaults();
 	test_queue_ctrl();
+	test_queue_rate();
 	test_show_factory();
 	test_show_strict();
 	test_show_dscp_defaults();
