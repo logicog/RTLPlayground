@@ -70,7 +70,7 @@ $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c | $(BUILDDIR)
 $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-run: $(TESTS)
+run: $(TESTS) config-replay
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
@@ -82,3 +82,7 @@ clean:
 	rm -rf $(BUILDDIR)
 
 .PHONY: all run clean
+
+.PHONY: config-replay
+config-replay:
+	cd $(SRCROOT) && CC="$(CC)" python3 test/test_config_replay.py
