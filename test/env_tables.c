@@ -137,3 +137,4 @@ uint16_t lacp_lag_ports[LACP_NUM_LAGS];
 uint8_t  lacp_agg_sys[LACP_NUM_LAGS][MAC_ADDR_LEN];
 uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
 uint16_t lacp_members_last[LACP_NUM_LAGS];
+void lldp_neighbors_to_html(void) {}
