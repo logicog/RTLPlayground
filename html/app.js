@@ -41,6 +41,7 @@ stp_en_d:"Ports start blocked and take up to twice the forward delay to reach fo
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
 lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_ttl:"TTL",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -1204,10 +1205,24 @@ function applyPort(i){
   }
   postCmds(cmds).then(loadMtu).catch(function(){});
 }
+var lldpTipT=0;
+function portsLldp(){
+  lldpTipT=Date.now();
+  return getJSON("/lldp.json").then(function(s){
+    var tip={};
+    (s.neighbors||[]).forEach(function(n){
+      tip[n.port]=(tip[n.port]?tip[n.port]+"\n":"")+(n.sysName||n.chassis)+" ("+n.portId+")";
+    });
+    S.ports.forEach(function(p){
+      var el=$("plink"+(p.portNum-1));
+      if(el)el.title=tip[p.portNum]?"LLDP: "+tip[p.portNum]:"";
+    });
+  }).catch(function(){});
+}
 tabHooks.ports={
-  enter:function(){statusPoller.start();needPorts(function(){buildPorts();portsMacs()})},
+  enter:function(){statusPoller.start();needPorts(function(){buildPorts();portsMacs();portsLldp()})},
   leave:function(){statusPoller.stop();l2Gen++},
-  status:portsStatus,
+  status:function(){portsStatus();if(Date.now()-lldpTipT>30000)portsLldp()},
 };
 
 var STP_PF={EN:1,ADMEDGE:2,AUTOEDGE:4,BPDUG:8,ROOTG:16,FILTER:32,OPEREDGE:64,TRIP:128};
@@ -1917,6 +1932,15 @@ function lldpLoad(){
       sw.firstChild.checked=p.permitted;
       tr.insertCell().appendChild(sw);
     });
+    var nb=$("lldp_nb_table").tBodies[0];nb.innerHTML="";
+    (s.neighbors||[]).sort(function(a,b){return a.port-b.port}).forEach(function(n){
+      var tr=nb.insertRow();
+      tr.insertCell().textContent=n.port;
+      tr.insertCell().textContent=n.chassis;
+      tr.insertCell().textContent=n.portId;
+      tr.insertCell().textContent=n.sysName;
+      tr.insertCell().textContent=n.ttl;
+    });
   });
 }
 
@@ -1924,7 +1948,8 @@ $("lldp_en").addEventListener("change",function(){
   var el=this;
   postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
-tabHooks.lldp={enter:lldpLoad};
+var lldpPoller=new Poller(lldpLoad,5000);
+tabHooks.lldp={enter:function(){lldpPoller.start()},leave:function(){lldpPoller.stop()}};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);
