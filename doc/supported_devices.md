@@ -8,6 +8,7 @@ The following devices have been tested and are fully working:
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/FNS-1200P.md)                               | 2M    | 4 + 2 |
 | Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                             | 4M    | 8 + 1 |
 | GoodTop  | GT-ST018M       | Yes     | [SWTG018AS-A V2.0](devices/SWTG018AS_A_V2_0.md)                           | ?     | 8 + 1 |
+| GoodTop  | GT-ST024M       | Yes     | [SWTG024AS-A V2.0.1](devices/SWTG024AS-A-V2.0.1_4C_2SFP.md)                           | 2M    | 4 + 2 |
 | Hasivo   | S1100WP_8GT_1SX_SE | Yes  | [S1100WP_8GT_1SX_SE-V1.05](devices/HASIVO_S1100WP_8GT_1SX_SE.md)          | 2M    | 8 + 1 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V2.0](devices/PCB-K0402WS-V2.0.md)                           | 2M    | 4 + 2 |
