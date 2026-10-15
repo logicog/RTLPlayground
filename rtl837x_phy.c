@@ -4,7 +4,7 @@
  * This code is in the Public Domain
  */
 
-#define REGDBG
+// #define REGDBG
 
 // Phy ID of the external RTL8224 PHY.
 #define RTL8224_PHY_ID 0x00
