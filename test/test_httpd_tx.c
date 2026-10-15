@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 /* Some hosts ship these in <sys/_endian.h>, and they assign to their argument;
  * uip.h refuses to be included next to them. The firmware definitions are the
@@ -105,7 +106,8 @@ void cmd_parser(void) { }
 void execute_config(void) { }
 void execute_commands(uint8_t *p) { (void)p; }
 void clear_command_history(void) { }
-void udp_callbacks(void) { }
+static unsigned udp_dispatch_calls;
+void udp_callbacks(void) { udp_dispatch_calls++; }
 void tcpip_output(void) { }
 void get_random_32(void) { }
 void read_reg_timer(uint32_t *tmr) { *tmr = 0; }
@@ -493,12 +495,30 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+static void scenario_udp_lengths(void)
+{
+    const unsigned lengths[]={7,9,11,8};
+    for(unsigned i=0;i<4;i++) {
+        uip_init();struct uip_udp_conn *socket=uip_udp_new(NULL,0);assert(socket);
+        uip_udp_bind(socket,HTONS(12345));
+        uint8_t *packet=uip_buf+UIP_LLH_LEN;memset(packet,0,28);
+        packet[0]=0x45;packet[2]=0;packet[3]=28;packet[8]=64;packet[9]=17;
+        packet[12]=192;packet[14]=2;packet[15]=10;memcpy(packet+16,uip_hostaddr,4);
+        packet[20]=0x9c;packet[21]=0x40;packet[22]=12345>>8;packet[23]=12345&255;
+        packet[25]=lengths[i];memset(rx_headers,0,sizeof(rx_headers));
+        udp_dispatch_calls=0;uip_len=28;uip_input();
+        CHECK(udp_dispatch_calls==(i==3),"generic UDP length checked before application dispatch");
+    }
+    uip_init();
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
 		verbose = 1;
 
 	printf("== httpd: accounting for the bytes actually sent ==\n");
+	scenario_udp_lengths();
 	scenario_steady_window();
 	scenario_shrinking_window();
 	scenario_growing_window();

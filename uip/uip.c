@@ -1109,6 +1109,9 @@ uip_process(u8_t flag) __banked
 #if UIP_UDP
   /* UDP input processing. */
  udp_input:
+  /* Validate before checksum processing or dispatch to any UDP application. */
+  if(uip_len < UIP_IPUDPH_LEN || ntohs(UDPBUF->udplen) != uip_len - UIP_IPH_LEN)
+    goto drop;
   /* UDP processing is really just a hack. We don't do anything to the
      UDP/IP headers, but let the UDP application do all the hard
      work. If the application sets uip_slen, it has a packet to
