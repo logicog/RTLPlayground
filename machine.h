@@ -64,6 +64,12 @@ struct machine {
 	uint8_t led_mux_custom;
 	uint8_t led_mux[28];
 	uint32_t mac_flash_offset;
+	// Read the flash with single-IO (CMD_FREAD) instead of DIO for MMIO/code
+	// fetch. Set for boards whose flash chip is not usable in DIO mode, which
+	// shows up as a board that does not boot at all, garbled console output or
+	// random resets. Costs management-plane speed only, the ASIC keeps
+	// forwarding in hardware.
+	uint8_t flash_sio;
 };
 
 struct machine_runtime
