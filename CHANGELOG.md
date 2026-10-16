@@ -4,6 +4,17 @@
 
 ## Added
 
+- Devices
+  - Support the hongyavision HYWS-SGT0204S (PCB marking `2G5F4_10G2_V1.01`), an
+    RTL8372 based 4x2.5G + 2xSFP+ unmanaged switch with a 512 KB Bright Moon
+    `T25S40` flash. It is a sibling of the KP-9000-6XH-X2 (2M-PCB43-V1.1) with
+    the two SFP+ cages wired the other way round (physical 5 is on SDS1,
+    physical 6 on SDS0), no reset button fitted, wrong silkscreen labels on the
+    serial header, `LED_GLB_IO_EN` bit 6 has to be set for the port LEDs to
+    work, and the fitted T25S40 cannot be read in DIO mode on this board, so the
+    target selects single-IO flash reads (`flash_sio`). New machine target
+    `MACHINE_2G5F4_10G2_V1_01`, see `doc/devices/2G5F4_10G2_V1.01.md`.
+
 - Web UI
   - Compress the embedded assets (minify + gzip) and switch to a single-page layout. #315
   - Replace the multi-page UI with a themed single-page app: light, dark and Selenized themes following the browser by default,
