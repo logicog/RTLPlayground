@@ -87,6 +87,7 @@ struct syslog_state syslog_state;
 bool     stp_enabled;
 bool lldp_enabled;
 uint16_t lldp_logical_port_status;
+uint16_t lldp_rx_port_status = 0xffff;
 
 
 uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
@@ -137,3 +138,4 @@ uint16_t lacp_lag_ports[LACP_NUM_LAGS];
 uint8_t  lacp_agg_sys[LACP_NUM_LAGS][MAC_ADDR_LEN];
 uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
 uint16_t lacp_members_last[LACP_NUM_LAGS];
+void lldp_neighbors_to_html(void) {}
