@@ -1473,18 +1473,21 @@ function vlanRefresh(){
     vl.forEach(function(v){
       p=p.then(function(){return getJSON("/vlan.json?vid="+v.id).catch(function(){return null})}).then(function(d){
         var tr=tb.insertRow();
-        tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),"data-id":v.id,"data-name":v.name,onclick:function(e){
+        var l = h("a",{href:"#vlan",text:String(v.id),"data-id":v.id,"data-name":v.name,onclick:function(e){
           e.preventDefault();vlanLoad(v.id);
-        }}));
+        }});
+        tr.insertCell().appendChild(l);
         tr.insertCell().textContent=v.name||"";
         if(!d){for(var c=0;c<4;c++)tr.insertCell().textContent="?";}
         else{
-          var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
+          var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem,tag=mem&~unt;
           var pv=parseInt(d.pvid,16)&0x3ff;
           tr.insertCell().textContent=rangeStr(maskToPorts(mem));
-          tr.insertCell().textContent=rangeStr(maskToPorts(mem&~unt));
+          tr.insertCell().textContent=rangeStr(maskToPorts(tag));
           tr.insertCell().textContent=rangeStr(maskToPorts(unt));
           tr.insertCell().textContent=rangeStr(maskToPorts(pv));
+          l.dataset.t=maskToPorts(tag);
+          l.dataset.u=maskToPorts(unt);
         }
         var del=tr.insertCell();
         if(v.id!==1)del.appendChild(h("button",{class:"ctl",text:"\u2715",title:t("v_del_t"),onclick:function(){
@@ -1543,6 +1546,7 @@ function vlanLoad(vid){
     $("vtitle").innerText="VLAN "+vid + (d.name ? " ("+(d.name)+")" : "" );
     $("vtitle").dataset.id=vid;
     $("vtitle").dataset.name=d.name;
+
     var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
     var pv=parseInt(d.pvid,16)&0x3ff;
     for(var p=1;p<=S.n;p++){
@@ -1557,14 +1561,23 @@ function vlanApply(){
   var vid=$("vtitle").dataset.id;
   var vname=$("vtitle").dataset.name;
   if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  var cmd="vlan "+vid+(vname?" "+vname:""),members=0,cmdp="";
+  var cmd="vlan "+vid+(vname?" "+vname:""),members=0,cmds=[];
   for(var p=1;p<=S.n;p++){
     var v=segVal(p);
-    if(v===1){cmd+=" "+p;cmdp+="pvid "+p+" "+vid;members++;}
-    else if(v===2){cmd+=" "+p+"t";members++;}//TODO: if the PVID is equal to this vid, we need to set it something else (probably 1)
+    if(v===1){
+      cmd+=" "+p;
+      cmds.push("pvid "+p+" "+vid);
+      members++;
+      for(const r of $("vtable").tBodies[0].rows){
+        if(r.firstChild.firstChild.dataset.u.split(",").includes(""+p)){/*TODO implement removal*/}
+      }
+    }
+    else if(v===2){cmd+=" "+p+"t";members++;}
+    //TODO: if the PVID is equal to this vid, we need to set it something else (probably 1)
   }
+
   if(!members){toast(t("v_nomember"),"err");return;}
-  var cmds=[cmd, cmdp];
+  cmds.unshift(cmd);
   postCmds(cmds).then(vlanRefresh).catch(function(){}).then(function(){vlanLoad(vid)});
 }
 function ingressApply(){
