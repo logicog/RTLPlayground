@@ -166,10 +166,15 @@ uint8_t atoi_hex(uint8_t idx)
 			break;
 		}
 
+		if (h_idx == 8) {
+			h_idx = 0;
+			break;
+		}
+
 		// swap hex nibbles
 		val = (val >> 4) | (val << 4);
 
-		if (c - '0' < 10) {
+		if ((uint8_t)(c - '0') < 10) {
 			val |= c - '0';
 		} else {
 			c |= 0x20;
