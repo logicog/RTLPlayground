@@ -5,6 +5,7 @@ It is highly similar to SWTG024AS-V2.0, with the only difference being the GPIO 
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
 | Horaco | ZX-SG4T2 |  | PCB-SWTG024AS-A-V2.0.1_19650 | P25D40SH | ??? |
+| GoodTop | GT-ST024M | Yes | PCB-SWTG024AS-A-V2.0.1 | 2M | ??? |
 
 ### Label specifications
 
