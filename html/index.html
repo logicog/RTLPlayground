@@ -112,7 +112,9 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 }
 .switch input:checked+i{background:var(--ok)}
 .switch input:checked+i:before{transform:translateX(15px)}
-#strip{display:flex;gap:6px;flex-wrap:wrap;flex:1;justify-content:center;min-width:0}
+#strip{display:flex;gap:6px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:thin}
+.port:first-child{margin-left:auto}
+.port:last-child{margin-right:auto}
 .port{
   width:40px;border:2px solid var(--bd);border-radius:7px;padding:3px 0 2px;
   text-align:center;cursor:pointer;background:var(--panel2);position:relative;
@@ -180,9 +182,12 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   #burger{display:block}
   main{padding:14px 12px 40px}
   #top{padding:8px 10px;gap:7px}
-  #ttitle{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-  #strip{order:3;flex-basis:100%;justify-content:flex-start}
+  #ttitle{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #dirty{padding:2px 7px}
+}
+@media (max-width:720px){
+  #ttitle{flex:1}
+  #strip{order:3;flex-basis:100%}
 }
 </style>
 <script>
@@ -216,7 +221,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
     <span id="ttitle"></span>
-    <div id="strip" data-i18n-t="d_ports_h"></div>
+    <div id="strip"></div>
     <span id="dirty" data-i18n="hdr_dirty" data-i18n-t="hdr_dirty_t">unsaved changes</span>
     <button class="ctl pri" id="saveBtn" data-i18n="hdr_save" data-i18n-t="hdr_save_t">Save to flash</button>
   </header>
