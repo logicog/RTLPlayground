@@ -800,6 +800,7 @@ function getJSON(p){return api(p).then(function(r){if(!r.ok)throw new Error(p+" 
 function getText(p){return api(p).then(function(r){if(!r.ok)throw new Error(p+" "+r.status);return r.body})}
 
 var CONF_CMDS=[
+  /^snmp\s+(on|off)$/,/^snmp\s+community\s+[!-~]{1,32}$/,/^snmp\s+manager\s+(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/,/^snmp\s+changed\s+(unknown|\d{1,10})$/,
   /^ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^ip\s+dhcp$/,
   /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,/^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,/^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^syslog\s+port\s+\d{1,5}$/,
@@ -1084,7 +1085,7 @@ function renderInfo(){
   if(S.info.sw_ver)$("fver").textContent="RTLPlayground "+S.info.sw_ver;
 }
 function pollInfo(){
-  return getJSON("/information.json").then(function(j){S.info=j;renderInfo()});
+  return getJSON("/information.json").then(function(j){S.info=j;renderInfo();renderSnmp(j.snmp)});
 }
 function dashStatus(){
   var tb=$("traffic").tBodies[0];
@@ -2068,6 +2069,26 @@ function scApply(n){
 tabHooks.bw={enter:function(){needPorts(function(){bwLoad().then(scLoad).catch(function(){})})}};
 
 var IPRE=/^(\d{1,3}\.){3}\d{1,3}$/;
+/* Compact non-secret information.json snapshot; absent when SNMP is not built. */
+var snmpPending=false;
+function renderSnmp(s){
+  var supported=Array.isArray(s)&&s.length===10;
+  $("sy-snmp").style.display=supported?"":"none";
+  if(!supported)return;
+  $("sy-snmp-enabled").textContent=s[0]?"Enabled":"Disabled";
+  $("sy-snmp-community").textContent=s[1]?"Configured":"Not configured";
+  if(!snmpPending){$("sy-snmp-toggle").checked=!!s[0];$("sy-snmp-toggle").disabled=!s[1];}
+  $("sy-snmp-network").textContent=s.slice(2,6).join(".");
+  $("sy-snmp-mask").textContent=s.slice(6,10).join(".");
+}
+function snmpToggle(){
+  var el=$("sy-snmp-toggle"),previous=!!(S.info.snmp&&S.info.snmp[0]);
+  snmpPending=true;el.disabled=true;
+  return postCmd("snmp "+(el.checked?"on":"off")).then(pollInfo).catch(function(){
+    return pollInfo().catch(function(){if(S.info.snmp)S.info.snmp[0]=previous?1:0});
+  }).then(function(){snmpPending=false;renderSnmp(S.info.snmp)});
+}
+$("sy-snmp-toggle").addEventListener("change",snmpToggle);
 function okIp(s){
   if(!IPRE.test(s))return false;
   return s.split(".").every(function(o){return+o<=255});
@@ -2170,14 +2191,14 @@ function sysConsole(){
   var out=$("sy-cout");
   api("/cmd",{method:"POST",body:c}).then(function(r){
     var body=r.body.replace(/\s+$/,"");
-    out.textContent+="> "+c+"\n";
-    if(body)out.textContent+=body+"\n";
+    out.textContent+=redactSnmp("> "+c)+"\n";
+    if(body)out.textContent+=redactSnmp(body)+"\n";
     else out.textContent+=(r.ok?"OK":"ERROR "+r.status)+"\n";
     if(out.textContent.length>20000)out.textContent=out.textContent.slice(-16000);
     out.scrollTop=out.scrollHeight;
     if(r.ok&&isConfCmd(c))setDirty(true);
-  }).catch(function(e){out.textContent+="> "+c+"\n"+e+"\n"});
-  $("sy-cmd").value="";
+  }).catch(function(e){out.textContent+=redactSnmp("> "+c+"\n"+e)+"\n"});
+  $("sy-cmd").value="";$("sy-cmd").type="text";
 }
 $("sy-reboot").addEventListener("click",function(){
   confirmModal(t("sy_reboot_q"),S.dirty?t("sy_reboot_d"):"",function(){
@@ -2185,10 +2206,36 @@ $("sy-reboot").addEventListener("click",function(){
     toast(t("sy_rebooting"),"ok");
   });
 });
+/* Startup storage may contain plaintext communities, but never render them.
+ * Markers refer to private, in-memory originals and are resolved only for POST. */
+var cfgHidden=[];
+function maskConfig(txt){
+  var hidden=[];
+  var text=txt.replace(/\r\n?/g,"\n").replace(/^[ \t]*snmp[ \t]+community[ \t]+[^\r\n]*$/gim,function(line){
+    hidden.push(line);return "snmp community [hidden:"+hidden.length+"]";
+  });
+  return {text:text,hidden:hidden};
+}
+function unmaskConfig(txt,hidden){
+  return txt.replace(/\r\n?/g,"\n").replace(/^[ \t]*snmp[ \t]+community(?:[ \t]+[^\r\n]*)?$/gim,function(line){
+    var m=line.match(/^snmp community \[hidden:(\d+)\]$/);
+    if(!m||!hidden[+m[1]-1])throw new Error("Community lines can only be changed through CLI.");
+    return hidden[+m[1]-1];
+  });
+}
+function setConfigEditor(txt){
+  var masked=maskConfig(txt);cfgHidden=masked.hidden;$("cfgedit").value=masked.text;
+}
+function redactSnmp(txt){
+  return txt.replace(/\r\n?/g,"\n").replace(/(^|\n)([ \t]*(?:>[ \t]*)?snmp[ \t]+community)(?:[ \t]+[^\r\n]*)?/gi,"$1$2 [hidden]");
+}
+$("sy-cmd").addEventListener("input",function(){
+  this.type=/^[ \t]*snmp[ \t]+community(?:[ \t]|$)/i.test(this.value)?"password":"text";
+});
 function cfgReload(){
   return getText("/config").then(function(x){
     x=x.replace(/\0[\s\S]*$/,"");
-    $("cfgedit").value=x;
+    setConfigEditor(x);
     cfgBytes();
     cfgParseKnown(x);
   }).catch(function(){});
@@ -2259,6 +2306,7 @@ tabHooks.system={
 };
 
 var CONF_OVERWRITE=[
+  /^snmp\s+community\b/,/^snmp\s+manager\b/,/^snmp\s+changed\b/,
   /^ip\b/,/^gw\b/,/^netmask\b/,/^hostname\b/,
   /^syslog\s+ip\b/,/^syslog\s+port\b/,/^dns\s+server\b/,/^passwd\b/,/^session\b/,
   /^ntp\s+server\b/,/^ntp\s+interval\b/,/^ntp\s+timezone\b/,/^ntp\s+dst\b/,
@@ -2271,7 +2319,7 @@ var CONF_OVERWRITE=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(snmp)\s+(on|off)$/,/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
@@ -2333,17 +2381,20 @@ function mergeConf(base,texts){
   return conf;
 }
 function writeConfig(txt,title,fromLog){
+  if(!fromLog){try{txt=unmaskConfig(txt,cfgHidden)}catch(e){toast(e.message,"err");return;}}
+  var masked=maskConfig(txt);
   var info=h("p",{class:"small mut"}),warn=h("p",{class:"small"});
   var ed=h("textarea",{class:"cfg",spellcheck:"false",placeholder:t("cw_empty"),style:"min-height:45vh"});
-  ed.value=txt.replace(/\r\n/g,"\n");
-  var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){closeModal();doWriteConfig(cfgText(ed.value),fromLog)}});
+  ed.value=masked.text.replace(/\r\n/g,"\n");
+  var ok=h("button",{class:"ctl pri",text:t("sy_write"),onclick:function(){try{var raw=unmaskConfig(ed.value,masked.hidden);closeModal();doWriteConfig(cfgText(raw),fromLog)}catch(e){toast(e.message,"err")}}});
   function refresh(){
-    var v=cfgText(ed.value),bytes=new Blob([v]).size,long=cfgLongLine(v);
+    var v;try{v=cfgText(unmaskConfig(ed.value,masked.hidden))}catch(e){ok.disabled=true;warn.textContent=e.message;return;}
+    var bytes=new Blob([v]).size,long=cfgLongLine(v);
     var unknown=v.split("\n").filter(function(l){return l.trim()&&!isConfCmd(l.trim().replace(/\s+/g," "))});
-    info.textContent=t("cw_info",{n:bytes});
+    info.textContent=t("cw_info",{n:new Blob([cfgText(ed.value)]).size});
     ok.disabled=bytes>2048||!!long;
     warn.style.color=ok.disabled?"var(--bad)":"var(--warn)";
-    warn.textContent=bytes>2048?t("cw_toolarge"):long?t("cw_longline",long):(unknown.length?t("cw_unknown")+unknown.join(" | "):"");
+    warn.textContent=bytes>2048?t("cw_toolarge"):long?t("cw_longline",long):(unknown.length?t("cw_unknown")+redactSnmp(unknown.join("\n")).replace(/\n/g," | "):"");
   }
   ed.addEventListener("input",refresh);refresh();
   modal(title,h("div",null,[info,warn,ed]),[h("button",{class:"ctl",text:t("c_cancel"),onclick:closeModal}),ok]);
@@ -2366,7 +2417,7 @@ function doWriteConfig(txt,fromLog){
     return api("/cmd_log_clear").then(function(){return true},function(){return true});
   }).then(function(cleared){
     if(cleared)setDirty(false);
-    $("cfgedit").value=txt;cfgBytes();cfgParseKnown(txt);
+    setConfigEditor(txt);cfgBytes();cfgParseKnown(txt);
     toast(t("cw_saved"),"ok");
   }).catch(function(e){toast(e.message||String(e),"err")});
 }
@@ -2375,11 +2426,13 @@ $("saveBtn").addEventListener("click",function(){
   Promise.all([
     getText("/config").catch(function(){return""}),
     getText("/cmd_log").catch(function(){return""}),
+    Array.isArray(S.info.snmp)?getText("/snmp_config"):Promise.resolve(null),
   ]).then(function(r){
     var cur=r[0].replace(/\0[\s\S]*$/,"").split(/\r?\n/).map(function(l){return l.trim().replace(/\s+/g," ")}).filter(Boolean);
     var merged=mergeConf(cur,[r[1].replace(/\0[\s\S]*$/,"")]);
+    if(r[2]!==null)merged=mergeConf(merged.filter(function(l){return!/^snmp\s+(community|manager|changed|on|off)(\s|$)/.test(l)}),[r[2]]);
     writeConfig(merged.join("\n"),t("cw_save_title"),true);
-  });
+  }).catch(function(e){toast(e.message||String(e),"err")});
 });
 
 var fwBuf=null,fwOther=false;

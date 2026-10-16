@@ -1,3 +1,4 @@
+#include "uip/uip_rx.h"
 #include <8051.h>
 #include <stdint.h>
 
@@ -91,6 +92,10 @@ __code const uint8_t netmask[] = { 255, 255, 255, 0};
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
+#ifdef SNMP
+#include "snmp.h"
+extern volatile __xdata uint32_t snmp_uptime;
+#endif
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t stp_tick_last;
@@ -210,6 +215,9 @@ void isr_timer0(void) __interrupt(1)
 void isr_timer2(void) __interrupt(5)
 {
 	ticks++;
+#ifdef SNMP
+    if (!(ticks & 1)) snmp_uptime++;
+#endif
 	tick_pending = 1;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
@@ -750,6 +758,8 @@ bool nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
 	SFR_NIC_RING_U16LE = ring_ptr;
 
 	uint16_t len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
+	if (!uip_rx_dma_fits(len))
+		return false;
 	len += 7;
 	len >>= 3;
 #ifdef RXTXDBG
@@ -1084,8 +1094,7 @@ void handle_rx(void)
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0800)) { // IPv4
 			if (!management_vlan || management_vlan == rx_packet_vlan) {
-				uip_arp_ipin();
-				uip_input();
+				uip_rx_ip_input();
 				if (uip_len) {
 					// Add ethernet frame
 					uip_arp_out();
@@ -1811,6 +1820,9 @@ void main(void)
 	bandwidth_setup();
 	uip_init();
 	uip_arp_init();
+#ifdef SNMP
+    snmp_init();
+#endif
 	httpd_init();
 	lldp_init();
 

@@ -17,6 +17,9 @@
 #include "rtl837x_lacp.h"
 #include "page_impl.h"
 #include "syslog.h"
+#ifdef SNMP
+#include "snmp.h"
+#endif
 
 // #define DEBUG
 #include "debug.h"
@@ -319,6 +322,19 @@ void send_basic_info(void)
 	}
 	char_to_html('"');
 
+#ifdef SNMP
+    {
+        static __xdata uint8_t status[SNMP_STATUS_SIZE];
+        __xdata volatile uint8_t i;
+        snmp_get_status(status);
+        slen += strtox(outbuf + slen, ",\"snmp\":[");
+        for (i = 0; i < SNMP_STATUS_SIZE; ++i) {
+            if (i) char_to_html(',');
+            itoa_html(status[i]);
+        }
+        char_to_html(']');
+    }
+#endif
 	char_to_html('}');
 }
 
