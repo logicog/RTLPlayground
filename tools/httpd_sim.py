@@ -47,10 +47,11 @@ l2_entries = [
 
 state = {
     "lldp_enabled": False,
-    "vlans": {1: {"active": True, "name": ""}}
+    "vlans": {1: {"active": True, "name": "", "untagged":[1,2,3,4,5,6,7,8], "tagged":[], "pvid":[1,2,3,4,5,6,7,8]}},
+    "cmd_history": []
 }
 
-cmd_history = []
+
 tx_g = [0] * PORTS
 rx_g = [0] * PORTS
 tx_b = [0] * PORTS
@@ -67,19 +68,20 @@ class Handler(SimpleHTTPRequestHandler):
 
     def api_handlers(self,query):
         return {
-            "/status.json": self._status,
-            "/eee.json": self._eee,
-            "/bandwidth.json": self._bandwidth,
-            "/information.json": self._information,
-            "/mirror.json": self._mirror,
-            "/lag.json": self._lag,
-            "/l2.json": lambda: self._l2(query),
-            "/mtu.json": self._mtu,
-            "/vlan.json": lambda: self._vlan(query),
-            "/vlanlist": self._vlanlist,
-            "/lldp.json": self._lldp,
-            "/cmd_log": self._cmd_log,
-            "/counters.json": self._counters,
+            "/status.json": self._api_status,
+            "/eee.json": self._api_eee,
+            "/bandwidth.json": self._api_bandwidth,
+            "/information.json": self._api_information,
+            "/mirror.json": self._api_mirror,
+            "/lag.json": self._api_lag,
+            "/l2.json": lambda: self._api_l2(query),
+            "/mtu.json": self._api_mtu,
+            "/vlan.json": lambda: self._api_vlan(query),
+            "/vlanlist": self._api_vlanlist,
+            "/lldp.json": self._api_lldp,
+            "/cmd_log": self._api_cmd_log,
+            "/counters.json": self._api_counters,
+            "/debug": self._api_debug,
         }
 
     def _send(self, status, body=b"", content_type="text/plain",
@@ -184,7 +186,7 @@ class Handler(SimpleHTTPRequestHandler):
         )
 
     def do_POST(self):
-        global uploaded_config
+        global uploaded_config, state
 
         path = urlsplit(self.path).path
 
@@ -206,10 +208,9 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         if path == "/cmd":
-            form = self._read_urlencoded_form()
-            command = form.get("cmd", [""])[0]
-            cmd_history.append(command)
-
+            command = self._read_raw()
+            state["cmd_history"].append(command)
+            print(f"Received command: '{command}'")
             self.parse_cmd(command);
 
             return self._send(
@@ -251,6 +252,11 @@ class Handler(SimpleHTTPRequestHandler):
 
         return self._send(404, b"Not found\n")
 
+    def _read_raw(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length).decode("utf-8", errors="replace")
+        return raw
+
     def _read_urlencoded_form(self):
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length).decode("utf-8", errors="replace")
@@ -281,37 +287,45 @@ class Handler(SimpleHTTPRequestHandler):
     def parse_cmd(self, cmd):
         pieces = cmd.split(" ")
         handler = self.get_parsers().get(pieces[0])
-        return handler(pieces[1:]) if handler else {}
+        return handler(pieces) if handler else {}
 
     def get_parsers(self):
         return {
             "vlan": self._parse_vlan,
-            "lldp": self._parse_lldp
+            "lldp": self._parse_lldp,
+            "pvid": self._parse_pvid
         }
 
-    def _parse_vlan(self, pieces):   #vlan 2 name 6 3 8t or vlan 2 6 3 8t or vlan 2 d
+    def _parse_vlan(self, pieces):
         global state
         vid = int(pieces[1]);
         startIndex=2
+        name=""
         if pieces[2] == "d":
             return remove_vlan(vid)
-        elif re.match(pieces[2], '^[A-Za-z]+$'):
+        elif not re.match('^[0-9]+$', pieces[2]):
             name = pieces[2]
             startIndex=3
 
-        state.vlans[vid] = {"active":True, "name":name, "untagged":[], "tagged":[]}
-        # list of ports in either 3 or 5t form
-        for i in pieces[startIndex:]:
-            if pieces[i][-1] == "t":
-                state.vlans[vid].tagged.append(pieces[i])
-            else:
-                state.vlans[vid].untagged.append(pieces[i])
+        state["vlans"][vid] = {"active":True, "name":name, "untagged":[], "tagged":[], "pvid":[]}
 
-    def _parse_lldp(self,pieces):
+        for i in pieces[startIndex:]:
+            if i[-1] == "t":
+                state["vlans"][vid]["tagged"].append(phys_to_log_port[int(i[:-1])-1])
+            else:
+                state["vlans"][vid]["untagged"].append(phys_to_log_port[int(i)-1])
+
+    def _parse_pvid(self, pieces):
+        global state
+        port = int(pieces[1])
+        vid = int(pieces[2])
+        state["vlans"][vid]["pvid"].append(phys_to_log_port[port-1])
+
+    def _parse_lldp(self, pieces):
         global state
         state.lldp_enabled = (pieces[0] == "on")
 
-    def _status(self):
+    def _api_status(self):
         global last_called
         now = max(int(time.time()), last_called + 1)
         elapsed = now - last_called
@@ -363,7 +377,7 @@ class Handler(SimpleHTTPRequestHandler):
         last_called = now
         return ports
 
-    def _eee(self):
+    def _api_eee(self):
         return [
             {
                 "portNum": i,
@@ -375,7 +389,7 @@ class Handler(SimpleHTTPRequestHandler):
             for i in range(1, PORTS + 1)
         ]
 
-    def _bandwidth(self):
+    def _api_bandwidth(self):
         ports = []
         for i in range(1, PORTS + 1):
             ingress_limited = i % 2 == 1
@@ -390,7 +404,7 @@ class Handler(SimpleHTTPRequestHandler):
             })
         return ports
 
-    def _mirror(self):
+    def _api_mirror(self):
         return {
             "mPort": 1,
             "enabled": 1,
@@ -398,7 +412,7 @@ class Handler(SimpleHTTPRequestHandler):
             "mirror_rx": f"{0b000010:016b}",
         }
 
-    def _lag(self):
+    def _api_lag(self):
         return [
             {
                 "lagNum": i,
@@ -408,7 +422,7 @@ class Handler(SimpleHTTPRequestHandler):
             for i in range(4)
         ]
 
-    def _mtu(self):
+    def _api_mtu(self):
         return [
             {
                 "portNum": i,
@@ -417,7 +431,7 @@ class Handler(SimpleHTTPRequestHandler):
             for i in range(1, PORTS + 1)
         ]
 
-    def _lldp(self):
+    def _api_lldp(self):
         return {
             "on": 1,
             "portStatus": [
@@ -431,10 +445,10 @@ class Handler(SimpleHTTPRequestHandler):
             ],
         }
 
-    def _counters(self):
+    def _api_counters(self):
         return [f"0x{0x1234 + i:016x}" for i in range(N_COUNTERS)]
 
-    def _vlanlist(self):
+    def _api_vlanlist(self):
         global state
         vlan_list = []
         for i in state.get("vlans").keys():
@@ -445,26 +459,38 @@ class Handler(SimpleHTTPRequestHandler):
                 })
         return {"mgmt": 1, "vlan": vlan_list}
 
-    def _vlan(self,query):
+    def _api_vlan(self,query):
         global state
         vlan_id = self._int_param(query, "vid")
-        if vlan_id == 1:
-            return {
-                "members": "0x0207ffff",
-                "name": "native",
-                "pvid": "0x01ff",
-            }
 
-        vlan = state.get("vlans").get(vlan_id)
-        if vlan and vlan.get("active"):
+        vlan = state["vlans"][vlan_id]
+        if vlan and vlan["active"]:
             return {
                 "name": vlan["name"],
-                "members": "0x0000",
-                "pvid": "0x0000",
+                "members": self.vlanMembers(vlan),
+                "pvid": self.vlanPvid(vlan),
             }
         return {}
 
-    def _l2(self,query):
+    def vlanMembers(self, vlan):
+        member_mask = 0
+        for port in vlan["tagged"] + vlan["untagged"]:
+            member_mask |= 1 << port
+
+        untagged_mask = 0
+        for port in vlan["untagged"]:
+            untagged_mask |= 1 << port
+
+        members = member_mask | (untagged_mask << 10)
+        return f"0x{members:08x}"
+
+    def vlanPvid(self, vlan):
+        pvid_mask = 0
+        for port in vlan["pvid"]:
+            pvid_mask |= 1 << port
+        return f"0x{pvid_mask:04x}"
+
+    def _api_l2(self,query):
         idx = self._int_param(query, "idx")
         entries = sorted(l2_entries, key=lambda entry: entry["idx"])
         start = next(
@@ -482,13 +508,14 @@ class Handler(SimpleHTTPRequestHandler):
             })
         return result
 
-    def _cmd_log(self):
-        text = "\n".join(cmd_history)
-        if cmd_history:
+    def _api_cmd_log(self):
+        global state
+        text = "\n".join(state["cmd_history"])
+        if state["cmd_history"]:
             text += "\n"
         return text.encode("utf-8"), "text/plain"
 
-    def _information(self):
+    def _api_information(self):
         return {
             "ip_address":"192.168.10.247",
             "ip_gateway":"192.168.2.22",
@@ -498,6 +525,11 @@ class Handler(SimpleHTTPRequestHandler):
             "hw_ver":"SWGT024-V2.0"
         }
 
+    def _api_debug(self):
+        global state
+        return {
+            "state": state
+        }
 
 if __name__ == "__main__":
     print(f"Serving {ROOT} on http://{HOST}:{PORT}")
