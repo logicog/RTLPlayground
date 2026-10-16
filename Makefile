@@ -99,6 +99,7 @@ SRCS = \
 # RTL837x
 SRCS += \
 	rtl837x_bandwidth.c \
+	rtl837x_cabletest.c \
 	rtl837x_flash.c \
 	rtl837x_igmp.c \
 	rtl837x_init.c \

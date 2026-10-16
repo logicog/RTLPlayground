@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_init.h"
 #include "rtl837x_lldp.h"
+#include "rtl837x_cabletest.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
 #include "cmd_editor.h"
@@ -1301,6 +1302,7 @@ static void handle_tick(void)
 	health_phase(HEALTH_PH_STP);
 	lldp_tick();
 	health_phase(HEALTH_LLDP);
+	cabletest_tick();
 }
 
 

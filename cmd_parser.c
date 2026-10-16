@@ -20,6 +20,7 @@
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
 #include "rtl837x_trap.h"
+#include "rtl837x_cabletest.h"
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
@@ -908,6 +909,7 @@ void parse_port(void)
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
 					 "\nport <port> lldp [block|permit]" \
+					 "\nport <port> cabletest [show]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
 	}
@@ -950,6 +952,11 @@ void parse_port(void)
 		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
+	} else if (cmd_compare(2, "cabletest")) {
+		if (cmd_words_len > 3 && cmd_compare(3, "show"))
+			cabletest_show();
+		else
+			cabletest_run();
 	} else if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
 		phy_settings.speed = PHY_SPEED_10M;
