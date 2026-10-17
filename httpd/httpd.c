@@ -109,7 +109,8 @@ void httpd_init(void) __banked
 	uip_listen(HTONS(80));
 	// Not through uip_conn: it only points at a connection while uIP is
 	// handling one, and nothing has set it yet at init time.
-	uip_conns[0].appstate.tstate = TSTATE_CLOSED;
+	for (uint8_t i = 0; i < UIP_CONNS; i++)
+		uip_conns[i].appstate.tstate = TSTATE_CLOSED;
 	fw_reset_pending = 0; // xdata is not zeroed by the startup code
 }
 
@@ -874,7 +875,25 @@ void httpd_appcall(void)
 	print_byte(s->tstate);
 	write_char(' ');
 #endif
-	if(uip_connected() && s->tstate == TSTATE_CLOSED) {
+	/*
+	 * Accept EVERY new connection, and reset tstate here rather than
+	 * requiring it to already read TSTATE_CLOSED.
+	 *
+	 * uip_connected() is set only for the SYN that creates this connection,
+	 * so it is by definition the start of a fresh one: every other branch
+	 * below is reached only after this point, which is what makes the
+	 * guard "&& s->tstate == TSTATE_CLOSED" redundant. Worse, it was
+	 * actively wrong, because uIP does not clear appstate when it opens a
+	 * connection and XDATA is not zeroed by the startup code -- a slot that
+	 * had never been used carried garbage, the test failed, no branch
+	 * matched, and `uip_len = 0` silently sent nothing. The client then saw
+	 * a completed handshake with no answer and only gave up after its TCP
+	 * retransmissions, which is the 2-4 s latency the first requests of a
+	 * run showed (see httpd_init). Resetting unconditionally makes a slot
+	 * whose stale value is anything at all usable on first use, so no
+	 * flash-time initialisation order can bring this back.
+	 */
+	if(uip_connected()) {
 		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
 	} else if (uip_closed()) {
