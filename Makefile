@@ -34,7 +34,10 @@ endif
 # The board definition being built: one file per MACHINE_* symbol in machine.h.
 MACHINE_SRC = machine/$(MACHINE).c
 
-BUILDDIR = output/$(MACHINE)
+ifndef BUILDDIR
+	BUILDDIR = output/$(MACHINE)
+endif
+
 VERSION_HEADER := version.h
 
 GIT_VERSION := $(shell git rev-parse --short HEAD)
@@ -60,6 +63,9 @@ endif
 # $(MACHINE_SRC) is listed here so an unknown $MACHINE fails before anything else
 # is built, including the tools/ subdirectory.
 all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
+
+bank_size:
+	tools/bank_occupancy.sh "$(MACHINE)"
 
 create_build_dir:
 	mkdir -p "$(BUILDDIR)"

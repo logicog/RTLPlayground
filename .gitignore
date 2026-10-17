@@ -1,6 +1,7 @@
 .gitignore
 .idea/
 output/
+output-main/
 html_data.c
 html_data.h
 version.h
@@ -11,3 +12,4 @@ tools/fileadder
 # host-test stand-ins for the two generated headers
 !test/stub/html_data.h
 !test/stub/version.h
+.vscode
