@@ -34,6 +34,18 @@ Next, transfer the actual packet over by repeating the SFR function with a
 pointer to the frame on the ASIC directly after the frame header and a
 length as given by the length in the frame header + 7, again divided by 8.
 
+The RX ring's inclusive last slot is configured as `0x4ff`, giving a byte
+range of `0x0000` through `0x27ff`. If the descriptor occupies the last slot
+at `0x27f8`, its payload starts at `0x0000`, not `0x2800`. The RX copy code
+normalizes that starting address and splits transfers that cross the ring
+boundary. Neither transfer may access memory beyond the RX ring.
+
+Frame lengths are checked against `UIP_CONF_BUFFER_SIZE` before copying.
+DMA works in whole eight-byte units. If rounding the final word would
+overrun `uip_buf`, that word is received into the upper half of the
+16-byte `rx_headers` scratch buffer and only the actual tail bytes are
+copied to `uip_buf`; the descriptor in the lower half is preserved.
+
 The received frame will have an RTL proprietary Ethernet frame type of
 0x8899 (RRPC) where normally the frame type 0x0800 for IPv4 would be located.
 Further 6 bytes follow describing the frame, before the normal IPv4 data
