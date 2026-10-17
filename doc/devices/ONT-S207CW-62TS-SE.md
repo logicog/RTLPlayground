@@ -8,7 +8,7 @@ ONT-S207CW-62TS-SE, Binardat 2G06-04210GSM (managed), and Binardat 2G06-04210GS 
 - **Ports:** 4x 2.5G RJ45 + 2x 10G SFP+
 - **Console:** 115200 baud (RTLPlayground firmware) / 9600 baud (stock firmware)
 
-**Note:** These devices are **RTL8372N-based** with **LAN ports mounted upside-down on the PCB**, requiring a custom configuration. The `MACHINE=ONT_S207CW_62TS_SE` definition uses a **custom configuration** with:
+**Note:** These devices are **RTL8372N-based** with **LAN ports mounted upside-down on the PCB**, requiring a custom configuration. The `MACHINE_ONT_S207CW_62TS_SE` definition uses a **custom configuration** with:
 - Corrected port mapping (physical ports 1-4 = RJ45, 5-6 = SFP)
 - Optimized LED sets for different port wiring (RJ45 Ports 1-2 have reversed LED wiring)
 - Custom LED mux configuration
@@ -90,6 +90,8 @@ Custom mapping for ONT-S207CW-62TS-SE:
 ## Flashing Instructions
 
 See the [README.md](../../README.md) for general flashing instructions.
+For compilation, use command `make MACHINE=ONT_S207CW_62TS_SE` to specify the machine.
+If you are using managed version of the switch, you can then also compile the installer and flash using GUI - run command `cd installer` and finally `make`.
 
 ## Stock Firmware Information
 
