@@ -12,7 +12,7 @@ c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Apply",c_cancel:"Cancel",c_co
 c_close:"Close",c_refresh:"Refresh",c_off:"off",c_offc:"Off",c_down:"down",c_on:"On",c_auto:"Auto",c_delete:"Delete",
 c_type:"Type",c_state:"State",c_enabled:"Enabled",c_load:"Load",c_disable:"Disable",c_sfp:"SFP",
 c_full:"full",c_half:"half",c_yes:"yes",c_no:"no",
-d_ports:"Ports",d_ports_h:"click a port for details",d_system:"System",d_traffic:"Traffic",
+d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
@@ -143,7 +143,7 @@ c_port:"ポート",c_name:"名前",c_link:"リンク",c_apply:"適用",c_cancel:
 c_close:"閉じる",c_refresh:"更新",c_off:"オフ",c_offc:"オフ",c_down:"リンクダウン",c_on:"オン",c_auto:"自動",c_delete:"削除",
 c_type:"タイプ",c_state:"状態",c_enabled:"有効",c_load:"読み込み",c_disable:"無効化",c_sfp:"SFP",
 c_full:"全二重",c_half:"半二重",c_yes:"はい",c_no:"いいえ",
-d_ports:"ポート",d_ports_h:"ポートをクリックすると詳細を表示",d_system:"システム",d_traffic:"トラフィック",
+d_system:"システム",d_traffic:"トラフィック",
 d_traffic_h:"パケット/秒、リアルタイム",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 異常",d_rxbad:"RX 異常",
 i_host:"ホスト名",i_ip:"IP アドレス",i_mask:"ネットマスク",i_gw:"ゲートウェイ",i_mac:"MAC",i_fw:"ファームウェア",
 i_built:"ビルド日",i_hw:"ハードウェア",i_temp:"温度",i_flash:"フラッシュ",i_syslog:"Syslog",
@@ -256,7 +256,7 @@ c_port:"端口",c_name:"名称",c_link:"链路",c_apply:"应用",c_cancel:"取�
 c_close:"关闭",c_refresh:"刷新",c_off:"关",c_offc:"关",c_down:"未连接",c_on:"开",c_auto:"自动",c_delete:"删除",
 c_type:"类型",c_state:"状态",c_enabled:"启用",c_load:"读取",c_disable:"禁用",c_sfp:"SFP",
 c_full:"全双工",c_half:"半双工",c_yes:"是",c_no:"否",
-d_ports:"端口",d_ports_h:"点击端口查看详情",d_system:"系统",d_traffic:"流量",
+d_system:"系统",d_traffic:"流量",
 d_traffic_h:"包/秒，实时",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 错误",d_rxbad:"RX 错误",
 i_host:"主机名",i_ip:"IP 地址",i_mask:"子网掩码",i_gw:"网关",i_mac:"MAC",i_fw:"固件",
 i_built:"构建日期",i_hw:"硬件",i_temp:"温度",i_flash:"Flash",i_syslog:"Syslog",
@@ -369,7 +369,7 @@ c_port:"Puerto",c_name:"Nombre",c_link:"Enlace",c_apply:"Aplicar",c_cancel:"Canc
 c_close:"Cerrar",c_refresh:"Actualizar",c_off:"apagado",c_offc:"Apagado",c_down:"caído",c_on:"Encendido",c_auto:"Auto",c_delete:"Eliminar",
 c_type:"Tipo",c_state:"Estado",c_enabled:"Habilitado",c_load:"Cargar",c_disable:"Deshabilitar",c_sfp:"SFP",
 c_full:"dúplex completo",c_half:"semidúplex",c_yes:"sí",c_no:"no",
-d_ports:"Puertos",d_ports_h:"pulsa un puerto para ver detalles",d_system:"Sistema",d_traffic:"Tráfico",
+d_system:"Sistema",d_traffic:"Tráfico",
 d_traffic_h:"paquetes/s, en vivo",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX erróneos",d_rxbad:"RX erróneos",
 i_host:"Nombre de host",i_ip:"Dirección IP",i_mask:"Máscara de red",i_gw:"Puerta de enlace",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Compilado",i_hw:"Hardware",i_flash:"Flash",i_syslog:"Syslog",
@@ -481,7 +481,7 @@ c_port:"Port",c_name:"Nom",c_link:"Lien",c_apply:"Appliquer",c_cancel:"Annuler",
 c_close:"Fermer",c_refresh:"Raffraichir",c_off:"arrêt",c_offc:"Arrêt",c_down:"arrêt",c_on:"Marche",c_auto:"Auto",c_delete:"Supprimer",
 c_type:"Type",c_state:"Etat",c_enabled:"Activé",c_load:"Charger",c_disable:"Désactivé",c_sfp:"SFP",
 c_full:"full",c_half:"half",c_yes:"oui",c_no:"non",
-d_ports:"Ports",d_ports_h:"Cliquez ou survollez pour plus de détails",d_system:"Système",d_traffic:"Trafic",
+d_system:"Système",d_traffic:"Trafic",
 d_traffic_h:"paquets/s (en direct)",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX KO",d_rxbad:"RX KO",
 i_host:"Nom d'hote",i_ip:"Adresse IP",i_mask:"Masque réseau",i_gw:"Passerelle",i_mac:"Adresse MAC",i_fw:"Micro logiciel",
 i_built:"Compilé le",i_hw:"Matériel",i_temp:"Température",i_flash:"Taille Flash",i_syslog:"Journal système",
@@ -598,7 +598,7 @@ c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Übernehmen",c_cancel:"Abbrec
 c_close:"Schliessen",c_refresh:"Aktualisieren",c_off:"aus",c_offc:"Aus",c_down:"getrennt",c_on:"Ein",c_auto:"Auto",c_delete:"Löschen",
 c_type:"Typ",c_state:"Zustand",c_enabled:"Aktiviert",c_load:"Laden",c_disable:"Deaktivieren",c_sfp:"SFP",
 c_full:"voll",c_half:"halb",c_yes:"ja",c_no:"nein",
-d_ports:"Ports",d_ports_h:"Port anklicken für Details",d_system:"System",d_traffic:"Datenverkehr",
+d_system:"System",d_traffic:"Datenverkehr",
 d_traffic_h:"Pakete/s, live",d_txpps:"TX Pakete/s",d_rxpps:"RX Pakete/s",d_txbad:"TX fehlerhaft",d_rxbad:"RX fehlerhaft",
 i_host:"Hostname",i_ip:"IP-Adresse",i_mask:"Netzmaske",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Erstellt",i_hw:"Hardware",i_temp:"Temperatur",i_flash:"Flash",i_syslog:"Syslog",
@@ -964,6 +964,7 @@ function pollStatus(){
   });
 }
 var statusPoller=new Poller(pollStatus,2500);
+statusPoller.start();
 function needPorts(fn){
   if(S.n)return fn();
   pollStatus().then(fn).catch(function(){});
@@ -1108,8 +1109,7 @@ function dashStatus(){
   });
 }
 tabHooks.dash={
-  enter:function(){statusPoller.start();pollInfo().catch(function(){})},
-  leave:function(){statusPoller.stop()},
+  enter:function(){pollInfo().catch(function(){})},
   status:dashStatus,
 };
 
@@ -1186,8 +1186,7 @@ function applyPort(i){
   postCmds(cmds).then(loadMtu).catch(function(){});
 }
 tabHooks.ports={
-  enter:function(){statusPoller.start();needPorts(buildPorts)},
-  leave:function(){statusPoller.stop()},
+  enter:function(){needPorts(buildPorts)},
   status:portsStatus,
 };
 
@@ -1443,8 +1442,7 @@ function statsStatus(){
   });
 }
 tabHooks.stats={
-  enter:function(){statusPoller.start()},
-  leave:function(){statusPoller.stop();if(ctrPoll)ctrPoll.stop()},
+  leave:function(){if(ctrPoll)ctrPoll.stop()},
   status:statsStatus,
 };
 
