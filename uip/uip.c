@@ -136,7 +136,7 @@ static __code const uip_ipaddr_t all_zeroes_addr =
 #endif /* UIP_CONF_IPV6 */
 
 #ifndef UIP_CONF_EXTERNAL_BUFFER
-u8_t uip_buf[UIP_BUFSIZE + 2];   /* The packet buffer that contains
+u8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];   /* The packet buffer that contains
 				    incoming packets. */
 #endif /* UIP_CONF_EXTERNAL_BUFFER */
 

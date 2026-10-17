@@ -112,7 +112,7 @@ void read_reg_timer(uint32_t *tmr) { *tmr = 0; }
 
 /* uip-conf.h asks uIP not to define the packet buffer: on the switch it lives
  * at a fixed XDATA address, so the bench provides the storage itself. */
-u8_t uip_buf[UIP_BUFSIZE + 2];
+u8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 
 uint16_t strlen_x(const char *s) { return (uint16_t)strlen(s); }
 
