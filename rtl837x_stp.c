@@ -477,7 +477,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	STP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	STP_O->rtl_tag.reason = 0x00;
-	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
+	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS | RTL_TAG_PRI_CTRL);
 	if (port >= STP_LAG_BASE) {
 		stp_scratch = 0;
 		while (stp_scratch < STP_PORTS && !stp_ent_has(port, stp_scratch))
