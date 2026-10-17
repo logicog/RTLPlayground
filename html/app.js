@@ -1616,6 +1616,11 @@ function vlan2str(i, n, t, u) {
 function pvidcmd(i, p){
   return "pvid " + p + " " + i;
 }
+const parkingVLAN=4094;
+  function mySplit(a){
+    if(a.trim()=="") return [];
+    return a.trim().split(",");
+  }
 function vlanApply() {
   var vid = $("vtitle").dataset.id;
   var vname = $("vtitle").dataset.name;
@@ -1625,23 +1630,23 @@ function vlanApply() {
   }
   var top_cmds = [],
     tail_cmds = [],
-    thisVlanInStructure={id:vid, tagged:[], untagged:[]};
+    thisVlanInStructure={id:vid, tagged:[], untagged:[]},
+    vlansPerPort=[];
   
   for (var p = 1; p <= S.n; p++) {
     var v = segVal(p);
+    vlansPerPort[p]={t:[],u:[]};
     if (v === 1) {
       thisVlanInStructure.untagged.push(p);
+      vlansPerPort[p].u.push(vid);
     } else if (v === 2) {
       thisVlanInStructure.tagged.push(p);
+      vlansPerPort[p].t.push(vid);
     }
   }
   if (thisVlanInStructure.tagged.length + thisVlanInStructure.untagged.length == 0) {
     toast(t("v_nomember"), "err");
     return;
-  }
-  function mySplit(a){
-    if(a=="") return [];
-    return a.split(",");
   }
   for(const vlanRow of $("vtable").tBodies[0].rows){
     var rowData = vlanRow.firstChild.firstChild.dataset,
@@ -1653,11 +1658,23 @@ function vlanApply() {
         rowUntagged.splice(rowUntagged.indexOf(""+newVlanPort),1);
       }
     }
+    for(const rut of rowUntagged) {
+      vlansPerPort[rut].u.push(rowData.id);
+    }
+    for(const rt of rowTagged) {
+      vlansPerPort[rt].t.push(rowData.id)
+    }
     top_cmds.push(vlan2str(rowData.id,rowData.name,rowTagged,rowUntagged));
   }
   tail_cmds.push(vlan2str(vid, vname, thisVlanInStructure.tagged, thisVlanInStructure.untagged));
-  //TODO: if the PVID is equal to this vid, we need to set it something else (probably 1)
-  
+
+  //park all ports with only tagged membership
+  for (p in vlansPerPort){
+    if (vlansPerPort[p].u.length == 0 && vlansPerPort[p].t.length > 0) {
+      tail_cmds.push(pvidcmd(parkingVLAN, p));
+    }
+  }
+
   for(const up of thisVlanInStructure.untagged){
     tail_cmds.push(pvidcmd(vid,up));
   }
@@ -1669,7 +1686,7 @@ function vlanApply() {
     vlanLoad(vid)
   });
 }
-
+/*
 function ingressApply() {
   var cmd = "ingress",
     any = false;
@@ -1686,6 +1703,7 @@ function ingressApply() {
   }
   postCmd(cmd).catch(function() {});
 }
+*/
 $("vapply").addEventListener("click", vlanApply);
 $("vlan_add").addEventListener("click", function() {
   var body = h("div");
