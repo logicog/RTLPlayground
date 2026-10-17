@@ -296,6 +296,9 @@ class Handler(SimpleHTTPRequestHandler):
             "pvid": self._parse_pvid
         }
 
+    def newVlan(self, name):
+        return {"active":True, "name":name, "untagged":[], "tagged":[], "pvid":[]}
+
     def _parse_vlan(self, pieces):
         global state
         vid = int(pieces[1]);
@@ -307,7 +310,7 @@ class Handler(SimpleHTTPRequestHandler):
             name = pieces[2]
             startIndex=3
 
-        state["vlans"][vid] = {"active":True, "name":name, "untagged":[], "tagged":[], "pvid":[]}
+        state["vlans"][vid] = self.newVlan(name)
 
         for i in pieces[startIndex:]:
             if i[-1] == "t":
@@ -319,7 +322,10 @@ class Handler(SimpleHTTPRequestHandler):
         global state
         port = int(pieces[1])
         vid = int(pieces[2])
-        state["vlans"][vid]["pvid"].append(phys_to_log_port[port-1])
+        if(vid in state["vlans"]):
+            state["vlans"][vid]["pvid"].append(phys_to_log_port[port-1])
+        else :
+            state["vlans"][vid] = self.newVlan("")
 
     def _parse_lldp(self, pieces):
         global state
