@@ -191,7 +191,7 @@ Go to "Firmware update" tab, select the correct file.
 
 > [!IMPORTANT]
 > If your device already runs RTLPlayground, you must upload the binary file /RTLPlayground/output/rtlplayground_Version_Machine.bin
-> If your device is OEM, you must upload the binary file /RTLPlayground/installer/outputrtlplayground_oem_upgrade.bin
+> If your device is OEM, you must upload the binary file /RTLPlayground/installer/output/rtlplayground_oem_upgrade.bin
 
 > [!CAUTION]
 > Check one more time that your device matches the machine type before flashing.
