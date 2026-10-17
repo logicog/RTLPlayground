@@ -78,10 +78,15 @@ __xdata char passwd[21];
 // Set when a verified firmware upload awaits its response ACK, after
 // which the chip resets to apply the staged image
 __xdata uint8_t fw_reset_pending;
-__xdata char session_id[SESSION_ID_LENGTH + 1];
+/* Up to SESSIONS logins at once, each with its own cookie and its own
+ * expiry. With a single one, logging in from a second browser (or a phone)
+ * ended the first browser's session at its next request. */
+#define SESSIONS 4
+__xdata char session_id[SESSIONS][SESSION_ID_LENGTH + 1];
+__xdata uint32_t last_session_use[SESSIONS];
+__xdata uint8_t session_slot;
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
-__xdata uint32_t last_session_use;
 
 #define TSTATE_NONE		0
 #define TSTATE_TX		1
@@ -111,6 +116,33 @@ void httpd_init(void) __banked
 	// handling one, and nothing has set it yet at init time.
 	uip_conns[0].appstate.tstate = TSTATE_CLOSED;
 	fw_reset_pending = 0; // xdata is not zeroed by the startup code
+	for (session_slot = 0; session_slot < SESSIONS; session_slot++)
+		session_id[session_slot][0] = NUL;
+}
+
+/* Leaf functions, so the compiler keeps their 32-bit scratch in the overlay
+ * rather than in internal RAM. */
+static uint8_t session_stale(void)
+{
+	if (now - last_session_use[session_slot] > session_timeout)
+		return 1;
+	return 0;
+}
+
+/* For a new login: a free or expired slot, else the least recently used. */
+static void session_pick(void)
+{
+	__xdata uint8_t i;
+	__xdata uint8_t oldest = 0;
+
+	for (i = 0; i < SESSIONS; i++) {
+		session_slot = i;
+		if (!session_id[i][0] || session_stale())
+			return;
+		if (last_session_use[i] < last_session_use[oldest])
+			oldest = i;
+	}
+	session_slot = oldest;
 }
 
 
@@ -345,15 +377,17 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 
 	read_reg_timer(&now);
 
-	if (session && session_id[0]) {
-		if (now - last_session_use > session_timeout) {
-			dbg_string("Session expired\n");
-		} else {
-			if (is_word_x(session, session_id)) {
+	if (session) {
+		for (session_slot = 0; session_slot < SESSIONS; session_slot++) {
+			if (!session_id[session_slot][0])
+				continue;
+			if (session_stale()) {
+				dbg_string("Session expired\n");
+				session_id[session_slot][0] = NUL;
+			} else if (is_word_x(session, session_id[session_slot])) {
 				authenticated = 1;
-				last_session_use = now;
-			} else {
-				dbg_string("Invalid session cookie!\n");
+				last_session_use[session_slot] = now;
+				break;
 			}
 		}
 	}
@@ -683,13 +717,15 @@ static void run_login_body(__xdata uint8_t *body)
 {
 	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
 		dbg_string("Password accepted!\n");
-		read_reg_timer(&last_session_use);
-		gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
-		session_id[SESSION_ID_LENGTH] = NUL;
+		read_reg_timer(&now);
+		session_pick();
+		last_session_use[session_slot] = now;
+		gen_random_hex_chars(session_id[session_slot], SESSION_ID_LENGTH);
+		session_id[session_slot][SESSION_ID_LENGTH] = NUL;
 		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 				      "Set-Cookie: session=");
 		for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
-			outbuf[slen++] = session_id[i];
+			outbuf[slen++] = session_id[session_slot][i];
 		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 	} else {
 		dbg_string("Password invalid!\n");
