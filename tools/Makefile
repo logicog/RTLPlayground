@@ -1,4 +1,5 @@
 CC = cc
+CCFLAGS = -Wall -o
 CPPFLAGS =  
 LDFLAGS =
 ARGP_LIB =
