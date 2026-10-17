@@ -296,6 +296,7 @@ void nic_setup(void) __banked
 
 	// Sequence number of TX packets
 	tx_seq = 0;
+	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
 }
 
 

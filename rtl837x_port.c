@@ -57,7 +57,7 @@ void port_mirror_del(void) __banked
 
 bool port_ingress_filter(__xdata uint8_t port, __xdata vlan_ingress_mode_t type) __banked
 {
-	if (port > 9 || type >= VLAN_INVALID) {
+	if (port > CPU_PORT || type >= VLAN_INVALID) {
 		print_string("Invalid port or ingress filter type\n");
 		return false;
 	}

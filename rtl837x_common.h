@@ -23,7 +23,7 @@
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff
 #define PMASK_6		0x1f8
-#define PMASK_CPU	0x200
+#define PMASK_CPU	((uint16_t)(1 << CPU_PORT))
 
 // Defines a port mask for dropping all packets on Lookup-miss
 #define LOOKUP_MISS_DROP_6  0x00015540

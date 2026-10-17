@@ -1805,7 +1805,6 @@ void main(void)
 	lacpEnabled = 0;
 	lacp_init();
 	nic_setup();
-	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
 	trap_init();
 	vlan_setup();
 	port_l2_setup();
