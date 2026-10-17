@@ -286,7 +286,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
     </section>
 
     <section class="tab" id="tab-vlan">
-      <div class="card"><h2><span data-i18n="v_title">VLANs</span> <span class="hint"><span data-i18n="v_mgmt">Management VLAN</span>: <span id="vmgmtcur">-</span></span></h2>
+      <div class="card"><h2><span data-i18n="v_title">VLANs</span><span id="vmgmtcur"></span></h2>
         <div class="scrollx"><table class="t" id="vtable">
           <thead><tr><th data-i18n="v_vid">VID</th><th data-i18n="c_name">Name</th><th data-i18n="v_members">Members</th><th data-i18n="v_tagged">Tagged</th><th data-i18n="v_untagged">Untagged</th><th data-i18n="v_pvid_on">PVID on</th><th></th></tr></thead>
           <tbody></tbody></table></div>
@@ -294,23 +294,10 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <button class="ctl pri" id="vlan_add" data-i18n="v_add">Add a new VLAN</button>
       </div>
       <div class="card"><h2><span data-i18n="v_editor">VLAN editor</span> <span class="hint" id="vtitle"></span></h2>
-        <!-- 
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px" >
-          <label><span data-i18n="v_vid">VID</span> <input class="in sm" id="vvid" type="number" min="1" max="4094"></label>
-          <label><span data-i18n="c_name">Name</span> <input class="in" id="vname" size="12" maxlength="15" data-i18n-p="v_optional"></label>
-          <button class="ctl" id="vmgmt" data-i18n="v_setmgmt" data-i18n-t="v_setmgmt_t">Set as mgmt VLAN</button>
-        </div>
-        -->
         <div class="scrollx"><table class="t" id="vedit"><tbody></tbody></table></div>
         <div style="margin-top:10px"><button class="ctl pri" id="vapply" data-i18n="c_apply">Apply</button></div>
         <p class="small mut" style="margin-top:6px" data-i18n="v_legend">U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.</p>
       </div>
-    <!--
-      <div class="card"><h2><span data-i18n="v_ingress">Ingress filtering</span> <span class="hint" data-i18n="v_ingress_h">write-only: the state is not readable from the switch</span></h2>
-        <div class="scrollx"><table class="t" id="ingress"><tbody></tbody></table></div>
-        <div style="margin-top:10px"><button class="ctl pri" id="ingapply" data-i18n="v_ing_apply">Apply ingress modes</button></div>
-      </div>
-    -->
     </section>
 
     <section class="tab" id="tab-l2">
