@@ -2,5 +2,6 @@
 #define _MACHINE_SWGT024_V2_0_UNMANAGED_H_
 
 #define MACHINE_MODEL "SWGT024 V2.0 Unmanaged"
+#define MACHINE_CHIPSET RTL8372
 
 #endif
