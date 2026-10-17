@@ -17,6 +17,7 @@
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
 #include "rtl837x_bandwidth.h"
+#include "rtl837x_qos.h"
 #include "rtl837x_init.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_cabletest.h"
@@ -1811,6 +1812,7 @@ void main(void)
 	port_l2_setup();
 	igmp_setup();
 	bandwidth_setup();
+	qos_defaults();
 	uip_init();
 	uip_arp_init();
 	httpd_init();

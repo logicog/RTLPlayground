@@ -90,6 +90,9 @@ struct vlan_tag {
 /* Bits of the tag's `flags` word, see doc/CpuPort.md. */
 #define RTL_TAG_LEARN_DIS	0x0020	/* do not learn the source address from this frame */
 #define RTL_TAG_KEEP		0x0080	/* keep the frame's 802.1Q tag format as injected */
+#define RTL_TAG_PRI_EN		0x0800	/* force the priority in PRI on the frame */
+#define RTL_TAG_PRI(p)		((p) << 8)
+#define RTL_TAG_PRI_CTRL	(RTL_TAG_PRI_EN | RTL_TAG_PRI(7))	/* frames the switch sends itself */
 
 // For TX, an 8 byte (plus 4 byte padding when when VLAN is enabled)
 // header describing the frame to be moved to the Asic is used
