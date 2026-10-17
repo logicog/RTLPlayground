@@ -1461,7 +1461,7 @@ function rangeStr(list){
   }
   return parts.join(", ");
 }
-//ROBSTART
+
 function vlanRefresh() {
   var tb = $("vtable").tBodies[0];
   return getJSON("/vlanlist").then(function(d) {
@@ -1584,7 +1584,7 @@ function vlanLoad(vid) {
     for (var p = 1; p <= S.n; p++) {
       var bit = S.physToLog[p - 1];
       segSet(p, (mem >> bit) & 1 ? (((unt >> bit) & 1) ? 1 : 2) : 0);
-      $("vp" + p).innerText = !!((pv >> bit) & 1);
+      $("vp" + p).innerText = (!!((pv >> bit) & 1))?"Y":"N";
     }
     toast(t("v_loaded", {
       n: vid
@@ -1726,7 +1726,7 @@ function addVlan() {
   var cmd = "vlan " + vid + (name ? " " + name : "");
   postCmd(cmd).then(function() {
     closeModal();
-    vlanRefresh()
+    vlanRefresh().then(function(){vlanLoad(vid)});
   }).catch(function() {});
 }
 //ROBTODO
