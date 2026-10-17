@@ -297,6 +297,11 @@ class Handler(SimpleHTTPRequestHandler):
             "pvid": self._parse_pvid
         }
 
+    def remove_vlan(self, id):
+        global state
+        if id in state["vlans"]:
+            del state["vlans"][id]
+
     def newVlan(self, name):
         return {"active":True, "name":name, "untagged":[], "tagged":[], "pvid":[]}
 
@@ -306,7 +311,7 @@ class Handler(SimpleHTTPRequestHandler):
         startIndex=2
         name=""
         if pieces[2] == "d":
-            return remove_vlan(vid)
+            return self.remove_vlan(vid)
         elif pieces[2] == "mgmt":
             state["mgmt_vlan"] = vid
             return
