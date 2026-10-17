@@ -1619,7 +1619,6 @@ function vlan2str(i, n, t, u) {
 function pvidcmd(i, p){
   return "pvid " + p + " " + i;
 }
-const parkingVLAN=4094;
   function mySplit(a){
     if(a.trim()=="") return [];
     return a.trim().split(",");
@@ -1674,7 +1673,7 @@ function vlanApply() {
   //park all ports with only tagged membership
   for (p in vlansPerPort){
     if (vlansPerPort[p].u.length == 0 && vlansPerPort[p].t.length > 0) {
-      tail_cmds.push(pvidcmd(parkingVLAN, p));
+      tail_cmds.push(pvidcmd(0, p));
     }
   }
 
