@@ -257,7 +257,7 @@ void nic_setup(void) __banked
 
 	// This sets the size of the RX buffer, the filling level is in 0x7874
 	// R7848-000004ff
-	REG_SET(RTL837X_REG_NIC_RXBUFF_RX, 0x4ff);
+	REG_SET(RTL837X_REG_NIC_RXBUFF_RX, RTL837X_NIC_RX_LAST_SLOT);
 
 	// R7844-000007fe
 	REG_SET(RTL837X_REG_NIC_BUFFSIZE_TX, 0x7fe);

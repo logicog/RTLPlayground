@@ -12,6 +12,7 @@
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_trap.h"
+#include "rtl837x_nic.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_lacp.h"
 #include "rtl837x_igmp.h"
@@ -123,7 +124,7 @@ __code const uint8_t * __code const hex = "0123456789abcdef";
 __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 
 // NIC buffers for packet RX/TX
-__xdata uint8_t rx_headers[16]; // Packet header(s) on RX
+__xdata uint8_t rx_headers[16]; // RX descriptor, then scratch for a final DMA word
 __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
 
 __xdata uint16_t rx_packet_vlan;
@@ -714,50 +715,15 @@ void get_random_32(void)
 }
 
 
-/*
- * Transfer Network Interface RX data from the ASIC to the 8051 XMEM
- * data will be stored in the rx_header structure
- * len is the length of data to be transferred
- */
-bool nic_rx_header(uint16_t ring_ptr)
-{
-	uint16_t buffer = (uint16_t) &rx_headers[0];
-	uint16_t guard = 0;
-
-	SFR_NIC_DATA_U16LE = buffer;
-	SFR_NIC_RING_U16LE = ring_ptr;
-	SFR_NIC_CTRL = 1;
-	while (SFR_NIC_CTRL != 0) {
-		if (++guard == 0) {
-			print_string("NIC: RX header transfer did not complete\n");
-			return false;
-		}
-	}
-	return true;
-}
-
-
-/*
- * Transfer Network Interface RX data from the ASIC to the 8051 XMEM
- * the description of the packet must be in the rx_headers data structure
- * data will be returned in the xmem buffer points to
- * ring_ptr is the current position of the RX Ring on the ASIC side
- */
-bool nic_rx_packet(uint16_t buffer, uint16_t ring_ptr)
+/* One contiguous RX DMA operation. Ring wrapping is handled by the RX
+ * copy functions, so this operation always starts and ends inside the ring. */
+bool nic_rx_dma(__xdata uint8_t *buffer, uint16_t ring_ptr, uint8_t words) __reentrant
 {
 	uint16_t guard = 0;
 
-	SFR_NIC_DATA_U16LE = buffer;
+	SFR_NIC_DATA_U16LE = (uint16_t)buffer;
 	SFR_NIC_RING_U16LE = ring_ptr;
-
-	uint16_t len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
-	len += 7;
-	len >>= 3;
-#ifdef RXTXDBG
-	print_string(" len: ");
-	print_short(len);
-#endif
-	SFR_NIC_CTRL = len;
+	SFR_NIC_CTRL = words;
 	while (SFR_NIC_CTRL != 0) {
 		if (++guard == 0) {
 			print_string("NIC: RX transfer did not complete\n");
@@ -1037,7 +1003,7 @@ void handle_rx(void)
 			write_char(' ');
 		}
 #endif
-		if (!nic_rx_packet((uint16_t) &uip_buf[0], ring_ptr + 8)) {
+		if (!nic_rx_packet(uip_buf, ring_ptr + 8)) {
 			REG_SET(RTL837X_REG_NIC_RXCMD, 1);
 			return;
 		}
