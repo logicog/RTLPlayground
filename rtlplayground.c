@@ -2,7 +2,6 @@
 #include <stdint.h>
 
 // #define REGDBG 1
-// #define RXTXDBG 1
 
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
@@ -715,73 +714,6 @@ void get_random_32(void)
 }
 
 
-/* One contiguous RX DMA operation. Ring wrapping is handled by the RX
- * copy functions, so this operation always starts and ends inside the ring. */
-bool nic_rx_dma(__xdata uint8_t *buffer, uint16_t ring_ptr, uint8_t words) __reentrant
-{
-	uint16_t guard = 0;
-
-	SFR_NIC_DATA_U16LE = (uint16_t)buffer;
-	SFR_NIC_RING_U16LE = ring_ptr;
-	SFR_NIC_CTRL = words;
-	while (SFR_NIC_CTRL != 0) {
-		if (++guard == 0) {
-			print_string("NIC: RX transfer did not complete\n");
-			return false;
-		}
-	}
-	return true;
-}
-
-
-/*
- * Transfers data in XMEM to the ASIC for transmission by the nic
- */
-void nic_tx_packet(uint16_t ring_ptr)
-{
-	uint16_t len;
-	uint16_t guard = 0;
-
-	/* A frame that got a dot1Q tag was shifted forward over its padding, so it
-	 * starts at uip_buf and carries the q_frame layout. One that did not keeps
-	 * the padding in front and the nonq_frame layout, so the padding is skipped.
-	 */
-	if (frame_tagged) {
-		SFR_NIC_DATA_U16LE = (uint16_t) uip_buf;
-		len = FRAME_Q->len;
-		/*
-		(__xdata struct rtl_dot1q_frame *)uip_buf
-#define FRAME (((__xdata struct rtl_dot1q_frame *)&uip_buf[0]).nonq_frame)*/
-	} else {
-		SFR_NIC_DATA_U16LE = (uint16_t) uip_buf + VLAN_TAG_SIZE;
-		len = FRAME->len;
-	}
-
-#ifdef RXTXDBG
-	print_string("TX: \n");
-	for (uint8_t i = 0; i < 100; i++) {
-		print_byte(uip_buf[i]);
-		write_char(' ');
-	}
-	write_char('\n');
-#endif
-
-	ring_ptr <<= 3;
-	ring_ptr |= 0x8000;
-	SFR_NIC_RING_U16LE = ring_ptr;
-
-	len += 0xf;
-	len >>= 3;
-	SFR_NIC_CTRL = len;
-	while (SFR_NIC_CTRL != 0) {
-		if (++guard == 0) {
-			print_string("NIC: TX transfer did not complete\n");
-			return;
-		}
-	}
-}
-
-
 /* Read flash using the MMIO capabilities of the DW8051 core
  * Bank is < 0x3f and is the MSB
  * addr gives the address in the bank
@@ -965,8 +897,12 @@ void tcpip_output(void)
 	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 	ring_ptr |= sfr_data[3];
 
-	// Move data over from xmem buffer to ASIC side using DMA
-	nic_tx_packet(ring_ptr);
+	// Move data over from xmem buffer to ASIC side using DMA. A VLAN-tagged
+	// frame starts at uip_buf; an untagged frame retains four bytes of padding.
+	if (frame_tagged)
+		nic_tx_packet(uip_buf, FRAME_Q->len, ring_ptr);
+	else
+		nic_tx_packet(uip_buf + VLAN_TAG_SIZE, FRAME->len, ring_ptr);
 
 	// New position of the ring-pointer on the NIC-side indicates number of bytes transmitted
 	reg_read_m(RTL837X_REG_NIC_TX_CURR_PKT);
