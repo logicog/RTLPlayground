@@ -46,8 +46,8 @@ st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
 v_title:"VLANs",v_vid:"VLAN ID",v_members:"Members",v_tagged:"Tagged",v_untagged:"Untagged",v_pvid_on:"PVID on",
 v_empty:"No VLANs configured.",v_mgmt:"Management VLAN",v_mgmt_none:"untagged",v_editor:"VLAN editor",
-v_optional:"optional",v_setmgmt:"Set as mgmt VLAN",v_setmgmt_t:"Make this the management VLAN",
-v_member:"Member",v_pvid:"PVID",v_add:"Add a new VLAN",
+v_optional:"optional",v_setmgmt_q:"Set {n} as the management ID?",v_setmgmt_t:"Make this the management VLAN",
+v_member:"Member",v_pvid:"PVID",v_add:"Add a new VLAN", v_mgmt_c:"WARNING: You must be able to access this VLAN to continue to manage the switch.",
 v_legend:"U = untagged member, T = tagged member, - = not a member. PVID is automatically assigned based on the untagged membership.",
 v_ingress:"Ingress filtering",v_ingress_h:"write-only: the state is not readable from the switch",
 v_accept:"Accept",v_ing_all:"All",v_ing_apply:"Apply ingress modes",v_del_t:"Delete VLAN",
@@ -1505,19 +1505,34 @@ function vlanRefresh() {
           l.dataset.t = maskToPorts(tag);
           l.dataset.u = maskToPorts(unt);
         }
-        var del = tr.insertCell();
-        if (v.id != $("vmgmtcur").dataset.id) del.appendChild(h("button", {
-          class: "ctl",
-          text: "\u2715",
-          title: t("v_del_t"),
-          onclick: function() {
-            confirmModal(t("v_del_q", {
-              n: v.id
-            }), t("v_del_d"), function() {
-              postCmd("vlan " + v.id + " d").then(vlanRefresh).catch(function() {});
-            });
-          }
-        }));
+        var act = tr.insertCell();
+        if (v.id != $("vmgmtcur").dataset.id) {
+          act.appendChild(h("button", {
+            class: "ctl",
+            text: "\u2715",
+            title: t("v_del_t"),
+            onclick: function() {
+              confirmModal(t("v_del_q", {
+                n: v.id
+              }), t("v_del_d"), function() {
+                postCmd("vlan " + v.id + " d").then(vlanRefresh).catch(function() {});
+              });
+            },
+          }));
+          act.appendChild(h("button", {
+            class: "ctl",
+            text: "\u2605",
+            style: "margin-left: 1em;",
+            title: t("v_setmgmt_t"),
+            onclick: function() {
+              confirmModal(t("v_setmgmt_q", {
+                n: v.id
+              }), t("v_mgmt_c"), function() {
+                postCmd("vlan " + v.id + " mgmt").then(vlanRefresh);
+              });
+            }
+          }));
+        }
       }).catch(function() {});
     });
     return p;
@@ -1712,15 +1727,6 @@ function addVlan() {
     vlanRefresh().then(function(){vlanLoad(vid)});
   }).catch(function() {});
 }
-//ROBTODO
-/*
-$("vmgmt").addEventListener("click",function(){
-  var vid=parseInt($("vvid").value,10);
-  if(!vid){toast(t("v_vid_first"),"err");return;}
-  confirmModal(t("v_mgmt_q",{n:vid}),t("v_mgmt_d"),
-    function(){postCmd("vlan "+vid+" mgmt").then(vlanRefresh).catch(function(){})});
-});
-*/
 tabHooks.vlan = {
   enter: function() {
     needPorts(function() {
