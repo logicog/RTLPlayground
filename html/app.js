@@ -1467,6 +1467,7 @@ function vlanRefresh() {
   return getJSON("/vlanlist").then(function(d) {
     var vl = d.vlan || [];
     $("vmgmtcur").textContent = d.mgmt ? String(d.mgmt) : t("v_mgmt_none");
+    $("vmgmtcur").dataset.id = d.mgmt;
     $("vempty").style.display = vl.length ? "none" : "";
     tb.innerHTML = "";
     var p = Promise.resolve();
@@ -1505,7 +1506,7 @@ function vlanRefresh() {
           l.dataset.u = maskToPorts(unt);
         }
         var del = tr.insertCell();
-        if (v.id !== 1) del.appendChild(h("button", {
+        if (v.id != $("vmgmtcur").dataset.id) del.appendChild(h("button", {
           class: "ctl",
           text: "\u2715",
           title: t("v_del_t"),
@@ -1671,24 +1672,6 @@ function vlanApply() {
     vlanLoad(vid)
   });
 }
-/*
-function ingressApply() {
-  var cmd = "ingress",
-    any = false;
-  for (var p = 1; p <= S.n; p++) {
-    var v = $("ing" + p).value;
-    if (v) {
-      cmd += " " + p + v;
-      any = true;
-    }
-  }
-  if (!any) {
-    toast(t("v_ing_none"), "err");
-    return;
-  }
-  postCmd(cmd).catch(function() {});
-}
-*/
 $("vapply").addEventListener("click", vlanApply);
 $("vlan_add").addEventListener("click", function() {
   var body = h("div");
