@@ -15,7 +15,28 @@
 
 #define MACHINE_INC(dir,file) MACHINE_STR(dir/file)
 
+#define RTL8370 0x70
+#define RTL8372 0x72
+#define RTL8373 0x73
+
 #include  MACHINE_INC(MACHINE_DEF_DIR,MACHINE_NAME.h)
+
+
+#ifndef MACHINE_CHIPSET
+#error "MACHINE_CHIPSET shall be defined in <machine>.h file"
+#endif
+
+#ifndef MACHINE_MIN_PORT
+#if MACHINE_CHIPSET == RTL8372
+#define MACHINE_MIN_PORT 3
+#else
+#define MACHINE_MIN_PORT 0
+#endif
+#endif
+
+#ifndef MACHINE_MAX_PORT
+#define MACHINE_MAX_PORT 8
+#endif
 
 #define LED_27 1
 // SYSTEM LED

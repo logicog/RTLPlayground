@@ -2,5 +2,6 @@
 #define _MACHINE_KP_9000_9XHML_X_V3_1_H_
 
 #define MACHINE_MODEL "keepLink KP-9000-9XHML-X V3.1"
+#define MACHINE_CHIPSET RTL8373
 
 #endif

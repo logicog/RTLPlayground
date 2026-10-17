@@ -2,5 +2,6 @@
 #define _MACHINE_HI_K0801WS_H_
 
 #define MACHINE_MODEL "Hi-Source HI-k0801WS"
+#define MACHINE_CHIPSET RTL8373
 
 #endif
