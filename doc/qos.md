@@ -148,7 +148,12 @@ the others, and let the rest share the port in equal parts:
 ```
 > qos on
 > qos queue 1 5 sp
+> qos queue 1 7 sp
 ```
+A strict queue starves every weighted queue of its port, so queue 7, which carries the
+LACP, STP and LLDP frames of the switch, has to be strict as well. Of two strict queues
+the higher one is served first.
+
 To give queue 2 of port 1 three times the share of the other queues instead:
 ```
 > qos queue 1 2 3
