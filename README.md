@@ -134,6 +134,20 @@ for example
 rtlplayground-v0.1.0-12c98ba-dirty-LIANGUO_ZX_SWTGW215AS.bin
 ```
 
+To print code-bank usage after linking, run:
+
+```sh
+make bank_usage MACHINE=KP_9000_9XHML_X_V3_1
+```
+
+To inspect an existing build without invoking the compiler:
+
+```sh
+python3 tools/bank_usage.py output/KP_9000_9XHML_X_V3_1/rtlplayground.map
+```
+
+The Python script reads the linked CODE areas, includes any layout gaps, and reports used/free bytes per bank. Resident capacity reserves two bytes for the image header; each switched bank holds 48 KiB. It exits with a nonzero status if an area exceeds its bank or the input cannot be read. Rebuild after source changes to inspect current usage.
+
 > [!CAUTION]
 > This image can be flashed directly to the chip OR through the firmware update/upgrade
 > interface of RTLPlayground interface
