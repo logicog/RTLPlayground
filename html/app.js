@@ -52,7 +52,7 @@ v_legend:"U = untagged member, T = tagged member, - = not a member. PVID is auto
 v_ingress:"Ingress filtering",v_ingress_h:"write-only: the state is not readable from the switch",
 v_accept:"Accept",v_ing_all:"All",v_ing_apply:"Apply ingress modes",v_del_t:"Delete VLAN",
 v_del_q:"Delete VLAN {n}?",v_del_d:"Ports keep their PVID until reassigned.",
-v_vid_err:"Enter a VLAN ID (1-4094)",v_name_err:"Name must start with a letter (letters, digits, _)",
+v_vid_err:"Enter a VLAN ID (1-4094)",v_name_err:"Name must start with a letter (letters, digits, _) and cannot be just 'd' or 'mgmt'",
 v_loaded:"Loaded VLAN {n}",v_notfound:"VLAN {n} not found (a new one can still be created)",
 v_nomember:"Select at least one member port (or delete the VLAN instead)",
 v_ing_none:"Pick an ingress mode for at least one port",v_vid_first:"Enter a VLAN ID first",
@@ -1717,7 +1717,7 @@ function addVlan() {
     }
   }
   var name = $("nvlname").value;
-  if (name && !/^[a-zA-Z]\w*$/.test(name)) {
+  if (name && (!/^[a-zA-Z]\w*$/.test(name) || name == "d" || name == "mgmt")) {
     toast(t("v_name_err"), "err");
     return;
   }
