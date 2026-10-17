@@ -75,9 +75,6 @@ __xdata uint8_t postbody_endpoint;
 __xdata uint16_t postbody_start;
 
 __xdata char passwd[21];
-// Set when a verified firmware upload awaits its response ACK, after
-// which the chip resets to apply the staged image
-__xdata uint8_t fw_reset_pending;
 __xdata char session_id[SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
@@ -110,7 +107,6 @@ void httpd_init(void) __banked
 	// Not through uip_conn: it only points at a connection while uIP is
 	// handling one, and nothing has set it yet at init time.
 	uip_conns[0].appstate.tstate = TSTATE_CLOSED;
-	fw_reset_pending = 0; // xdata is not zeroed by the startup code
 }
 
 
@@ -511,7 +507,7 @@ uint8_t stream_upload(void)
 						"Content-Type: text/plain\r\n\r\n"
 						"OK: checksum verified, rebooting\n");
 					// Reset once the response is fully ACKed
-					fw_reset_pending = 1;
+					s->fw_reset_pending = 1;
 				} else {
 					print_string("Checksum incorrect! Aborting.\n");
 					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 33\r\n"
@@ -877,6 +873,7 @@ void httpd_appcall(void)
 	if(uip_connected() && s->tstate == TSTATE_CLOSED) {
 		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
+		s->fw_reset_pending = 0; // explicitly initialize reused XDATA appstate
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
@@ -928,7 +925,7 @@ void httpd_appcall(void)
 			cont_len -= slen;
 			cont_addr += slen;
 			s->tstate = TSTATE_TX;
-		} else if (fw_reset_pending) {
+		} else if (s->fw_reset_pending) {
 			// The upload verdict has been fully ACKed by the client;
 			// now it is safe to reset and apply the staged image
 			print_string("Resetting to apply update\n");
