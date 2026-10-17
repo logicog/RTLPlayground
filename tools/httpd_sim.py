@@ -48,7 +48,8 @@ l2_entries = [
 state = {
     "lldp_enabled": False,
     "vlans": {1: {"active": True, "name": "", "untagged":[1,2,3,4,5,6,7,8], "tagged":[], "pvid":[1,2,3,4,5,6,7,8]}},
-    "cmd_history": []
+    "cmd_history": [],
+    "mgmt_vlan": 1
 }
 
 
@@ -211,7 +212,7 @@ class Handler(SimpleHTTPRequestHandler):
             command = self._read_raw()
             state["cmd_history"].append(command)
             print(f"Received command: '{command}'")
-            self.parse_cmd(command);
+            self.parse_cmd(command.strip());
 
             return self._send(
                 200,
@@ -306,6 +307,9 @@ class Handler(SimpleHTTPRequestHandler):
         name=""
         if pieces[2] == "d":
             return remove_vlan(vid)
+        elif pieces[2] == "mgmt":
+            state["mgmt_vlan"] = vid
+            return
         elif not re.match('^[0-9]+$', pieces[2]):
             name = pieces[2]
             startIndex=3
@@ -457,13 +461,13 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_vlanlist(self):
         global state
         vlan_list = []
-        for i in state.get("vlans").keys():
-            if i in state.get("vlans") and state.get("vlans")[i]["active"]:
+        for i in state["vlans"].keys():
+            if i in state["vlans"] and state["vlans"][i]["active"]:
                 vlan_list.append({
                     "id": i,
-                    "name": state.get("vlans")[i]["name"],
+                    "name": state["vlans"][i]["name"],
                 })
-        return {"mgmt": 1, "vlan": vlan_list}
+        return {"mgmt": state["mgmt_vlan"], "vlan": vlan_list}
 
     def _api_vlan(self,query):
         global state
