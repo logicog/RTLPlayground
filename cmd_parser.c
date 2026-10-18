@@ -745,7 +745,7 @@ void parse_isolate(void)
 	if (cmd_compare(2, "off")) {
 		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
 			members |= ((uint16_t)1) << i;
-		members |= 0x200; // CPU-port
+		members |= PMASK_CPU; // CPU-port
 		port_isolate(port_configured, members);
 		return;
 	}
