@@ -33,7 +33,7 @@
 html,body{height:100%}
 body{
   font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  background:var(--bg);color:var(--fg);display:flex;
+  background:var(--bg);color:var(--fg);display:flex;overflow:hidden;
 }
 button,input,select,textarea{font:inherit;color:var(--fg)}
 a{color:var(--ac);text-decoration:none}
@@ -72,8 +72,8 @@ select.ctl,button.ctl{
 button.pri{background:var(--ac);color:var(--acfg);border-color:transparent;font-weight:600}
 button.pri:hover,button.ctl:hover{filter:brightness(1.07)}
 button:disabled{opacity:.45;cursor:default;filter:none}
-main{padding:18px 20px 40px;max-width:1400px;width:100%}
-section.tab{display:none}
+main{padding:18px 20px 40px;width:100%;overflow-y:auto;}
+section.tab{display:none;max-width:1400px;}
 section.tab.act{display:block}
 .card{
   background:var(--panel);border:1px solid var(--bd);border-radius:10px;
