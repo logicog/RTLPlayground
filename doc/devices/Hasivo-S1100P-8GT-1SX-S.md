@@ -1,6 +1,6 @@
 # Hasivo S1100P-8GT-1SX-S
 
-RTL8373N switch with 8 × 2.5G RJ45 ports and 1 × SFP port. Board reported as SWTG018AS-A V2.0; GD25Q16 2 MiB flash (`mac_flash_offset = 0x1FC000`).
+RTL8373N switch with 8 × 2.5G RJ45 ports and 1 × SFP port. GD25Q16 2 MiB flash (`mac_flash_offset = 0x1FC000`).
 
 ## Port mapping
 
@@ -20,7 +20,7 @@ RTL8373N switch with 8 × 2.5G RJ45 ports and 1 × SFP port. Board reported as S
 | SFP I2C SDA / SCL | 39 / 40 |
 | Reset | 54 |
 
-Copper LEDs: orange for 10/100/1000 Mb/s, green for 2.5 Gb/s. The profile preserves the original 28-entry LED mux configuration. PoE management is not implemented.
+The profile preserves the original 28-entry LED mux configuration. PoE management is not implemented.
 
 ## Build
 
