@@ -109,7 +109,8 @@ void httpd_init(void) __banked
 	uip_listen(HTONS(80));
 	// Not through uip_conn: it only points at a connection while uIP is
 	// handling one, and nothing has set it yet at init time.
-	uip_conns[0].appstate.tstate = TSTATE_CLOSED;
+	for (uint8_t i = 0; i < UIP_CONNS; i++)
+		uip_conns[i].appstate.tstate = TSTATE_CLOSED;
 	fw_reset_pending = 0; // xdata is not zeroed by the startup code
 }
 
@@ -874,7 +875,7 @@ void httpd_appcall(void)
 	print_byte(s->tstate);
 	write_char(' ');
 #endif
-	if(uip_connected() && s->tstate == TSTATE_CLOSED) {
+	if(uip_connected()) {
 		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
 	} else if (uip_closed()) {
