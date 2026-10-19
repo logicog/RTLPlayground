@@ -26,7 +26,7 @@ __code const struct machine machine = {
 			0
 		},
 		{
-			LEDS_10G | LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT, // SFP LED set; color unverified
+			LEDS_10G | LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT, // SFP LED0: green (both SFP LEDs are green)
 			0, 0, 0
 		}
 	},
