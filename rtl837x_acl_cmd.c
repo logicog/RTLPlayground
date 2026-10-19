@@ -32,7 +32,6 @@ static __xdata uint32_t acl_max;
 static __xdata uint32_t acl_lo;
 static __xdata uint32_t acl_hi;
 static __xdata uint32_t acl_m;
-static __xdata uint32_t acl_t32;
 static __xdata uint8_t  acl_byp;
 static __xdata uint8_t  acl_svlan;
 static __xdata uint8_t  acl_intr;
@@ -77,6 +76,7 @@ static uint8_t acl_sep(uint8_t c)
 
 static uint8_t acl_dec(void)
 {
+	uint32_t t32;
 	uint8_t d = 0;
 
 	acl_num = 0;
@@ -86,9 +86,9 @@ static uint8_t acl_dec(void)
 			return d;
 		if (++d > 9)
 			return 0;
-		acl_t32 = acl_num;
+		t32 = acl_num;
 		acl_num <<= 2;
-		acl_num += acl_t32;
+		acl_num += t32;
 		acl_num <<= 1;
 		acl_num += c;
 		acl_p++;
