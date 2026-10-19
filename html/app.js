@@ -74,6 +74,8 @@ lag_clear_q:"Clear LAG {n}?",lag_clear_d:"All member ports return to normal oper
 e_title:"Energy Efficient Ethernet",e_adv:"Advertised",e_lp:"Link partner",e_active:"Active",e_enable:"Enable",
 e_note:"Advertised and link-partner flags per speed: 100M, 1G, 2.5G. SFP ports do not support EEE.",
 e_idle:"idle",e_na:"n/a",
+nav_fc:"Flow control",fc_title:"Flow control (802.3x pause)",fc_neg:"Negotiated",
+fc_note:"Advertised and link-partner pause flags. Negotiated shows the pause directions in use on the link: TX, RX or both. Switching a port renegotiates its link. SFP ports cannot be set.",
 bw_title:"Bandwidth limits",bw_h:"Mbit/s, 0.016-10000",bw_in:"Ingress limit",bw_out:"Egress limit",
 bw_exceed:"When exceeded",bw_fc:"Flow control",bw_drop:"Drop",
 bw_in_err:"Ingress limit must be 0.016-10000 Mbit/s",bw_out_err:"Egress limit must be 0.016-10000 Mbit/s",
@@ -198,6 +200,8 @@ lag_clear_q:"LAG {n} を解除しますか?",lag_clear_d:"すべてのメンバ�
 e_title:"Energy Efficient Ethernet",e_adv:"アドバタイズ",e_lp:"リンクパートナー",e_active:"有効",e_enable:"有効化",
 e_note:"速度ごとのアドバタイズ/リンクパートナーのフラグ: 100M、1G、2.5G。SFP ポートは EEE に対応していません。",
 e_idle:"アイドル",e_na:"n/a",
+nav_fc:"フロー制御",fc_title:"フロー制御 (802.3x PAUSE)",fc_neg:"ネゴシエーション結果",
+fc_note:"本端とリンクパートナーの PAUSE フラグ。ネゴシエーション結果はリンクで使用中の PAUSE 方向 (TX、RX、両方) を示します。切り替えるとそのポートのリンクが再ネゴシエーションされます。SFP ポートは設定できません。",
 bw_title:"帯域制限",bw_h:"Mbit/s、0.016〜10000",bw_in:"入力制限",bw_out:"出力制限",
 bw_exceed:"超過時の動作",bw_fc:"フロー制御",bw_drop:"破棄",
 bw_in_err:"入力制限は 0.016〜10000 Mbit/s の範囲で指定してください",bw_out_err:"出力制限は 0.016〜10000 Mbit/s の範囲で指定してください",
@@ -311,6 +315,8 @@ lag_clear_q:"清除 LAG {n}?",lag_clear_d:"所有成员端口恢复正常工作�
 e_title:"节能以太网 (EEE)",e_adv:"本端通告",e_lp:"链路伙伴",e_active:"已生效",e_enable:"启用",
 e_note:"按速率显示本端/链路伙伴的通告标志: 100M、1G、2.5G。SFP 端口不支持 EEE。",
 e_idle:"空闲",e_na:"n/a",
+nav_fc:"流量控制",fc_title:"流量控制 (802.3x PAUSE)",fc_neg:"协商结果",
+fc_note:"本端和链路伙伴的 PAUSE 标志。协商结果显示链路上使用的 PAUSE 方向: TX、RX 或双向。切换会使该端口重新协商链路。SFP 端口无法设置。",
 bw_title:"带宽限制",bw_h:"Mbit/s，0.016-10000",bw_in:"入方向限速",bw_out:"出方向限速",
 bw_exceed:"超限动作",bw_fc:"流量控制",bw_drop:"丢弃",
 bw_in_err:"入方向限速范围为 0.016-10000 Mbit/s",bw_out_err:"出方向限速范围为 0.016-10000 Mbit/s",
@@ -424,6 +430,8 @@ lag_clear_q:"¿Borrar LAG {n}?",lag_clear_d:"Todos los puertos miembros vuelven 
 e_title:"Ethernet de bajo consumo",e_adv:"Anunciado",e_lp:"Par de enlace",e_active:"Activo",e_enable:"Habilitar",
 e_note:"Banderas anunciadas y del socio de enlace por velocidad: 100M, 1G, 2.5G. Los puertos SFP no soportan EEE.",
 e_idle:"inactivo",e_na:"n/d",
+nav_fc:"Control de flujo",fc_title:"Control de flujo (pausa 802.3x)",fc_neg:"Negociado",
+fc_note:"Banderas de pausa anunciadas y del socio de enlace. Negociado muestra las direcciones de pausa en uso en el enlace: TX, RX o ambas. Cambiar un puerto renegocia su enlace. Los puertos SFP no se pueden configurar.",
 bw_title:"Límites de ancho de banda",bw_h:"Mbit/s, 0.016-10000",bw_in:"Límite de entrada",bw_out:"Límite de salida",
 bw_exceed:"Al excederse",bw_fc:"Control de flujo",bw_drop:"Descartar",
 bw_in_err:"El límite de entrada debe estar entre 0.016 y 10000 Mbit/s",bw_out_err:"El límite de salida debe estar entre 0.016 y 10000 Mbit/s",
@@ -539,6 +547,8 @@ lag_clear_q:"Effacer l'agrégation {n}?",lag_clear_d:"Tous les ports membres von
 e_title:"Gestion énergétique des ports",e_adv:"Capacités",e_lp:"Capacité du partenaire",e_active:"Actif",e_enable:"Basse consommation",
 e_note:"Capacité de l'hôte et des partenaires : 100M, 1G, 2.5G. Les ports SFP ne peuvent pas bénéficier de l'EEE.",
 e_idle:"Inactif",e_na:"N/A",
+nav_fc:"Contrôle de flux",fc_title:"Contrôle de flux (pause 802.3x)",fc_neg:"Négocié",
+fc_note:"Indicateurs de pause annoncés et du partenaire de lien. Négocié indique les sens de pause utilisés sur le lien : TX, RX ou les deux. Changer un port renégocie son lien. Les ports SFP ne sont pas configurables.",
 bw_title:"Limitations de bande passante",bw_h:"Mbit/s, 0.016-10000",bw_in:"Limite entrante",bw_out:"Limite sortante",
 bw_exceed:"Lorsque dépassé",bw_fc:"Limiter",bw_drop:"Rejetter",
 bw_in_err:"La limite entrante doit être comprise entre 0.016 et 10000 Mbit/s",bw_out_err:"La limite sortante doit être comprise entre 0.016 et 10000 Mbit/s",
@@ -658,6 +668,8 @@ lacp_heading:"LACP (802.3ad)",lag_mode:"Modus",lag_static:"Statisch",lacp_neg:"w
 e_title:"Energy Efficient Ethernet",e_adv:"Angeboten",e_lp:"Gegenstelle",e_active:"Aktiv",e_enable:"Aktivieren",
 e_note:"Angebotene und von der Gegenstelle unterstützte Stufen je Geschwindigkeit: 100M, 1G, 2.5G. SFP-Ports unterstützen kein EEE.",
 e_idle:"inaktiv",e_na:"k. A.",
+nav_fc:"Flusskontrolle",fc_title:"Flusskontrolle (802.3x Pause)",fc_neg:"Ausgehandelt",
+fc_note:"Pause-Flags der eigenen Seite und des Link-Partners. Ausgehandelt zeigt die auf dem Link genutzten Pause-Richtungen: TX, RX oder beide. Umschalten handelt den Link des Ports neu aus. SFP-Ports lassen sich nicht einstellen.",
 bw_title:"Bandbreitenbegrenzung",bw_h:"Mbit/s, 0.016-10000",bw_in:"Eingangslimit",bw_out:"Ausgangslimit",
 bw_exceed:"Bei Überschreitung",bw_fc:"Flusskontrolle",bw_drop:"Verwerfen",
 bw_in_err:"Eingangslimit muss zwischen 0.016 und 10000 Mbit/s liegen",bw_out_err:"Ausgangslimit muss zwischen 0.016 und 10000 Mbit/s liegen",
@@ -816,6 +828,7 @@ var CONF_CMDS=[
   /^port\s+\d{1,2}\s+name\s+\S+$/,
   /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
   /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
+  /^flowctrl\s+(on|off)(\s+\d{1,2})?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
@@ -889,6 +902,7 @@ var TABS=[
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
   {id:"lldp",  icon:"M11 12a1 1 0 002 0 1 1 0 00-2 0M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
+  {id:"fc",    icon:"M4 9h13l-4-4M20 15H7l4 4"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
   {id:"system",icon:"M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"},
   {id:"fw",    icon:"M12 3v12M8 11l4 4 4-4M4 19h16"},
@@ -1939,6 +1953,36 @@ function eeeLoad(){
 var eeePoller=new Poller(function(){return eeeLoad()},4000);
 tabHooks.eee={enter:function(){eeePoller.start()},leave:function(){eeePoller.stop()}};
 
+// "fc" bits: 0 we advertise pause, 1 asymmetric; 2-3 the same from the partner; 4 TX, 5 RX negotiated
+function fcFlags(b){
+  return["Pause","Asym"].filter(function(s,i){return b&(1<<i)}).join(", ")||"-";
+}
+function fcLoad(){
+  return getJSON("/flowctrl.json").then(function(s){
+    var tb=$("fctable").tBodies[0];tb.innerHTML="";
+    byPort(s).forEach(function(p){
+      var tr=tb.insertRow(),neg=p.fc>>4&3;
+      tr.insertCell().textContent=p.portNum+(p.isSFP?" (SFP)":"");
+      tr.insertCell().textContent=p.isSFP?"-":fcFlags(p.fc&3);
+      tr.insertCell().textContent=p.isSFP?"-":fcFlags(p.fc>>2&3);
+      tr.insertCell().innerHTML=neg?badge(["","TX","RX","TX/RX"][neg],"ok"):badge(t("c_off"));
+      if(p.isSFP){
+        tr.insertCell().textContent=t("e_na");
+        return;
+      }
+      var sw=h("label",{class:"switch"},[
+        h("input",{type:"checkbox",onchange:function(){
+          postCmd("flowctrl "+(this.checked?"on":"off")+" "+p.portNum)
+            .then(function(){setTimeout(fcLoad,300)}).catch(function(){});
+        }}),h("i")]);
+      sw.firstChild.checked=!!(p.fc&1);
+      tr.insertCell().appendChild(sw);
+    });
+  });
+}
+var fcPoller=new Poller(function(){return fcLoad()},4000);
+tabHooks.fc={enter:function(){fcPoller.start()},leave:function(){fcPoller.stop()}};
+
 function bwLoad(){
   return getJSON("/bandwidth.json").then(function(s){
     var tb=$("btable").tBodies[0];tb.innerHTML="";
@@ -2264,6 +2308,10 @@ function mergeConf(base,texts){
       if((m=line.match(/^eee (on|off)(?: (\d{1,2}))?(?: (?:100m|1g|2g5))?$/))){
         if(m[2])drop(new RegExp("^eee (on|off) "+m[2]+"\\b"));
         else drop(/^eee /);
+        conf.push(line);return;
+      }
+      if((m=line.match(/^flowctrl (on|off)(?: (\d{1,2}))?$/))){
+        drop(m[2]?new RegExp("^flowctrl (on|off) "+m[2]+"$"):/^flowctrl /);
         conf.push(line);return;
       }
       if((m=line.match(/^lag (\d) lacp off$/))){drop(new RegExp("^lag "+m[1]+" lacp( |$)"));return;}

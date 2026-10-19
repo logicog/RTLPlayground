@@ -1067,6 +1067,8 @@ void httpd_appcall(void)
 					send_bad_request();
 			} else if (is_word(q, "/eee.json")) {
 				send_eee();
+			} else if (is_word(q, "/flowctrl.json")) {
+				send_flowctrl();
 			} else if (is_word(q, "/bandwidth.json")) {
 				send_bandwidth();
 			} else if (is_word(q, "/storm.json")) {

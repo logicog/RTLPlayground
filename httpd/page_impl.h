@@ -14,6 +14,7 @@ void send_basic_info(void);
 void send_bandwidth(void);
 void send_storm(void);
 void send_eee(void);
+void send_flowctrl(void);
 void send_l2(uint16_t idx);
 void l2_delete(uint16_t idx);
 void send_mirror(void);

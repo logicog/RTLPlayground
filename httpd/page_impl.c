@@ -15,6 +15,7 @@
 #include "machine.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_lacp.h"
+#include "rtl837x_pause.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -863,6 +864,29 @@ void send_eee(void)
 			char_to_html(']');
 	}
 }
+
+/* Per port the PAUSE_* bits of port_pause_state() as one number, "fc". */
+void send_flowctrl(void)
+{
+	dbg_string("send_flowctrl called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	char_to_html('[');
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"isSFP\":");
+		bool_to_html(machine.is_sfp[i]);
+		slen += strtox(outbuf + slen, ",\"fc\":");
+		itoa_html(port_pause_state(i));
+		char_to_html('}');
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+}
+
 
 
 void send_bandwidth(void)

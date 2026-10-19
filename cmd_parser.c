@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_pause.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
@@ -1548,6 +1549,33 @@ void parse_eee(void)
 	}
 }
 
+void parse_flowctrl(void)
+{
+	__xdata bool on;
+
+	if (cmd_words_len > 3) {
+		cmd_error("flowctrl on|off [port]\n");
+		return;
+	}
+	if (cmd_compare(1, "on")) {
+		on = true;
+	} else if (cmd_compare(1, "off")) {
+		on = false;
+	} else {
+		cmd_error("flowctrl on|off [port]\n");
+		return;
+	}
+	if (cmd_words_len < 3) {
+		port_pause_set_all(on);
+		return;
+	}
+	if (cmd_parse_port_separator(cmd_words_b[2]) == 0) {
+		cmd_error("Invalid port number\n");
+		return;
+	}
+	port_pause_set(atoi_results_u8, on);
+}
+
 
 void parse_bw(void)
 {
@@ -2051,6 +2079,8 @@ void cmd_parser(void) __banked
 			parse_passwd();
 		} else if (cmd_compare(0, "eee")) {
 			parse_eee();
+		} else if (cmd_compare(0, "flowctrl")) {
+			parse_flowctrl();
 		} else if (cmd_compare(0, "bw")) {
 			parse_bw();
 		} else if (cmd_compare(0, "temp")) {

@@ -20,6 +20,11 @@
   - Replace the multi-page UI with a themed single-page app: light, dark and Selenized themes following the browser by default,
     English, Japanese and Chinese, save to flash merges the command log into the startup config and verifies the write,
     firmware images are checked in the browser before upload. #429
+  - Flow control page: per port the pause flags advertised by the switch and by the link partner,
+    the pause directions negotiated on the link, and on copper ports a switch to advertise pause or not.
+- Commands
+  - `flowctrl on|off [port]` advertises 802.3x pause on a copper port, or on all of them.
+    The choice survives later speed and duplex changes.
 
 ## Changed
 

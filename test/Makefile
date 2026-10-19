@@ -35,7 +35,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
 TABLE_ENV = support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c \
-            $(SRCROOT)/rtl837x_port.c $(SRCROOT)/httpd/page_impl.c
+            $(SRCROOT)/rtl837x_port.c $(SRCROOT)/rtl837x_pause.c $(SRCROOT)/httpd/page_impl.c
 
 all: run
 

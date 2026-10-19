@@ -377,6 +377,15 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       </div>
     </section>
 
+    <section class="tab" id="tab-fc">
+      <div class="card"><h2 data-i18n="fc_title">Flow control (802.3x pause)</h2>
+        <div class="scrollx"><table class="t" id="fctable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="e_adv">Advertised</th><th data-i18n="e_lp">Link partner</th><th data-i18n="fc_neg">Negotiated</th><th data-i18n="c_enabled">Enabled</th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="fc_note">Advertised and link-partner pause flags. Negotiated shows the pause directions in use on the link: TX, RX or both. Switching a port renegotiates its link. SFP ports cannot be set.</p>
+      </div>
+    </section>
+
     <section class="tab" id="tab-bw">
       <div class="card"><h2><span data-i18n="bw_title">Bandwidth limits</span> <span class="hint" data-i18n="bw_h">Mbit/s, 0.016-10000</span></h2>
         <div class="scrollx"><table class="t" id="btable">

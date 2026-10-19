@@ -12,6 +12,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
+#include "rtl837x_pause.h"
 #include "machine.h"
 #include "page_impl.h"
 #include "support.h"
@@ -202,6 +203,69 @@ static void t_status_macs(void)
 	CHECK(balanced(), "valid JSON");
 }
 
+extern uint16_t phy_mock_an[9][2];
+extern uint16_t phy_mock_mod[5];
+extern uint16_t phy_pause_off;
+
+/* The "fc" value inside the port's own object, or -1. */
+static int fc_of(int port)
+{
+	char key[16];
+	snprintf(key, sizeof key, "{\"portNum\":%d,", port);
+	const char *p = strstr(body(), key);
+	const char *end = p ? strchr(p, '}') : NULL;
+	const char *f = p ? strstr(p, "\"fc\":") : NULL;
+	return f && f < end ? atoi(f + 5) : -1;
+}
+
+static void t_flowctrl(void)
+{
+	printf("[test] /flowctrl.json reports advertised, offered and negotiated pause per port\n");
+	hw_reset(); out_reset();
+	memset(phy_mock_an, 0, sizeof phy_mock_an);
+	phy_mock_an[1][0] = 0x15e1;	// logical port 1 advertises pause
+	phy_mock_an[1][1] = 0xdde1;	// and its partner pause and asymmetric pause
+	phy_mock_an[5][0] = 0x11e1;	// port 5 advertises none ("flowctrl off")
+	phy_mock_an[5][1] = 0x0800;	// its partner asymmetric pause only
+	phy_mock_an[6][0] = 0x0800;	// port 6 asymmetric pause only
+	hw_reg_set(RTL837X_MAC_TX_PAUSE_STS, (1 << 2) | (1 << 3) | (1 << 8));	// logical ports 2, 3 and 8: TX
+	hw_reg_set(RTL837X_MAC_RX_PAUSE_STS, (1 << 3) | (1 << 7));		// logical ports 3 and 7: RX
+	send_flowctrl();
+	/* The test machine maps logical port N to portNum N + 1 */
+	CHECK(fc_of(2) == (PAUSE_ADV | PAUSE_LP | PAUSE_LP_ASYM), "port 1: our pause, the partner's pause and asymmetric pause");
+	CHECK(fc_of(6) == PAUSE_LP_ASYM, "port 5: no pause from us, asymmetric from the partner");
+	CHECK(fc_of(7) == PAUSE_ADV_ASYM, "port 6: our asymmetric pause");
+	CHECK(fc_of(3) == PAUSE_NEG_TX, "port 2 negotiated only TX");
+	CHECK(fc_of(4) == (PAUSE_NEG_TX | PAUSE_NEG_RX), "port 3 both ways");
+	CHECK(fc_of(8) == PAUSE_NEG_RX, "port 7 only RX");
+	CHECK(fc_of(9) == PAUSE_NEG_TX, "port 8, in the second byte, only TX");
+	CHECK(fc_of(1) == 0 && fc_of(5) == 0, "the others nothing");
+	CHECK(count("\"isSFP\":0") == 9, "every port is copper on this machine");
+	CHECK(slen <= TCP_OUTBUF_SIZE, "fits the buffer");
+	CHECK(balanced(), "valid JSON");
+	out_reset();
+	hw_reg_set(RTL837X_MAC_TX_PAUSE_STS, 0);
+	hw_reg_set(RTL837X_MAC_RX_PAUSE_STS, 1 << 8);
+	send_flowctrl();
+	CHECK(fc_of(9) == PAUSE_NEG_RX, "port 8, in the second byte, only RX");
+}
+
+static void t_pause_set(void)
+{
+	printf("[test] flowctrl on|off sets the advertisement and remembers it for phy_set_speed\n");
+	phy_pause_off = 0;
+	port_pause_set(3, false);
+	CHECK(phy_pause_off == 1 << 3, "off marks the port");
+	CHECK(phy_mock_mod[0] == 3 && phy_mock_mod[1] == 7 && phy_mock_mod[2] == 0x10, "on MMD 7.0x0010 of that port");
+	CHECK(phy_mock_mod[3] == 0x0c00 && phy_mock_mod[4] == 0, "clearing pause and asymmetric pause, nothing else");
+	port_pause_set_all(false);
+	CHECK(phy_pause_off == 0x1ff, "off for all marks every copper port");
+	port_pause_set(3, true);
+	CHECK(phy_pause_off == (0x1ff & ~(1 << 3)), "on unmarks only that port");
+	CHECK(phy_mock_mod[3] == 0x0c00 && phy_mock_mod[4] == 0x0400, "and advertises symmetric pause");
+	phy_pause_off = 0;
+}
+
 static void t_status_counters(void)
 {
 	printf("[test] /status.json prints 64-bit packet counters in full\n");
@@ -229,6 +293,8 @@ int main(void)
 	t_l2_page();
 	t_status_counters();
 	t_status_macs();
+	t_flowctrl();
+	t_pause_set();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

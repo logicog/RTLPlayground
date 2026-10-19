@@ -288,6 +288,37 @@ void send_eee(int s)
 	json_object_put(ports);
 }
 
+uint8_t pause_off[PORTS + 1];	// set by "flowctrl off <port>"
+
+void send_flowctrl(int s)
+{
+	struct json_object *ports, *v;
+	const char *jstring;
+        char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	ports = json_object_new_array_ext(PORTS);
+	for (int i = 1; i <= PORTS; i++) {
+		int sfp = i > PORTS - NSFP;
+		int lp = (i % 3 == 0) ? 0 : (i % 3 == 1) ? 0x04 : 0x0c;	// partner: none, pause, pause + asym
+		int fc = sfp ? 0 : (pause_off[i] ? 0 : 0x01) | lp;
+		if ((fc & 0x01) && (fc & 0x04))
+			fc |= 0x30;	// both ends offer pause: TX and RX
+		v = json_object_new_object();
+		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "isSFP", json_object_new_int(sfp));
+		json_object_object_add(v, "fc", json_object_new_int(fc));
+		json_object_array_add(ports, v);
+	}
+
+        write(s, header, strlen(header));
+
+	jstring = json_object_to_json_string_ext(ports, JSON_C_TO_STRING_PLAIN);
+        write(s, jstring, strlen(jstring));
+	json_object_put(ports);
+}
+
+
 
 void send_bandwidth(int s)
 {
@@ -684,6 +715,12 @@ void launch(struct Server *server)
 					else
 						send_eee(new_socket);
 					goto done;
+				} else if (!strncmp(&buffer[4], "/flowctrl.json", 14)) {
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_flowctrl(new_socket);
+					goto done;
 				} else if (!strncmp(&buffer[4], "/bandwidth.json", 15)) {
 					printf("Bandwidth request\n");
 					if (!authenticated)
@@ -832,6 +869,12 @@ void launch(struct Server *server)
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
 					cmd_ptr++;
+					{
+						char onoff[4];
+						int n;
+						if (sscanf(p + 4, "flowctrl %3s %d", onoff, &n) == 2 && n >= 1 && n <= PORTS)
+							pause_off[n] = !strcmp(onoff, "off");
+					}
 					print_cmd_history();
 					char *response = "HTTP/1.1 200 OK\r\n"
 							"Content-Type: text/html\r\n\r\n"
