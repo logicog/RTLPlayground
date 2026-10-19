@@ -90,14 +90,14 @@ static void acl_tbl_wait(void)
 	} while ((sfr_data[3] & TBL_EXECUTE) && ++guard);
 }
 
-static void acl_tbl_write(uint8_t sel, uint8_t words, uint8_t addr, __xdata uint16_t *src) __reentrant
+static void acl_tbl_write(uint8_t sel, uint8_t words, uint8_t addr, __xdata void *src) __reentrant
 {
+	__xdata uint8_t *p = src;
 	uint8_t i;
 
 	acl_tbl_wait();
-	for (i = 0; i < words; i++)
-		REG_WRITE(RTL837x_TBL_DATA_IN_A + (i << 2), src[2 * i + 1] >> 8,
-			  src[2 * i + 1], src[2 * i] >> 8, src[2 * i]);
+	for (i = 0; i < words; i++, p += 4)
+		REG_WRITE(RTL837x_TBL_DATA_IN_A + (i << 2), p[3], p[2], p[1], p[0]);
 	REG_WRITE(RTL837X_TBL_CTRL, 0, addr, sel, TBL_WRITE | TBL_EXECUTE);
 	acl_tbl_wait();
 }
@@ -105,8 +105,8 @@ static void acl_tbl_write(uint8_t sel, uint8_t words, uint8_t addr, __xdata uint
 static void acl_entry_write(uint8_t idx, __xdata struct acl_rule_entry *x,
 			    __xdata struct acl_rule_entry *y) __reentrant
 {
-	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, idx, (__xdata uint16_t *)x);
-	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, ACL_TBL_Y | idx, (__xdata uint16_t *)y);
+	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, idx, x);
+	acl_tbl_write(TBL_ACL_RULE, ACL_RULE_WORDS, ACL_TBL_Y | idx, y);
 }
 
 static uint8_t acl_any(void)
@@ -296,14 +296,14 @@ static uint8_t acl_range_check(uint8_t idx, uint8_t tmpl) __reentrant
 
 static uint8_t acl_encode(uint8_t idx, uint8_t tmpl) __reentrant
 {
-	__xdata uint16_t *y = (__xdata uint16_t *)&acl_y;
-	__xdata uint16_t *x = (__xdata uint16_t *)&acl_x;
+	__xdata uint8_t *y = (__xdata uint8_t *)&acl_y;
+	__xdata uint8_t *x = (__xdata uint8_t *)&acl_x;
 	__xdata struct acl_req *req;
 	uint8_t s, k;
 	uint16_t ports;
 
-	for (s = 0; s < 2 * ACL_RULE_WORDS; s++)
-		y[s] = x[s] = 0xffff;
+	for (s = 0; s < sizeof(acl_y); s++)
+		y[s] = x[s] = 0xff;
 	acl_range[0].bits = acl_range[1].bits = acl_range[2].bits = 0;
 
 	for (s = 0; s < ACL_SLOT_INFO; s++) {
@@ -395,7 +395,7 @@ found:
 	if (!acl_encode(idx, tmpl))
 		return ACL_ERR_RANGE;
 
-	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_act);
+	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, &acl_act);
 	REG_SET(RTL837X_ACL_ACT_CTRL + (idx << 2), acl_ctrl);
 	acl_entry_write(idx, &acl_x, &acl_y);
 
@@ -408,7 +408,7 @@ found:
 void acl_rule_clear(uint8_t idx) __banked __reentrant
 {
 	acl_entry_write(idx, &acl_zero, &acl_zero);
-	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, (__xdata uint16_t *)&acl_zero);
+	acl_tbl_write(TBL_ACL_ACT, ACL_ACT_WORDS, idx, &acl_zero);
 	REG_SET(RTL837X_ACL_ACT_CTRL + (idx << 2), ACL_ACT_CTRL_OFF);
 	ACL_CLR_USED(idx);
 	acl_range_free(idx);
