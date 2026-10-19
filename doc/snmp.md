@@ -5,7 +5,13 @@ Generic UDP validation, NIC RX bounds, endian handling and startup CRLF support
 are unconditional. The generic UDP allocator stays in BANK1 in both configurations.
 
 The agent starts disabled and unconfigured. There is no default community or
-compile-time credential header. Use the authenticated console or UART:
+compile-time credential header. In **System → SNMP**, enter the allowed manager
+IP/CIDR and a community, choose the agent state, then click **Apply**. Use `/32`
+for one manager. The community accepts 1–32 printable ASCII characters without
+spaces; leave it blank to retain an existing community. **Refresh** discards
+unapplied edits. Protocol, access mode and UDP port are informational.
+
+The authenticated console and UART provide the same settings:
 
 ```
 snmp community <1-to-32-printable-ASCII-characters>
@@ -24,7 +30,11 @@ No new Flash regions are used. Existing startup records restore the same state;
 old `snmp changed` metadata is ignored during replay, rejected from live CLI,
 and omitted from new saves. Configuration-change timestamps are not implemented.
 
-The System page adds a status/on-off card to the normal upstream layout.
+The System page uses the normal settings rows, masked community input and
+Apply/Refresh controls. Apply disables the agent before changing its ACL or
+community and only enables it after all requested setters succeed. A failed
+sequence stops and refreshes the actual runtime state; earlier changes may
+already have taken effect. Save is unavailable while Apply is in progress.
 Community values are masked in the configuration editor and Web Console, never
 included in `snmp show` or `/information.json`. Startup Flash, UART history and
 authenticated configuration HTTP responses still contain plaintext; browser

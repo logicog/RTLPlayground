@@ -12,6 +12,8 @@
 - SNMP
   - Bounded GETBULK walks, interface administrative state, aliases, error counters
     and 32-bit multicast/broadcast counters for the optional read-only agent.
+  - Configure the manager IP/CIDR, community and agent state directly in the Web UI,
+    with masked credentials, Apply/Refresh controls and the existing Save to flash flow.
 
 ## Changed
 
