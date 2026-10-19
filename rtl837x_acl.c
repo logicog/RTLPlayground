@@ -252,8 +252,7 @@ static uint8_t acl_range_alloc(uint8_t idx, __xdata struct acl_req *req) __reent
 		hi = req->hi;
 		lo |= hi << 14;
 		hi >>= 2;
-		((__xdata uint16_t *)&acl_rv)[0] = lo;
-		((__xdata uint16_t *)&acl_rv)[1] = hi;
+		acl_rv = ((uint32_t)hi << 16) | lo;
 		acl_reg();
 		return 1;
 	}
@@ -266,9 +265,7 @@ static uint8_t acl_range_alloc(uint8_t idx, __xdata struct acl_req *req) __reent
 		acl_reg();
 		acl_ra -= ACL_RANGE_REG_STEP;
 	} else {
-		acl_rv = req->hi;
-		acl_rv <<= 16;
-		acl_rv |= req->lo;
+		acl_rv = ((uint32_t)req->hi << 16) | req->lo;
 		acl_reg();
 	}
 	acl_ra -= ACL_RANGE_REG_STEP;
