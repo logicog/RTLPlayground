@@ -177,3 +177,20 @@ Once the board has been tested on hardware:
    `doc/devices/KP-9000-6XH-X2.md` and document which `MACHINE` to pick for
    which silkscreen.
 
+### Identifying the CPU variant
+
+For RTL8373-based devices, use the read-only console command below to distinguish
+the N and non-N CPU variants:
+
+```text
+regget 4
+```
+
+| Register 0x0004 value | CPU |
+|---|---|
+| `0x83730000` | RTL8373 (non-N) |
+| `0x83737000` | RTL8373N |
+
+Record the identified CPU in the device documentation. These values identify
+only the CPU variant; document PHY and flash-chip models separately when verified.
+

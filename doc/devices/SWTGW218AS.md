@@ -12,9 +12,7 @@ All boards in this table use `MACHINE=SWTGW218AS`. The Horaco HC-SWTGW218AS is a
 [SWTG018AS-A V2.0](SWTG018AS_A_V2_0.md) board, which needs a different firmware. Check the marking
 on the PCB before flashing.
 
-On all three tested Horaco HC-SWTGW218AS units with PCB SWTG118AS-V2.1, `regget 4` returned
-`REGGET: 0x0004: VAL: 0x83730000`, identifying the CPU as RTL8373 (non-N). An RTL8373N returns
-`0x83737000` instead. The PHY and flash-chip models on these units have not been verified.
+The PHY and flash-chip models for the tested Horaco units remain unverified.
 
 
 ## Photos
