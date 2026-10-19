@@ -828,7 +828,7 @@ var CONF_CMDS=[
   /^port\s+\d{1,2}\s+name\s+\S+$/,
   /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
   /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
-  /^flowctrl\s+(on|off)(\s+\d{1,2})?$/,
+  /^port\s+\d{1,2}\s+fc\s+(on|off)$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
@@ -1972,7 +1972,7 @@ function fcLoad(){
       }
       var sw=h("label",{class:"switch"},[
         h("input",{type:"checkbox",onchange:function(){
-          postCmd("flowctrl "+(this.checked?"on":"off")+" "+p.portNum)
+          postCmd("port "+p.portNum+" fc "+(this.checked?"on":"off"))
             .then(function(){setTimeout(fcLoad,300)}).catch(function(){});
         }}),h("i")]);
       sw.firstChild.checked=!!(p.fc&1);
@@ -2310,8 +2310,8 @@ function mergeConf(base,texts){
         else drop(/^eee /);
         conf.push(line);return;
       }
-      if((m=line.match(/^flowctrl (on|off)(?: (\d{1,2}))?$/))){
-        drop(m[2]?new RegExp("^flowctrl (on|off) "+m[2]+"$"):/^flowctrl /);
+      if((m=line.match(/^port (\d{1,2}) fc (on|off)$/))){
+        drop(new RegExp("^port "+m[1]+" fc (on|off)$"));
         conf.push(line);return;
       }
       if((m=line.match(/^lag (\d) lacp off$/))){drop(new RegExp("^lag "+m[1]+" lacp( |$)"));return;}
@@ -2348,7 +2348,7 @@ function mergeConf(base,texts){
           var key=line.match(rx)[0];
           conf=conf.filter(function(item){
             return!(item===key||(item.indexOf(key+" ")===0
-              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0));
+              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0&&item.indexOf(key+" fc ")!==0));
           });
           break;
         }

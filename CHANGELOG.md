@@ -23,7 +23,7 @@
   - Flow control page: per port the pause flags advertised by the switch and by the link partner,
     the pause directions negotiated on the link, and on copper ports a switch to advertise pause or not.
 - Commands
-  - `flowctrl on|off [port]` advertises 802.3x pause on a copper port, or on all of them.
+  - `port <port> fc on|off` advertises 802.3x pause on a copper port, or not.
     The choice survives later speed and duplex changes.
 
 ## Changed

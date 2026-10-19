@@ -13,7 +13,6 @@
 #define PAUSE_NEG_RX	0x20	// negotiated: the port honours pause frames
 
 void port_pause_set(__xdata uint8_t port, __xdata bool on) __banked;
-void port_pause_set_all(__xdata bool on) __banked;
 uint8_t port_pause_state(uint8_t port) __banked;
 
 #endif

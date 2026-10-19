@@ -288,7 +288,7 @@ void send_eee(int s)
 	json_object_put(ports);
 }
 
-uint8_t pause_off[PORTS + 1];	// set by "flowctrl off <port>"
+uint8_t pause_off[PORTS + 1];	// set by "port <n> fc off"
 
 void send_flowctrl(int s)
 {
@@ -872,7 +872,7 @@ void launch(struct Server *server)
 					{
 						char onoff[4];
 						int n;
-						if (sscanf(p + 4, "flowctrl %3s %d", onoff, &n) == 2 && n >= 1 && n <= PORTS)
+						if (sscanf(p + 4, "port %d fc %3s", &n, onoff) == 2 && n >= 1 && n <= PORTS)
 							pause_off[n] = !strcmp(onoff, "off");
 					}
 					print_cmd_history();

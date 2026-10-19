@@ -4,7 +4,7 @@ The copper ports advertise symmetric 802.3x pause during autonegotiation. The
 link uses pause only where the link partner offers it as well.
 
 ```
-flowctrl on|off [port]   # advertise pause on one port, or on all copper ports
+port <n> fc on|off       # advertise pause on a copper port, or not
 port <n> show            # ends with "Pause negotiated: TX RX", "TX", "RX" or "none"
 ```
 

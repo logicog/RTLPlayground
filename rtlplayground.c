@@ -1703,7 +1703,7 @@ void main(void)
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
 	stp_enabled = 0;
-	phy_pause_off = 0;	/* every copper port advertises pause until "flowctrl off" */
+	phy_pause_off = 0;	/* every copper port advertises pause until "port <n> fc off" */
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	lacpEnabled = 0;
 	lacp_init();

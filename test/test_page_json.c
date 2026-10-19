@@ -225,7 +225,7 @@ static void t_flowctrl(void)
 	memset(phy_mock_an, 0, sizeof phy_mock_an);
 	phy_mock_an[1][0] = 0x15e1;	// logical port 1 advertises pause
 	phy_mock_an[1][1] = 0xdde1;	// and its partner pause and asymmetric pause
-	phy_mock_an[5][0] = 0x11e1;	// port 5 advertises none ("flowctrl off")
+	phy_mock_an[5][0] = 0x11e1;	// port 5 advertises none ("port <n> fc off")
 	phy_mock_an[5][1] = 0x0800;	// its partner asymmetric pause only
 	phy_mock_an[6][0] = 0x0800;	// port 6 asymmetric pause only
 	hw_reg_set(RTL837X_MAC_TX_PAUSE_STS, (1 << 2) | (1 << 3) | (1 << 8));	// logical ports 2, 3 and 8: TX
@@ -252,16 +252,16 @@ static void t_flowctrl(void)
 
 static void t_pause_set(void)
 {
-	printf("[test] flowctrl on|off sets the advertisement and remembers it for phy_set_speed\n");
+	printf("[test] port <n> fc on|off sets the advertisement and remembers it for phy_set_speed\n");
 	phy_pause_off = 0;
 	port_pause_set(3, false);
 	CHECK(phy_pause_off == 1 << 3, "off marks the port");
 	CHECK(phy_mock_mod[0] == 3 && phy_mock_mod[1] == 7 && phy_mock_mod[2] == 0x10, "on MMD 7.0x0010 of that port");
 	CHECK(phy_mock_mod[3] == 0x0c00 && phy_mock_mod[4] == 0, "clearing pause and asymmetric pause, nothing else");
-	port_pause_set_all(false);
-	CHECK(phy_pause_off == 0x1ff, "off for all marks every copper port");
+	port_pause_set(5, false);
+	CHECK(phy_pause_off == ((1 << 3) | (1 << 5)), "off for a second port keeps the first");
 	port_pause_set(3, true);
-	CHECK(phy_pause_off == (0x1ff & ~(1 << 3)), "on unmarks only that port");
+	CHECK(phy_pause_off == 1 << 5, "on unmarks only that port");
 	CHECK(phy_mock_mod[3] == 0x0c00 && phy_mock_mod[4] == 0x0400, "and advertises symmetric pause");
 	phy_pause_off = 0;
 }

@@ -40,14 +40,6 @@ void port_pause_set(__xdata uint8_t port, __xdata bool on) __banked
 }
 
 
-void port_pause_set_all(__xdata bool on) __banked
-{
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		if (!machine.is_sfp[i])
-			port_pause_set(i, on);
-	}
-}
-
 
 // PAUSE_* bits of a port. SFP ports have no autonegotiated pause flags.
 uint8_t port_pause_state(uint8_t port) __banked

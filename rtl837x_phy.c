@@ -331,7 +331,7 @@ void phy_set_speed(void) __banked
 	if (v & 0x0800)
 		phy_write(phy_settings.port, PHY_MMD31, 0xa610, v & 0xf7ff);
 
-	// Advertise pause unless "flowctrl off" took it away from this port
+	// Advertise pause unless "port <n> fc off" took it away from this port
 	uint16_t pause = (phy_pause_off >> phy_settings.port) & 1 ? 0 : PHY_ANEG_PAUSE;
 	if (phy_settings.speed == PHY_SPEED_AUTO) {
 			// AN Advertisement Register (MMD 7.0x0010)
