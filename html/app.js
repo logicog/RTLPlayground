@@ -49,7 +49,7 @@ v_empty:"No VLANs configured.",v_mgmt:"Management VLAN",v_mgmt_none:"untagged",v
 v_optional:"optional",v_setmgmt_q:"Set {n} as the management ID?",v_setmgmt_t:"Make this the management VLAN",
 v_member:"Member",v_pvid:"PVID",v_add:"Add a new VLAN", v_mgmt_c:"WARNING: You must be able to access this VLAN to continue to manage the switch.",
 v_legend:"U = untagged member, T = tagged member, - = not a member. PVID is automatically assigned based on the untagged membership.",
-v_accept:"Accept",v_ing_all:"All",v_del_t:"Delete VLAN",
+v_accept:"Accept",v_ing_all:"All",v_del_t:"Delete VLAN",v_rename:"Rename",v_rename_t:"Rename VLAN",
 v_del_q:"Delete VLAN {n}?",v_del_d:"Ports keep their PVID until reassigned.",
 v_vid_err:"Enter a VLAN ID (1-4094)",v_name_err:"Name must start with a letter (letters, digits, _) and cannot be just 'd' or 'mgmt'",
 v_loaded:"Loaded VLAN {n}",v_notfound:"VLAN {n} not found (a new one can still be created)",
@@ -1500,14 +1500,35 @@ function vlanRefresh() {
         }
         var act = tr.insertCell();
         act.onclick=function(e){e.stopPropagation()};
+        act.appendChild(h("button", {
+            class: "ctl",
+            text: t("v_rename"),
+            title: t("v_rename_t"),
+            onclick: function() {
+              var body = h("div");
+              body.appendChild(h("p", null, [
+                h("label", {class: "row"}, [
+                  h("span",{class:"lb", "data-i18n":"c_name"},[document.createTextNode(t("c_name"))]),
+                  h("input", {id: "nvlrename", class: "in", size: "12", maxlength: "15", "data-i18n-p": "v_optional", value:(v.name||"")})
+                ])
+              ]));
+              modal("Rename VLAN "+v.id, body, [h("button", {
+                class: "ctl pri", text: t("v_rename_t"),
+                onclick: function(){
+                  if(!validVlanName($("nvlrename").value)) return;
+                  postCmd(vlan2str(v.id, $("nvlrename").value,mySplit(l.dataset.t),mySplit(l.dataset.u))).then(function(){closeModal();vlanRefresh()});
+                }
+              })]);
+            },
+          }));
         if (v.id == $("vmgmtcur").dataset.id) {
-          //act.appendChild(h("button",{class:"ctl", title:t("v_mgmt_tt"), disabled:"disabled", text:"\u{1F6C8}"}));
-          act.appendChild(h("span",{class:"ctl", title:t("v_mgmt_tt"), class:"hint", style:"color: var(--fg2); font-size: 150%; padding-left: 4px;"},[document.createTextNode("\u{1F6C8}")]));
+          act.appendChild(h("span",{class:"ctl", title:t("v_mgmt_tt"), class:"hint", style:"color: var(--fg2); font-size: 150%; padding-left: 10px;"},[document.createTextNode("\u{1F6C8}")]));
         } else {
           act.appendChild(h("button", {
             class: "ctl",
             text: "\u2715",
             title: t("v_del_t"),
+            style: "margin-left: 5px;",
             onclick: function() {
               confirmModal(t("v_del_q", {
                 n: v.id
@@ -1519,7 +1540,7 @@ function vlanRefresh() {
           act.appendChild(h("button", {
             class: "ctl",
             text: "\u2605",
-            style: "margin-left: 1em;",
+            style: "margin-left: 5px;",
             title: t("v_setmgmt_t"),
             onclick: function() {
               confirmModal(t("v_setmgmt_q", {
@@ -1615,10 +1636,10 @@ function vlan2str(i, n, t, u) {
 function pvidcmd(i, p){
   return "pvid " + p + " " + i;
 }
-  function mySplit(a){
-    if(a.trim()=="") return [];
-    return a.trim().split(",");
-  }
+function mySplit(a){
+  if(a.trim()=="") return [];
+  return a.trim().split(",");
+}
 function vlanApply() {
   var vid = $("vtitle").dataset.id;
   var vname = $("vtitle").dataset.name;
@@ -1704,7 +1725,13 @@ $("vlan_add").addEventListener("click", function() {
     onclick: addVlan
   })]);
 });
-
+function validVlanName(n){
+  if (n && (!/^[a-zA-Z]\w*$/.test(n) || n == "d" || n == "mgmt")) {
+    toast(t("v_name_err"), "err");
+    return false;
+  }
+  return true;
+}
 function addVlan() {
   var vid = parseInt($("nvlid").value, 10);
   for (const r of $("vtable").tBodies[0].rows) {
@@ -1714,10 +1741,7 @@ function addVlan() {
     }
   }
   var name = $("nvlname").value;
-  if (name && (!/^[a-zA-Z]\w*$/.test(name) || name == "d" || name == "mgmt")) {
-    toast(t("v_name_err"), "err");
-    return;
-  }
+  if(!validVlanName(name)) return false;
   var cmd = "vlan " + vid + (name ? " " + name : "");
   postCmd(cmd).then(function() {
     closeModal();
