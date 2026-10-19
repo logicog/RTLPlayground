@@ -33,6 +33,7 @@ The following devices have been tested and are fully working:
 | MokerLink| 2G040210GSM     | Yes     | [2M-PCB43-V1.1](devices/2M-PCB43-V1.1.md)                                 |       | 4 + 2 |
 | MokerLink| POE-2G080110GS  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1_1.md)                           | 4M    | 8 + 1 |
 | MokerLink| ZX-SWTGW218AS   | Yes     | [SWTG118AS-V2.0-16029](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
+| MokerLink| 2G08110GSN      | No      | [SWTG018AS-A V2.0](devices/SWTG018AS_A_V2_0.md)                           | 0.5M  | 8 + 1 |
 | Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                             | 4M    | 8 + 1 |
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/ONT-S207CW-62TS-SE.md)                    | 0.5M  | 4 + 2 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                             | 4M    | 4 + 2 |
