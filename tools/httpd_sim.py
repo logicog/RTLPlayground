@@ -320,7 +320,10 @@ class Handler(SimpleHTTPRequestHandler):
                 name = pieces[2]
                 startIndex=3
 
-        state["vlans"][vid] = self.newVlan(name)
+        if not vid in state["vlans"]:
+            state["vlans"][vid] = self.newVlan(name)
+        else:
+            state["vlans"][vid]["name"] = name
 
         for i in pieces[startIndex:]:
             if i[-1] == "t":
@@ -546,6 +549,49 @@ class Handler(SimpleHTTPRequestHandler):
         return {
             "state": state
         }
+
+# Parse the provided .c file to attempt to make the simulator act more like that configuration
+def loadMachineConfig(c_file):
+    global machine_config, PORTS, NSFP, phys_to_log_port, tx_g, rx_g, tx_b, rx_b
+    c_content = ""
+    with open(c_file, 'r') as file:
+        c_content = file.read()
+
+    regexForCArrayLiteral=r"\{\s*\d\s*(?:,\s*\d\s*)*\}"
+
+    patterns = [
+        r"\.(isRTL8373)\s*=\s*(\d+)\s*",
+        r"\.(min_port)\s*=\s*(\d+)\s*",
+        r"\.(max_port)\s*=\s*(\d+)\s*",
+        r"\.(n_sfp)\s*=\s*(\d+)\s*",
+        r"\.(log_to_phys_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
+        r"\.(phys_to_log_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
+        r"\.(is_sfp)\s*=\s*("+regexForCArrayLiteral+r")\s*",
+    ]
+
+    machine_config = { "file": c_file }
+
+    for pattern in patterns:    
+        matches = re.search(pattern, c_content)
+        if not matches:
+            return
+        bits = matches.groups()
+        value = str(bits[1])
+        if value[0] == "{":
+            value = list(map(int, value[1:-1].split(",")))
+        machine_config[bits[0]] = value
+
+    if "max_port" in machine_config and "min_port" in machine_config:
+        PORTS = int(machine_config["max_port"]) - int(machine_config["min_port"])
+    if "n_sftp" in machine_config:
+        NSFP = machine_config["n_sfp"]
+    if "phys_to_log_port" in machine_config:
+        phys_to_log_port = machine_config["phys_to_log_port"]
+
+    tx_g = [0] * PORTS
+    rx_g = [0] * PORTS
+    tx_b = [0] * PORTS
+    rx_b = [0] * PORTS
 
 if __name__ == "__main__":
     print(f"Serving {ROOT} on http://{HOST}:{PORT}")
