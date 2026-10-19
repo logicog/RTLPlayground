@@ -20,13 +20,13 @@ __code const struct machine machine = {
 	.port_led_set = {0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.led_sets = {
 		{
-			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT, // LED0: orange
 			0,
-			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+			LEDS_2G5 | LEDS_LINK | LEDS_ACT, // LED2: green
 			0
 		},
 		{
-			LEDS_10G | LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
+			LEDS_10G | LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT, // SFP LED set; color unverified
 			0, 0, 0
 		}
 	},
