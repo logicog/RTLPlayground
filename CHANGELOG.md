@@ -25,6 +25,10 @@
 
 ## Fixed
 
+- Web UI
+  - Accept firmware uploads regardless of the file part's MIME type, including
+    `application/macbinary` sent by Chrome on macOS for `.bin` files.
+
 - Config
   - A startup configuration line longer than the command buffer no longer stops the replay:
     the offending line is skipped and the following lines are still applied.

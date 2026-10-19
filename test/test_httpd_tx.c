@@ -1,11 +1,10 @@
 /*
- * Host-side bench for the httpd transmit path.
+ * Host-side bench for the httpd transmit and firmware upload paths.
  *
  * Compiles the UNMODIFIED httpd/httpd.c and uip/uip.c and drives them through a
- * real handshake and a real GET from a client that moves its receive window.
+ * real handshake, GETs with moving receive windows, and multipart POSTs.
  * Everything below the two modules - flash, console, JSON pages - is mocked
- * here, so what the bench observes is the byte stream the firmware would put on
- * the wire.
+ * here, so the bench observes the wire response and the bytes staged to flash.
  *
  * The file served out of the simulated flash carries a position-dependent
  * pattern, so a duplicated or skipped range shows up as a mismatch at a known
@@ -82,6 +81,9 @@ static uint8_t written_config[CONFIG_LEN];
 static uint16_t written_config_len;
 static uint32_t config_erase_addr, config_write_addr;
 static int config_erases, config_writes;
+static uint8_t flash_written[64];
+static size_t flash_written_len;
+static int flash_write_bad;
 
 const char * const mime_strings[] = { "text/html", "image/svg+xml", "image/x-icon",
 			 "image/png", "text/javascript", "text/css", "text/plain" };
@@ -107,11 +109,21 @@ void flash_sector_erase(void)
 
 void flash_write_bytes(uint8_t *ptr)
 {
-	config_writes++;
-	config_write_addr = flash_region.addr;
-	written_config_len = flash_region.len;
-	if (written_config_len <= sizeof(written_config))
-		memcpy(written_config, ptr, written_config_len);
+	if (flash_region.addr < FIRMWARE_UPLOAD_START) {
+		config_writes++;
+		config_write_addr = flash_region.addr;
+		written_config_len = flash_region.len;
+		if (written_config_len <= sizeof(written_config))
+			memcpy(written_config, ptr, written_config_len);
+		return;
+	}
+	if (flash_region.addr != FIRMWARE_UPLOAD_START + flash_written_len ||
+	    flash_region.len > sizeof(flash_written) - flash_written_len) {
+		flash_write_bad = 1;
+		return;
+	}
+	memcpy(flash_written + flash_written_len, ptr, flash_region.len);
+	flash_written_len += flash_region.len;
 }
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
@@ -180,6 +192,8 @@ void send_lldp(void) {}
 extern uint8_t authenticated;
 extern char session_id[];
 extern char passwd[21];
+extern uint16_t session_timeout;
+extern uint32_t last_session_use;
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
  * to confirm the port httpd_init() asked for is the one uIP is watching. */
@@ -1012,6 +1026,62 @@ static void scenario_config_upload(void)
 	      "multipart/config: every split writes the exact configuration and NUL to its sector");
 }
 
+/* Requiring octet-stream would leave alternate or absent MIME types buffered
+ * as headers forever instead of staging the binary and checking its CRC. */
+static void scenario_upload(const char *name, const char *part_type, int split)
+{
+	static const uint8_t payload[] = { 0x00, 0xff, 'R', '\r', '\n', '-', 0x80, 0x00 };
+	static const uint8_t staged[] = { 0x00, 0xff, 'R', '\r', '\n', '-', 0x80, 0x00, 0x00 };
+	static const char closing[] = "\r\n--upload-boundary--\r\n";
+	char preamble[256], request[512];
+	uint32_t saved_flash_size = flash_size;
+	int preamble_len, header_len, request_len;
+
+	printf("\n-- upload: %s --\n", name);
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	session_timeout = 200;
+	last_session_use = 0; /* read_reg_timer() returns zero in this bench. */
+	flash_size = 0x100000;
+	flash_written_len = 0;
+	flash_write_bad = 0;
+	reset_calls = 0;
+
+	preamble_len = snprintf(preamble, sizeof(preamble),
+		"--upload-boundary\r\n"
+		"Content-Disposition: form-data; name=\"file\"; filename=\"firmware.bin\"\r\n"
+		"%s\r\n", part_type);
+	header_len = snprintf(request, sizeof(request),
+		"POST /upload HTTP/1.1\r\nHost: sw\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"Content-Type: multipart/form-data; boundary=upload-boundary\r\n"
+		"Content-Length: %zu\r\n\r\n%s",
+		(size_t)preamble_len + sizeof(payload) + sizeof(closing) - 1, preamble);
+	memcpy(request + header_len, payload, sizeof(payload));
+	memcpy(request + header_len + sizeof(payload), closing, sizeof(closing) - 1);
+	request_len = header_len + sizeof(payload) + sizeof(closing) - 1;
+	if (split) {
+		/* Cut the part's CRLFCRLF between its final CR and LF. */
+		client_send(TCP_ACK | TCP_PSH, request, header_len - 1);
+		CHECK(stream_len == 0 && flash_written_len == 0,
+		      "upload: incomplete part headers stage nothing and await more data");
+		client_send(TCP_ACK | TCP_PSH, request + header_len - 1,
+			    request_len - header_len + 1);
+	} else {
+		client_send(TCP_ACK | TCP_PSH, request, request_len);
+	}
+	drain(MSS_FULL);
+
+	CHECK(!flash_write_bad && flash_written_len == sizeof(staged) &&
+	      !memcmp(flash_written, staged, sizeof(staged)),
+	      "upload: exact binary payload plus zero terminator staged at image address");
+	CHECK(stream_len >= 12 && !memcmp(stream, "HTTP/1.1 400", 12),
+	      "upload: invalid firmware is rejected with HTTP 400");
+	CHECK(!uip_conn->appstate.fw_reset_pending && reset_calls == 0,
+	      "upload: deliberately invalid CRC never schedules or triggers reset");
+	flash_size = saved_flash_size;
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -1040,6 +1110,9 @@ int main(int argc, char **argv)
 	scenario_oversized_get_header();
 	scenario_split_method_names();
 	scenario_config_upload();
+	scenario_upload("octet-stream control", "Content-Type: application/octet-stream\r\n", 0);
+	scenario_upload("MacBinary, split part terminator", "Content-Type: application/macbinary\r\n", 1);
+	scenario_upload("no part Content-Type", "", 0);
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
