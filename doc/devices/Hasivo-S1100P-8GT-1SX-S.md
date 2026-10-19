@@ -1,6 +1,6 @@
 # Hasivo S1100P-8GT-1SX-S
 
-RTL8373N switch with 8 × 2.5G RJ45 ports and 1 × SFP port. GD25Q16 2 MiB flash (`mac_flash_offset = 0x1FC000`).
+RTL8373N switch with 8 × 2.5G RJ45 ports and 1 × SFP port. GD25Q16 2 MiB flash.
 
 ## Port mapping
 
@@ -20,7 +20,7 @@ RTL8373N switch with 8 × 2.5G RJ45 ports and 1 × SFP port. GD25Q16 2 MiB flash
 | SFP I2C SDA / SCL | 39 / 40 |
 | Reset | 54 |
 
-The profile preserves the original 28-entry LED mux configuration. PoE management is not implemented.
+PoE is managed by an RTL8238B and a separate STC8H8K64U controller, not directly by the RTL8373N. RTLPlayground does not control PoE on this board.
 
 ## Build
 
@@ -32,14 +32,14 @@ Front panel:
 
 ![Front panel](photos/Hasivo-S1100P-8GT-1SX-S/front.jpg)
 
-PCB upper side:
+PCB top:
 
-![PCB upper side](photos/Hasivo-S1100P-8GT-1SX-S/pcb_top.jpg)
+![PCB top](photos/Hasivo-S1100P-8GT-1SX-S/pcb_top.jpg)
 
-PCB lower side:
+PCB bottom:
 
-![PCB lower side](photos/Hasivo-S1100P-8GT-1SX-S/pcb_bottom.jpg)
+![PCB bottom](photos/Hasivo-S1100P-8GT-1SX-S/pcb_bottom.jpg)
 
-## Validation
+## Testing
 
-Pin assignments and LED behavior are carried over from the owner's earlier profile. Current-upstream build and physical hardware validation are pending.
+SDCC 4.5 firmware build and compilation of the Hasivo machine definition and initialization passed. The full `machine_check` is blocked by an unrelated error in `GT_ST024M.c`. This profile has not yet been tested on the physical switch.
