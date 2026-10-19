@@ -25,6 +25,9 @@
 
 ## Fixed
 
+- Health
+  - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which
+    corrupted the `link` slow counter and the DHCP client state. #658
 - Config
   - A startup configuration line longer than the command buffer no longer stops the replay:
     the offending line is skipped and the following lines are still applied.

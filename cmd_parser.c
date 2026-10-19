@@ -2329,6 +2329,7 @@ void health_show(void) __banked
 	ph_line("tx  ", HEALTH_PH_TX);
 	ph_line("stp ", HEALTH_PH_STP);
 	ph_line("cmd ", HEALTH_PH_CMD);
+	ph_line("lldp", HEALTH_PH_LLDP);
 
 	/* Stack: current depth plus how much of the painted area is untouched */
 	print_string("sp ");

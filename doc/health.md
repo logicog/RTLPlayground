@@ -14,6 +14,7 @@ rx   max 00 slow 0x0000
 tx   max 00 slow 0x0000
 stp  max 04 slow 0x0001
 cmd  max 02 slow 0x0001
+lldp max 00 slow 0x0000
 sp 80 untouched 62
 tcp st 00 tmr 00 rtx 00 rto 00 len 0x0000 mss 0x05b4
   lport 0x0000 rport 0x0000 rip 0x0000 0x0000
@@ -46,7 +47,7 @@ a flooded CPU port from a stalled loop, which look identical from outside.
 ## Phases
 
 Each line is one section of the main loop: the link poll, SFP handling,
-frame reception, TCP transmission, the STP timers and the command dispatch.
+frame reception, TCP transmission, the STP timers, the LLDP timer and the command dispatch.
 `max` is the worst time that section has taken, in ticks of 5 ms; `slow`
 counts the passes that took two ticks or more. A misbehaving subsystem
 names itself here, which is the difference between knowing that the loop is
