@@ -24,6 +24,8 @@
   - Valid requests exceeding the stored varbind limit return tooBig instead of timing out.
   - A transient hardware timeout no longer disables monitoring until reboot;
     reads resume once the SFR engine and statistics selector are idle.
+  - Align SNMP status labels and values with the existing settings-row spacing,
+    typography and theme colors.
 - Config
   - A startup configuration line longer than the command buffer no longer stops the replay:
     the offending line is skipped and the following lines are still applied.
