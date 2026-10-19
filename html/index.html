@@ -124,9 +124,15 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 .port .ps{font-size:9px;color:var(--fg2);display:block;line-height:1.2}
 .port .jack{
   display:block;width:16px;height:10px;margin:2px auto 1px;border-radius:2px;
-  border:2px solid var(--fg2);border-top-width:4px;opacity:.55;
+  border:2px solid var(--fg2);border-top-width:6px;opacity:.55;position:relative;
 }
-.port.sfp .jack{width:24px;height:9px;border-top-width:3px}
+.port .jack:before {content:"";
+  position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  width:6px;height:3px;margin-bottom:6px;border-radius: 1px 1px 0 0;
+  background-color:var(--pc,var(--fg2));
+}
+.port.sfp .jack{width:24px;height:9px;border-top-width:4px}
+.port.sfp .jack:before {display:none;}
 .port.up{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 10%,var(--panel2))}
 .port.up .jack{border-color:var(--pc);opacity:1}
 .port.up .ps{color:var(--pc);font-weight:600}
