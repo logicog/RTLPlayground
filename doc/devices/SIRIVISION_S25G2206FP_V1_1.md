@@ -3,7 +3,7 @@
 ## Brands
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
-| YuanLey | YS25-0402M | Yes | SIRIVISION_S25G2206FP_V1_1 | 2M | ??? |
+| YuanLey | YS25-0402M | Yes | SIRIVISION_S25G2206FP_V1_1 | 2M | 8372 |
 
 ### Label specifications
 

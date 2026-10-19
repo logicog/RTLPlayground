@@ -21,7 +21,7 @@ __code const struct machine machine = {
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 0,
 	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ), /* GPIO 40 */
-	.reset_pin = GPIO_NA, // TODO: Figure out which GPIO is reset
+	.reset_pin = GPIO36_PWM_OUT,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
 	.led_sets = {
