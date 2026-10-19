@@ -425,17 +425,18 @@ void phy_set_duplex(void) __banked
 	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x2000);
 	phy_read(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV);
 	v = SFR_DATA_U16;
+	// Swap the duplex bit only: the rest of the advertisement, pause included, stays
 	if (v & 0x0060) {
 		if (phy_settings.duplex)
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffbf, 0x0040);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0020, 0x0040);
 		else
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffdf, 0x0020);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0040, 0x0020);
 	}
 	if (v & 0x0180) {
 		if (phy_settings.duplex)
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xfeff, 0x0100);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0080, 0x0100);
 		else
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xff7f, 0x0080);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0100, 0x0080);
 	}
 	// Restart AN
 	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);
