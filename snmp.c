@@ -21,8 +21,6 @@ __xdata uint8_t snmp_community[32];
 __xdata uint8_t snmp_community_length, snmp_network[4], snmp_mask[4];
 __xdata uint8_t snmp_agent_enabled;
 __xdata struct uip_udp_conn *__xdata snmp_listener;
-static __xdata uint8_t peer[4];
-static __xdata uint16_t peer_port;
 struct binding {
 	uint16_t offset, length, value_offset, value_length;
 };
@@ -34,10 +32,17 @@ static __xdata uint16_t speed;
 static __xdata const uint8_t *__xdata request;
 static __xdata uint16_t cursor, pos;
 static __xdata uint8_t overflow, count, pdu, request_id[4], id_length;
+/* GETBULK fields saturate to 0..0xffff; ordinals number the MIB's slots, 0 = not started. */
+static __xdata uint16_t field, bulk_nonrep, bulk_max, slot_no, rep_slot[SNMP_MAX_VARBINDS];
+static __xdata uint8_t excess;
+#define INT_SKIP 0
+#define INT_ID 1
+#define INT_FIELD 2
+#define REP_ENDED 0xffff
 /* column lists are in numeric order, independently of selector order. */
 static __code const uint8_t syscols[] = {1, 3, 4, 5, 6};
-static __code const uint8_t ifcols[] = {1, 2, 3, 5, 8, 10, 11, 16, 17};
-static __code const uint8_t xcols[] = {1, 6, 7, 8, 9, 10, 11, 12, 13, 15};
+static __code const uint8_t ifcols[] = {1, 2, 3, 5, 7, 8, 10, 11, 14, 16, 17, 20};
+static __code const uint8_t xcols[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 18};
 
 void snmp_init(void) __banked
 {
@@ -56,7 +61,7 @@ void snmp_init(void) __banked
 }
 
 /* TLV bounds always refer to the immediate parent, not the whole packet. */
-static bool tlv(uint8_t tag, __xdata uint16_t end, __xdata uint16_t *__xdata child_end)
+static bool tlv(uint8_t tag, __xdata uint16_t end, volatile __xdata uint16_t *__xdata child_end)
 {
 	__xdata uint16_t length;
 	__xdata uint8_t n;
@@ -78,10 +83,11 @@ static bool tlv(uint8_t tag, __xdata uint16_t end, __xdata uint16_t *__xdata chi
 	return true;
 }
 
-static bool integer(uint16_t end, __xdata bool save)
+static bool integer(uint16_t end, __xdata uint8_t mode)
 {
-	__xdata uint16_t e, n;
-	__xdata uint8_t i;
+	/* SDCC #15242 otherwise spills these XDATA temporaries into scarce DATA. */
+	__xdata volatile uint16_t e, n, o;
+	__xdata volatile uint8_t i;
 	if (!tlv(ASN_INTEGER, end, &e))
 		return false;
 	n = e - cursor;
@@ -90,10 +96,25 @@ static bool integer(uint16_t end, __xdata bool save)
 	if (n > 1 && ((request[cursor] == 0 && !(request[cursor + 1] & 0x80)) ||
 		      (request[cursor] == 255 && (request[cursor + 1] & 0x80))))
 		return false;
-	if (save) {
+	if (mode == INT_ID) {
 		id_length = n;
 		for (i = 0; i < n; ++i)
 			request_id[i] = request[cursor + i];
+	} else if (mode == INT_FIELD) {
+		/* Negative is 0. A minimal positive value needing more than 16 bits saturates. */
+		field = 0;
+		o = cursor;
+		if (!(request[o] & 0x80)) {
+			if (n == 3 && !request[o]) {
+				++o;
+				--n;
+			}
+			if (n > 2)
+				field = 0xffff;
+			else
+				while (n--)
+					field = (field << 8) | request[o++];
+		}
 	}
 	cursor = e;
 	return true;
@@ -142,12 +163,14 @@ static bool oid(uint16_t offset, __xdata uint16_t length)
 
 static bool parse(uint16_t length)
 {
-	__xdata uint16_t outer, comm, pend, list, bind, name, value;
+	__xdata volatile uint16_t outer, comm, pend, list, bind, name, value, boff, voff;
+	__xdata volatile uint8_t mode;
 	cursor = 0;
 	count = 0;
+	excess = 0;
 	if (!tlv(ASN_SEQUENCE, length, &outer) || outer != length)
 		return false;
-	if (!tlv(ASN_INTEGER, outer, &value) || value - cursor != 1 || request[cursor] != 1)
+	if (!tlv(ASN_INTEGER, outer, &value) || value - cursor != 1 || request[cursor] != SNMP_VERSION_2C)
 		return false;
 	cursor = value;
 	if (!tlv(ASN_OCTET_STRING, outer, &comm) || comm - cursor != snmp_community_length ||
@@ -157,30 +180,33 @@ static bool parse(uint16_t length)
 	if (cursor >= outer)
 		return false;
 	pdu = request[cursor];
-	if (pdu != SNMP_PDU_GET && pdu != SNMP_PDU_GETNEXT)
+	if (pdu != SNMP_PDU_GET && pdu != SNMP_PDU_GETNEXT && pdu != SNMP_PDU_GETBULK)
 		return false;
-	if (!tlv(pdu, outer, &pend) || pend != outer || !integer(pend, true))
+	if (!tlv(pdu, outer, &pend) || pend != outer || !integer(pend, INT_ID))
 		return false;
-	/* GET/GETNEXT request error fields are INTEGERs, ignored by RFC3416. */
-	if (!integer(pend, false) || !integer(pend, false) || !tlv(ASN_SEQUENCE, pend, &list) ||
-	    list != pend)
+	/* Two INTEGERs: error fields (ignored, RFC3416) or GETBULK non-repeaters/max-repetitions. */
+	mode = pdu == SNMP_PDU_GETBULK ? INT_FIELD : INT_SKIP;
+	if (!integer(pend, mode))
 		return false;
+	bulk_nonrep = field;
+	if (!integer(pend, mode) || !tlv(ASN_SEQUENCE, pend, &list) || list != pend)
+		return false;
+	bulk_max = field;
+	/* Every binding is validated; only the first SNMP_MAX_VARBINDS are kept, the rest flag tooBig. */
 	while (cursor < list) {
-		if (count == SNMP_MAX_VARBINDS || !tlv(ASN_SEQUENCE, list, &bind) ||
-		    !tlv(ASN_OBJECT_ID, bind, &name))
+		if (!tlv(ASN_SEQUENCE, list, &bind) || !tlv(ASN_OBJECT_ID, bind, &name))
 			return false;
-		bindings[count].offset = cursor;
-		bindings[count].length = name - cursor;
+		boff = cursor;
 		if (!oid(cursor, name - cursor))
 			return false;
 		cursor = name;
-		bindings[count].value_offset = cursor;
+		voff = cursor;
 		if (cursor >= bind || !tlv(request[cursor], bind, &value) || value != bind)
 			return false;
 		{
 			__xdata uint8_t tag;
 			__xdata uint16_t n;
-			tag = request[bindings[count].value_offset];
+			tag = request[voff];
 			n = value - cursor;
 			if (tag == ASN_NULL || tag == SNMP_NO_SUCH_OBJECT ||
 			    tag == SNMP_NO_SUCH_INSTANCE || tag == SNMP_END_OF_MIB) {
@@ -210,9 +236,16 @@ static bool parse(uint16_t length)
 			} else if (tag != ASN_OCTET_STRING && tag != ASN_OPAQUE)
 				return false;
 		}
-		bindings[count].value_length = bind - bindings[count].value_offset;
+		if (count == SNMP_MAX_VARBINDS)
+			excess = 1;
+		else {
+			bindings[count].offset = boff;
+			bindings[count].length = name - boff;
+			bindings[count].value_offset = voff;
+			bindings[count].value_length = bind - voff;
+			++count;
+		}
 		cursor = bind;
-		++count;
 	}
 	return cursor == list;
 }
@@ -280,12 +313,15 @@ static bool object_prefix(void)
 			return false;
 	return true;
 }
-static uint8_t lookup(void)
+static uint8_t lookup(__xdata uint16_t resume)
 {
 	/* SDCC 4.5.0 #15242 otherwise emits three one-byte DATA spills
 	 * (_lookup_sloc0/1/4), reducing the already small stack region.
 	 * Single main-loop owner: volatile controls placement, not concurrency. */
 	__xdata volatile uint8_t group, column, index, c, prefix = 0;
+	/* resume 0: first object after (GET: equal to) the OID in arcs; else the first object
+	 * after ordinal `resume`. Ordinals count every slot, absent ports included. */
+	__xdata volatile uint16_t s = 0;
 	for (group = 1; group <= 31; group = group == 1 ? 2 : group == 2 ? 31 : 32) {
 		for (c = 0; c < (group == 1   ? sizeof(syscols)
 				 : group == 2 ? sizeof(ifcols) + 1
@@ -295,12 +331,17 @@ static uint8_t lookup(void)
 				 : group == 2 ? (c ? ifcols[c - 1] : 0)
 					      : xcols[c];
 			for (index = 1; index <= (group == 1 || !column ? 1 : 9); ++index) {
+				++s;
+				if (s < resume)
+					continue;
 				if (group != 1 && column && chip_port(index) == 255)
 					continue;
 				make_oid(group, column, index);
 				if (object_prefix())
 					prefix = 1;
-				if (pdu == SNMP_PDU_GETNEXT ? compare() < 0 : compare() == 0) {
+				if (resume ? s > resume
+				    : pdu != SNMP_PDU_GET ? compare() < 0 : compare() == 0) {
+					slot_no = s;
 					if ((group == 2 && column == 5) ||
 					    (group == 31 && column == 15)) {
 						if (!snmp_hw_speed(chip_port(index), &speed))
@@ -311,7 +352,7 @@ static uint8_t lookup(void)
 			}
 		}
 	}
-	return pdu == SNMP_PDU_GETNEXT ? SNMP_END_OF_MIB
+	return pdu != SNMP_PDU_GET ? SNMP_END_OF_MIB
 	       : prefix		       ? SNMP_NO_SUCH_INSTANCE
 				       : SNMP_NO_SUCH_OBJECT;
 }
@@ -390,7 +431,7 @@ static void candidate_oid(void)
 }
 static bool value(void)
 {
-	__xdata uint8_t group = candidate[6], col = candidate[7], index, port, selector;
+	__xdata volatile uint8_t group = candidate[6], col = candidate[7], index, port, selector;
 	__xdata uint32_t v;
 	__xdata bool enabled;
 	if (group == 1) {
@@ -433,6 +474,23 @@ static bool value(void)
 	col = candidate[candidate_len - 2];
 	index = candidate[candidate_len - 1];
 	port = chip_port(index);
+	if (group == 31 && col == 18) {
+		text_x(port_names[port], PORT_NAME_SIZE);
+		return true;
+	}
+	if (group == 2 && col == 7) {
+		__xdata uint8_t state;
+		if (!snmp_hw_admin(port, &state))
+			return false;
+		number(ASN_INTEGER, state);
+		return true;
+	}
+	if (group == 2 && (col == 14 || col == 20)) {
+		if (!snmp_hw_counter32(port, 48, col == 14, &counter))
+			return false;
+		native_counter(ASN_COUNTER32);
+		return true;
+	}
 	if (group == 2 && col == 1) {
 		number(ASN_INTEGER, index);
 		return true;
@@ -494,18 +552,108 @@ static bool value(void)
 		number(ASN_INTEGER, (v & ((uint16_t)1 << port)) ? 1 : 2);
 		return true;
 	}
-	selector = group == 31 ? (col == 6    ? 0
-				  : col == 10 ? 1
-				  : col < 10  ? col - 5
-					      : col - 6)
-		   : col == 10 ? 0
-		   : col == 11 ? 2
-		   : col == 16 ? 1
-			       : 5;
+	if (group == 31 && col >= 2 && col <= 5)
+		selector = col < 4 ? col + 1 : col + 2;
+	else
+		selector = group == 31 ? (col == 6    ? 0
+					  : col == 10 ? 1
+					  : col < 10  ? col - 5
+						      : col - 6)
+			   : col == 10 ? 0
+			   : col == 11 ? 2
+			   : col == 16 ? 1
+				       : 5;
 	if (!snmp_hw_counter(port, selector, &counter))
 		return false;
-	native_counter(group == 31 ? ASN_COUNTER64 : ASN_COUNTER32);
+	native_counter(group == 31 && col >= 6 ? ASN_COUNTER64 : ASN_COUNTER32);
 	return true;
+}
+/* Exact size of the whole response message for a varbind list of `list` bytes (see envelope). */
+static uint16_t hdr_len(__xdata uint16_t n)
+{
+	return n < 128 ? 2 : n < 256 ? 3 : 4;
+}
+static uint16_t message_size(__xdata uint16_t list)
+{
+	__xdata uint16_t body;
+	/* PDU: list, request-id, error-status and error-index (3 bytes each). */
+	body = hdr_len(list) + list + 2 + id_length + 3 + 3;
+	/* Message: version, community, PDU. */
+	body += 3 + 2 + snmp_community_length + hdr_len(body);
+	return hdr_len(body) + body;
+}
+static void reverse(__xdata uint16_t lo, __xdata uint16_t hi)
+{
+	__xdata uint8_t t;
+	while (lo + 1 < hi) {
+		--hi;
+		t = snmp_response[lo];
+		snmp_response[lo++] = snmp_response[hi];
+		snmp_response[hi] = t;
+	}
+}
+/* GETBULK (RFC3416 4.2.3). Varbinds are produced in wire order. The reverse writer stacks each
+ * one below the previous, so each block is byte-reversed as it completes and the whole list
+ * once more at the end: block order and contents are then correct without a copy. Per-repeater
+ * state is one MIB ordinal. Output stops at the first varbind that no longer fits in
+ * SNMP_MAX_MESSAGE (a prefix, RFC3416 4.2.3), after max-repetitions rows, or after a row of
+ * endOfMibView only: rows are limited by the response size, never by the request fields.
+ * Returns the 1-based input binding that failed in hardware, else 0. */
+static uint8_t bulk(void)
+{
+	__xdata uint8_t b = 0, nrep, live = 0, hit;
+	__xdata uint16_t row = 0, end, st;
+	nrep = bulk_nonrep < count ? bulk_nonrep : count;
+	memset(rep_slot, 0, sizeof(rep_slot));
+	for (;;) {
+		if (b == nrep && !bulk_max)
+			break;
+		if (b == count) {
+			if (!live || ++row >= bulk_max)
+				break;
+			b = nrep;
+			live = 0;
+		}
+		st = rep_slot[b];
+		end = pos;
+		if (st == REP_ENDED)
+			hit = SNMP_END_OF_MIB;
+		else {
+			if (!st)
+				oid(bindings[b].offset, bindings[b].length);
+			hit = lookup(st);
+		}
+		if (hit == SNMP_LOOKUP_HW_ERROR)
+			return b + 1;
+		if (hit) {
+			put(0);
+			put(hit);
+			/* A walked-off repeater repeats its last object (still in candidate). */
+			if (st && st != REP_ENDED)
+				candidate_oid();
+			else {
+				bytes(ASN_OBJECT_ID, request + bindings[b].offset, bindings[b].length);
+				rep_slot[b] = REP_ENDED;
+			}
+		} else {
+			if (!value())
+				return b + 1;
+			candidate_oid();
+			rep_slot[b] = slot_no;
+			if (b >= nrep)
+				live = 1;
+		}
+		wrap(ASN_SEQUENCE, end);
+		if (overflow || message_size(SNMP_MAX_MESSAGE - pos) > SNMP_MAX_MESSAGE) {
+			pos = end;
+			overflow = 0;
+			break;
+		}
+		reverse(pos, end);
+		++b;
+	}
+	reverse(pos, SNMP_MAX_MESSAGE);
+	return 0;
 }
 static void envelope(uint16_t list_end, __xdata uint8_t error, __xdata uint8_t error_index)
 {
@@ -524,8 +672,8 @@ static void envelope(uint16_t list_end, __xdata uint8_t error, __xdata uint8_t e
 uint16_t snmp_process(__xdata const uint8_t *__xdata input, __xdata uint16_t length,
 		      __xdata const uint8_t *__xdata source) __banked
 {
-	__xdata uint8_t i, exception, error = 0, error_index = 0;
-	__xdata uint16_t end;
+	__xdata volatile uint8_t i, exception, error = 0, error_index = 0;
+	__xdata volatile uint16_t end;
 	if (!snmp_agent_enabled || !snmp_community_length || !input || !source ||
 	    length > SNMP_MAX_MESSAGE)
 		return 0;
@@ -550,32 +698,40 @@ uint16_t snmp_process(__xdata const uint8_t *__xdata input, __xdata uint16_t len
 		return 0;
 	pos = SNMP_MAX_MESSAGE;
 	overflow = 0;
-	i = count;
-	while (i) {
-		--i;
-		end = pos;
-		oid(bindings[i].offset, bindings[i].length);
-		exception = lookup();
-		if (exception == SNMP_LOOKUP_HW_ERROR) {
+	if (excess)
+		error = SNMP_ERR_TOO_BIG; /* valid but too many bindings to store: empty list */
+	else if (pdu == SNMP_PDU_GETBULK) {
+		error_index = bulk();
+		if (error_index)
 			error = SNMP_ERR_GEN_ERR;
-			error_index = i + 1;
-			break;
-		}
-		if (exception) {
-			put(0);
-			put(exception);
-			bytes(ASN_OBJECT_ID, request + bindings[i].offset, bindings[i].length);
-		} else {
-			if (!value()) {
+	} else {
+		i = count;
+		while (i) {
+			--i;
+			end = pos;
+			oid(bindings[i].offset, bindings[i].length);
+			exception = lookup(0);
+			if (exception == SNMP_LOOKUP_HW_ERROR) {
 				error = SNMP_ERR_GEN_ERR;
 				error_index = i + 1;
 				break;
 			}
-			candidate_oid();
+			if (exception) {
+				put(0);
+				put(exception);
+				bytes(ASN_OBJECT_ID, request + bindings[i].offset, bindings[i].length);
+			} else {
+				if (!value()) {
+					error = SNMP_ERR_GEN_ERR;
+					error_index = i + 1;
+					break;
+				}
+				candidate_oid();
+			}
+			wrap(ASN_SEQUENCE, end);
 		}
-		wrap(ASN_SEQUENCE, end);
 	}
-	if (error) {
+	if (error == SNMP_ERR_GEN_ERR) {
 		/* genErr echoes the entire original list, with correct error-index. */
 		pos = SNMP_MAX_MESSAGE;
 		overflow = 0;
@@ -615,26 +771,11 @@ void snmp_callback(void) __banked
 	header = (__xdata struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN];
 	if (!uip_ipaddr_cmpx(header->destipaddr, uip_hostaddr))
 		return;
-	memcpy(peer, header->srcipaddr, 4);
-	peer_port = header->srcport;
-	if (!peer_port)
+	if (!header->srcport)
 		return;
-	length = snmp_process(uip_appdata, uip_datalen(), peer);
+	length = snmp_process(uip_appdata, uip_datalen(), (const __xdata uint8_t *)header->srcipaddr);
 	if (length) {
 		memcpy(uip_appdata, snmp_response, length);
 		uip_udp_send(length);
-	}
-}
-/* Called only during UDP header generation. The listener remains wildcard. */
-void snmp_udp_address(void) __banked
-{
-	__xdata struct uip_udpip_hdr *header =
-	    (__xdata struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN];
-	if (uip_udp_conn == snmp_listener && snmp_listener) {
-		memcpy(header->destipaddr, peer, 4);
-		header->destport = peer_port;
-	} else {
-		uip_ipaddr_copy(header->destipaddr, uip_udp_conn->ripaddr);
-		header->destport = uip_udp_conn->rport;
 	}
 }

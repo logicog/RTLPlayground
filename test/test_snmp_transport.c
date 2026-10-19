@@ -456,7 +456,7 @@ int main(void)
 	hw_failed = false;
 	CHECK(response_error == 5 && response_index == 1 && result_type[0] == 5,
 	      "wire hardware failure returns genErr with original binding");
-	query_oid(31, 15, machine.max_port + 1);
+	query_oid(31, 18, machine.max_port + 1);
 	make_request(0xa1, 1);
 	raw_payload(req, req_len, 40001, 161, source);
 	load(packet, packet_len);
@@ -488,13 +488,21 @@ int main(void)
 	input();
 	response(source, 40001);
 	CHECK(result_type[0] == 4, "IPv4 zero UDP checksum accepted with clean NIC status");
-	for (unsigned pdu_type = 0xa3; pdu_type <= 0xa5; pdu_type += 2) {
-		query_oid(1, 5, 0);
-		make_request(pdu_type, 1);
-		raw_payload(req, req_len, 40001, 161, source);
-		load(packet, packet_len);
-		drop("wire SET/GETBULK dropped");
-	}
+	query_oid(1, 5, 0);
+	make_request(0xa3, 1);
+	raw_payload(req, req_len, 40001, 161, source);
+	load(packet, packet_len);
+	drop("wire SET dropped");
+	query_oid(1, 5, 0);
+	make_request(0xa5, 1);
+	raw_payload(req, req_len, 40001, 161, source);
+	load(packet, packet_len);
+	input();
+	int answered = uip_len > 28;
+	if (answered)
+		response(source, 40001);
+	CHECK(answered && !response_error && !response_index && !result_count,
+	      "wire GETBULK with zero max-repetitions returns an empty response");
 	uint8_t large[UIP_BUFSIZE - UIP_LLH_LEN - 28] = {0};
 	raw_payload(large, sizeof(large), 40001, 161, source);
 	load(packet, packet_len);

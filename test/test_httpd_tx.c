@@ -138,7 +138,8 @@ void reg_read_m(uint16_t reg) {(void)reg;sfr_data[0]=control_seconds>>24;sfr_dat
 
 void clear_command_history(void) { }
 static unsigned udp_dispatch_calls;
-void udp_callbacks(void) { udp_dispatch_calls++; }
+static void (*httpd_tx_udp_app)(void);	/* scenario-installed application; NULL leaves the stub */
+void udp_callbacks(void) { udp_dispatch_calls++; if (httpd_tx_udp_app) httpd_tx_udp_app(); }
 void tcpip_output(void) { }
 void get_random_32(void) { }
 void read_reg_timer(uint32_t *tmr) { *tmr = 0; }
@@ -587,6 +588,113 @@ static void scenario_information_auth(void)
     session_id[0]=0;
 }
 
+/* The application deliberately attempts sends on polls as well as receives;
+ * wildcard-poll safety must come from uIP, not from the test application's guard. */
+static void udp_echo_app(void)
+{
+	if (uip_newdata())
+		uip_send(uip_appdata, uip_datalen());
+	else
+		uip_send("poll", 4);
+}
+
+/* IPv4/UDP datagram from src to this host, delivered through uip_input(). */
+static void udp_in_datagram(const uint8_t src[4], uint16_t sport, uint16_t dport,
+			    const char *payload, uint16_t n)
+{
+	uint8_t *ip = uip_buf + UIP_LLH_LEN;
+
+	memset(ip, 0, 28 + n);
+	ip[0] = 0x45;
+	ip[2] = (28 + n) >> 8;
+	ip[3] = (28 + n) & 255;
+	ip[8] = 64;
+	ip[9] = 17;
+	memcpy(ip + 12, src, 4);
+	memcpy(ip + 16, uip_hostaddr, 4);
+	ip[20] = sport >> 8;
+	ip[21] = sport & 255;
+	ip[22] = dport >> 8;
+	ip[23] = dport & 255;
+	ip[24] = (8 + n) >> 8;
+	ip[25] = (8 + n) & 255;
+	memcpy(ip + 28, payload, n);
+	memset(rx_headers, 0, sizeof(rx_headers));
+	uip_len = 28 + n;
+	uip_input();
+}
+
+/* True when uip_buf holds a reply from this host's sport to dst:dport with payload. */
+static int udp_reply_matches(const uint8_t dst[4], uint16_t dport, uint16_t sport,
+			     const char *payload, uint16_t n)
+{
+	const uint8_t *ip = uip_buf + UIP_LLH_LEN;
+
+	return uip_len == 28 + n && !memcmp(ip + 12, uip_hostaddr, 4) &&
+	       !memcmp(ip + 16, dst, 4) && ip[20] == sport >> 8 && ip[21] == (sport & 255) &&
+	       ip[22] == dport >> 8 && ip[23] == (dport & 255) && !memcmp(ip + 28, payload, n);
+}
+
+/* A wildcard UDP listener answers whichever peer sent the datagram being answered,
+ * stays wildcard, and sends nothing on a timer poll. A connected socket keeps its
+ * configured peer. */
+static void scenario_udp_wildcard_reply(void)
+{
+	static const uint8_t peer_a[4] = {192, 0, 2, 10}, peer_b[4] = {192, 0, 2, 20},
+			     peer_c[4] = {192, 0, 2, 30};
+	struct uip_udp_conn *listener, *connected;
+	uip_ipaddr_t remote;
+
+	uip_init();
+	listener = uip_udp_new(NULL, 0);
+	assert(listener);
+	uip_udp_bind(listener, HTONS(5300));
+	httpd_tx_udp_app = udp_echo_app;
+
+	udp_in_datagram(peer_a, 5001, 5300, "alpha", 5);
+	CHECK(udp_reply_matches(peer_a, 5001, 5300, "alpha", 5),
+	      "wildcard UDP reply goes back to the first datagram's source");
+	CHECK(listener->lport == HTONS(5300) && listener->rport == 0 &&
+	      !listener->ripaddr[0] && !listener->ripaddr[1],
+	      "wildcard UDP listener stays wildcard after first reply");
+
+	udp_in_datagram(peer_b, 6002, 5300, "bravo", 5);
+	CHECK(udp_reply_matches(peer_b, 6002, 5300, "bravo", 5),
+	      "wildcard UDP reply goes back to the second datagram's source");
+	CHECK(listener->lport == HTONS(5300) && listener->rport == 0 &&
+	      !listener->ripaddr[0] && !listener->ripaddr[1],
+	      "wildcard UDP listener stays wildcard after second reply");
+
+	uip_udp_periodic(listener - uip_udp_conns);
+	CHECK(!uip_len, "timer poll of wildcard UDP listener sends nothing");
+	CHECK(listener->rport == 0 && !listener->ripaddr[0] && !listener->ripaddr[1],
+	      "wildcard UDP listener stays wildcard after timer poll");
+
+	uip_ipaddr(remote, 192, 0, 2, 30);
+	connected = uip_udp_new(&remote, HTONS(7100));
+	assert(connected);
+	uip_udp_bind(connected, HTONS(5400));
+	udp_in_datagram(peer_c, 7100, 5400, "charlie", 7);
+	CHECK(udp_reply_matches(peer_c, 7100, 5400, "charlie", 7),
+	      "connected UDP endpoint replies to its configured peer");
+	uip_udp_periodic(connected - uip_udp_conns);
+	CHECK(udp_reply_matches(peer_c, 7100, 5400, "poll", 4),
+	      "connected UDP periodic sends use the configured peer");
+
+	/* DHCP receives from a concrete server but sends through its broadcast socket. */
+	uip_ipaddr(remote, 255, 255, 255, 255);
+	connected = uip_udp_new(&remote, HTONS(67));
+	assert(connected);
+	uip_udp_bind(connected, HTONS(68));
+	udp_in_datagram(peer_a, 67, 68, "dhcp", 4);
+	static const uint8_t broadcast[4] = {255, 255, 255, 255};
+	CHECK(udp_reply_matches(broadcast, 67, 68, "dhcp", 4),
+	      "connected broadcast UDP replies retain DHCP destination, not incoming source");
+
+	httpd_tx_udp_app = NULL;
+	uip_init();
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -600,6 +708,7 @@ int main(int argc, char **argv)
 	scenario_bad_l4_checksum();
 	scenario_information_auth();
 	scenario_udp_lengths();
+	scenario_udp_wildcard_reply();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",

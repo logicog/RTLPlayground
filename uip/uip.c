@@ -87,9 +87,6 @@
 #include "uip_arch.h"
 #include <stddef.h>
 
-#ifdef SNMP
-#include "snmp.h"
-#endif
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
@@ -1192,17 +1189,19 @@ uip_process(u8_t flag) __banked
   UDPBUF->udplen = HTONS(uip_slen + UIP_UDPH_LEN);
   UDPBUF->udpchksum = 0;
 
-  BUF->srcport  = uip_udp_conn->lport;
-#ifndef SNMP
-  BUF->destport = uip_udp_conn->rport;
-#endif
-
+  if(uip_udp_conn->rport == 0) {
+    /* A wildcard socket can only reply to the current received datagram. */
+    if(!(uip_flags & UIP_NEWDATA) || BUF->srcport == 0) {
+      goto drop;
+    }
+    uip_ipaddr_copy(BUF->destipaddr, BUF->srcipaddr);
+    BUF->destport = BUF->srcport;
+  } else {
+    uip_ipaddr_copy(BUF->destipaddr, uip_udp_conn->ripaddr);
+    BUF->destport = uip_udp_conn->rport;
+  }
+  BUF->srcport = uip_udp_conn->lport;
   uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
-#ifdef SNMP
-  snmp_udp_address();
-#else
-  uip_ipaddr_copy(BUF->destipaddr, uip_udp_conn->ripaddr);
-#endif
    
   uip_appdata = &uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN];
 

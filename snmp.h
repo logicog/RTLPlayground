@@ -21,6 +21,7 @@
 #define SNMP_VERSION_2C 1
 #define SNMP_PDU_GET 0xa0
 #define SNMP_PDU_GETNEXT 0xa1
+#define SNMP_PDU_GETBULK 0xa5
 #define SNMP_PDU_RESPONSE 0xa2
 #define SNMP_ERR_TOO_BIG 1
 #define SNMP_ERR_GEN_ERR 5
@@ -44,7 +45,6 @@ bool snmp_set_enabled(__xdata uint8_t enabled) __banked;
 #define SNMP_STATUS_SIZE 10
 void snmp_get_status(__xdata uint8_t *__xdata status) __banked;
 void snmp_callback(void) __banked;
-void snmp_udp_address(void) __banked;
 uint16_t snmp_process(__xdata const uint8_t *__xdata input, __xdata uint16_t length,
 		      __xdata const uint8_t *__xdata source) __banked;
 extern __xdata uint8_t snmp_response[SNMP_MAX_MESSAGE];
