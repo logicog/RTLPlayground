@@ -105,6 +105,9 @@ void flash_sector_erase(void)
 	config_erase_addr = flash_region.addr;
 }
 
+#define STAGED_MAX	2048
+static uint8_t staged[STAGED_MAX];
+
 void flash_write_bytes(uint8_t *ptr)
 {
 	config_writes++;
@@ -112,6 +115,8 @@ void flash_write_bytes(uint8_t *ptr)
 	written_config_len = flash_region.len;
 	if (written_config_len <= sizeof(written_config))
 		memcpy(written_config, ptr, written_config_len);
+	if (flash_region.addr + flash_region.len <= STAGED_MAX)
+		memcpy(staged + flash_region.addr, ptr, flash_region.len);
 }
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
