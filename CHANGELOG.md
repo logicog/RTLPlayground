@@ -31,6 +31,10 @@
   - The web UI and the configuration upload now refuse a line the replay cannot take,
     instead of writing it to flash.
 
+- Serial console
+  - Keys that send an escape sequence the line editor does not use (Home, End, PgUp, the function keys,
+    Ctrl-arrows, ...) no longer hang the switch. The sequence is now ignored. #664
+
 ## Breaking changes
 
 - Config
