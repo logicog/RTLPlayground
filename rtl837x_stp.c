@@ -297,7 +297,7 @@ void stp_status(void) __banked
 	print_string("changes ");
 	print_short(stp_tc_count);
 	write_char('\n');
-	print_string("port state role edge tx bpdu\n");
+	print_string("port state role edge tx age[s]\n");
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		if (!stp_ent_active(stp_i))
 			continue;
@@ -1297,6 +1297,13 @@ void stp_timers(void) __banked
 					print_string("STP: port learning ");
 					print_port_nl(stp_i);
 				} else {
+					/* A returned BPDU can hold its sending port even though
+					 * that port never received one. Once the hold expires,
+					 * recover auto-edge before the forwarding timer stops. */
+					if (stp_loop_held[stp_i] && (stp_pflags[stp_i] & STP_PF_AUTOEDGE)
+					    && !((stp_heard >> stp_i) & 1)
+					    && stp_bpdu_age[stp_i] > STP_EDGE_DELAY)
+						stp_pflags[stp_i] |= STP_PF_OPEREDGE;
 					stp_loop_held[stp_i] = 0;
 					stp_backup &= ~((uint16_t)1 << stp_i);
 					stp_state_set(stp_i, 0b11);

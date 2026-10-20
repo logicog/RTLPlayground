@@ -268,6 +268,15 @@ is reported with one of the roles Root, Designated, Alternate, Backup or
 Disabled; Disabled covers a port with STP turned off on it, one shut down by
 BPDU guard and one without link.
 
+The console's `age[s]` column (previously labelled `bpdu`) is the elapsed
+time since the last BPDU, capped at 255 seconds; it is not a receive count.
+Use the web counters or `/stpcnt.json` for full receive counts.
+
+An own BPDU received back on another port can temporarily hold its sending
+port in discarding, even if that sending port has received no BPDUs itself.
+When the hold expires, auto-edge is restored if the sending port has remained
+silent. A continuing loop keeps the hold active.
+
 BPDUs shorter than their type allows, judged by the 802.3 length field, are
 dropped: 7 bytes for a TCN, 38 for a Config BPDU and 39 for an RST BPDU,
 LLC header included.
