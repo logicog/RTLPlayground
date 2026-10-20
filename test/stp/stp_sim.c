@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "rtl837x_common.h"
 #include "machine.h"
@@ -196,6 +197,10 @@ struct sim_pkt_out {
 	uint16_t fwd_delay;
 	uint8_t version1_length;
 };
+/* SDCC uses byte alignment; both firmware and fixtures must match wire
+ * offsets rather than sharing the host compiler's padding. */
+_Static_assert(sizeof(struct sim_pkt_out) == 61, "RST BPDU with CPU tag must be 61 bytes");
+_Static_assert(offsetof(struct sim_pkt_out, root) == 30, "root identifier wire offset");
 static struct sim_pkt_out last_tx[NPORTS];
 static int tc_frames[NPORTS];
 static int tcn_frames[NPORTS];
@@ -310,6 +315,7 @@ struct sim_pkt_in {
 	uint16_t fwd_delay;
 	uint8_t version1_length;
 };
+_Static_assert(sizeof(struct sim_pkt_in) == 65, "VLAN-tagged RX BPDU must be 65 bytes");
 
 static uint32_t swap32(uint32_t v)
 {
@@ -2131,6 +2137,161 @@ static void scen_root_port_needs_link(void)
 	check_state(0, 3, "and forwards");
 }
 
+static void follow_root(unsigned seconds)
+{
+	struct sim_bpdu root = root_on(8);
+	while (seconds--) {
+		bpdu_in(&root);
+		secs(1);
+	}
+}
+
+static struct sim_bpdu loop_from_port8(void)
+{
+	struct sim_bpdu own = {
+		.port = 0, .root_prio = 0x40, .root_cost = 20000,
+		.br_prio = 0x80, .port_id = 8
+	};
+	memcpy(own.root_mac, ROOT_MAC, 6);
+	memcpy(own.br_mac, uip_ethaddr.addr, 6);
+	return own;
+}
+
+static void loop_ports_ready(void)
+{
+	reset_all();
+	links_set((1 << 0) | (1 << 7) | (1 << 8));
+	follow_root(5);
+}
+
+static void scen_loop_peer_edge_recovery(void)
+{
+	struct sim_bpdu own = loop_from_port8();
+	int held = 1;
+
+	printf("55. a silent loop peer regains auto-edge when the loop hold expires\n");
+	loop_ports_ready();
+	check((stp_pflags[0] & STP_PF_OPEREDGE) && (stp_pflags[7] & STP_PF_OPEREDGE),
+	      "both host-facing ports start as edge");
+	bpdu_in(&own);
+	check_state(7, 1, "a frame from port 8 returning on port 1 blocks port 8");
+	check(!(stp_pflags[7] & STP_PF_OPEREDGE) && stp_cnt[STP_CNT_RX][7] == 0,
+	      "the held peer is non-edge even though it received no BPDU itself");
+	for (int i = 0; i < 20; i++) {
+		follow_root(2);
+		held &= port_state(7) == 1 && !(stp_pflags[7] & STP_PF_OPEREDGE);
+		bpdu_in(&own);
+	}
+	check(held, "repeated returned BPDUs keep the peer blocked and non-edge");
+	follow_root(14);
+	check_state(7, 1, "the peer waits its full initial forward delay");
+	check(!(stp_pflags[7] & STP_PF_OPEREDGE), "auto-edge cannot bypass the loop hold");
+	follow_root(14);
+	check_state(7, 2, "the peer then spends another forward delay learning");
+	check(!(stp_pflags[7] & STP_PF_OPEREDGE), "the learning peer is still non-edge");
+	follow_root(3);
+	check_state(7, 3, "the peer forwards once both forward delays have elapsed");
+	check((stp_pflags[7] & STP_PF_OPEREDGE) && stp_cnt[STP_CNT_RX][7] == 0,
+	      "the silent peer regains edge with its RX counter still zero");
+	check(!(stp_pflags[0] & STP_PF_OPEREDGE) && stp_cnt[STP_CNT_RX][0] == 21,
+	      "only the port that actually received the returned BPDUs counts and remembers them");
+	bpdu_in(&own);
+	check_state(7, 1, "a new returned BPDU blocks the recovered peer again");
+	check(!(stp_pflags[7] & STP_PF_OPEREDGE), "the new loop revokes the recovered edge status");
+}
+
+static void scen_loop_peer_heard_bpdu(void)
+{
+	struct sim_bpdu own = loop_from_port8();
+	struct sim_bpdu peer = {
+		.port = 7, .root_prio = 0x40, .root_cost = 200000,
+		.br_prio = 0x90, .port_id = 1, .flags = 0x0c
+	};
+
+	printf("56. a loop peer that received a real BPDU remains non-edge\n");
+	loop_ports_ready();
+	bpdu_in(&own);
+	memcpy(peer.root_mac, ROOT_MAC, 6);
+	memcpy(peer.br_mac, PEER_MAC, 6);
+	bpdu_in(&peer);
+	follow_root(31);
+	check_state(7, 3, "the loop hold still expires after the full forward delays");
+	check(!(stp_pflags[7] & STP_PF_OPEREDGE) && stp_cnt[STP_CNT_RX][7] == 1,
+	      "a real received BPDU prevents the peer from becoming edge");
+}
+
+static void scen_loop_peer_autoedge_off(void)
+{
+	struct sim_bpdu own = loop_from_port8();
+
+	printf("57. loop recovery respects administratively disabled auto-edge\n");
+	reset_all();
+	stp_pflags[7] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 0) | (1 << 7) | (1 << 8));
+	follow_root(31);
+	bpdu_in(&own);
+	follow_root(31);
+	check_state(7, 3, "the peer forwards again after loop recovery");
+	check(!(stp_pflags[7] & STP_PF_OPEREDGE) && stp_cnt[STP_CNT_RX][7] == 0,
+	      "zero RX does not override the disabled auto-edge setting");
+}
+
+/* Actual captured RouterOS bytes; only the redacted MAC octets are replaced. */
+static const uint8_t mikrotik_wire[] = {
+	0x01, 0x80, 0xc2, 0x00, 0x00, 0x00, 0xd0, 0xea,
+	0x11, 0x12, 0x34, 0x56, 0x00, 0x27, 0x42, 0x42,
+	0x03, 0x00, 0x00, 0x02, 0x02, 0x3c, 0x10, 0x00,
+	0xd0, 0xea, 0x11, 0x12, 0x34, 0x56, 0x00, 0x00,
+	0x00, 0x00, 0x10, 0x00, 0xd0, 0xea, 0x11, 0x12,
+	0x34, 0x56, 0x80, 0x0a, 0x00, 0x00, 0x14, 0x00,
+	0x02, 0x00, 0x0f, 0x00, 0x00
+};
+
+static void bpdu_wire(uint8_t port, int tagged)
+{
+	size_t body = 20;
+
+	memset(uip_buf, 0, sizeof(uip_buf));
+	memcpy(uip_buf, mikrotik_wire, 12);
+	uip_buf[12] = 0x88;
+	uip_buf[13] = 0x99;
+	uip_buf[14] = 0x04;
+	uip_buf[19] = port;
+	if (tagged) {
+		uip_buf[20] = 0x81;
+		uip_buf[23] = 1;
+		body += 4;
+	}
+	memcpy(uip_buf + body, mikrotik_wire + 12, sizeof(mikrotik_wire) - 12);
+	uip_len = body + sizeof(mikrotik_wire) - 12;
+}
+
+static void scen_mikrotik_wire_capture(void)
+{
+	int attributed = 1;
+
+	printf("58. the captured RouterOS BPDU is parsed on every physical ingress port\n");
+	for (int tagged = 0; tagged < 2; tagged++) {
+		for (uint8_t port = 0; port < NPORTS; port++) {
+			reset_all();
+			links_set((1 << NPORTS) - 1);
+			secs(5);
+			bpdu_wire(port, tagged);
+			/* The upper source-word bits and trap reason are not port bits. */
+			uip_buf[15] = 0x04;
+			uip_buf[18] = 0xfe;
+			uip_buf[19] |= 0xa0;
+			stp_in();
+			attributed &= stp_root_port == port && root_bridge.prio == 0x10
+				&& stp_dpid[port] == 0x800a;
+			for (uint8_t p = 0; p < NPORTS; p++)
+				attributed &= stp_cnt[STP_CNT_RX][p] == (p == port)
+					&& !!(stp_pflags[p] & STP_PF_OPEREDGE) == (p != port);
+		}
+	}
+	check(attributed, "both VLAN layouts select the captured root and change RX and edge status only on the ingress port");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2188,6 +2349,10 @@ int main(int argc, char **argv)
 	scen_lag();
 	scen_tc_needs_forwarding();
 	scen_root_port_needs_link();
+	scen_loop_peer_edge_recovery();
+	scen_loop_peer_heard_bpdu();
+	scen_loop_peer_autoedge_off();
+	scen_mikrotik_wire_capture();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;

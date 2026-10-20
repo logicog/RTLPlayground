@@ -2,6 +2,7 @@ CC      ?= cc
 SRCROOT  = ../..
 CFLAGS   = -std=c11 -g -O1 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unknown-pragmas \
            -Wno-pointer-sign \
+           -fpack-struct=1 \
            -DRTLP_HOST_TEST \
            -fsanitize=address,undefined -fno-omit-frame-pointer \
            -include ../sdcc_shim.h -I../stub -I$(SRCROOT) -I$(SRCROOT)/httpd -I$(SRCROOT)/uip
