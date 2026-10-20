@@ -47,14 +47,14 @@
 #define RTL837X 7
 
 #ifdef SOC_FAMILY
-#error "SOC_FAMILY can not define manually, shall be auto derived"
+#error "SOC_FAMILY can not be manually defined, shall be auto derived"
 #endif
 #if (MACHINE_CHIPSET == RTL8372) || (MACHINE_CHIPSET == RTL8373)
 #define SOC_FAMILY RTL837X
 #elif (MACHINE_CHIPSET == RTL8370 )
 #define SOC_FAMILY RTL836X
 #else
-#error "Unsupport MACHINE_CHIPSET is specified!"
+#error "Unsupported MACHINE_CHIPSET is specified!"
 #endif
 
 #define LED_27 1
