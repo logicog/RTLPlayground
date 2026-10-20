@@ -59,8 +59,9 @@ static inline uint8_t sfp_rate_to_sds_config(uint8_t rate)
 		return SDS_1000BX_FIBER;
 	if (rate >= 0x19 && rate <= 0x20)  // Ethernet 2.5 GBit
 		return SDS_HSG;
-	if (rate >= 0x62 && rate < 0x70)
+	if (rate >= 0x62 /* && rate < 0x70 */) // Force higher rates to 10G (e.g., 25G, 50G)
 		return SDS_10GR;
+
 	return 0xff;
 }
 
