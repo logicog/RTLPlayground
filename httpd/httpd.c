@@ -55,8 +55,8 @@ __xdata uint8_t boundary[72];
 #define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
 __xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
-// bytes buffered in config_buf so far (config body, or a firmware part
-// header); accumulates across TCP segments
+// bytes buffered in config_buf so far (HTTP header, POST body, or a firmware
+// part header); accumulates across TCP segments
 __xdata uint16_t pre_acc;
 __xdata uint8_t * __xdata content_type = 0;
 __xdata uint8_t * __xdata session = 0;
@@ -87,6 +87,7 @@ __xdata uint32_t last_session_use;
 #define TSTATE_POST 		4
 #define TSTATE_MULTIPART	5
 #define TSTATE_POSTBODY		6
+#define TSTATE_HEADER		7
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
@@ -106,7 +107,8 @@ void httpd_init(void) __banked
 	uip_listen(HTONS(80));
 	// Not through uip_conn: it only points at a connection while uIP is
 	// handling one, and nothing has set it yet at init time.
-	uip_conns[0].appstate.tstate = TSTATE_CLOSED;
+	for (uint8_t i = 0; i < UIP_CONNS; i++)
+		uip_conns[i].appstate.tstate = TSTATE_CLOSED;
 }
 
 
@@ -742,7 +744,42 @@ static void post_body_continue(void)
 }
 
 
-void handle_post(void)
+
+/*
+ * Buffer an HTTP request header across TCP receive events. Stop copying at
+ * CRLFCRLF so any body bytes in the final segment stay in uip_appdata.
+ *
+ * Return the body offset in the current receive buffer, 0 while incomplete,
+ * or 0xffff after sending an error response.
+ */
+static uint16_t request_header_take(void)
+{
+	uint16_t i;
+
+	for (i = 0; i < uip_len; i++) {
+		if (pre_acc + 1 >= CONFIG_UPLOAD_BUF) {
+			uip_conn->appstate.tstate = TSTATE_NONE;
+			send_bad_request();
+			return 0xffff;
+		}
+		config_buf[pre_acc++] = ((__xdata uint8_t *)uip_appdata)[i];
+		config_buf[pre_acc] = NUL;
+		if (pre_acc >= 4
+		    && config_buf[pre_acc - 4] == '\r'
+		    && config_buf[pre_acc - 3] == '\n'
+		    && config_buf[pre_acc - 2] == '\r'
+		    && config_buf[pre_acc - 1] == '\n') {
+			uip_conn->appstate.tstate = TSTATE_NONE;
+			return i + 1;
+		}
+	}
+
+	postbody_start = ticks;
+	uip_conn->appstate.tstate = TSTATE_HEADER;
+	return 0;
+}
+
+void handle_post(uint16_t body_off)
 {
 	__xdata struct httpd_state * __xdata s = &(uip_conn->appstate);
 	__xdata uint8_t *p = uip_appdata;
@@ -755,6 +792,9 @@ void handle_post(void)
 
 	// Was the multipart header sent in multiple packets?
 	if (s->tstate != TSTATE_MULTIPART) {
+		p = config_buf;
+		request_path = p + 6;
+
 		dbg_string("Is POST\n");
 		p += 5;  // Skip post
 		// Find end of request path
@@ -768,9 +808,12 @@ void handle_post(void)
 		dbg_string("Boundary: >"); dbg_string_x(boundary); dbg_string("<\n");
 		if (!*p || !content_type) {
 			dbg_string("Bad Request!\n");
-			send_not_found();
+			send_bad_request();
 			return;
 		}
+
+		pre_acc = 0;
+		p = (__xdata uint8_t *)uip_appdata + body_off;
 		if (is_word(request_path, "upload")) {
 			if (!authenticated) {
 				send_unauthorized();
@@ -796,7 +839,10 @@ void handle_post(void)
 			dbg_string("Configuration upload\n");
 			verify_crc = 0;
 			config_upload = 1;
-			pre_acc = 0;
+			// config_take() matches CRLF-prefixed delimiters, including the first.
+			config_buf[0] = '\r';
+			config_buf[1] = '\n';
+			pre_acc = 2;
 		}
 		// Check for other POST requests, which are not multipart, below
 	} else {
@@ -820,7 +866,6 @@ void handle_post(void)
 			handle_firmware_fragment(p);
 		return;
 	} else if (is_word(request_path, "cmd")) {
-		p += 4;
 		if (!authenticated) {
 			send_unauthorized();
 			return;
@@ -839,7 +884,6 @@ void handle_post(void)
 			return;
 		}
 
-		p += 4;
 		postbody_endpoint = POSTBODY_LOGIN;
 		if (!post_body_take(p))
 			return;
@@ -887,9 +931,9 @@ void httpd_appcall(void)
 			dbg_string("Closing because everything has been transmitted\n");
 			uip_close();
 			s->tstate = TSTATE_CLOSED;
-		} else if (s->tstate == TSTATE_POSTBODY
+		} else if ((s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_HEADER)
 			   && (uint16_t)ticks - postbody_start > POSTBODY_TIMEOUT) {
-			dbg_string("Body never arrived\n");
+			dbg_string("HTTP request never completed\n");
 			uip_abort();
 			s->tstate = TSTATE_CLOSED;
 		}
@@ -952,6 +996,7 @@ void httpd_appcall(void)
 		cont_len = 0;
 		dbg_char('<'); dbg_short(uip_len); dbg_char('\n');
 		__xdata uint8_t *p = uip_appdata;
+		uint16_t body_off = 0;
 		// Mark end of request header with \0
 		p[uip_len] = 0;
 #ifdef DEBUG
@@ -960,9 +1005,21 @@ void httpd_appcall(void)
 		dbg_char('\n');
 #endif
 		p = uip_appdata;
-		if (is_word(p, "POST") || s->tstate == TSTATE_MULTIPART
-		    || s->tstate == TSTATE_POSTBODY) {
-			handle_post();
+		if (s->tstate != TSTATE_MULTIPART && s->tstate != TSTATE_POSTBODY) {
+			if (s->tstate != TSTATE_HEADER)
+				pre_acc = 0;
+			body_off = request_header_take();
+			if (!body_off) {
+				uip_len = 0;
+				return;
+			}
+			if (body_off == 0xffff)
+				goto do_send;
+		}
+
+		if (s->tstate == TSTATE_MULTIPART || s->tstate == TSTATE_POSTBODY
+		    || is_word(config_buf, "POST")) {
+			handle_post(body_off);
 			// If this is an ongoing post stream, then wait for the next packet
 			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART
 			    || s->tstate == TSTATE_POSTBODY) {
@@ -972,12 +1029,11 @@ void httpd_appcall(void)
 			goto do_send;
 		}
 
-		// We only expect a GET request here.
+		p = config_buf;
 		if (!is_word(p, "GET")) {
 			send_bad_request();
 			goto do_send;
 		}
-
 		dbg_string("GET request ");
 		p += 4;
 		scan_header(p);
