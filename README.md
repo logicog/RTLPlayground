@@ -65,7 +65,9 @@ The first `make` downloads SDCC 4.6.0, applies the fixes in `sdcc/` and builds i
 `toolchain/`, which takes a few minutes. Later builds reuse it. The released SDCC 4.5.0
 and 4.6.0 miscompile parts of this code, see [SDCC bug #4153](https://sourceforge.net/p/sdcc/bugs/4153/)
 and [#4154](https://sourceforge.net/p/sdcc/bugs/4154/); both fixes are in SDCC trunk since
-r17039. To use an SDCC you installed yourself instead, run `make CC=sdcc ...`.
+r17039. The third patch is for [#4070](https://sourceforge.net/p/sdcc/bugs/4070/), where the
+assembler drops the top byte of a `__sfr32` address list; it is proposed upstream and lets
+`SFR_DATA_U32` be used again. To use an SDCC you installed yourself instead, run `make CC=sdcc ...`.
 
 <details>
 <summary>If using Docker (click to expand)</summary>
