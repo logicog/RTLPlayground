@@ -8,13 +8,12 @@ RTL8373N switch with 8 × 2.5G RJ45 ports and 1 × SFP port. GD25Q16 2 MiB flash
 | --- | --- | --- |
 | 1–8 | 0–7 | RJ45 |
 | 9 | 8 | SFP (SDS1) |
-| Internal | 9 | CPU |
 
 ## Board signals
 
 | Function | GPIO |
 | --- | --- |
-| SFP detect | 30 |
+| SFP detect | 38 |
 | SFP LOS | 37 |
 | SFP TX disable | Not connected (`GPIO_NA`) |
 | SFP I2C SDA / SCL | 39 / 40 |
@@ -40,6 +39,3 @@ PCB bottom:
 
 ![PCB bottom](photos/Hasivo-S1100P-8GT-1SX-S/pcb_bottom.jpg)
 
-## Testing
-
-SDCC 4.5 firmware build and compilation of the Hasivo machine definition and initialization passed. The full `machine_check` is blocked by an unrelated error in `GT_ST024M.c`. This profile has not yet been tested on the physical switch.
