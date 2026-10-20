@@ -31,7 +31,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_tick_gate \
         $(BUILDDIR)/test_cpu_vlan_full \
         $(BUILDDIR)/test_cpu_vlan_restricted \
-        $(BUILDDIR)/test_cpu_vlan_8372\
+        $(BUILDDIR)/test_cpu_vlan_8372 \
         $(BUILDDIR)/test_nic_rx \
         $(BUILDDIR)/test_lacp
 
