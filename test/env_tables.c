@@ -97,12 +97,12 @@ void     flash_read_bulk(uint8_t *dst) { (void)dst; }
 const char *get_flash_size_str(void) { return "2M"; }
 uint8_t  sfp_read_reg(uint8_t slot, uint8_t reg) { (void)slot; (void)reg; return 0; }
 bool     gpio_pin_test(uint8_t pin) { (void)pin; return false; }
-/* MMD 7.0x0010 and 7.0x0013 per port, the pause flags port_pause_state() reads */
-uint16_t phy_mock_an[9][2];
+/* MMD 7 (auto-negotiation) registers 0x00-0x3f per port: pause flags at 0x10/0x13, EEE at 0x3c-0x3f */
+uint16_t phy_mock_an[9][0x40];
 extern volatile uint16_t SFR_DATA_U16;
 void     phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 {
-	SFR_DATA_U16 = (dev_id == 7 && phy_id < 9 && (reg == 0x10 || reg == 0x13)) ? phy_mock_an[phy_id][reg == 0x13] : 0;
+	SFR_DATA_U16 = (dev_id == 7 && phy_id < 9 && reg < 0x40) ? phy_mock_an[phy_id][reg] : 0;
 }
 void     phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t val) { (void)phy_id; (void)dev_id; (void)reg; (void)val; }
 /* The last phy_modify(), for the tests of what the firmware writes */

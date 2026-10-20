@@ -318,9 +318,14 @@ void send_basic_info(void)
 			send_sfp_info(1);
 		}
 	}
-	char_to_html('"');
-
-	char_to_html('}');
+	// Chip (logical) port of each front-panel port, in front-panel order
+	slen += strtox(outbuf + slen, "\",\"logPort\":[");
+	for (uint8_t i = 0; i <= machine.max_port - machine.min_port; i++) {
+		if (i)
+			char_to_html(',');
+		itoa_html(machine.phys_to_log_port[i]);
+	}
+	slen += strtox(outbuf + slen, "]}");
 }
 
 
@@ -817,76 +822,27 @@ void send_lldp(void)
 	char_to_html('}');
 }
 
-void send_eee(void)
+/* EEE_* bits of a copper port; eee_ablty is RTL8373_PHY_EEE_ABLTY, read once per reply */
+static uint8_t port_eee_state(uint8_t port, uint8_t eee_ablty)
 {
-	dbg_string("send_eee called\nsending EEE status\n");
-	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	uint8_t s = 0;
+	uint16_t v;
 
-	reg_read_m(RTL8373_PHY_EEE_ABLTY);
-	uint8_t eee_ablty = sfr_data[3];
-
-	char_to_html('[');
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		slen += strtox(outbuf + slen, "{\"portNum\":");
-		itoa_html(machine.log_to_phys_port[i]);
-
-		if (machine.is_sfp[i]) {
-			slen += strtox(outbuf + slen, ",\"isSFP\":1");
-		} else {
-			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"eee\":\"");
-			uint16_t v;
-			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV2);
-			v = SFR_DATA_U16;
-			bool_to_html(v & PHY_EEE_BIT_2G5);
-
-			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV);
-			v = SFR_DATA_U16;
-			bool_to_html(v & PHY_EEE_BIT_1G);
-			bool_to_html(v & PHY_EEE_BIT_100M);
-
-			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
-			v = SFR_DATA_U16;
-			slen += strtox(outbuf + slen, "\",\"eee_lp\":\"");
-			bool_to_html (v & PHY_EEE_BIT_2G5);
-
-			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
-			v = SFR_DATA_U16;
-			bool_to_html(v & PHY_EEE_BIT_1G);
-			bool_to_html(v & PHY_EEE_BIT_100M);
-
-			slen += strtox(outbuf + slen, "\",\"active\":");
-			bool_to_html(eee_ablty & (1 << i));
-		}
-		char_to_html('}');
-		if (i < machine.max_port)
-			char_to_html(',');
-		else
-			char_to_html(']');
-	}
+	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_100M) s |= EEE_ADV_100M;
+	if (v & PHY_EEE_BIT_1G) s |= EEE_ADV_1G;
+	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV2);
+	if (SFR_DATA_U16 & PHY_EEE_BIT_2G5) s |= EEE_ADV_2G5;
+	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
+	v = SFR_DATA_U16;
+	if (v & PHY_EEE_BIT_100M) s |= EEE_LP_100M;
+	if (v & PHY_EEE_BIT_1G) s |= EEE_LP_1G;
+	phy_read(port, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
+	if (SFR_DATA_U16 & PHY_EEE_BIT_2G5) s |= EEE_LP_2G5;
+	if (eee_ablty & (1 << port)) s |= EEE_ACTIVE;
+	return s;
 }
-
-/* Per port the PAUSE_* bits of port_pause_state() as one number, "fc". */
-void send_flowctrl(void)
-{
-	dbg_string("send_flowctrl called\n");
-	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-
-	char_to_html('[');
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
-		slen += strtox(outbuf + slen, "{\"portNum\":");
-		itoa_html(machine.log_to_phys_port[i]);
-		slen += strtox(outbuf + slen, ",\"isSFP\":");
-		bool_to_html(machine.is_sfp[i]);
-		slen += strtox(outbuf + slen, ",\"fc\":");
-		itoa_html(port_pause_state(i));
-		char_to_html('}');
-		if (i < machine.max_port)
-			char_to_html(',');
-		else
-			char_to_html(']');
-	}
-}
-
 
 
 void send_bandwidth(void)
@@ -1016,13 +972,13 @@ void send_status(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	dbg_string("sending status\n");
+	reg_read_m(RTL8373_PHY_EEE_ABLTY);
+	uint8_t eee_ablty = sfr_data[3];
 	char_to_html('[');
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		slen += strtox(outbuf + slen, "{\"portNum\":");
 		itoa_html(machine.log_to_phys_port[i]);
-		slen += strtox(outbuf + slen, ",\"logPort\":");
-		itoa_html(i);
 		slen += strtox(outbuf + slen, ",\"name\":\"");
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
 			json_char_to_html(port_names[i][j]);
@@ -1119,6 +1075,13 @@ void send_status(void)
 				b = ((i & 1) ? b >> 4 : b & 0xf) + 1;
 		}
 		char_to_html('0' + b);
+
+		slen += strtox(outbuf + slen, ",\"fc\":");
+		itoa_html(port_pause_state(i));
+		if (!machine.is_sfp[i]) {
+			slen += strtox(outbuf + slen, ",\"eee\":");
+			itoa_html(port_eee_state(i, eee_ablty));
+		}
 
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		slen += strtox(outbuf + slen, ",\"txG\":\"0x");

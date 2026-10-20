@@ -133,6 +133,19 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 .port.dis{opacity:.45;border-style:dashed}
 .badge{font-size:11px;font-weight:600;border-radius:10px;padding:1px 8px;background:var(--panel2);color:var(--fg2)}
 .badge.ok{color:var(--ok)}.badge.bad{color:var(--bad)}
+.badge.fit{display:inline-block;box-sizing:border-box;text-align:center}
+.badge.st-off{opacity:.45;outline:1px dashed var(--fg2);outline-offset:-1px}
+.badge.st-in{outline:1px solid var(--bd);outline-offset:-1px}
+.feat{display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.feat .na{width:34px;flex:none}
+button.ib{background:none;border:0;padding:0 0 0 4px;cursor:pointer;color:var(--ac);font-size:15px;line-height:1}
+#ptable input.mtu{width:5.5em}
+#ptable tr.chg td{background:var(--sel)}
+#ptable .chg:not(tr){outline:2px solid var(--ac);outline-offset:2px}
+#pbar{position:sticky;bottom:0;z-index:5;display:flex;gap:12px;align-items:flex-end;
+  background:var(--panel);border-top:1px solid var(--bd);padding:10px 2px 2px;margin-top:8px}
+#pbar>div{flex:1;min-width:0}
+#ppending{width:100%;box-sizing:border-box;resize:none;margin-top:4px;font-size:12px}
 .seg{display:inline-flex;border:1px solid var(--bd);border-radius:7px;overflow:hidden}
 .seg button{
   background:var(--panel);border:0;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--fg2);
@@ -157,6 +170,7 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
   background:var(--panel);border:1px solid var(--bd);border-radius:12px;box-shadow:var(--shadow);
   width:min(760px,96vw);max-height:86vh;display:flex;flex-direction:column;
 }
+#modal.narrow{width:fit-content;min-width:260px}
 #mhead{display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--bd)}
 #mtitle{font-weight:650;font-size:15px;flex:1}
 #mx{background:none;border:0;font-size:19px;cursor:pointer;color:var(--fg2);padding:0 2px}
@@ -184,6 +198,19 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   #top{padding:8px 10px;gap:7px}
   #ttitle{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #dirty{padding:2px 7px}
+  /* Ports table as one card per port, a label left of each setting */
+  #ptable thead{display:none}
+  #ptable,#ptable tbody{display:block}
+  #ptable tr{display:grid;grid-template-columns:7.5em 1fr;gap:6px 10px;align-items:center;
+    border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+  #ptable tr.chg{background:var(--sel)}
+  #ptable td,#ptable tr.chg td,#ptable tr:hover td{border:0;padding:0;background:none}
+  #ptable td::before{content:attr(data-l);color:var(--fg2);font-size:12px;margin-right:10px}
+  #ptable td{grid-column:1/-1;display:grid;grid-template-columns:7.5em 1fr;gap:10px;align-items:center}
+  #ptable td.pn,#ptable td.pn+td{grid-column:auto;display:block;font-weight:650}
+  #ptable td.pn+td::before{content:none}
+  #ptable td.pn::before{color:inherit;font-size:inherit;margin-right:4px}
+  #ptable select{width:100%!important}
 }
 @media (max-width:720px){
   #ttitle{flex:1}
@@ -241,8 +268,15 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
     <section class="tab" id="tab-ports">
       <div class="card"><h2 data-i18n="pt_title">Port configuration</h2>
         <div class="scrollx"><table class="t" id="ptable">
-          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_name">Name</th><th data-i18n="c_link">Link</th><th data-i18n="pt_conn">Devices learned</th><th data-i18n="pt_speed">Speed</th><th data-i18n="c_enabled">Enabled</th><th data-i18n="pt_mtu">MTU</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_enabled">Enabled</th><th data-i18n="c_name">Name</th><th data-i18n="c_link">Link</th><th data-i18n="pt_speed">Speed</th><th data-i18n="pt_mtu">MTU</th><th data-i18n="pt_fc">Flow control</th><th data-i18n="pt_eee">EEE</th></tr></thead>
           <tbody></tbody></table></div>
+        <div id="pbar">
+          <div>
+            <div class="small mut" id="pcount" data-i18n="pt_nopending">No pending changes</div>
+            <textarea class="in mono" id="ppending" readonly wrap="off" hidden></textarea>
+          </div>
+          <button class="ctl pri" id="papply" data-i18n="c_apply" disabled>Apply</button>
+        </div>
         <p class="small mut" style="margin-top:8px" data-i18n="pt_sfp_note">SFP speed is set per slot and is not saved in the startup config.</p>
       </div>
     </section>
@@ -279,7 +313,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
     <section class="tab" id="tab-stats">
       <div class="card"><h2><span data-i18n="st_title">Port statistics</span> <span class="hint" data-i18n="st_h">totals since boot</span></h2>
         <div class="scrollx"><table class="t" id="stable">
-          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_name">Name</th><th data-i18n="c_link">Link</th><th class="num" data-i18n="st_txg">TX good</th><th class="num" data-i18n="st_txb">TX bad</th><th class="num" data-i18n="st_rxg">RX good</th><th class="num" data-i18n="st_rxb">RX bad</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_name">Name</th><th data-i18n="c_link">Link</th><th class="num" data-i18n="st_txg">TX good</th><th class="num" data-i18n="st_txb">TX bad</th><th class="num" data-i18n="st_rxg">RX good</th><th class="num" data-i18n="st_rxb">RX bad</th><th class="num" data-i18n="pt_conn">Devices learned</th><th></th></tr></thead>
           <tbody></tbody></table></div>
       </div>
     </section>
@@ -366,24 +400,6 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <tbody></tbody></table></div>
       </div>
       <p class="small mut" style="margin-top:10px" data-i18n="lag_note">A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.</p>
-    </section>
-
-    <section class="tab" id="tab-eee">
-      <div class="card"><h2 data-i18n="e_title">Energy Efficient Ethernet</h2>
-        <div class="scrollx"><table class="t" id="etable">
-          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="e_adv">Advertised</th><th data-i18n="e_lp">Link partner</th><th data-i18n="e_active">Active</th><th data-i18n="e_enable">Enable</th></tr></thead>
-          <tbody></tbody></table></div>
-        <p class="small mut" style="margin-top:8px" data-i18n="e_note">Advertised and link-partner flags per speed: 100M, 1G, 2.5G. SFP ports do not support EEE.</p>
-      </div>
-    </section>
-
-    <section class="tab" id="tab-fc">
-      <div class="card"><h2 data-i18n="fc_title">Flow control (802.3x pause)</h2>
-        <div class="scrollx"><table class="t" id="fctable">
-          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="e_adv">Advertised</th><th data-i18n="e_lp">Link partner</th><th data-i18n="fc_neg">Negotiated</th><th data-i18n="c_enabled">Enabled</th></tr></thead>
-          <tbody></tbody></table></div>
-        <p class="small mut" style="margin-top:8px" data-i18n="fc_note">Advertised and link-partner pause flags. Negotiated shows the pause directions in use on the link: TX, RX or both. Switching a port renegotiates its link. SFP ports cannot be set.</p>
-      </div>
     </section>
 
     <section class="tab" id="tab-bw">

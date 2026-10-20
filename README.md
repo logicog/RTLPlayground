@@ -13,8 +13,8 @@ only the following features are provided:
   Speed settings and configuration of these settings on the local side
 - Per-port configuration of frame sizes (MTUs) for Jumbo-Frame support or limiting MTUs
   for particular devices
-- EEE (Energy Efficient Ethernet) can be configured per-port. Detailed information is
-  provided for support offered by the link partner and the EEE status of a port.
+- EEE (Energy Efficient Ethernet) and 802.3x flow control can be configured per-port on the
+  Ports page, which also shows what the link partner offers and whether each is in use.
 - VLAN configuration
 - SFP information is displayed on the inserted modules, the current sensor values such as
   temperatures, RX and TX power are displayed in the CLI and as mouse-over on the web
