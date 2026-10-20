@@ -285,10 +285,13 @@ class Handler(SimpleHTTPRequestHandler):
             ))
         return parts
 
-    def parse_cmd(self, cmd):
-        pieces = cmd.split(" ")
-        handler = self.get_parsers().get(pieces[0])
-        return handler(pieces) if handler else {}
+    def parse_cmd(self, cmdstring):
+        response = ""
+        for cmd in cmdstring.split("\n"):
+            pieces = cmd.split(" ")
+            handler = self.get_parsers().get(pieces[0])
+            response += str(handler(pieces)) + "\n"
+        return response
 
     def get_parsers(self):
         return {
