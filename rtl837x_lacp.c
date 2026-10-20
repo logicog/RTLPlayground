@@ -280,6 +280,8 @@ void lacp_in(void) __banked
 
 	lacp_rx_state[port] = LACP_RX_CURRENT;
 	lacp_timeout[port] = LACP_SHORT_TIMEOUT;
+	if ((lacp_partner_state[port] & LACP_STATE_TIMEOUT) && lacp_periodic[port] > LACP_FAST_PERIODIC)
+		lacp_periodic[port] = LACP_FAST_PERIODIC;
 
 	if (!lacp_agg_valid[lag]) {
 		memcpy(lacp_agg_sys[lag], LACP_I->actor.sys, MAC_ADDR_LEN);
