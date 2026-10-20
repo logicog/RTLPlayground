@@ -516,6 +516,21 @@ int main(int argc, char **argv)
 	lacp_lag_set(1, 0);
 	hw_links = 0;
 
+	lacp_lag_set(1, 0x0010);
+	step(4 * LACP_FAST_PERIODIC + 8);
+	int txc4 = tx_count[4];
+	step(4 * LACP_FAST_PERIODIC + 8);
+	int slow = tx_count[4] == txc4;
+	partner_frame(4, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+	step(8);
+	partner_frame(4, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+	step(8);
+	txc4 = tx_count[4];
+	step(4 * LACP_FAST_PERIODIC + 8);
+	CHECK(slow && tx_count[4] > txc4,
+	      "T27 partner asks for short timeout: periodic transmission drops to the fast rate");
+	lacp_lag_set(1, 0);
+
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
 	return failures ? 1 : 0;
