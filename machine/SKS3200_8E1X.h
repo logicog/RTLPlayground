@@ -1,0 +1,7 @@
+#ifndef _MACHINE_SKS3200_8E1X_H_
+#define _MACHINE_SKS3200_8E1X_H_
+
+#define MACHINE_MODEL "XikeStor SKS3200-8E1X"
+
+#endif
+

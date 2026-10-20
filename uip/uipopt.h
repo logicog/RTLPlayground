@@ -419,7 +419,7 @@
 #endif /* UIP_CONF_BUFFER_EXTRA */
 
 
-extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
+extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 
 /**
  * Determines if statistics support should be compiled in.

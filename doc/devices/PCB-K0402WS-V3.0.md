@@ -19,9 +19,14 @@ of the device just above the big label, might be covered by a QC sticker.
 
 <img src="photos/PCB-K0402WS-V3.0/Ztyuav_Z-QWYT0402_label.jpg" width="300" />
 
-* Siscolink SL-G0402F
+* SICSOLINK SL-G0402F
 
-<img src="photos/PCB-K0402WS-V3.0/Siscolink SL-G0402F.jpg" width="300"/>
+<img src="photos/PCB-K0402WS-V3.0/SICSOLINK SL-G0402F.jpg" width="300"/>
+
+* YuanLey YS25-0402 <sup><sub>Note: there are [multiple revisions](PCB-K0402WS-V1.0.md) of the YS25-0402. This is the newer revision that has a "Vlan" switch on the front.</sub></sup>
+
+<img src="photos/PCB-K0402WS-V3.0/YuanLey_YS25-0402.jpg" width="300"/>
+
 ### Programming
 
 Using SPI clamp in-board is the only method for initial installation.
@@ -43,7 +48,7 @@ For the initial flash (at least with flashrom), the bin file produced by the bui
 ### PCB overview
 
 **Board markings**  
-- Top silkscreen: PCB-KO4022W-V3.0 / DIP-KO4022WS-V3.0  
+- Top silkscreen: PCB-K0402W-V3.0 / DIP-K0402WS-V3.0  
 
 Top side
 

@@ -1,0 +1,6 @@
+#ifndef _MACHINE_2G08110GSN_H_
+#define _MACHINE_2G08110GSN_H_
+
+#define MACHINE_MODEL "MokerLink 2G08110GSN"
+
+#endif
