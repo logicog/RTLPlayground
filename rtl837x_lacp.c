@@ -22,6 +22,7 @@ extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint16_t management_vlan;
 extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
+extern __xdata uint8_t sfr_data[4];
 
 /* 20-byte Actor/Partner information body (802.3ad 43.4.2.2), network byte order */
 struct lacp_info {
@@ -111,6 +112,7 @@ __xdata uint8_t  lacp_scratch_flag;
 __xdata uint8_t  lacp_scratch_lag;
 
 __xdata uint16_t lacp_rx_count[10];
+__xdata uint16_t lacp_link_last;
 
 
 static uint8_t lacp_sys_eq(__xdata uint8_t *a, __xdata uint8_t *b)
@@ -353,6 +355,38 @@ void lacp_timers(void) __banked
 }
 
 
+static uint16_t lacp_link_mask(void)
+{
+	reg_read_m(RTL837X_REG_LINKS_STS);
+	return ((uint16_t)sfr_data[2] << 8) | sfr_data[1];
+}
+
+void lacp_link_change(void) __banked
+{
+	lacp_scratch_mask = lacp_link_mask() ^ lacp_link_last;
+	if (!lacp_scratch_mask)
+		return;
+	lacp_link_last ^= lacp_scratch_mask;
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if (lacp_port_lag[i] == LACP_LAG_NONE || !(lacp_scratch_mask & PORT_BIT(i)))
+			continue;
+		lacp_partner_state[i] = LACP_STATE_DEFAULTED;
+		if (lacp_link_last & PORT_BIT(i)) {
+			lacp_rx_state[i] = LACP_RX_EXPIRED;
+			lacp_partner_state[i] |= LACP_STATE_TIMEOUT;
+			lacp_timeout[i] = LACP_SHORT_TIMEOUT;
+			lacp_periodic[i] = LACP_FAST_PERIODIC;
+			lacp_ntt[i] = 1;
+		} else {
+			lacp_rx_state[i] = LACP_RX_PORT_DISABLED;
+			lacp_timeout[i] = 0;
+			lacp_ntt[i] = 0;
+		}
+		lacp_mux_machine(i);
+	}
+	lacp_mux_update();
+}
+
 static void lacp_port_init(uint8_t port)
 {
 	lacp_actor_state[port] = LACP_STATE_ACTIVITY | LACP_STATE_AGGREGATION |
@@ -389,6 +423,7 @@ static uint8_t lacp_any_lag(void)
 static void lacp_engine_on(void)
 {
 	lacp_tick_last = (uint8_t)ticks;
+	lacp_link_last = lacp_link_mask();
 	lacpEnabled = 1;
 	trap_rma_set(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_TRAP);
 }
