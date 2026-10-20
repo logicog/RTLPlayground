@@ -165,7 +165,7 @@ void lacp_mux_update(void) __banked
 		if (!lacp_lag_ports[lag])
 			continue;
 		lacp_scratch_mask = 0;
-		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 			if (lacp_port_lag[i] != lag)
 				continue;
 			if ((lacp_actor_state[i] & LACP_STATE_FULL) == LACP_STATE_FULL
@@ -248,7 +248,7 @@ void lacp_in(void) __banked
 		return;
 
 	port = ((uint8_t)HTONS(LACP_H->rtl_tag.pmask)) & 0x0f;
-	if (port < machine.min_port || port > machine.max_port)
+	if (!MACHINE_PORT_VALID(port))
 		return;
 
 	lag = lacp_port_lag[port];
@@ -298,7 +298,7 @@ void lacp_in(void) __banked
 
 static void lacp_step(void)
 {
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		if (lacp_port_lag[i] == LACP_LAG_NONE)
 			continue;
 
@@ -328,7 +328,7 @@ static void lacp_step(void)
 
 		if (!lacp_agg_valid[lag])
 			continue;
-		for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 			if (lacp_port_lag[i] == lag && lacp_rx_state[i] == LACP_RX_CURRENT
 			    && lacp_sys_eq(lacp_partner_sys[i], lacp_agg_sys[lag])) {
 				any_current = 1;
@@ -422,7 +422,7 @@ void lacp_lag_set(uint8_t lag, __xdata uint16_t ports) __banked
 		return;
 	lacp_scratch_flag = lacp_any_lag();
 
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		if (lacp_port_lag[i] == lag && !(ports & PORT_BIT(i))) {
 			lacp_port_lag[i] = LACP_LAG_NONE;
 			lacp_port_release(i);
@@ -438,7 +438,7 @@ void lacp_lag_set(uint8_t lag, __xdata uint16_t ports) __banked
 	if (ports && !lacp_scratch_flag)
 		lacp_engine_on();
 
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		if (!(ports & PORT_BIT(i)))
 			continue;
 		lacp_scratch_lag = lacp_port_lag[i];
@@ -490,7 +490,7 @@ void lacp_show(void) __banked
 		print_string(" members "); print_short(lacp_members_last[l]); write_char('\n');
 	}
 
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		print_string("port "); print_byte(machine.log_to_phys_port[i]);
 		print_string(" actor "); print_byte(lacp_actor_state[i]);
 		print_string(" partner "); print_byte(lacp_partner_state[i]);

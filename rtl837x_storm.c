@@ -67,7 +67,7 @@ void storm_show(void) __banked
 {
 	uint8_t i, t, idx;
 
-	for (i = machine.min_port; i <= machine.max_port; i++) {
+	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		print_string("port ");
 		write_char('0' + machine.log_to_phys_port[i]);
 		for (t = 0; t < STORM_TYPES; t++) {

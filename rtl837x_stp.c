@@ -335,7 +335,7 @@ static uint8_t stp_ent_active(uint8_t e) __reentrant
 		return 0;
 	if (e >= STP_LAG_BASE)
 		return stp_lag_mask[e - STP_LAG_BASE] != 0;
-	return e >= machine.min_port && e <= machine.max_port && stp_ent_of[e] == e;
+	return MACHINE_PORT_VALID(e) && stp_ent_of[e] == e;
 }
 
 
@@ -410,7 +410,7 @@ static void stp_topology_change(uint8_t port) __reentrant
 	stp_tc_count++;
 	stp_tc_while = ((uint16_t)stp_maxage_s + stp_fwddelay_s) * STP_HZ;
 	if (port >= STP_LAG_BASE) {
-		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
+		for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++)
 			if (stp_ent_has(port, i))
 				port_l2_forget_port(i);
 	} else {
@@ -565,7 +565,7 @@ void stp_in(void) __banked
 
 	/* Ingress port: low nibble of the CPU tag's pmask on RX */
 	stp_scratch = ((uint8_t)HTONS(STP_H->rtl_tag.pmask)) & 0x0f;
-	if (stp_scratch < machine.min_port || stp_scratch > machine.max_port)
+	if (!MACHINE_PORT_VALID(stp_scratch))
 		return;
 	port = stp_ent_of[stp_scratch];
 
@@ -658,7 +658,7 @@ void stp_in(void) __banked
 		if (!stp_tc_while) {
 			uint8_t i;
 			stp_tc_count++;
-			for (i = machine.min_port; i <= machine.max_port; i++)
+			for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++)
 				if (!stp_ent_has(port, i)
 				    && (stp_pflags[stp_ent_of[i]] & STP_PF_ENABLED)
 				    && !(stp_pflags[stp_ent_of[i]] & STP_PF_OPEREDGE))
@@ -714,7 +714,7 @@ void stp_timers(void) __banked
 		if (stp_map_dirty) {
 			stp_map_dirty = 0;
 			for (stp_i = 0; stp_i < STP_LAG_BASE; stp_i++) {
-				if (stp_i < machine.min_port || stp_i > machine.max_port)
+				if (!MACHINE_PORT_VALID(stp_i))
 					continue;
 				if (stp_ent_of[stp_i] != stp_i) {
 					stp_loop_held[stp_i] = 0;
@@ -747,14 +747,14 @@ void stp_timers(void) __banked
 		{
 			__xdata static uint16_t eff;
 			eff = 0;
-			for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+			for (stp_i = MACHINE_MIN_PORT; stp_i <= MACHINE_MAX_PORT; stp_i++)
 				if ((stp_link_now >> stp_i) & 1)
 					eff |= (uint16_t)1 << stp_ent_of[stp_i];
 			stp_link_now = eff;
 		}
 		if (stp_link_now != stp_link_prev) {
 			for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
-				if (stp_i < STP_PORTS && (stp_i < machine.min_port || stp_i > machine.max_port))
+				if (stp_i < STP_PORTS && !MACHINE_PORT_VALID(stp_i))
 					continue;
 				if (stp_i < STP_PORTS && stp_ent_of[stp_i] != stp_i)
 					continue;
@@ -890,7 +890,7 @@ static void stp_fdb_update(__xdata uint16_t pmask)
 			continue;
 		port_l2mc_set(0x00, stp_fdb_vid, pmask);
 	}
-	for (stp_fdb_i = machine.min_port; stp_fdb_i <= machine.max_port; stp_fdb_i++) {
+	for (stp_fdb_i = MACHINE_MIN_PORT; stp_fdb_i <= MACHINE_MAX_PORT; stp_fdb_i++) {
 		stp_fdb_vid = port_pvid_get(stp_fdb_i);
 		port_l2mc_set(0x00, stp_fdb_vid, pmask);
 	}
@@ -910,7 +910,7 @@ void stp_setup(void) __banked
 		stp_tx_count[stp_i] = 0;
 		port_timers[stp_i] = 0;
 		port_hello[stp_i] = (uint16_t)stp_hello_s * STP_HZ;
-		if (stp_i < STP_PORTS && (stp_i < machine.min_port || stp_i > machine.max_port))
+		if (stp_i < STP_PORTS && !MACHINE_PORT_VALID(stp_i))
 			continue;
 		if (stp_i >= STP_LAG_BASE && !stp_lag_mask[stp_i - STP_LAG_BASE])
 			continue;
@@ -939,7 +939,7 @@ void stp_setup(void) __banked
 	reg_read_m(RTL837X_REG_LINKS_STS);
 	stp_link_now = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
 	stp_link_prev = 0;
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
+	for (stp_i = MACHINE_MIN_PORT; stp_i <= MACHINE_MAX_PORT; stp_i++)
 		if ((stp_link_now >> stp_i) & 1)
 			stp_link_prev |= (uint16_t)1 << stp_ent_of[stp_i];
 
@@ -952,7 +952,7 @@ void stp_setup(void) __banked
 void stp_off(void) __banked
 {
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
-	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++) {
+	for (stp_i = MACHINE_MIN_PORT; stp_i <= MACHINE_MAX_PORT; stp_i++) {
 		// Set STP port state to forwarding
 		// States are: 00 disable, 01 blocking, 10 learning, 11 forwarding
 		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(STP_ST_FORWARDING << ((stp_i << 1) & 0x7));
