@@ -294,6 +294,9 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <button class="ctl pri" id="vlan_add" data-i18n="v_add">Add a new VLAN</button>
       </div>
       <div class="card"><h2><span data-i18n="v_editor">VLAN editor</span> <span class="hint" id="vtitle"></span></h2>
+        <div><label class="row"><span class="lb" style="width:150px;" data-i18n="v_setmgmt_t"></span>
+          <span class="switch"><input type="checkbox" id="vmgmtpromote"><i></i></span>
+        </label></div>
         <div class="scrollx"><table class="t" id="vedit"><tbody></tbody></table></div>
         <div style="margin-top:10px"><button class="ctl pri" id="vapply" data-i18n="c_apply">Apply</button></div>
         <p class="small mut" style="margin-top:6px" data-i18n="v_legend">U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.</p>
