@@ -94,7 +94,8 @@ void flash_sector_erase(void) { }
 void flash_write_bytes(uint8_t *ptr) { (void)ptr; }
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
-void reset_chip(void) { }
+static unsigned reset_calls;
+void reset_chip(void) { reset_calls++; }
 void delay(uint16_t t) { (void)t; }
 void write_char(char c) { (void)c; }
 void write_char_no_syslog(char c) { (void)c; }
@@ -493,6 +494,120 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+
+/* Private HTTP lifecycle values; drive the real callback, not a model. */
+enum { TSTATE_NONE = 0, TSTATE_TX = 1 };
+extern uint16_t slen, cont_len, sent_len, bindex, crc_final, write_len;
+extern uint8_t boundary[], verify_crc, outbuf[];
+extern struct { uint8_t *p; uint16_t bptr, plen; } upload_settings;
+extern uint8_t stream_upload(void);
+
+static void scenario_upload_reset_owner(void)
+{
+	uint8_t byte = 0;
+	uint8_t get[] = "GET " FILE_NAME " HTTP/1.1\r\nHost: sw\r\n\r\n";
+	int initialized = 1;
+
+	/* The firmware has one TCP slot. Its appstate can contain stale bytes. */
+	uip_conn = &uip_conns[0];
+	reset_calls = 0;
+	for (unsigned state = 0; state <= 0xff; state++) {
+		uip_conn->appstate.tstate = state;
+		uip_conn->appstate.fw_reset_pending = 0xaa;
+		uip_flags = UIP_CONNECTED;
+		httpd_appcall();
+		if (uip_conn->appstate.tstate != TSTATE_NONE
+		    || uip_conn->appstate.fw_reset_pending != 0)
+			initialized = 0;
+	}
+	CHECK(initialized, "connect initializes both fields for every stale state");
+	CHECK(reset_calls == 0, "connection initialization does not reset");
+
+	/* End-of-part verdict with flash/CRC hardware edges mocked. */
+	boundary[0] = 0;
+	bindex = 0;
+	verify_crc = 1;
+	crc_final = 0xb001;
+	write_len = 0;
+	upload_settings.p = &byte;
+	upload_settings.bptr = 0;
+	upload_settings.plen = 1;
+	stream_upload();
+	CHECK(uip_conn->appstate.fw_reset_pending == 1,
+	      "verified upload records reset intent in its slot");
+
+	uip_conn->appstate.tstate = TSTATE_TX;
+	uip_conn->mss = MSS_FULL;
+	slen = 10;
+	sent_len = 5;
+	cont_len = 0;
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 0 && slen == 5 && sent_len == 5,
+	      "partial verdict ACK sends the remainder without resetting");
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 1 && slen == 0,
+	      "final verdict ACK resets after all response bytes are acknowledged");
+
+	/* No verdict ACK: a later connection reuses the same slot. */
+	reset_calls = 0;
+	uip_conn->appstate.tstate = TSTATE_TX;
+	uip_conn->appstate.fw_reset_pending = 1;
+	uip_flags = UIP_CONNECTED;
+	httpd_appcall();
+	CHECK(uip_conn->appstate.tstate == TSTATE_NONE
+	      && uip_conn->appstate.fw_reset_pending == 0,
+	      "slot reuse clears an unacknowledged upload's reset intent");
+	uip_appdata = get;
+	uip_len = strlen((char *)get);
+	uip_flags = UIP_NEWDATA;
+	httpd_appcall();
+	CHECK(uip_conn->appstate.tstate == TSTATE_TX && slen > 0,
+	      "reused slot serves a subsequent plain GET");
+	for (unsigned i = 0; i < 20 && uip_conn->appstate.tstate == TSTATE_TX; i++) {
+		uip_flags = UIP_ACKDATA;
+		httpd_appcall();
+	}
+	CHECK(reset_calls == 0 && slen == 0 && cont_len == 0,
+	      "subsequent GET response ACKs cannot inherit reset intent");
+
+	for (unsigned i = 0; i < 2; i++) {
+		uip_conn->appstate.tstate = TSTATE_TX;
+		uip_conn->appstate.fw_reset_pending = 1;
+		reset_calls = 0;
+		uip_flags = i ? UIP_TIMEDOUT : UIP_ABORT;
+		httpd_appcall();
+		CHECK(reset_calls == 0, "abort/timeout does not reset");
+		uip_flags = UIP_CONNECTED;
+		httpd_appcall();
+		CHECK(uip_conn->appstate.tstate == TSTATE_NONE
+		      && uip_conn->appstate.fw_reset_pending == 0,
+		      "connect after abort/timeout clears old upload intent");
+		uip_conn->appstate.tstate = TSTATE_TX;
+		slen = 0;
+		cont_len = 0;
+		sent_len = 0;
+		uip_flags = UIP_ACKDATA;
+		httpd_appcall();
+		CHECK(reset_calls == 0, "new connection ACK cannot inherit reset");
+	}
+
+	crc_final = 0;
+	bindex = 0;
+	stream_upload();
+	CHECK(uip_conn->appstate.fw_reset_pending == 0,
+	      "failed CRC does not request reset");
+	CHECK(strstr((char *)outbuf, "HTTP/1.1 400 Bad Request") != NULL,
+	      "failed CRC returns an error verdict");
+	uip_conn->appstate.tstate = TSTATE_TX;
+	sent_len = slen;
+	cont_len = 0;
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 0, "failed CRC verdict ACK does not reset");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -504,6 +619,7 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_upload_reset_owner();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
