@@ -3,6 +3,7 @@
 .gitattributes
 .github/
 output/
+toolchain/
 installer/output/
 *.bin
 html_data.c

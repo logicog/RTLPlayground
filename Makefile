@@ -4,8 +4,11 @@ DEFAULT_CONFIG_LOCATION = 454656
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
 
+SDCC_PREFIX = toolchain/sdcc-$(shell cat sdcc/* | cksum | cut -d' ' -f1)
 ifeq ($(origin CC),default)
-CC = sdcc
+SDCC = $(SDCC_PREFIX)/bin/sdcc
+CC = $(SDCC)
+ASM = $(SDCC_PREFIX)/bin/sdas8051
 endif
 CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
 ASM ?= sdas8051
@@ -72,7 +75,7 @@ all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(SUBDIRS) $(BUILDDIR)/rt
 bank_size:
 	tools/bank_occupancy.sh "$(MACHINE)"
 
-create_build_dir:
+create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)"
 	mkdir -p "$(BUILDDIR)/uip"
 	mkdir -p "$(BUILDDIR)/httpd"
@@ -175,6 +178,12 @@ clean: $(SUBDIRSCLEAN)
 distclean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
 	-rm -rf $(BUILDDIR)
+	-rm -rf toolchain
+
+ifneq ($(SDCC),)
+$(SDCC):
+	sh sdcc/build.sh $(abspath $(SDCC_PREFIX))
+endif
 
 $(SUBDIRSCLEAN):
 	$(MAKE) -C $(@:clean=) clean
@@ -223,7 +232,7 @@ MACHINE_DEFS := $(sort $(patsubst machine/%.c,%,$(filter-out machine/%_init.c,$(
 MACHINE_LESS_CC_FLAGS = $(filter-out -DMACHINE_%,$(CC_FLAGS))
 
 .PHONY: machine_check
-machine_check:
+machine_check: $(SDCC)
 	@mkdir -p $(BUILDDIR)/tmp
 	@set -eo pipefail; \
 	for MACHINE in $(MACHINE_DEFS); \

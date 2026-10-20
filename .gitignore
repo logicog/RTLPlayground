@@ -2,6 +2,7 @@
 .idea/
 output/
 output-main/
+toolchain/
 html_data.c
 html_data.h
 version.h
