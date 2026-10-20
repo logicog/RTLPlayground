@@ -55,6 +55,17 @@ void trap_rma_set(uint16_t reg, uint8_t act)
 	hw_rma_calls++;
 }
 
+static uint16_t hw_links;
+uint8_t sfr_data[4];
+void reg_read_m(uint16_t reg)
+{
+	memset(sfr_data, 0, sizeof(sfr_data));
+	if (reg == RTL837X_REG_LINKS_STS) {
+		sfr_data[1] = hw_links;
+		sfr_data[2] = hw_links >> 8;
+	}
+}
+
 /* ---------- on-wire mirrors (independent re-statement of the layout) ---------- */
 
 struct wire_info {
@@ -476,6 +487,37 @@ int main(int argc, char **argv)
 	CHECK(lacp_rx_count[4] == 0 && lacp_rx_state[4] == LACP_RX_INITIALIZE,
 	      "T24 own system id: LACPDU ignored");
 	lacp_lag_set(1, 0);
+
+	lacp_lag_set(1, 0x0030);
+	hw_links = 0x0030;
+	lacp_link_change();
+	step(8);
+	for (int r = 0; r < 2; r++) {
+		partner_frame(4, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		partner_frame(5, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		step(8);
+	}
+	int both_in = hw_members_lag[1] == 0x0030;
+	hw_links = 0x0010;
+	lacp_link_change();
+	CHECK(both_in && hw_members_lag[1] == 0x0010 && lacp_rx_state[5] == LACP_RX_PORT_DISABLED
+	      && !(lacp_actor_state[5] & P_SYNC),
+	      "T25 link down: port leaves the trunk without waiting for the timeout");
+
+	int txc5 = tx_count[5];
+	hw_links = 0x0030;
+	lacp_link_change();
+	step(4);
+	CHECK(tx_count[5] > txc5 && lacp_rx_state[5] == LACP_RX_EXPIRED
+	      && (last_tx[5].partner.state & P_TO),
+	      "T26 link up: LACPDU sent at once, partner assumed on short timeout");
+	partner_frame(5, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+	step(8);
+	partner_frame(5, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+	step(8);
+	CHECK(hw_members_lag[1] == 0x0030, "T26b link up: port rejoins the trunk");
+	lacp_lag_set(1, 0);
+	hw_links = 0;
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
