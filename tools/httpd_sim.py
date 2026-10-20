@@ -310,14 +310,15 @@ class Handler(SimpleHTTPRequestHandler):
         vid = int(pieces[1]);
         startIndex=2
         name=""
-        if pieces[2] == "d":
-            return self.remove_vlan(vid)
-        elif pieces[2] == "mgmt":
-            state["mgmt_vlan"] = vid
-            return
-        elif not re.match('^[0-9]+$', pieces[2]):
-            name = pieces[2]
-            startIndex=3
+        if len(pieces) > 2:
+            if pieces[2] == "d":
+                return self.remove_vlan(vid)
+            elif pieces[2] == "mgmt":
+                state["mgmt_vlan"] = vid
+                return
+            elif not re.match('^[0-9]+$', pieces[2]):
+                name = pieces[2]
+                startIndex=3
 
         state["vlans"][vid] = self.newVlan(name)
 
