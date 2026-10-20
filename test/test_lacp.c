@@ -11,7 +11,7 @@
 
 /* ---------- platform mocks ---------- */
 
-uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
+uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
 struct uip_eth_addr uip_ethaddr = { .addr = {0x02,0x11,0x22,0x33,0x44,0x55} };
 const struct machine machine = { .min_port = 0, .max_port = 7,

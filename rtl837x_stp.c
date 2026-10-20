@@ -30,7 +30,7 @@ extern __xdata struct machine_runtime machine_detected;
 
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
-extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
+extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_words_len;
