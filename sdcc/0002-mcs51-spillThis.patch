@@ -1,0 +1,24 @@
+https://sourceforge.net/p/sdcc/bugs/4154/
+
+Index: src/mcs51/ralloc.c
+===================================================================
+--- src/mcs51/ralloc.c	(revision 17011)
++++ src/mcs51/ralloc.c	(working copy)
+@@ -641,6 +641,7 @@
+ spillThis (symbol * sym)
+ {
+   int i;
++  bool ownsRegs = bitVectBitValue (_G.regAssigned, sym->key);
+   /* if this is rematerializable or has a spillLocation
+      we are okay, else we need to create a spillLocation
+      for it */
+@@ -658,7 +659,8 @@
+     {
+       if (sym->regs[i])
+         {
+-          freeReg (sym->regs[i]);
++          if (ownsRegs)
++            freeReg (sym->regs[i]);
+           sym->regs[i] = NULL;
+         }
+     }
