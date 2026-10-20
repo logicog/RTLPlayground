@@ -1222,6 +1222,8 @@ void idle(void)
 		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
 		EX0 = 1;
 		check_links();
+		if (lacpEnabled)
+			lacp_link_change();
 	}
 	health_phase(HEALTH_PH_LINK);
 	if (rx_irq) {
