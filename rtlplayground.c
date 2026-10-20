@@ -1679,7 +1679,6 @@ void main(void)
 		rtl8373_init();
 	else
 		rtl8372_init();
-	delay(1000);
 
 	check_and_flash_update_image();
 
