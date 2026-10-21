@@ -4,6 +4,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_sfr.h"
+#include "rtl837x_regs.h"
 #include "rtl837x_common.h"
 #include "dhcp.h"
 #include "uip.h"
@@ -16,6 +17,7 @@ extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[];
 extern __xdata uint16_t slen;
+extern __xdata uint8_t sfr_data[4];
 
 extern volatile __xdata uint32_t ticks;
 
@@ -40,8 +42,14 @@ void lldp_tick(void) __banked
         return;
     lldp_tick_last += SYS_TICK_HZ;
 
+    /* Drop the neighbours of a port whose link is down, rather than wait for the TTL */
+    reg_read_m(RTL837X_REG_LINKS_STS);
     for (i = 0; i < LLDP_NB_MAX; i++) {
-        if (lldp_nb[i].ttl)
+        if (!lldp_nb[i].ttl)
+            continue;
+        if (!((sfr_data[(lldp_nb[i].port >> 3) + 1] >> (lldp_nb[i].port & 7)) & 1))
+            lldp_nb[i].ttl = 0;
+        else
             lldp_nb[i].ttl--;
     }
 
