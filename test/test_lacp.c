@@ -491,7 +491,7 @@ int main(int argc, char **argv)
 
 	lacp_lag_set(1, 0x0030);
 	hw_links = 0x0030;
-	lacp_link_change();
+	lacp_link_change(0);
 	step(8);
 	for (int r = 0; r < 2; r++) {
 		partner_frame(4, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
@@ -500,14 +500,14 @@ int main(int argc, char **argv)
 	}
 	int both_in = hw_members_lag[1] == 0x0030;
 	hw_links = 0x0010;
-	lacp_link_change();
+	lacp_link_change(0);
 	CHECK(both_in && hw_members_lag[1] == 0x0010 && lacp_rx_state[5] == LACP_RX_PORT_DISABLED
 	      && !(lacp_actor_state[5] & P_SYNC),
 	      "T25 link down: port leaves the trunk without waiting for the timeout");
 
 	int txc5 = tx_count[5];
 	hw_links = 0x0030;
-	lacp_link_change();
+	lacp_link_change(0);
 	step(4);
 	CHECK(tx_count[5] > txc5 && lacp_rx_state[5] == LACP_RX_EXPIRED
 	      && (last_tx[5].partner.state & P_TO),
@@ -525,7 +525,7 @@ int main(int argc, char **argv)
 	step(4 * LACP_FAST_PERIODIC + 8);
 	int silent = tx_count[4] == txc0;
 	hw_links = 0x0010;
-	lacp_link_change();
+	lacp_link_change(0);
 	step(4 * LACP_FAST_PERIODIC + 8);
 	int txc4 = tx_count[4];
 	step(4 * LACP_FAST_PERIODIC + 8);
@@ -539,6 +539,21 @@ int main(int argc, char **argv)
 	CHECK(slow && tx_count[4] > txc4,
 	      "T27 partner asks for short timeout: periodic transmission drops to the fast rate");
 	CHECK(silent, "T28 no carrier: nothing is transmitted on a port without a link");
+
+	hw_links = 0x0030;
+	lacp_lag_set(1, 0x0030);
+	lacp_link_change(0);
+	step(8);
+	for (int r = 0; r < 2; r++) {
+		partner_frame(4, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		partner_frame(5, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1);
+		step(8);
+	}
+	int in_before = hw_members_lag[1] == 0x0030;
+	lacp_link_change(0x0020);
+	CHECK(in_before && lacp_rx_state[5] == LACP_RX_EXPIRED && hw_members_lag[1] == 0x0010,
+	      "T29 link bounced between polls: the port is treated as freshly up and leaves the trunk");
+	lacp_lag_set(1, 0);
 	lacp_lag_set(1, 0);
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
