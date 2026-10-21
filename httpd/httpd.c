@@ -1,6 +1,7 @@
 
 #include "httpd.h"
 #include "page_impl.h"
+#include "rtl837x_lldp.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "cmd_parser.h"
@@ -1088,7 +1089,7 @@ void httpd_appcall(void)
 			} else if (is_word(q, "/stp.json")) {
 				send_stp();
 			} else if (is_word(q, "/lldp.json")) {
-				send_lldp();
+				send_lldp(is_word(q + 11, "port") ? q[16] - '0' : 0);
 			} else if (is_word(q, "/lacp.json")) {
 				send_lacp();
 			} else if (is_word(q, "/vlanlist")) {

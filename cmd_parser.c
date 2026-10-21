@@ -19,7 +19,6 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
-#include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
 #include "dhcp.h"
@@ -39,7 +38,6 @@
 extern __code const struct machine machine;
 extern __xdata bool stp_enabled;
 extern __code const uint8_t log_to_phys_port[9];
-extern __xdata bool lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -2077,15 +2075,7 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "session")) {
 			parse_session();
 		} else if (cmd_compare(0, "lldp")) {
-			if (cmd_compare(1, "on")) {
-				print_string("LLDP enabled\n");
-				lldp_enabled = 1;
-				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
-			} else {
-				print_string("LLDP disabled\n");
-				lldp_enabled = 0;
-				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
-			}
+			lldp_parse();
 		}
 		else {
 			cmd_error("Unknown command\n");
