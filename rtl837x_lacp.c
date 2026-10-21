@@ -306,7 +306,8 @@ static void lacp_step(void)
 		if (lacp_port_lag[i] == LACP_LAG_NONE)
 			continue;
 
-		if (lacp_periodic[i]) {
+		if (lacp_rx_state[i] == LACP_RX_PORT_DISABLED) {
+		} else if (lacp_periodic[i]) {
 			lacp_periodic[i]--;
 		} else {
 			lacp_periodic[i] = (lacp_partner_state[i] & LACP_STATE_TIMEOUT) ?
@@ -323,7 +324,7 @@ static void lacp_step(void)
 			}
 		}
 
-		if (lacp_ntt[i])
+		if (lacp_ntt[i] && lacp_rx_state[i] != LACP_RX_PORT_DISABLED)
 			lacp_send(i);
 	}
 
@@ -367,7 +368,7 @@ void lacp_link_change(void) __banked
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		if (lacp_port_lag[i] == LACP_LAG_NONE || !(lacp_scratch_mask & PORT_BIT(i)))
 			continue;
-		lacp_partner_state[i] = LACP_STATE_DEFAULTED;
+		lacp_partner_state[i] &= ~LACP_STATE_SYNC;
 		if (lacp_link_last & PORT_BIT(i)) {
 			lacp_rx_state[i] = LACP_RX_EXPIRED;
 			lacp_partner_state[i] |= LACP_STATE_TIMEOUT;
@@ -388,14 +389,15 @@ static void lacp_port_init(uint8_t port)
 {
 	lacp_actor_state[port] = LACP_STATE_ACTIVITY | LACP_STATE_AGGREGATION |
 		LACP_STATE_TIMEOUT;
-	lacp_rx_state[port] = LACP_RX_INITIALIZE;
-	lacp_partner_state[port] = LACP_STATE_DEFAULTED;
+	lacp_rx_state[port] = (port_link_mask() & PORT_BIT(port)) ?
+		LACP_RX_EXPIRED : LACP_RX_PORT_DISABLED;
+	lacp_partner_state[port] = LACP_STATE_DEFAULTED | LACP_STATE_TIMEOUT;
 	memset(lacp_partner_sys[port], 0, MAC_ADDR_LEN);
 	lacp_partner_key[port] = 0;
 	lacp_partner_port[port] = 0;
 	lacp_periodic[port] = LACP_FAST_PERIODIC;
-	lacp_timeout[port] = 0;
-	lacp_ntt[port] = 1;
+	lacp_timeout[port] = LACP_SHORT_TIMEOUT;
+	lacp_ntt[port] = lacp_rx_state[port] == LACP_RX_EXPIRED;
 	lacp_rx_count[port] = 0;
 }
 

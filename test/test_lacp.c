@@ -225,6 +225,7 @@ int main(int argc, char **argv)
 	lacp_init();
 
 	/* T1: enable announces on every port with sane field contents */
+	hw_links = 0x03ff;
 	lacp_lag_set(0, 0x00ff);
 	step(8);
 	int all_tx = 1, sane = 1;
@@ -453,10 +454,11 @@ int main(int argc, char **argv)
 
 	/* T22: a runt on the slow-protocols address must not be parsed as a
 	 * LACPDU; the partner block would be read from stale buffer bytes. */
+	hw_links = 0x0030;
 	lacp_lag_set(1, 0x0030);
 	step(8);
 	partner_frame_len(4, SYS_A, P_ACT|P_AGG|P_TO|P_SYNC, 1, 40);	/* cut before the partner block */
-	CHECK(lacp_rx_count[4] == 0 && lacp_rx_state[4] == LACP_RX_INITIALIZE,
+	CHECK(lacp_rx_count[4] == 0 && lacp_rx_state[4] == LACP_RX_EXPIRED,
 	      "T22 truncated LACPDU ignored: the port does not record it");
 	lacp_lag_set(1, 0);
 
@@ -479,10 +481,11 @@ int main(int argc, char **argv)
 
 	/* T24: a LACPDU carrying our own system id (two ports of one group
 	 * cabled to each other) must not be taken for a partner. */
+	hw_links = 0x0030;
 	lacp_lag_set(1, 0x0030);
 	step(8);
 	partner_frame(4, uip_ethaddr.addr, P_ACT|P_AGG|P_TO|P_SYNC, 1);
-	CHECK(lacp_rx_count[4] == 0 && lacp_rx_state[4] == LACP_RX_INITIALIZE,
+	CHECK(lacp_rx_count[4] == 0 && lacp_rx_state[4] == LACP_RX_EXPIRED,
 	      "T24 own system id: LACPDU ignored");
 	lacp_lag_set(1, 0);
 
@@ -517,7 +520,12 @@ int main(int argc, char **argv)
 	lacp_lag_set(1, 0);
 	hw_links = 0;
 
+	int txc0 = tx_count[4];
 	lacp_lag_set(1, 0x0010);
+	step(4 * LACP_FAST_PERIODIC + 8);
+	int silent = tx_count[4] == txc0;
+	hw_links = 0x0010;
+	lacp_link_change();
 	step(4 * LACP_FAST_PERIODIC + 8);
 	int txc4 = tx_count[4];
 	step(4 * LACP_FAST_PERIODIC + 8);
@@ -530,6 +538,7 @@ int main(int argc, char **argv)
 	step(4 * LACP_FAST_PERIODIC + 8);
 	CHECK(slow && tx_count[4] > txc4,
 	      "T27 partner asks for short timeout: periodic transmission drops to the fast rate");
+	CHECK(silent, "T28 no carrier: nothing is transmitted on a port without a link");
 	lacp_lag_set(1, 0);
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
