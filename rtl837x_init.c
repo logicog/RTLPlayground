@@ -186,6 +186,7 @@ void rtl8373_init(void) __banked
 
 	// Re-enable PHY after configuration
 	phy_write_mask(0xff,PHY_MMD31,0xa610,0x2058);
+	phy_wait_ready(0xff);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init
@@ -265,6 +266,7 @@ void rtl8372_init(void) __banked
 
 	// Re-enable PHY after configuration
 	phy_write_mask(0xf0,PHY_MMD31,0xa610,0x2058);
+	phy_wait_ready(0xf0);
 
 	// Enables MAC access
 	// Set bits 0xc-0x14 of 0x632c to 0x1f8, see rtl8372_init

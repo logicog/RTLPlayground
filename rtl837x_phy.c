@@ -226,6 +226,26 @@ void rtl8224_wait_ready(void) __banked
 	print_string("\r\nRTL8224 not responding\r\n");
 }
 
+void phy_wait_ready(uint8_t phy_mask) __banked
+{
+	__xdata uint32_t start = ticks;
+	uint8_t phy = 0;
+
+	while (phy < 8) {
+		if (phy_mask & bit_mask[phy]) {
+			phy_read(phy, PHY_MMD31, 0xa420);
+			if ((SFR_DATA_U16 & 0x7) != 3) {
+				if (ticks - start < SYS_TICK_HZ * 5)
+					continue;
+				print_string("\r\nPHY "); write_char('0' + phy); print_string(" not ready\r\n");
+				return;
+			}
+		}
+		phy++;
+	}
+	print_string("\r\nPHYs ready after "); print_short((uint16_t)(ticks - start)); print_string(" ticks\r\n");
+}
+
 void phy_config_8224(void) __banked
 {
 	uint16_t pval;
