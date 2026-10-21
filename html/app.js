@@ -748,8 +748,12 @@ function h(tag,attrs,kids){
 }
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function badge(txt,cls){return'<span class="badge'+(cls?" "+cls:"")+'">'+esc(txt)+"</span>"}
+// Link state as on the Ports page: Off (port disabled), Down (no link), or the speed in its port strip colour
 function linkBadge(p){
-  return!p.enabled?badge(t("c_off")):(p.link>0?badge(LINKS[p.link],"ok"):badge(t("c_down")));
+  if(!p.enabled)return offBadge();
+  if(!(p.link>0))return stBadge(t("st_down"),"st-in");
+  var c="var("+(LINKC[p.link]||"--s1000")+")";
+  return'<span class="badge fit" style="color:'+c+';background:color-mix(in srgb,'+c+' 10%,var(--panel2))">'+esc(LINKS[p.link])+"</span>";
 }
 
 function applyTheme(){
@@ -1143,12 +1147,6 @@ function infoBtn(title,body){
 function stBadge(txt,cls){return'<span class="badge fit'+(cls?" "+cls:"")+'">'+esc(txt)+"</span>"}
 // Off: switched off. Inactive and Down: switched on, not in use. The looks follow the port strip tiles.
 function offBadge(){return stBadge(t("c_offc"),"st-off")}
-function linkState(p){
-  if(!p.enabled)return offBadge();
-  if(!(p.link>0))return stBadge(t("st_down"),"st-in");
-  var c="var("+(LINKC[p.link]||"--s1000")+")";
-  return'<span class="badge fit" style="color:'+c+';background:color-mix(in srgb,'+c+' 10%,var(--panel2))">'+esc(LINKS[p.link])+"</span>";
-}
 function fcState(p){
   var n=p.fc>>4&3;
   if(!p.enabled||(!p.isSFP&&!(p.fc&FC_ADV)))return offBadge();
@@ -1278,7 +1276,7 @@ function portsStatus(){
     var r=PT.rows[p.portNum-1];
     if(!r)return;
     var c=r.row.cells;
-    c[3].querySelector(".st").innerHTML=linkState(p);
+    c[3].querySelector(".st").innerHTML=linkBadge(p);
     c[6].querySelector(".st").innerHTML=fcState(p);
     c[7].querySelector(".st").innerHTML=eeeState(p);
   });
