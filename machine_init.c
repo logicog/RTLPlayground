@@ -91,6 +91,14 @@ void machine_custom_init(void) __banked
 	REG_SET(RTL837X_REG_LED_GLB_IO_EN, 0x7624155b);
 }
 
+#elif defined MACHINE_G604GTP_2SX_SL
+void machine_custom_init(void) __banked
+{
+	// The power LED on pad 28 (SYS LED) is wired active-high; the chip defaults
+	// to active-low, so SYS_LED_ON would show as off. Flip pad 28's polarity.
+	reg_bit_clear(RTL837X_REG_LED_GLB_ACTIVE, 28);
+}
+
 #else
 void machine_custom_init(void) __banked { }
 #endif
