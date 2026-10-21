@@ -6,12 +6,12 @@
 #include "cmd_parser.h"
 #include "rtl837x_flash.h"
 #include "uip.h"
+#include "sessions.h"
 #include "html_data.h"
 
 // #define DEBUG
 #include "debug.h"
 
-#define SESSION_ID_LENGTH 12
 #define SESSION_TIMEOUT_DEFAULT 200
 
 /* Seconds of inactivity after which a session cookie stops validating.
@@ -75,13 +75,7 @@ __xdata uint8_t postbody_endpoint;
 __xdata uint16_t postbody_start;
 
 __xdata char passwd[21];
-/* Up to SESSIONS logins at once, each with its own cookie and its own
- * expiry. With a single one, logging in from a second browser (or a phone)
- * ended the first browser's session at its next request. */
-#define SESSIONS 4
-__xdata char session_id[SESSIONS][SESSION_ID_LENGTH + 1];
-__xdata uint32_t last_session_use[SESSIONS];
-__xdata uint8_t session_slot;
+// Up to four logins at once, see sessions.c
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
 
@@ -114,33 +108,7 @@ void httpd_init(void) __banked
 	// handling one, and nothing has set it yet at init time.
 	for (uint8_t i = 0; i < UIP_CONNS; i++)
 		uip_conns[i].appstate.tstate = TSTATE_CLOSED;
-	for (session_slot = 0; session_slot < SESSIONS; session_slot++)
-		session_id[session_slot][0] = NUL;
-}
-
-/* Leaf functions, so the compiler keeps their 32-bit scratch in the overlay
- * rather than in internal RAM. */
-static uint8_t session_stale(void)
-{
-	if (now - last_session_use[session_slot] > session_timeout)
-		return 1;
-	return 0;
-}
-
-/* For a new login: a free or expired slot, else the least recently used. */
-static void session_pick(void)
-{
-	__xdata uint8_t i;
-	__xdata uint8_t oldest = 0;
-
-	for (i = 0; i < SESSIONS; i++) {
-		session_slot = i;
-		if (!session_id[i][0] || session_stale())
-			return;
-		if (last_session_use[i] < last_session_use[oldest])
-			oldest = i;
-	}
-	session_slot = oldest;
+	session_init();
 }
 
 
@@ -375,39 +343,10 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 
 	read_reg_timer(&now);
 
-	if (session) {
-		for (session_slot = 0; session_slot < SESSIONS; session_slot++) {
-			if (!session_id[session_slot][0])
-				continue;
-			if (session_stale()) {
-				dbg_string("Session expired\n");
-				session_id[session_slot][0] = NUL;
-			} else if (is_word_x(session, session_id[session_slot])) {
-				authenticated = 1;
-				last_session_use[session_slot] = now;
-				break;
-			}
-		}
-	}
+	if (session)
+		session_check();
 	return p;
 }
-
-/*
- * Generate random HEX-chars at the buffer location.
- */
-void gen_random_hex_chars(__xdata uint8_t * b, __xdata uint8_t bytes)
-{
-	uint8_t i = 0;
-	while (bytes) {
-		if (!i)
-			get_random_32();
-		b[--bytes] = itohex(sfr_data[i]);
-		if (!bytes) { break; }
-		b[--bytes] = itohex(sfr_data[i] >> 4 | sfr_data[i] << 4);
-		i = (i + 1) & 0x3;
-	}
-}
-
 
 /* 0: body incomplete, 1: configuration stored, 2: malformed */
 static uint8_t config_take(void)
@@ -716,14 +655,9 @@ static void run_login_body(__xdata uint8_t *body)
 	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
 		dbg_string("Password accepted!\n");
 		read_reg_timer(&now);
-		session_pick();
-		last_session_use[session_slot] = now;
-		gen_random_hex_chars(session_id[session_slot], SESSION_ID_LENGTH);
-		session_id[session_slot][SESSION_ID_LENGTH] = NUL;
 		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 				      "Set-Cookie: session=");
-		for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
-			outbuf[slen++] = session_id[session_slot][i];
+		session_new();
 		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 	} else {
 		dbg_string("Password invalid!\n");
