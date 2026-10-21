@@ -40,7 +40,16 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
-lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_enabled:"LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_tlvs:"Optional TLVs",
+lldp_tlv_note:"Chassis ID, Port ID, TTL, System name and System description are always sent.",
+lldp_t_portdesc:"Port description",lldp_t_syscap:"System capabilities",lldp_t_mgmt:"Management address",
+lldp_t_pvid:"Port VLAN ID",lldp_t_macphy:"MAC/PHY status",lldp_t_mfs:"Maximum frame size",
+lldp_ports:"Ports and neighbours",lldp_sends:"Sends",lldp_ntlv:"{n} TLVs",lldp_sysname:"System name",
+lldp_portid:"Port ID",lldp_chassis:"Chassis ID",lldp_mgmtip:"Management IP",lldp_caps:"Capabilities",
+lldp_age:"Age",lldp_ttl:"TTL",lldp_sysdesc:"System description",lldp_capsup:"Supported capabilities",
+lldp_capen:"Enabled capabilities",lldp_nb:"Neighbour",lldp_none:"No neighbour",lldp_sec:"{n} s",
+lldp_note:"LLDPDUs go out every 30 s with a TTL of 120 s. Neighbours are learned while LLDP is enabled and are removed when their TTL runs out or the link goes down.",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -171,6 +180,13 @@ stp_en_q:"スパニングツリーを有効にしますか?",
 stp_en_d:"ポートはブロック状態から始まり、転送状態になるまで最大で forward delay の 2 倍の時間がかかります。エッジポートは即時に復帰します。",
 stp_dis_q:"スパニングツリーを無効にしますか?",stp_dis_d:"すべてのポートが直ちに転送状態になり、ループ保護が失われます。",
 stp_cost_err:"パスコストは 0〜200000000 の範囲で指定してください",
+lldp_enabled:"LLDP 有効",lldp_title:"サービス状態",lldp_portname:"名前",lldp_enable:"フレーム送信",lldp_tlvs:"オプション TLV",
+lldp_tlv_note:"シャーシ ID、ポート ID、TTL、システム名、システム説明は常に送信されます。",lldp_t_portdesc:"ポート説明",lldp_t_syscap:"システム機能",
+lldp_t_mgmt:"管理アドレス",lldp_t_pvid:"ポート VLAN ID",lldp_t_macphy:"MAC/PHY 状態",lldp_t_mfs:"最大フレームサイズ",
+lldp_ports:"ポートと隣接機器",lldp_sends:"送信内容",lldp_ntlv:"TLV {n} 個",lldp_sysname:"システム名",lldp_portid:"ポート ID",
+lldp_chassis:"シャーシ ID",lldp_mgmtip:"管理 IP",lldp_caps:"機能",lldp_age:"経過時間",lldp_ttl:"TTL",lldp_sysdesc:"システム説明",
+lldp_capsup:"対応機能",lldp_capen:"有効な機能",lldp_nb:"隣接機器",lldp_none:"隣接機器なし",lldp_sec:"{n} 秒",
+lldp_note:"LLDPDU は 30 秒ごとに TTL 120 秒で送信されます。隣接機器は LLDP が有効な間に学習され、TTL が切れるかリンクがダウンすると削除されます。",
 st_title:"ポート統計",st_h:"起動からの累計",st_txg:"TX 正常",st_txb:"TX 異常",st_rxg:"RX 正常",
 st_rxb:"RX 異常",st_details:"詳細",st_counters:"MIB カウンタ",st_nonzero:"0 以外のみ",
 st_autoref:"自動更新",st_counter:"カウンタ",st_value:"値",st_fail:"カウンタの取得に失敗しました",
@@ -284,6 +300,13 @@ stp_en_q:"启用生成树?",
 stp_en_d:"端口将从阻塞状态开始，最多需要两倍 forward delay 的时间才能进入转发状态；边缘端口立即恢复。",
 stp_dis_q:"禁用生成树?",stp_dis_d:"所有端口将直接进入转发状态，失去环路保护。",
 stp_cost_err:"路径开销范围为 0-200000000",
+lldp_enabled:"启用 LLDP",lldp_title:"服务状态",lldp_portname:"名称",lldp_enable:"发送帧",lldp_tlvs:"可选 TLV",
+lldp_tlv_note:"机箱 ID、端口 ID、TTL、系统名称和系统描述始终发送。",lldp_t_portdesc:"端口描述",lldp_t_syscap:"系统能力",lldp_t_mgmt:"管理地址",
+lldp_t_pvid:"端口 VLAN ID",lldp_t_macphy:"MAC/PHY 状态",lldp_t_mfs:"最大帧长",lldp_ports:"端口与邻居",lldp_sends:"发送内容",
+lldp_ntlv:"{n} 个 TLV",lldp_sysname:"系统名称",lldp_portid:"端口 ID",lldp_chassis:"机箱 ID",lldp_mgmtip:"管理 IP",
+lldp_caps:"能力",lldp_age:"存在时间",lldp_ttl:"TTL",lldp_sysdesc:"系统描述",lldp_capsup:"支持的能力",lldp_capen:"启用的能力",
+lldp_nb:"邻居",lldp_none:"无邻居",lldp_sec:"{n} 秒",
+lldp_note:"每 30 秒发送一次 LLDPDU，TTL 为 120 秒。LLDP 启用时学习邻居，TTL 到期或链路断开时删除。",
 st_title:"端口统计",st_h:"自启动以来的累计值",st_txg:"TX 正常",st_txb:"TX 错误",st_rxg:"RX 正常",
 st_rxb:"RX 错误",st_details:"详情",st_counters:"MIB 计数器",st_nonzero:"仅显示非零",
 st_autoref:"自动刷新",st_counter:"计数器",st_value:"值",st_fail:"读取计数器失败",
@@ -397,6 +420,17 @@ stp_en_q:"¿Habilitar el árbol de expansión?",
 stp_en_d:"Los puertos empiezan bloqueados y tardan hasta el doble del retardo de reenvío en alcanzar el reenvío; los puertos de borde se recuperan inmediatamente.",
 stp_dis_q:"¿Deshabilitar el árbol de expansión?",stp_dis_d:"Todos los puertos pasan directamente a reenviar; se pierde la protección contra bucles.",
 stp_cost_err:"El coste de ruta debe estar entre 0 y 200000000",
+lldp_enabled:"LLDP activado",lldp_title:"Estado del servicio",lldp_portname:"Nombre",
+lldp_enable:"Enviar tramas",lldp_tlvs:"TLV opcionales",
+lldp_tlv_note:"El ID de chasis, el ID de puerto, el TTL, el nombre y la descripción del sistema se envían siempre.",
+lldp_t_portdesc:"Descripción del puerto",lldp_t_syscap:"Capacidades del sistema",
+lldp_t_mgmt:"Dirección de gestión",lldp_t_pvid:"VLAN ID del puerto",lldp_t_macphy:"Estado MAC/PHY",
+lldp_t_mfs:"Tamaño máximo de trama",lldp_ports:"Puertos y vecinos",lldp_sends:"Envía",lldp_ntlv:"{n} TLV",
+lldp_sysname:"Nombre del sistema",lldp_portid:"ID de puerto",lldp_chassis:"ID de chasis",
+lldp_mgmtip:"IP de gestión",lldp_caps:"Capacidades",lldp_age:"Antigüedad",lldp_ttl:"TTL",
+lldp_sysdesc:"Descripción del sistema",lldp_capsup:"Capacidades admitidas",lldp_capen:"Capacidades activas",
+lldp_nb:"Vecino",lldp_none:"Sin vecino",lldp_sec:"{n} s",
+lldp_note:"Los LLDPDU se envían cada 30 s con un TTL de 120 s. Los vecinos se aprenden mientras LLDP está activado y se eliminan cuando expira su TTL o cae el enlace.",
 st_title:"Estadísticas de puertos",st_h:"totales desde el arranque",st_txg:"TX correctos",st_txb:"TX erróneos",st_rxg:"RX correctos",
 st_rxb:"RX erróneos",st_details:"Detalles",st_counters:"Contadores MIB",st_nonzero:"solo no nulos",
 st_autoref:"actualización automática",st_counter:"Contador",st_value:"Valor",st_fail:"error al cargar contadores",
@@ -509,6 +543,16 @@ stp_en_q:"Activer l'arbrescence?",
 stp_en_d:"Les ports sont d'abord bloqués et cela prend deux fois le délai de retransmission pour atteindre l'état de retransmission; les ports en bordures recouvrent immédiatement leur état.",
 stp_dis_q:"Désactiver l'arborescence ?",stp_dis_d:"Tous les ports vont être retransmis; la protection de boucles est perdue.",
 stp_cost_err:"Le coût du chemin doit être compris entre 0 et 200000000",
+lldp_enabled:"LLDP activé",lldp_title:"État du service",lldp_portname:"Nom",lldp_enable:"Envoyer les trames",
+lldp_tlvs:"TLV optionnels",
+lldp_tlv_note:"L'ID de châssis, l'ID de port, le TTL, le nom et la description du système sont toujours envoyés.",
+lldp_t_portdesc:"Description du port",lldp_t_syscap:"Capacités du système",lldp_t_mgmt:"Adresse de gestion",
+lldp_t_pvid:"VLAN ID du port",lldp_t_macphy:"État MAC/PHY",lldp_t_mfs:"Taille de trame maximale",
+lldp_ports:"Ports et voisins",lldp_sends:"Envoie",lldp_ntlv:"{n} TLV",lldp_sysname:"Nom du système",
+lldp_portid:"ID de port",lldp_chassis:"ID de châssis",lldp_mgmtip:"IP de gestion",lldp_caps:"Capacités",
+lldp_age:"Âge",lldp_ttl:"TTL",lldp_sysdesc:"Description du système",lldp_capsup:"Capacités prises en charge",
+lldp_capen:"Capacités activées",lldp_nb:"Voisin",lldp_none:"Aucun voisin",lldp_sec:"{n} s",
+lldp_note:"Les LLDPDU partent toutes les 30 s avec un TTL de 120 s. Les voisins sont appris tant que LLDP est activé et retirés quand leur TTL expire ou que le lien tombe.",
 st_title:"Statiqtique du port",st_h:"cumul depuis le démarrage",st_txg:"TX OK",st_txb:"TX KO",st_rxg:"RX OK",
 st_rxb:"RX KO",st_details:"Détails",st_counters:"Compteur MIB",st_nonzero:"non-zero seulement",
 st_autoref:"rafraichissement automatique",st_counter:"Compteur",st_value:"Valeur",st_fail:"Erreur au chargement des compteurs",
@@ -626,7 +670,17 @@ stp_en_q:"Spanning Tree aktivieren?",
 stp_en_d:"Die Ports starten blockiert und brauchen bis zum doppelten Forward Delay, bis sie weiterleiten; Edge-Ports sind sofort wieder aktiv.",
 stp_dis_q:"Spanning Tree deaktivieren?",stp_dis_d:"Alle Ports leiten sofort weiter; der Schutz vor Netzwerkschleifen entfällt.",
 stp_cost_err:"Pfadkosten müssen zwischen 0 und 200000000 liegen",
-nav_lldp:"LLDP",lldp_enabled:"LLDP aktiv",lldp_title:"Dienststatus",lldp_portname:"Name",lldp_enable:"Pakete senden",
+nav_lldp:"LLDP",
+lldp_enabled:"LLDP aktiv",lldp_title:"Dienststatus",lldp_portname:"Name",lldp_enable:"Pakete senden",
+lldp_tlvs:"Optionale TLVs",
+lldp_tlv_note:"Chassis-ID, Port-ID, TTL, Systemname und Systembeschreibung werden immer gesendet.",
+lldp_t_portdesc:"Portbeschreibung",lldp_t_syscap:"Systemfähigkeiten",lldp_t_mgmt:"Managementadresse",
+lldp_t_pvid:"Port-VLAN-ID",lldp_t_macphy:"MAC/PHY-Status",lldp_t_mfs:"Maximale Framegröße",
+lldp_ports:"Ports und Nachbarn",lldp_sends:"Sendet",lldp_ntlv:"{n} TLVs",lldp_sysname:"Systemname",
+lldp_portid:"Port-ID",lldp_chassis:"Chassis-ID",lldp_mgmtip:"Management-IP",lldp_caps:"Fähigkeiten",
+lldp_age:"Alter",lldp_ttl:"TTL",lldp_sysdesc:"Systembeschreibung",lldp_capsup:"Unterstützte Fähigkeiten",
+lldp_capen:"Aktive Fähigkeiten",lldp_nb:"Nachbar",lldp_none:"Kein Nachbar",lldp_sec:"{n} s",
+lldp_note:"LLDPDUs gehen alle 30 s mit einer TTL von 120 s hinaus. Nachbarn werden gelernt, solange LLDP aktiv ist, und entfernt, wenn ihre TTL abläuft oder der Link ausfällt.",
 st_title:"Port-Statistik",st_h:"Summen seit dem Start",st_txg:"TX gut",st_txb:"TX fehlerhaft",st_rxg:"RX gut",
 st_rxb:"RX fehlerhaft",st_details:"Details",st_counters:"MIB-Zähler",st_nonzero:"nur ungleich null",
 st_autoref:"automatisch aktualisieren",st_counter:"Zähler",st_value:"Wert",st_fail:"Zähler konnten nicht geladen werden",
@@ -814,7 +868,7 @@ var CONF_CMDS=[
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
-  /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
+  /^port\s+\d{1,2}\s+lldp\s+(permit|block)$/,
   /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
@@ -826,6 +880,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,/^lldp\s+(on|off)$/,
+  /^lldp\s+tlv\s+(portdesc|syscap|mgmt|pvid|macphy|mfs)\s+(on|off)$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
 ];
@@ -859,6 +914,7 @@ function toast(msg,cls){
 }
 function modal(title,bodyEl,buttons){
   S.detail=null;
+  $("modal").classList.remove("narrow");
   $("mtitle").textContent=title;
   var b=$("mbody");b.innerHTML="";b.appendChild(bodyEl);
   var f=$("mfoot");f.innerHTML="";
@@ -1880,30 +1936,125 @@ var lagPoller=new Poller(function(){return lagLoad().catch(function(){})},3000);
 tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagPoller.start()})},leave:function(){lagPoller.stop()}};
 
 
+/*
+ * LLDP page. What a port sends follows from the TLV set, /information.json and
+ * the port status; /lldp.json?port=<n> adds the PVID, the frame size and the
+ * neighbour's full details for the pop-ups.
+ */
+var LLDP_TLVS=["portdesc","syscap","mgmt","pvid","macphy","mfs"];
+// IEEE 802.1AB names: capability bits, chassis and port ID subtypes
+var LLDP_CAPS=["Other","Repeater","Bridge","WLAN AP","Router","Telephone","DOCSIS","Station","C-VLAN","S-VLAN","TPMR"];
+var LLDP_CSUB=["","Chassis component","Interface alias","Port component","MAC address","Network address","Interface name","Locally assigned"];
+var LLDP_PSUB=["","Interface alias","Port component","MAC address","Network address","Interface name","Agent circuit ID","Locally assigned"];
+var LL={tlv:0};
+function infoBtn(title,body){
+  return h("button",{class:"ib",title:t("st_details"),text:"\u24d8",onclick:function(){modal(title,body());$("modal").classList.add("narrow")}});
+}
+function cellL(tr,key){var c=tr.insertCell();c.setAttribute("data-l",t(key));return c}
+function kvTable(rows){
+  var tb=h("table",{class:"t"}),bd=tb.createTBody();
+  rows.forEach(function(x){
+    var tr=bd.insertRow(),c=tr.insertCell();c.className="mut";c.textContent=x[0];
+    c=tr.insertCell();if(typeof x[1]==="object")c.appendChild(x[1]);else c.textContent=x[1];
+  });
+  return tb;
+}
+function lldpCaps(c){return LLDP_CAPS.filter(function(s,i){return c&(1<<i)}).join(", ")||"-"}
+function lldpSec(n){return t("lldp_sec",{n:n})}
+function lldpIp(ip){return ip?h("a",{href:"http://"+ip+"/",target:"_blank",rel:"noopener",text:ip}):"-"}
+function lldpSub(names,n){return names[n]?" ("+names[n]+")":""}
+// The TLVs port p sends, [name, value]; d is its /lldp.json?port=<n>, if loaded
+function lldpTx(p,d){
+  var i=S.info||{},sp=S.ports[p.p-1]||{},m=LL.tlv,r=[
+    [t("lldp_chassis"),(i.mac_address||"-")+lldpSub(LLDP_CSUB,4)],
+    [t("lldp_portid"),p.p+lldpSub(LLDP_PSUB,7)],
+    [t("lldp_ttl"),lldpSec(120)]];
+  if(m&1&&sp.name)r.push([t("lldp_t_portdesc"),sp.name]);
+  if(i.hostname)r.push([t("lldp_sysname"),i.hostname]);
+  r.push([t("lldp_sysdesc"),i.hw_ver||"-"]);
+  if(m&2)r.push([t("lldp_t_syscap"),"Bridge"]);
+  if(m&4&&i.ip_address&&i.ip_address!=="0.0.0.0")r.push([t("lldp_t_mgmt"),i.ip_address]);
+  if(m&8)r.push([t("lldp_t_pvid"),d?String(d.pvid):"-"]);
+  if(m&16)r.push([t("lldp_t_macphy"),sp.enabled&&sp.link>0?LINKS[sp.link]:t("c_down")]);
+  if(m&32)r.push([t("lldp_t_mfs"),d?String(d.mfs):"-"]);
+  return r;
+}
+function lldpNb(d){
+  var n=d.nb;
+  if(!n)return h("p",{class:"small mut",text:t("lldp_none")});
+  return kvTable([
+    [t("lldp_chassis"),n.ch+lldpSub(LLDP_CSUB,n.cs)],
+    [t("lldp_portid"),n.pi+lldpSub(LLDP_PSUB,n.ps)],
+    [t("lldp_t_portdesc"),n.pd||"-"],
+    [t("lldp_sysname"),n.sn||"-"],
+    [t("lldp_sysdesc"),n.sd||"-"],
+    [t("lldp_capsup"),lldpCaps(n.sc)],
+    [t("lldp_capen"),lldpCaps(n.cap)],
+    [t("lldp_t_mgmt"),lldpIp(n.ip)],
+    [t("lldp_t_pvid"),n.vid?String(n.vid):"-"],
+    [t("lldp_ttl"),lldpSec(n.ttl)],
+    [t("lldp_age"),lldpSec(n.age)]]);
+}
+// Pop-up body filled from /lldp.json?port=<n> once it arrives
+function lldpDetail(p,fn){
+  var box=h("div",{class:"small mut",text:"..."});
+  getJSON("/lldp.json?port="+p.p).then(function(d){box.className="";box.textContent="";box.appendChild(fn(d))})
+    .catch(function(){box.textContent="-"});
+  return box;
+}
+function lldpSwitch(on,cmd){
+  var sw=h("label",{class:"switch"},[h("input",{type:"checkbox",onchange:function(){
+    var el=this;
+    postCmd(cmd(el.checked)).then(lldpLoad).catch(function(){el.checked=!el.checked});
+  }}),h("i")]);
+  sw.firstChild.checked=!!on;
+  return sw;
+}
 function lldpLoad(){
-  return getJSON("/lldp.json").then(function(s){
-    $("lldp_en").checked=s.on;
-    var tb=$("lldp_table").tBodies[0];tb.innerHTML="";
-    byPort(s.portStatus).forEach(function(p){
-      var tr=tb.insertRow();
-      tr.insertCell().textContent=p.portNum;
-      tr.insertCell().textContent=p.name;
-      var sw=h("label",{class:"switch"},[
-        h("input",{type:"checkbox",onchange:function(){
-          postCmd("port "+p.portNum+" lldp "+(this.checked?"permit":"block"))
-            .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
-        }}),h("i")]);
-      sw.firstChild.checked=p.permitted;
-      tr.insertCell().appendChild(sw);
+  return Promise.all([getJSON("/lldp.json"),S.info?0:pollInfo()]).then(function(a){
+    var s=a[0],box=$("lldp_tlvs"),tb=$("lldp_table").tBodies[0];
+    LL.tlv=s.tlv;
+    $("lldp_en").checked=!!s.on;
+    box.innerHTML="";
+    LLDP_TLVS.forEach(function(k,i){
+      box.appendChild(h("label",{class:"row"},[h("span",{class:"lb",text:t("lldp_t_"+k)}),
+        lldpSwitch(s.tlv>>i&1,function(on){return"lldp tlv "+k+" "+(on?"on":"off")})]));
+    });
+    tb.innerHTML="";
+    s.ports.sort(function(x,y){return x.p-y.p}).forEach(function(p){
+      var tr=tb.insertRow(),n=p.nb,c,st=h("span");
+      c=cellL(tr,"c_port");c.className="pn";c.textContent=p.p;
+      cellL(tr,"lldp_portname").textContent=(S.ports[p.p-1]||{}).name||"";
+      cellL(tr,"lldp_enable").appendChild(lldpSwitch(p.tx,function(on){return"port "+p.p+" lldp "+(on?"permit":"block")}));
+      st.innerHTML=s.on&&p.tx?badge(t("lldp_ntlv",{n:lldpTx(p).length}),"ok"):badge(t("c_offc"),"st-off");
+      cellL(tr,"lldp_sends").appendChild(h("span",{class:"feat"},[st,infoBtn(t("c_port")+" "+p.p+": "+t("lldp_sends"),
+        function(){return lldpDetail(p,function(d){return kvTable(lldpTx(p,d))})})]));
+      c=cellL(tr,"lldp_sysname");
+      if(!n){
+        c.appendChild(h("span",{class:"mut",text:t("lldp_none")}));
+        ["lldp_portid","lldp_chassis","lldp_mgmtip","lldp_caps","lldp_age"].forEach(function(k){
+          c=cellL(tr,k);c.className="nbx";c.textContent="-";
+        });
+        return;
+      }
+      c.appendChild(h("span",{class:"feat"},[h("span",{text:n.sn||"-"}),
+        infoBtn(t("c_port")+" "+p.p+": "+t("lldp_nb"),function(){return lldpDetail(p,lldpNb)})]));
+      cellL(tr,"lldp_portid").textContent=n.pi;
+      cellL(tr,"lldp_chassis").textContent=n.ch;
+      c=cellL(tr,"lldp_mgmtip");
+      var ip=lldpIp(n.ip);
+      if(typeof ip==="object")c.appendChild(ip);else c.textContent=ip;
+      cellL(tr,"lldp_caps").textContent=lldpCaps(n.cap);
+      cellL(tr,"lldp_age").textContent=lldpSec(n.age);
     });
   });
 }
-
 $("lldp_en").addEventListener("change",function(){
   var el=this;
-  postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+  postCmd("lldp "+(el.checked?"on":"off")).then(lldpLoad).catch(function(){el.checked=!el.checked});
 });
-tabHooks.lldp={enter:lldpLoad};
+var lldpPoller=new Poller(function(){return lldpLoad().catch(function(){})},5000);
+tabHooks.lldp={enter:function(){needPorts(function(){lldpPoller.start()})},leave:function(){lldpPoller.stop()}};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);
@@ -2243,14 +2394,14 @@ var CONF_OVERWRITE=[
   /^ntp\s+server\b/,/^ntp\s+interval\b/,/^ntp\s+timezone\b/,/^ntp\s+dst\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
-  /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
+  /^port\s+\d{1,2}(?!\s+(name|lldp)\b)/,/^port\s+\d{1,2}\s+name\b/,/^port\s+\d{1,2}\s+lldp\b/,
   /^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(lldp)\s+(on|off)$/,/^(lldp\s+tlv\s+\w+)\s+(on|off)$/,/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
@@ -2300,7 +2451,7 @@ function mergeConf(base,texts){
           var key=line.match(rx)[0];
           conf=conf.filter(function(item){
             return!(item===key||(item.indexOf(key+" ")===0
-              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0));
+              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0&&item.indexOf(key+" lldp ")!==0));
           });
           break;
         }

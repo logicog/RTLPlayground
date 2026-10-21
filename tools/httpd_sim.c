@@ -122,7 +122,7 @@ void send_basic_info(int socket)
 {
 	char *response = "HTTP/1.1 200 OK\r\n"
 		    "Content-Type: application/json; charset=UTF-8\r\n\r\n"
-			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"" VERSION_SW "\",\"hw_ver\":\"SWGT024-V2.0\"}";
+			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"hostname\":\"rtl-lab\",\"sw_ver\":\"" VERSION_SW "\",\"hw_ver\":\"SWGT024-V2.0\"}";
 	write(socket, response, strlen(response));
 }
 
@@ -164,6 +164,7 @@ void send_status(int s)
 		json_object_object_add(v, "portNum", json_object_new_int(i));
 		json_object_object_add(v, "logPort", json_object_new_int(physToLogPort[i-1]));
 		json_object_object_add(v, "isSFP", json_object_new_int(i <= PORTS - NSFP ? 0 : 1));
+		json_object_object_add(v, "name", json_object_new_string(i == 1 ? "uplink" : ""));
 		json_object_object_add(v, "enabled", json_object_new_int((i % 4) ? 1 : 0));
 		json_object_object_add(v, "link", json_object_new_int(i % 2 ? ((i == 1)? 5 : 2) : 0));
 		if (i % 2) {
@@ -461,27 +462,94 @@ void send_mtu(int s)
 	json_object_put(mtus);
 }
 
-void send_lldp(int s)
+/* LLDP state the sim keeps from the commands it receives, and sample neighbours
+ * as the firmware stores them (printable ASCII, no '"' or '\'). */
+int lldp_on = 1, lldp_tlv = 0x3f, lldp_tx = 0xffff;
+struct sim_nb {
+	int port, cs, ps, sc, cap, vid, ttl, age;
+	const char *ch, *pi, *pd, *sn, *sd, *ip;
+} sim_nbs[] = {
+	{ 1, 4, 5, 0x14, 0x04, 1, 120, 12, "00:1b:54:aa:10:01", "Gi1/0/24", "to rtl-lab",
+	  "core-sw1", "Cisco IOS Software, C2960 Software (C2960-LANBASEK9-M), Versio", "10.0.0.1" },
+	{ 3, 7, 3, 0x0c, 0x08, 10, 120, 3, "ap-office", "70:3a:cb:01:02:03", "",
+	  "ap-office", "UniFi AP U6-Lite 6.6.77", "10.0.0.20" },
+	{ 5, 4, 7, 0x80, 0x80, 0, 120, 88, "52:54:00:12:34:56", "eth0", "",
+	  "nas", "Debian GNU/Linux 12 (bookworm) Linux 6.1.0-18-amd64 #1 SMP", "" },
+};
+
+void lldp_cmd(const char *c)
 {
-	struct json_object *c, *portStatuses, *p;
+	char w[16];
+	int n;
+
+	if (!strcmp(c, "lldp on"))
+		lldp_on = 1;
+	else if (!strcmp(c, "lldp off"))
+		lldp_on = 0;
+	else if (sscanf(c, "port %d lldp %15s", &n, w) == 2 && n >= 1 && n <= PORTS)
+		lldp_tx = !strcmp(w, "permit") ? lldp_tx | 1 << (n - 1) : lldp_tx & ~(1 << (n - 1));
+	else if (sscanf(c, "lldp tlv %15s", w) == 1) {
+		const char *names[] = { "portdesc", "syscap", "mgmt", "pvid", "macphy", "mfs" };
+		for (n = 0; n < 6; n++)
+			if (!strcmp(w, names[n]))
+				lldp_tlv = strstr(c, " on") ? lldp_tlv | 1 << n : lldp_tlv & ~(1 << n);
+	}
+}
+
+/* One port as /lldp.json has it; detail adds what /lldp.json?port=<n> has */
+struct json_object *lldp_port(int i, int detail)
+{
+	struct json_object *p = json_object_new_object(), *nb;
+
+	json_object_object_add(p, "p", json_object_new_int(i));
+	json_object_object_add(p, "tx", json_object_new_int(lldp_tx >> (i - 1) & 1));
+	if (detail) {
+		json_object_object_add(p, "pvid", json_object_new_int(1));
+		json_object_object_add(p, "mfs", json_object_new_int(1522));
+	}
+	for (unsigned k = 0; k < sizeof(sim_nbs) / sizeof(sim_nbs[0]); k++) {
+		struct sim_nb *n = &sim_nbs[k];
+		if (n->port != i)
+			continue;
+		nb = json_object_new_object();
+		json_object_object_add(nb, "ch", json_object_new_string(n->ch));
+		json_object_object_add(nb, "pi", json_object_new_string(n->pi));
+		json_object_object_add(nb, "sn", json_object_new_string(n->sn));
+		json_object_object_add(nb, "ip", json_object_new_string(n->ip));
+		json_object_object_add(nb, "cap", json_object_new_int(n->cap));
+		json_object_object_add(nb, "age", json_object_new_int(n->age));
+		if (detail) {
+			json_object_object_add(nb, "cs", json_object_new_int(n->cs));
+			json_object_object_add(nb, "ps", json_object_new_int(n->ps));
+			json_object_object_add(nb, "pd", json_object_new_string(n->pd));
+			json_object_object_add(nb, "sd", json_object_new_string(n->sd));
+			json_object_object_add(nb, "sc", json_object_new_int(n->sc));
+			json_object_object_add(nb, "vid", json_object_new_int(n->vid));
+			json_object_object_add(nb, "ttl", json_object_new_int(n->ttl));
+		}
+		json_object_object_add(p, "nb", nb);
+	}
+	return p;
+}
+
+void send_lldp(int s, int port)
+{
+	struct json_object *c, *ports;
 	const char *jstring;
 	char *header = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
-	c = json_object_new_object();
-	json_object_object_add(c, "on", json_object_new_int(1));
-	portStatuses = json_object_new_array_ext(PORTS);
-
-	for (int i = 1; i <= PORTS; i++) {
-		p = json_object_new_object();
-		json_object_object_add(p, "portNum", json_object_new_int(i));
-		json_object_object_add(p, "logPort", json_object_new_int(i-1));
-		json_object_object_add(p, "name", json_object_new_string(""));
-		json_object_object_add(p, "permitted", json_object_new_int(1));
-		json_object_array_add(portStatuses, p);
+	if (port) {
+		c = port <= PORTS ? lldp_port(port, 1) : json_object_new_object();
+	} else {
+		c = json_object_new_object();
+		json_object_object_add(c, "on", json_object_new_int(lldp_on));
+		json_object_object_add(c, "tlv", json_object_new_int(lldp_tlv));
+		ports = json_object_new_array_ext(PORTS);
+		for (int i = 1; i <= PORTS; i++)
+			json_object_array_add(ports, lldp_port(i, 0));
+		json_object_object_add(c, "ports", ports);
 	}
-
-	json_object_object_add(c, "portStatus", portStatuses);
 
 	write(s, header, strlen(header));
 
@@ -736,11 +804,11 @@ void launch(struct Server *server)
 						send_vlan(new_socket, vlan);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/lldp.json", 10)) {
-					printf("LLDP request");
+					printf("LLDP request\n");
 					if (!authenticated)
 						send_unauthorized(new_socket);
 					else
-						send_lldp(new_socket);
+						send_lldp(new_socket, strncmp(&buffer[14], "?port=", 6) ? 0 : atoi(&buffer[20]));
 					goto done;
 				} else if (!strncmp(&buffer[4], "/cmd_log", 8)) {
 					printf("Request cmd_log\n");
@@ -832,6 +900,7 @@ void launch(struct Server *server)
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
 					cmd_ptr++;
+					lldp_cmd(p + 4);
 					print_cmd_history();
 					char *response = "HTTP/1.1 200 OK\r\n"
 							"Content-Type: text/html\r\n\r\n"
