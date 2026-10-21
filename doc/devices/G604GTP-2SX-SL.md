@@ -22,12 +22,12 @@ make MACHINE=G604GTP_2SX_SL
 - SFP module insert/remove detection on both cages
 - Copper and SFP port LEDs, including activity
 - Power LED (solid once booted)
-- Reset button (3–10 s: reboot, >10 s: restore default config)
 - PoE works standalone (PDs are powered), but is not configurable via RTLPlayground
 
 ### What does not work
 
 - The per-port PoE LEDs stay off
+- Reset button
 
 ### Not tested
 
