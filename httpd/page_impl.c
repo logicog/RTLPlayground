@@ -320,7 +320,7 @@ void send_basic_info(void)
 	}
 	// Chip (logical) port of each front-panel port, in front-panel order
 	slen += strtox(outbuf + slen, "\",\"logPort\":[");
-	for (uint8_t i = 0; i <= machine.max_port - machine.min_port; i++) {
+	for (__xdata uint8_t i = 0; i <= machine.max_port - machine.min_port; i++) {
 		if (i)
 			char_to_html(',');
 		itoa_html(machine.phys_to_log_port[i]);
@@ -823,10 +823,11 @@ void send_lldp(void)
 }
 
 /* EEE_* bits of a copper port; eee_ablty is RTL8373_PHY_EEE_ABLTY, read once per reply */
-static uint8_t port_eee_state(uint8_t port, uint8_t eee_ablty)
+// Parameters and locals in xdata: internal RAM is full on SNMP builds
+static uint8_t port_eee_state(__xdata uint8_t port, __xdata uint8_t eee_ablty)
 {
-	uint8_t s = 0;
-	uint16_t v;
+	__xdata uint8_t s = 0;
+	__xdata uint16_t v;
 
 	phy_read(port, PHY_MMD_AN, PHY_EEE_ADV);
 	v = SFR_DATA_U16;
@@ -973,7 +974,7 @@ void send_status(void)
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	dbg_string("sending status\n");
 	reg_read_m(RTL8373_PHY_EEE_ABLTY);
-	uint8_t eee_ablty = sfr_data[3];
+	__xdata uint8_t eee_ablty = sfr_data[3];
 	char_to_html('[');
 
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
