@@ -778,6 +778,37 @@ static void scenario_fragmented_post_header(void)
 	      "fragmented header: login body is parsed after reassembly");
 }
 
+static void login_with(const char *body)
+{
+	static char req[256];
+
+	snprintf(req, sizeof(req),
+		 "POST /login HTTP/1.1\r\n"
+		 "Content-Length: %d\r\n"
+		 "Content-Type: application/x-www-form-urlencoded\r\n"
+		 "\r\n%s", (int)strlen(body), body);
+	login_session_start();
+	strcpy(passwd, "x[^\xc3\xa9");	/* "x[^é" in UTF-8 */
+	client_send(TCP_ACK | TCP_PSH, req, (int)strlen(req));
+}
+
+static void scenario_login_percent_case(void)
+{
+	/* RFC 3986 allows either case in a percent escape. A lowercase digit
+	 * decoded as uppercase is off by 0x20, which only shows where the
+	 * escaped byte lacks that bit: '[' (5b), '^' (5e), and any byte whose
+	 * high digit is a letter, like the a9 of 'é'. */
+	login_with("pwd=x%5B%5E%C3%A9");
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "login: uppercase percent escapes decode");
+	login_with("pwd=x%5b%5e%c3%a9");
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "login: lowercase percent escapes decode");
+	login_with("pwd=x%5b%5e%c3%aa");
+	CHECK(stream_contains("Location: login.html\r\n"),
+	      "login: a wrong password is still refused");
+}
+
 static void scenario_split_content_type(void)
 {
 	static const char first[] =
@@ -1427,6 +1458,7 @@ int main(int argc, char **argv)
 	scenario_mss_zero();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
+	scenario_login_percent_case();
 	scenario_split_content_type();
 	scenario_split_header_terminator();
 	scenario_header_then_body();
