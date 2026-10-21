@@ -17,6 +17,14 @@
 #include "phy.h"
 #include "machine.h"
 
+#define BMCR_RESET		0x8000
+#define PHY_PWR_CTRL		0xa610
+#define PHY_PWR_ON		0x2058
+#define PHY_STATE		0xa420
+#define PHY_STATE_MASK		0x0007
+#define PHY_STATE_INI		1
+#define PHY_STATE_LAN_ON	3
+
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
@@ -226,24 +234,39 @@ void rtl8224_wait_ready(void) __banked
 	print_string("\r\nRTL8224 not responding\r\n");
 }
 
-void phy_wait_ready(uint8_t phy_mask) __banked
+void phy_reset_wait(uint8_t phy_mask) __banked
 {
 	__xdata uint32_t start = ticks;
-	uint8_t phy = 0;
+	uint8_t phy, seen_ini = 0, done = 0;
 
-	while (phy < 8) {
-		if (phy_mask & bit_mask[phy]) {
-			phy_read(phy, PHY_MMD31, 0xa420);
-			if ((SFR_DATA_U16 & 0x7) != 3) {
-				if (ticks - start < SYS_TICK_HZ * 5)
-					continue;
-				print_string("\r\nPHY "); write_char('0' + phy); print_string(" not ready\r\n");
-				return;
-			}
-		}
-		phy++;
+	phy_write_mask(phy_mask, PHY_MMD31, PHY_PWR_CTRL, PHY_PWR_ON);
+	for (phy = 0; phy < 8; phy++) {
+		if (!(phy_mask & bit_mask[phy]))
+			continue;
+		phy_read(phy, PHY_MMD31, PHY_MMD31_FEDCR);
+		phy_write(phy, PHY_MMD31, PHY_MMD31_FEDCR, SFR_DATA_U16 | BMCR_RESET);
 	}
-	print_string("\r\nPHYs ready after "); print_short((uint16_t)(ticks - start)); print_string(" ticks\r\n");
+	while (done != phy_mask) {
+		for (phy = 0; phy < 8; phy++) {
+			if (!(phy_mask & bit_mask[phy]) || (done & bit_mask[phy]))
+				continue;
+			phy_read(phy, PHY_MMD31, PHY_STATE);
+			if ((SFR_DATA_U16 & PHY_STATE_MASK) == PHY_STATE_INI)
+				seen_ini |= bit_mask[phy];
+			if ((SFR_DATA_U16 & PHY_STATE_MASK) != PHY_STATE_LAN_ON)
+				continue;
+			phy_read(phy, PHY_MMD31, PHY_MMD31_FEDCR);
+			if (!(SFR_DATA_U16 & BMCR_RESET))
+				done |= bit_mask[phy];
+		}
+		if (ticks - start >= SYS_TICK_HZ * 5) {
+			print_string("\r\nPHYs not ready: "); print_byte(phy_mask & ~done); print_string("\r\n");
+			return;
+		}
+		delay(1);
+	}
+	print_string("\r\nPHYs ready after "); print_short((uint16_t)(ticks - start));
+	print_string(" ticks, INI seen on "); print_byte(seen_ini); print_string("\r\n");
 }
 
 void phy_config_8224(void) __banked
