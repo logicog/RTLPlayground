@@ -463,11 +463,7 @@ static uint8_t acl_set(uint16_t bit)
 
 static uint8_t acl_fwd(void)
 {
-	acl_num = acl_pm;
-	acl_num <<= 4;
-	acl_num |= acl_variant;
-	acl_num <<= 17;
-	acl_act.fwd_qos |= acl_num;
+	acl_act.fwd_qos |= ACL_FWD_QOS(acl_variant, acl_pm);
 	return acl_set(ACL_ACT_FWD) ? 1 : ACL_BAD;
 }
 

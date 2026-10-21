@@ -209,6 +209,39 @@ static void t_bindings(void)
 
 	frame(PORT_CLIENT, 1, 68, 67, 1);
 	dhcp_snoop_in();
+	frame(PORT_SERVER, 2, 67, 68, 5);
+	lease(120);
+	dhcp_snoop_in();
+	b = entry();
+	frame(PORT_SERVER, 2, 67, 68, 5);
+	memset(uip_buf + 12 + 8 + 4 + 2 + 20 + 8 + 16, 0, 4);
+	dhcp_snoop_in();
+	CHECK(b && entry() == b && b->state == DHCP_BIND_BOUND && b->ip[3] == 50 && b->secs == 120,
+	      "an ACK without an address, the reply to an INFORM, leaves the binding alone");
+
+	frame(PORT_CLIENT + 1, 1, 68, 67, 7);
+	dhcp_snoop_in();
+	CHECK(entry() == b && b->state == DHCP_BIND_BOUND, "a RELEASE from another port is ignored");
+
+	frame(PORT_CLIENT + 1, 1, 68, 67, 3);
+	dhcp_snoop_in();
+	CHECK(entry() == b && b->port == PORT_CLIENT, "a REQUEST from another port does not move the entry");
+
+	frame(PORT_CLIENT, 1, 68, 67, 7);
+	uip_buf[11] ^= 1;
+	dhcp_snoop_in();
+	CHECK(entry() == b && b->state == DHCP_BIND_BOUND, "a client message whose source MAC differs from chaddr is ignored");
+
+	frame(PORT_CLIENT + 1, 1, 68, 67, 1);
+	dhcp_snoop_in();
+	CHECK(entry() == b && b->port == PORT_CLIENT + 1 && b->state == DHCP_BIND_PENDING,
+	      "a DISCOVER from another port moves the entry there as pending");
+	frame(PORT_CLIENT + 1, 1, 68, 67, 7);
+	dhcp_snoop_in();
+	CHECK(entry() == NULL, "a RELEASE on the new port removes it");
+
+	frame(PORT_CLIENT, 1, 68, 67, 1);
+	dhcp_snoop_in();
 	for (int i = 0; i < DHCP_PENDING_SECS; i++)
 		dhcp_snoop_tick();
 	CHECK(entry() == NULL, "a pending entry without an ACK expires");

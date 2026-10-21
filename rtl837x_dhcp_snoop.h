@@ -13,7 +13,6 @@
 #define DHCP_BIND_FREE		0
 #define DHCP_BIND_PENDING	1
 #define DHCP_BIND_BOUND		2
-#define DHCP_BIND_PORT_NONE	0xff
 #define DHCP_PENDING_SECS	60
 #define DHCP_LEASE_INFINITE	0xffffffff
 
