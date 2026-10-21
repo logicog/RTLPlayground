@@ -642,7 +642,7 @@ void parse_dhcp_snooping(void)
 	}
 	if (cmd_words_len == 3 && cmd_compare(2, "on")) {
 		dhcp_snoop_on = 1;
-		if (!dhcp_snoop_trust)
+		if (save_cmd && !dhcp_snoop_trust)
 			print_string("DHCP snooping: no trusted port, replies are not filtered until one is set\n");
 	} else if (cmd_words_len == 3 && cmd_compare(2, "off")) {
 		dhcp_snoop_on = 0;
