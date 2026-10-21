@@ -1,10 +1,7 @@
 #include "machine_defs.h"
 
 __code const struct machine machine = {
-	.machine_name = MACHINE_MODEL,
-	.isRTL8373 = 0,
-	.min_port = 3,
-	.max_port = 8,
+	MACHINE_COMMON_SETTING,
 	.n_sfp = 2,
 	/* Same 2M-PCB43-V1.1 board family as the KP-9000-6XH-X2 (see
 	 * machine/KP_9000_6XHML_X2.c), but the two SFP+ cages (physical ports 5 and

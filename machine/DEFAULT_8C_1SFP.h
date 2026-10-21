@@ -2,5 +2,6 @@
 #define _MACHINE_DEFAULT_8C_1SFP_H_
 
 #define MACHINE_MODEL "8+1 SFP Port Switch"
+#define MACHINE_CHIPSET RTL8373
 
 #endif

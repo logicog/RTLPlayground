@@ -11,7 +11,11 @@
  * MACHINE_MODEL is deliberately not defined here: a build that reaches this
  * header must not silently pick up some default model string. Any code that
  * needs MACHINE_MODEL therefore fails to compile unless a real machine is
- * selected.
+ * selected. MACHINE_CHIPSET has to be present because machine.h requires it;
+ * the tests supply their own `machine` object, so the chipset-derived port
+ * defaults below it are unused.
  */
+
+#define MACHINE_CHIPSET RTL8373
 
 #endif

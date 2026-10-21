@@ -2,5 +2,6 @@
 #define _MACHINE_SWTG018AS_A_V_2_0_H_
 
 #define MACHINE_MODEL "SWTG018AS-A V2.0"
+#define MACHINE_CHIPSET RTL8373
 
 #endif
