@@ -20,6 +20,7 @@ extern __xdata uint8_t sfr_data[4];
 extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[];
 extern __xdata uint16_t slen;
+extern __xdata uint8_t sfr_data[4];
 
 static __xdata struct timer lldp_timer;
 __xdata uint8_t lldp_seconds;
@@ -55,9 +56,14 @@ void lldp_tick(void) __banked
         return;
     timer_reset(&lldp_timer);
 
+    reg_read_m(RTL837X_REG_LINKS_STS);
     for (i = 0; i < LLDP_NB_MAX; i++) {
-        if (lldp_nb[i].ttl)
+        if (!lldp_nb[i].ttl)
+            continue;
+        if (sfr_data[(lldp_nb[i].port >> 3) + 1] >> (lldp_nb[i].port & 7) & 1)
             lldp_nb[i].ttl--;
+        else
+            lldp_nb[i].ttl = 0;
     }
 
     if (!lldp_enabled) {
