@@ -1,0 +1,7 @@
+#ifndef _MACHINE_HC_SWTG124AS_H_
+#define _MACHINE_HC_SWTG124AS_H_
+
+#define MACHINE_MODEL "Horaco HC-SWTG124AS"
+#define MACHINE_CHIPSET RTL8372
+
+#endif

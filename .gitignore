@@ -7,6 +7,7 @@ version.h
 tools/httpd_sim
 tools/injector
 tools/fileadder
+build/
 
 # host-test stand-ins for the two generated headers
 !test/stub/html_data.h

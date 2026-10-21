@@ -147,6 +147,9 @@
  */
 #define RTL837X_REG_NIC_BUFFSIZE_TX	0x7844
 #define RTL837X_REG_NIC_RXBUFF_RX	0x7848
+/* RX ring: inclusive final eight-byte slot, as programmed by nic_setup(). */
+#define RTL837X_NIC_RX_LAST_SLOT	0x04ff
+#define RTL837X_NIC_RX_RING_BYTES	((RTL837X_NIC_RX_LAST_SLOT + 1U) * 8U)
 #define RTL837X_REG_NIC_RXCMD		0x784c
 #define RTL837X_REG_NIC_TXCMD		0x7850
 #define RTL837X_REG_RX_CTRL		0x785c

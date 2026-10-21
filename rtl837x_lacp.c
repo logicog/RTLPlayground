@@ -21,7 +21,7 @@ extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint16_t management_vlan;
 extern __xdata struct uip_eth_addr uip_ethaddr;
-extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
+extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 
 /* 20-byte Actor/Partner information body (802.3ad 43.4.2.2), network byte order */
 struct lacp_info {

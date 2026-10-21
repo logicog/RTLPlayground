@@ -1,10 +1,7 @@
 #include "machine_defs.h"
 
 __code const struct machine machine = {
-    .machine_name = MACHINE_MODEL,
-    .isRTL8373 = 0,
-    .min_port = 3,
-    .max_port = 8,
+    MACHINE_COMMON_SETTING,
     .n_sfp = 1,
     .log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
     .phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},

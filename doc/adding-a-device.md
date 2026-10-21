@@ -1,6 +1,6 @@
 # Adding a new device
 
-A device is supported by adding one board definition `.h` and board configuration `.c` file
+A device is supported by adding one board header `.h` and board definition `.c` file
 under `machine/`. 
 the build selects the definition by name, and CI compiles every file it finds.
 
@@ -14,26 +14,33 @@ make MACHINE=<NAME>
 | File | Purpose |
 |------|---------|
 | `machine/<NAME>.c` | the `struct machine machine` board definition |
-| `machine/<NAME>.h` | `MACHINE_MODEL`, the model string shown in the UI and the CLI |
+| `machine/<NAME>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`) |
 | `doc/devices/<name>.md` + `doc/supported_devices.md` | (only if the board is verified and you want to support it publicly) user-facing documentation |
 
 `<NAME>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
 passed exactly as spelled on the command line: `make MACHINE=MY_BOARD_1_0`
 needs `machine/MY_BOARD_1_0.c` and `machine/MY_BOARD_1_0.h`.
 
-## Step 1: the model header
+## Step 1: the board header
 
-`machine/<NAME>.h` only carries the product string. Use the existing files as
-the template:
+`machine/<NAME>.h` carries the product string and the SoC family. Use the
+existing files as the template:
 
 ```c
 #ifndef _MACHINE_MY_BOARD_1_0_H_
 #define _MACHINE_MY_BOARD_1_0_H_
 
 #define MACHINE_MODEL "Brand Model V1.0"
+#define MACHINE_CHIPSET RTL8373
 
 #endif
 ```
+
+`MACHINE_CHIPSET` is `RTL8373` or `RTL8372`; a build without it will fail. It selects the default
+logical port range: `min_port` is `0` for RTL8373 and `3` for RTL8372, while `max_port` is `8`,
+the highest logical port index. A board with a different range defines
+`MACHINE_MIN_PORT` and/or `MACHINE_MAX_PORT` in its header to override the
+defaults.
 
 The device product string is what the CLI or the Web-Interface will print to identify the device; `machine.h` includes it by name.
 
@@ -55,10 +62,7 @@ ports and the same number of SFP+ cages.
 #include "machine_defs.h"
 
 __code const struct machine machine = {
-	.machine_name = MACHINE_MODEL,
-	.isRTL8373 = 1,
-	.min_port = 0,
-	.max_port = 8,
+	MACHINE_COMMON_SETTING,
 	.n_sfp = 1,
 	.log_to_phys_port = {1, 2, 3, 4, 5, 6, 7, 8, 9},
 	.phys_to_log_port = {0, 1, 2, 3, 4, 5, 6, 7, 8},
@@ -89,13 +93,16 @@ __code const struct machine machine = {
 };
 ```
 
+`MACHINE_COMMON_SETTING` (from `machine_defs.h`) initializes `machine_name`,
+`isRTL8373`, `min_port` and `max_port` from the header's `MACHINE_MODEL` and
+`MACHINE_CHIPSET`. Keep it as the first initializer and list the
+board-specific fields after it.
+
 ### Fields
 
 | Field | Meaning |
 |-------|---------|
-| `machine_name` | always `MACHINE_MODEL` |
-| `isRTL8373` | `1` for an RTL8373 SoC, `0` for RTL8372 |
-| `min_port` / `max_port` | range of logical port numbers the device has; `min_port` is `0` for RTL8373 boards and `3` for RTL8372 boards (logical ports 1–2 are the SoC's internal ports on the 8372), `max_port` is usually 8. |
+| `MACHINE_COMMON_SETTING` | expands to `machine_name` (`MACHINE_MODEL`), `isRTL8373` (`1` for `RTL8373`, `0` for `RTL8372`), `min_port` and `max_port`; all are derived from the header's `MACHINE_CHIPSET` (see Step 1) |
 | `n_sfp` | number of SFP+ cages |
 | `n_10g` | SerDes 10G capability used by the RTL837xN init: `0` none, `1` one, `2` two 10G-capable SerDes |
 | `log_to_phys_port[9]` | logical port (0-based index) → physical front-panel port number |
@@ -130,8 +137,10 @@ apart:
 ln -s KP_9000_6XHML_X2.c machine/MY_BOARD_1_0.c
 ```
 
-The new board still needs `machine/MY_BOARD_1_0.h` (pick the version number on the PCB) with its own
-`MACHINE_MODEL`, because `MACHINE_MODEL` is what distinguishes the products.
+The new board still needs `machine/MY_BOARD_1_0.h` (pick the version number on
+the PCB) with its own `MACHINE_MODEL` and `MACHINE_CHIPSET`: `MACHINE_MODEL` is
+what distinguishes the products, and `MACHINE_CHIPSET` must match the SoC of
+the board definition being reused.
 Existing examples: `machine/PCB_K0402WS_V3.c`, `machine/KP_9000_9XHML_X_V3_2.c`
 and the six `KP_9000_*` revision variants.
 
@@ -176,4 +185,21 @@ Once the board has been tested on hardware:
 3. If the board shares a PCB with other revisions, follow
    `doc/devices/KP-9000-6XH-X2.md` and document which `MACHINE` to pick for
    which silkscreen.
+
+### Identifying the CPU variant
+
+For RTL8373-based devices, use the read-only console command below to distinguish
+the N and non-N CPU variants:
+
+```text
+regget 4
+```
+
+| Register 0x0004 value | CPU |
+|---|---|
+| `0x83730000` | RTL8373 (non-N) |
+| `0x83737000` | RTL8373N |
+
+Record the identified CPU in the device documentation. These values identify
+only the CPU variant; document PHY and flash-chip models separately when verified.
 

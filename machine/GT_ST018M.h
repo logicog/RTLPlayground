@@ -2,5 +2,6 @@
 #define _MACHINE_GT_ST018M_H_
 
 #define MACHINE_MODEL "GoodTop GT-ST018M"
+#define MACHINE_CHIPSET RTL8373
 
 #endif
