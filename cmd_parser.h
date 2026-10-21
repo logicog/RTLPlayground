@@ -45,4 +45,8 @@ void print_mac(__xdata uint8_t *ptr) __banked;
 void print_sw_version(void) __banked;
 void clear_command_history(void) __banked;
 
+uint8_t cmd_compare(uint8_t start, __code const uint8_t *cmd);
+uint8_t cmd_parse_port_separator(uint8_t idx);
+extern __xdata uint8_t atoi_results_u8;
+
 #endif

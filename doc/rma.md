@@ -15,10 +15,16 @@ rma ptp cpu <0-3>
 rma ptp <port> [eth2|udp forward|trap|drop|nocpu] [delay|pdelay|asm on|off]...
 ```
 
-`rma show` prints every setting as the command that sets it, so its output can
-be pasted into the configuration as it is. The configuration keeps one line per
-entry, and a new line for an entry replaces the old one, so give the whole
-entry on one line.
+`rma show` prints every setting as the command that sets it, so a line of its
+output can be pasted into the configuration as it is. Paste the lines you
+changed rather than the whole listing: the configuration has 2 kB in all. It
+keeps one line per entry, and a new line for an entry replaces the old one, so
+give the whole entry on one line.
+
+While they run, STP owns the action of `00`, LACP that of `02` and LLDP that of
+`0e`: each sets `trap` and restores the previous action when switched off. A
+line for such an entry may still carry `trap` and set the flags, any other
+action is refused with the name of the protocol that holds it.
 
 Example, keep LLDP link-local instead of flooding it to all ports, and exempt
 BPDUs from storm control:
@@ -96,8 +102,9 @@ only applies to the message types selected for that port:
 | `asm` | Announce, Signaling, Management |
 
 Sync and Follow_Up are never selected. Selected messages are forwarded, dropped
-or trapped; a trap goes to the CPU only, and `rma ptp cpu` has to name a CPU
-(1, 2 or 3 all reach it here), since with 0 a trapped frame is lost.
+or trapped; a trap goes to the CPU only. `rma ptp cpu` picks the CPU the trap
+goes to (1, 2 or 3 all reach it here); the firmware sets 1 at boot, since with
+0 a trapped frame is lost.
 `rma ptp priority` is the priority of trapped PTP frames.
 
 ## Measured
