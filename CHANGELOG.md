@@ -21,10 +21,22 @@
     English, Japanese and Chinese, save to flash merges the command log into the startup config and verifies the write,
     firmware images are checked in the browser before upload. #429
 
+- LLDP
+  - Learn one neighbour per port from received LLDPDUs (chassis, port, names, description, capabilities,
+    management IPv4, Port VLAN ID), aged by their TTL and removed on link down; shown by `lldp` and on the LLDP page.
+  - Optional TLVs Port description, System capabilities, Management address, Port VLAN ID, MAC/PHY status and
+    Maximum frame size, switched with `lldp tlv <name> on|off`. See `doc/lldp.md`.
+  - The LLDP page shows what each port sends and the neighbour details, and works as cards on a phone.
+
 ## Changed
+
+- `/lldp.json` has a new shape and `/lldp.json?port=<n>` the details of one port, see `doc/lldp.md`.
 
 ## Fixed
 
+- LLDP
+  - `lldp` without an argument showed nothing and switched LLDP off; it now shows the LLDP state.
+  - Save to flash dropped `port <n> lldp block` when a speed command for the port followed, and the reverse.
 - Config
   - A startup configuration line longer than the command buffer no longer stops the replay:
     the offending line is skipped and the following lines are still applied.

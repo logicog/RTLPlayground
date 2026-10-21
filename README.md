@@ -20,6 +20,7 @@ only the following features are provided:
   temperatures, RX and TX power are displayed in the CLI and as mouse-over on the web
 - Mirror configuration
 - Link Aggregation Groups can be set up
+- LLDP: configurable TLVs sent per port and a per-port table of LLDP neighbours (see doc/lldp.md)
 - Detailed information on port packet statistics
 - Configuration saved to flash via the web-interface
 - Firmware updates via the web
