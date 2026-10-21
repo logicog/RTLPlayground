@@ -489,6 +489,7 @@ void send_lldp(int s)
 	json_object_object_add(p, "chassis", json_object_new_string("00:11:22:33:44:55"));
 	json_object_object_add(p, "portId", json_object_new_string("eth0"));
 	json_object_object_add(p, "sysName", json_object_new_string("desk-pc"));
+	json_object_object_add(p, "sysDesc", json_object_new_string("Linux 6.8.0-45-generic x86_64"));
 	json_object_object_add(p, "portDesc", json_object_new_string("onboard nic"));
 	json_object_object_add(p, "mgmtAddr", json_object_new_string("10.0.0.7"));
 	json_object_object_add(p, "caps", json_object_new_int(128));
