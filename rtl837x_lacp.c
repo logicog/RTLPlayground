@@ -359,12 +359,14 @@ void lacp_timers(void) __banked
 
 
 
-void lacp_link_change(void) __banked
+void lacp_link_change(uint16_t bounced) __banked
 {
-	lacp_scratch_mask = port_link_mask() ^ lacp_link_last;
+	uint16_t now = port_link_mask();
+
+	lacp_scratch_mask = (now ^ lacp_link_last) | (bounced & now);
 	if (!lacp_scratch_mask)
 		return;
-	lacp_link_last ^= lacp_scratch_mask;
+	lacp_link_last = now;
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		if (lacp_port_lag[i] == LACP_LAG_NONE || !(lacp_scratch_mask & PORT_BIT(i)))
 			continue;
