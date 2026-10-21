@@ -31,8 +31,8 @@
   - The web UI and the configuration upload now refuse a line the replay cannot take,
     instead of writing it to flash.
 - Web UI
-  - The Statistics table is only as wide as its content, and its counter headers line up with
-    their right-aligned values instead of stretching across the page.
+  - The Statistics table and the Dashboard's Traffic table are only as wide as their content, and
+    their counter headers line up with their right-aligned values instead of stretching across the page.
 
 ## Breaking changes
 
