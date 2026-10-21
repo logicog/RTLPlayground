@@ -17,7 +17,12 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev -y
+          apt install make gcc g++ bison flex libboost-dev patch bzip2 curl ca-certificates xxd python-is-python3 libjson-c-dev zlib1g-dev -y
+      - name: Cache the patched SDCC
+        uses: actions/cache@v4
+        with:
+          path: toolchain
+          key: sdcc-${{ hashFiles('sdcc/*') }}
       - name: Run the host-side unit tests
         run: make -C test
       - name: Check that every machine definition can be compiled

@@ -1,0 +1,130 @@
+https://sourceforge.net/p/sdcc/bugs/4070/
+
+Index: sdas/asxxsrc/asexpr.c
+===================================================================
+--- sdas/asxxsrc/asexpr.c
++++ sdas/asxxsrc/asexpr.c
+@@ -863,18 +863,59 @@
+ 	return((n & s_mask) ? (n | ~v_mask) : (n & v_mask));
+ }
+ 
+-/*)Function	void	exprmasks(esp)
++/*)Function	void	exprmasks(n)
+  *
+  *		int	n		T Line Bytes in Address
+  *
+  *	The function exprmasks() configures the assembler
+- *	for 16, 24, or 32-Bit Data/Addresses.
++ *	for 16, 24, or 32-Bit Data/Addresses.  The arithmetic
++ *	precision follows the address width unless a port
++ *	calls valmasks() afterwards.
+  *
+  *	local variables:
+  *		none
+  *
+  *	global variables:
+  *		int	a_bytes		T Line Bytes in Address
++ *
++ *	functions called:
++ *		void	valmasks()	asexpr.c
++ *
++ *	side effects:
++ *		The address width and arithmetic precision
++ *		parameters are set.
++ */
++
++void
++exprmasks(int n)
++{
++	switch(n) {
++	default:
++		n = 2;
++	case 2:
++	case 3:
++	case 4:
++		break;
++	}
++	a_bytes = n;
++	valmasks(n);
++}
++
++/*)Function	void	valmasks(n)
++ *
++ *		int	n		Bytes of arithmetic precision
++ *
++ *	The function valmasks() configures the 16, 24, or
++ *	32-Bit arithmetic precision independently of the
++ *	T Line address width.  A port whose addresses fit
++ *	in 24 bits but whose symbols may hold 32-bit values
++ *	(the 8051 __sfr32 address lists, for example) uses
++ *	exprmasks(3) followed by valmasks(4).
++ *
++ *	local variables:
++ *		none
++ *
++ *	global variables:
+  *		a_uint	a_mask		Address mask
+  *		a_uint	s_mask		Sign mask
+  *		a_uint	v_mask		Value mask
+@@ -885,16 +926,13 @@
+  *	side effects:
+  *		The arithmetic precision parameters are set.
+  */
+- 
++
+ void
+-exprmasks(int n)
++valmasks(int n)
+ {
+-	a_bytes = n;
+-
+ #ifdef	LONGINT
+-	switch(a_bytes) {
++	switch(n) {
+ 	default:
+-		a_bytes = 2;
+ 	case 2:
+ 		a_mask = (a_uint) 0x0000FFFFl;
+ 		s_mask = (a_uint) 0x00008000l;
+@@ -914,9 +952,8 @@
+ 		break;
+ 	}
+ #else
+-	switch(a_bytes) {
++	switch(n) {
+ 	default:
+-		a_bytes = 2;
+ 	case 2:
+ 		a_mask = (a_uint) 0x0000FFFF;
+ 		s_mask = (a_uint) 0x00008000;
+Index: sdas/asxxsrc/asxxxx.h
+===================================================================
+--- sdas/asxxsrc/asxxxx.h
++++ sdas/asxxsrc/asxxxx.h
+@@ -1354,6 +1354,7 @@
+ extern	int		digit(int c, int r);
+ extern	int		is_digit(int c, int r);
+ extern	void		exprmasks(int n);
++extern	void		valmasks(int n);
+ extern	void		expr(struct expr *esp, int n);
+ extern	void		binop(int c, struct expr *esp, struct expr *re);
+ extern	int		is_abs(struct expr *esp);
+Index: sdas/as8051/i51mch.c
+===================================================================
+--- sdas/as8051/i51mch.c
++++ sdas/as8051/i51mch.c
+@@ -782,9 +782,12 @@
+ 	hilo = 1;
+ 
+ 	/*
+-         * Address Space
++	 * Address Space: 24-bit addresses in the T lines,
++	 * 32-bit arithmetic so that __sfr32 address lists
++	 * like 0xa4a5a6a7 keep their most significant byte.
+ 	 */
+-        exprmasks(3);
++	exprmasks(3);
++	valmasks(4);
+ 
+ 	/*
+ 	 * First time only:
