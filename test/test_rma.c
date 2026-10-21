@@ -16,9 +16,36 @@
 #include "cmd_parser.h"
 #include "support.h"
 #include "hw_mock.h"
+#include "machine.h"
+
+extern __code const struct machine machine;
 
 uint8_t cmd_words_len;
 uint8_t cmd_words_b[15];
+uint8_t atoi_results_u8;
+extern uint8_t lacpEnabled;
+extern bool lldp_enabled;
+
+uint8_t cmd_compare(uint8_t start, const uint8_t *cmd)
+{
+	if (start >= cmd_words_len)
+		return 0;
+	const uint8_t *b = cmd_buffer + cmd_words_b[start];
+	size_t n = strlen((const char *)cmd);
+	return !memcmp(b, cmd, n) && (b[n] == ' ' || !b[n]);
+}
+
+uint8_t cmd_parse_port_separator(uint8_t idx)
+{
+	uint8_t port = cmd_buffer[idx] - '0' - 1;
+	if (port > 8 || (cmd_buffer[idx + 1] != ' ' && cmd_buffer[idx + 1]))
+		return 0;
+	port = machine.phys_to_log_port[port];
+	if (port < machine.min_port || port > machine.max_port)
+		return 0;
+	atoi_results_u8 = port;
+	return 1;
+}
 extern bool stp_enabled;
 
 static void run(const char *line)
@@ -75,7 +102,22 @@ static void t_entries(void)
 	      "the action of 00 is refused while STP runs");
 	run("rma 00 storm off");
 	CHECK(!err_status && op(0) == 0x18, "the flags of 00 can still be set while STP runs");
+	run("rma 00 trap storm on keep on");
+	CHECK(!err_status && op(0) == 0x14, "the action STP itself sets is accepted with the flags, as rma show prints it");
 	stp_enabled = 0;
+
+	lacpEnabled = 1;
+	hw_reg_set(RTL837X_RMA0_CONF + 4 * 2, 0x10);
+	run("rma 02 forward");
+	CHECK(err_status && op(2) == 0x10 && strstr(out_buf, "LACP"), "the action of 02 is refused while LACP runs");
+	lacpEnabled = 0;
+	lldp_enabled = 1;
+	hw_reg_set(RTL837X_RMA0_CONF + 4 * 7, 0x10);
+	run("rma 0e drop");
+	CHECK(err_status && op(7) == 0x10 && strstr(out_buf, "LLDP"), "the action of 0e is refused while LLDP runs");
+	run("rma 0e trap vlanleak on");
+	CHECK(!err_status && op(7) == 0x12, "trap and a flag on 0e pass while LLDP runs");
+	lldp_enabled = 0;
 }
 
 static void t_globals(void)
