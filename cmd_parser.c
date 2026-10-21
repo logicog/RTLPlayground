@@ -14,12 +14,18 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
+#include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_trap.h"
+#include "rtl837x_cabletest.h"
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
+#include "dns.h"
+#include "ntp.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -33,6 +39,7 @@
 extern __code const struct machine machine;
 extern __xdata bool stp_enabled;
 extern __code const uint8_t log_to_phys_port[9];
+extern __xdata bool lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
 extern volatile __xdata uint8_t sfr_data[4];
@@ -160,10 +167,15 @@ uint8_t atoi_hex(uint8_t idx)
 			break;
 		}
 
+		if (h_idx == 8) {
+			h_idx = 0;
+			break;
+		}
+
 		// swap hex nibbles
 		val = (val >> 4) | (val << 4);
 
-		if (c - '0' < 10) {
+		if ((uint8_t)(c - '0') < 10) {
 			val |= c - '0';
 		} else {
 			c |= 0x20;
@@ -529,11 +541,21 @@ void parse_lag(void)
 		goto err;
 
 	if (cmd_compare(2, "d")) {
+		lacp_lag_set(group, 0);
 		port_lag_members_set(group, 0);
 		return;
 	}
 
 	uint8_t w = 2;
+	__xdata uint8_t lacp_mode = 0;
+	if (cmd_words_len > 2 && cmd_compare(2, "lacp")) {
+		lacp_mode = 1;
+		w = 3;
+		if (cmd_words_len > 3 && cmd_compare(3, "off")) {
+			lacp_lag_set(group, 0);
+			return;
+		}
+	}
 	while (w < cmd_words_len) {
 		// Parse port.
 		if (cmd_parse_port_separator(cmd_words_b[w++]) == 0)
@@ -541,10 +563,15 @@ void parse_lag(void)
 
 		members |= ((uint16_t)1) << atoi_results_u8;
 	}
-	port_lag_members_set(group, members);
+	if (lacp_mode) {
+		lacp_lag_set(group, members);
+	} else {
+		lacp_lag_set(group, 0);
+		port_lag_members_set(group, members);
+	}
 	return;
 err:
-	cmd_error("lag (show | <1-4> (d | <port>...))\n");
+	cmd_error("lag (show | <1-4> (d | [lacp] <port>...))\n");
 }
 
 
@@ -718,7 +745,7 @@ void parse_isolate(void)
 	if (cmd_compare(2, "off")) {
 		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
 			members |= ((uint16_t)1) << i;
-		members |= 0x200; // CPU-port
+		members |= PMASK_CPU; // CPU-port
 		port_isolate(port_configured, members);
 		return;
 	}
@@ -842,9 +869,14 @@ void parse_mirror(void)
 	if (cmd_words_len < 2)
 		goto err;
 
+	// The first argument is the mirroring (monitor) port
+	uint8_t ret = cmd_parse_port(cmd_words_b[1]);
+	if (ret == 0)
+		goto err;
+	mirroring_port = atoi_results_u8;
+
 	uint8_t w = 2;
 	uint8_t port;
-	uint8_t ret;
 	while (w < cmd_words_len) {
 		uint8_t idx = cmd_words_b[w++];
 		ret = cmd_parse_port(idx);
@@ -853,10 +885,6 @@ void parse_mirror(void)
 
 		idx += ret;
 		port = atoi_results_u8;
-
-		// Use the first port argument as mirroring_port
-		if (w == 2)
-			mirroring_port = port;
 
 		ret = cmd_buffer[idx];
 		uint16_t pmask = ((uint16_t)1) << port;
@@ -880,6 +908,8 @@ void parse_port(void)
 		cmd_error("\nUsage:" \
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
+					 "\nport <port> lldp [block|permit]" \
+					 "\nport <port> cabletest [show]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
 	}
@@ -912,8 +942,21 @@ void parse_port(void)
 		print_string("\nName set to: \"");
 		print_string_x(port_names[phy_settings.port]);
 		print_string("\"\n");
+	} else if (cmd_compare(2, "lldp")) {
+		if (cmd_compare(3, "block")){
+			lldp_logical_port_status &= ~((uint16_t)1 << phy_settings.port);
+		} else if (cmd_compare(3, "permit")) {
+			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
+		} else {
+			print_string ("Unknown port <port> lldp [block|permit] command\n");
+		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
+	} else if (cmd_compare(2, "cabletest")) {
+		if (cmd_words_len > 3 && cmd_compare(3, "show"))
+			cabletest_show();
+		else
+			cabletest_run();
 	} else if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
 		phy_settings.speed = PHY_SPEED_10M;
@@ -1855,6 +1898,10 @@ void cmd_parser(void) __banked
 			parse_mtu();
 		} else if (cmd_compare(0, "syslog")) {
 			parse_syslog();
+		} else if (cmd_compare(0, "dns")) {
+			dns_parse();
+		} else if (cmd_compare(0, "ntp") || cmd_compare(0, "time")) {
+			ntp_parse();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
@@ -1955,6 +2002,13 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "health")) {
 			health_show();
 #endif
+		} else if (cmd_compare(0, "lacp")) {
+			if (cmd_compare(1, "show"))
+				lacp_show();
+			else if (cmd_compare(1, "off"))
+				lacp_off();
+			else
+				cmd_error("lacp (show | off); a group starts LACP with: lag <1-4> lacp <port>...\n");
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
 			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
@@ -2005,11 +2059,6 @@ void cmd_parser(void) __banked
 			parse_storm();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
-		} else if (cmd_compare(0, "time")) {
-			print_string("  Tick counter: "); print_long(ticks); print_string("   Sec Counter: ");
-			reg_read_m(RTL837X_REG_SEC_COUNTER);
-			print_sfr_data();
-			write_char('\n');
 		} else if (cmd_compare(0, "history")) {
 			__xdata uint16_t p = (cmd_history_ptr + 1) & CMD_HISTORY_MASK;
 			__xdata uint8_t found_begin = 0;
@@ -2027,6 +2076,16 @@ void cmd_parser(void) __banked
 			parse_ingress();
 		} else if (cmd_compare(0, "session")) {
 			parse_session();
+		} else if (cmd_compare(0, "lldp")) {
+			if (cmd_compare(1, "on")) {
+				print_string("LLDP enabled\n");
+				lldp_enabled = 1;
+				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
+			} else {
+				print_string("LLDP disabled\n");
+				lldp_enabled = 0;
+				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
+			}
 		}
 		else {
 			cmd_error("Unknown command\n");
@@ -2096,7 +2155,7 @@ void execute_config(void) __banked
 				skipping = 1;
 			}
 			c = flash_buf[cfg_idx++];
-			if (c == 0 || c == '\n') {
+			if (c == 0 || c == '\n' || c == '\r') {
 				if (skipping) {
 					skipping = 0;
 				} else {

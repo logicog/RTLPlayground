@@ -16,12 +16,14 @@
 #define TICKS_DUE(last, period)	((uint8_t)((uint8_t)ticks - (last)) >= (period))
 
 #define CPU_PORT        9
+#define MAC_ADDR_LEN    6
+#define PORT_BIT(p)     ((uint16_t)1 << (p))
 #define NUL			'\0'
 
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff
 #define PMASK_6		0x1f8
-#define PMASK_CPU	0x200
+#define PMASK_CPU	((uint16_t)(1 << CPU_PORT))
 
 // Defines a port mask for dropping all packets on Lookup-miss
 #define LOOKUP_MISS_DROP_6  0x00015540
@@ -131,6 +133,7 @@ struct flash_region_t {
 };
 
 extern __xdata char port_names[9][PORT_NAME_SIZE];
+extern __xdata uint16_t lldp_logical_port_status;
 
 extern __xdata bool stp_enabled;
 
@@ -139,7 +142,7 @@ extern __xdata bool stp_enabled;
  * advertises it as the System Name TLV) read it from here. */
 extern __xdata char hostname[24];
 
-extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE+2];
+extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
 // Headers for calls in the common code area (HOME/BANK0)

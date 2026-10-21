@@ -57,7 +57,7 @@ void port_mirror_del(void) __banked
 
 bool port_ingress_filter(__xdata uint8_t port, __xdata vlan_ingress_mode_t type) __banked
 {
-	if (port > 9 || type >= VLAN_INVALID) {
+	if (port > CPU_PORT || type >= VLAN_INVALID) {
 		print_string("Invalid port or ingress filter type\n");
 		return false;
 	}
@@ -510,7 +510,7 @@ void port_media_show(uint8_t port) __banked
 
 void port_stats_print(void) __banked
 {
-	print_string("\nPort\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\n");
+	print_string("\nPort\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\t\tMACs\n");
 	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
 		print_phys_port(i); write_char('\t');
 
@@ -584,6 +584,9 @@ void port_stats_print(void) __banked
 
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
 		print_reg(RTL837X_STAT_V_HIGH); write_char('\t');
+
+		reg_read(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (i << 2));
+		itoa_short(SFR_DATA_U16 & L2_LRN_PORT_CNT_MASK);
 		print_string("\n");
 	}
 }

@@ -92,8 +92,12 @@ button:hover{filter:brightness(1.1)}
   try{l=localStorage.getItem("rtl_lang");}catch(e){}
   if(!L[l])l=(navigator.language||"en").slice(0,2);
   var s=L[l]||L.en;
-  document.title=s[0];
-  document.getElementById("hn").textContent=s[0];
+  // Name the tab after the switch: the hostname seen at the last login here,
+  // otherwise the address, so several open switches can be told apart
+  var host=null;
+  try{host=localStorage.getItem("rtl_host");}catch(e){}
+  document.title=(host||location.hostname)+" – "+s[0];
+  document.getElementById("hn").textContent=host||s[0];
   document.getElementById("sub").textContent=s[1];
   document.getElementById("lp").textContent=s[2];
   document.getElementById("lb").textContent=s[3];

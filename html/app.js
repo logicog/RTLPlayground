@@ -3,7 +3,7 @@ var LANG={
 en:{
 nav_dash:"Dashboard",nav_ports:"Ports",nav_stp:"Spanning tree",nav_stats:"Statistics",
 nav_vlan:"VLANs",nav_l2:"MAC table",nav_mirror:"Mirroring",nav_isolate:"Isolation",nav_lag:"LAG",nav_eee:"EEE",
-nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",
+nav_bw:"Bandwidth",nav_system:"System",nav_fw:"Firmware",nav_lldp:"LLDP",
 hdr_dirty:"unsaved changes",hdr_dirty_t:"Running config differs from startup config",
 hdr_save:"Save to flash",hdr_save_t:"Persist running configuration to flash",
 th_auto:"System",th_auto_sel:"System (Selenized)",sy_display:"Display",sy_theme:"Theme",sy_display_note:"Stored in this browser only.",th_light:"Light",th_dark:"Dark",
@@ -11,15 +11,15 @@ th_sel_light:"Selenized Light",th_sel_dark:"Selenized Dark",
 c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Apply",c_cancel:"Cancel",c_confirm:"Confirm",
 c_close:"Close",c_refresh:"Refresh",c_off:"off",c_offc:"Off",c_down:"down",c_on:"On",c_auto:"Auto",c_delete:"Delete",
 c_type:"Type",c_state:"State",c_enabled:"Enabled",c_load:"Load",c_disable:"Disable",c_sfp:"SFP",
-c_full:"full",c_half:"half",c_devices:"devices",c_yes:"yes",c_no:"no",
-d_ports:"Ports",d_ports_h:"click a port for details",d_system:"System",d_traffic:"Traffic",
+c_full:"full",c_half:"half",c_yes:"yes",c_no:"no",
+d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"State",p_disabled:"disabled",p_up:"up",p_txgb:"TX good / bad",p_rxgb:"RX good / bad",
 p_pkts:"pkts",p_module:"Module",p_temp:"Temperature",p_vcc:"Vcc",p_txbias:"TX bias",p_txpower:"TX power",
 p_rxpower:"RX power",p_txfault:"TX fault",p_txdis:"TX disabled",p_rxlos:"RX LOS",p_adv:"Advertising",
-pt_title:"Port configuration",pt_conn:"Connected",pt_speed:"Speed",pt_mtu:"MTU",
+pt_title:"Port configuration",pt_conn:"Devices learned",pt_speed:"Speed",pt_mtu:"MTU",
 pt_sfp_note:"SFP speed is set per slot and is not saved in the startup config.",
 pt_name_err:"Port name: 1-15 characters, no spaces",pt_mtu_err:"MTU must be 64-16383",
 stp_title:"Spanning tree",stp_h:"RSTP, 802.1w",stp_version:"Version",stp_v_stp:"STP compatible",
@@ -40,6 +40,7 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
+lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -66,6 +67,9 @@ iso_title:"Port isolation",iso_from:"From port",iso_to:"To port",iso_all:"Allow 
 iso_intro:"A frame entering a port may only leave through the ports ticked in its row. Isolation is decided before forwarding, so a port that is not ticked is unreachable directly, whatever the address table says.",
 iso_legend:"The cell of the port itself is always allowed. A port number in red marks a port that is not fully open.",
 lag_hash:"Hash:",lag_note:"A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.",
+lacp_heading:"LACP (802.3ad)",lag_mode:"Mode",lag_static:"Static",lacp_neg:"negotiating",lacp_agg:"aggregator",
+lacp_members:"active members",lacp_hint:"LACP: select candidate ports and press Apply to start negotiation",
+lacp_actor:"Actor",lacp_partner:"Partner",lacp_rxstate:"RX state",lacp_rx:"LACPDUs received",lacp_psys:"Partner system",
 lag_clear_q:"Clear LAG {n}?",lag_clear_d:"All member ports return to normal operation.",
 e_title:"Energy Efficient Ethernet",e_adv:"Advertised",e_lp:"Link partner",e_active:"Active",e_enable:"Enable",
 e_note:"Advertised and link-partner flags per speed: 100M, 1G, 2.5G. SFP ports do not support EEE.",
@@ -89,7 +93,14 @@ sy_ip_err:"Invalid IP / netmask / gateway",sy_host_err:"Hostname: 1-23 printable
 sy_net_q:"Apply network settings?",sy_net_d:"The management IP changes to {ip}: this page will need to be reopened there.",
 sy_ip_changed:"IP changed, reconnect at http://{ip}/",sy_dhcp_q:"Switch to DHCP?",
 sy_dhcp_d:"The switch requests an address via DHCP. You must find its new IP to reconnect.",
-sy_sysip_err:"Invalid syslog server IP",sy_sysport_err:"Syslog port must be 1-65535",
+sy_sysip_err:"Invalid syslog server IP",sy_dns1:"DNS server",sy_dns2:"Second DNS",sy_dns_err:"Invalid DNS server IP",sy_dns_dhcp:"from DHCP: {ip}",
+sy_time:"Time",sy_ntp:"NTP",sy_ntpsrv:"NTP server",sy_ntpsrv_p:"host name or IPv4 address",sy_ntpint:"Poll interval [min]",
+sy_tz:"Time zone",sy_dst:"Daylight saving",sy_dst_eu:"Europe",
+sy_dst_us:"United States",sy_now:"Local time",
+sy_sync:"Last synchronisation",sy_ntpaddr:"Server address",sy_nosync:"not synchronised",sy_waiting:"waiting for the server",
+sy_ago:"{n} min ago",sy_ntp_err:"Enter the host name or IPv4 address of the NTP server",sy_ntpint_err:"Poll interval must be 1-1440",
+sy_time_note:"The switch has no battery backed clock: the time is lost at every restart and set again from the NTP server once the network is up. Save to flash to keep the settings.",
+sy_sysport_err:"Syslog port must be 1-65535",
 sy_pw_len:"Password: 1-20 characters",sy_pw_space:"Password cannot contain spaces",sy_pw_match:"Passwords do not match",
 sy_pw_q:"Change admin password?",sy_pw_d:"Takes effect immediately for new logins. Save to flash to persist.",
 sy_reboot_q:"Reboot the switch?",sy_reboot_d:"There are UNSAVED changes and they will be lost. Save to flash first if you want to keep them.",
@@ -108,6 +119,7 @@ fw_intro:"Upload an RTLPlayground image (512 KiB .bin). The image is staged to f
 fw_upload:"Upload",fw_checking:"{f}: {n} bytes. Checking...",fw_size_err:"size is {n}, expected 524288 (512 KiB)",
 fw_magic_err:"missing bank header / LJMP magic: not a firmware image",fw_crc_err:"CRC16 check failed: corrupt image",
 fw_valid:"valid RTLPlayground image (size, magic and CRC16 OK)",fw_q:"Upload firmware?",
+fw_other:"This image was not built for this switch ({m}): its SFP, LED and button pins may differ. Upload it only if you are sure.",
 fw_d:"On a good checksum the switch resets itself and applies the image during boot (the startup config is preserved). Do not power it off until it comes back.",
 fw_finishing:"finishing flash write... {s} s",fw_uploading:"uploading... {p}% / {s} s",
 fw_verified:"checksum verified, the switch is rebooting...",
@@ -130,15 +142,15 @@ th_sel_light:"Selenized ライト",th_sel_dark:"Selenized ダーク",
 c_port:"ポート",c_name:"名前",c_link:"リンク",c_apply:"適用",c_cancel:"キャンセル",c_confirm:"確認",
 c_close:"閉じる",c_refresh:"更新",c_off:"オフ",c_offc:"オフ",c_down:"リンクダウン",c_on:"オン",c_auto:"自動",c_delete:"削除",
 c_type:"タイプ",c_state:"状態",c_enabled:"有効",c_load:"読み込み",c_disable:"無効化",c_sfp:"SFP",
-c_full:"全二重",c_half:"半二重",c_devices:"デバイス",c_yes:"はい",c_no:"いいえ",
-d_ports:"ポート",d_ports_h:"ポートをクリックすると詳細を表示",d_system:"システム",d_traffic:"トラフィック",
+c_full:"全二重",c_half:"半二重",c_yes:"はい",c_no:"いいえ",
+d_system:"システム",d_traffic:"トラフィック",
 d_traffic_h:"パケット/秒、リアルタイム",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 異常",d_rxbad:"RX 異常",
 i_host:"ホスト名",i_ip:"IP アドレス",i_mask:"ネットマスク",i_gw:"ゲートウェイ",i_mac:"MAC",i_fw:"ファームウェア",
 i_built:"ビルド日",i_hw:"ハードウェア",i_temp:"温度",i_flash:"フラッシュ",i_syslog:"Syslog",
 p_state:"状態",p_disabled:"無効",p_up:"アップ",p_txgb:"TX 正常 / 異常",p_rxgb:"RX 正常 / 異常",
 p_pkts:"pkts",p_module:"モジュール",p_temp:"温度",p_vcc:"電圧",p_txbias:"TX バイアス",p_txpower:"TX 電力",
 p_rxpower:"RX 電力",p_txfault:"TX 障害",p_txdis:"TX 無効",p_rxlos:"RX 信号ロス",p_adv:"アドバタイズ",
-pt_title:"ポート設定",pt_conn:"接続デバイス",pt_speed:"速度",pt_mtu:"MTU",
+pt_title:"ポート設定",pt_conn:"学習済みデバイス",pt_speed:"速度",pt_mtu:"MTU",
 pt_sfp_note:"SFP の速度はスロット単位で設定され、起動設定には保存されません。",
 pt_name_err:"ポート名: 1〜15 文字、空白不可",pt_mtu_err:"MTU は 64〜16383 の範囲で指定してください",
 stp_title:"スパニングツリー",stp_h:"RSTP, 802.1w",stp_version:"バージョン",stp_v_stp:"STP 互換",
@@ -243,15 +255,15 @@ th_sel_light:"Selenized 浅色",th_sel_dark:"Selenized 深色",
 c_port:"端口",c_name:"名称",c_link:"链路",c_apply:"应用",c_cancel:"取消",c_confirm:"确认",
 c_close:"关闭",c_refresh:"刷新",c_off:"关",c_offc:"关",c_down:"未连接",c_on:"开",c_auto:"自动",c_delete:"删除",
 c_type:"类型",c_state:"状态",c_enabled:"启用",c_load:"读取",c_disable:"禁用",c_sfp:"SFP",
-c_full:"全双工",c_half:"半双工",c_devices:"台设备",c_yes:"是",c_no:"否",
-d_ports:"端口",d_ports_h:"点击端口查看详情",d_system:"系统",d_traffic:"流量",
+c_full:"全双工",c_half:"半双工",c_yes:"是",c_no:"否",
+d_system:"系统",d_traffic:"流量",
 d_traffic_h:"包/秒，实时",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 错误",d_rxbad:"RX 错误",
 i_host:"主机名",i_ip:"IP 地址",i_mask:"子网掩码",i_gw:"网关",i_mac:"MAC",i_fw:"固件",
 i_built:"构建日期",i_hw:"硬件",i_temp:"温度",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"状态",p_disabled:"已禁用",p_up:"已连接",p_txgb:"TX 正常 / 错误",p_rxgb:"RX 正常 / 错误",
 p_pkts:"个包",p_module:"模块",p_temp:"温度",p_vcc:"供电电压",p_txbias:"TX 偏置电流",p_txpower:"TX 光功率",
 p_rxpower:"RX 光功率",p_txfault:"TX 故障",p_txdis:"TX 禁用",p_rxlos:"RX 信号丢失",p_adv:"通告能力",
-pt_title:"端口配置",pt_conn:"已连接设备",pt_speed:"速率",pt_mtu:"MTU",
+pt_title:"端口配置",pt_conn:"已学习设备",pt_speed:"速率",pt_mtu:"MTU",
 pt_sfp_note:"SFP 速率按插槽设置，不会保存到启动配置。",
 pt_name_err:"端口名称: 1-15 个字符，不能包含空格",pt_mtu_err:"MTU 范围为 64-16383",
 stp_title:"生成树",stp_h:"RSTP, 802.1w",stp_version:"版本",stp_v_stp:"STP 兼容",
@@ -356,15 +368,15 @@ th_sel_light:"Selenized claro",th_sel_dark:"Selenized oscuro",
 c_port:"Puerto",c_name:"Nombre",c_link:"Enlace",c_apply:"Aplicar",c_cancel:"Cancelar",c_confirm:"Confirmar",
 c_close:"Cerrar",c_refresh:"Actualizar",c_off:"apagado",c_offc:"Apagado",c_down:"caído",c_on:"Encendido",c_auto:"Auto",c_delete:"Eliminar",
 c_type:"Tipo",c_state:"Estado",c_enabled:"Habilitado",c_load:"Cargar",c_disable:"Deshabilitar",c_sfp:"SFP",
-c_full:"dúplex completo",c_half:"semidúplex",c_devices:"dispositivos",c_yes:"sí",c_no:"no",
-d_ports:"Puertos",d_ports_h:"pulsa un puerto para ver detalles",d_system:"Sistema",d_traffic:"Tráfico",
+c_full:"dúplex completo",c_half:"semidúplex",c_yes:"sí",c_no:"no",
+d_system:"Sistema",d_traffic:"Tráfico",
 d_traffic_h:"paquetes/s, en vivo",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX erróneos",d_rxbad:"RX erróneos",
 i_host:"Nombre de host",i_ip:"Dirección IP",i_mask:"Máscara de red",i_gw:"Puerta de enlace",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Compilado",i_hw:"Hardware",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"Estado",p_disabled:"deshabilitado",p_up:"activo",p_txgb:"TX correctos / erróneos",p_rxgb:"RX correctos / erróneos",
 p_pkts:"paquetes",p_module:"Módulo",p_temp:"Temperatura",p_vcc:"Vcc",p_txbias:"Polarización TX",p_txpower:"Potencia TX",
 p_rxpower:"Potencia RX",p_txfault:"Fallo TX",p_txdis:"TX deshabilitado",p_rxlos:"Pérdida RX (LOS)",p_adv:"Anunciado",
-pt_title:"Configuración de puerto",pt_conn:"Conectado",pt_speed:"Velocidad",pt_mtu:"MTU",
+pt_title:"Configuración de puerto",pt_conn:"Dispositivos aprendidos",pt_speed:"Velocidad",pt_mtu:"MTU",
 pt_sfp_note:"La velocidad del SFP se ajusta por ranura y no se guarda en la configuración de inicio.",
 pt_name_err:"Nombre de puerto: 1-15 caracteres, sin espacios",pt_mtu_err:"El MTU debe estar entre 64 y 16383",
 stp_title:"Árbol de expansión",stp_h:"RSTP, 802.1w",stp_version:"Versión",stp_v_stp:"STP compatible",
@@ -468,15 +480,15 @@ th_sel_light:"Clair (sélénisé)",th_sel_dark:"Sombre (sélénisé)",
 c_port:"Port",c_name:"Nom",c_link:"Lien",c_apply:"Appliquer",c_cancel:"Annuler",c_confirm:"Confirmer",
 c_close:"Fermer",c_refresh:"Raffraichir",c_off:"arrêt",c_offc:"Arrêt",c_down:"arrêt",c_on:"Marche",c_auto:"Auto",c_delete:"Supprimer",
 c_type:"Type",c_state:"Etat",c_enabled:"Activé",c_load:"Charger",c_disable:"Désactivé",c_sfp:"SFP",
-c_full:"full",c_half:"half",c_devices:"Equipements",c_yes:"oui",c_no:"non",
-d_ports:"Ports",d_ports_h:"Cliquez ou survollez pour plus de détails",d_system:"Système",d_traffic:"Trafic",
+c_full:"full",c_half:"half",c_yes:"oui",c_no:"non",
+d_system:"Système",d_traffic:"Trafic",
 d_traffic_h:"paquets/s (en direct)",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX KO",d_rxbad:"RX KO",
 i_host:"Nom d'hote",i_ip:"Adresse IP",i_mask:"Masque réseau",i_gw:"Passerelle",i_mac:"Adresse MAC",i_fw:"Micro logiciel",
 i_built:"Compilé le",i_hw:"Matériel",i_temp:"Température",i_flash:"Taille Flash",i_syslog:"Journal système",
 p_state:"Etat",p_disabled:"Inactif",p_up:"Actif",p_txgb:"TX bon / mauvais",p_rxgb:"RX bon / mauvais",
 p_pkts:"paquets",p_module:"Module",p_temp:"Température",p_vcc:"Vcc",p_txbias:"TX biais",p_txpower:"TX puissance",
 p_rxpower:"RX puissance",p_txfault:"TX erreur",p_txdis:"TX désactivé",p_rxlos:"RX pertes de signaux",p_adv:"Capacités",
-pt_title:"Configuration du port",pt_conn:"Connecté à",pt_speed:"Vitesse",pt_mtu:"MTU",
+pt_title:"Configuration du port",pt_conn:"Appareils appris",pt_speed:"Vitesse",pt_mtu:"MTU",
 pt_sfp_note:"La vitesse SFP est paramétrée pour le port et n'est pas enregistrée dans la configuration de démarrage.",
 pt_name_err:"Nom du port: 1 à 15 caractères, sans espaces",pt_mtu_err:"MTU doit être comrpis entre 64 et 16383",
 stp_title:"Arborescence",stp_h:"RSTP, 802.1w",stp_version:"Protocole",stp_v_stp:"Compatible STP",
@@ -519,6 +531,9 @@ l2_learned:"appris",l2_loading:"chargement...",l2_failed:"chargement non réussi
 l2_del_t:"Supprimer l'entrée",l2_flush_q:"Effacer toutes les entrées MAC apprises?",
 m_title:"Duplication de ports",m_active:"actif",m_monitor:"Port de supervision",m_mirror:"Mirroir",m_both:"RX&TX",
 m_note:"RX&TX = duplique RX et TX du port vers le port de supervision.",m_none:"Selectionnez au moins un port à dupliquer",
+iso_title:"Isolation des ports",iso_from:"Du port",iso_to:"Au port",iso_all:"Tout autoriser",
+iso_intro:"Une trame réseau accédant à un port ne peut repartir que par le port selectionné dans cette ligne. L'isolement est prioritaire sur la retransmission, un port non non coché n'est pas accessible directement, quoi que dit la table d'adresses.",
+iso_legend:"La cellule du port lui-même est toujours autorisée. Une port de couleur rouge indique que celui-ci n'est que partiellement ouvert.",
 lag_hash:"Hachage:",lag_note:"Un groupe d'agrégation de Lien (LAG) nécessite au moins un membre pour être sauvegardé dans la configuration de démarrage; Utiliser un groupe vide fait office de remise à zero.",
 lag_clear_q:"Effacer l'agrégation {n}?",lag_clear_d:"Tous les ports membres vont redevenir normaux.",
 e_title:"Gestion énergétique des ports",e_adv:"Capacités",e_lp:"Capacité du partenaire",e_active:"Actif",e_enable:"Basse consommation",
@@ -559,6 +574,7 @@ fw_intro:"Charge une image RTLPlayground (512 KiB .bin). L'image est envoée en 
 fw_upload:"Charger",fw_checking:"{f}: {n} bytes. Vérification...",fw_size_err:"la taille est {n} alors que nous attendons 524288 (512 KiB)",
 fw_magic_err:"Entête de banque de donnée manquant / contrôle LJMP: ce n'est pas une image de firmware",fw_crc_err:"Somme de contrôle erronée: image corrompue",
 fw_valid:"Image RTLPlayground valide (taille, LJMP et somme de contrôle OK)",fw_q:"Chargement du firmware?",
+fw_other:"Cette image n'a pas été prévue pour ce commutateur({m}): La puce, les LED et les boouton peuvent être différents. Poursuivez seulement si vous êtes sûrs de vous.",
 fw_d:"Si la somme de contrôle est correcte, le commutateur va redémarrer tout seul et charger la nouvelle image lors du démarrage (la configuration est préservée). Ne pas éteindre l'appareil avant que les voyants ne s'éteignent.",
 fw_finishing:"Fin d'écriture en mémoire flash... {s} s",fw_uploading:"Chargement... {p}% / {s} s",
 fw_verified:"Somme de contrôle vérifiée, le commutateur redémarre...",
@@ -572,7 +588,7 @@ fw_timeout:"Le commutateur n'est plus joignable depuis 150 s: verifiez l'aliment
 },
 de:{
 nav_dash:"Übersicht",nav_ports:"Ports",nav_stp:"Spanning Tree",nav_stats:"Statistik",
-nav_vlan:"VLANs",nav_l2:"MAC-Tabelle",nav_mirror:"Spiegelung",nav_lag:"LAG",nav_eee:"EEE",
+nav_vlan:"VLANs",nav_l2:"MAC-Tabelle",nav_mirror:"Spiegelung",nav_isolate:"Isolation",nav_lag:"LAG",nav_eee:"EEE",
 nav_bw:"Bandbreite",nav_system:"System",nav_fw:"Firmware",
 hdr_dirty:"ungespeicherte Änderungen",hdr_dirty_t:"Laufende Konfiguration weicht von der Startkonfiguration ab",
 hdr_save:"Im Flash speichern",hdr_save_t:"Laufende Konfiguration dauerhaft im Flash speichern",
@@ -581,15 +597,15 @@ th_sel_light:"Selenized Hell",th_sel_dark:"Selenized Dunkel",
 c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Übernehmen",c_cancel:"Abbrechen",c_confirm:"Bestätigen",
 c_close:"Schliessen",c_refresh:"Aktualisieren",c_off:"aus",c_offc:"Aus",c_down:"getrennt",c_on:"Ein",c_auto:"Auto",c_delete:"Löschen",
 c_type:"Typ",c_state:"Zustand",c_enabled:"Aktiviert",c_load:"Laden",c_disable:"Deaktivieren",c_sfp:"SFP",
-c_full:"voll",c_half:"halb",c_devices:"Geräte",c_yes:"ja",c_no:"nein",
-d_ports:"Ports",d_ports_h:"Port anklicken für Details",d_system:"System",d_traffic:"Datenverkehr",
+c_full:"voll",c_half:"halb",c_yes:"ja",c_no:"nein",
+d_system:"System",d_traffic:"Datenverkehr",
 d_traffic_h:"Pakete/s, live",d_txpps:"TX Pakete/s",d_rxpps:"RX Pakete/s",d_txbad:"TX fehlerhaft",d_rxbad:"RX fehlerhaft",
 i_host:"Hostname",i_ip:"IP-Adresse",i_mask:"Netzmaske",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Erstellt",i_hw:"Hardware",i_temp:"Temperatur",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"Zustand",p_disabled:"deaktiviert",p_up:"verbunden",p_txgb:"TX gut / fehlerhaft",p_rxgb:"RX gut / fehlerhaft",
 p_pkts:"Pakete",p_module:"Modul",p_temp:"Temperatur",p_vcc:"Vcc",p_txbias:"TX-Bias",p_txpower:"Sendeleistung",
 p_rxpower:"Empfangsleistung",p_txfault:"TX-Fehler",p_txdis:"TX deaktiviert",p_rxlos:"RX LOS",p_adv:"Angeboten",
-pt_title:"Port-Konfiguration",pt_conn:"Verbunden",pt_speed:"Geschwindigkeit",pt_mtu:"MTU",
+pt_title:"Port-Konfiguration",pt_conn:"Gelernte Geräte",pt_speed:"Geschwindigkeit",pt_mtu:"MTU",
 pt_sfp_note:"Die SFP-Geschwindigkeit wird pro Steckplatz gesetzt und nicht in der Startkonfiguration gespeichert.",
 pt_name_err:"Port-Name: 1-15 Zeichen, keine Leerzeichen",pt_mtu_err:"MTU muss zwischen 64 und 16383 liegen",
 stp_title:"Spanning Tree",stp_h:"RSTP, 802.1w",stp_version:"Version",stp_v_stp:"STP-kompatibel",
@@ -610,6 +626,7 @@ stp_en_q:"Spanning Tree aktivieren?",
 stp_en_d:"Die Ports starten blockiert und brauchen bis zum doppelten Forward Delay, bis sie weiterleiten; Edge-Ports sind sofort wieder aktiv.",
 stp_dis_q:"Spanning Tree deaktivieren?",stp_dis_d:"Alle Ports leiten sofort weiter; der Schutz vor Netzwerkschleifen entfällt.",
 stp_cost_err:"Pfadkosten müssen zwischen 0 und 200000000 liegen",
+nav_lldp:"LLDP",lldp_enabled:"LLDP aktiv",lldp_title:"Dienststatus",lldp_portname:"Name",lldp_enable:"Pakete senden",
 st_title:"Port-Statistik",st_h:"Summen seit dem Start",st_txg:"TX gut",st_txb:"TX fehlerhaft",st_rxg:"RX gut",
 st_rxb:"RX fehlerhaft",st_details:"Details",st_counters:"MIB-Zähler",st_nonzero:"nur ungleich null",
 st_autoref:"automatisch aktualisieren",st_counter:"Zähler",st_value:"Wert",st_fail:"Zähler konnten nicht geladen werden",
@@ -632,8 +649,12 @@ l2_learned:"gelernt",l2_loading:"lädt...",l2_failed:"Laden fehlgeschlagen",l2_e
 l2_del_t:"Eintrag löschen",l2_flush_q:"Alle gelernten MAC-Einträge löschen?",
 m_title:"Port-Spiegelung",m_active:"aktiv",m_monitor:"Monitor-Port",m_mirror:"Spiegeln",m_both:"Beide",
 m_note:"Beide = RX und TX des Ports auf den Monitor-Port spiegeln.",m_none:"Mindestens einen zu spiegelnden Port wählen",
+iso_title:"Port-Isolation",iso_from:"Von Port",iso_to:"Zu Port",iso_all:"Alle erlauben",
+iso_intro:"Ein Paket, das über einen Port hereinkommt, darf den Switch nur über die Ports verlassen, die in seiner Zeile angehakt sind. Die Isolation wirkt vor der Weiterleitung: Ein nicht angehakter Port ist direkt nicht erreichbar, egal was in der MAC-Tabelle steht.",
+iso_legend:"Das Feld des Ports selbst ist immer erlaubt. Eine rote Portnummer markiert einen Port, der nicht ganz offen ist.",
 lag_hash:"Hash:",lag_note:"Eine LAG braucht mindestens ein Mitglied, um in der Startkonfiguration gespeichert zu werden; eine leere Gruppe zu übernehmen löscht sie.",
 lag_clear_q:"LAG {n} auflösen?",lag_clear_d:"Alle Mitglieds-Ports kehren in den Normalbetrieb zurück.",
+lacp_heading:"LACP (802.3ad)",lag_mode:"Modus",lag_static:"Statisch",lacp_neg:"wird ausgehandelt",lacp_agg:"Aggregator",lacp_members:"aktive Mitglieder",lacp_hint:"LACP: Ports auswählen und Übernehmen drücken, um die Aushandlung zu starten",lacp_actor:"Lokal",lacp_partner:"Partner",lacp_rxstate:"Empfangsstatus",lacp_rx:"Empfangene LACPDUs",lacp_psys:"Partner-System",
 e_title:"Energy Efficient Ethernet",e_adv:"Angeboten",e_lp:"Gegenstelle",e_active:"Aktiv",e_enable:"Aktivieren",
 e_note:"Angebotene und von der Gegenstelle unterstützte Stufen je Geschwindigkeit: 100M, 1G, 2.5G. SFP-Ports unterstützen kein EEE.",
 e_idle:"inaktiv",e_na:"k. A.",
@@ -656,7 +677,8 @@ sy_ip_err:"Ungültige IP / Netzmaske / Gateway",sy_host_err:"Hostname: 1-23 druc
 sy_net_q:"Netzwerkeinstellungen übernehmen?",sy_net_d:"Die Management-IP ändert sich auf {ip}: Diese Seite muss dort neu geöffnet werden.",
 sy_ip_changed:"IP geändert, neu verbinden unter http://{ip}/",sy_dhcp_q:"Auf DHCP umstellen?",
 sy_dhcp_d:"Der Switch bezieht seine Adresse per DHCP. Du musst seine neue IP herausfinden, um dich wieder zu verbinden.",
-sy_sysip_err:"Ungültige IP des Syslog-Servers",sy_sysport_err:"Syslog-Port muss zwischen 1 und 65535 liegen",
+sy_sysip_err:"Ungültige IP des Syslog-Servers",sy_dns1:"DNS-Server",sy_dns2:"Zweiter DNS-Server",sy_dns_err:"Ungültige IP des DNS-Servers",sy_dns_dhcp:"von DHCP: {ip}",sy_sysport_err:"Syslog-Port muss zwischen 1 und 65535 liegen",
+sy_time:"Uhrzeit",sy_ntp:"NTP",sy_ntpsrv:"NTP-Server",sy_ntpsrv_p:"Hostname oder IPv4-Adresse",sy_ntpint:"Abfrageintervall [min]",sy_tz:"Zeitzone",sy_dst:"Sommerzeit",sy_dst_eu:"Europa",sy_dst_us:"USA",sy_now:"Lokale Zeit",sy_sync:"Letzte Synchronisation",sy_ntpaddr:"Server-Adresse",sy_nosync:"nicht synchronisiert",sy_waiting:"warte auf den Server",sy_ago:"vor {n} min",sy_ntp_err:"Hostname oder IPv4-Adresse des NTP-Servers eingeben",sy_ntpint_err:"Abfrageintervall muss zwischen 1 und 1440 liegen",sy_time_note:"Der Switch hat keine batteriegepufferte Uhr: Die Zeit geht bei jedem Neustart verloren und wird neu vom NTP-Server bezogen, sobald das Netzwerk bereit ist. Im Flash speichern, damit die Einstellungen erhalten bleiben.",
 sy_pw_len:"Passwort: 1-20 Zeichen",sy_pw_space:"Das Passwort darf keine Leerzeichen enthalten",sy_pw_match:"Die Passwörter stimmen nicht überein",
 sy_pw_q:"Admin-Passwort ändern?",sy_pw_d:"Gilt sofort für neue Anmeldungen. Im Flash speichern, damit es erhalten bleibt.",
 sy_reboot_q:"Switch neu starten?",sy_reboot_d:"Es gibt UNGESPEICHERTE Änderungen, sie gehen verloren. Zuerst im Flash speichern, wenn du sie behalten willst.",
@@ -675,6 +697,7 @@ fw_intro:"Ein RTLPlayground-Image hochladen (.bin, 512 KiB). Das Image wird im F
 fw_upload:"Hochladen",fw_checking:"{f}: {n} Bytes. Wird geprüft...",fw_size_err:"Grösse ist {n}, erwartet 524288 (512 KiB)",
 fw_magic_err:"Bank-Header / LJMP-Kennung fehlt: kein Firmware-Image",fw_crc_err:"CRC16-Prüfung fehlgeschlagen: Image beschädigt",
 fw_valid:"gültiges RTLPlayground-Image (Grösse, Kennung und CRC16 in Ordnung)",fw_q:"Firmware hochladen?",
+fw_other:"Dieses Image wurde nicht für diesen Switch ({m}) gebaut: SFP-, LED- und Tasten-Pins können abweichen. Nur hochladen, wenn du sicher bist.",
 fw_d:"Ist die Prüfsumme korrekt, startet der Switch neu und übernimmt das Image beim Hochfahren (die Startkonfiguration bleibt erhalten). Nicht vom Strom trennen, bis er wieder erreichbar ist.",
 fw_finishing:"Flash wird fertig beschrieben... {s} s",fw_uploading:"wird hochgeladen... {p}% / {s} s",
 fw_verified:"Prüfsumme bestätigt, der Switch startet neu...",
@@ -781,6 +804,9 @@ var CONF_CMDS=[
   /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,/^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
   /^syslog\s+(on|off)$/,/^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^syslog\s+port\s+\d{1,5}$/,
   /^session\s+\d{1,5}$/,
+  /^dns\s+server\s+(\d{1,3}\.){3}\d{1,3}(\s+(\d{1,3}\.){3}\d{1,3})?$/,
+  /^ntp\s+(on|off)$/,/^ntp\s+server\s+[A-Za-z0-9.-]{1,47}$/,/^ntp\s+interval\s+\d{1,4}$/,
+  /^ntp\s+timezone\s+[+-]?\d{1,2}(:\d{2})?$/,/^ntp\s+dst\s+(off|eu|us)$/,
   /^passwd\s+\S+$/,/^hostname\s+\S{1,23}$/,
   /^vlan\s+\d{1,4}\s+d$/,/^vlan\s+\d{1,4}\s+mgmt$/,
   /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}t?)+$/,
@@ -788,9 +814,10 @@ var CONF_CMDS=[
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
+  /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
   /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
-  /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^laghash\s+[1-4](\s+\w+)+$/,
+  /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
   /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
   /^stp\s+version\s+(rstp|stp)$/,
@@ -798,7 +825,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+cost\s+\d{1,9}$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+prio\s+\d{1,3}$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
-  /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,
+  /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,/^lldp\s+(on|off)$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
 ];
@@ -860,6 +887,7 @@ var TABS=[
   {id:"mirror",icon:"M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4"},
   {id:"isolate",icon:"M4 4h6v6H4zM14 14h6v6h-6zM14 4h6v6h-6zM4 14h6v6H4z"},
   {id:"lag",   icon:"M7 8a4 4 0 100 8h3M17 8a4 4 0 110 8h-3M9 12h6"},
+  {id:"lldp",  icon:"M11 12a1 1 0 002 0 1 1 0 00-2 0M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8"},
   {id:"eee",   icon:"M13 2L4 14h6l-1 8 9-12h-6z"},
   {id:"bw",    icon:"M4 18a8 8 0 0116 0M12 18l4-6"},
   {id:"system",icon:"M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"},
@@ -936,6 +964,7 @@ function pollStatus(){
   });
 }
 var statusPoller=new Poller(pollStatus,2500);
+statusPoller.start();
 function needPorts(fn){
   if(S.n)return fn();
   pollStatus().then(fn).catch(function(){});
@@ -1048,7 +1077,11 @@ function renderInfo(){
     if(v==null||v==="")return;
     tb.appendChild(h("tr",null,[h("td",{class:"mut",text:t(r[0])}),h("td",{class:"mono",text:String(v)})]));
   });
-  if(S.info.hostname)$("brandname").textContent=$("brandname").title=S.info.hostname;
+  if(S.info.hostname){
+    $("brandname").textContent=$("brandname").title=document.title=S.info.hostname;
+    // Remembered per switch (each has its own origin) for the login page tab
+    try{localStorage.setItem("rtl_host",S.info.hostname);}catch(e){}
+  }
   if(S.info.sw_ver)$("fver").textContent="RTLPlayground "+S.info.sw_ver;
 }
 function pollInfo(){
@@ -1076,8 +1109,7 @@ function dashStatus(){
   });
 }
 tabHooks.dash={
-  enter:function(){statusPoller.start();pollInfo().catch(function(){})},
-  leave:function(){statusPoller.stop()},
+  enter:function(){pollInfo().catch(function(){})},
   status:dashStatus,
 };
 
@@ -1121,31 +1153,12 @@ function loadMtu(){
     });
   });
 }
-/* One learned MAC is the attached device; several means a switch or AP
- * sits behind the port, so only the count is shown. */
-function portsMacs(){
-  l2Load().then(function(all){
-    var by={};
-    all.forEach(function(e){
-      if(e.pport==="CPU")return;
-      var l=by[e.pport]=by[e.pport]||[];
-      if(l.indexOf(e.mac)<0)l.push(e.mac);
-    });
-    S.ports.forEach(function(p){
-      var el=$("pmac"+(p.portNum-1));
-      if(!el)return;
-      var m=by[p.portNum]||[];
-      el.textContent=!m.length?"-":(m.length===1?m[0]:m.length+" "+t("c_devices"));
-      el.title=m.join("\n");
-    });
-  }).catch(function(){});
-}
-var _macTick=0;
 function portsStatus(){
   buildPorts();
-  if(++_macTick%10===0)portsMacs();
   S.ports.forEach(function(p){
     var i=p.portNum-1,el=$("plink"+i);
+    var mc=$("pmac"+i);
+    if(mc)mc.textContent=parseInt(p.macs,16)&0x1fff;
     if(el)el.innerHTML=linkBadge(p);
     var sel=$("pspd"+i),v=p.isSFP?0:ADVSEL[parseInt(p.adv,2)];
     if(sel&&v&&document.activeElement!==sel)sel.value=v;
@@ -1173,8 +1186,7 @@ function applyPort(i){
   postCmds(cmds).then(loadMtu).catch(function(){});
 }
 tabHooks.ports={
-  enter:function(){statusPoller.start();needPorts(function(){buildPorts();portsMacs()})},
-  leave:function(){statusPoller.stop();l2Gen++},
+  enter:function(){needPorts(buildPorts)},
   status:portsStatus,
 };
 
@@ -1430,8 +1442,7 @@ function statsStatus(){
   });
 }
 tabHooks.stats={
-  enter:function(){statusPoller.start()},
-  leave:function(){statusPoller.stop();if(ctrPoll)ctrPoll.stop()},
+  leave:function(){if(ctrPoll)ctrPoll.stop()},
   status:statsStatus,
 };
 
@@ -1791,6 +1802,15 @@ function buildLag(){
   for(var g=1;g<=4;g++)(function(g){
     var card=h("div",{class:"card"});
     card.appendChild(h("h2",{text:"LAG "+g}));
+    var mr=h("div",{style:"display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px",class:"small"});
+    mr.appendChild(h("span",{class:"mut",text:t("lag_mode")}));
+    var ms=h("select",{class:"in",id:"lgm"+g});
+    ms.appendChild(h("option",{value:"static",text:t("lag_static")}));
+    ms.appendChild(h("option",{value:"lacp",text:"LACP"}));
+    ms.addEventListener("change",function(){$("lgs"+g).textContent=ms.value==="lacp"?t("lacp_hint"):""});
+    mr.appendChild(ms);
+    card.appendChild(mr);
+    card.appendChild(h("p",{class:"small mono",id:"lgs"+g,style:"margin-bottom:10px"}));
     var pr=h("div",{style:"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"});
     for(var p=1;p<=S.n;p++)pr.appendChild(h("label",null,[
       h("input",{type:"checkbox",id:"lg"+g+"p"+p}),document.createTextNode(" "+p+" "),
@@ -1803,14 +1823,34 @@ function buildLag(){
     });
     card.appendChild(hr);
     card.appendChild(h("button",{class:"ctl pri",text:t("c_apply"),onclick:function(){lagApply(g)}}));
+    card.addEventListener("change",function(){card.dataset.dirty="1"});
     w.appendChild(card);
   })(g);
 }
+var lacpCfg=[0,0,0,0,0];
+function maskPorts(m){var r=[];for(var p=1;p<=S.n;p++)if((m>>S.physToLog[p-1])&1)r.push(p);return r.length?r.join(" "):"-"}
 function lagLoad(){
-  return getJSON("/lag.json").then(function(s){
+  return getJSON("/lacp.json").then(function(c){
+    var tb=$("lacptbl").tBodies[0];
+    tb.innerHTML="";
+    c.lags.forEach(function(lg,i){
+      var g=i+1;
+      lacpCfg[g]=parseInt(lg.cfg,16);
+      if($("lgm"+g).closest(".card").dataset.dirty)return;
+      $("lgm"+g).value=lacpCfg[g]?"lacp":"static";
+      $("lgs"+g).textContent=lacpCfg[g]?"LACP: "+t("lacp_agg")+" "+(lg.aggValid?lg.agg:"("+t("lacp_neg")+")")+", "+t("lacp_members")+" "+maskPorts(parseInt(lg.members,16)):"";
+    });
+    if(c.on)c.ports.forEach(function(p){
+      if(p.lag===255)return;
+      var tr=tb.insertRow();
+      [p.p,p.lag+1,p.a,p.pt,p.rs,parseInt(p.rx,16),p.psys].forEach(function(v){tr.insertCell().textContent=v});
+    });
+    return getJSON("/lag.json");
+  }).then(function(s){
     s.forEach(function(l){
       var g=l.lagNum+1;
-      var members=parseInt(l.members,2);
+      if($("lgm"+g).closest(".card").dataset.dirty)return;
+      var members=lacpCfg[g]||parseInt(l.members,2);
       for(var p=1;p<=S.n;p++)
         $("lg"+g+"p"+p).checked=!!((members>>S.physToLog[p-1])&1);
       var hash=parseInt(l.hash,16);
@@ -1819,21 +1859,51 @@ function lagLoad(){
   });
 }
 function lagApply(g){
-  var cmd="lag "+g,n=0;
+  var lacp=$("lgm"+g).value==="lacp",cmd="lag "+g+(lacp?" lacp":""),n=0,pre=[];
+  delete $("lgm"+g).closest(".card").dataset.dirty;
   for(var p=1;p<=S.n;p++)if($("lg"+g+"p"+p).checked){cmd+=" "+p;n++;}
-  if(!n){
+  if(!lacp&&lacpCfg[g])pre.push("lag "+g+" lacp off");
+  if(lacp&&!n)cmd="lag "+g+" lacp off";
+  if(!n&&!lacp){
     confirmModal(t("lag_clear_q",{n:g}),t("lag_clear_d"),function(){
-      postCmd("lag "+g+" d").then(lagLoad).catch(function(){});
+      postCmds(pre.concat(["lag "+g+" d"])).then(lagLoad).catch(function(){});
     });
     return;
   }
   var hcmd="laghash "+g,nh=0;
   HASHF.forEach(function(f){if($("lg"+g+"h"+f).checked){hcmd+=" "+f;nh++;}});
-  var cmds=[cmd];
+  var cmds=pre.concat([cmd]);
   if(nh)cmds.push(hcmd);
   postCmds(cmds).then(lagLoad).catch(function(){});
 }
-tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagLoad().catch(function(){})})}};
+var lagPoller=new Poller(function(){return lagLoad().catch(function(){})},3000);
+tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagPoller.start()})},leave:function(){lagPoller.stop()}};
+
+
+function lldpLoad(){
+  return getJSON("/lldp.json").then(function(s){
+    $("lldp_en").checked=s.on;
+    var tb=$("lldp_table").tBodies[0];tb.innerHTML="";
+    byPort(s.portStatus).forEach(function(p){
+      var tr=tb.insertRow();
+      tr.insertCell().textContent=p.portNum;
+      tr.insertCell().textContent=p.name;
+      var sw=h("label",{class:"switch"},[
+        h("input",{type:"checkbox",onchange:function(){
+          postCmd("port "+p.portNum+" lldp "+(this.checked?"permit":"block"))
+            .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
+        }}),h("i")]);
+      sw.firstChild.checked=p.permitted;
+      tr.insertCell().appendChild(sw);
+    });
+  });
+}
+
+$("lldp_en").addEventListener("change",function(){
+  var el=this;
+  postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+});
+tabHooks.lldp={enter:lldpLoad};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);
@@ -1993,6 +2063,16 @@ function sysLoad(){
     if(S.info.session_timeout)$("sy-sesstmo").value=S.info.session_timeout;
   }).catch(function(){});
   cfgReload();
+  dnsLoad();
+}
+function dnsLoad(){
+  return api("/cmd",{method:"POST",body:"dns"}).then(function(r){
+    var m=r.body.match(/DNS servers ([\d.]+) ([\d.]+), from DHCP ([\d.]+)/);
+    if(!m)return;
+    function v(x){return x==="0.0.0.0"?"":x}
+    $("sy-dns1").value=v(m[1]);$("sy-dns2").value=v(m[2]);
+    $("sy-dnsdhcp").textContent=m[3]==="0.0.0.0"?"":t("sy_dns_dhcp",{ip:m[3]});
+  }).catch(function(){});
 }
 function cfgParseKnown(txt){
   var igmp=false,syslog=false;
@@ -2009,13 +2089,15 @@ function cfgParseKnown(txt){
 $("sy-apply").addEventListener("click",function(){
   var ip=$("sy-ip").value.trim(),mask=$("sy-mask").value.trim(),gw=$("sy-gw").value.trim();
   if(!okIp(ip)||!okIp(mask)||!okIp(gw)){toast(t("sy_ip_err"),"err");return;}
+  var d1=$("sy-dns1").value.trim(),d2=$("sy-dns2").value.trim();
+  if((d1&&!okIp(d1))||(d2&&!okIp(d2))){toast(t("sy_dns_err"),"err");return;}
   var cmds=[];
   var hn=$("sy-host").value.trim();
   if(hn&&hn!==S.info.hostname){
     if(!/^[\x21-\x7e]{1,23}$/.test(hn)||/["\\]/.test(hn)){toast(t("sy_host_err"),"err");return;}
     cmds.push("hostname "+hn);
   }
-  cmds.push("ip "+ip+"\nnetmask "+mask+"\ngw "+gw);
+  cmds.push("ip "+ip+"\nnetmask "+mask+"\ngw "+gw+"\ndns server "+(d1||"0.0.0.0")+(d2?" "+d2:""));
   var changingIp=ip!==S.info.ip_address;
   confirmModal(t("sy_net_q"),changingIp?t("sy_net_d",{ip:ip}):"",function(){
     postCmds(cmds).then(function(){
@@ -2107,11 +2189,58 @@ $("cfgreload").addEventListener("click",cfgReload);
 $("cfgwrite").addEventListener("click",function(){
   writeConfig($("cfgedit").value,t("cw_title"));
 });
-tabHooks.system={enter:sysLoad};
+var ntpBase=null,ntpTimer=null;
+function tzText(m){var a=Math.abs(m);return(m<0?"-":"+")+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0")}
+function ntpTick(){
+  if(!ntpBase)return;
+  var d=new Date(ntpBase.ms+(Date.now()-ntpBase.at));
+  function p(n){return String(n).padStart(2,"0")}
+  $("sy-sync").textContent=t("sy_ago",{n:ntpBase.sync+Math.floor((Date.now()-ntpBase.at)/60000)});
+  $("sy-now").textContent=d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate())+" "
+    +p(d.getUTCHours())+":"+p(d.getUTCMinutes())+":"+p(d.getUTCSeconds())+" UTC"+ntpBase.tz;
+}
+function ntpLoad(){
+  return api("/cmd",{method:"POST",body:"ntp"}).then(function(r){
+    var m=r.body.match(/NTP (on|off), server (\S*), address ([\d.]+), interval (\d+) min, timezone ([+-]\d\d:\d\d), dst (\w+)/);
+    if(!m)return;
+    var x=r.body.match(/Time (\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d) UTC([+-]\d\d:\d\d)( DST)?, synchronised (\d+) min ago/);
+    $("sy-ntpaddr").textContent=m[3]==="0.0.0.0"?"-":m[3];
+    if(x){
+      ntpBase={at:Date.now(),ms:Date.UTC(+x[1],+x[2]-1,+x[3],+x[4],+x[5],+x[6]),tz:x[7]+(x[8]?" DST":""),sync:+x[9]};
+      ntpTick();
+    }else{
+      ntpBase=null;
+      $("sy-now").textContent=t("sy_nosync");
+      $("sy-sync").textContent=m[1]==="on"?t("sy_waiting"):"-";
+    }
+    if($("sy-ntpcard").dataset.dirty)return;
+    $("sy-ntp").checked=m[1]==="on";$("sy-ntpsrv").value=m[2];$("sy-ntpint").value=m[4];
+    $("sy-tz").value=m[5];$("sy-dst").value=m[6];
+  }).catch(function(){});
+}
+[-720,-660,-600,-570,-540,-480,-420,-360,-300,-240,-210,-180,-120,-60,0,60,120,180,210,240,270,300,330,345,
+ 360,390,420,480,525,540,570,600,630,660,720,765,780,840].forEach(function(z){
+  $("sy-tz").appendChild(h("option",{value:tzText(z),text:"UTC"+tzText(z)}));
+});
+["change","input"].forEach(function(ev){$("sy-ntpcard").addEventListener(ev,function(){this.dataset.dirty="1"})});
+$("sy-ntpapply").addEventListener("click",function(){
+  var srv=$("sy-ntpsrv").value.trim(),iv=$("sy-ntpint").value.trim();
+  if(!/^[A-Za-z0-9.-]{1,47}$/.test(srv)){toast(t("sy_ntp_err"),"err");return;}
+  if(!(+iv>=1&&+iv<=1440)){toast(t("sy_ntpint_err"),"err");return;}
+  delete $("sy-ntpcard").dataset.dirty;
+  postCmds(["ntp server "+srv,"ntp interval "+iv,"ntp timezone "+$("sy-tz").value,"ntp dst "+$("sy-dst").value,
+    "ntp "+($("sy-ntp").checked?"on":"off")]).then(ntpLoad).catch(function(){});
+});
+$("sy-ntprefresh").addEventListener("click",ntpLoad);
+tabHooks.system={
+  enter:function(){sysLoad();ntpLoad();clearInterval(ntpTimer);ntpTimer=setInterval(ntpTick,1000)},
+  leave:function(){clearInterval(ntpTimer)},
+};
 
 var CONF_OVERWRITE=[
   /^ip\b/,/^gw\b/,/^netmask\b/,/^hostname\b/,
-  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^passwd\b/,/^session\b/,
+  /^syslog\s+ip\b/,/^syslog\s+port\b/,/^dns\s+server\b/,/^passwd\b/,/^session\b/,
+  /^ntp\s+server\b/,/^ntp\s+interval\b/,/^ntp\s+timezone\b/,/^ntp\s+dst\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
   /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
@@ -2121,7 +2250,7 @@ var CONF_OVERWRITE=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
@@ -2137,6 +2266,7 @@ function mergeConf(base,texts){
         else drop(/^eee /);
         conf.push(line);return;
       }
+      if((m=line.match(/^lag (\d) lacp off$/))){drop(new RegExp("^lag "+m[1]+" lacp( |$)"));return;}
       if(line==="mirror off"){drop(/^mirror /);return;}
       if(!isConfCmd(line))return;
       if((m=line.match(/^ingress (.+)$/))){
@@ -2231,10 +2361,26 @@ $("saveBtn").addEventListener("click",function(){
   });
 });
 
-var fwBuf=null;
+var fwBuf=null,fwOther=false;
+// Every image carries its machine name as a NUL-terminated string, the same
+// one the running switch reports as hw_ver: an image without it was built
+// for another board (SFP, LED and button pins differ between machines).
+function fwForThisSwitch(u){
+  var name=S.info.hw_ver;
+  if(!name)return true;
+  var n=[];
+  for(var i=0;i<name.length;i++)n.push(name.charCodeAt(i)&0xff);
+  n.push(0);
+  outer:for(var p=0;p<=u.length-n.length;p++){
+    for(var k=0;k<n.length;k++)if(u[p+k]!==n[k])continue outer;
+    return true;
+  }
+  return false;
+}
 $("fwfile").addEventListener("change",function(){
   var f=this.files[0];
   fwBuf=null;
+  fwOther=false;
   $("fwup").disabled=true;
   $("fwinfo").textContent="";
   if(!f)return;
@@ -2257,13 +2403,15 @@ $("fwfile").addEventListener("change",function(){
       return;
     }
     fwBuf=f;
-    info.innerHTML='<span style="color:var(--ok)">\u2713 '+esc(t("fw_valid"))+"</span>";
+    fwOther=!fwForThisSwitch(u);
+    info.innerHTML='<span style="color:var(--ok)">\u2713 '+esc(t("fw_valid"))+"</span>"+
+      (fwOther?'<br><span style="color:var(--warn)">\u26a0 '+esc(t("fw_other",{m:S.info.hw_ver}))+"</span>":"");
     $("fwup").disabled=false;
   });
 });
 $("fwup").addEventListener("click",function(){
   if(!fwBuf)return;
-  confirmModal(t("fw_q"),t("fw_d"),function(){
+  confirmModal(t("fw_q"),(fwOther?t("fw_other",{m:S.info.hw_ver})+" ":"")+t("fw_d"),function(){
     var form=new FormData();
     form.append("uploadedfile",fwBuf,fwBuf.name);
     var xhr=new XMLHttpRequest();

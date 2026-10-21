@@ -1,4 +1,4 @@
-# PB-2131
+# Steamemo/Goalake IG204-V1
 
 Following is documentation for unmanaged switch marked as `IG204-V1`.
 
@@ -14,7 +14,7 @@ Initial installation is only possible via a direct write to the SPI flash.
 | STEAMEMO | IG204-V1   | No      | PB-2131    | cFeon Q32A | 8372  |
 
 ### Targets
-`MACHINE_STEAMEMO_IG204_V1` or `MACHINE_GOALAKE_IG204_V1`. The define only changes branding in the UI, hardware config is indentical.
+`MACHINE=STEAMEMO_IG204_V1` or `MACHINE=GOALAKE_IG204_V1`. The define only changes branding in the UI, hardware config is identical.
 
 ### Label specifications (STEAMEMO)
 

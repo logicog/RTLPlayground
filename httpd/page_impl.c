@@ -14,6 +14,7 @@
 #include "version.h"
 #include "machine.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_lacp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -48,6 +49,9 @@ extern __xdata char sfp_module_vendor[2][17];
 extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
+
+extern __xdata uint16_t lldp_logical_port_status;
+extern __xdata bool lldp_enabled;
 
 __code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
 __code const uint8_t * __code const HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
@@ -619,7 +623,6 @@ static void bridge_to_html(void)
 		byte_to_html(pi_mac[i]);
 }
 
-
 void send_stp(void)
 {
 	uint8_t i, j, st, dsg;
@@ -734,8 +737,84 @@ void send_stp(void)
 	slen += strtox(outbuf + slen, "]}");
 }
 
+void send_lacp(void)
+{
+	dbg_string("send_lacp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(lacpEnabled);
+	slen += strtox(outbuf + slen, ",\"lags\":[");
+	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
+		slen += strtox(outbuf + slen, "{\"cfg\":\"");
+		byte_to_html(lacp_lag_ports[l] >> 8);
+		byte_to_html(lacp_lag_ports[l]);
+		slen += strtox(outbuf + slen, "\",\"aggValid\":");
+		bool_to_html(lacp_agg_valid[l]);
+		slen += strtox(outbuf + slen, ",\"agg\":\"");
+		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
+			byte_to_html(lacp_agg_sys[l][j]);
+		slen += strtox(outbuf + slen, "\",\"members\":\"");
+		byte_to_html(lacp_members_last[l] >> 8);
+		byte_to_html(lacp_members_last[l]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "],\"ports\":[");
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"p\":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, ",\"lag\":");
+		itoa_html(lacp_port_lag[i]);
+		slen += strtox(outbuf + slen, ",\"a\":\"");
+		byte_to_html(lacp_actor_state[i]);
+		slen += strtox(outbuf + slen, "\",\"pt\":\"");
+		byte_to_html(lacp_partner_state[i]);
+		slen += strtox(outbuf + slen, "\",\"rs\":");
+		itoa_html(lacp_rx_state[i]);
+		slen += strtox(outbuf + slen, ",\"rx\":\"");
+		byte_to_html(lacp_rx_count[i] >> 8);
+		byte_to_html(lacp_rx_count[i]);
+		slen += strtox(outbuf + slen, "\",\"psys\":\"");
+		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
+			byte_to_html(lacp_partner_sys[i][j]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
+}
 
+void send_lldp(void)
+{
+	dbg_string("send_lldp called\n");
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+
+	slen += strtox(outbuf + slen, "{\"on\":");
+	bool_to_html(lldp_enabled);
+	slen += strtox(outbuf + slen, ",\"portStatus\":[");
+
+	for (uint8_t i = machine.min_port; i <= machine.max_port; i++) {
+		slen += strtox(outbuf + slen, "{\"portNum\":");
+		itoa_html(machine.log_to_phys_port[i]);
+
+		slen += strtox(outbuf + slen, ",\"logPort\":");
+		itoa_html(i);
+		slen += strtox(outbuf + slen, ",\"name\":\"");
+		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
+			json_char_to_html(port_names[i][j]);
+		}
+
+		slen += strtox(outbuf + slen, "\",\"permitted\":");
+		bool_to_html(1 & (lldp_logical_port_status >> i));
+		slen += strtox(outbuf + slen, "}");
+
+		if (i < machine.max_port)
+			char_to_html(',');
+		else
+			char_to_html(']');
+	}
+	char_to_html('}');
+}
 
 void send_eee(void)
 {
@@ -1032,6 +1111,9 @@ void send_status(void)
 		slen += strtox(outbuf + slen, "\",\"rxB\":\"0x");
 		STAT_GET(STAT_COUNTER_ERR_PKTS, i);
 		reg_to_html(RTL837X_STAT_V_HIGH);	// 32bit RX packet errors
+
+		slen += strtox(outbuf + slen, "\",\"macs\":\"0x");
+		reg_to_html(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (i << 2));
 		slen += strtox(outbuf + slen, "\"}");
 		if (i < machine.max_port)
 			char_to_html(',');
