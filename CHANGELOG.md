@@ -30,6 +30,9 @@
     the offending line is skipped and the following lines are still applied.
   - The web UI and the configuration upload now refuse a line the replay cannot take,
     instead of writing it to flash.
+- Web UI
+  - The Statistics table is only as wide as its content, and its counter headers line up with
+    their right-aligned values instead of stretching across the page.
 
 ## Breaking changes
 
