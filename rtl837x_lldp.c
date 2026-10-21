@@ -21,6 +21,7 @@ static __code const uint8_t lldp_oui_8023[3] = {0x00, 0x12, 0x0f};
 
 __xdata uint16_t lldp_ticks;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
+__xdata uint8_t lldp_tlv_mask = LLDP_TX_ALL;
 
 void lldp_init(void) __banked
 {
@@ -98,15 +99,17 @@ static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant
     p += lldp_sysdesc(p);
 
     //System Capabilities: supported, enabled
-    *p++ = LLDP_TYPE(LLDP_CAPABILITIES_TLV_TYPE);
-    *p++ = LLDP_CAPABILITIES_TLV_LENGTH;
-    *p++ = LLDP_CAPABILITY_BRIDGE >> 8;
-    *p++ = LLDP_CAPABILITY_BRIDGE & 0xff;
-    *p++ = LLDP_CAPABILITY_BRIDGE >> 8;
-    *p++ = LLDP_CAPABILITY_BRIDGE & 0xff;
+    if (lldp_tlv_mask & LLDP_TX_SYSCAP) {
+        *p++ = LLDP_TYPE(LLDP_CAPABILITIES_TLV_TYPE);
+        *p++ = LLDP_CAPABILITIES_TLV_LENGTH;
+        *p++ = LLDP_CAPABILITY_BRIDGE >> 8;
+        *p++ = LLDP_CAPABILITY_BRIDGE & 0xff;
+        *p++ = LLDP_CAPABILITY_BRIDGE >> 8;
+        *p++ = LLDP_CAPABILITY_BRIDGE & 0xff;
+    }
 
     //Management Address: IPv4
-    if (uip_hostaddr[0] | uip_hostaddr[1]) {
+    if ((lldp_tlv_mask & LLDP_TX_MGMT) && (uip_hostaddr[0] | uip_hostaddr[1])) {
         *p++ = LLDP_TYPE(LLDP_MGMT_ADDR_TLV_TYPE);
         *p++ = LLDP_MGMT_ADDR_TLV_LENGTH;
         *p++ = LLDP_MGMT_ADDR_STR_LENGTH;
@@ -129,7 +132,8 @@ static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant
             LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
 
             p = tail;
-            p += lldp_portdesc(p, port);
+            if (lldp_tlv_mask & LLDP_TX_PORTDESC)
+                p += lldp_portdesc(p, port);
             p += lldp_port_org_tlvs(p, port);
 
             // End of LLDPDU TLV
@@ -296,26 +300,33 @@ uint8_t lldp_port_org_tlvs(__xdata uint8_t *p, uint8_t port) __banked __reentran
     uint16_t v;
     uint8_t lag;
 
-    p = lldp_mac_phy(p, port);
+    if (lldp_tlv_mask & LLDP_TX_MACPHY)
+        p = lldp_mac_phy(p, port);
 
-    v = port_pvid_get(port);
-    p = lldp_org_header(p, lldp_oui_8021, LLDP_8021_SUBTYPE_PVID, 2);
-    *p++ = v >> 8;
-    *p++ = v & 0xff;
+    if (lldp_tlv_mask & LLDP_TX_PVID) {
+        v = port_pvid_get(port);
+        p = lldp_org_header(p, lldp_oui_8021, LLDP_8021_SUBTYPE_PVID, 2);
+        *p++ = v >> 8;
+        *p++ = v & 0xff;
+    }
 
-    lag = port_lag_of(port);
-    p = lldp_org_header(p, lldp_oui_8023, LLDP_8023_SUBTYPE_LINK_AGG, 5);
-    *p++ = LLDP_AGG_CAPABLE | (lag == PORT_LAG_NONE ? 0 : LLDP_AGG_ACTIVE);
-    *p++ = 0;
-    *p++ = 0;
-    *p++ = 0;
-    *p++ = lag == PORT_LAG_NONE ? 0 : lag + 1;
+    if (lldp_tlv_mask & LLDP_TX_LAG) {
+        lag = port_lag_of(port);
+        p = lldp_org_header(p, lldp_oui_8023, LLDP_8023_SUBTYPE_LINK_AGG, 5);
+        *p++ = LLDP_AGG_CAPABLE | (lag == PORT_LAG_NONE ? 0 : LLDP_AGG_ACTIVE);
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = lag == PORT_LAG_NONE ? 0 : lag + 1;
+    }
 
-    reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t)port << 8));
-    v = SFR_DATA_U16 & PORT_MAX_LEN_MASK;
-    p = lldp_org_header(p, lldp_oui_8023, LLDP_8023_SUBTYPE_MAX_FRAME, 2);
-    *p++ = v >> 8;
-    *p++ = v & 0xff;
+    if (lldp_tlv_mask & LLDP_TX_MFS) {
+        reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t)port << 8));
+        v = SFR_DATA_U16 & PORT_MAX_LEN_MASK;
+        p = lldp_org_header(p, lldp_oui_8023, LLDP_8023_SUBTYPE_MAX_FRAME, 2);
+        *p++ = v >> 8;
+        *p++ = v & 0xff;
+    }
 
     return p - start;
 }

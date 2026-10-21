@@ -41,6 +41,8 @@ stp_en_d:"Ports start blocked and take up to twice the forward delay to reach fo
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
 lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_tlvs:"Optional TLVs",lldp_t_portdesc:"Port Description",lldp_t_syscap:"System Capabilities",lldp_t_mgmt:"Management Address",
+lldp_t_pvid:"Port VLAN ID",lldp_t_macphy:"MAC/PHY Status",lldp_t_lag:"Link Aggregation",lldp_t_mfs:"Maximum Frame Size",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -826,6 +828,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,/^lldp\s+(on|off)$/,
+  /^lldp\s+tlv\s+(portdesc|syscap|mgmt|pvid|macphy|lag|mfs)\s+(on|off)$/,
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
 ];
@@ -1880,9 +1883,20 @@ var lagPoller=new Poller(function(){return lagLoad().catch(function(){})},3000);
 tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagPoller.start()})},leave:function(){lagPoller.stop()}};
 
 
+var LLDP_TLVS=["portdesc","syscap","mgmt","pvid","macphy","lag","mfs"];
 function lldpLoad(){
   return getJSON("/lldp.json").then(function(s){
     $("lldp_en").checked=s.on;
+    var box=$("lldp_tlvs");box.innerHTML="";
+    LLDP_TLVS.forEach(function(k,i){
+      var sw=h("span",{class:"switch"},[
+        h("input",{type:"checkbox",onchange:function(){
+          var el=this;
+          postCmd("lldp tlv "+k+" "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+        }}),h("i")]);
+      sw.firstChild.checked=s.tlv>>i&1;
+      box.appendChild(h("label",{class:"row"},[h("span",{class:"lb",text:t("lldp_t_"+k)}),sw]));
+    });
     var tb=$("lldp_table").tBodies[0];tb.innerHTML="";
     byPort(s.portStatus).forEach(function(p){
       var tr=tb.insertRow();
@@ -2250,7 +2264,7 @@ var CONF_OVERWRITE=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp\s+tlv\s+\w+)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}

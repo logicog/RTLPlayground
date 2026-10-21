@@ -76,6 +76,17 @@
 
 #define LLDP_MAX_PAYLOAD 128
 
+// Optional TLVs, bits of lldp_tlv_mask in the order of "lldp tlv <name>"
+#define LLDP_TX_PORTDESC 0x01
+#define LLDP_TX_SYSCAP 0x02
+#define LLDP_TX_MGMT 0x04
+#define LLDP_TX_PVID 0x08
+#define LLDP_TX_MACPHY 0x10
+#define LLDP_TX_LAG 0x20
+#define LLDP_TX_MFS 0x40
+#define LLDP_TX_ALL 0x7f
+#define LLDP_TX_N 7
+
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
 void lldp_send(void) __banked;

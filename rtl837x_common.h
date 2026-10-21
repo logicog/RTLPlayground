@@ -134,6 +134,7 @@ struct flash_region_t {
 
 extern __xdata char port_names[9][PORT_NAME_SIZE];
 extern __xdata uint16_t lldp_logical_port_status;
+extern __xdata uint8_t lldp_tlv_mask;
 
 extern __xdata bool stp_enabled;
 

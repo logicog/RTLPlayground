@@ -37,7 +37,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
 TABLE_ENV = support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c \
             $(SRCROOT)/rtl837x_port.c $(SRCROOT)/httpd/page_impl.c
 
-all: run
+all: run lldp-conf
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
@@ -78,7 +78,12 @@ run: $(TESTS)
 	done; \
 	if [ $$fail -ne 0 ]; then echo "TESTS FAILED"; exit 1; else echo "ALL TESTS PASSED"; fi
 
+# Save to flash keeps one "lldp tlv" line per TLV (html/app.js mergeConf)
+NODE ?= node
+lldp-conf:
+	cd $(SRCROOT) && $(NODE) test/test_lldp_conf.cjs
+
 clean:
 	rm -rf $(BUILDDIR)
 
-.PHONY: all run clean
+.PHONY: all run lldp-conf clean

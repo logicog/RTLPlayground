@@ -101,6 +101,7 @@ input.in:focus,select.in:focus,textarea.in:focus{border-color:var(--ac)}
 input.in.sm{width:7em}
 label.row{display:flex;align-items:center;gap:10px;margin:8px 0}
 label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
+#lldp_tlvs label.row span.lb{width:170px}
 .switch{position:relative;display:inline-block;width:34px;height:19px;flex:none}
 .switch input{opacity:0;width:0;height:0}
 .switch i{
@@ -343,6 +344,9 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <div class="scrollx"><table class="t" id="lldp_table">
           <thead><tr><th data-i18n="c_port">Port Number</th><th data-i18n="lldp_portname">Name</th><th data-i18n="lldp_enable">Send Frames</th></tr></thead>
           <tbody></tbody></table></div>
+      </div>
+      <div class="card"><h2 data-i18n="lldp_tlvs">Optional TLVs</h2>
+        <div id="lldp_tlvs"></div>
       </div>
     </section>
 
