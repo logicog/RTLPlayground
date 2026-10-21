@@ -84,15 +84,15 @@ PB-2131 contains a front switch labeled "VLAN", wired to `GPIO36`. Flipping it t
 
 Top side PCB
 
-<img src="photos/PB-2131/PCB-top-STEAMEMO-IG204.jpg" width="600" />
+<img src="photos/STEAMEMO_IG204_V1/PCB-top-STEAMEMO-IG204.jpg" width="600" />
 
 Case front Goalake
 
-<img src="photos/PB-2131/case-Goalake-IG204.jpeg" width="600" />
+<img src="photos/STEAMEMO_IG204_V1/case-Goalake-IG204.jpeg" width="600" />
 
 Case bottom Goalake
 
-<img src="photos/PB-2131/label-Goalake-IG204.jpeg" width="600" />
+<img src="photos/STEAMEMO_IG204_V1/label-Goalake-IG204.jpeg" width="600" />
 
 ### Connectors
 ### T7, serial console
