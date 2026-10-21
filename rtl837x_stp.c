@@ -936,8 +936,7 @@ void stp_setup(void) __banked
 
 	/* Seed the carrier bitmap, so turning STP on does not report every
 	 * port that was already down as a fresh topology change. */
-	reg_read_m(RTL837X_REG_LINKS_STS);
-	stp_link_now = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
+	stp_link_now = port_link_mask();
 	stp_link_prev = 0;
 	for (stp_i = machine.min_port; stp_i <= machine.max_port; stp_i++)
 		if ((stp_link_now >> stp_i) & 1)

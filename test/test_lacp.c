@@ -56,11 +56,12 @@ static uint16_t hw_links;
 uint8_t sfr_data[4];
 void reg_read_m(uint16_t reg)
 {
+	(void)reg;
 	memset(sfr_data, 0, sizeof(sfr_data));
-	if (reg == RTL837X_REG_LINKS_STS) {
-		sfr_data[1] = hw_links;
-		sfr_data[2] = hw_links >> 8;
-	}
+}
+uint16_t port_link_mask(void)
+{
+	return hw_links;
 }
 
 /* ---------- on-wire mirrors (independent re-statement of the layout) ---------- */

@@ -357,15 +357,10 @@ void lacp_timers(void) __banked
 }
 
 
-static uint16_t lacp_link_mask(void)
-{
-	reg_read_m(RTL837X_REG_LINKS_STS);
-	return ((uint16_t)sfr_data[2] << 8) | sfr_data[1];
-}
 
 void lacp_link_change(void) __banked
 {
-	lacp_scratch_mask = lacp_link_mask() ^ lacp_link_last;
+	lacp_scratch_mask = port_link_mask() ^ lacp_link_last;
 	if (!lacp_scratch_mask)
 		return;
 	lacp_link_last ^= lacp_scratch_mask;
@@ -425,7 +420,7 @@ static uint8_t lacp_any_lag(void)
 static void lacp_engine_on(void)
 {
 	lacp_tick_last = (uint8_t)ticks;
-	lacp_link_last = lacp_link_mask();
+	lacp_link_last = port_link_mask();
 	lacpEnabled = 1;
 	trap_rma_set(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_TRAP);
 }
