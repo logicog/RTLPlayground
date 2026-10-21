@@ -80,6 +80,7 @@
 #define ACL_FWD_TRAP		3
 #define ACL_FWD_TRAP_EXT	4
 #define ACL_FWD_TRAP_BOTH	5
+#define ACL_FWD_QOS(variant, pmask)	((((uint32_t)(pmask) << 4) | (variant)) << 17)
 #define ACL_GPIO_PINS		4
 
 #define ACL_ERR_TEMPLATE	1

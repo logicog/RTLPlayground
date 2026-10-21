@@ -54,6 +54,17 @@ holds 16 entries; a request from a further client is not recorded until an
 entry is free. It is not saved, and turning snooping off clears it. It is the groundwork for IP source guard and dynamic
 ARP inspection, which do not exist yet.
 
+A client message counts only if its source MAC address matches the client
+hardware address inside it. A RELEASE or DECLINE removes an entry only when it
+arrives on the port the entry was learned on, and a REQUEST from another port
+is ignored; a DISCOVER from another port moves the entry there and sets it back
+to pending. An ACK without an address, the reply to a DHCPINFORM, leaves the
+entry as it is.
+
+The copy rules count as a match, so on a port with `acl default drop` a UDP
+frame from source port 68 (or 67 on a trusted port) is forwarded while
+snooping is on.
+
 ## Hardware notes
 
 Snooping uses three rules of the ACL rule table, numbers 65 to 67, just past
