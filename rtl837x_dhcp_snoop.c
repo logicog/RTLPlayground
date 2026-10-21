@@ -13,8 +13,8 @@
 #define DS_IP_OFFSET	(12 + RTL_TAG_SIZE + VLAN_TAG_SIZE + 2)
 #define DS_BOOTP_MIN	240
 #define DS_IP_PROTO_UDP	17
-#define DS_FWD_DROP	(ACL_FWD_REDIRECT * 0x20000UL)
-#define DS_FWD_COPY_CPU	((ACL_FWD_COPY * 0x20000UL) | (0x200000UL << CPU_PORT))
+#define DS_FWD_DROP	ACL_FWD_QOS(ACL_FWD_REDIRECT, 0)
+#define DS_FWD_COPY_CPU	ACL_FWD_QOS(ACL_FWD_COPY, 1 << CPU_PORT)
 
 extern __xdata uint8_t uip_buf[];
 extern __code const struct machine machine;
@@ -43,6 +43,7 @@ static __xdata uint8_t  ds_l;
 static __xdata uint8_t  ds_alloc;
 static __xdata uint8_t  ds_idx;
 static __xdata uint16_t ds_e;
+static __xdata uint8_t  ds_active;
 
 static void ds_find(void)
 {
@@ -62,7 +63,7 @@ static void ds_find(void)
 	memcpy(ds_b->mac, ds_p + 28, 6);
 	memset(ds_b->ip, 0, 4);
 	ds_b->vid = ds_vid;
-	ds_b->port = DHCP_BIND_PORT_NONE;
+	ds_b->port = ds_port;
 	ds_b->state = DHCP_BIND_PENDING;
 	ds_b->secs = DHCP_PENDING_SECS;
 }
@@ -86,7 +87,8 @@ void dhcp_snoop_apply(void) __banked
 	ds_trusted = dhcp_snoop_trust & PMASK_9;
 	ds_untrusted = PMASK_9 & ~ds_trusted;
 
-	if (!dhcp_snoop_on || !ds_trusted || !ds_untrusted) {
+	ds_active = dhcp_snoop_on && ds_trusted && ds_untrusted;
+	if (!ds_active) {
 		acl_rule_clear(DHCP_SNOOP_RULE_DROP);
 		acl_rule_clear(DHCP_SNOOP_RULE_SERVER);
 		acl_rule_clear(DHCP_SNOOP_RULE_CLIENT);
@@ -109,11 +111,6 @@ void dhcp_snoop_apply(void) __banked
 	ds_in = ds_untrusted;
 	ds_idx = DHCP_SNOOP_RULE_CLIENT;
 	ds_rule();
-}
-
-static void ds_secs(void)
-{
-	ds_b->secs = ds_lease;
 }
 
 static uint8_t ds_parse(void)
@@ -166,29 +163,38 @@ static uint8_t ds_parse(void)
 	}
 
 	ds_port = uip_buf[12 + 7] & 0x0f;
+	if (ds_port >= sizeof(machine.log_to_phys_port))
+		return 0;
 	ds_vid = (((uint16_t)uip_buf[12 + RTL_TAG_SIZE + 2] << 8) | uip_buf[12 + RTL_TAG_SIZE + 3]) & 0x0fff;
 	return 1;
 }
 
 void dhcp_snoop_in(void) __banked
 {
-	if (!ds_parse())
+	if (!ds_active || !ds_parse())
 		return;
 	if (ds_p[0] == 1) {
 		if (dhcp_snoop_trust & ((uint16_t)1 << ds_port))
 			return;
+		if (memcmp(uip_buf + 6, ds_p + 28, 6))
+			return;
 		if (ds_msg == 1 || ds_msg == 3) {
 			ds_alloc = 1;
 			ds_find();
-			if (ds_b) {
+			if (!ds_b)
+				return;
+			if (ds_b->port != ds_port) {
+				if (ds_msg == 3)
+					return;
 				ds_b->port = ds_port;
-				if (ds_b->state == DHCP_BIND_PENDING)
-					ds_b->secs = DHCP_PENDING_SECS;
+				ds_b->state = DHCP_BIND_PENDING;
 			}
+			if (ds_b->state == DHCP_BIND_PENDING)
+				ds_b->secs = DHCP_PENDING_SECS;
 		} else if (ds_msg == 4 || ds_msg == 7) {
 			ds_alloc = 0;
 			ds_find();
-			if (ds_b)
+			if (ds_b && ds_b->port == ds_port)
 				ds_b->state = DHCP_BIND_FREE;
 		}
 	} else if (ds_p[0] == 2 && (dhcp_snoop_trust & ((uint16_t)1 << ds_port))) {
@@ -197,8 +203,10 @@ void dhcp_snoop_in(void) __banked
 		if (!ds_b)
 			return;
 		if (ds_msg == 5) {
+			if (!(ds_p[16] | ds_p[17] | ds_p[18] | ds_p[19]))
+				return;
 			memcpy(ds_b->ip, ds_p + 16, 4);
-			ds_secs();
+			ds_b->secs = ds_lease;
 			ds_b->state = DHCP_BIND_BOUND;
 		} else if (ds_msg == 6) {
 			ds_b->state = DHCP_BIND_FREE;
@@ -208,6 +216,8 @@ void dhcp_snoop_in(void) __banked
 
 void dhcp_snoop_tick(void) __banked
 {
+	if (!ds_active)
+		return;
 	for (ds_j = 0; ds_j < DHCP_BIND_MAX; ds_j++) {
 		ds_b = &dhcp_bind[ds_j];
 		if (ds_b->state == DHCP_BIND_FREE || ds_b->secs == DHCP_LEASE_INFINITE)
@@ -232,10 +242,7 @@ void dhcp_snoop_show(void) __banked
 		print_string(" vlan ");
 		itoa_short(ds_b->vid);
 		print_string(" port ");
-		if (ds_b->port == DHCP_BIND_PORT_NONE)
-			write_char('-');
-		else
-			write_char('0' + machine.log_to_phys_port[ds_b->port]);
+		write_char('0' + machine.log_to_phys_port[ds_b->port]);
 		print_string(" lease ");
 		ds_lease = ds_b->secs;
 		if (ds_lease == DHCP_LEASE_INFINITE) {
