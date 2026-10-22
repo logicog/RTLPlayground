@@ -30,9 +30,12 @@ static __xdata struct lldp_neighbor lldp_tmp;
 
 void lldp_init(void) __banked
 {
+    uint8_t i;
+
     lldp_tick_last = (uint8_t)ticks;
     lldp_seconds = 0;
-    memset(lldp_nb, 0, sizeof(lldp_nb));
+    for (i = 0; i < LLDP_NB_MAX; i++)
+        lldp_nb[i].ttl = 0;
 }
 
 void lldp_tick(void) __banked
