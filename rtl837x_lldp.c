@@ -39,12 +39,15 @@ static __xdata struct lldp_neighbor lldp_tmp;
 
 void lldp_init(void) __banked
 {
+    uint8_t i;
+
     timer_set(&lldp_timer, SYS_TICK_HZ);
     lldp_seconds = 0;
     lldp_fast = 0;
     lldp_was_enabled = false;
     lldp_links_last = 0;
-    memset(lldp_nb, 0, sizeof(lldp_nb));
+    for (i = 0; i < LLDP_NB_MAX; i++)
+        lldp_nb[i].ttl = 0;
 }
 
 static uint16_t lldp_links(void) __reentrant
