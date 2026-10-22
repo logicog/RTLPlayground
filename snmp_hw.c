@@ -8,11 +8,13 @@
 #pragma constseg BANK3
 
 extern __code const struct machine machine;
+/* Set when a statistics request timed out: its selector may still be pending.
+ * Cleared only after the SFR engine and STAT_GET are observed idle. */
 static __xdata uint8_t fault;
 
 void snmp_hw_init(void) __banked
 {
-	/* Establish quarantine state explicitly, independent of the CRT. */
+	/* Establish the recovery state explicitly, independent of the CRT. */
 	fault = 0;
 }
 
@@ -22,14 +24,11 @@ extern void snmp_hw_command(uint16_t reg, uint8_t command);
 #endif
 static bool access(uint16_t reg, uint8_t command)
 {
-	uint8_t budget = 64;
-	if (fault)
-		return false;
+	/* An external MDIO transaction takes longer than an ASIC register access. */
+	__xdata uint16_t budget = command == SFR_EXEC_READ_SMI ? 4096 : 64;
 	/* Never replace a command still in flight. */
-	if (SFR_EXEC_STATUS) {
-		fault = 1;
+	if (fault || SFR_EXEC_STATUS)
 		return false;
-	}
 	SFR_REG_ADDR_U16 = reg;
 	SFR_EXEC_GO = command;
 #ifdef RTLP_HOST_TEST
@@ -39,7 +38,6 @@ static bool access(uint16_t reg, uint8_t command)
 		if (!SFR_EXEC_STATUS)
 			return true;
 	} while (--budget);
-	fault = 1;
 	return false;
 }
 
@@ -56,17 +54,27 @@ static bool user_port(uint8_t port)
 	return port < CPU_PORT && port >= machine.min_port && port <= machine.max_port;
 }
 
-bool snmp_hw_counter(uint8_t port, __xdata uint8_t selector,
-		     __xdata struct snmp_counter *__xdata value) __banked
+/* A statistics request may start only when no command is in flight and, after
+ * a timeout, STAT_GET proves its selector finished. Read-only probe, no reset. */
+static bool stat_ready(void)
 {
-	uint8_t budget = 32;
-	/* Only the eight native 64-bit interface counters are defined here. */
-	if (!user_port(port) || selector > 7 || fault)
-		return false;
 	if (SFR_EXEC_STATUS) {
 		fault = 1;
 		return false;
 	}
+	if (fault) {
+		fault = 0;
+		/* STAT_GET bit 0 is the selector's busy bit. */
+		fault = !access(RTL837X_STAT_GET, SFR_EXEC_READ_REG) || (SFR_DATA_0 & 1);
+	}
+	return !fault;
+}
+
+/* Fill tmp[4..7] (and tmp[0..3] when both halves are read) from one snapshot. */
+static bool stat_words(uint8_t port, __xdata uint8_t selector, __xdata bool high,
+		       __xdata bool low, __xdata uint8_t *__xdata tmp)
+{
+	uint8_t budget = 32;
 	SFR_DATA_24 = 0;
 	SFR_DATA_16 = 0;
 	SFR_DATA_8 = selector >> 3;
@@ -77,22 +85,80 @@ bool snmp_hw_counter(uint8_t port, __xdata uint8_t selector,
 		if (!access(RTL837X_STAT_GET, SFR_EXEC_READ_REG))
 			return false;
 		if (!(SFR_DATA_0 & 1)) {
-			if (!access(RTL837X_STAT_V_HIGH, SFR_EXEC_READ_REG))
-				return false;
-			copy_word(value->bytes);
-			if (!access(RTL837X_STAT_V_LOW, SFR_EXEC_READ_REG))
-				return false;
-			copy_word(value->bytes + 4);
+			if (high) {
+				if (!access(RTL837X_STAT_V_HIGH, SFR_EXEC_READ_REG))
+					return false;
+				copy_word(low ? tmp : tmp + 4);
+			}
+			if (low) {
+				if (!access(RTL837X_STAT_V_LOW, SFR_EXEC_READ_REG))
+					return false;
+				copy_word(tmp + 4);
+			}
 			return true;
 		}
 	} while (--budget);
-	fault = 1;
 	return false;
+}
+
+/* The caller's counter changes only after the whole snapshot was read. */
+static bool stat_get(uint8_t port, __xdata uint8_t selector, __xdata bool high,
+		     __xdata bool low, __xdata struct snmp_counter *__xdata value)
+{
+	__xdata uint8_t tmp[8];
+	uint8_t i;
+	if (!user_port(port) || !stat_ready())
+		return false;
+	for (i = 0; i < 4; i++)
+		tmp[i] = 0;
+	if (!stat_words(port, selector, high, low, tmp)) {
+		fault = 1;
+		return false;
+	}
+	for (i = 0; i < 8; i++)
+		value->bytes[i] = tmp[i];
+	return true;
+}
+
+bool snmp_hw_counter(uint8_t port, __xdata uint8_t selector,
+		     __xdata struct snmp_counter *__xdata value) __banked
+{
+	/* Only the eight native 64-bit interface counters are defined here. */
+	return selector <= 7 && stat_get(port, selector, true, true, value);
+}
+
+bool snmp_hw_counter32(uint8_t port, __xdata uint8_t selector, __xdata bool high,
+		       __xdata struct snmp_counter *__xdata value) __banked
+{
+	/* Selector 48 is the RX/TX error pair; a 32-bit word is zero-extended. */
+	return selector == 48 && stat_get(port, selector, high, !high, value);
+}
+
+/* Copper admin state is PHY MMD31.a610 bit 11 (power down); SFP has no switch. */
+bool snmp_hw_admin(uint8_t port, __xdata uint8_t *__xdata state) __banked
+{
+	if (!user_port(port))
+		return false;
+	if (machine.is_sfp[port]) {
+		*state = 1;
+		return true;
+	}
+	/* SMI setup overwrites SFR data, so check idle before touching anything. */
+	if (!stat_ready())
+		return false;
+	SFR_SMI_REG_U16 = 0xa610;
+	SFR_SMI_PHY = port;
+	SFR_SMI_DEV = (uint8_t)((31U << 3) | 2U);
+	if (!access(0xa610, SFR_EXEC_READ_SMI))
+		return false;
+	*state = (SFR_DATA_8 & 0x08) ? 2 : 1;
+	return true;
 }
 
 bool snmp_hw_link(uint8_t port, __xdata uint32_t *__xdata value) __banked
 {
-	if (!user_port(port) || !access(RTL837X_REG_LINKS_STS, SFR_EXEC_READ_REG))
+	if (!user_port(port) || !stat_ready() ||
+	    !access(RTL837X_REG_LINKS_STS, SFR_EXEC_READ_REG))
 		return false;
 	/* GUI: sfr_data[(port / 8) + 1], i.e. A5 for MAC0..7, A6 for MAC8.
 	 * A4/A7 are not the user-port bitmap; do not expose their bits as link. */

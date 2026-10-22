@@ -122,6 +122,7 @@ snmp-unit: $(BUILDDIR)/test_snmp $(BUILDDIR)/test_snmp_nine $(BUILDDIR)/test_snm
 	$(BUILDDIR)/test_snmp_hw prebusy
 	$(BUILDDIR)/test_snmp_hw link
 	$(BUILDDIR)/test_snmp_hw speed
+	$(BUILDDIR)/test_snmp_hw admin
 	$(BUILDDIR)/test_snmp_hw_six
 
 

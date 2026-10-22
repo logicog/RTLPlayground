@@ -14,7 +14,7 @@ vm.runInContext(src.slice(src.indexOf('function sysConsole('),src.indexOf('$("sy
 const secret='private-example-value',raw='hostname lab\r\nsnmp community '+secret+'\r\nsnmp changed unknown\r\nsnmp on\r\n';
 ctx.setConfigEditor(raw);assert(!$('cfgedit').value.includes(secret));assert($('cfgedit').value.includes('[hidden:1]'));
 assert.equal(ctx.unmaskConfig($('cfgedit').value,ctx.cfgHidden),raw.replace(/\r\n/g,'\n'));
-assert.throws(()=>ctx.unmaskConfig('snmp community new-value',ctx.cfgHidden),/CLI/);
+assert.throws(()=>ctx.unmaskConfig('snmp community new-value',ctx.cfgHidden));
 for(const fromLog of [false,true]){ctx.writeConfig(fromLog?raw:$('cfgedit').value,'save',fromLog);
  const ed=modalNodes.content.children[2];assert(!ed.value.includes(secret));assert(!JSON.stringify(modalNodes).includes(secret));
  modalNodes.buttons[1].onclick();assert.equal(posted,raw.replace(/\r\n/g,'\n'));
