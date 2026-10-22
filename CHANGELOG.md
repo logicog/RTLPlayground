@@ -25,6 +25,21 @@
 
 ## Fixed
 
+- LLDP
+  - Format binary MAC-address Port IDs as 17 colon-separated hexadecimal characters instead
+    of interpreting their six octets as text. Deliver LLDP before the shared STP/LACP
+    multicast dispatch, including when STP or LACP is enabled.
+  - Reject invalid ID lengths/subtypes, malformed MAC lengths and truncated TLVs without
+    publishing a neighbor. The receive parser still does not enforce mandatory TLV order,
+    TTL presence or End TLV presence.
+  - Text fields already used bounded copies with an explicit trailing NUL; embedded NUL,
+    controls, quotes and backslashes remain replaced by dots. The garbled binary Port ID
+    was not a missing-terminator bug.
+  - Port IDs retain at most 17 printable characters locally, not the IEEE wire maximum:
+    identifiers contain 1..255 octets plus a subtype byte. Longer valid IDs are truncated.
+    This branch accepts only six-octet MAC Chassis IDs; arbitrary Chassis ID storage and
+    its separate display-capacity correction belong to the neighbor-details branch.
+
 - Config
   - A startup configuration line longer than the command buffer no longer stops the replay:
     the offending line is skipped and the following lines are still applied.
