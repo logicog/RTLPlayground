@@ -506,7 +506,7 @@ static uint8_t acl_fwd_action(void)
 		acl_variant = ACL_FWD_COPY | 8;
 	if (acl_variant != ACL_BAD)
 		return acl_next() && acl_ports() ? acl_fwd() : ACL_BAD;
-	if ((acl_ctrl & 0xff) || acl_vlan || acl_tag)
+	if ((acl_ctrl & 0xff) || acl_vlan || acl_tag || acl_svlan || acl_intr)
 		return 0;
 	acl_p = cmd_words_b[acl_w];
 	acl_c = acl_port();
