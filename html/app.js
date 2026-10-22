@@ -829,7 +829,7 @@ var CONF_CMDS=[
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
   /^acl\s+\d{1,2}\s+\S.*$/,/^acl\s+meter\s+\d{1,2}\s+\d+\s+(kbps|pps)\s+\d+(\s+ifg)?$/,
-  /^acl\s+field\s+\d{1,2}\s+(off|raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3}$/,
+  /^acl\s+field\s+\d{1,2}\s+(off(\s+\d{1,3})?|(raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3})$/,
   /^acl\s+default\s+(permit|drop(\s+\d)+)$/,/^acl\s+counter\s+\d{1,2}\s+(mode\s+(bytes|packets)|width\s+(32|64))$/,
   /^acl\s+gpio\s+([0-3]\s+(on|off)|polarity\s+(high|low))$/,
 ];
