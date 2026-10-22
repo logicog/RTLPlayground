@@ -132,6 +132,10 @@ typedef unsigned short uip_stats_t;
  */
 #define UIP_CONF_BUFFER_SIZE     1556
 
+/* Backing storage includes padding for the NIC's eight-byte DMA transfers.
+ * Keep UIP_CONF_BUFFER_SIZE as the logical frame/MSS limit. */
+#define UIP_CONF_BUFFER_ALLOC_SIZE ((UIP_CONF_BUFFER_SIZE + 7U) & ~7U)
+
 /**
  * Bytes of the buffer kept out of the advertised MSS.
  *

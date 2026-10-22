@@ -11,15 +11,15 @@ th_sel_light:"Selenized Light",th_sel_dark:"Selenized Dark",
 c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Apply",c_cancel:"Cancel",c_confirm:"Confirm",
 c_close:"Close",c_refresh:"Refresh",c_off:"off",c_offc:"Off",c_down:"down",c_on:"On",c_auto:"Auto",c_delete:"Delete",
 c_type:"Type",c_state:"State",c_enabled:"Enabled",c_load:"Load",c_disable:"Disable",c_sfp:"SFP",
-c_full:"full",c_half:"half",c_devices:"devices",c_yes:"yes",c_no:"no",
-d_ports:"Ports",d_ports_h:"click a port for details",d_system:"System",d_traffic:"Traffic",
+c_full:"full",c_half:"half",c_yes:"yes",c_no:"no",
+d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"State",p_disabled:"disabled",p_up:"up",p_txgb:"TX good / bad",p_rxgb:"RX good / bad",
 p_pkts:"pkts",p_module:"Module",p_temp:"Temperature",p_vcc:"Vcc",p_txbias:"TX bias",p_txpower:"TX power",
 p_rxpower:"RX power",p_txfault:"TX fault",p_txdis:"TX disabled",p_rxlos:"RX LOS",p_adv:"Advertising",
-pt_title:"Port configuration",pt_conn:"Connected",pt_speed:"Speed",pt_mtu:"MTU",
+pt_title:"Port configuration",pt_conn:"Devices learned",pt_speed:"Speed",pt_mtu:"MTU",
 pt_sfp_note:"SFP speed is set per slot and is not saved in the startup config.",
 pt_name_err:"Port name: 1-15 characters, no spaces",pt_mtu_err:"MTU must be 64-16383",
 stp_title:"Spanning tree",stp_h:"RSTP, 802.1w",stp_version:"Version",stp_v_stp:"STP compatible",
@@ -142,15 +142,15 @@ th_sel_light:"Selenized ライト",th_sel_dark:"Selenized ダーク",
 c_port:"ポート",c_name:"名前",c_link:"リンク",c_apply:"適用",c_cancel:"キャンセル",c_confirm:"確認",
 c_close:"閉じる",c_refresh:"更新",c_off:"オフ",c_offc:"オフ",c_down:"リンクダウン",c_on:"オン",c_auto:"自動",c_delete:"削除",
 c_type:"タイプ",c_state:"状態",c_enabled:"有効",c_load:"読み込み",c_disable:"無効化",c_sfp:"SFP",
-c_full:"全二重",c_half:"半二重",c_devices:"デバイス",c_yes:"はい",c_no:"いいえ",
-d_ports:"ポート",d_ports_h:"ポートをクリックすると詳細を表示",d_system:"システム",d_traffic:"トラフィック",
+c_full:"全二重",c_half:"半二重",c_yes:"はい",c_no:"いいえ",
+d_system:"システム",d_traffic:"トラフィック",
 d_traffic_h:"パケット/秒、リアルタイム",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 異常",d_rxbad:"RX 異常",
 i_host:"ホスト名",i_ip:"IP アドレス",i_mask:"ネットマスク",i_gw:"ゲートウェイ",i_mac:"MAC",i_fw:"ファームウェア",
 i_built:"ビルド日",i_hw:"ハードウェア",i_temp:"温度",i_flash:"フラッシュ",i_syslog:"Syslog",
 p_state:"状態",p_disabled:"無効",p_up:"アップ",p_txgb:"TX 正常 / 異常",p_rxgb:"RX 正常 / 異常",
 p_pkts:"pkts",p_module:"モジュール",p_temp:"温度",p_vcc:"電圧",p_txbias:"TX バイアス",p_txpower:"TX 電力",
 p_rxpower:"RX 電力",p_txfault:"TX 障害",p_txdis:"TX 無効",p_rxlos:"RX 信号ロス",p_adv:"アドバタイズ",
-pt_title:"ポート設定",pt_conn:"接続デバイス",pt_speed:"速度",pt_mtu:"MTU",
+pt_title:"ポート設定",pt_conn:"学習済みデバイス",pt_speed:"速度",pt_mtu:"MTU",
 pt_sfp_note:"SFP の速度はスロット単位で設定され、起動設定には保存されません。",
 pt_name_err:"ポート名: 1〜15 文字、空白不可",pt_mtu_err:"MTU は 64〜16383 の範囲で指定してください",
 stp_title:"スパニングツリー",stp_h:"RSTP, 802.1w",stp_version:"バージョン",stp_v_stp:"STP 互換",
@@ -255,15 +255,15 @@ th_sel_light:"Selenized 浅色",th_sel_dark:"Selenized 深色",
 c_port:"端口",c_name:"名称",c_link:"链路",c_apply:"应用",c_cancel:"取消",c_confirm:"确认",
 c_close:"关闭",c_refresh:"刷新",c_off:"关",c_offc:"关",c_down:"未连接",c_on:"开",c_auto:"自动",c_delete:"删除",
 c_type:"类型",c_state:"状态",c_enabled:"启用",c_load:"读取",c_disable:"禁用",c_sfp:"SFP",
-c_full:"全双工",c_half:"半双工",c_devices:"台设备",c_yes:"是",c_no:"否",
-d_ports:"端口",d_ports_h:"点击端口查看详情",d_system:"系统",d_traffic:"流量",
+c_full:"全双工",c_half:"半双工",c_yes:"是",c_no:"否",
+d_system:"系统",d_traffic:"流量",
 d_traffic_h:"包/秒，实时",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 错误",d_rxbad:"RX 错误",
 i_host:"主机名",i_ip:"IP 地址",i_mask:"子网掩码",i_gw:"网关",i_mac:"MAC",i_fw:"固件",
 i_built:"构建日期",i_hw:"硬件",i_temp:"温度",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"状态",p_disabled:"已禁用",p_up:"已连接",p_txgb:"TX 正常 / 错误",p_rxgb:"RX 正常 / 错误",
 p_pkts:"个包",p_module:"模块",p_temp:"温度",p_vcc:"供电电压",p_txbias:"TX 偏置电流",p_txpower:"TX 光功率",
 p_rxpower:"RX 光功率",p_txfault:"TX 故障",p_txdis:"TX 禁用",p_rxlos:"RX 信号丢失",p_adv:"通告能力",
-pt_title:"端口配置",pt_conn:"已连接设备",pt_speed:"速率",pt_mtu:"MTU",
+pt_title:"端口配置",pt_conn:"已学习设备",pt_speed:"速率",pt_mtu:"MTU",
 pt_sfp_note:"SFP 速率按插槽设置，不会保存到启动配置。",
 pt_name_err:"端口名称: 1-15 个字符，不能包含空格",pt_mtu_err:"MTU 范围为 64-16383",
 stp_title:"生成树",stp_h:"RSTP, 802.1w",stp_version:"版本",stp_v_stp:"STP 兼容",
@@ -368,15 +368,15 @@ th_sel_light:"Selenized claro",th_sel_dark:"Selenized oscuro",
 c_port:"Puerto",c_name:"Nombre",c_link:"Enlace",c_apply:"Aplicar",c_cancel:"Cancelar",c_confirm:"Confirmar",
 c_close:"Cerrar",c_refresh:"Actualizar",c_off:"apagado",c_offc:"Apagado",c_down:"caído",c_on:"Encendido",c_auto:"Auto",c_delete:"Eliminar",
 c_type:"Tipo",c_state:"Estado",c_enabled:"Habilitado",c_load:"Cargar",c_disable:"Deshabilitar",c_sfp:"SFP",
-c_full:"dúplex completo",c_half:"semidúplex",c_devices:"dispositivos",c_yes:"sí",c_no:"no",
-d_ports:"Puertos",d_ports_h:"pulsa un puerto para ver detalles",d_system:"Sistema",d_traffic:"Tráfico",
+c_full:"dúplex completo",c_half:"semidúplex",c_yes:"sí",c_no:"no",
+d_system:"Sistema",d_traffic:"Tráfico",
 d_traffic_h:"paquetes/s, en vivo",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX erróneos",d_rxbad:"RX erróneos",
 i_host:"Nombre de host",i_ip:"Dirección IP",i_mask:"Máscara de red",i_gw:"Puerta de enlace",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Compilado",i_hw:"Hardware",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"Estado",p_disabled:"deshabilitado",p_up:"activo",p_txgb:"TX correctos / erróneos",p_rxgb:"RX correctos / erróneos",
 p_pkts:"paquetes",p_module:"Módulo",p_temp:"Temperatura",p_vcc:"Vcc",p_txbias:"Polarización TX",p_txpower:"Potencia TX",
 p_rxpower:"Potencia RX",p_txfault:"Fallo TX",p_txdis:"TX deshabilitado",p_rxlos:"Pérdida RX (LOS)",p_adv:"Anunciado",
-pt_title:"Configuración de puerto",pt_conn:"Conectado",pt_speed:"Velocidad",pt_mtu:"MTU",
+pt_title:"Configuración de puerto",pt_conn:"Dispositivos aprendidos",pt_speed:"Velocidad",pt_mtu:"MTU",
 pt_sfp_note:"La velocidad del SFP se ajusta por ranura y no se guarda en la configuración de inicio.",
 pt_name_err:"Nombre de puerto: 1-15 caracteres, sin espacios",pt_mtu_err:"El MTU debe estar entre 64 y 16383",
 stp_title:"Árbol de expansión",stp_h:"RSTP, 802.1w",stp_version:"Versión",stp_v_stp:"STP compatible",
@@ -480,15 +480,15 @@ th_sel_light:"Clair (sélénisé)",th_sel_dark:"Sombre (sélénisé)",
 c_port:"Port",c_name:"Nom",c_link:"Lien",c_apply:"Appliquer",c_cancel:"Annuler",c_confirm:"Confirmer",
 c_close:"Fermer",c_refresh:"Raffraichir",c_off:"arrêt",c_offc:"Arrêt",c_down:"arrêt",c_on:"Marche",c_auto:"Auto",c_delete:"Supprimer",
 c_type:"Type",c_state:"Etat",c_enabled:"Activé",c_load:"Charger",c_disable:"Désactivé",c_sfp:"SFP",
-c_full:"full",c_half:"half",c_devices:"Equipements",c_yes:"oui",c_no:"non",
-d_ports:"Ports",d_ports_h:"Cliquez ou survollez pour plus de détails",d_system:"Système",d_traffic:"Trafic",
+c_full:"full",c_half:"half",c_yes:"oui",c_no:"non",
+d_system:"Système",d_traffic:"Trafic",
 d_traffic_h:"paquets/s (en direct)",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX KO",d_rxbad:"RX KO",
 i_host:"Nom d'hote",i_ip:"Adresse IP",i_mask:"Masque réseau",i_gw:"Passerelle",i_mac:"Adresse MAC",i_fw:"Micro logiciel",
 i_built:"Compilé le",i_hw:"Matériel",i_temp:"Température",i_flash:"Taille Flash",i_syslog:"Journal système",
 p_state:"Etat",p_disabled:"Inactif",p_up:"Actif",p_txgb:"TX bon / mauvais",p_rxgb:"RX bon / mauvais",
 p_pkts:"paquets",p_module:"Module",p_temp:"Température",p_vcc:"Vcc",p_txbias:"TX biais",p_txpower:"TX puissance",
 p_rxpower:"RX puissance",p_txfault:"TX erreur",p_txdis:"TX désactivé",p_rxlos:"RX pertes de signaux",p_adv:"Capacités",
-pt_title:"Configuration du port",pt_conn:"Connecté à",pt_speed:"Vitesse",pt_mtu:"MTU",
+pt_title:"Configuration du port",pt_conn:"Appareils appris",pt_speed:"Vitesse",pt_mtu:"MTU",
 pt_sfp_note:"La vitesse SFP est paramétrée pour le port et n'est pas enregistrée dans la configuration de démarrage.",
 pt_name_err:"Nom du port: 1 à 15 caractères, sans espaces",pt_mtu_err:"MTU doit être comrpis entre 64 et 16383",
 stp_title:"Arborescence",stp_h:"RSTP, 802.1w",stp_version:"Protocole",stp_v_stp:"Compatible STP",
@@ -588,7 +588,7 @@ fw_timeout:"Le commutateur n'est plus joignable depuis 150 s: verifiez l'aliment
 },
 de:{
 nav_dash:"Übersicht",nav_ports:"Ports",nav_stp:"Spanning Tree",nav_stats:"Statistik",
-nav_vlan:"VLANs",nav_l2:"MAC-Tabelle",nav_mirror:"Spiegelung",nav_lag:"LAG",nav_eee:"EEE",
+nav_vlan:"VLANs",nav_l2:"MAC-Tabelle",nav_mirror:"Spiegelung",nav_isolate:"Isolation",nav_lag:"LAG",nav_eee:"EEE",
 nav_bw:"Bandbreite",nav_system:"System",nav_fw:"Firmware",
 hdr_dirty:"ungespeicherte Änderungen",hdr_dirty_t:"Laufende Konfiguration weicht von der Startkonfiguration ab",
 hdr_save:"Im Flash speichern",hdr_save_t:"Laufende Konfiguration dauerhaft im Flash speichern",
@@ -597,15 +597,15 @@ th_sel_light:"Selenized Hell",th_sel_dark:"Selenized Dunkel",
 c_port:"Port",c_name:"Name",c_link:"Link",c_apply:"Übernehmen",c_cancel:"Abbrechen",c_confirm:"Bestätigen",
 c_close:"Schliessen",c_refresh:"Aktualisieren",c_off:"aus",c_offc:"Aus",c_down:"getrennt",c_on:"Ein",c_auto:"Auto",c_delete:"Löschen",
 c_type:"Typ",c_state:"Zustand",c_enabled:"Aktiviert",c_load:"Laden",c_disable:"Deaktivieren",c_sfp:"SFP",
-c_full:"voll",c_half:"halb",c_devices:"Geräte",c_yes:"ja",c_no:"nein",
-d_ports:"Ports",d_ports_h:"Port anklicken für Details",d_system:"System",d_traffic:"Datenverkehr",
+c_full:"voll",c_half:"halb",c_yes:"ja",c_no:"nein",
+d_system:"System",d_traffic:"Datenverkehr",
 d_traffic_h:"Pakete/s, live",d_txpps:"TX Pakete/s",d_rxpps:"RX Pakete/s",d_txbad:"TX fehlerhaft",d_rxbad:"RX fehlerhaft",
 i_host:"Hostname",i_ip:"IP-Adresse",i_mask:"Netzmaske",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Erstellt",i_hw:"Hardware",i_temp:"Temperatur",i_flash:"Flash",i_syslog:"Syslog",
 p_state:"Zustand",p_disabled:"deaktiviert",p_up:"verbunden",p_txgb:"TX gut / fehlerhaft",p_rxgb:"RX gut / fehlerhaft",
 p_pkts:"Pakete",p_module:"Modul",p_temp:"Temperatur",p_vcc:"Vcc",p_txbias:"TX-Bias",p_txpower:"Sendeleistung",
 p_rxpower:"Empfangsleistung",p_txfault:"TX-Fehler",p_txdis:"TX deaktiviert",p_rxlos:"RX LOS",p_adv:"Angeboten",
-pt_title:"Port-Konfiguration",pt_conn:"Verbunden",pt_speed:"Geschwindigkeit",pt_mtu:"MTU",
+pt_title:"Port-Konfiguration",pt_conn:"Gelernte Geräte",pt_speed:"Geschwindigkeit",pt_mtu:"MTU",
 pt_sfp_note:"Die SFP-Geschwindigkeit wird pro Steckplatz gesetzt und nicht in der Startkonfiguration gespeichert.",
 pt_name_err:"Port-Name: 1-15 Zeichen, keine Leerzeichen",pt_mtu_err:"MTU muss zwischen 64 und 16383 liegen",
 stp_title:"Spanning Tree",stp_h:"RSTP, 802.1w",stp_version:"Version",stp_v_stp:"STP-kompatibel",
@@ -626,6 +626,7 @@ stp_en_q:"Spanning Tree aktivieren?",
 stp_en_d:"Die Ports starten blockiert und brauchen bis zum doppelten Forward Delay, bis sie weiterleiten; Edge-Ports sind sofort wieder aktiv.",
 stp_dis_q:"Spanning Tree deaktivieren?",stp_dis_d:"Alle Ports leiten sofort weiter; der Schutz vor Netzwerkschleifen entfällt.",
 stp_cost_err:"Pfadkosten müssen zwischen 0 und 200000000 liegen",
+nav_lldp:"LLDP",lldp_enabled:"LLDP aktiv",lldp_title:"Dienststatus",lldp_portname:"Name",lldp_enable:"Pakete senden",
 st_title:"Port-Statistik",st_h:"Summen seit dem Start",st_txg:"TX gut",st_txb:"TX fehlerhaft",st_rxg:"RX gut",
 st_rxb:"RX fehlerhaft",st_details:"Details",st_counters:"MIB-Zähler",st_nonzero:"nur ungleich null",
 st_autoref:"automatisch aktualisieren",st_counter:"Zähler",st_value:"Wert",st_fail:"Zähler konnten nicht geladen werden",
@@ -648,8 +649,12 @@ l2_learned:"gelernt",l2_loading:"lädt...",l2_failed:"Laden fehlgeschlagen",l2_e
 l2_del_t:"Eintrag löschen",l2_flush_q:"Alle gelernten MAC-Einträge löschen?",
 m_title:"Port-Spiegelung",m_active:"aktiv",m_monitor:"Monitor-Port",m_mirror:"Spiegeln",m_both:"Beide",
 m_note:"Beide = RX und TX des Ports auf den Monitor-Port spiegeln.",m_none:"Mindestens einen zu spiegelnden Port wählen",
+iso_title:"Port-Isolation",iso_from:"Von Port",iso_to:"Zu Port",iso_all:"Alle erlauben",
+iso_intro:"Ein Paket, das über einen Port hereinkommt, darf den Switch nur über die Ports verlassen, die in seiner Zeile angehakt sind. Die Isolation wirkt vor der Weiterleitung: Ein nicht angehakter Port ist direkt nicht erreichbar, egal was in der MAC-Tabelle steht.",
+iso_legend:"Das Feld des Ports selbst ist immer erlaubt. Eine rote Portnummer markiert einen Port, der nicht ganz offen ist.",
 lag_hash:"Hash:",lag_note:"Eine LAG braucht mindestens ein Mitglied, um in der Startkonfiguration gespeichert zu werden; eine leere Gruppe zu übernehmen löscht sie.",
 lag_clear_q:"LAG {n} auflösen?",lag_clear_d:"Alle Mitglieds-Ports kehren in den Normalbetrieb zurück.",
+lacp_heading:"LACP (802.3ad)",lag_mode:"Modus",lag_static:"Statisch",lacp_neg:"wird ausgehandelt",lacp_agg:"Aggregator",lacp_members:"aktive Mitglieder",lacp_hint:"LACP: Ports auswählen und Übernehmen drücken, um die Aushandlung zu starten",lacp_actor:"Lokal",lacp_partner:"Partner",lacp_rxstate:"Empfangsstatus",lacp_rx:"Empfangene LACPDUs",lacp_psys:"Partner-System",
 e_title:"Energy Efficient Ethernet",e_adv:"Angeboten",e_lp:"Gegenstelle",e_active:"Aktiv",e_enable:"Aktivieren",
 e_note:"Angebotene und von der Gegenstelle unterstützte Stufen je Geschwindigkeit: 100M, 1G, 2.5G. SFP-Ports unterstützen kein EEE.",
 e_idle:"inaktiv",e_na:"k. A.",
@@ -672,7 +677,8 @@ sy_ip_err:"Ungültige IP / Netzmaske / Gateway",sy_host_err:"Hostname: 1-23 druc
 sy_net_q:"Netzwerkeinstellungen übernehmen?",sy_net_d:"Die Management-IP ändert sich auf {ip}: Diese Seite muss dort neu geöffnet werden.",
 sy_ip_changed:"IP geändert, neu verbinden unter http://{ip}/",sy_dhcp_q:"Auf DHCP umstellen?",
 sy_dhcp_d:"Der Switch bezieht seine Adresse per DHCP. Du musst seine neue IP herausfinden, um dich wieder zu verbinden.",
-sy_sysip_err:"Ungültige IP des Syslog-Servers",sy_sysport_err:"Syslog-Port muss zwischen 1 und 65535 liegen",
+sy_sysip_err:"Ungültige IP des Syslog-Servers",sy_dns1:"DNS-Server",sy_dns2:"Zweiter DNS-Server",sy_dns_err:"Ungültige IP des DNS-Servers",sy_dns_dhcp:"von DHCP: {ip}",sy_sysport_err:"Syslog-Port muss zwischen 1 und 65535 liegen",
+sy_time:"Uhrzeit",sy_ntp:"NTP",sy_ntpsrv:"NTP-Server",sy_ntpsrv_p:"Hostname oder IPv4-Adresse",sy_ntpint:"Abfrageintervall [min]",sy_tz:"Zeitzone",sy_dst:"Sommerzeit",sy_dst_eu:"Europa",sy_dst_us:"USA",sy_now:"Lokale Zeit",sy_sync:"Letzte Synchronisation",sy_ntpaddr:"Server-Adresse",sy_nosync:"nicht synchronisiert",sy_waiting:"warte auf den Server",sy_ago:"vor {n} min",sy_ntp_err:"Hostname oder IPv4-Adresse des NTP-Servers eingeben",sy_ntpint_err:"Abfrageintervall muss zwischen 1 und 1440 liegen",sy_time_note:"Der Switch hat keine batteriegepufferte Uhr: Die Zeit geht bei jedem Neustart verloren und wird neu vom NTP-Server bezogen, sobald das Netzwerk bereit ist. Im Flash speichern, damit die Einstellungen erhalten bleiben.",
 sy_pw_len:"Passwort: 1-20 Zeichen",sy_pw_space:"Das Passwort darf keine Leerzeichen enthalten",sy_pw_match:"Die Passwörter stimmen nicht überein",
 sy_pw_q:"Admin-Passwort ändern?",sy_pw_d:"Gilt sofort für neue Anmeldungen. Im Flash speichern, damit es erhalten bleibt.",
 sy_reboot_q:"Switch neu starten?",sy_reboot_d:"Es gibt UNGESPEICHERTE Änderungen, sie gehen verloren. Zuerst im Flash speichern, wenn du sie behalten willst.",
@@ -959,6 +965,7 @@ function pollStatus(){
   });
 }
 var statusPoller=new Poller(pollStatus,2500);
+statusPoller.start();
 function needPorts(fn){
   if(S.n)return fn();
   pollStatus().then(fn).catch(function(){});
@@ -1103,8 +1110,7 @@ function dashStatus(){
   });
 }
 tabHooks.dash={
-  enter:function(){statusPoller.start();pollInfo().catch(function(){})},
-  leave:function(){statusPoller.stop()},
+  enter:function(){pollInfo().catch(function(){})},
   status:dashStatus,
 };
 
@@ -1148,31 +1154,12 @@ function loadMtu(){
     });
   });
 }
-/* One learned MAC is the attached device; several means a switch or AP
- * sits behind the port, so only the count is shown. */
-function portsMacs(){
-  l2Load().then(function(all){
-    var by={};
-    all.forEach(function(e){
-      if(e.pport==="CPU")return;
-      var l=by[e.pport]=by[e.pport]||[];
-      if(l.indexOf(e.mac)<0)l.push(e.mac);
-    });
-    S.ports.forEach(function(p){
-      var el=$("pmac"+(p.portNum-1));
-      if(!el)return;
-      var m=by[p.portNum]||[];
-      el.textContent=!m.length?"-":(m.length===1?m[0]:m.length+" "+t("c_devices"));
-      el.title=m.join("\n");
-    });
-  }).catch(function(){});
-}
-var _macTick=0;
 function portsStatus(){
   buildPorts();
-  if(++_macTick%10===0)portsMacs();
   S.ports.forEach(function(p){
     var i=p.portNum-1,el=$("plink"+i);
+    var mc=$("pmac"+i);
+    if(mc)mc.textContent=parseInt(p.macs,16)&0x1fff;
     if(el)el.innerHTML=linkBadge(p);
     var sel=$("pspd"+i),v=p.isSFP?0:ADVSEL[parseInt(p.adv,2)];
     if(sel&&v&&document.activeElement!==sel)sel.value=v;
@@ -1200,8 +1187,7 @@ function applyPort(i){
   postCmds(cmds).then(loadMtu).catch(function(){});
 }
 tabHooks.ports={
-  enter:function(){statusPoller.start();needPorts(function(){buildPorts();portsMacs()})},
-  leave:function(){statusPoller.stop();l2Gen++},
+  enter:function(){needPorts(buildPorts)},
   status:portsStatus,
 };
 
@@ -1457,8 +1443,7 @@ function statsStatus(){
   });
 }
 tabHooks.stats={
-  enter:function(){statusPoller.start()},
-  leave:function(){statusPoller.stop();if(ctrPoll)ctrPoll.stop()},
+  leave:function(){if(ctrPoll)ctrPoll.stop()},
   status:statsStatus,
 };
 

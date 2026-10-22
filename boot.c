@@ -125,18 +125,6 @@ void early_boot_handle_button(void) __banked
 void sds_config(uint8_t sds, uint8_t mode) __banked
 {
 	print_string("sds_config sds: "); print_byte(sds); print_string(", mode: "); print_byte(mode); write_char('\n');
-	sds_config_mac(sds, mode);
-
-	if (mode == SDS_10GR || mode == SDS_QXGMII)
-		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
-	else
-		sds_write_v(sds, 0x21, 0x10, 0x6480); // Q002110:6480
-	sds_write_v(sds, 0x21, 0x13, 0x0400); // Q002113:0400
-	sds_write_v(sds, 0x21, 0x18, 0x6d02); // Q002118:6d02
-	sds_write_v(sds, 0x21, 0x1b, 0x424e); // Q00211b:424e
-	sds_write_v(sds, 0x21, 0x1d, 0x0002); // Q00211d:0002
-	sds_write_v(sds, 0x36, 0x1c, 0x1390); // Q00361c:1390
-	sds_write_v(sds, 0x36, 0x14, 0x003f); // Q003614:003f
 
 	uint8_t page = 0;
 	uint16_t v = 0;
@@ -165,6 +153,21 @@ void sds_config(uint8_t sds, uint8_t mode) __banked
 		print_string("Error in SDS Mode\n");
 		return;
 	}
+
+	sds_config_mac(sds, mode);
+
+	if (mode == SDS_10GR || mode == SDS_QXGMII)
+		sds_write_v(sds, 0x21, 0x10, 0x4480); // Q002110:6480
+	else
+		sds_write_v(sds, 0x21, 0x10, 0x6480); // Q002110:6480
+
+	sds_write_v(sds, 0x21, 0x13, 0x0400); // Q002113:0400
+	sds_write_v(sds, 0x21, 0x18, 0x6d02); // Q002118:6d02
+	sds_write_v(sds, 0x21, 0x1b, 0x424e); // Q00211b:424e
+	sds_write_v(sds, 0x21, 0x1d, 0x0002); // Q00211d:0002
+	sds_write_v(sds, 0x36, 0x1c, 0x1390); // Q00361c:1390
+	sds_write_v(sds, 0x36, 0x14, 0x003f); // Q003614:003f
+
 	sds_write_v(sds, 0x36, 0x10, v); // Q003610:0200
 
 	if (page == 0x2e) {  // 10G Fiber / SDS_QXGMII
@@ -257,7 +260,7 @@ void nic_setup(void) __banked
 
 	// This sets the size of the RX buffer, the filling level is in 0x7874
 	// R7848-000004ff
-	REG_SET(RTL837X_REG_NIC_RXBUFF_RX, 0x4ff);
+	REG_SET(RTL837X_REG_NIC_RXBUFF_RX, RTL837X_NIC_RX_LAST_SLOT);
 
 	// R7844-000007fe
 	REG_SET(RTL837X_REG_NIC_BUFFSIZE_TX, 0x7fe);
@@ -296,6 +299,7 @@ void nic_setup(void) __banked
 
 	// Sequence number of TX packets
 	tx_seq = 0;
+	REG_SET(RTL837X_NIC_INT_MSK, NIC_INT_RXIE);
 }
 
 

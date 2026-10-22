@@ -1,0 +1,7 @@
+#ifndef _MACHINE_YS25_0402M_H_
+#define _MACHINE_YS25_0402M_H_
+
+#define MACHINE_MODEL "YuanLey YS25-0402M"
+#define MACHINE_CHIPSET RTL8372
+
+#endif

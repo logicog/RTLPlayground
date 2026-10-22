@@ -103,24 +103,29 @@ docker run --rm -p 8080:8080 -v $(pwd):/workspace rtlplayground-dev \
   tools/output/httpd_sim /workspace/html
 ```
 
-Edit `machine.h` or `config.txt` on your host, then re-run `make` — the
+Edit `config.txt` on your host, then re-run `make` — the
 source directory is mounted into the container, so changes take effect
-immediately. To build for a different machine, pass `MACHINE=...`.
+immediately. To build for a different machine, pass `MACHINE=<name>`, which
+selects `machine/<name>.c` (see [Adding a new device](doc/adding-a-device.md)).
 
 </details>
 
 ## (1) Compiling for direct chip flashing AND upgrading an existing RTLPlayground running device
 
-Edit machine.h with an editor like vi or nano. Select the correct machine the firmware should build for.
+Pass the machine that matches your device, for example:
+```
+make MACHINE=DEFAULT_8C_1SFP
+```
+The name selects the board definition `machine/<name>.c`; `make` without a
+`MACHINE` value stops with an error listing what is expected. If your board is
+not in the list yet, see [Adding a new device](doc/adding-a-device.md).
 
 > [!TIP]
 > You can write configuration parameters in config.txt (see below) in order your switch to get
 > straight at the first boot, a correct IP configuration.
 
-Now, building the firmware image should work:
-```
-make 
-```
+Now, building the firmware image should work.
+
 Note, that the image generated ends in .bin, not .img, in order to make IMSProg happy.
 
 image location is stored in `RTLPlayground/output/rtlplayground_version_machine.bin`
@@ -186,7 +191,7 @@ Go to "Firmware update" tab, select the correct file.
 
 > [!IMPORTANT]
 > If your device already runs RTLPlayground, you must upload the binary file /RTLPlayground/output/rtlplayground_Version_Machine.bin
-> If your device is OEM, you must upload the binary file /RTLPlayground/installer/outputrtlplayground_oem_upgrade.bin
+> If your device is OEM, you must upload the binary file /RTLPlayground/installer/output/rtlplayground_oem_upgrade.bin
 
 > [!CAUTION]
 > Check one more time that your device matches the machine type before flashing.
@@ -353,12 +358,13 @@ Enjoy playing!
 ## (11) Other documents
 
 The following documents give further documentation on specific features of the RTL837x SoCs:
+- [Adding a new device](doc/adding-a-device.md)
 - [RTL8372/3 Feature support](doc/hardware.md)
 - [CPU Port](doc/CpuPort.md)
 - [L2 learning](doc/l2.md) 
 - [IGMP (IP-MC streaming)](doc/igmp.md)
 - [SFP+ ports](doc/sfp.md) 
-- [Trunking aka. port aggregation](doc/trunking.md)
+- [Trunking aka. port aggregation](doc/link_aggregation.md)
 - [LACP (802.3ad link aggregation)](doc/lacp.md)
 - [VLAN](doc/vlan.md)
 - [Storm control](doc/storm_control.md)

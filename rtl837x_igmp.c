@@ -28,7 +28,7 @@ extern __xdata uint8_t igmpEnabled;
 extern __xdata uint8_t cpuPort;
 extern __xdata uint8_t sfr_data[4];
 extern __xdata struct machine_runtime machine_detected;
-extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_SIZE + 2];
+extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 
 __xdata uint16_t idx;
 #define IGMP_IP_HDR		offsetof(struct igmp_pkt, hlen)

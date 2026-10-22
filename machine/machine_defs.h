@@ -41,4 +41,10 @@
 	 (scl_pin) == GPIO50_I2C_SCL2_UART1_TX ? 2 : \
 	 (scl_pin) == GPIO40_I2C_SCL3_MDC1 ? 3 : I2CBUS_INVALID)
 
+#define MACHINE_COMMON_SETTING \
+	.machine_name = MACHINE_MODEL, \
+	.isRTL8373 = MACHINE_CHIPSET == RTL8373, \
+	.min_port = MACHINE_MIN_PORT, \
+	.max_port = MACHINE_MAX_PORT
+
 #endif

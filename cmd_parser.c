@@ -20,6 +20,7 @@
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
 #include "rtl837x_trap.h"
+#include "rtl837x_cabletest.h"
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
@@ -169,10 +170,15 @@ uint8_t atoi_hex(uint8_t idx)
 			break;
 		}
 
+		if (h_idx == 8) {
+			h_idx = 0;
+			break;
+		}
+
 		// swap hex nibbles
 		val = (val >> 4) | (val << 4);
 
-		if (c - '0' < 10) {
+		if ((uint8_t)(c - '0') < 10) {
 			val |= c - '0';
 		} else {
 			c |= 0x20;
@@ -742,7 +748,7 @@ void parse_isolate(void)
 	if (cmd_compare(2, "off")) {
 		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
 			members |= ((uint16_t)1) << i;
-		members |= 0x200; // CPU-port
+		members |= PMASK_CPU; // CPU-port
 		port_isolate(port_configured, members);
 		return;
 	}
@@ -906,6 +912,7 @@ void parse_port(void)
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
 					 "\nport <port> lldp [block|permit]" \
+					 "\nport <port> cabletest [show]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
 	}
@@ -948,6 +955,11 @@ void parse_port(void)
 		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
+	} else if (cmd_compare(2, "cabletest")) {
+		if (cmd_words_len > 3 && cmd_compare(3, "show"))
+			cabletest_show();
+		else
+			cabletest_run();
 	} else if (cmd_compare(2, "10m")) {
 		print_string(" 10M\n");
 		phy_settings.speed = PHY_SPEED_10M;

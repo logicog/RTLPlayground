@@ -46,7 +46,7 @@ extern __xdata uint8_t  stp_pflags[STP_ENTITIES];
 extern __xdata uint32_t stp_pcost[STP_ENTITIES];	/* path cost; 0 = auto (20000)      */
 extern __xdata uint8_t  stp_pprio[STP_ENTITIES];
 extern __xdata uint8_t  stp_pp2p[STP_ENTITIES];
-extern __xdata uint8_t  stp_ent_of[10];		/* the STP entity a port answers to: itself, or its lag */
+extern __xdata uint8_t  stp_ent_of[STP_PORTS];	/* the STP entity a port answers to: itself, or its lag */
 extern __xdata uint16_t stp_lag_mask[STP_LAG_COUNT];	/* member ports of each lag; 0 = not part of STP */
 
 /* Last-heard designated info per port (from received BPDUs); consult
