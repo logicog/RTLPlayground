@@ -5170,7 +5170,13 @@ function mergeConf(base, texts) {
             }
             if (line === "ip dhcp") drop(/^(netmask|gw|dns server) /);
             if ((m = line.match(/^acl (\d{1,2}) off$/))) {
-                drop(new RegExp("^acl " + m[1] + " "));
+                var n = +m[1];
+                do {
+                    drop(new RegExp("^acl " + n + " "));
+                    n++
+                } while (conf.some(function(c) {
+                    return c.indexOf("acl " + n + " and ") === 0
+                }));
                 return;
             }
             if (!isConfCmd(line)) return;
