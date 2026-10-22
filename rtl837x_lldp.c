@@ -61,23 +61,21 @@ void lldp_tick(void) __banked
     if (!timer_expired(&lldp_timer))
         return;
     timer_reset(&lldp_timer);
-
-    reg_read_m(RTL837X_REG_LINKS_STS);
-    for (i = 0; i < LLDP_NB_MAX; i++) {
-        if (!lldp_nb[i].ttl)
-            continue;
-        if (sfr_data[(lldp_nb[i].port >> 3) + 1] >> (lldp_nb[i].port & 7) & 1)
-            lldp_nb[i].ttl--;
-        else
-            lldp_nb[i].ttl = 0;
-    }
-
     if (!lldp_enabled) {
         lldp_was_enabled = false;
         return;
     }
 
     links = lldp_links();
+    for (i = 0; i < LLDP_NB_MAX; i++) {
+        if (!lldp_nb[i].ttl)
+            continue;
+        if ((links >> lldp_nb[i].port) & 1)
+            lldp_nb[i].ttl--;
+        else
+            lldp_nb[i].ttl = 0;
+    }
+
     if (!lldp_was_enabled || (links & ~lldp_links_last & lldp_logical_port_status))
         lldp_fast = LLDP_FAST_TX_COUNT;
     lldp_links_last = links;
