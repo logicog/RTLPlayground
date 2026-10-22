@@ -210,6 +210,7 @@ MACHINE_DEFS := $(sort $(patsubst machine/%.c,%,$(wildcard machine/*.c)))
 MACHINE_LESS_CC_FLAGS = $(filter-out -DMACHINE_%,$(CC_FLAGS))
 
 .PHONY:
+machine_check: SHELL := /bin/bash
 machine_check:
 	@mkdir -p $(BUILDDIR)/tmp
 	@set -eo pipefail; \
