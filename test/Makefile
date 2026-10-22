@@ -30,7 +30,8 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_httpd_tx \
         $(BUILDDIR)/test_tick_gate \
         $(BUILDDIR)/test_nic_rx \
-        $(BUILDDIR)/test_lacp
+        $(BUILDDIR)/test_lacp \
+        $(BUILDDIR)/test_lldp_tx
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -69,6 +70,9 @@ $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c | $(BUILDDIR)
 # this test carries the environment below them itself.
 $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+$(BUILDDIR)/test_lldp_tx: test_lldp_tx.c $(SRCROOT)/rtl837x_lldp.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 run: $(TESTS)
 	@fail=0; for t in $(TESTS); do \

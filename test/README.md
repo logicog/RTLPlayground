@@ -49,6 +49,7 @@ fires — so it drops straight into CI.
 | `test_page_json` | `httpd/page_impl.c` + `rtl837x_port.c` | `/vlan.json`, `/vlanlist`, `/l2.json` (walk, wrap marker, paging inside `outbuf`), 64-bit counters in `/status.json` and `/counters.json` |
 | `test_httpd_tx` | `httpd/httpd.c` + `uip/uip.c` | a GET of a static file against a client that moves its receive window: ACK accounting, continuation chunks out of flash, retransmission |
 | `test_lacp` | `rtl837x_lacp.c` | state machines against a simulated 802.3ad partner: convergence, mis-cabling, expiry, re-election, two groups, delivery by trap |
+| `test_lldp_tx` | `rtl837x_lldp.c` | emitted Port ID subtype and physical mapping, TTL 120/0, selected-port/all-port shutdown, bridge capabilities, management IPv4 bytes and omission at 0.0.0.0, optional capabilities switch |
 
 ## Adding a test for another module
 1. Write `test_<module>.c` with `main()` driving the module's entry points and
