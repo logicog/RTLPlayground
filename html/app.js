@@ -829,7 +829,7 @@ var CONF_CMDS=[
   /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
   /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
   /^acl\s+\d{1,2}\s+\S.*$/,/^acl\s+meter\s+\d{1,2}\s+\d+\s+(kbps|pps)\s+\d+(\s+ifg)?$/,
-  /^acl\s+field\s+\d{1,2}\s+(off|raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3}$/,
+  /^acl\s+field\s+\d{1,2}\s+off(\s+\d{1,3})?$/,/^acl\s+field\s+\d{1,2}\s+(raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3}$/,
   /^acl\s+default\s+(permit|drop(\s+\d)+)$/,/^acl\s+counter\s+\d{1,2}\s+(mode\s+(bytes|packets)|width\s+(32|64))$/,
   /^acl\s+gpio\s+([0-3]\s+(on|off)|polarity\s+(high|low))$/,
   /^dhcp\s+snooping\s+(on|off)$/,/^dhcp\s+snooping\s+trust(\s+\d)+$/,/^dhcp\s+snooping\s+trust\s+none$/,
@@ -2258,12 +2258,15 @@ var CONF_OVERWRITE=[
 ];
 var CONF_TOGGLE=[/^(dhcp snooping)\s+(on|off)$/,/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
-  var conf=base.slice();
-  function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
+  var conf=[],aclBase=[];
+  base.forEach(function(c){(/^acl \d{1,2} /.test(c)?aclBase:conf).push(c)});
+  texts=[aclBase.join("\n")].concat(texts);
+  function drop(rx){var was=conf.length;conf=conf.filter(function(c){return!rx.test(c)});return was-conf.length}
   texts.forEach(function(txt){
     txt.split(/\r?\n/).forEach(function(line){
       line=line.trim().replace(/\s+/g," ");
       if(!line)return;
+      line=line.replace(/^acl (\d{1,2}) /,function(_,n){return"acl "+(+n)+" "});
       var m;
       if((m=line.match(/^vlan (\d{1,4}) d$/))){drop(new RegExp("^vlan "+m[1]+"( |$)"));return;}
       if((m=line.match(/^lag (\d) d$/))){drop(new RegExp("^lag(hash)? "+m[1]+"( |$)"));return;}
@@ -2274,7 +2277,13 @@ function mergeConf(base,texts){
       }
       if((m=line.match(/^lag (\d) lacp off$/))){drop(new RegExp("^lag "+m[1]+" lacp( |$)"));return;}
       if(line==="mirror off"){drop(/^mirror /);return;}
-      if((m=line.match(/^acl (\d{1,2}) off$/))){drop(new RegExp("^acl "+m[1]+" "));return;}
+      if((m=line.match(/^acl (\d{1,2}) off$/))){
+        var n=+m[1];
+        drop(new RegExp("^acl "+n+" "));
+        // cascade through consecutive "and" children; stop at first missing or independent rule
+        while(drop(new RegExp("^acl "+(n+1)+" and ")))n++;
+        return;
+      }
       if(!isConfCmd(line))return;
       if((m=line.match(/^ingress (.+)$/))){
         if(/^[tua]$/.test(m[1])){drop(/^ingress /);conf.push(line);return;}
@@ -2316,7 +2325,15 @@ function mergeConf(base,texts){
       conf.push(line);
     });
   });
-  return conf;
+  // Reserve explicit ACL meters before storm control allocates from the shared pool.
+  var rules=[],storms=[],rest=[];
+  conf.forEach(function(c){
+    if(/^acl \d{1,2} /.test(c))rules.push(c);
+    else if(/^storm /.test(c))storms.push(c);
+    else rest.push(c);
+  });
+  rules.sort(function(a,b){return a.split(" ")[1]-b.split(" ")[1]});
+  return rest.concat(rules,storms);
 }
 function writeConfig(txt,title,fromLog){
   var info=h("p",{class:"small mut"}),warn=h("p",{class:"small"});

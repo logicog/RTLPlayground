@@ -30,6 +30,11 @@ meters, fields, counter modes and the default are kept in the saved
 configuration like any other command. A command line holds at most 14 words, so
 a long rule is split with `and` (see below).
 
+The web interface saves numbered rules in numeric order so an `and` rule
+always follows its parent. Deleting a parent also removes its saved children.
+Field-selector disable commands are saved too. Explicit ACL meter reservations
+replay before storm-control limits, which allocate whichever meters remain free.
+
 `acl show` lists the rules in use with the template each one got, the counters
 that are not zero, the hardware's hit indicator and the meters exceeded since the
 previous `acl show`.
@@ -120,8 +125,10 @@ with any other action, such as `permit` or `count`, it does not.
 
 A rule takes at most one forwarding action, one remark, and `police` or `count`.
 The second and third meter of `police` use the rule's C-VLAN and S-VLAN action,
-so they do not combine with the VLAN actions of that kind. The single `<port>`
-form must be the first action.
+so they do not combine with the VLAN actions of that kind. A single `<port>`
+as the first action redirects; after any other action (`interrupt`, `gpio`,
+`setsvlan`, ...) a trailing port is an ingress port, like those after the
+last action.
 
 A redirect ignores the VLAN membership of the target port: a frame from a VLAN
 the port does not belong to still leaves through it, without a VLAN tag, and
@@ -138,6 +145,18 @@ packets; `ifg` also counts the preamble and inter-frame gap of each frame. A
 bucket of 0 passes nothing, and a bucket should hold a few frames.
 Several rules may share a meter. `acl show` lists which meters have been
 exceeded since the previous `acl show` and clears the list.
+
+The 64 meters are shared with storm control. `acl meter` and `police` reserve
+the meters they name for the ACL, and the reservation lasts until reboot:
+removing a rule with `acl <n> off` keeps the meter reserved, because there is
+no command to delete a meter. Reconfiguring a meter the ACL already owns, or
+sharing it between rules, always works. A meter that storm control holds is
+refused with an error before anything changes: `acl meter` leaves its
+registers alone, and a rule naming it, even as one of several `police`
+meters, leaves the old rule in place and reserves none of its meters. A rule
+rejected for any other reason, such as a missing template or range entry,
+reserves none either. A meter storm control has released can be claimed by
+the ACL, and storm control then skips it.
 
 Counters count packets unless their pair (0-1, 2-3, ...) is switched to bytes,
 and are 32 bits wide unless the pair is switched to 64, which joins the two

@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     sdcc \
     xxd \
     python3 \
+    nodejs \
     libjson-c-dev \
     git \
     zlib1g-dev \

@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev -y
+          apt install make gcc sdcc xxd python-is-python3 nodejs libjson-c-dev zlib1g-dev -y
       - name: Run the host-side unit tests
         run: make -C test
       - name: Check that every machine definition can be compiled

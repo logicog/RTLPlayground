@@ -12,6 +12,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_acl.h"
+#include "rtl837x_storm.h"
 #include "cmd_parser.h"
 #include "support.h"
 #include "hw_mock.h"
@@ -219,12 +220,84 @@ static void t_globals(void)
 	CHECK(err_status, "the ACL drives four pins");
 }
 
+static void t_deferred_ports(void)
+{
+	static const struct { const char *cmd; uint16_t ctrl; } cases[] = {
+		{"acl 60 interrupt 5", 0x40},
+		{"acl 60 gpio 2 5", 0x40},
+		{"acl 60 setsvlan 100 5", 0x02},
+	};
+	printf("[test] deferred actions keep trailing ingress ports\n");
+	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		run(cases[i].cmd);
+		CHECK(!err_status && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 59) == cases[i].ctrl
+		      && ((hw_acl_rule(0x80 | 59, 4) >> 11) & 0x3ff) == 0x10,
+		      cases[i].cmd);
+	}
+	run("acl 60 5 interrupt");
+	CHECK(!err_status && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 59) == 0x60
+	      && ((hw_acl_rule(0x80 | 59, 4) >> 11) & 0x3ff) == 0x1ff,
+	      "a bare port as the first action still redirects");
+	run("acl 60 off");
+}
+
+static void t_shared_meters(void)
+{
+	printf("[test] ACL and storm control cannot overwrite each other's meters\n");
+	run("acl 60 dmac 02:00:00:00:00:01 sip 192.0.2.1 police 63");
+	CHECK(err_status, "an unsupported template with policing is rejected");
+	for (int i = 40; i < 56; i++) {
+		char line[64];
+		snprintf(line, sizeof(line), "acl %d dport %d-%d drop", i, i * 100, i * 100 + 50);
+		run(line);
+	}
+	run("acl 60 dport 7000-7100 police 63");
+	CHECK(err_status, "range exhaustion with policing is rejected");
+	for (int i = 40; i < 56; i++) {
+		char line[32];
+		snprintf(line, sizeof(line), "acl %d off", i);
+		run(line);
+	}
+	CHECK(storm_set(0, 0, 100, 1) && storm_meter(0, 0) == 63, "storm reserves its first meter");
+	run("acl meter 63 1000000 pps 1000000");
+	CHECK(err_status && hw_reg_get(RTL837X_METER_RATE + 4 * 63) == 100
+	      && hw_reg_get(RTL837X_STORM_CTRL) == 1,
+	      "ACL configuration cannot overwrite an enabled storm meter");
+	run("acl 60 ethertype 0800 drop");
+	run("acl 60 police 62,63");
+	CHECK(err_status && hw_reg_get(RTL837X_ACL_ACT_CTRL + 4 * 59) == 0x20
+	      && hw_acl_act(59, 1) == 0x00020000,
+	      "a policing conflict preserves the old rule");
+	CHECK(storm_set(1, 0, 200, 1) && storm_meter(1, 0) == 62,
+	      "a rejected multi-meter rule does not reserve a free meter");
+	run("acl meter 61 200 kbps 1600 gap");
+	CHECK(err_status && storm_set(2, 0, 300, 1) && storm_meter(2, 0) == 61,
+	      "an invalid meter command does not reserve a meter");
+	run("acl 60 police 60,60,60");
+	CHECK(!err_status && storm_set(3, 0, 400, 1) && storm_meter(3, 0) == 59,
+	      "a police-only rule reserves its meter once and storm skips it");
+	run("acl meter 60 500 pps 500");
+	run("acl meter 60 600 pps 600");
+	CHECK(!err_status && hw_reg_get(RTL837X_METER_RATE + 4 * 60) == 600,
+	      "ACL can configure and update its own reserved meter");
+	run("acl 60 off");
+	CHECK(storm_set(4, 0, 500, 1) && storm_meter(4, 0) == 58,
+	      "removing a rule keeps its configured meter reserved for ACL");
+	storm_off(0, 0);
+	run("acl meter 63 700 pps 700");
+	CHECK(!err_status && storm_set(0, 0, 800, 1) && storm_meter(0, 0) == 57
+	      && hw_reg_get(RTL837X_METER_RATE + 4 * 63) == 700,
+	      "ACL can claim a released storm meter and storm then skips it");
+}
+
 int main(void)
 {
 	printf("== rtl837x_acl.c rule tests ==\n");
 	t_rules();
 	t_errors();
 	t_globals();
+	t_deferred_ports();
+	t_shared_meters();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

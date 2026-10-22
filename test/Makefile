@@ -55,10 +55,10 @@ $(BUILDDIR)/test_port_tables: test_port_tables.c $(TABLE_ENV) hw_mock.h | $(BUIL
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # rtl837x_acl.c and rtl837x_acl_cmd.c are compiled UNMODIFIED from the firmware tree.
-$(BUILDDIR)/test_acl: test_acl.c support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_acl.c $(SRCROOT)/rtl837x_acl_cmd.c hw_mock.h | $(BUILDDIR)
+$(BUILDDIR)/test_acl: test_acl.c support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_acl.c $(SRCROOT)/rtl837x_acl_cmd.c $(SRCROOT)/rtl837x_storm.c $(SRCROOT)/rtl837x_meter.c hw_mock.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-$(BUILDDIR)/test_dhcp_snoop: test_dhcp_snoop.c support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_acl.c $(SRCROOT)/rtl837x_dhcp_snoop.c hw_mock.h | $(BUILDDIR)
+$(BUILDDIR)/test_dhcp_snoop: test_dhcp_snoop.c support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_acl.c $(SRCROOT)/rtl837x_dhcp_snoop.c $(SRCROOT)/rtl837x_meter.c hw_mock.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 $(BUILDDIR)/test_tick_gate: test_tick_gate.c support.c $(SRCROOT)/cmd_editor.c | $(BUILDDIR)
@@ -84,7 +84,10 @@ $(BUILDDIR)/test_storm: test_storm.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
 $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-run: $(TESTS)
+test_config_merge:
+	node test_config_merge.js
+
+run: test_config_merge $(TESTS)
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
@@ -95,4 +98,4 @@ run: $(TESTS)
 clean:
 	rm -rf $(BUILDDIR)
 
-.PHONY: all run clean
+.PHONY: all run clean test_config_merge

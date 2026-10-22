@@ -30,6 +30,15 @@
     the offending line is skipped and the following lines are still applied.
   - The web UI and the configuration upload now refuse a line the replay cannot take,
     instead of writing it to flash.
+  - Saving ACL changes preserves parent/`and` replay order, removes deleted
+    chains, and retains field-selector disable commands.
+  - Explicit ACL meter reservations replay before dynamic storm-control allocation.
+
+- ACL
+  - Ports after interrupt, GPIO and S-VLAN actions remain ingress restrictions
+    instead of becoming unintended redirects.
+  - ACL meter configuration and policing use the shared meter allocator, refusing
+    storm-control collisions without changing existing rules or leaking reservations.
 
 ## Breaking changes
 

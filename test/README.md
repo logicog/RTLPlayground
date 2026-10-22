@@ -6,6 +6,9 @@ the fast inner loop for the logic-level bugs in `../../NOTES/08-findings.md`
 (parser, line editor, HTTP header, DHCP): edit → `make` → see red/green in
 seconds instead of a minutes-long flash-and-reboot cycle.
 
+Node.js is also required for `test_config_merge.js`, which exercises the web
+interface's configuration merger using only Node's built-in modules.
+
 ## Run
 ```
 cd test
@@ -49,6 +52,8 @@ fires — so it drops straight into CI.
 | `test_page_json` | `httpd/page_impl.c` + `rtl837x_port.c` | `/vlan.json`, `/vlanlist`, `/l2.json` (walk, wrap marker, paging inside `outbuf`), 64-bit counters in `/status.json` and `/counters.json` |
 | `test_httpd_tx` | `httpd/httpd.c` + `uip/uip.c` | a GET of a static file against a client that moves its receive window: ACK accounting, continuation chunks out of flash, retransmission |
 | `test_lacp` | `rtl837x_lacp.c` | state machines against a simulated 802.3ad partner: convergence, mis-cabling, expiry, re-election, two groups, delivery by trap |
+| `test_acl` | `rtl837x_acl.c` + `rtl837x_acl_cmd.c` + shared storm/meter modules | rule encoding, trailing ingress ports, meter ownership conflicts and rollback |
+| `test_config_merge.js` | `html/app.js` configuration merger | parent/child replay order, cascading removal, selector disables and ACL-before-storm reservation order |
 
 ## Adding a test for another module
 1. Write `test_<module>.c` with `main()` driving the module's entry points and

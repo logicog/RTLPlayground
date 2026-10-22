@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "cmd_parser.h"
 #include "rtl837x_acl.h"
+#include "rtl837x_meter.h"
 
 #pragma codeseg BANK3
 #pragma constseg BANK3
@@ -37,6 +38,9 @@ static __xdata uint8_t  acl_byp;
 static __xdata uint8_t  acl_svlan;
 static __xdata uint8_t  acl_intr;
 static __xdata uint8_t  acl_pol[3];
+static __xdata uint8_t  acl_np;
+static __xdata uint8_t  acl_nm;
+static __xdata uint8_t  acl_mu[ACL_METERS / 8];
 static __xdata uint8_t  acl_mac[6];
 static __xdata uint8_t  acl_mmask[6];
 static __xdata uint8_t * __xdata acl_out;
@@ -502,7 +506,7 @@ static uint8_t acl_fwd_action(void)
 		acl_variant = ACL_FWD_COPY | 8;
 	if (acl_variant != ACL_BAD)
 		return acl_next() && acl_ports() ? acl_fwd() : ACL_BAD;
-	if ((acl_ctrl & 0xff) || acl_vlan || acl_tag)
+	if ((acl_ctrl & 0xff) || acl_vlan || acl_tag || acl_svlan || acl_intr)
 		return 0;
 	acl_p = cmd_words_b[acl_w];
 	acl_c = acl_port();
@@ -619,6 +623,7 @@ static uint8_t acl_action(void)
 		}
 		if (!acl_end())
 			return ACL_BAD;
+		acl_np = acl_c;
 		acl_num = acl_pol[0];
 		acl_num <<= 10;
 		acl_act.fwd_qos |= acl_num;
@@ -689,6 +694,30 @@ static uint8_t acl_action(void)
 	return 0;
 }
 
+/* 2 = newly reserved, 1 = already ACL's, 0 = another user (storm control) owns it */
+static uint8_t acl_meter_get(uint8_t m)
+{
+	if (acl_mu[m >> 3] & (1 << (m & 7)))
+		return 1;
+	if (!meter_claim(m)) {
+		print_string("acl: meter in use by storm control\n");
+		return 0;
+	}
+	acl_mu[m >> 3] |= 1 << (m & 7);
+	return 2;
+}
+
+static void acl_meter_undo(void)
+{
+	for (acl_c = 0; acl_c < 3; acl_c++) {
+		if (!(acl_nm & (1 << acl_c)))
+			continue;
+		acl_mu[acl_pol[acl_c] >> 3] &= ~(1 << (acl_pol[acl_c] & 7));
+		meter_release(acl_pol[acl_c]);
+	}
+	acl_nm = 0;
+}
+
 static uint8_t acl_in_ports(void)
 {
 	for (; acl_w < cmd_words_len; acl_w++) {
@@ -719,7 +748,7 @@ static uint8_t acl_rule_cmd(void)
 		return 1;
 	}
 	acl_match_begin();
-	acl_vlan = acl_tag = acl_cont = acl_byp = acl_svlan = acl_intr = 0;
+	acl_vlan = acl_tag = acl_cont = acl_byp = acl_svlan = acl_intr = acl_np = 0;
 	if (acl_eq("and")) {
 		if (!acl_rn || !ACL_IS_USED(acl_rn - 1)) {
 			print_string("acl: and needs rule n-1 to join\n");
@@ -759,7 +788,21 @@ static uint8_t acl_rule_cmd(void)
 	}
 	if (!acl_in_ports())
 		return 0;
+	acl_nm = 0;
+	for (acl_c = 0; acl_c < acl_np; acl_c++) {
+		acl_r = acl_meter_get(acl_pol[acl_c]);
+		if (!acl_r)
+			break;
+		if (acl_r == 2)
+			acl_nm |= 1 << acl_c;
+	}
+	if (acl_c < acl_np) {
+		acl_meter_undo();
+		return 0;
+	}
 	acl_r = acl_rule_set(acl_rn);
+	if (acl_r)
+		acl_meter_undo();
 	if (acl_r == ACL_ERR_TEMPLATE)
 		print_string("acl: these fields share no template, continue with acl <n+1> and ...\n");
 	else if (acl_r == ACL_ERR_RANGE)
@@ -886,6 +929,8 @@ static uint8_t acl_global_cmd(void)
 			return 0;
 		acl_max = 0xfffffff;
 		if (!acl_val())
+			return 0;
+		if (!acl_meter_get(acl_r))
 			return 0;
 		acl_ra = RTL837X_METER_BURST + ((uint16_t)acl_r << 2);
 		acl_rv = acl_num;
