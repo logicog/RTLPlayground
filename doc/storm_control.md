@@ -23,12 +23,15 @@ page of the web interface has a Storm control card to set them.
 
 ## Registers
 Each port and type has an enable bit and a meter index, and each limit uses
-one of the 64 shared meters of the switch. RTLPlayground gives every port and
-type its own meter, index `24 + port * 4 + type`, so one port's storm does not
-eat into the limit of another. Storm control uses meters 24 to 63 and leaves
-0 to 23 to the ACL. The limit of a meter is in `RTL837X_METER_RATE + 4 *
-meter`, and bit `meter % 32` of `RTL837X_METER_MODE + 4 * (meter / 32)`
-selects pps instead of kbit/s.
+one of the 64 shared meters of the switch. RTLPlayground gives every limit
+that is set its own meter, so one port's storm does not eat into the limit of
+another. Meters are handed out from 63 downwards when a limit is set and given
+back when it is turned off; a map of which meters are in use (`rtl837x_meter.c`)
+keeps storm control from taking a meter something else uses. The meter of a
+port and type is the 6 bit field `port % 5` of its `RTL837X_STORM_MIDX` word.
+The limit of a meter is in `RTL837X_METER_RATE + 4 * meter`, and bit
+`meter % 32` of `RTL837X_METER_MODE + 4 * (meter / 32)` selects pps instead of
+kbit/s.
 ```
 #define RTL837X_STORM_CTRL		0x54e4	/* + 4 * type, bit = port */
 #define RTL837X_STORM_MIDX		0x54f4	/* + 8 * type + 4 * (port / 5), 6 bits per port */
