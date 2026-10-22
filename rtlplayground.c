@@ -31,6 +31,7 @@
 #include "syslog.h"
 #include "dns.h"
 #include "ntp.h"
+#include "sflow.h"
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
@@ -1684,6 +1685,7 @@ void main(void)
 	syslog_init();
 	dns_init();
 	ntp_init();
+	sflow_init();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS

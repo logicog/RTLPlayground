@@ -26,6 +26,7 @@
 #include "syslog.h"
 #include "dns.h"
 #include "ntp.h"
+#include "sflow.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -1902,6 +1903,8 @@ void cmd_parser(void) __banked
 			dns_parse();
 		} else if (cmd_compare(0, "ntp") || cmd_compare(0, "time")) {
 			ntp_parse();
+		} else if (cmd_compare(0, "sflow")) {
+			sflow_parse();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();

@@ -99,6 +99,8 @@ SRCS = \
 	dns_cli.c \
 	ntp.c \
 	ntp_cli.c \
+	sflow.c \
+	sflow_cli.c \
 	syslog.c \
 	udp_apps.c
 
