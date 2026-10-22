@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "uip.h"
 #include "rtl837x_lldp.h"
+#include "rtl837x_trap.h"
 
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
@@ -63,6 +64,38 @@ static void put(uint8_t slot, uint8_t port, uint16_t ttl)
 	lldp_nb[slot].ttl = ttl;
 }
 
+static const uint8_t ap_mac[] = {0x94, 0x2a, 0x6f, 0xd2, 0x25, 0x6e};
+
+static bool frame(uint8_t port, uint8_t subtype, const char *id, uint8_t id_len)
+{
+	uint8_t *p = uip_buf;
+
+	memset(uip_buf, 0, sizeof(uip_buf));
+	memcpy(p, LLDP_MULTICAST_ADDR, MAC_ADDR_LEN);
+	p = uip_buf + TRAP_RX_HDR_SIZE - 1;
+	*p++ = port;
+	*p++ = LLDP_ETHERTYPE >> 8;
+	*p++ = LLDP_ETHERTYPE & 0xff;
+	*p++ = LLDP_CHASSIS_ID_TLV_TYPE << 1;
+	*p++ = LLDP_CHASSIS_ID_TLV_LENGTH;
+	*p++ = LLDP_CHASSIS_ID_TLV_SUBTYPE;
+	memcpy(p, ap_mac, MAC_ADDR_LEN);
+	p += MAC_ADDR_LEN;
+	*p++ = LLDP_PORT_ID_TLV_TYPE << 1;
+	*p++ = id_len + 1;
+	*p++ = subtype;
+	memcpy(p, id, id_len);
+	p += id_len;
+	*p++ = LLDP_TTL_TLV_TYPE << 1;
+	*p++ = LLDP_TTL_TLV_LENGTH;
+	*p++ = 0;
+	*p++ = 120;
+	*p++ = 0;
+	*p++ = 0;
+	uip_len = p - uip_buf;
+	return lldp_in();
+}
+
 static void reset(bool enabled, uint16_t links)
 {
 	ticks = 0;
@@ -117,6 +150,20 @@ int main(void)
 	for (i = 0; i < LLDP_NB_MAX; i++)
 		busy += lldp_nb[i].ttl != 0;
 	CHECK(busy == 0, "L8 lldp off frees every slot of the table");
+
+	reset(true, 0x01ff);
+	frame(7, LLDP_PORT_ID_SUBTYPE_MAC, (const char *)ap_mac, MAC_ADDR_LEN);
+	slen = 0;
+	lldp_neighbors_to_html();
+	outbuf[slen] = 0;
+	CHECK(lldp_nb[0].port == 7 && strstr((char *)outbuf, "\"portId\":\"94:2a:6f:d2:25:6e\""),
+	      "L9 a MAC address port ID is shown as aa:bb:cc:dd:ee:ff");
+	CHECK(frame(8, LLDP_PORT_ID_TLV_SUBTYPE, "GigabitEthernet1/0/24", 21)
+	      && !strcmp(lldp_nb[1].port_id, "GigabitEther") && !lldp_nb[1].port_id_mac,
+	      "L10 an interface name port ID is cut at 12 characters");
+	CHECK(frame(6, LLDP_PORT_ID_TLV_SUBTYPE, "\x94*o\xd2%n", MAC_ADDR_LEN)
+	      && !strcmp(lldp_nb[2].port_id, ".*o.%n"),
+	      "L11 six bytes with another subtype stay text with dots for the unprintable");
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
