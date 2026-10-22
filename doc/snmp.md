@@ -95,3 +95,15 @@ returned. STAT_GET's unbounded waits are not substituted into a network
 request path.
 Runtime stack high-water remains unmeasured. Review image target/CRC, backups and
 recovery separately before any hardware upgrade.
+
+
+## Hardware validation scope
+
+See [HORACO Full Candidate validation](validation/HORACO_SWTGW218AS-fullcandidate.md)
+for image identity, completed physical Ethernet/basic SNMP/stress observations and
+remaining acceptance gates. GETBULK, walk ordering and bounded fault recovery have
+passing host tests; complete physical GETBULK/walk and forced-fault evidence is
+still required. Static stack capacity is not measured runtime headroom. The
+publication integration preserves the single **System → SNMP** configuration card.
+Authenticated configuration export still contains the community for Save; visual
+masking does not protect it from an authenticated browser or network observation.
