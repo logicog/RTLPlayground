@@ -14,6 +14,10 @@ uint16_t uip_len;
 uint8_t outbuf[TCP_OUTBUF_SIZE];
 uint16_t slen;
 volatile uint32_t ticks;
+/* Hardware-only edges used by integration's mismatch serializer. */
+uint16_t SFR_DATA_U16;
+void reg_read_m(uint16_t reg) { SFR_DATA_U16 = 0; }
+uint8_t port_lag_of(uint8_t port) { return 0xff; }
 const struct machine machine = { .min_port = 0, .max_port = 7,
     .log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8 } };
 static char console[4096];
