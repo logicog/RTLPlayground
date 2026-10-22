@@ -1,6 +1,8 @@
 CC = gcc
 CCFLAGS = -Wall -o
-BUILDDIR = output
+ifndef BUILDDIR
+	BUILDDIR = output
+endif
 
 all: create_build_dir $(BUILDDIR)/injector $(BUILDDIR)/fileadder $(BUILDDIR)/httpd_sim\
 	$(BUILDDIR)/crc_calculator $(BUILDDIR)/imagebuilder
