@@ -246,7 +246,7 @@ void rtl8372_init(void) __banked
 	// [...]
 	///
 	uint16_t reg = 0x1238 + 0x300; // Port base register for the bits we set
-	for (char i = machine.min_port; i <= machine.max_port; i++) {
+	for (char i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		// Bit 7 (0x40) enables replacement of the RTL-VLAN tag with an 802.1Q VLAN tag
 		REG_SET(reg, 0xe77);
 		reg += 0x100;

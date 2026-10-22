@@ -42,6 +42,9 @@
 #endif
 #endif
 
+#define MACHINE_PORT_VALID(p) \
+	((uint8_t)((p) - MACHINE_MIN_PORT) <= (MACHINE_MAX_PORT - MACHINE_MIN_PORT))
+
 // auto derive SOC_FAMILY
 #define RTL836X 6
 #define RTL837X 7

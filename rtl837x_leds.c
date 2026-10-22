@@ -37,10 +37,10 @@ void leds_setup(void) __banked
 
 	// Set up all Port-LEDs to belong to RLDP
 	sfr_data[3] = sfr_data[2] = sfr_data[1] = sfr_data[0] = 0;
-	for (uint8_t i = machine.min_port; i <= (machine.max_port > 7 ? 7 : machine.max_port); i++)
+	for (uint8_t i = MACHINE_MIN_PORT; i <= (MACHINE_MAX_PORT > 7 ? 7 : MACHINE_MAX_PORT); i++)
 		sfr_data[3 - (i >> 2)] |= i & 1 ? 0xf0 : 0x0f;
 	reg_write_m(RTL837X_REG_LED_RLDP_2);
-	if (machine.max_port == 8)
+	if (MACHINE_MAX_PORT == 8)
 		REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
 
 	// Configure high LEDs 27-29: mux and LED enable
@@ -110,7 +110,7 @@ void leds_setup(void) __banked
 	
 	// Configure the LED-set of a port
 	sfr_data[3] = sfr_data[2] = sfr_data[1] = sfr_data[0] = 0;
-	for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++)
 		sfr_data[3 - (i >> 2)] |= machine.port_led_set[i] << ((i & 3) << 1);
 	reg_write_m(RTL837X_LED_PORT_SET_SEL);
 
