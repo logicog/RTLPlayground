@@ -21,6 +21,7 @@
 #define LLDP_CHASSIS_ID_TLV_LENGTH 7
 #define LLDP_CHASSIS_ID_TLV_SUBTYPE 4
 
+#define LLDP_PORT_DESC_TLV_TYPE 4
 #define LLDP_SYSNAME_TLV_TYPE 5
 #define LLDP_SYSDESC_TLV_TYPE 6
 
@@ -31,5 +32,6 @@ void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;
 uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked;
+uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked;
 
 #endif
