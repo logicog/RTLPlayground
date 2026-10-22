@@ -15,6 +15,7 @@ make MACHINE=<NAME>
 |------|---------|
 | `machine/<NAME>.c` | the `struct machine machine` board definition |
 | `machine/<NAME>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`) |
+| `machine/<NAME>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
 | `doc/devices/<name>.md` + `doc/supported_devices.md` | (only if the board is verified and you want to support it publicly) user-facing documentation |
 
 `<NAME>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
@@ -147,6 +148,20 @@ and the six `KP_9000_*` revision variants.
 Two files that differ only in whitespace or comments are duplicates and should
 be collapsed this way.
 
+### Optional custom init hook
+
+If the board needs custom initialization, add
+`machine/<NAME>_init.c` defining `machine_custom_init()`. The Makefile picks the
+file up by name and compiles it.
+
+Boards that need the same hook share one file: keep the code in a single
+`machine/<NAME>_init.c` whose `machine/<NAME>.c` is a real file (not a symlink),
+and make the other boards' `_init.c` symlinks to it, for example:
+
+```
+ln -s KP_9000_6XH_X2_init.c machine/MY_BOARD_1_0_init.c
+```
+
 ## Step 3: build and verify
 
 ```
@@ -160,7 +175,7 @@ file, before anything is compiled.
 Then run the checks CI runs:
 
 ```
-make machine_check    # compiles machine/<NAME>.c and machine_init.c for every machine
+make machine_check    # compiles machine/<NAME>.c and its optional _init.c for every machine
 make -C test          # host-side unit tests
 ```
 
