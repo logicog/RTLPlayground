@@ -68,9 +68,14 @@ $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c | $(BUILDDIR)
 
 # Keep the production parser and serializers; discard unrelated hardware TX paths.
 $(BUILDDIR)/test_lldp: test_lldp.c $(SRCROOT)/rtl837x_lldp.c $(SRCROOT)/rtl837x_lldp.h | $(BUILDDIR)
-	$(CC) $(CFLAGS) $(shell pkg-config --cflags json-c) -ffunction-sections -fdata-sections $(filter %.c,$^) -o $@ $(LDFLAGS) $(shell pkg-config --libs json-c) $(if $(filter Darwin,$(shell uname -s)),-Wl$(comma)-dead_strip,-Wl$(comma)--gc-sections)
+	$(CC) $(CFLAGS) $(LLDP_JSON_CFLAGS) -ffunction-sections -fdata-sections $(filter %.c,$^) -o $@ $(LDFLAGS) $(LLDP_JSON_LIBS) $(if $(filter Darwin,$(shell uname -s)),-Wl$(comma)-dead_strip,-Wl$(comma)--gc-sections)
 
 comma := ,
+LLDP_JSON_LIBS = -ljson-c
+ifeq ($(shell uname -s),Darwin)
+LLDP_JSON_CFLAGS := $(shell pkg-config --cflags json-c)
+LLDP_JSON_LIBS := $(shell pkg-config --libs json-c)
+endif
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
 # this test carries the environment below them itself.
