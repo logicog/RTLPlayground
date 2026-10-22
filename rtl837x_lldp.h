@@ -49,7 +49,7 @@
 #define LLDP_NETWORK_ADDR_IPV4_LENGTH 5
 
 #define LLDP_NB_MAX 16
-#define LLDP_NB_CHASSIS_LENGTH 16
+#define LLDP_NB_CHASSIS_LENGTH 17
 #define LLDP_NB_PORT_ID_LENGTH 12
 #define LLDP_NB_SYS_NAME_LENGTH 16
 #define LLDP_NB_JSON_LENGTH 112	/* separator + worst-case neighbour entry in /lldp.json */
