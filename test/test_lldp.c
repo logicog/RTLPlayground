@@ -66,7 +66,8 @@ static void put(uint8_t slot, uint8_t port, uint16_t ttl)
 
 static const uint8_t ap_mac[] = {0x94, 0x2a, 0x6f, 0xd2, 0x25, 0x6e};
 
-static bool frame(uint8_t port, uint8_t subtype, const char *id, uint8_t id_len)
+static bool frame(uint8_t port, uint8_t chassis_subtype, const char *chassis, uint8_t chassis_len,
+		  uint8_t subtype, const char *id, uint8_t id_len)
 {
 	uint8_t *p = uip_buf;
 
@@ -77,10 +78,10 @@ static bool frame(uint8_t port, uint8_t subtype, const char *id, uint8_t id_len)
 	*p++ = LLDP_ETHERTYPE >> 8;
 	*p++ = LLDP_ETHERTYPE & 0xff;
 	*p++ = LLDP_CHASSIS_ID_TLV_TYPE << 1;
-	*p++ = LLDP_CHASSIS_ID_TLV_LENGTH;
-	*p++ = LLDP_CHASSIS_ID_TLV_SUBTYPE;
-	memcpy(p, ap_mac, MAC_ADDR_LEN);
-	p += MAC_ADDR_LEN;
+	*p++ = chassis_len + 1;
+	*p++ = chassis_subtype;
+	memcpy(p, chassis, chassis_len);
+	p += chassis_len;
 	*p++ = LLDP_PORT_ID_TLV_TYPE << 1;
 	*p++ = id_len + 1;
 	*p++ = subtype;
@@ -152,18 +153,21 @@ int main(void)
 	CHECK(busy == 0, "L8 lldp off frees every slot of the table");
 
 	reset(true, 0x01ff);
-	frame(7, LLDP_PORT_ID_SUBTYPE_MAC, (const char *)ap_mac, MAC_ADDR_LEN);
+	frame(7, LLDP_CHASSIS_ID_TLV_SUBTYPE, (const char *)ap_mac, MAC_ADDR_LEN, LLDP_PORT_ID_SUBTYPE_MAC, (const char *)ap_mac, MAC_ADDR_LEN);
 	slen = 0;
 	lldp_neighbors_to_html();
 	outbuf[slen] = 0;
 	CHECK(lldp_nb[0].port == 7 && strstr((char *)outbuf, "\"portId\":\"94:2a:6f:d2:25:6e\""),
 	      "L9 a MAC address port ID is shown as aa:bb:cc:dd:ee:ff");
-	CHECK(frame(8, LLDP_PORT_ID_TLV_SUBTYPE, "GigabitEthernet1/0/24", 21)
+	CHECK(frame(8, LLDP_CHASSIS_ID_TLV_SUBTYPE, (const char *)ap_mac, MAC_ADDR_LEN, LLDP_PORT_ID_TLV_SUBTYPE, "GigabitEthernet1/0/24", 21)
 	      && !strcmp(lldp_nb[1].port_id, "GigabitEther") && !lldp_nb[1].port_id_mac,
 	      "L10 an interface name port ID is cut at 12 characters");
-	CHECK(frame(6, LLDP_PORT_ID_TLV_SUBTYPE, "\x94*o\xd2%n", MAC_ADDR_LEN)
+	CHECK(frame(6, LLDP_CHASSIS_ID_TLV_SUBTYPE, (const char *)ap_mac, MAC_ADDR_LEN, LLDP_PORT_ID_TLV_SUBTYPE, "\x94*o\xd2%n", MAC_ADDR_LEN)
 	      && !strcmp(lldp_nb[2].port_id, ".*o.%n"),
 	      "L11 six bytes with another subtype stay text with dots for the unprintable");
+	CHECK(frame(5, LLDP_PORT_ID_TLV_SUBTYPE, "94:2a:6f:d2:25:6e", 17, LLDP_PORT_ID_TLV_SUBTYPE, "eth0", 4)
+	      && lldp_nb[3].chassis_len == 17 && !memcmp(lldp_nb[3].chassis, "94:2a:6f:d2:25:6e", 17),
+	      "L12 a MAC address sent as text is kept whole as the chassis ID");
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
