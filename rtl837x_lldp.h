@@ -14,6 +14,7 @@
 #define LLDP_PORT_ID_TLV_TYPE 2
 #define LLDP_PORT_ID_TLV_LENGTH 0x02
 #define LLDP_PORT_ID_TLV_SUBTYPE 0x07
+#define LLDP_PORT_ID_SUBTYPE_MAC 3
 
 #define LLDP_TTL_TLV_TYPE 3
 #define LLDP_TTL_TLV_LENGTH 2
@@ -40,12 +41,13 @@
 #define LLDP_NETWORK_ADDR_IPV4_LENGTH 5
 
 #define LLDP_NB_MAX 16
-#define LLDP_NB_CHASSIS_LENGTH 16
-#define LLDP_NB_PORT_ID_LENGTH 12
+/* shortcut: retain 17 ID bytes; expand when full IDs must distinguish matching prefixes. */
+#define LLDP_NB_CHASSIS_LENGTH 17
+#define LLDP_NB_PORT_ID_LENGTH 17
 #define LLDP_NB_SYS_NAME_LENGTH 16
 #define LLDP_NB_SYS_DESC_LENGTH 32
 #define LLDP_NB_PORT_DESC_LENGTH 16
-#define LLDP_NB_JSON_LENGTH 224	/* separator + worst-case neighbour entry in /lldp.json */
+#define LLDP_NB_JSON_LENGTH 229	/* separator + worst-case neighbour entry in /lldp.json */
 
 struct lldp_neighbor {
     uint8_t port;		/* logical ingress port */
