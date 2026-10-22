@@ -1147,6 +1147,52 @@ static void scenario_upload_cr_before_boundary(void)
 	      "upload: the CR and the bytes before it reach the flash unchanged");
 }
 
+static int upload_whole_and_split(uint8_t *body, uint16_t body_len)
+{
+	return upload_in_two(body, body_len, body_len) && !memcmp(flash_written, body, UPLOAD_LEN)
+		&& upload_in_two(body, body_len, UPLOAD_LEN) && !memcmp(flash_written, body, UPLOAD_LEN);
+}
+
+static void scenario_upload_last_byte(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+	int bad = -1;
+
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = pattern(i);
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+	for (int last = 0; last < 256 && bad < 0; last++) {
+		body[UPLOAD_LEN - 1] = last;
+		if (!upload_whole_and_split(body, body_len))
+			bad = last;
+	}
+	if (bad >= 0)
+		printf("      last byte 0x%02x loses the closing boundary\n", bad);
+	CHECK(bad < 0, "upload: the part ends after the payload whatever its last byte");
+
+	body[UPLOAD_LEN - 1] = '\r';
+	body[UPLOAD_LEN - 2] = '\r';
+	CHECK(upload_whole_and_split(body, body_len), "upload: an even run of CR before the boundary");
+	body[UPLOAD_LEN - 3] = '\r';
+	CHECK(upload_whole_and_split(body, body_len), "upload: an odd run of CR before the boundary");
+}
+
+static void scenario_upload_broken_matches(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+	memset(body, '\r', UPLOAD_LEN);
+	CHECK(upload_whole_and_split(body, body_len),
+	      "upload: a run of CR longer than a flash page is staged intact");
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = "\r\n-"[i % 3];
+	CHECK(upload_whole_and_split(body, body_len),
+	      "upload: repeated partial delimiters are staged as payload");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -1179,6 +1225,8 @@ int main(int argc, char **argv)
 	scenario_upload("MacBinary, split part terminator", "Content-Type: application/macbinary\r\n", 1);
 	scenario_upload("no part Content-Type", "", 0);
 	scenario_upload_cr_before_boundary();
+	scenario_upload_last_byte();
+	scenario_upload_broken_matches();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
