@@ -2300,19 +2300,21 @@ function mergeConf(base,texts){
       for(var i=0;i<CONF_TOGGLE.length;i++){
         if((m=line.match(CONF_TOGGLE[i]))){drop(new RegExp("^"+m[1]+" (on|off)$"));break;}
       }
+      var at=conf.length,mg=/^vlan \d{1,4} mgmt$/.test(line);
       for(var j=0;j<CONF_OVERWRITE.length;j++){
         var rx=CONF_OVERWRITE[j];
         if(rx.test(line)){
           var key=line.match(rx)[0];
-          conf=conf.filter(function(item){
-            return!(item===key||(item.indexOf(key+" ")===0
-              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0));
+          conf=conf.filter(function(item,i){
+            var hit=item===key||(mg&&/^vlan \d{1,4} mgmt$/.test(item))||(item.indexOf(key+" ")===0
+              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0);
+            if(hit&&i<at)at=i;
+            return!hit;
           });
           break;
         }
       }
-      if(/^vlan \d{1,4} mgmt$/.test(line))drop(/^vlan \d{1,4} mgmt$/);
-      conf.push(line);
+      conf.splice(at,0,line);
     });
   });
   return conf;
