@@ -564,9 +564,8 @@ def loadMachineConfig(c_file):
 
     patterns = [
         r"\.(isRTL8373)\s*=\s*(\d+)\s*",
-        r"\.(min_port)\s*=\s*(\d+)\s*",
-        r"\.(max_port)\s*=\s*(\d+)\s*",
         r"\.(n_sfp)\s*=\s*(\d+)\s*",
+        r"\.(MACHINE_CHIPSET)\s+(\S+)\s*",
         r"\.(log_to_phys_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
         r"\.(phys_to_log_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
         r"\.(is_sfp)\s*=\s*("+regexForCArrayLiteral+r")\s*",
@@ -583,6 +582,15 @@ def loadMachineConfig(c_file):
         if value[0] == "{":
             value = list(map(int, value[1:-1].split(",")))
         machine_config[bits[0]] = value
+
+    if machine_config["MACHINE_CHIPSET"] == "RTL8372":
+        machine_config["min_port"] = 3
+    else:
+        machine_config["min_port"] = 0
+    if machine_config["MACHINE_CHIPSET"] == "RTL8370":
+        machine_config["max_port"] = 7
+    else:
+        machine_config["max_port"] = 8
 
     if "max_port" in machine_config and "min_port" in machine_config:
         PORTS = int(machine_config["max_port"]) - int(machine_config["min_port"])
