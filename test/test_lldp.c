@@ -74,6 +74,9 @@ static void reset(bool enabled, uint16_t links)
 
 int main(void)
 {
+	uint8_t i;
+	int busy = 0;
+
 	reset(true, 0x0108);
 	put(0, 3, 120);
 	put(1, 8, 120);
@@ -107,6 +110,13 @@ int main(void)
 	CHECK(tx_frames == 0, "L6 after lldp on, nothing is sent before the interval");
 	step(1);
 	CHECK(tx_frames > 0, "L7 the first transmission comes one interval after lldp on");
+
+	for (i = 0; i < LLDP_NB_MAX; i++)
+		put(i, 3, 120);
+	lldp_init();
+	for (i = 0; i < LLDP_NB_MAX; i++)
+		busy += lldp_nb[i].ttl != 0;
+	CHECK(busy == 0, "L8 lldp off frees every slot of the table");
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
