@@ -341,7 +341,10 @@ bool lldp_in(void) __banked __reentrant
                 memcpy(lldp_tmp.chassis, p + 1, MAC_ADDR_LEN);
             break;
         case LLDP_PORT_ID_TLV_TYPE:
-            if (len > 1)
+            if (len == MAC_ADDR_LEN + 1 && p[0] == LLDP_PORT_ID_SUBTYPE_MAC) {
+                lldp_tmp.port_id_mac = 1;
+                memcpy(lldp_tmp.port_id, p + 1, MAC_ADDR_LEN);
+            } else if (len > 1)
                 lldp_copy_string(lldp_tmp.port_id, p + 1, len - 1, LLDP_NB_PORT_ID_LENGTH);
             break;
         case LLDP_TTL_TLV_TYPE:
@@ -412,6 +415,14 @@ static void lldp_put_mac(__xdata uint8_t *mac, bool html) __reentrant
     }
 }
 
+static void lldp_put_port_id(uint8_t i, bool html)
+{
+    if (lldp_nb[i].port_id_mac)
+        lldp_put_mac((__xdata uint8_t *)lldp_nb[i].port_id, html);
+    else
+        lldp_put_string(lldp_nb[i].port_id, html);
+}
+
 void lldp_neighbors_to_html(void) __banked __reentrant
 {
     uint8_t i;
@@ -431,7 +442,7 @@ void lldp_neighbors_to_html(void) __banked __reentrant
         slen += strtox(outbuf + slen, ",\"chassis\":\"");
         lldp_put_mac(lldp_nb[i].chassis, true);
         slen += strtox(outbuf + slen, "\",\"portId\":\"");
-        lldp_put_string(lldp_nb[i].port_id, true);
+        lldp_put_port_id(i, true);
         slen += strtox(outbuf + slen, "\",\"sysName\":\"");
         lldp_put_string(lldp_nb[i].sys_name, true);
         slen += strtox(outbuf + slen, "\",\"ttl\":");
@@ -453,7 +464,7 @@ void lldp_show(void) __banked __reentrant
         print_string("  ");
         lldp_put_mac(lldp_nb[i].chassis, false);
         print_string("  ");
-        lldp_put_string(lldp_nb[i].port_id, false);
+        lldp_put_port_id(i, false);
         print_string("  ");
         lldp_put_string(lldp_nb[i].sys_name, false);
         print_string("  ");
