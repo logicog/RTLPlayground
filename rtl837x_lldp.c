@@ -42,12 +42,14 @@ void lldp_tick(void) __banked
     if (!TICKS_DUE(lldp_tick_last, SYS_TICK_HZ))
         return;
     lldp_tick_last += SYS_TICK_HZ;
+    if (!lldp_enabled)
+        return;
 
     reg_read_m(RTL837X_REG_LINKS_STS);
     for (i = 0; i < LLDP_NB_MAX; i++) {
         if (!lldp_nb[i].ttl)
             continue;
-        if (sfr_data[(lldp_nb[i].port >> 3) + 1] >> (lldp_nb[i].port & 7) & 1)
+        if ((sfr_data[(lldp_nb[i].port >> 3) + 1] >> (lldp_nb[i].port & 7)) & 1)
             lldp_nb[i].ttl--;
         else
             lldp_nb[i].ttl = 0;
@@ -56,9 +58,7 @@ void lldp_tick(void) __banked
     if (++lldp_seconds < LLDP_TX_INTERVAL_S)
         return;
     lldp_seconds = 0;
-
-    if (lldp_enabled)
-        lldp_send();
+    lldp_send();
 }
 
 //Outgoing LLDP packet.
