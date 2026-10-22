@@ -38,8 +38,8 @@ existing files as the template:
 ```
 
 `MACHINE_CHIPSET` is `RTL8373` or `RTL8372`; a build without it will fail. It selects the default
-logical port range: `min_port` is `0` for RTL8373 and `3` for RTL8372, while `max_port` is `8`,
-the highest logical port index. A board with a different range defines
+logical port range: `MACHINE_MIN_PORT` is `0` for RTL8373 and `3` for RTL8372, while
+`MACHINE_MAX_PORT` is `8`, the highest logical port index. A board with a different range defines
 `MACHINE_MIN_PORT` and/or `MACHINE_MAX_PORT` in its header to override the
 defaults.
 
@@ -94,16 +94,16 @@ __code const struct machine machine = {
 };
 ```
 
-`MACHINE_COMMON_SETTING` (from `machine_defs.h`) initializes `machine_name`,
-`isRTL8373`, `min_port` and `max_port` from the header's `MACHINE_MODEL` and
-`MACHINE_CHIPSET`. Keep it as the first initializer and list the
-board-specific fields after it.
+`MACHINE_COMMON_SETTING` (from `machine_defs.h`) initializes `machine_name` and
+`isRTL8373` from the header's `MACHINE_MODEL` and `MACHINE_CHIPSET`. The logical
+port range comes from `MACHINE_MIN_PORT` and `MACHINE_MAX_PORT` in `machine.h`.
+Keep it as the first initializer and list the board-specific fields after it.
 
 ### Fields
 
 | Field | Meaning |
 |-------|---------|
-| `MACHINE_COMMON_SETTING` | expands to `machine_name` (`MACHINE_MODEL`), `isRTL8373` (`1` for `RTL8373`, `0` for `RTL8372`), `min_port` and `max_port`; all are derived from the header's `MACHINE_CHIPSET` (see Step 1) |
+| `MACHINE_COMMON_SETTING` | expands to `machine_name` (`MACHINE_MODEL`) and `isRTL8373` (`1` for `RTL8373`, `0` for `RTL8372`); both are derived from the header's `MACHINE_CHIPSET` (see Step 1) |
 | `n_sfp` | number of SFP+ cages |
 | `n_10g` | SerDes 10G capability used by the RTL837xN init: `0` none, `1` one, `2` two 10G-capable SerDes |
 | `log_to_phys_port[9]` | logical port (0-based index) → physical front-panel port number |
