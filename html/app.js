@@ -2273,7 +2273,7 @@ function mergeConf(base,texts){
       }
       if((m=line.match(/^lag (\d) lacp off$/))){drop(new RegExp("^lag "+m[1]+" lacp( |$)"));return;}
       if(line==="mirror off"){drop(/^mirror /);return;}
-      if((m=line.match(/^acl (\d{1,2}) off$/))){drop(new RegExp("^acl "+m[1]+" "));return;}
+      if((m=line.match(/^acl (\d{1,2}) off$/))){var n=+m[1];do{drop(new RegExp("^acl "+n+" "));n++}while(conf.some(function(c){return c.indexOf("acl "+n+" and ")===0}));return;}
       if(!isConfCmd(line))return;
       if((m=line.match(/^ingress (.+)$/))){
         if(/^[tua]$/.test(m[1])){drop(/^ingress /);conf.push(line);return;}
