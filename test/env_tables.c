@@ -97,8 +97,22 @@ void     flash_read_bulk(uint8_t *dst) { (void)dst; }
 const char *get_flash_size_str(void) { return "2M"; }
 uint8_t  sfp_read_reg(uint8_t slot, uint8_t reg) { (void)slot; (void)reg; return 0; }
 bool     gpio_pin_test(uint8_t pin) { (void)pin; return false; }
-void     phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg) { (void)phy_id; (void)dev_id; (void)reg; }
+/* MMD 7 (auto-negotiation) registers 0x00-0x3f per port: pause flags at 0x10/0x13, EEE at 0x3c-0x3f */
+uint16_t phy_mock_an[9][0x40];
+extern volatile uint16_t SFR_DATA_U16;
+void     phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
+{
+	SFR_DATA_U16 = (dev_id == 7 && phy_id < 9 && reg < 0x40) ? phy_mock_an[phy_id][reg] : 0;
+}
 void     phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t val) { (void)phy_id; (void)dev_id; (void)reg; (void)val; }
+/* The last phy_modify(), for the tests of what the firmware writes */
+uint16_t phy_mock_mod[5];
+void     phy_modify(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t mask, uint16_t set)
+{
+	phy_mock_mod[0] = phy_id; phy_mock_mod[1] = dev_id; phy_mock_mod[2] = reg;
+	phy_mock_mod[3] = mask; phy_mock_mod[4] = set;
+}
+uint16_t phy_pause_off;
 void     phy_reset(uint8_t port) { (void)port; }
 uint8_t  stp_port_role(uint8_t port) { (void)port; return 0; }
 uint8_t  stp_port_state(uint8_t port) { (void)port; return 3; }

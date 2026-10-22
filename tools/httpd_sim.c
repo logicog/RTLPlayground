@@ -118,12 +118,23 @@ char *getMime(const char *name)
 	return "text/plain";
 }
 
+// Port settings changed by /cmd, so the Ports page can be tried out
+uint8_t pause_off[PORTS + 1];	// "port <n> fc off"
+uint8_t eee_off[PORTS + 1];	// "eee off <n>"
+uint8_t port_set[PORTS + 1];	// 0 default, 1 "port <n> <speed>|on", 2 "port <n> off"
+char port_name[PORTS + 1][16];	// "port <n> name <name>"
+
 void send_basic_info(int socket)
 {
+	char map[64] = "";
 	char *response = "HTTP/1.1 200 OK\r\n"
 		    "Content-Type: application/json; charset=UTF-8\r\n\r\n"
-			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"" VERSION_SW "\",\"hw_ver\":\"SWGT024-V2.0\"}";
+			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"" VERSION_SW "\",\"hw_ver\":\"SWGT024-V2.0\",\"logPort\":[";
+	for (int i = 0; i < PORTS; i++)
+		sprintf(map + strlen(map), "%s%d", i ? "," : "", physToLogPort[i]);
 	write(socket, response, strlen(response));
+	write(socket, map, strlen(map));
+	write(socket, "]}", 2);
 }
 
 void send_vlan(int s, int vlan)
@@ -162,10 +173,25 @@ void send_status(int s)
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
 		json_object_object_add(v, "portNum", json_object_new_int(i));
-		json_object_object_add(v, "logPort", json_object_new_int(physToLogPort[i-1]));
-		json_object_object_add(v, "isSFP", json_object_new_int(i <= PORTS - NSFP ? 0 : 1));
-		json_object_object_add(v, "enabled", json_object_new_int((i % 4) ? 1 : 0));
-		json_object_object_add(v, "link", json_object_new_int(i % 2 ? ((i == 1)? 5 : 2) : 0));
+		int sfp = i > PORTS - NSFP;
+		int enabled = port_set[i] ? port_set[i] == 1 : (i % 4) != 0;
+		int link = enabled && (i % 2) ? ((i == 1) ? 5 : 2) : 0;
+		json_object_object_add(v, "name", json_object_new_string(port_name[i]));
+		json_object_object_add(v, "isSFP", json_object_new_int(sfp));
+		json_object_object_add(v, "enabled", json_object_new_int(enabled));
+		json_object_object_add(v, "link", json_object_new_int(link));
+		// partner: no pause, pause, pause + asym; both ends offering pause negotiates TX and RX
+		int fc = sfp ? 0 : (pause_off[i] ? 0 : 0x01) | (link ? (i % 3 == 0 ? 0 : i % 3 == 1 ? 0x04 : 0x0c) : 0);
+		if (sfp ? link : (fc & 0x05) == 0x05)
+			fc |= 0x30;
+		json_object_object_add(v, "fc", json_object_new_int(fc));
+		if (!sfp) {
+			// we advertise all three speeds, the partner 100M and 1G; active on odd ports with a link
+			int eee = (eee_off[i] ? 0 : 0x07) | (link ? 0x18 : 0);
+			if ((eee & 0x07) && link && i % 4 == 1)
+				eee |= 0x40;
+			json_object_object_add(v, "eee", json_object_new_int(eee));
+		}
 		if (i % 2) {
 			uint64_t rate = (i == 1) ? 2400000000 : 950000000;
 			txG[i-1] += rate * (now - last_called);
@@ -187,7 +213,7 @@ void send_status(int s)
 				macs++;
 		sprintf(macs_buff, "0x%04x", macs);
 		json_object_object_add(v, "macs", json_object_new_string(macs_buff));
-		if (i >= PORTS - NSFP) {
+		if (sfp) {
 			uint16_t temp = 0x28fb + rand() / (RAND_MAX / 100);
 			uint16_t vcc = 0x7eda + rand() / (RAND_MAX / 100);
 			uint16_t txbias = 0x0d24 +rand() / (RAND_MAX / 100);
@@ -256,37 +282,7 @@ void send_counters(int s, int port)
 }
 
 
-void send_eee(int s)
-{
-	struct json_object *ports, *v;
-	const char *jstring;
-        char *header = "HTTP/1.1 200 OK\r\n"
-                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
-	ports = json_object_new_array_ext(PORTS);
-	for (int i = 1; i <= PORTS; i++) {
-		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
-		json_object_object_add(v, "isSFP", json_object_new_int(i < 5 ? 0 : 1));
-		uint8_t eee = 0;
-		eee |= 0x02;
-		char eee_buf[20];
-		sprintf(eee_buf, "%08b", eee);
-		json_object_object_add(v, "eee", json_object_new_string(eee_buf));
-		uint8_t eee_lp = 0;
-		eee_lp |= 0x04;
-		sprintf(eee_buf, "%08b", eee_lp);
-		json_object_object_add(v, "eee_lp", json_object_new_string(eee_buf));
-		json_object_object_add(v, "active", json_object_new_int((i % 2) ? 1 : 0));
-		json_object_array_add(ports, v);
-	}
-
-        write(s, header, strlen(header));
-	
-	jstring = json_object_to_json_string_ext(ports, JSON_C_TO_STRING_PLAIN);
-        write(s, jstring, strlen(jstring));
-	json_object_put(ports);
-}
 
 
 void send_bandwidth(int s)
@@ -677,13 +673,6 @@ void launch(struct Server *server)
 					else
 						send_status(new_socket);
 					goto done;
-				} else if (!strncmp(&buffer[4], "/eee.json", 9)) {
-					printf("EEE request\n");
-					if (!authenticated)
-						send_unauthorized(new_socket);
-					else
-						send_eee(new_socket);
-					goto done;
 				} else if (!strncmp(&buffer[4], "/bandwidth.json", 15)) {
 					printf("Bandwidth request\n");
 					if (!authenticated)
@@ -832,6 +821,18 @@ void launch(struct Server *server)
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
 					cmd_ptr++;
+					{
+						char w[16];
+						int n;
+						if (sscanf(p + 4, "port %d fc %3s", &n, w) == 2 && n >= 1 && n <= PORTS)
+							pause_off[n] = !strcmp(w, "off");
+						else if (sscanf(p + 4, "eee %3s %d", w, &n) == 2 && n >= 1 && n <= PORTS)
+							eee_off[n] = !strcmp(w, "off");
+						else if (sscanf(p + 4, "port %d name %15s", &n, w) == 2 && n >= 1 && n <= PORTS)
+							strcpy(port_name[n], w);
+						else if (sscanf(p + 4, "port %d %15s", &n, w) == 2 && n >= 1 && n <= PORTS)
+							port_set[n] = strcmp(w, "off") ? 1 : 2;
+					}
 					print_cmd_history();
 					char *response = "HTTP/1.1 200 OK\r\n"
 							"Content-Type: text/html\r\n\r\n"

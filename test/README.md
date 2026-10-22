@@ -46,7 +46,7 @@ fires — so it drops straight into CI.
 |-------------|---------------|--------------------|
 | `test_cmd_editor` | `cmd_editor.c` | **C4** — full-line hang + `cmd_buffer` 1-byte overflow; basic entry & backspace regressions |
 | `test_port_tables` | `rtl837x_port.c` | VLAN entry layout and round trip, PVID register sharing, static multicast and management entries, per-port flush, trunk membership and hash seed |
-| `test_page_json` | `httpd/page_impl.c` + `rtl837x_port.c` | `/vlan.json`, `/vlanlist`, `/l2.json` (walk, wrap marker, paging inside `outbuf`), 64-bit counters in `/status.json` and `/counters.json` |
+| `test_page_json` | `httpd/page_impl.c` + `rtl837x_port.c` + `rtl837x_pause.c` | `/vlan.json`, `/vlanlist`, `/l2.json` (walk, wrap marker, paging inside `outbuf`), 64-bit counters, pause flags (`fc`) and EEE flags (`eee`) in `/status.json`, `/counters.json`, the port mapping in `/information.json`, what `port <n> fc on|off` writes (not how `rtl837x_phy.c` keeps it across speed and duplex changes) |
 | `test_httpd_tx` | `httpd/httpd.c` + `uip/uip.c` | a GET of a static file against a client that moves its receive window: ACK accounting, continuation chunks out of flash, retransmission |
 | `test_lacp` | `rtl837x_lacp.c` | state machines against a simulated 802.3ad partner: convergence, mis-cabling, expiry, re-election, two groups, delivery by trap |
 

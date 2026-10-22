@@ -13,7 +13,16 @@ void send_vlan(uint16_t vlan);
 void send_basic_info(void);
 void send_bandwidth(void);
 void send_storm(void);
-void send_eee(void);
+
+// "eee" of a copper port in /status.json
+#define EEE_ADV_100M	0x01	// we advertise EEE at 100M
+#define EEE_ADV_1G	0x02	// ... at 1G
+#define EEE_ADV_2G5	0x04	// ... at 2.5G
+#define EEE_LP_100M	0x08	// the link partner advertises EEE at 100M
+#define EEE_LP_1G	0x10	// ... at 1G
+#define EEE_LP_2G5	0x20	// ... at 2.5G
+#define EEE_ACTIVE	0x40	// EEE is in use on the link
+
 void send_l2(uint16_t idx);
 void l2_delete(uint16_t idx);
 void send_mirror(void);
