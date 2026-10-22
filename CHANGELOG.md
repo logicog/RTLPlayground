@@ -23,6 +23,11 @@
 
 ## Changed
 
+- Web UI
+  - Place LLDP warnings beside the affected maximum frame size, aggregation state
+    and chassis ID. Open warning details for local and advertised values; read
+    existing MTU and LAG endpoints on demand without changing firmware defaults.
+
 ## Fixed
 
 - Config

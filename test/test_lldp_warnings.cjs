@@ -1,0 +1,55 @@
+// Run against tools/output/httpd_sim from html/: NODE_PATH=<playwright-core install>/node_modules node test/test_lldp_warnings.cjs
+const assert = require("node:assert/strict");
+const { chromium } = require("playwright-core");
+(async () => {
+  const browser = await chromium.launch({ executablePath: process.env.CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const errors = [];
+    page.on("pageerror", e => errors.push(String(e)));
+    await page.goto("http://127.0.0.1:8080/login.html");
+    await page.fill("input[type=password]", "1234");
+    await Promise.all([page.waitForURL("**/index.html"), page.press("input[type=password]", "Enter")]);
+    await page.goto("http://127.0.0.1:8080/index.html#lldp");
+    await page.waitForSelector("#lldp_nb_table tbody tr");
+    assert.equal(await page.locator('#lldp_nb_table th[data-i18n="lldp_nb_warn"]').count(), 0, "warnings belong beside their values, not in a separate column");
+    const mtu = page.locator('#lldp_nb_table tbody tr').first().locator('td').nth(8).locator('button');
+    await mtu.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => document.querySelector("#mbody").textContent.includes("16383"));
+    const local = await page.evaluate(async () => (await (await fetch("/mtu.json")).json()).find(p => p.portNum === 3));
+    assert.equal(parseInt(local.mtu, 16), 16383);
+    assert.match(await page.locator("#mbody").innerText(), /16383/);
+    assert.match(await page.locator("#mbody").innerText(), /1518/);
+    assert.match(await page.locator("#mbody").innerText(), /maximum frame size/i);
+    assert.equal(await page.evaluate(() => document.activeElement.id), "mx");
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement.id), "mx", "keyboard focus stays in the dialog");
+    await page.evaluate(() => lldpLoad());
+    await page.keyboard.press("Escape");
+    assert.equal(await mtu.evaluate(el => el === document.activeElement), true, "focus returns to the warning after a table refresh");
+    await mtu.click();
+    await page.locator("#mx").click();
+    await page.locator('#lldp_nb_table tbody tr').first().locator('td').nth(9).locator('button').click();
+    await page.waitForFunction(() => /Local aggregation: Yes \(LAG 2\)/.test(document.querySelector("#mbody").textContent));
+    assert.match(await page.locator("#mbody").innerText(), /Neighbour aggregation: no/i);
+    await page.locator("#mx").click();
+    await page.locator('#lldp_nb_table tbody tr').first().locator('td').nth(1).locator('button').click();
+    assert.match(await page.locator("#mbody").innerText(), /Ports reporting this chassis ID: 3, 5/);
+    assert.match(await page.locator("#mbody").innerText(), /do not belong to the same LAG/);
+    await page.locator("#mx").click();
+    await page.route("**/mtu.json", r => r.fulfill({ status: 503, body: "Unavailable" }));
+    await Promise.all([page.waitForResponse("**/mtu.json"), mtu.click()]);
+    await page.waitForFunction(() => /Local maximum frame size: Unavailable/.test(document.querySelector("#mbody").textContent));
+    assert.doesNotMatch(await page.locator("#mbody").innerText(), /16383/);
+    await page.unroute("**/mtu.json");
+    await page.locator("#mx").click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mtu.click();
+    await page.waitForFunction(() => document.querySelector("#mbody").textContent.includes("16383"));
+    const bounds = await page.locator("#modal").boundingBox();
+    assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 390, "modal fits a phone viewport");
+    assert.deepEqual(errors, []);
+    console.log("LLDP warning columns, keyboard, physical-port MTU mapping, unavailable state and phone modal: PASS");
+  } finally { await browser.close(); }
+})().catch(e => { console.error(e); process.exitCode = 1; });

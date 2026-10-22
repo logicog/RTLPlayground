@@ -41,7 +41,11 @@ stp_en_d:"Ports start blocked and take up to twice the forward delay to reach fo
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
 lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
-lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_portdesc:"Port Description",lldp_nb_addr:"Address",lldp_nb_caps:"Capabilities",lldp_nb_pvid:"PVID",lldp_nb_mtu:"MTU",lldp_nb_lag:"LAG",lldp_nb_warn:"Warnings",lldp_w_mtu:"MTU differs",lldp_w_lag:"LAG only on one side",lldp_w_dup:"same neighbour on another port",lldp_nb_ttl:"TTL",
+lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_portdesc:"Port Description",lldp_nb_addr:"Address",lldp_nb_caps:"Capabilities",lldp_nb_pvid:"PVID",lldp_nb_mtu:"MTU",lldp_nb_lag:"LAG",lldp_w_mtu:"Maximum frame size differs",lldp_w_lag:"LAG only on one side",lldp_w_dup:"Same neighbour on another port",lldp_nb_ttl:"TTL",
+lldp_w_local:"Local switch: {name}; physical port: {port}",lldp_w_unavailable:"Unavailable",lldp_w_size:"The advertised maximum Ethernet frame size differs from the local limit. This is not the IP MTU.",
+lldp_w_local_size:"Local maximum frame size: {value}",lldp_w_remote_size:"Neighbour advertised maximum frame size: {value}",lldp_w_bytes:"{value} bytes",
+lldp_w_aggregation:"Only one side reports active link aggregation.",lldp_w_local_agg:"Local aggregation: {value}",lldp_w_remote_agg:"Neighbour aggregation: {value}",lldp_w_group:"Yes (LAG {group})",
+lldp_w_duplicate:"The same chassis appears on different ports that do not belong to the same LAG.",lldp_w_ports:"Ports reporting this chassis ID: {ports}",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -860,15 +864,32 @@ function toast(msg,cls){
 }
 function modal(title,bodyEl,buttons){
   S.detail=null;
+  if(!$("mback").classList.contains("show"))S.modalFocus=document.activeElement;
   $("mtitle").textContent=title;
   var b=$("mbody");b.innerHTML="";b.appendChild(bodyEl);
   var f=$("mfoot");f.innerHTML="";
   (buttons||[]).forEach(function(bt){f.appendChild(bt)});
   $("mback").classList.add("show");
+  $("mx").setAttribute("aria-label",t("c_close"));
+  $("mx").focus();
 }
-function closeModal(){S.detail=null;$("mback").classList.remove("show")}
+function closeModal(){
+  S.detail=null;$("mback").classList.remove("show");
+  var el=S.modalFocus;
+  if(el&&!el.isConnected)el=$(el.id);
+  if(el)el.focus();
+}
 $("mx").addEventListener("click",closeModal);
 $("mback").addEventListener("click",function(e){if(e.target===this)closeModal()});
+$("modal").addEventListener("keydown",function(e){
+  if(e.key==="Escape"){e.preventDefault();closeModal()}
+  if(e.key!=="Tab")return;
+  var controls=Array.prototype.filter.call(this.querySelectorAll("button,input,select,textarea,a[href],[tabindex]"),function(el){return el.tabIndex>=0&&!el.disabled&&el.offsetParent!==null});
+  var first=controls[0],last=controls[controls.length-1];
+  if(e.shiftKey?document.activeElement===first:document.activeElement===last){
+    e.preventDefault();(e.shiftKey?last:first).focus();
+  }
+});
 function confirmModal(title,detail,onok){
   var b=h("div");
   if(detail)b.appendChild(h("p",{class:"small",text:detail}));
@@ -1883,6 +1904,39 @@ tabHooks.lag={enter:function(){needPorts(function(){buildLag();lagPoller.start()
 
 var LLDP_CAPS=[[1,"Other"],[2,"Repeater"],[4,"Bridge"],[8,"WLAN AP"],[16,"Router"],[32,"Telephone"],[64,"DOCSIS"],[128,"Station"]];
 function lldpCaps(c){return LLDP_CAPS.filter(function(x){return c&x[0]}).map(function(x){return x[1]}).join(", ")}
+function lldpWarning(cell,n,bit,key,s){
+  if(!(n.warn&bit))return;
+  var label=t(key)+" ("+t("c_port")+" "+n.port+")";
+  cell.appendChild(document.createTextNode(" "));
+  cell.appendChild(h("button",{type:"button",id:"lldp-warning-"+n.port+"-"+bit,class:"ctl",text:"⚠",title:label,"aria-label":label,onclick:function(){
+    var body=h("div"),unavailable=t("lldp_w_unavailable");
+    body.appendChild(h("p",{text:t("lldp_w_local",{name:S.info.hostname||unavailable,port:n.port})}));
+    body.appendChild(h("p",{text:t(bit===1?"lldp_w_size":bit===2?"lldp_w_aggregation":"lldp_w_duplicate")}));
+    if(bit===4){
+      var ports=(s.neighbors||[]).filter(function(p){return p.chassis===n.chassis}).map(function(p){return p.port});
+      body.appendChild(h("p",{text:t("lldp_w_ports",{ports:ports.join(", ")})}));
+    }else{
+      var local=h("p",{text:t(bit===1?"lldp_w_local_size":"lldp_w_local_agg",{value:unavailable})});
+      body.appendChild(local);
+      body.appendChild(h("p",{text:t(bit===1?"lldp_w_remote_size":"lldp_w_remote_agg",{value:bit===1?t("lldp_w_bytes",{value:n.mtu}):t(n.agg===2?"c_yes":"c_no")})}));
+      getJSON(bit===1?"/mtu.json":"/lag.json").then(function(data){
+        var value=unavailable;
+        if(bit===1){
+          var port=data.filter(function(p){return p.portNum===n.port})[0];
+          if(port&&/^0x[0-9a-f]+$/i.test(port.mtu))value=t("lldp_w_bytes",{value:parseInt(port.mtu,16)});
+        }else{
+          var port=s.portStatus.filter(function(p){return p.portNum===n.port})[0];
+          if(port&&data.length===4&&data.every(function(g){return /^[01]{16}$/.test(g.members)})){
+            var group=data.filter(function(g){return (parseInt(g.members,2)>>port.logPort)&1})[0];
+            value=group?t("lldp_w_group",{group:group.lagNum+1}):t("c_no");
+          }
+        }
+        local.textContent=t(bit===1?"lldp_w_local_size":"lldp_w_local_agg",{value:value});
+      }).catch(function(){});
+    }
+    modal(t(key),body);
+  }}));
+}
 function lldpLoad(){
   return getJSON("/lldp.json").then(function(s){
     $("lldp_en").checked=s.on;
@@ -1903,7 +1957,8 @@ function lldpLoad(){
     (s.neighbors||[]).sort(function(a,b){return a.port-b.port}).forEach(function(n){
       var tr=nb.insertRow();
       tr.insertCell().textContent=n.port;
-      tr.insertCell().textContent=n.chassis;
+      var chassis=tr.insertCell();chassis.textContent=n.chassis;
+      lldpWarning(chassis,n,4,"lldp_w_dup",s);
       tr.insertCell().textContent=n.portId;
       tr.insertCell().textContent=n.sysName;
       tr.insertCell().textContent=n.portDesc||"";
@@ -1911,12 +1966,10 @@ function lldpLoad(){
       if(n.mgmtAddr)ac.appendChild(h("a",{href:"http://"+n.mgmtAddr,target:"_blank",rel:"noopener",text:n.mgmtAddr}));
       tr.insertCell().textContent=lldpCaps(n.caps);
       tr.insertCell().textContent=n.pvid||"-";
-      tr.insertCell().textContent=n.mtu||"-";
-      tr.insertCell().textContent=n.agg?(n.agg===2?t("c_yes"):t("c_no")):"-";
-      var wc=tr.insertCell();
-      [[1,"lldp_w_mtu"],[2,"lldp_w_lag"],[4,"lldp_w_dup"]].forEach(function(w){
-        if(n.warn&w[0])wc.appendChild(h("span",{class:"badge bad",text:t(w[1])}));
-      });
+      var mtu=tr.insertCell();mtu.textContent=n.mtu||"-";
+      lldpWarning(mtu,n,1,"lldp_w_mtu",s);
+      var lag=tr.insertCell();lag.textContent=n.agg?(n.agg===2?t("c_yes"):t("c_no")):"-";
+      lldpWarning(lag,n,2,"lldp_w_lag",s);
       tr.insertCell().textContent=n.ttl;
     });
   });

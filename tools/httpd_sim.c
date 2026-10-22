@@ -122,7 +122,7 @@ void send_basic_info(int socket)
 {
 	char *response = "HTTP/1.1 200 OK\r\n"
 		    "Content-Type: application/json; charset=UTF-8\r\n\r\n"
-			"{\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"" VERSION_SW "\",\"hw_ver\":\"SWGT024-V2.0\"}";
+			"{\"hostname\":\"RTLPlayground simulator\",\"ip_address\":\"192.168.10.247\",\"ip_gateway\":\"192.168.2.22\",\"ip_netmask\":\"255.255.255.0\",\"mac_address\":\"1c:2a:a3:23:00:02\",\"sw_ver\":\"" VERSION_SW "\",\"hw_ver\":\"SWGT024-V2.0\"}";
 	write(socket, response, strlen(response));
 }
 
@@ -425,7 +425,10 @@ void send_lag(int s)
 	for (int i = 0; i < 4; i++) {
 		v = json_object_new_object();
 		json_object_object_add(v, "lagNum", json_object_new_int(i));
-		sprintf(lag_buf, "%016b", 0x30 << (i * 2) & 0x1f8);
+		unsigned members = 0x30 << (i * 2) & 0x1f8;
+		for (int b = 0; b < 16; b++)
+			lag_buf[15-b] = '0' + ((members >> b) & 1);
+		lag_buf[16] = '\0';
 		json_object_object_add(v, "members", json_object_new_string(lag_buf));
 		json_object_object_add(v, "hash", json_object_new_string("0x7e"));
 		json_object_array_add(lags, v);
@@ -475,7 +478,7 @@ void send_lldp(int s)
 	for (int i = 1; i <= PORTS; i++) {
 		p = json_object_new_object();
 		json_object_object_add(p, "portNum", json_object_new_int(i));
-		json_object_object_add(p, "logPort", json_object_new_int(i-1));
+		json_object_object_add(p, "logPort", json_object_new_int(physToLogPort[i-1]));
 		json_object_object_add(p, "name", json_object_new_string(""));
 		json_object_object_add(p, "permitted", json_object_new_int(1));
 		json_object_array_add(portStatuses, p);
@@ -495,9 +498,17 @@ void send_lldp(int s)
 	json_object_object_add(p, "pvid", json_object_new_int(20));
 	json_object_object_add(p, "mtu", json_object_new_int(1518));
 	json_object_object_add(p, "agg", json_object_new_int(1));
-	json_object_object_add(p, "warn", json_object_new_int(3));
+	json_object_object_add(p, "warn", json_object_new_int(7));
 	json_object_object_add(p, "ttl", json_object_new_int(117));
 	json_object_array_add(neighbors, p);
+	struct json_object *duplicate = json_object_new_object();
+	json_object_object_foreach(p, key, value) {
+		json_object_object_add(duplicate, key, json_object_get(value));
+	}
+	json_object_object_add(duplicate, "port", json_object_new_int(5));
+	json_object_object_add(duplicate, "portId", json_object_new_string("eth1"));
+	json_object_object_add(duplicate, "warn", json_object_new_int(5));
+	json_object_array_add(neighbors, duplicate);
 	json_object_object_add(c, "neighbors", neighbors);
 
 	write(s, header, strlen(header));
