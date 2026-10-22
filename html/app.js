@@ -936,6 +936,7 @@ function byPort(a){return a.sort(function(x,y){return x.portNum-y.portNum})}
 function pollStatus(){
   return getJSON("/status.json").then(function(s){
     byPort(s);
+    S.ports=s;
     var now=Date.now();
     if(!S.n){
       S.n=s.length;
@@ -957,7 +958,7 @@ function pollStatus(){
         };
       });
     }
-    S.prev=s;S.prevT=now;S.ports=s;
+    S.prev=s;S.prevT=now;
     updateStrip();
     var hk=tabHooks[curTab];
     if(hk&&hk.status)hk.status();
