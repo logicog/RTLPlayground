@@ -5,6 +5,7 @@ import os
 import secrets
 import time
 import re
+import argparse
 from email.parser import BytesParser
 from email.policy import default
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -605,5 +606,18 @@ def loadMachineConfig(c_file):
     rx_b = [0] * PORTS
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--machine", default=None, help="Path to machine.c file to parse")
+    parser.add_argument("--port", default=8081, type=int, help="Port to bind to")
+    parser.add_argument("--bindaddr", default="127.0.0.1", help="Address to bind")
+    args = parser.parse_args()
+
+    if(args.machine is not None):
+        loadMachineConfig(args.machine)
+
+    HOST = args.bindaddr
+    PORT = args.port
+
     print(f"Serving {ROOT} on http://{HOST}:{PORT}")
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
