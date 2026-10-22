@@ -1908,7 +1908,7 @@ function lldpWarning(cell,n,bit,key,s){
   if(!(n.warn&bit))return;
   var label=t(key)+" ("+t("c_port")+" "+n.port+")";
   cell.appendChild(document.createTextNode(" "));
-  cell.appendChild(h("button",{type:"button",id:"lldp-warning-"+n.port+"-"+bit,class:"ctl",text:"⚠",title:label,"aria-label":label,onclick:function(){
+  cell.appendChild(h("button",{type:"button",id:"lldp-warning-"+n.port+"-"+encodeURIComponent(n.chassis)+"-"+bit,class:"ctl",text:"⚠",title:label,"aria-label":label,onclick:function(){
     var body=h("div"),unavailable=t("lldp_w_unavailable");
     body.appendChild(h("p",{text:t("lldp_w_local",{name:S.info.hostname||unavailable,port:n.port})}));
     body.appendChild(h("p",{text:t(bit===1?"lldp_w_size":bit===2?"lldp_w_aggregation":"lldp_w_duplicate")}));
