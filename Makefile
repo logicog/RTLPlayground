@@ -139,7 +139,7 @@ HTML := $(shell find html -name '*.js' -or -name '*.html' -or -name '*.svg' -or 
 # Minified copy of the web UI sources, used as the fileadder input.
 # The raw html/ sources stay untouched for development; the minified
 # copy is a build artifact under output/.
-HTML_MIN := output/html_min
+HTML_MIN := $(BUILDDIR)/html_min
 .PHONY: html_min
 html_min: $(HTML)
 	rm -rf $(HTML_MIN)
@@ -161,7 +161,7 @@ $(VERSION_HEADER): FORCE
 httpd: html_data.h
 
 $(SUBDIRS):
-	$(MAKE) -C $@
+	$(MAKE) -C $@ BUILDDIR=$(BUILDDIR)
 
 clean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
@@ -204,7 +204,7 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 	tools/output/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
 	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
 	tools/output/crc_calculator -u $@
-	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
+	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/../rtlplayground.bin
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
