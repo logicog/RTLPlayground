@@ -271,7 +271,7 @@ void vlan_setup(void) __banked
 	wait_table_ready();
 
 	// Set PVID 1 for every port. TODO: Skip unused ports!
-	for (uint8_t i = machine.min_port; i <= machine.max_port + 1; i++) {  // Do this also for the CPU port (+1)
+	for (uint8_t i = machine.min_port; i <= CPU_PORT; i++) { // CPU MAC is independent of the last user port
 		uint16_t reg = RTL837x_PVID_BASE_REG + ((i >> 1) << 2);
 #ifdef DEBUG
 		print_byte(i); write_char(':'); write_char(' '); print_short(reg); write_char('=');
@@ -307,7 +307,7 @@ void vlan_setup(void) __banked
 	REG_SET(RTL837X_VLAN_L2_LRN_DIS_0, 0);
 	REG_SET(RTL837X_VLAN_L2_LRN_DIS_1, 0);
 
-	// Enable VLAN 1: Ports 0-9, i.e. including the CPU port are untagged members
+	// Enable VLAN 1: user ports untagged, CPU MAC9 tagged (untag bit 19 clear)
 	REG_SET(RTL837x_TBL_DATA_IN_A, machine_detected.isRTL8373? 0x0207ffff : 0x0207e3f8);	// 02: Entry valid, 7...: membership
 
 	REG_SET(RTL837X_TBL_CTRL, 0x00010303);	// Write VLAN 1
