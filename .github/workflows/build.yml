@@ -46,8 +46,8 @@ jobs:
         run: |
           sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/MAIN_\1=\3/p' /tmp/main.map | sort -u >> "$GITHUB_ENV"
           sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/BRANCH_\1=\3/p' /tmp/branch.map | sort -u >> "$GITHUB_ENV"
-          du -sb main/output/html_min | awk '{print "MAIN_WEB="$1}' >> "$GITHUB_ENV"
-          du -sb branch/output/html_min | awk '{print "BRANCH_WEB="$1}' >>"$GITHUB_ENV"
+          du -sb main/output/KP_9000_6XHML_X2/html_min | awk '{print "MAIN_WEB="$1}' >> "$GITHUB_ENV"
+          du -sb branch/output/KP_9000_6XHML_X2/html_min | awk '{print "BRANCH_WEB="$1}' >>"$GITHUB_ENV"
 
       - name: Update PR comment
         uses: marocchino/sticky-pull-request-comment@v3
