@@ -2,8 +2,8 @@
 #include "rtl837x_common.h"
 #include "rtl837x_meter.h"
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
+#pragma codeseg BANK2
+#pragma constseg BANK2
 
 static __xdata uint8_t meter_used[METERS / 8];
 static __xdata uint8_t meter_i;

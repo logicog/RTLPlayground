@@ -39,6 +39,8 @@
     instead of becoming unintended redirects.
   - ACL meter configuration and policing use the shared meter allocator, refusing
     storm-control collisions without changing existing rules or leaking reservations.
+  - Place the shared meter allocator in BANK2 to avoid overflowing BANK3 when
+    packaging firmware with the CI compiler.
 
 ## Breaking changes
 
