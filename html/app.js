@@ -40,7 +40,8 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
-lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",lldp_listen:"Receive",
+lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_ttl:"TTL",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -814,7 +815,7 @@ var CONF_CMDS=[
   /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
   /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
   /^port\s+\d{1,2}\s+name\s+\S+$/,
-  /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
+  /^port\s+\d{1,2}\s+lldp\s+(permit|block|listen|ignore)$/,
   /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
   /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
   /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
@@ -1895,6 +1896,22 @@ function lldpLoad(){
         }}),h("i")]);
       sw.firstChild.checked=p.permitted;
       tr.insertCell().appendChild(sw);
+      var rx=h("label",{class:"switch"},[
+        h("input",{type:"checkbox",onchange:function(){
+          postCmd("port "+p.portNum+" lldp "+(this.checked?"listen":"ignore"))
+            .then(function(){setTimeout(lldpLoad,300)}).catch(function(){});
+        }}),h("i")]);
+      rx.firstChild.checked=p.listening!==0;
+      tr.insertCell().appendChild(rx);
+    });
+    var nb=$("lldp_nb_table").tBodies[0];nb.innerHTML="";
+    (s.neighbors||[]).sort(function(a,b){return a.port-b.port}).forEach(function(n){
+      var tr=nb.insertRow();
+      tr.insertCell().textContent=n.port;
+      tr.insertCell().textContent=n.chassis;
+      tr.insertCell().textContent=n.portId;
+      tr.insertCell().textContent=n.sysName;
+      tr.insertCell().textContent=n.ttl;
     });
   });
 }
@@ -1903,7 +1920,8 @@ $("lldp_en").addEventListener("change",function(){
   var el=this;
   postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
-tabHooks.lldp={enter:lldpLoad};
+var lldpPoller=new Poller(lldpLoad,5000);
+tabHooks.lldp={enter:function(){lldpPoller.start()},leave:function(){lldpPoller.stop()}};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);
@@ -2243,7 +2261,7 @@ var CONF_OVERWRITE=[
   /^ntp\s+server\b/,/^ntp\s+interval\b/,/^ntp\s+timezone\b/,/^ntp\s+dst\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
-  /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
+  /^port\s+\d{1,2}(?!\s+(name|lldp)\b)/,/^port\s+\d{1,2}\s+name\b/,
   /^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
@@ -2291,6 +2309,10 @@ function mergeConf(base,texts){
         else drop(new RegExp(pre+"(off|[0-9a-f]+)$"));
         conf.push(line);return;
       }
+      if((m=line.match(/^port (\d{1,2}) lldp (permit|block|listen|ignore)$/))){
+        drop(new RegExp("^port "+m[1]+" lldp ("+(m[2]==="listen"||m[2]==="ignore"?"listen|ignore":"permit|block")+")$"));
+        conf.push(line);return;
+      }
       for(var i=0;i<CONF_TOGGLE.length;i++){
         if((m=line.match(CONF_TOGGLE[i]))){drop(new RegExp("^"+m[1]+" (on|off)$"));break;}
       }
@@ -2300,7 +2322,7 @@ function mergeConf(base,texts){
           var key=line.match(rx)[0];
           conf=conf.filter(function(item){
             return!(item===key||(item.indexOf(key+" ")===0
-              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0));
+              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0&&item.indexOf(key+" lldp ")!==0));
           });
           break;
         }
