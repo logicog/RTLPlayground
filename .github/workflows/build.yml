@@ -45,6 +45,9 @@ jobs:
         run: |
           sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/MAIN_\1=\3/p' /tmp/main.map | sort -u >> "$GITHUB_ENV"
           sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/BRANCH_\1=\3/p' /tmp/branch.map | sort -u >> "$GITHUB_ENV"
+          du -sb main/output/html_min | awk '{print "MAIN_WEB="$1}' >> "$GITHUB_ENV"
+          du -sb branch/output/html_min | awk '{print "BRANCH_WEB="$1}' >>"$GITHUB_ENV"
+
       - name: Update PR comment
         uses: marocchino/sticky-pull-request-comment@v3
         with:
@@ -54,7 +57,7 @@ jobs:
 
             Commit: ${{ github.sha }}
 
-            | Bank # | Main | Branch |
+            | Name | Main | Branch |
             | --- | --- | --- |
             | XSEG | ${{ env.MAIN_XSEG }} bytes | ${{ env.BRANCH_XSEG }} bytes |
             | CSEG | ${{ env.MAIN_CSEG }} bytes | ${{ env.BRANCH_CSEG }} bytes |
@@ -62,3 +65,4 @@ jobs:
             | 1 | ${{ env.MAIN_BANK1 }} bytes | ${{ env.BRANCH_BANK1 }} bytes |
             | 2 | ${{ env.MAIN_BANK2 }} bytes | ${{ env.BRANCH_BANK2 }} bytes |
             | 3 | ${{ env.MAIN_BANK3 }} bytes | ${{ env.BRANCH_BANK3 }} bytes |
+            | HTML/JS | ${{ env.MAIN_WEB }} bytes | ${{ env.BRANCH_WEB }} bytes |
