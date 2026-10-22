@@ -116,6 +116,8 @@ static void t_rules(void)
 
 static void t_errors(void)
 {
+	uint32_t acl_y4;
+
 	printf("[test] acl rejects what it cannot express\n");
 	hw_reset();
 	run("acl 1 dmac 00:11:22:33:44:55 sip 1.2.3.4 drop");
@@ -154,6 +156,17 @@ static void t_errors(void)
 	}
 	run("acl 1 ethertype 0800 drop 3 4");
 	CHECK(!err_status && hw_acl_rule(0x80, 4) == 0xffe067f8, "trailing ports restrict the rule");
+	run("acl 1 drop 5");
+	acl_y4 = hw_acl_rule(0x80, 4);
+	run("acl 1 interrupt 5");
+	CHECK(!err_status && hw_acl_rule(0x80, 4) == acl_y4 && hw_acl_act(0, 1) == 0x80000000
+	      && hw_reg_get(RTL837X_ACL_ACT_CTRL) == 0x40, "a port after interrupt is an ingress port, not a redirect");
+	run("acl 1 gpio 1 5");
+	CHECK(!err_status && hw_acl_rule(0x80, 4) == acl_y4 && hw_reg_get(RTL837X_ACL_ACT_CTRL) == 0x40,
+	      "a port after gpio is an ingress port, not a redirect");
+	run("acl 1 setsvlan 100 5");
+	CHECK(!err_status && hw_acl_rule(0x80, 4) == acl_y4 && hw_reg_get(RTL837X_ACL_ACT_CTRL) == 0x02,
+	      "a port after an S-VLAN action is an ingress port, not a redirect");
 	run("acl 1 and ethertype 0806");
 	CHECK(err_status, "an and rule needs the rule before it");
 	run("acl 30 and ethertype 0806");
