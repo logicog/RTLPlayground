@@ -147,7 +147,7 @@ html_min: $(HTML)
 	@for f in $(HTML); do python3 tools/minify.py $$f $(HTML_MIN)/$$(basename $$f) || exit 1; done
 
 html_data.c html_data.h &: $(HTML) | tools html_min
-	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
 $(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
@@ -199,11 +199,11 @@ $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 
 $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img | tools
 	if [ -e $@ ]; then rm $@; fi
-	tools/output/imagebuilder -i $^ $@
-	tools/output/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/output/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
-	tools/output/crc_calculator -u $@
+	tools/$(BUILDDIR)/imagebuilder -i $^ $@
+	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
+	tools/$(BUILDDIR)/crc_calculator -u $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/../rtlplayground.bin
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
