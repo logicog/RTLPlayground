@@ -174,6 +174,7 @@ snmp-gui:
 	cd $(SRCROOT) && $(NODE) test/test_snmp_switch_gui.cjs
 	cd $(SRCROOT) && $(NODE) test/test_snmp_switch_save.cjs
 	cd $(SRCROOT) && $(NODE) test/test_snmp_privacy_gui.cjs
+	cd $(SRCROOT) && $(NODE) test/test_snmp_full_page.cjs
 
 $(addprefix $(BUILDDIR)/,test_snmp test_snmp_nine test_snmp_horaco_profile test_snmp_status_json test_snmp_cli test_snmp_transport test_snmp_transport_nine): snmp_setup.h $(SRCROOT)/snmp_internal.h $(SRCROOT)/snmp.h
 

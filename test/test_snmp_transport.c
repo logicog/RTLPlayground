@@ -300,7 +300,8 @@ int main(void)
 	/* Exhaust the 16-bit descriptor domain using the production DMA guard.
 	 * Host arithmetic is independent and does not issue a hardware transfer. */
 	for (uint32_t n = 0; n <= 65535; n++)
-		assert(!!uip_rx_dma_fits(n) == (((n + 7) / 8) * 8 <= sizeof(uip_buf)));
+		assert(!!uip_rx_dma_fits(n) ==
+		       (((n + 7) / 8) * 8 <= ((UIP_BUFSIZE + 2u) & ~7u)));
 	CHECK(uip_rx_dma_fits(1552) && !uip_rx_dma_fits(1553) && !uip_rx_dma_fits(1556) &&
 		  !uip_rx_dma_fits(65535),
 	      "pre-DMA guard rejects every rounded transfer beyond packet storage");
