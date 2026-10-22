@@ -368,6 +368,28 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       <p class="small mut" style="margin-top:10px" data-i18n="lag_note">A LAG needs at least one member to be saved in the startup config; applying an empty group clears it.</p>
     </section>
 
+    <section class="tab" id="tab-dot1x">
+      <div class="card"><h2 data-i18n="x_title">802.1X port authentication</h2>
+        <label class="row"><span class="lb" data-i18n="x_enabled">Enabled</span>
+          <span class="switch"><input type="checkbox" id="x_en"><i></i></span>
+        </label>
+        <label class="row"><span class="lb" data-i18n="x_guest">Guest VLAN</span>
+          <input class="in sm" id="x_guest" type="number" min="0" max="4094">
+          <button class="ctl" id="x_guest_apply" data-i18n="c_apply">Apply</button>
+        </label>
+        <label class="row"><span class="lb" data-i18n="x_server">RADIUS server</span>
+          <input class="in" id="x_server" size="15" placeholder="10.0.0.1">
+          <input class="in sm" id="x_sport" type="number" min="1" max="65535" placeholder="1812">
+          <input class="in" id="x_secret" type="password" size="12" data-i18n-p="x_secret_p">
+          <button class="ctl" id="x_server_apply" data-i18n="c_apply">Apply</button>
+        </label>
+        <div class="scrollx"><table class="t" id="x_table">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="x_mode">Mode</th><th data-i18n="x_action">Unauthorized traffic</th><th data-i18n="x_mab">MAC bypass</th><th data-i18n="x_status">Status</th><th data-i18n="x_supplicant">Supplicant</th><th data-i18n="x_counts">OK / fail</th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="x_note">auto waits for a supplicant on the port, force-auth and force-unauth set the state by hand. Unauthorized traffic is dropped or moved to the guest VLAN (0 = none).</p>
+      </div>
+    </section>
+
     <section class="tab" id="tab-eee">
       <div class="card"><h2 data-i18n="e_title">Energy Efficient Ethernet</h2>
         <div class="scrollx"><table class="t" id="etable">

@@ -18,6 +18,9 @@
 #include "rtl837x_igmp.h"
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
+#include "rtl837x_dot1x.h"
+#include "eapol.h"
+#include "radius.h"
 #include "rtl837x_storm.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
@@ -910,6 +913,7 @@ void parse_port(void)
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
 					 "\nport <port> lldp [block|permit]" \
 					 "\nport <port> cabletest [show]" \
+					 "\nport <port> dot1x [off|auto|force-auth|force-unauth|action drop|guest|mab on|off]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
 	}
@@ -942,6 +946,34 @@ void parse_port(void)
 		print_string("\nName set to: \"");
 		print_string_x(port_names[phy_settings.port]);
 		print_string("\"\n");
+	} else if (cmd_compare(2, "dot1x")) {
+		if (cmd_compare(3, "action")) {
+			if (cmd_compare(4, "drop"))
+				dot1x_port_action(phy_settings.port, DOT1X_UNAUTH_DROP);
+			else if (cmd_compare(4, "guest"))
+				dot1x_port_action(phy_settings.port, DOT1X_UNAUTH_GUEST);
+			else
+				print_string("Unknown port <port> dot1x action [drop|guest] command\n");
+		} else if (cmd_compare(3, "mab")) {
+			if (cmd_compare(4, "on"))
+				eapol_port_mab(phy_settings.port, true);
+			else if (cmd_compare(4, "off"))
+				eapol_port_mab(phy_settings.port, false);
+			else
+				print_string("Unknown port <port> dot1x mab [on|off] command\n");
+		} else if (cmd_compare(3, "off")) {
+			dot1x_port_mode(phy_settings.port, DOT1X_PORT_OFF);
+		} else if (cmd_compare(3, "auto")) {
+			dot1x_port_mode(phy_settings.port, DOT1X_PORT_AUTO);
+			if (!radius_configured())
+				print_string("No RADIUS server configured: the port stays unauthorized until dot1x server and dot1x secret are set\n");
+		} else if (cmd_compare(3, "force-auth")) {
+			dot1x_port_mode(phy_settings.port, DOT1X_PORT_FORCE_AUTH);
+		} else if (cmd_compare(3, "force-unauth")) {
+			dot1x_port_mode(phy_settings.port, DOT1X_PORT_FORCE_UNAUTH);
+		} else {
+			print_string("Unknown port <port> dot1x [off|auto|force-auth|force-unauth|action drop|guest|mab on|off] command\n");
+		}
 	} else if (cmd_compare(2, "lldp")) {
 		if (cmd_compare(3, "block")){
 			lldp_logical_port_status &= ~((uint16_t)1 << phy_settings.port);
@@ -2076,6 +2108,31 @@ void cmd_parser(void) __banked
 			parse_ingress();
 		} else if (cmd_compare(0, "session")) {
 			parse_session();
+		} else if (cmd_compare(0, "dot1x")) {
+			if (cmd_compare(1, "on")) {
+				dot1x_enable(true);
+			} else if (cmd_compare(1, "off")) {
+				dot1x_enable(false);
+			} else if (cmd_compare(1, "show")) {
+				dot1x_show();
+			} else if (cmd_compare(1, "guest") && cmd_words_len >= 3
+				   && atoi_short(cmd_words_b[2]) && atoi_results_short <= 4094) {
+				dot1x_guest_vlan(atoi_results_short);
+			} else if (cmd_compare(1, "server") && cmd_words_len >= 3 && parse_ip(cmd_words_b[2])) {
+				uint16_t port = RADIUS_PORT_DEFAULT;
+				if (cmd_words_len >= 4 && atoi_short(cmd_words_b[3]))
+					port = atoi_results_short;
+				radius_server(ip, port);
+			} else if (cmd_compare(1, "secret") && cmd_words_len >= 3) {
+				uint8_t i = 0;
+				while (i < RADIUS_SECRET_MAX && cmd_buffer[cmd_words_b[2] + i] > ' ') {
+					radius_cfg.secret[i] = cmd_buffer[cmd_words_b[2] + i];
+					i++;
+				}
+				radius_cfg.secret[i] = NUL;
+			} else {
+				cmd_error("Usage: dot1x [on|off|show|guest <vid>|server <ip> [port]|secret <text>]\n");
+			}
 		} else if (cmd_compare(0, "lldp")) {
 			if (cmd_compare(1, "on")) {
 				print_string("LLDP enabled\n");

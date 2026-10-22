@@ -292,6 +292,7 @@
 #define RTL837X_RMA0_CONF		0x4ecc
 #define RTL837X_RMA0E_CONF		0x4ee8
 #define RTL837X_RMA2_CONF		0x4ed4
+#define RTL837X_RMA3_CONF		0x4ed8
 #define RTL837X_RMA_ACT_MASK		0x30
 #define RTL837X_RMA_ACT_FORWARD		0x00
 #define RTL837X_RMA_ACT_TRAP		0x10
@@ -386,3 +387,14 @@
 #endif
 
 #endif
+
+/*
+ * 802.1X port authentication: one bit per logical port, UNAUTH_ACT two bits per port
+ */
+#define RTL837X_DOT1X_PORT_EN		0x5574
+#define RTL837X_DOT1X_MAC_EN		0x5578
+#define RTL837X_DOT1X_PORT_AUTH		0x557c
+#define RTL837X_DOT1X_PORT_DIR		0x5580
+#define RTL837X_DOT1X_UNAUTH_ACT	0x5584
+#define RTL837X_DOT1X_CFG		0x5588
+#define RTL837X_DOT1X_CFG_GUEST_VID_MASK	0x0fff

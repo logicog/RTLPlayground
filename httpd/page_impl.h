@@ -25,6 +25,7 @@ void send_lag(void);
 void send_stp(void);
 void send_lldp(void);
 void send_lacp(void);
+void send_dot1x(void);
 void send_vlanlist(void);
 
 /*  Convert only the lower nibble to ascii HEX char.

@@ -20,6 +20,11 @@
   - Replace the multi-page UI with a themed single-page app: light, dark and Selenized themes following the browser by default,
     English, Japanese and Chinese, save to flash merges the command log into the startup config and verifies the write,
     firmware images are checked in the browser before upload. #429
+- 802.1X
+  - Port authentication: EAPOL authenticator with a RADIUS server, per-port
+    auto / force-authorized / force-unauthorized, guest VLAN or drop for
+    unauthorized traffic, MAC authentication bypass for devices without a
+    supplicant, a web UI tab and `dot1x` commands. #606
 
 ## Changed
 
