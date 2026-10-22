@@ -105,6 +105,9 @@ void flash_sector_erase(void)
 	config_erase_addr = flash_region.addr;
 }
 
+#define STAGED_MAX	2048
+static uint8_t staged[STAGED_MAX];
+
 void flash_write_bytes(uint8_t *ptr)
 {
 	config_writes++;
@@ -112,6 +115,8 @@ void flash_write_bytes(uint8_t *ptr)
 	written_config_len = flash_region.len;
 	if (written_config_len <= sizeof(written_config))
 		memcpy(written_config, ptr, written_config_len);
+	if (flash_region.addr + flash_region.len <= STAGED_MAX)
+		memcpy(staged + flash_region.addr, ptr, flash_region.len);
 }
 const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
@@ -535,7 +540,7 @@ static void scenario_bad_l4_checksum(void)
 
 
 /* Private HTTP lifecycle values; drive the real callback, not a model. */
-enum { TSTATE_NONE = 0, TSTATE_TX = 1 };
+enum { TSTATE_NONE = 0, TSTATE_TX = 1, TSTATE_POST = 4 };
 extern uint16_t slen, cont_len, sent_len, bindex, crc_final, write_len;
 extern uint8_t boundary[], verify_crc, outbuf[];
 extern struct { uint8_t *p; uint16_t bptr, plen; } upload_settings;
@@ -1012,6 +1017,113 @@ static void scenario_config_upload(void)
 	      "multipart/config: every split writes the exact configuration and NUL to its sector");
 }
 
+extern uint32_t uptr;
+
+#define UPLOAD_LEN	600
+#define UPLOAD_BOUNDARY	"\r\n--XyZ"
+#define UPLOAD_TRAILER	UPLOAD_BOUNDARY "--\r\n"
+
+static int upload_in_two(uint8_t *body, uint16_t body_len, uint16_t split)
+{
+	uptr = 0;
+	write_len = 0;
+	bindex = 0;
+	verify_crc = 0;
+	memset(staged, 0xff, sizeof(staged));
+	strcpy((char *)boundary, UPLOAD_BOUNDARY);
+	uip_conn = &uip_conns[0];
+	uip_conn->appstate.tstate = TSTATE_POST;
+
+	upload_settings.p = body;
+	upload_settings.bptr = 0;
+	upload_settings.plen = split;
+	stream_upload();
+	if (uip_conn->appstate.tstate == TSTATE_POST) {
+		upload_settings.p = body + split;
+		upload_settings.bptr = 0;
+		upload_settings.plen = body_len - split;
+		stream_upload();
+	}
+	return uip_conn->appstate.tstate == TSTATE_NONE && uptr == UPLOAD_LEN
+		&& !staged[UPLOAD_LEN];
+}
+
+static void scenario_upload_cr_before_boundary(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len, split;
+	int completed = 0, intact = 0, splits = 0;
+
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = pattern(i);
+	body[UPLOAD_LEN - 2] = 'x';
+	body[UPLOAD_LEN - 1] = '\r';
+	body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+
+	for (split = 0; split <= body_len; split++) {
+		splits++;
+		if (upload_in_two(body, body_len, split)) {
+			completed++;
+			if (!memcmp(staged, body, UPLOAD_LEN))
+				intact++;
+		}
+	}
+	if (verbose)
+		printf("      %d of %d splits complete, %d intact\n", completed, splits, intact);
+
+	CHECK(completed == splits,
+	      "upload: an image ending in CR still finds the closing boundary");
+	CHECK(intact == splits,
+	      "upload: the CR and the bytes before it reach the flash unchanged");
+}
+
+static int upload_whole_and_split(uint8_t *body, uint16_t body_len)
+{
+	return upload_in_two(body, body_len, body_len) && !memcmp(staged, body, UPLOAD_LEN)
+		&& upload_in_two(body, body_len, UPLOAD_LEN) && !memcmp(staged, body, UPLOAD_LEN);
+}
+
+static void scenario_upload_last_byte(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+	int bad = -1;
+
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = pattern(i);
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+	for (int last = 0; last < 256 && bad < 0; last++) {
+		body[UPLOAD_LEN - 1] = last;
+		if (!upload_whole_and_split(body, body_len))
+			bad = last;
+	}
+	if (bad >= 0)
+		printf("      last byte 0x%02x loses the closing boundary\n", bad);
+	CHECK(bad < 0, "upload: the part ends after the payload whatever its last byte");
+
+	body[UPLOAD_LEN - 1] = '\r';
+	body[UPLOAD_LEN - 2] = '\r';
+	CHECK(upload_whole_and_split(body, body_len), "upload: an even run of CR before the boundary");
+	body[UPLOAD_LEN - 3] = '\r';
+	CHECK(upload_whole_and_split(body, body_len), "upload: an odd run of CR before the boundary");
+}
+
+static void scenario_upload_broken_matches(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+	memset(body, '\r', UPLOAD_LEN);
+	CHECK(upload_whole_and_split(body, body_len),
+	      "upload: a run of CR longer than a flash page is staged intact");
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = "\r\n-"[i % 3];
+	CHECK(upload_whole_and_split(body, body_len),
+	      "upload: repeated partial delimiters are staged as payload");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -1040,6 +1152,9 @@ int main(int argc, char **argv)
 	scenario_oversized_get_header();
 	scenario_split_method_names();
 	scenario_config_upload();
+	scenario_upload_cr_before_boundary();
+	scenario_upload_last_byte();
+	scenario_upload_broken_matches();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
