@@ -12,7 +12,8 @@ only the following features are provided:
 - Port configuration showing detailed information about own and Link-partner advertised
   Speed settings and configuration of these settings on the local side
 - Per-port configuration of frame sizes (MTUs) for Jumbo-Frame support or limiting MTUs
-  for particular devices
+  for particular devices. The default RX limit is 1522 bytes; saved
+  `mtu <port> <size>` commands override it, including for jumbo frames.
 - EEE (Energy Efficient Ethernet) can be configured per-port. Detailed information is
   provided for support offered by the link partner and the EEE status of a port.
 - VLAN configuration

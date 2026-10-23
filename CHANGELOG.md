@@ -23,6 +23,10 @@
 
 ## Changed
 
+- Ports
+  - Default RX maximum frame lengths to 1522 bytes before replaying saved
+    configuration. Explicit `mtu` commands take precedence.
+
 ## Fixed
 
 - Web UI
@@ -39,6 +43,10 @@
     instead of writing it to flash.
 
 ## Breaking changes
+
+- Frame sizes
+  - Larger-frame setups that relied on the inherited startup limit must save
+    explicit `mtu <port> <size>` commands.
 
 - Config
   - VLAN don't accept port `u`-suffix anymore.
