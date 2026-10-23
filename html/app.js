@@ -1600,6 +1600,9 @@ function vlanLoad(vid) {
     }
     $("vmgmtpromote").checked = ($("vmgmtcur").dataset.id == vid);
     toast(t("v_loaded", {n: vid}), "ok");
+    for(const vlanRow of $("vtable").tBodies[0].rows) {
+      vlanRow.className=vlanRow.firstChild.firstChild.dataset.id == vid ? "sel":"";
+    }
   }).catch(function() {toast(t("v_notfound", {n: vid}), "err")});
 }
 
