@@ -25,6 +25,10 @@
 
 ## Fixed
 
+- Web UI
+  - Accept firmware uploads regardless of the file part's MIME type, including
+    `application/macbinary` sent by Chrome on macOS for `.bin` files.
+
 - Health
   - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which
     corrupted the `link` slow counter and the DHCP client state. #658
