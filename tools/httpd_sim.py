@@ -329,6 +329,9 @@ class Handler(SimpleHTTPRequestHandler):
         else:
             state["vlans"][vid]["name"] = name
 
+        state["vlans"][vid]["tagged"] = []
+        state["vlans"][vid]["untagged"] = []
+
         for i in pieces[startIndex:]:
             if i[-1] == "t":
                 state["vlans"][vid]["tagged"].append(phys_to_log_port[int(i[:-1])-1])
