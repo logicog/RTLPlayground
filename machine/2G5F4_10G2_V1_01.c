@@ -41,8 +41,8 @@ __code const struct machine machine = {
 	 * at 2.5G only) and LED-ID2 carries the SFP single LED. The "solid"
 	 * conditions (LINK/speed) barely drive the LEDs here and ACT is what
 	 * actually lights them, which is why the white LED used to glow faintly at
-	 * non-2.5G speeds; the fix for that is LED_GLB_IO_EN bit 6, set in
-	 * machine_init.c. */
+	 * non-2.5G speeds; the fix for that is LED_GLB_IO_EN bit 6, set in the
+	 * shared machine_custom_init() hook (machine/2G5F4_10G2_V1_01_init.c). */
 	.led_sets = { { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
 			LEDS_2G5 | LEDS_LINK | LEDS_10G,
 			LEDS_1G | LEDS_LINK,

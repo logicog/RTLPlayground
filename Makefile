@@ -15,11 +15,10 @@ SUBDIRS := tools
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 # $MACHINE selects machine/$(MACHINE).c as the board definition and is passed
-# on as -DMACHINE_$(MACHINE), which the rest of the firmware tests with
-# #if defined(MACHINE_...), and as -DMACHINE_NAME, which machine.h uses to
-# include machine/$(MACHINE).h. Both take the same value, so they cannot drift.
+# on as -DMACHINE_NAME, which machine.h uses to include machine/$(MACHINE).h.
+# Board selection itself needs no MACHINE_* symbol for #if chains, so the
+# definition is all the compiler has to know.
 ifneq ($(MACHINE),)
-	CC_FLAGS += -DMACHINE_$(MACHINE)
 	CC_FLAGS += -DMACHINE_NAME=$(MACHINE)
 endif
 # Health instrumentation and the "health" console command: HEALTH=1 gmake ...
@@ -34,7 +33,16 @@ endif
 # The board definition being built: one file per MACHINE_* symbol in machine.h.
 MACHINE_SRC = machine/$(MACHINE).c
 
-BUILDDIR = output/$(MACHINE)
+MACHINE_INIT_DEFAULT := machine/default_machine_init.c
+MACHINE_INIT_SRC := $(wildcard machine/$(MACHINE)_init.c)
+ifeq ($(MACHINE_INIT_SRC),)
+	MACHINE_INIT_SRC := $(MACHINE_INIT_DEFAULT)
+endif
+
+ifndef BUILDDIR
+	BUILDDIR = output/$(MACHINE)
+endif
+
 VERSION_HEADER := version.h
 
 GIT_VERSION := $(shell git rev-parse --short HEAD)
@@ -61,6 +69,9 @@ endif
 # is built, including the tools/ subdirectory.
 all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
+bank_size:
+	tools/bank_occupancy.sh "$(MACHINE)"
+
 create_build_dir:
 	mkdir -p "$(BUILDDIR)"
 	mkdir -p "$(BUILDDIR)/uip"
@@ -81,7 +92,7 @@ $(MACHINE_SRC):
 # invalid $MACHINE value
 SRCS = \
 	$(MACHINE_SRC) \
-	machine_init.c \
+	$(MACHINE_INIT_SRC) \
 	cmd_editor.c \
 	cmd_parser.c \
 	dhcp.c \
@@ -133,7 +144,7 @@ HTML := $(shell find html -name '*.js' -or -name '*.html' -or -name '*.svg' -or 
 # Minified copy of the web UI sources, used as the fileadder input.
 # The raw html/ sources stay untouched for development; the minified
 # copy is a build artifact under output/.
-HTML_MIN := output/html_min
+HTML_MIN := $(BUILDDIR)/html_min
 .PHONY: html_min
 html_min: $(HTML)
 	rm -rf $(HTML_MIN)
@@ -141,7 +152,7 @@ html_min: $(HTML)
 	@for f in $(HTML); do python3 tools/minify.py $$f $(HTML_MIN)/$$(basename $$f) || exit 1; done
 
 html_data.c html_data.h &: $(HTML) | tools html_min
-	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
 $(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
@@ -155,7 +166,7 @@ $(VERSION_HEADER): FORCE
 httpd: html_data.h
 
 $(SUBDIRS):
-	$(MAKE) -C $@
+	$(MAKE) -C $@ BUILDDIR=$(BUILDDIR)
 
 clean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER)
@@ -193,31 +204,35 @@ $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 
 $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img | tools
 	if [ -e $@ ]; then rm $@; fi
-	tools/output/imagebuilder -i $^ $@
-	tools/output/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/output/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/output/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
-	tools/output/crc_calculator -u $@
-	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin output/rtlplayground.bin
+	tools/$(BUILDDIR)/imagebuilder -i $^ $@
+	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
+	tools/$(BUILDDIR)/crc_calculator -u $@
+	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/../rtlplayground.bin
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
 # Every machine/ definition is compiled, so a machine added to machine/ is
-# covered without registering it anywhere. The machine-specific defines are
+# covered without registering it anywhere. The _init.c files are excluded here:
+# they are the boot hooks, compiled separately below (the board's own if it
+# exists, otherwise default_machine_init.c). The machine-specific defines are
 # filtered out of $(CC_FLAGS) and supplied per iteration instead, so this also
 # works as "make machine_check MACHINE=...".
-MACHINE_DEFS := $(sort $(patsubst machine/%.c,%,$(wildcard machine/*.c)))
+MACHINE_DEFS := $(sort $(patsubst machine/%.c,%,$(filter-out machine/%_init.c,$(wildcard machine/*.c))))
 MACHINE_LESS_CC_FLAGS = $(filter-out -DMACHINE_%,$(CC_FLAGS))
 
-.PHONY:
+.PHONY: machine_check
 machine_check:
 	@mkdir -p $(BUILDDIR)/tmp
 	@set -eo pipefail; \
 	for MACHINE in $(MACHINE_DEFS); \
 	do \
 	echo "Checking $${MACHINE}"; \
-	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_$${MACHINE} -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine/$${MACHINE}.c; \
-	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_$${MACHINE} -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine_init.c; \
+	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine/$${MACHINE}.c; \
+	INIT=machine/$${MACHINE}_init.c; \
+	if [ ! -e $$INIT ] && [ ! -L $$INIT ]; then INIT=$(MACHINE_INIT_DEFAULT); fi; \
+	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$INIT; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
 

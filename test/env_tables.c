@@ -59,8 +59,6 @@ uint8_t *hex = (uint8_t *)hex_chars;
 /* ---- a 9-port RTL8373 whose logical ports map to themselves ---- */
 const struct machine machine = {
 	.machine_name = "HOSTTEST",
-	.min_port = 0,
-	.max_port = 8,
 	.n_sfp = 0,
 	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
 	.phys_to_log_port = { 0, 1, 2, 3, 4, 5, 6, 7, 8 },

@@ -14,8 +14,11 @@
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
 struct uip_eth_addr uip_ethaddr = { .addr = {0x02,0x11,0x22,0x33,0x44,0x55} };
-const struct machine machine = { .min_port = 0, .max_port = 7,
+const struct machine machine = {
 			   .log_to_phys_port = {5, 1, 2, 3, 4, 6, 7, 8, 9} };
+/* Logical ports of the mock machine above */
+#define TEST_MIN_PORT 0
+#define TEST_MAX_PORT 7
 struct machine_runtime machine_detected = { .isRTL8373 = 1 };
 uint8_t lacpEnabled;
 uint16_t management_vlan;	/* mocked; slow-protocol path zeroes it per-frame */
@@ -216,7 +219,7 @@ int main(int argc, char **argv)
 	lacp_lag_set(0, 0x00ff);
 	step(8);
 	int all_tx = 1, sane = 1;
-	for (int i = machine.min_port; i <= machine.max_port; i++) {
+	for (int i = TEST_MIN_PORT; i <= TEST_MAX_PORT; i++) {
 		if (!tx_count[i]) all_tx = 0;
 		if (last_tx[i].ethertype != HTONS(0x8809) || last_tx[i].subtype != 1
 		    || last_tx[i].dst[5] != 0x02

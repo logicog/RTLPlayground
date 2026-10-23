@@ -42,6 +42,9 @@
 #endif
 #endif
 
+#define MACHINE_PORT_VALID(p) \
+	((uint8_t)((p) - MACHINE_MIN_PORT) <= (MACHINE_MAX_PORT - MACHINE_MIN_PORT))
+
 // auto derive SOC_FAMILY
 #define RTL836X 6
 #define RTL837X 7
@@ -81,10 +84,6 @@ struct sfp_port
 struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
-	// Lowest logical port number
-	uint8_t min_port;
-	// Highest logical port number
-	uint8_t max_port;
 	uint8_t n_sfp;
 	uint8_t n_10g;
 	uint8_t log_to_phys_port[9];

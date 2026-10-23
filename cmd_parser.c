@@ -266,7 +266,7 @@ uint8_t cmd_parse_port(uint8_t idx) {
 		return 0;
 
 	port = machine.phys_to_log_port[port];
-	if (port < machine.min_port || port > machine.max_port)
+	if (!MACHINE_PORT_VALID(port))
 		return 0;
 
 	atoi_results_u8 = port;
@@ -743,7 +743,7 @@ void parse_isolate(void)
     }
 
 	if (cmd_compare(2, "off")) {
-		for (uint8_t i = machine.min_port; i <= machine.max_port; i++)
+		for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++)
 			members |= ((uint16_t)1) << i;
 		members |= PMASK_CPU; // CPU-port
 		port_isolate(port_configured, members);
@@ -797,7 +797,7 @@ void parse_ingress(void)
 		if (!cmd_is_space_or_nul(idx))
 			goto err;
 		// Setting mode for all ports at once
-		for (log_port = machine.min_port; log_port <= machine.max_port; log_port++) {
+		for (log_port = MACHINE_MIN_PORT; log_port <= MACHINE_MAX_PORT; log_port++) {
 			if (!port_ingress_filter(log_port, mode)) {
 				cmd_error("cannot set the ingress filter for port "); print_phys_port(log_port); write_char('\n');
 				return;
@@ -1019,7 +1019,7 @@ void parse_mtu(void)
 	uint8_t p;
 
 	if (cmd_compare(1, "show")) {
-		for (p = machine.min_port; p <= machine.max_port; p++) {
+		for (p = MACHINE_MIN_PORT; p <= MACHINE_MAX_PORT; p++) {
 			reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8));
 			uint16_t mtu = SFR_DATA_U16 & 0x3fff;
 			print_string("Port "); print_phys_port(p);
@@ -2329,6 +2329,7 @@ void health_show(void) __banked
 	ph_line("tx  ", HEALTH_PH_TX);
 	ph_line("stp ", HEALTH_PH_STP);
 	ph_line("cmd ", HEALTH_PH_CMD);
+	ph_line("lldp", HEALTH_PH_LLDP);
 
 	/* Stack: current depth plus how much of the painted area is untouched */
 	print_string("sp ");

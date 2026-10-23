@@ -19,8 +19,8 @@ extern __xdata uint8_t err_status;
 #define HEALTH_PH_TX	3
 #define HEALTH_PH_STP	4
 #define HEALTH_PH_CMD	5
-#define HEALTH_PHASES	6
-#define HEALTH_LLDP     7
+#define HEALTH_PH_LLDP	6
+#define HEALTH_PHASES	(HEALTH_PH_LLDP + 1)	/* last id + 1: sizes the arrays in cmd_parser.c */
 
 extern __xdata uint16_t health_rx_frames;
 #define health_rx_frame()	health_rx_frames++

@@ -43,8 +43,6 @@
 
 #define MACHINE_COMMON_SETTING \
 	.machine_name = MACHINE_MODEL, \
-	.isRTL8373 = MACHINE_CHIPSET == RTL8373, \
-	.min_port = MACHINE_MIN_PORT, \
-	.max_port = MACHINE_MAX_PORT
+	.isRTL8373 = MACHINE_CHIPSET == RTL8373
 
 #endif
