@@ -91,7 +91,7 @@ void machine_custom_init(void) __banked
 	REG_SET(RTL837X_REG_LED_GLB_IO_EN, 0x7624155b);
 }
 
-#elif defined MACHINE_G604GTP_2SX_SL
+#elif defined MACHINE_S604GTP_2SX_SL
 void machine_custom_init(void) __banked
 {
 	// The power LED on pad 28 (SYS LED) is wired active-high; the chip defaults

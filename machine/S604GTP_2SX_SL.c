@@ -1,7 +1,7 @@
 #include "machine_defs.h"
 
 /*
- * POE Plus G604GTP-2SX-SL  (4x copper PoE + 2x SFP+, RTL8372)
+ * POE Plus S604GTP-2SX-SL  (4x copper PoE + 2x SFP+, RTL8372)
  *
  * Starting point:
  *   - Copper ports / LEDs: taken from HASIVO_S600W_4GT_2XGT_SE (copper LEDs confirmed working on this board)

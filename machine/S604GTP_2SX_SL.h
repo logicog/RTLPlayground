@@ -1,0 +1,6 @@
+#ifndef _MACHINE_S604GTP_2SX_SL_H_
+#define _MACHINE_S604GTP_2SX_SL_H_
+
+#define MACHINE_MODEL "POE Plus S604GTP-2SX-SL"
+
+#endif
