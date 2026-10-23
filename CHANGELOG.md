@@ -23,6 +23,10 @@
 
 ## Changed
 
+- Web UI
+  - Up to four logins (browsers, scripts) are valid at the same time. A login takes a free or
+    expired session, otherwise the least recently used one, instead of ending every other session.
+
 ## Fixed
 
 - Web UI

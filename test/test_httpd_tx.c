@@ -141,8 +141,16 @@ void execute_commands(uint8_t *p) { (void)p; }
 void clear_command_history(void) { }
 void udp_callbacks(void) { }
 void tcpip_output(void) { }
-void get_random_32(void) { }
-void read_reg_timer(uint32_t *tmr) { *tmr = 0; }
+/* Distinct values per call, so every login gets its own session id. */
+void get_random_32(void)
+{
+	static uint32_t x = 1;
+
+	x = x * 1103515245u + 12345u;
+	sfr_data[0] = x >> 24; sfr_data[1] = x >> 16; sfr_data[2] = x >> 8; sfr_data[3] = x;
+}
+static uint32_t bench_now;	/* seconds since boot as httpd sees them */
+void read_reg_timer(uint32_t *tmr) { *tmr = bench_now; }
 
 /* uip-conf.h asks uIP not to define the packet buffer: on the switch it lives
  * at a fixed XDATA address, so the bench provides the storage itself. */
@@ -190,10 +198,10 @@ void send_vlanlist(void) { }
 void send_lldp(void) {}
 
 extern uint8_t authenticated;
-extern char session_id[];
+extern char session_id[][13];
 extern char passwd[21];
 extern uint16_t session_timeout;
-extern uint32_t last_session_use;
+extern uint32_t last_session_use[];
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
  * to confirm the port httpd_init() asked for is the one uIP is watching. */
@@ -408,6 +416,16 @@ static int stream_contains(const char *needle)
 		if (!memcmp(stream + i, needle, n))
 			return 1;
 	return 0;
+}
+
+/* One valid session in the first slot, the others free. */
+static void set_session(const char *id)
+{
+	for (int i = 0; i < 4; i++) {
+		session_id[i][0] = 0;
+		last_session_use[i] = 0;
+	}
+	strcpy(session_id[0], id);
 }
 
 static void login_session_start(void)
@@ -824,7 +842,7 @@ static void scenario_fragmented_get_cookie(void)
 		"\r\n";
 
 	session_start(MSS_FULL);
-	strcpy(session_id, "0123456789ab");
+	set_session("0123456789ab");
 
 	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
 	CHECK(stream_len == 0,
@@ -848,7 +866,7 @@ static void scenario_fragmented_get_cookie_value(void)
 		"\r\n";
 
 	session_start(MSS_FULL);
-	strcpy(session_id, "0123456789ab");
+	set_session("0123456789ab");
 
 	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
 	CHECK(stream_len == 0,
@@ -867,7 +885,7 @@ static void scenario_split_get_header_terminator(void)
 	static const char second[] = "\n";
 
 	session_start(MSS_FULL);
-	strcpy(session_id, "0123456789ab");
+	set_session("0123456789ab");
 
 	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
 	CHECK(stream_len == 0,
@@ -885,7 +903,7 @@ static void scenario_fragmented_get_without_cookie(void)
 	static const char second[] = "\r\n";
 
 	session_start(MSS_FULL);
-	strcpy(session_id, "0123456789ab");
+	set_session("0123456789ab");
 
 	client_send(TCP_ACK | TCP_PSH, first, (int)strlen(first));
 	client_send(TCP_ACK | TCP_PSH, second, (int)strlen(second));
@@ -893,6 +911,71 @@ static void scenario_fragmented_get_without_cookie(void)
 	      "fragmented GET without cookie: protected file still redirects");
 	CHECK(stream_contains("Location: login.html\r\n"),
 	      "fragmented GET without cookie: authentication is not carried over");
+}
+
+/* Logs in and returns the session cookie value from Set-Cookie. */
+static void login_cookie(char *cookie)
+{
+	static const char req[] =
+		"POST /login HTTP/1.1\r\nHost: sw\r\nContent-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n\r\npwd=1234";
+	static const char key[] = "Set-Cookie: session=";
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, req, (int)strlen(req));
+	cookie[0] = 0;
+	for (int i = 0; i + (int)strlen(key) + 12 <= stream_len; i++)
+		if (!memcmp(stream + i, key, strlen(key))) {
+			memcpy(cookie, stream + i + strlen(key), 12);
+			cookie[12] = 0;
+			break;
+		}
+}
+
+/* Requests the protected file with a cookie; 1 when it is served. */
+static int get_with_cookie(const char *cookie)
+{
+	char req[128];
+
+	snprintf(req, sizeof(req), "GET " PROTECTED_FILE_NAME " HTTP/1.1\r\nHost: sw\r\n"
+		 "Cookie: session=%s\r\n\r\n", cookie);
+	session_start(MSS_FULL);
+	client_send(TCP_ACK | TCP_PSH, req, (int)strlen(req));
+	return stream_contains("HTTP/1.1 200 OK\r\n");
+}
+
+static void scenario_concurrent_sessions(void)
+{
+	char c[6][13];
+
+	set_session("");
+	for (int i = 0; i < 4; i++) {
+		bench_now = i;
+		login_cookie(c[i]);
+	}
+	CHECK(c[0][0] && c[1][0] && strcmp(c[0], c[1]),
+	      "concurrent sessions: each login gets its own cookie");
+	bench_now = 10;
+	CHECK(get_with_cookie(c[0]) && get_with_cookie(c[2]) && get_with_cookie(c[3]),
+	      "concurrent sessions: a later login keeps the earlier ones valid");
+	bench_now = 11;
+	login_cookie(c[4]);
+	CHECK(!get_with_cookie(c[1]),
+	      "concurrent sessions: with all slots taken a login replaces the least recently used one");
+	CHECK(get_with_cookie(c[0]) && get_with_cookie(c[2]) && get_with_cookie(c[3]) && get_with_cookie(c[4]),
+	      "concurrent sessions: the other sessions stay valid");
+	CHECK(!get_with_cookie("0123456789ab"),
+	      "concurrent sessions: an unknown cookie is refused");
+	bench_now = 11 + 200;
+	CHECK(get_with_cookie(c[4]),
+	      "concurrent sessions: a session used within the timeout stays valid");
+	bench_now = 11 + 201;
+	CHECK(!get_with_cookie(c[0]),
+	      "concurrent sessions: an idle session expires after the timeout");
+	login_cookie(c[5]);
+	CHECK(get_with_cookie(c[4]) && get_with_cookie(c[5]),
+	      "concurrent sessions: a login reuses an expired slot before a live one");
+	bench_now = 0;
 }
 
 static void scenario_get_header_timeout(void)
@@ -903,7 +986,7 @@ static void scenario_get_header_timeout(void)
 		"Cookie: session=012345";
 
 	session_start(MSS_FULL);
-	strcpy(session_id, "0123456789ab");
+	set_session("0123456789ab");
 	ticks = 0;
 
 	client_send(TCP_ACK | TCP_PSH, partial, (int)strlen(partial));
@@ -948,7 +1031,7 @@ static void scenario_split_method_names(void)
 
 	for (int split = 1; split < 3; split++) {
 		session_start(MSS_FULL);
-		strcpy(session_id, "0123456789ab");
+		set_session("0123456789ab");
 		client_send(TCP_ACK | TCP_PSH, get, split);
 		if (stream_len)
 			get_waits = 0;
@@ -1000,7 +1083,7 @@ static void scenario_config_upload(void)
 	 * configuration, or closing delimiter. No extra CRLF is added to the body. */
 	for (int split = 0; split <= request_len; split++) {
 		session_start(MSS_FULL);
-		strcpy(session_id, "0123456789ab");
+		set_session("0123456789ab");
 		config_erases = config_writes = 0;
 		written_config_len = 0;
 		memset(written_config, 0xa5, sizeof(written_config));
@@ -1039,9 +1122,8 @@ static void scenario_upload(const char *name, const char *part_type, int split)
 
 	printf("\n-- upload: %s --\n", name);
 	session_start(MSS_FULL);
-	strcpy(session_id, "0123456789ab");
+	set_session("0123456789ab");
 	session_timeout = 200;
-	last_session_use = 0; /* read_reg_timer() returns zero in this bench. */
 	flash_size = 0x100000;
 	flash_written_len = 0;
 	flash_write_bad = 0;
@@ -1106,6 +1188,7 @@ int main(int argc, char **argv)
 	scenario_fragmented_get_cookie_value();
 	scenario_split_get_header_terminator();
 	scenario_fragmented_get_without_cookie();
+	scenario_concurrent_sessions();
 	scenario_get_header_timeout();
 	scenario_oversized_get_header();
 	scenario_split_method_names();

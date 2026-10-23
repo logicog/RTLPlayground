@@ -12,6 +12,9 @@
 #include "debug.h"
 
 #define SESSION_ID_LENGTH 12
+/* Concurrent logins (browsers, scripts): a login takes a free or expired slot,
+ * otherwise the least recently used one, instead of ending every other session. */
+#define SESSIONS 4
 #define SESSION_TIMEOUT_DEFAULT 200
 
 /* Seconds of inactivity after which a session cookie stops validating.
@@ -75,10 +78,10 @@ __xdata uint8_t postbody_endpoint;
 __xdata uint16_t postbody_start;
 
 __xdata char passwd[21];
-__xdata char session_id[SESSION_ID_LENGTH + 1];
+__xdata char session_id[SESSIONS][SESSION_ID_LENGTH + 1];
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
-__xdata uint32_t last_session_use;
+__xdata uint32_t last_session_use[SESSIONS];
 
 #define TSTATE_NONE		0
 #define TSTATE_TX		1
@@ -294,6 +297,7 @@ void send_ok(void)
 __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 {
 	__xdata uint8_t *v;
+	uint8_t slot;
 
 	content_type = 0;
 	content_length = 0;
@@ -343,19 +347,40 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 
 	read_reg_timer(&now);
 
-	if (session && session_id[0]) {
-		if (now - last_session_use > session_timeout) {
-			dbg_string("Session expired\n");
-		} else {
-			if (is_word_x(session, session_id)) {
-				authenticated = 1;
-				last_session_use = now;
+	if (session) {
+		for (slot = 0; slot < SESSIONS; slot++) {
+			if (!session_id[slot][0] || !is_word_x(session, session_id[slot]))
+				continue;
+			if (now - last_session_use[slot] > session_timeout) {
+				dbg_string("Session expired\n");
+				session_id[slot][0] = 0;
 			} else {
-				dbg_string("Invalid session cookie!\n");
+				authenticated = 1;
+				last_session_use[slot] = now;
 			}
+			break;
+		}
+		if (slot == SESSIONS) {
+			dbg_string("Invalid session cookie!\n");
 		}
 	}
 	return p;
+}
+
+
+// Slot for a new session: a free or expired one, else the least recently used
+static uint8_t session_slot(void)
+{
+	uint8_t i, lru = 0;
+
+	read_reg_timer(&now);
+	for (i = 0; i < SESSIONS; i++) {
+		if (!session_id[i][0] || now - last_session_use[i] > session_timeout)
+			return i;
+		if (now - last_session_use[i] > now - last_session_use[lru])
+			lru = i;
+	}
+	return lru;
 }
 
 /*
@@ -675,13 +700,14 @@ static void run_login_body(__xdata uint8_t *body)
 {
 	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
 		dbg_string("Password accepted!\n");
-		read_reg_timer(&last_session_use);
-		gen_random_hex_chars(session_id, SESSION_ID_LENGTH);
-		session_id[SESSION_ID_LENGTH] = NUL;
+		uint8_t s = session_slot();
+		last_session_use[s] = now;
+		gen_random_hex_chars(session_id[s], SESSION_ID_LENGTH);
+		session_id[s][SESSION_ID_LENGTH] = NUL;
 		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 				      "Set-Cookie: session=");
 		for (uint8_t i = 0; i < SESSION_ID_LENGTH; i++)
-			outbuf[slen++] = session_id[i];
+			outbuf[slen++] = session_id[s][i];
 		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
 	} else {
 		dbg_string("Password invalid!\n");
