@@ -253,7 +253,7 @@ static bool parse(uint16_t length)
 static uint8_t chip_port(uint8_t index)
 {
 	__xdata uint8_t i;
-	for (i = machine.min_port; i <= machine.max_port && i < CPU_PORT; ++i)
+	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT && i < CPU_PORT; ++i)
 		if (machine.log_to_phys_port[i] == index)
 			return i;
 	return 255;

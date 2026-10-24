@@ -102,7 +102,7 @@ clean:
 SNMPFLAGS = $(CFLAGS) -DSNMP
 SNMPENV = $(SRCROOT)/snmp.c $(SRCROOT)/snmp_control.c $(SRCROOT)/uip/uip.c $(SRCROOT)/httpd/httpd.c
 $(BUILDDIR)/test_snmp: test_snmp.c test_httpd_tx.c $(SNMPENV) | $(BUILDDIR)
-	$(CC) $(SNMPFLAGS) test_snmp.c $(SNMPENV) -o $@ $(LDFLAGS)
+	$(CC) $(SNMPFLAGS) -DMACHINE_MAX_PORT=7 test_snmp.c $(SNMPENV) -o $@ $(LDFLAGS)
 
 $(BUILDDIR)/test_snmp_hw: test_snmp_hw.c $(SRCROOT)/snmp_hw.c | $(BUILDDIR)
 	$(CC) $(SNMPFLAGS) test_snmp_hw.c -o $@ $(LDFLAGS)
@@ -111,7 +111,7 @@ $(BUILDDIR)/test_snmp_nine: test_snmp.c test_httpd_tx.c $(SNMPENV) | $(BUILDDIR)
 	$(CC) $(SNMPFLAGS) -DSNMP_TEST_NINE test_snmp.c $(SNMPENV) -o $@ $(LDFLAGS)
 
 $(BUILDDIR)/test_snmp_hw_six: test_snmp_hw.c $(SRCROOT)/snmp_hw.c | $(BUILDDIR)
-	$(CC) $(SNMPFLAGS) -DSNMP_HW_SIX test_snmp_hw.c -o $@ $(LDFLAGS)
+	$(CC) $(SNMPFLAGS) -DSNMP_HW_SIX -DMACHINE_MIN_PORT=3 test_snmp_hw.c -o $@ $(LDFLAGS)
 
 .PHONY: snmp snmp-unit
 snmp-unit: $(BUILDDIR)/test_snmp $(BUILDDIR)/test_snmp_nine $(BUILDDIR)/test_snmp_hw $(BUILDDIR)/test_snmp_hw_six
@@ -131,7 +131,7 @@ TRANSPORTDEPS = $(SRCROOT)/syslog.c $(SRCROOT)/dhcp.c $(SRCROOT)/uip/uip_arp.c $
 TRANSPORTENV = $(SNMPENV) $(SRCROOT)/udp_apps.c transport_arp.c \
                transport_dhcp.c $(SRCROOT)/dns.c $(SRCROOT)/ntp.c transport_syslog.c
 $(BUILDDIR)/test_snmp_transport: test_snmp_transport.c test_snmp.c test_httpd_tx.c snmp_wire_fixtures.h $(TRANSPORTENV) $(TRANSPORTDEPS) | $(BUILDDIR)
-	$(CC) $(SNMPFLAGS) $(GC_CFLAGS) test_snmp_transport.c $(TRANSPORTENV) -o $@ $(LDFLAGS) $(GC_LDFLAGS)
+	$(CC) $(SNMPFLAGS) -DMACHINE_MAX_PORT=7 $(GC_CFLAGS) test_snmp_transport.c $(TRANSPORTENV) -o $@ $(LDFLAGS) $(GC_LDFLAGS)
 $(BUILDDIR)/test_snmp_transport_nine: test_snmp_transport.c test_snmp.c test_httpd_tx.c snmp_wire_fixtures.h $(TRANSPORTENV) $(TRANSPORTDEPS) | $(BUILDDIR)
 	$(CC) $(SNMPFLAGS) -DSNMP_TEST_NINE -ffunction-sections -fdata-sections test_snmp_transport.c $(TRANSPORTENV) -o $@ $(LDFLAGS) $(GC_LDFLAGS)
 snmp: snmp-unit $(BUILDDIR)/test_snmp_transport $(BUILDDIR)/test_snmp_transport_nine
@@ -142,7 +142,7 @@ snmp: snmp-unit $(BUILDDIR)/test_snmp_transport $(BUILDDIR)/test_snmp_transport_
 $(BUILDDIR)/test_snmp_horaco_profile: test_snmp_horaco_profile.c test_snmp.c test_httpd_tx.c $(SNMPENV) $(SRCROOT)/machine/SWTGW218AS.c | $(BUILDDIR)
 	$(CC) $(SNMPFLAGS) -DMACHINE_SWTGW218AS -DMACHINE_NAME=SWTGW218AS test_snmp_horaco_profile.c $(SNMPENV) $(SRCROOT)/machine/SWTGW218AS.c -o $@ $(LDFLAGS)
 .PHONY: snmp-horaco-profile
-snmp-horaco-profile: $(BUILDDIR)/test_snmp_horaco_profile
+snmp-horaco-profile: $(BUILDDIR)/test_snmp_horaco_profile snmp-port-map
 	$(BUILDDIR)/test_snmp_horaco_profile
 
 # Stage C: actual runtime snapshot and information.json serialization.
@@ -159,7 +159,7 @@ snmp-status-gui:
 
 # Live community/ACL and timestamp behavior with the real packet engine.
 $(BUILDDIR)/test_snmp_cli: test_snmp_cli.c test_snmp.c test_httpd_tx.c $(SNMPENV) | $(BUILDDIR)
-	$(CC) $(SNMPFLAGS) test_snmp_cli.c $(SNMPENV) -o $@ $(LDFLAGS)
+	$(CC) $(SNMPFLAGS) -DMACHINE_MAX_PORT=7 test_snmp_cli.c $(SNMPENV) -o $@ $(LDFLAGS)
 .PHONY: snmp-cli
 snmp-cli: $(BUILDDIR)/test_snmp_cli
 	$(BUILDDIR)/test_snmp_cli
@@ -181,3 +181,16 @@ $(addprefix $(BUILDDIR)/,test_snmp test_snmp_nine test_snmp_horaco_profile test_
 .PHONY: config-replay
 config-replay:
 	cd $(SRCROOT) && CC="$(CC)" python3 test/test_config_replay.py
+
+# Compile the real six-port profile with its chipset bounds, plus a restricted
+# test-only bound to prove enumeration does not assume the chipset default.
+$(BUILDDIR)/test_snmp_port_map: test_snmp_port_map.c test_snmp.c test_httpd_tx.c $(SNMPENV) $(SRCROOT)/machine/KP_9000_6XHML_X2.c | $(BUILDDIR)
+	$(CC) $(SNMPFLAGS) -DMACHINE_NAME=KP_9000_6XHML_X2 $(filter-out test_snmp.c test_httpd_tx.c,$(filter %.c,$^)) -o $@ $(LDFLAGS)
+
+$(BUILDDIR)/test_snmp_port_map_restricted: test_snmp_port_map.c test_snmp.c test_httpd_tx.c $(SNMPENV) $(SRCROOT)/machine/KP_9000_6XHML_X2.c | $(BUILDDIR)
+	$(CC) $(SNMPFLAGS) -DMACHINE_NAME=KP_9000_6XHML_X2 -DMACHINE_MAX_PORT=6 -DSNMP_MAP_RESTRICTED $(filter-out test_snmp.c test_httpd_tx.c,$(filter %.c,$^)) -o $@ $(LDFLAGS)
+
+.PHONY: snmp-port-map
+snmp-port-map: $(BUILDDIR)/test_snmp_port_map $(BUILDDIR)/test_snmp_port_map_restricted
+	$(BUILDDIR)/test_snmp_port_map
+	$(BUILDDIR)/test_snmp_port_map_restricted

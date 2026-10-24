@@ -11,7 +11,7 @@ void udp_callbacks(void)
 }
 int main(void)
 {
-	assert(machine.isRTL8373 && machine.min_port == 0 && machine.max_port == 8);
+	assert(machine.isRTL8373 && MACHINE_MIN_PORT == 0 && MACHINE_MAX_PORT == 8);
 	assert(machine.mac_flash_offset == 0x1fc000 && machine.n_sfp == 1);
 	assert(machine.sfp_port[0].pin_detect == GPIO30_ACL_BIT3_EN);
 	assert(machine.sfp_port[0].pin_los == GPIO37 && machine.reset_pin == GPIO54_ACL_BIT2_EN);

@@ -19,12 +19,6 @@
  * No production test hooks or reset-on-request paths are introduced. */
 #include "../snmp_hw.c"
 const struct machine machine = {
-#ifdef SNMP_HW_SIX
-    .min_port = 3,
-#else
-    .min_port = 0,
-#endif
-    .max_port = 8,
     .is_sfp = {[8] = 1}}; /* logical 8 is the SFP cage; speed/link keep using LINKS_89 */
 /* Bounded request: selector write, optional busy pre-check and 32 polls, plus slack. */
 #define MAX_REQUEST_COMMANDS 40
@@ -350,8 +344,8 @@ static void test_counter32(void)
 		assert(!snmp_hw_counter32(3, sel, true, &c) && !snmp_hw_counter32(3, sel, false, &c));
 	}
 	assert(!snmp_hw_counter32(9, 48, true, &c) && !snmp_hw_counter32(255, 48, false, &c));
-	if (machine.min_port)
-		assert(!snmp_hw_counter32(machine.min_port - 1, 48, true, &c));
+	if (MACHINE_MIN_PORT)
+		assert(!snmp_hw_counter32(MACHINE_MIN_PORT - 1, 48, true, &c));
 	assert(commands == before);
 	puts("PASS counter32 error-pair high/low zero extension, selector 8 refused, range checks");
 }
@@ -363,7 +357,7 @@ static void test_admin(void)
 		uint8_t state;
 	} cases[] = {{0x2058, 1}, {0x2858, 2}, {0xf7ff, 1}, {0x0800, 2}, {0x0000, 1}, {0xffff, 2}};
 	uint8_t state;
-	for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
+	for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
 		for (unsigned n = 0; n < sizeof cases / sizeof *cases; n++) {
 			unsigned before = smi_reads;
 			state = 0xaa;
@@ -381,8 +375,8 @@ static void test_admin(void)
 	unsigned before_invalid = commands;
 	state = 0xaa;
 	assert(!snmp_hw_admin(9, &state) && !snmp_hw_admin(255, &state));
-	if (machine.min_port)
-		assert(!snmp_hw_admin(machine.min_port - 1, &state));
+	if (MACHINE_MIN_PORT)
+		assert(!snmp_hw_admin(MACHINE_MIN_PORT - 1, &state));
 	assert(commands == before_invalid);
 	puts("PASS real admin up/down from MMD31.a610 bit 11, SFP always up, invalid ports");
 }
@@ -431,7 +425,7 @@ int main(int argc, char **argv)
 	assert(snmp_hw_speed(3, &speed) && speed == 2500);
 	/* Match the GUI register layout, with unrelated A4/A7 bits set.
 	 * Exercise every MAC, both nibble positions and SFP's separate register. */
-	for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
+	for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
 		link_register = 0xa500005a | (port < 8 ? 1u << (16 + port) : 1u << 8);
 		assert(snmp_hw_link(port, &link) && link == (1u << port));
 		for (uint8_t n = 0; n < 3; n++) {
@@ -448,8 +442,8 @@ int main(int argc, char **argv)
 	unsigned before_invalid = commands;
 	assert(!snmp_hw_link(9, &link) && !snmp_hw_speed(255, &speed));
 	assert(commands == before_invalid);
-	if (machine.min_port)
-		assert(!snmp_hw_link(machine.min_port - 1, &link));
+	if (MACHINE_MIN_PORT)
+		assert(!snmp_hw_link(MACHINE_MIN_PORT - 1, &link));
 	link_register = 0x00080000;
 	speed_register = 5u << 12;
 	puts("PASS dirty XDATA startup, GUI byte mapping, all MACs, SFP, down/100M/1G/2.5G and "

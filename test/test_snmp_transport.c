@@ -457,7 +457,7 @@ int main(void)
 	hw_failed = false;
 	CHECK(response_error == 5 && response_index == 1 && result_type[0] == 5,
 	      "wire hardware failure returns genErr with original binding");
-	query_oid(31, 18, machine.max_port + 1);
+	query_oid(31, 18, MACHINE_MAX_PORT + 1);
 	make_request(0xa1, 1);
 	raw_payload(req, req_len, 40001, 161, source);
 	load(packet, packet_len);

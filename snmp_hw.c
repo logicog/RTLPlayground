@@ -51,7 +51,7 @@ static void copy_word(__xdata uint8_t *__xdata value)
 
 static bool user_port(uint8_t port)
 {
-	return port < CPU_PORT && port >= machine.min_port && port <= machine.max_port;
+	return port < CPU_PORT && MACHINE_PORT_VALID(port);
 }
 
 /* A statistics request may start only when no command is in flight and, after

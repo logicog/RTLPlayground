@@ -17,12 +17,9 @@ const struct machine machine = {
 #else
     .machine_name = "host switch",
 #endif
-    .min_port = 0,
 #ifdef SNMP_TEST_NINE
-    .max_port = 8,
     .log_to_phys_port = {8, 7, 6, 5, 4, 3, 2, 1, 9},
 #else
-    .max_port = 7,
     .log_to_phys_port = {8, 7, 6, 5, 4, 3, 2, 1},
 #endif
     .is_sfp = {1}};
@@ -584,7 +581,7 @@ int main(void)
 	CHECK(!response_error && names[0][8] == 5 && names[0][9] == 2 && result_type[0] == 0x42 &&
 		  !result_data[0][0],
 	      "GETNEXT retains zero-speed rows in numeric order");
-	query_oid(31, 18, machine.max_port + 1);
+	query_oid(31, 18, MACHINE_MAX_PORT + 1);
 	make_request(0xa1, 1);
 	execute();
 	CHECK(result_type[0] == 0x82, "GETNEXT ends after last interface alias");
@@ -641,7 +638,7 @@ int main(void)
 	admin_state = 2;
 	execute();
 	CHECK(!response_error && result_type[0] == ASN_INTEGER && result_len[0] == 1 &&
-	      result_data[0][0] == 2 && last_port == machine.min_port,
+	      result_data[0][0] == 2 && last_port == MACHINE_MIN_PORT,
 	      "ifAdminStatus follows the mapped port power state");
 	hw_failed = true;
 	execute();
@@ -650,14 +647,14 @@ int main(void)
 	hw_failed = false;
 	admin_state = 1;
 	link_up = true;
-	strcpy(port_names[machine.min_port], "uplink");
+	strcpy(port_names[MACHINE_MIN_PORT], "uplink");
 	query_oid(31, 18, 8);
 	make_request(0xa0, 1);
 	execute();
 	CHECK(result_type[0] == ASN_OCTET_STRING && result_len[0] == 6 &&
 	      !memcmp(result_data[0], "uplink", 6), "ifAlias follows logical-to-front-panel mapping");
-	memset(port_names[machine.min_port], 'z', PORT_NAME_SIZE - 1);
-	port_names[machine.min_port][PORT_NAME_SIZE - 1] = 0;
+	memset(port_names[MACHINE_MIN_PORT], 'z', PORT_NAME_SIZE - 1);
+	port_names[MACHINE_MIN_PORT][PORT_NAME_SIZE - 1] = 0;
 	execute();
 	CHECK(result_len[0] == PORT_NAME_SIZE - 1, "ifAlias retains the full supported name");
 	memset(port_names, 0, sizeof port_names);
@@ -707,7 +704,7 @@ int main(void)
 		      "invalid ifSpeed/ifOperStatus row noSuchInstance");
 	}
 	CHECK(hw_calls == before_invalid, "invalid interface indexes never access hardware");
-	query_oid(2, 1, machine.max_port + 2);
+	query_oid(2, 1, MACHINE_MAX_PORT + 2);
 	make_request(0xa0, 1);
 	execute();
 	CHECK(result_type[0] == 0x81, "CPU not enumerated as max_port+1");
@@ -719,7 +716,7 @@ int main(void)
 	make_request(0xa0, 1);
 	execute();
 	CHECK(result_type[0] == 0x81, "scalar noSuchInstance");
-	query_oid(31, 18, machine.max_port + 1);
+	query_oid(31, 18, MACHINE_MAX_PORT + 1);
 	make_request(0xa1, 1);
 	execute();
 	CHECK(result_type[0] == 0x82, "endOfMibView preserves requested OID");
@@ -729,7 +726,7 @@ int main(void)
 	make_request(0xa1, 1);
 	execute();
 	CHECK(names[0][6] == 3, "GETNEXT scalar ordering");
-	query_oid(2, 1, machine.max_port + 1);
+	query_oid(2, 1, MACHINE_MAX_PORT + 1);
 	make_request(0xa1, 1);
 	execute();
 	CHECK(names[0][8] == 2 && names[0][9] == 1, "GETNEXT column ordering");
@@ -758,7 +755,7 @@ int main(void)
 	query_oid(2, 0, 0);
 	make_request(0xa0, 1);
 	execute();
-	CHECK(result_type[0] == 2 && result_data[0][0] == machine.max_port + 1,
+	CHECK(result_type[0] == 2 && result_data[0][0] == MACHINE_MAX_PORT + 1,
 	      "actual interface count for eight/nine port profile");
 	query_oid(1, 5, 0);
 	make_request(0xa0, 8);
@@ -966,11 +963,11 @@ int main(void)
 		memcpy(input_oid, names[0], name_len[0]);
 		input_oid_len = name_len[0];
 	}
-	CHECK(walked == 6u + 27u * (machine.max_port + 1u) && result_type[0] == 0x82,
+	CHECK(walked == 6u + 27u * (MACHINE_MAX_PORT + 1u) && result_type[0] == 0x82,
 	      "complete MIB walk and endOfMibView unchanged by status reads");
 	/* RFC 3416 GETBULK against the actual MIB order. */
 	build_reference();
-	CHECK(ref_count == 6u + 27u * (machine.max_port + 1u), "GETBULK reference covers whole MIB");
+	CHECK(ref_count == 6u + 27u * (MACHINE_MAX_PORT + 1u), "GETBULK reference covers whole MIB");
 	{
 		int s[3];
 		unsigned hw;
