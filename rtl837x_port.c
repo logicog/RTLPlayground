@@ -15,8 +15,8 @@
 #include "phy.h"
 #include "machine.h"
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
+#pragma codeseg BANK3
+#pragma constseg BANK3
 
 extern __code const uint8_t * __code const hex;
 extern __code const uint16_t bit_mask[16];

@@ -228,6 +228,10 @@ int main(void)
 	t_l2();
 	t_l2_page();
 	t_status_counters();
+#ifndef SNMP
+    send_basic_info();
+    CHECK(!has("\"snmp\"") && balanced(), "SNMP-disabled information JSON remains valid and omits status");
+#endif
 	t_status_macs();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;

@@ -33,6 +33,10 @@ endif
 # The board definition being built: one file per MACHINE_* symbol in machine.h.
 MACHINE_SRC = machine/$(MACHINE).c
 
+ifeq ($(SNMP),1)
+CC_FLAGS += -DSNMP
+endif
+
 MACHINE_INIT_DEFAULT := machine/default_machine_init.c
 MACHINE_INIT_SRC := $(wildcard machine/$(MACHINE)_init.c)
 ifeq ($(MACHINE_INIT_SRC),)
@@ -136,6 +140,10 @@ SRCS += \
 	uip/uip-fw.c \
 	uip/uip-neighbor.c \
 	uip/uip-split.c
+
+ifeq ($(SNMP),1)
+SRCS += snmp.c snmp_hw.c snmp_control.c
+endif
 
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
