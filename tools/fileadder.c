@@ -11,6 +11,7 @@
 #include <string.h>
 #include <argp.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <errno.h>
 #include <zlib.h>
 
@@ -45,6 +46,7 @@ static char doc[] = "Adds a file or a directory of files into an image";
 static char args_doc[] = "addfile [options] INPUT_IMAGE";
 static struct argp_option options[] = {
     { "size", 's', "SIZE", 0, "Resize image"},
+    { "limit", 'l', "ADDR", 0, "Upper limit of region added data must fit into"},
     { "output", 'o', "FILE", 0, "Output image file name instead of overwriting input image"},
     { "data", 'd', "FILE", 0, "File or directory to add to image"},
     { "address", 'a', "SIZE", 0, "Address where data is placed, default is 0x1000000 if option is used, otherwise 0x1fd000"},
@@ -56,7 +58,7 @@ static struct argp_option options[] = {
 
 
 struct arguments {
-	int size, address;
+	int size, limit, address;
 	char *output_file;
 	char *data_file;
 	char *prefix;
@@ -76,6 +78,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		break;
 	case 's':
 		arguments->size = arg? atoi(arg): 0x200000; // Default size is 2MB
+		break;
+	case 'l':
+		arguments->limit = atoi(arg);
 		break;
 	case 'o':
 		arguments->output_file = arg;
@@ -114,6 +119,21 @@ int addfile(const char *name, char *dst, size_t cap)
 	if (dataptr < 0) {
 		fprintf(stderr, "%s: ", name);
 		perror("Cannot open file for reading");
+		exit(5);
+	}
+
+	// Check the size on disk
+	struct stat st;
+	int result = fstat(dataptr, &st);
+	if (result) {
+		fprintf(stderr, "%s ", name);
+		perror("Unable to stat file");
+		exit(5);
+	}
+
+	// Ensure that the file actually fits into the destination so we don't silently truncate it
+	if (st.st_size >= (off_t)cap) {
+		fprintf(stderr, "%s: %jd byte file does not fit into %zu byte buffer\n", name, (intmax_t)st.st_size, cap);
 		exit(5);
 	}
 
@@ -277,6 +297,7 @@ int main(int argc, char **argv)
 	arguments.add_zero = true;
 	arguments.address = 0x1fd000;
 	arguments.size = 0;
+	arguments.limit = 0;
 	arguments.overwrite = true;
 	arguments.prefix = 0;
 	arguments.bank = NULL;
@@ -340,6 +361,7 @@ int main(int argc, char **argv)
 	if (filesize)
 		filesize = arguments.size? arguments.size : filesize;
 
+	int end_addr = 0;
 	if (stat(arguments.data_file, &s) == 0 && s.st_mode & S_IFDIR) {
 		printf("Adding entries in directory %s\n", arguments.data_file);
 		addsDir = true;
@@ -363,15 +385,7 @@ int main(int argc, char **argv)
 				continue;
 
 			size_t data_read = addfile(pathbuffer, scratch, sizeof(scratch));
-			size_t file_len = data_read;
-			if (data_read && arguments.add_zero) {
-				/* NUL-terminate the data so the file table and the
-				 * strlen()-based size computation are deterministic
-				 * (the buffer past the file is otherwise uninitialised) */
-				scratch[data_read] = '\0';
-				data_read++;
-			}
-			data_read = replaceCalls(scratch, file_len);
+			data_read = replaceCalls(scratch, data_read);
 			if (arguments.gzip) {
 				data_read = gzipBuffer(scratch, data_read, &buffer[addr], sizeof(buffer) - addr);
 			} else {
@@ -388,6 +402,7 @@ int main(int argc, char **argv)
 			addidx(in_file->d_name, addr, data_read);
 			addr += data_read;
 		}
+		end_addr = addr;
 		for (int e = 0; e < n_entries; e++)
 			free(entries[e]);
 		free(entries);
@@ -396,11 +411,18 @@ int main(int argc, char **argv)
 
 		if (data_read) {
 			if (arguments.add_zero) {
-				buffer[arguments.address + data_read + 1] = '\0';
+				buffer[arguments.address + data_read] = '\0';
 				data_read++;
 			}
 			printf("Data inserted at 0x%x, size: %ld\n", arguments.address, data_read);
 		}
+		end_addr = arguments.address + data_read;
+	}
+
+	// Ensure that we've not overrun the region boundary (-l)
+	if (arguments.limit > 0 && end_addr > arguments.limit) {
+		fprintf(stderr, "Data ends at 0x%x, over limit 0x%x by %d bytes\n", end_addr, arguments.limit, end_addr - arguments.limit);
+		return 5;
 	}
 
 	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {0, 0, 0}\n};\n");
