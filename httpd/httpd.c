@@ -12,7 +12,7 @@
 #include "debug.h"
 
 #define SESSION_ID_LENGTH 12
-#define SESSION_TIMEOUT_DEFAULT 200
+#define SESSION_TIMEOUT_DEFAULT 3600
 
 /* Seconds of inactivity after which a session cookie stops validating.
  * Configurable with the "session" command, see cmd_parser.c. */
