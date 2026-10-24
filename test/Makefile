@@ -191,6 +191,11 @@ $(BUILDDIR)/test_snmp_port_map_restricted: test_snmp_port_map.c test_snmp.c test
 	$(CC) $(SNMPFLAGS) -DMACHINE_NAME=KP_9000_6XHML_X2 -DMACHINE_MAX_PORT=6 -DSNMP_MAP_RESTRICTED $(filter-out test_snmp.c test_httpd_tx.c,$(filter %.c,$^)) -o $@ $(LDFLAGS)
 
 .PHONY: snmp-port-map
-snmp-port-map: $(BUILDDIR)/test_snmp_port_map $(BUILDDIR)/test_snmp_port_map_restricted
+snmp-port-map: $(BUILDDIR)/test_snmp_port_map $(BUILDDIR)/test_snmp_port_map_restricted $(BUILDDIR)/test_snmp_port_map_cpu_bound
 	$(BUILDDIR)/test_snmp_port_map
 	$(BUILDDIR)/test_snmp_port_map_restricted
+	$(BUILDDIR)/test_snmp_port_map_cpu_bound
+
+# A test-only profile range reaching CPU_PORT must still exclude the CPU MAC.
+$(BUILDDIR)/test_snmp_port_map_cpu_bound: test_snmp_port_map.c test_snmp.c test_httpd_tx.c $(SNMPENV) $(SRCROOT)/machine/KP_9000_6XHML_X2.c | $(BUILDDIR)
+	$(CC) $(SNMPFLAGS) -DMACHINE_NAME=KP_9000_6XHML_X2 -DMACHINE_MAX_PORT=CPU_PORT $(filter-out test_snmp.c test_httpd_tx.c,$(filter %.c,$^)) -o $@ $(LDFLAGS)
