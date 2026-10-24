@@ -50,7 +50,13 @@ state = {
     "lldp_enabled": False,
     "vlans": {1: {"active": True, "name": "", "untagged":[1,2,3,4,5,6,7,8], "tagged":[], "pvid":[1,2,3,4,5,6,7,8]}},
     "cmd_history": [],
-    "mgmt_vlan": 1
+    "mgmt_vlan": 1,
+    "lags": [
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"}
+            ],
 }
 
 
@@ -371,16 +377,10 @@ class Handler(SimpleHTTPRequestHandler):
         return b"DNS servers 0.0.0.0 0.0.0.0, from DHCP 0.0.0.0"
 
     def _api_storm(self):
+        global state
         return [
-            {"portNum":1,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":2,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":3,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":4,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":5,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":6,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":7,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":8,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
-            {"portNum":9,"en":"0000","pps":"0000","rate":"000000000000000000000000"}
+            {"portNum":i,"en":"0000","pps":"0000","rate":"000000000000000000000000"}
+            for i in range(1, PORTS + 1)
         ]
 
     def _api_stp(self):
@@ -500,28 +500,22 @@ class Handler(SimpleHTTPRequestHandler):
         }
 
     def _api_lacp(self):
+        global state
         return {
             "on": 0,
-            "lags": [
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"}
-            ],
+            "lags": state["lags"],
             "ports": [
-                {"p":1,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":2,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":3,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":4,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":5,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":6,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":7,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":8,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
-                {"p":9,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"}
+                {
+                    "p":i,
+                    "lag":255,
+                    "a":"00",
+                    "pt":"00",
+                    "rs":0,
+                    "rx":"0000",
+                    "psys":"000000000000"
+                } for i in range(1, PORTS + 1)
             ]
         }
-
-
 
     def _api_lag(self):
         return [
@@ -627,45 +621,14 @@ class Handler(SimpleHTTPRequestHandler):
         return text.encode("utf-8"), "text/plain"
 
     def _api_isolation(self):
+        global state
         return [
-            {
-                "portNum": 1,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 2,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 3,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 4,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 5,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 6,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 7,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 8,
-                "allow": "03ff"
-            },
-            {
-                "portNum": 9,
-                "allow": "03ff"
-            }
-        ]
-
+                {
+                    "portNum": i,
+                    "allow": "03ff"
+                }
+                for i in range(1, PORTS + 1)
+            ]
 
     def _api_information(self):
         return {
