@@ -9,9 +9,15 @@
 #include "uip.h"
 #include "uip/uip.h"
 #include "machine.h"
+#include "rtl837x_regs.h"
+#include "rtl837x_port.h"
+#include "phy.h"
 
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
+extern __xdata uint8_t sfr_data[4];
+static __code const uint8_t lldp_oui_8021[3] = {0x00, 0x80, 0xc2};
+static __code const uint8_t lldp_oui_8023[3] = {0x00, 0x12, 0x0f};
 
 __xdata uint16_t lldp_ticks;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
@@ -57,6 +63,7 @@ struct lldp_pkt {
 void lldp_send(void) __banked __reentrant
 {
     __xdata uint8_t *p;
+    __xdata uint8_t *tail;
     uint8_t port_position;
 
     lldp_set_addresses();
@@ -87,32 +94,37 @@ void lldp_send(void) __banked __reentrant
 
     p += lldp_sysname(p);
     p += lldp_sysdesc(p);
-
-    // End of LLDPDU TLV
-    *p++ = 0x00; //padding
-    *p++ = 0x00; //padding
-
-    while (p < (LLDP_O->payload + LLDP_MIN_ETHERNET_PAYLOAD_LENGTH))
-        *p++ = 0x00;
-
-    /*
-     * uip_len is the Ethernet frame length excluding FCS.
-     *
-     * The frame consists of:
-     *
-     *     dst mac
-     *     src mac
-     *     rtl_tag  sizeof(struct rtl_tag)
-     *     EtherType (2 bytes)
-     *     payload (how far we've moved p pointer)
-     */
-    uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + (p - LLDP_O->payload);
+    tail = p;
 
     for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
 
         if ((1 << port) & lldp_logical_port_status) {
             LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
             LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
+
+            p = tail;
+            p += lldp_portdesc(p, port);
+            p += lldp_port_org_tlvs(p, port);
+
+            // End of LLDPDU TLV
+            *p++ = 0x00; //padding
+            *p++ = 0x00; //padding
+
+            while (p < (LLDP_O->payload + LLDP_MIN_ETHERNET_PAYLOAD_LENGTH))
+                *p++ = 0x00;
+
+            /*
+             * uip_len is the Ethernet frame length excluding FCS.
+             *
+             * The frame consists of:
+             *
+             *     dst mac
+             *     src mac
+             *     rtl_tag  sizeof(struct rtl_tag)
+             *     EtherType (2 bytes)
+             *     payload (how far we've moved p pointer)
+             */
+            uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + (p - LLDP_O->payload);
 
             tcpip_output();
         }
@@ -158,4 +170,116 @@ uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked
     *p++ = machine_name_length;
     memcpyc(p, machine.machine_name, machine_name_length);
     return machine_name_length + 2; 
+}
+
+uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked
+{
+    uint8_t name_length = strlen_x(port_names[port]);
+
+    if (!name_length)
+        return 0;
+    *p++ = LLDP_TYPE(LLDP_PORT_DESC_TLV_TYPE);
+    *p++ = name_length;
+    memcpy(p, port_names[port], name_length);
+    return name_length + 2;
+}
+
+static __xdata uint8_t *lldp_org_header(__xdata uint8_t *p, __code const uint8_t *oui, uint8_t subtype, uint8_t length) __reentrant
+{
+    *p++ = (uint8_t)LLDP_TYPE(LLDP_ORG_TLV_TYPE);
+    *p++ = LLDP_ORG_TLV_HEADER_LENGTH + length;
+    memcpyc(p, oui, 3);
+    p += 3;
+    *p++ = subtype;
+    return p;
+}
+
+static uint8_t lldp_link_code(uint8_t port) __reentrant
+{
+    uint8_t b;
+
+    reg_read_m(port < 8 ? RTL837X_REG_LINKS : RTL837X_REG_LINKS_89);
+    b = sfr_data[3 - ((port & 7) >> 1)];
+    return (port & 1) ? b >> 4 : b & 0xf;
+}
+
+static __xdata uint8_t *lldp_mac_phy(__xdata uint8_t *p, uint8_t port) __reentrant
+{
+    uint16_t cap = 0;
+    uint16_t mau = LLDP_MAU_UNKNOWN;
+    uint8_t autoneg = 0;
+    uint16_t v;
+
+    p = lldp_org_header(p, lldp_oui_8023, LLDP_8023_SUBTYPE_MAC_PHY, 5);
+    if (machine.is_sfp[port]) {
+        if (lldp_link_code(port) == LINKS_CODE_1000M)
+            mau = LLDP_MAU_1000BASE_X_FD;
+    } else {
+        autoneg = LLDP_AUTONEG_SUPPORTED;
+        phy_read(port, PHY_MMD_AN, PHY_ANEG_CTRL);
+        if (SFR_DATA_U16 & PHY_ANEG_CTRL_ENABLE)
+            autoneg |= LLDP_AUTONEG_ENABLED;
+        phy_read(port, PHY_MMD_AN, PHY_ANEG_ADV);
+        v = SFR_DATA_U16;
+        if (v & PHY_ANEG_ADV_10BASE_T_HD)
+            cap |= LLDP_AUTONEG_CAP_10BASE_T;
+        if (v & PHY_ANEG_ADV_10BASE_T_FD)
+            cap |= LLDP_AUTONEG_CAP_10BASE_T_FD;
+        if (v & PHY_ANEG_ADV_100BASE_TX_HD)
+            cap |= LLDP_AUTONEG_CAP_100BASE_TX;
+        if (v & PHY_ANEG_ADV_100BASE_TX_FD)
+            cap |= LLDP_AUTONEG_CAP_100BASE_TX_FD;
+        phy_read(port, PHY_MMD31, PHY_MMD31_GBCR);
+        if (SFR_DATA_U16 & PHY_GBCR_1000BASE_T_FD)
+            cap |= LLDP_AUTONEG_CAP_1000BASE_T_FD;
+        phy_read(port, PHY_MMD31, PHY_MMD31_PHYSR);
+        v = SFR_DATA_U16;
+        switch (PHYSR_SPEED(v)) {
+        case PHYSR_SPEED_10M:
+            mau = (v & PHYSR_FULL_DUPLEX) ? LLDP_MAU_10BASE_T_FD : LLDP_MAU_10BASE_T_HD;
+            break;
+        case PHYSR_SPEED_100M:
+            mau = (v & PHYSR_FULL_DUPLEX) ? LLDP_MAU_100BASE_TX_FD : LLDP_MAU_100BASE_TX_HD;
+            break;
+        case PHYSR_SPEED_1000M:
+            mau = (v & PHYSR_FULL_DUPLEX) ? LLDP_MAU_1000BASE_T_FD : LLDP_MAU_1000BASE_T_HD;
+            break;
+        }
+    }
+    *p++ = autoneg;
+    *p++ = cap >> 8;
+    *p++ = cap & 0xff;
+    *p++ = mau >> 8;
+    *p++ = mau & 0xff;
+    return p;
+}
+
+uint8_t lldp_port_org_tlvs(__xdata uint8_t *p, uint8_t port) __banked __reentrant
+{
+    __xdata uint8_t *start = p;
+    uint16_t v;
+    uint8_t lag;
+
+    p = lldp_mac_phy(p, port);
+
+    v = port_pvid_get(port);
+    p = lldp_org_header(p, lldp_oui_8021, LLDP_8021_SUBTYPE_PVID, 2);
+    *p++ = v >> 8;
+    *p++ = v & 0xff;
+
+    lag = port_lag_of(port);
+    p = lldp_org_header(p, lldp_oui_8023, LLDP_8023_SUBTYPE_LINK_AGG, 5);
+    *p++ = LLDP_AGG_CAPABLE | (lag == PORT_LAG_NONE ? 0 : LLDP_AGG_ACTIVE);
+    *p++ = 0;
+    *p++ = 0;
+    *p++ = 0;
+    *p++ = lag == PORT_LAG_NONE ? 0 : lag + 1;
+
+    reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t)port << 8));
+    v = SFR_DATA_U16 & PORT_MAX_LEN_MASK;
+    p = lldp_org_header(p, lldp_oui_8023, LLDP_8023_SUBTYPE_MAX_FRAME, 2);
+    *p++ = v >> 8;
+    *p++ = v & 0xff;
+
+    return p - start;
 }
