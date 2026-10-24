@@ -1492,11 +1492,7 @@ function vlanRefresh() {
           href: "#vlan",
           text: String(v.id) + ($("vmgmtcur").dataset.id == v.id ? " ("+t("v_mgmt")+")":""),
           "data-id": v.id,
-          "data-name": v.name,
-          onclick: function(e) {
-            e.preventDefault();
-            vlanLoad(v.id);
-          }
+          "data-name": v.name
         });
         tr.insertCell().appendChild(l);
         tr.insertCell().textContent = v.name || "";
@@ -1742,7 +1738,7 @@ tabHooks.vlan = {
   },
 };
 function VlanInit() {
-  $("vtable").tBodies[0].firstChild.firstChild.firstChild.click();
+  vlanLoad($("vtable").tBodies[0].firstChild.firstChild.firstChild.dataset.id)
 };
 var l2Rows=[],l2SortCol="pport",l2SortDir=1,l2Gen=0;
 function l2Load(){
