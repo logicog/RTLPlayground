@@ -8,6 +8,7 @@ The following devices have been tested and are fully working:
 | Davuaz   | Da-K6501W       | No      | [PCB-K0501W-V2.0](devices/K0501W_V2_0.md)                                 |       | 5 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/FNS-1200P.md)                               | 2M    | 4 + 2 |
 | Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                             | 4M    | 8 + 1 |
+| Goalake  | IG204           | No      | [PB-2131](devices/PB-2131.md)                                             | 4M    | 4 + 2 |
 | GoodTop  | GT-ST018M       | Yes     | [SWTG018AS-A V2.0](devices/SWTG018AS_A_V2_0.md)                           | 2M    | 8 + 1 |
 | GoodTop  | GT-ST024M       | Yes     | [SWTG024AS-A V2.0.1](devices/SWTG024AS-A-V2.0.1_4C_2SFP.md)               | 2M    | 4 + 2 |
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5.md)                                | 8M    | 8 + 1 |
@@ -42,7 +43,7 @@ The following devices have been tested and are fully working:
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                       | 1M    | 8 + 1 |
 | SICSOLINK| SL-G0402F       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 2M    | 4 + 2 |
-| Steamemo | IG204-V1        | No      | [PB-2131](devices/STEAMEMO_IG204_V1.md)                                   |       | 4 + 2 |
+| Steamemo | IG204-V1        | No      | [PB-2131](devices/STEAMEMO_IG204_V1.md)                                             |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [TEG-S563/EU H/W: V1.0R](devices/TEG-S562.md)                             | 2M    | 4 + 2 |
 | XikeStor | SKS3200M-4GPY2XF| Yes     | [SWTG024AS-v1.0](devices/SWTG024AS.md)                                    |       | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
