@@ -304,8 +304,9 @@ class Handler(SimpleHTTPRequestHandler):
             pieces = cmd.split(" ")
             handler = self.get_parsers().get(pieces[0])
             result = handler(pieces)
-            response.extend(result)
-            response.extend(b"\n")
+            if(result is not None):
+                response.extend(result)
+                response.extend(b"\n")
         return response
 
     def get_parsers(self):
