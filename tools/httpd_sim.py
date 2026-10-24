@@ -217,7 +217,10 @@ class Handler(SimpleHTTPRequestHandler):
             command = self._read_raw()
             state["cmd_history"].append(command)
             print(f"Received command: '{command}'")
-            self.parse_cmd(command.strip());
+            response = self.parse_cmd(command.strip());
+
+            if response is not None:
+                return self._send(200, response, "text/plain")
 
             return self._send(
                 200,
@@ -291,18 +294,22 @@ class Handler(SimpleHTTPRequestHandler):
         return parts
 
     def parse_cmd(self, cmdstring):
-        response = ""
+        response = bytearray()
         for cmd in cmdstring.split("\n"):
             pieces = cmd.split(" ")
             handler = self.get_parsers().get(pieces[0])
-            response += str(handler(pieces)) + "\n"
+            result = handler(pieces)
+            response.extend(result)
+            response.extend(b"\n")
         return response
 
     def get_parsers(self):
         return {
             "vlan": self._parse_vlan,
             "lldp": self._parse_lldp,
-            "pvid": self._parse_pvid
+            "pvid": self._parse_pvid,
+            "dns": self._parse_dns,
+            "ntp": self._parse_ntp,
         }
 
     def remove_vlan(self, id):
@@ -354,6 +361,14 @@ class Handler(SimpleHTTPRequestHandler):
     def _parse_lldp(self, pieces):
         global state
         state.lldp_enabled = (pieces[0] == "on")
+
+    def _parse_ntp(self, pieces):
+        global state
+        return b"NTP off, server pool.ntp.org, address 0.0.0.0, interval 60 min, timezone +00:00, dst off\nTime not synchronised"
+
+    def _parse_dns(self,pieces):
+        global state
+        return b"DNS servers 0.0.0.0 0.0.0.0, from DHCP 0.0.0.0"
 
     def _api_storm(self):
         return [
