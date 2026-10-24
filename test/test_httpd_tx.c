@@ -143,7 +143,9 @@ void write_char(char c) {
 #endif
 }
 void write_char_no_syslog(char c) { (void)c; }
+void itoa_no_syslog(uint8_t v) { (void)v; }
 void print_string(const char *p) { (void)p; }
+void print_string_no_syslog(const char *p) { (void)p; }
 void print_string_newline_no_syslog(const char *p) { (void)p; }
 void set_sys_led_state(uint8_t state) { (void)state; }
 #ifndef SNMP_REAL_REPLAY
