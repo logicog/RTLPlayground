@@ -70,20 +70,24 @@ class Handler(SimpleHTTPRequestHandler):
 
     def api_handlers(self,query):
         return {
-            "/status.json": self._api_status,
-            "/eee.json": self._api_eee,
             "/bandwidth.json": self._api_bandwidth,
-            "/information.json": self._api_information,
-            "/mirror.json": self._api_mirror,
-            "/lag.json": self._api_lag,
-            "/l2.json": lambda: self._api_l2(query),
-            "/mtu.json": self._api_mtu,
-            "/vlan.json": lambda: self._api_vlan(query),
-            "/vlanlist": self._api_vlanlist,
-            "/lldp.json": self._api_lldp,
             "/cmd_log": self._api_cmd_log,
             "/counters.json": self._api_counters,
             "/debug": self._api_debug,
+            "/eee.json": self._api_eee,
+            "/information.json": self._api_information,
+            "/isolation.json": self._api_isolation,
+            "/l2.json": lambda: self._api_l2(query),
+            "/lacp.json": self._api_lacp,
+            "/lag.json": self._api_lag,
+            "/lldp.json": self._api_lldp,
+            "/mirror.json": self._api_mirror,
+            "/mtu.json": self._api_mtu,
+            "/status.json": self._api_status,
+            "/storm.json": self._api_storm,
+            "/stp.json": self._api_stp,
+            "/vlan.json": lambda: self._api_vlan(query),
+            "/vlanlist": self._api_vlanlist,
         }
 
     def _send(self, status, body=b"", content_type="text/plain",
@@ -351,6 +355,48 @@ class Handler(SimpleHTTPRequestHandler):
         global state
         state.lldp_enabled = (pieces[0] == "on")
 
+    def _api_storm(self):
+        return [
+            {"portNum":1,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":2,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":3,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":4,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":5,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":6,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":7,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":8,"en":"0000","pps":"0000","rate":"000000000000000000000000"},
+            {"portNum":9,"en":"0000","pps":"0000","rate":"000000000000000000000000"}
+        ]
+
+    def _api_stp(self):
+        return {
+            "on":0,
+            "rstp":1,
+            "prio":8,
+            "hello":2,
+            "maxage":20,
+            "fwd":15,
+            "txhold":6,
+            "rootPrio":"8000",
+            "rootMac":"060f00124737",
+            "myMac":"060f00124737",
+            "cost":"00000000",
+            "weRoot":1,
+            "rootPort":0,
+            "tc":"0000",
+            "ports":[
+                {"p":1,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8001","dc":"00000000"},
+                {"p":2,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8002","dc":"00000000"},
+                {"p":3,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8003","dc":"00000000"},
+                {"p":4,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8004","dc":"00000000"},
+                {"p":5,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8005","dc":"00000000"},
+                {"p":6,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8006","dc":"00000000"},
+                {"p":7,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8007","dc":"00000000"},
+                {"p":8,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8008","dc":"00000000"},
+                {"p":9,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8009","dc":"00000000"}
+            ]
+        }
+
     def _api_status(self):
         global last_called
         now = max(int(time.time()), last_called + 1)
@@ -437,6 +483,30 @@ class Handler(SimpleHTTPRequestHandler):
             "mirror_tx": f"{0b000110:016b}",
             "mirror_rx": f"{0b000010:016b}",
         }
+
+    def _api_lacp(self):
+        return {
+            "on": 0,
+            "lags": [
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
+                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"}
+            ],
+            "ports": [
+                {"p":1,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":2,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":3,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":4,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":5,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":6,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":7,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":8,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":9,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"}
+            ]
+        }
+
+
 
     def _api_lag(self):
         return [
@@ -540,6 +610,47 @@ class Handler(SimpleHTTPRequestHandler):
         if state["cmd_history"]:
             text += "\n"
         return text.encode("utf-8"), "text/plain"
+
+    def _api_isolation(self):
+        return [
+            {
+                "portNum": 1,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 2,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 3,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 4,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 5,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 6,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 7,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 8,
+                "allow": "03ff"
+            },
+            {
+                "portNum": 9,
+                "allow": "03ff"
+            }
+        ]
+
 
     def _api_information(self):
         return {
