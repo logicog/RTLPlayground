@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_qos.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
@@ -1669,6 +1670,54 @@ err:
 	print_string("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
 }
 
+void parse_qos(void)
+{
+	uint8_t port, idx, weight;
+
+	if (cmd_words_len == 1)
+		return qos_show();
+
+	if (cmd_words_len == 2) {
+		if (cmd_compare(1, "on"))
+			return qos_dot1q_set(1);
+		if (cmd_compare(1, "off"))
+			return qos_dot1q_set(0);
+		goto err;
+	}
+
+	if (cmd_compare(1, "pcp")) {
+		if (cmd_words_len != 4 || !atoi_byte(cmd_words_b[2])
+		    || atoi_results_u8 >= QOS_PRIORITIES)
+			goto err;
+		idx = atoi_results_u8;
+		if (!atoi_byte(cmd_words_b[3]) || atoi_results_u8 >= QOS_PRIORITIES)
+			goto err;
+		return qos_pcp_set(idx, atoi_results_u8);
+	}
+
+	if (cmd_compare(1, "queue")) {
+		if (cmd_words_len != 5 || !cmd_parse_port_separator(cmd_words_b[2]))
+			goto err;
+		port = atoi_results_u8;
+		if (!atoi_byte(cmd_words_b[3]) || atoi_results_u8 >= QOS_QUEUES)
+			goto err;
+		idx = atoi_results_u8;
+		if (cmd_compare(4, "sp")) {
+			weight = SCHED_Q_STRICT;
+		} else {
+			if (!atoi_byte(cmd_words_b[4]))
+				goto err;
+			weight = atoi_results_u8;
+			if (!weight || weight > QOS_WEIGHT_MAX)
+				goto err;
+		}
+		return qos_queue_set(port, idx, weight);
+	}
+
+err:
+	print_string("usage: qos [on|off|pcp <pcp> <priority>|queue <port> <queue> <weight|sp>]\n");
+}
+
 void parse_syslog(void)
 {
 	if (cmd_words_len < 2) // no argument -> print status
@@ -2057,6 +2106,8 @@ void cmd_parser(void) __banked
 			parse_temp();
 		} else if (cmd_compare(0, "storm")) {
 			parse_storm();
+		} else if (cmd_compare(0, "qos")) {
+			parse_qos();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "history")) {
