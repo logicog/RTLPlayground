@@ -17,20 +17,16 @@ PORT = 8081
 PASSWORD = "1234"
 VERBOSE = False
 PORTS = 6
-NSFP = 1
 N_COUNTERS = 52
 VLAN_MAX_ID = 4094
 L2_MAX_TRANSFER = 5
 
 ROOT = Path.cwd().resolve()
 
-phys_to_log_port = []
-
-if PORTS == 9:
-    phys_to_log_port = [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
-else:
-    phys_to_log_port = [ 4, 5, 6, 7, 3, 8 ]
-
+machine_config = {
+    "phys_to_log_port": [ 4, 5, 6, 7, 3, 8 ],
+    "is_sfp": [0, 0, 0, 0, 0, 0, 1]
+}
 l2_entries = [
     { "mac": "00:01:2f:00:00:01", "vlan":"001", "type":'l', "port":7, "idx":0x10 },
     { "mac": "00:06:78:00:00:02", "vlan":"001", "type":'l', "port":7, "idx":0x20 },
@@ -225,7 +221,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/cmd":
             command = self._read_raw()
             state["cmd_history"].append(command)
-            print(f"Received command: '{command}'")
+            vprint(f"Received command: '{command}'")
             response = self.parse_cmd(command.strip());
 
             if response is not None:
@@ -354,16 +350,16 @@ class Handler(SimpleHTTPRequestHandler):
 
         for i in pieces[startIndex:]:
             if i[-1] == "t":
-                state["vlans"][vid]["tagged"].append(phys_to_log_port[int(i[:-1])-1])
+                state["vlans"][vid]["tagged"].append(machine_config["phys_to_log_port"][int(i[:-1])-1])
             else:
-                state["vlans"][vid]["untagged"].append(phys_to_log_port[int(i)-1])
+                state["vlans"][vid]["untagged"].append(machine_config["phys_to_log_port"][int(i)-1])
 
     def _parse_pvid(self, pieces):
         global state
         port = int(pieces[1])
         vid = int(pieces[2])
         if(vid in state["vlans"]):
-            state["vlans"][vid]["pvid"].append(phys_to_log_port[port-1])
+            state["vlans"][vid]["pvid"].append(machine_config["phys_to_log_port"][port-1])
         else :
             state["vlans"][vid] = self.newVlan("")
 
@@ -416,7 +412,7 @@ class Handler(SimpleHTTPRequestHandler):
         }
 
     def _api_status(self):
-        global last_called
+        global last_called, machine_config
         now = max(int(time.time()), last_called + 1)
         elapsed = now - last_called
         ports = []
@@ -429,11 +425,10 @@ class Handler(SimpleHTTPRequestHandler):
                 rx_g[n] += rate * elapsed
                 tx_b[n] += rate * elapsed // 10_000_000
                 rx_b[n] += rate * elapsed // 10_000_000
-
             item = {
                 "portNum": i,
-                "logPort": phys_to_log_port[n],
-                "isSFP": int(i > PORTS - NSFP),
+                "logPort": machine_config["phys_to_log_port"][n],
+                "isSFP": machine_config["is_sfp"][i],
                 "enabled": int(i % 4 != 0),
                 "link": (5 if i == 1 else 2) if i % 2 else 0,
                 "txG": f"0x{tx_g[n]:016x}",
@@ -442,7 +437,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "rxB": f"0x{rx_b[n]:016x}",
             }
 
-            if i >= PORTS - NSFP:
+            if machine_config["is_sfp"][i]:
                 item.update({
                     "sfp_vendor": "OEM",
                     "sfp_model": "10G-SFP+",
@@ -468,10 +463,11 @@ class Handler(SimpleHTTPRequestHandler):
         return ports
 
     def _api_eee(self):
+        global state, machine_config
         return [
             {
                 "portNum": i,
-                "isSFP": int(i >= 5),
+                "isSFP": machine_config["is_sfp"][i],
                 "eee": "00000010",
                 "eee_lp": "00000100",
                 "active": int(i % 2 == 1),
@@ -651,7 +647,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 # Parse the provided .c or .h file to attempt to make the simulator act more like that configuration
 def loadMachineConfig(filename):
-    global machine_config, PORTS, NSFP, phys_to_log_port, tx_g, rx_g, tx_b, rx_b
+    global machine_config, PORTS, phys_to_log_port, tx_g, rx_g, tx_b, rx_b
     c_file=filename[:-1] +'c'
     c_content = ""
     with open(c_file, 'r') as file:
@@ -668,7 +664,6 @@ def loadMachineConfig(filename):
 
     patterns = [
         r"\.(isRTL8373)\s*=\s*(\d+)\s*",
-        r"\.(n_sfp)\s*=\s*(\d+)\s*",
         r"\s(MACHINE_CHIPSET)\s+(\S+)\s*",
         r"\.(log_to_phys_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
         r"\.(phys_to_log_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
@@ -702,10 +697,6 @@ def loadMachineConfig(filename):
 
     if "max_port" in machine_config and "min_port" in machine_config:
         PORTS = int(machine_config["max_port"]) - int(machine_config["min_port"])
-    if "n_sftp" in machine_config:
-        NSFP = machine_config["n_sfp"]
-    if "phys_to_log_port" in machine_config:
-        phys_to_log_port = machine_config["phys_to_log_port"]
 
     tx_g = [0] * PORTS
     rx_g = [0] * PORTS
