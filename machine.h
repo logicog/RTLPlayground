@@ -60,6 +60,9 @@
 #error "Unsupported MACHINE_CHIPSET is specified!"
 #endif
 
+// POE support
+#include "poe/poe.h"
+
 #define LED_27 1
 // SYSTEM LED
 #define LED_28_SYS 2

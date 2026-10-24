@@ -24,7 +24,7 @@ SDCC_BANNER = $(if $(SDCC_REV),sdcc/ at $(SDCC_REV),$(SDCC_TOOLCHAIN)) ($(words 
 else
 SDCC_BANNER = system
 endif
-CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
+CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip -Ipoe
 ASM ?= sdas8051
 AFLAGS= -plosgff
 
@@ -54,6 +54,35 @@ MACHINE_INIT_DEFAULT := machine/default_machine_init.c
 MACHINE_INIT_SRC := $(wildcard machine/$(MACHINE)_init.c)
 ifeq ($(MACHINE_INIT_SRC),)
 	MACHINE_INIT_SRC := $(MACHINE_INIT_DEFAULT)
+endif
+
+# NO_POE=1 drops PoE support for boards that have it: no PoE sources and no
+# startup call into the driver.
+ifneq ($(NO_POE),)
+	CC_FLAGS += -DNO_POE
+endif
+POE_SRCS := poe/poe.c
+
+MACHINE_POE_CHIP := $(shell \
+	grep -hE '^[[:space:]]*#[[:space:]]*define[[:space:]]+MACHINE_POE_CHIP([[:space:]]|$$)' \
+		machine/$(MACHINE).h 2>/dev/null | head -n 1 | awk '{ print $$3 }')
+
+POE_FW_DIR := poe/firmware
+ifneq ($(MACHINE_POE_CHIP),)
+ifndef NO_POE
+POE_ENABLED := 1
+POE_STOCK_FW := stock_fw/$(MACHINE).bin
+POE_FW_SRC := $(POE_FW_DIR)/poe_fw_$(MACHINE_POE_CHIP).c
+
+# Driver source list per controller. A value without an entry fails the build
+# rather than silently producing a firmware without PoE support.
+POE_CHIP_SRCS_RTL8238C := poe/rtl8238c.c
+POE_CHIP_SRCS := $(POE_CHIP_SRCS_$(MACHINE_POE_CHIP))
+ifeq ($(POE_CHIP_SRCS),)
+$(error MACHINE_POE_CHIP=$(MACHINE_POE_CHIP) has no driver in poe/)
+endif
+POE_SRCS += $(POE_CHIP_SRCS)
+endif
 endif
 
 ifndef BUILDDIR
@@ -96,6 +125,8 @@ create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)/uip"
 	mkdir -p "$(BUILDDIR)/httpd"
 	mkdir -p "$(BUILDDIR)/machine"
+	mkdir -p "$(BUILDDIR)/poe"
+	mkdir -p "$(BUILDDIR)/poe/firmware"
 
 # Every machine is a pair machine/<MACHINE>.c + machine/<MACHINE>.h. Selecting
 # them by name means no #if/#elif chain, so an unknown or empty $MACHINE is
@@ -164,6 +195,7 @@ SRCS += \
 	uip/uip-fw.c \
 	uip/uip-neighbor.c \
 	uip/uip-split.c
+SRCS += $(POE_SRCS) $(POE_FW_SRC)
 
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
@@ -207,12 +239,29 @@ httpd: html_data.h
 $(SUBDIRS):
 	$(MAKE) -C $@ BUILDDIR=$(BUILDDIR)
 
+# The PSE image is generated from the local, uncommitted vendor image (see
+# stock_fw/README.md). Without it the build stops here with an explanation
+# instead of a missing-target error.
+ifeq ($(POE_ENABLED),1)
+$(POE_STOCK_FW):
+	@echo "ERROR: PoE support for $(MACHINE) needs $(POE_STOCK_FW)." >&2
+	@echo "       Put the vendor firmware there, or build with NO_POE=1." >&2
+	@false
+
+$(POE_FW_SRC): $(POE_STOCK_FW) tools/poe_extract.c | tools
+	@mkdir -p $(dir $@)
+	@echo "Extracting $(MACHINE_POE_CHIP) PSE firmware to $@"
+	tools/$(BUILDDIR)/poe_extract -i $(POE_STOCK_FW) -c $(MACHINE_POE_CHIP) -o $@
+endif
+
 clean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER) $(HTML_MIN_LIST) $(HTML_MIN_STAMP)
+	-rm -rf $(POE_FW_DIR)
 	-if [ -d $(BUILDDIR) ]; then find $(BUILDDIR) -type f ! -name "*.bin" -delete; fi
 
 distclean: $(SUBDIRSCLEAN)
 	-rm -f html_data.c html_data.h $(VERSION_HEADER) $(HTML_MIN_LIST) $(HTML_MIN_STAMP)
+	-rm -rf $(POE_FW_DIR)
 	-rm -rf $(BUILDDIR)
 	-rm -rf toolchain
 

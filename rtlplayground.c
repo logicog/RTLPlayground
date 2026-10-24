@@ -27,6 +27,7 @@
 #include "uip/uip.h"
 #include "uip/uip_arp.h"
 #include "machine.h"
+#include "poe/poe.h"
 #include "phy.h"
 #include "syslog.h"
 #include "dns.h"
@@ -1741,6 +1742,9 @@ void main(void)
 	management_vlan = 1; // Default management VLAN is 1
 
 	setup_i2c();
+
+	poe_init();
+
 	setup_sfp_gpio();
 	print_string(greeting);
 

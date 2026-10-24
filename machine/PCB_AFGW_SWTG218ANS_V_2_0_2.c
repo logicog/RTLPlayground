@@ -29,3 +29,8 @@ __code const struct machine machine = {
 		      },
 		},
 };
+
+__code const struct poe_cfg poe_cfg = {
+	.i2c_bus = 0,
+	.i2c_dev_addr_base = 0x20,
+};
