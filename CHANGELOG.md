@@ -25,6 +25,12 @@
 
 ## Fixed
 
+- Time
+  - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
+    boards without 10G ports both SerDes stayed off, and with SDS 0 off `RTL837X_REG_SEC_COUNTER`
+    does not hold a written value: NTP never retried after a failed first attempt at boot and
+    froze the clock after a sync.
+
 - Web UI
   - Accept firmware uploads regardless of the file part's MIME type, including
     `application/macbinary` sent by Chrome on macOS for `.bin` files.
