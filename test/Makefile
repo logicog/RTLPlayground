@@ -114,7 +114,7 @@ $(BUILDDIR)/test_snmp_hw_six: test_snmp_hw.c $(SRCROOT)/snmp_hw.c | $(BUILDDIR)
 	$(CC) $(SNMPFLAGS) -DSNMP_HW_SIX -DMACHINE_MIN_PORT=3 test_snmp_hw.c -o $@ $(LDFLAGS)
 
 .PHONY: snmp snmp-unit
-snmp-unit: $(BUILDDIR)/test_snmp $(BUILDDIR)/test_snmp_nine $(BUILDDIR)/test_snmp_hw $(BUILDDIR)/test_snmp_hw_six
+snmp-unit: $(BUILDDIR)/test_snmp $(BUILDDIR)/test_snmp_nine $(BUILDDIR)/test_snmp_hw $(BUILDDIR)/test_snmp_hw_six $(BUILDDIR)/test_snmp_hw_cpu_bound
 	$(BUILDDIR)/test_snmp
 	$(BUILDDIR)/test_snmp_nine
 	$(BUILDDIR)/test_snmp_hw
@@ -124,6 +124,7 @@ snmp-unit: $(BUILDDIR)/test_snmp $(BUILDDIR)/test_snmp_nine $(BUILDDIR)/test_snm
 	$(BUILDDIR)/test_snmp_hw speed
 	$(BUILDDIR)/test_snmp_hw admin
 	$(BUILDDIR)/test_snmp_hw_six
+	$(BUILDDIR)/test_snmp_hw_cpu_bound
 
 
 # Exercise the actual dispatcher, ARP module and UDP service implementations.
@@ -199,3 +200,6 @@ snmp-port-map: $(BUILDDIR)/test_snmp_port_map $(BUILDDIR)/test_snmp_port_map_res
 # A test-only profile range reaching CPU_PORT must still exclude the CPU MAC.
 $(BUILDDIR)/test_snmp_port_map_cpu_bound: test_snmp_port_map.c test_snmp.c test_httpd_tx.c $(SNMPENV) $(SRCROOT)/machine/KP_9000_6XHML_X2.c | $(BUILDDIR)
 	$(CC) $(SNMPFLAGS) -DMACHINE_NAME=KP_9000_6XHML_X2 -DMACHINE_MAX_PORT=CPU_PORT $(filter-out test_snmp.c test_httpd_tx.c,$(filter %.c,$^)) -o $@ $(LDFLAGS)
+
+$(BUILDDIR)/test_snmp_hw_cpu_bound: test_snmp_hw.c $(SRCROOT)/snmp_hw.c | $(BUILDDIR)
+	$(CC) $(SNMPFLAGS) -DMACHINE_MAX_PORT=CPU_PORT test_snmp_hw.c -o $@ $(LDFLAGS)

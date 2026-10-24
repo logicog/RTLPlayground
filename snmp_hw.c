@@ -51,7 +51,15 @@ static void copy_word(__xdata uint8_t *__xdata value)
 
 static bool user_port(uint8_t port)
 {
-	return port < CPU_PORT && MACHINE_PORT_VALID(port);
+#if MACHINE_MIN_PORT >= CPU_PORT
+	return false;
+#elif MACHINE_MAX_PORT >= CPU_PORT
+	/* Clip an unusual profile reaching the CPU without redundant comparisons. */
+	return (uint8_t)(port - MACHINE_MIN_PORT) < CPU_PORT - MACHINE_MIN_PORT;
+#else
+	/* The profile range already excludes the CPU. */
+	return MACHINE_PORT_VALID(port);
+#endif
 }
 
 /* A statistics request may start only when no command is in flight and, after

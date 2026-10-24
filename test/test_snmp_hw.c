@@ -357,7 +357,7 @@ static void test_admin(void)
 		uint8_t state;
 	} cases[] = {{0x2058, 1}, {0x2858, 2}, {0xf7ff, 1}, {0x0800, 2}, {0x0000, 1}, {0xffff, 2}};
 	uint8_t state;
-	for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
+	for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT && port < CPU_PORT; port++) {
 		for (unsigned n = 0; n < sizeof cases / sizeof *cases; n++) {
 			unsigned before = smi_reads;
 			state = 0xaa;
@@ -425,7 +425,7 @@ int main(int argc, char **argv)
 	assert(snmp_hw_speed(3, &speed) && speed == 2500);
 	/* Match the GUI register layout, with unrelated A4/A7 bits set.
 	 * Exercise every MAC, both nibble positions and SFP's separate register. */
-	for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
+	for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT && port < CPU_PORT; port++) {
 		link_register = 0xa500005a | (port < 8 ? 1u << (16 + port) : 1u << 8);
 		assert(snmp_hw_link(port, &link) && link == (1u << port));
 		for (uint8_t n = 0; n < 3; n++) {
