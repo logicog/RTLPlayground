@@ -836,6 +836,7 @@ function isConfCmd(line){
 function setDirty(d){
   S.dirty=d;
   $("dirty").classList.toggle("show",d);
+  $("saveBtn").classList.toggle("pri",d);
 }
 function postCmd(cmd,quiet){
   return api("/cmd",{method:"POST",body:cmd}).then(function(r){
