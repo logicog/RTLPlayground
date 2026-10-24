@@ -102,6 +102,7 @@ SRCS = \
 	sfp.c \
 	dns.c \
 	dns_cli.c \
+	sessions.c \
 	ntp.c \
 	ntp_cli.c \
 	syslog.c \

@@ -69,6 +69,8 @@ $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c | $(BUILDDIR)
 # this test carries the environment below them itself.
 $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+# the login sessions httpd.c calls into
+$(BUILDDIR)/test_httpd_tx: $(SRCROOT)/sessions.c
 
 run: $(TESTS)
 	@fail=0; for t in $(TESTS); do \
