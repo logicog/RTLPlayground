@@ -44,20 +44,19 @@ lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",ll
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
-v_title:"VLANs",v_vid:"VID",v_members:"Members",v_tagged:"Tagged",v_untagged:"Untagged",v_pvid_on:"PVID on",
+v_title:"VLANs",v_vid:"VLAN ID",v_members:"Members",v_tagged:"Tagged",v_untagged:"Untagged",v_pvid_on:"PVID on",
 v_empty:"No VLANs configured.",v_mgmt:"Management VLAN",v_mgmt_none:"untagged",v_editor:"VLAN editor",
-v_optional:"optional",v_setmgmt:"Set as mgmt VLAN",v_setmgmt_t:"Make this the management VLAN",
-v_member:"Member",v_pvid:"PVID",
-v_legend:"U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.",
-v_ingress:"Ingress filtering",v_ingress_h:"write-only: the state is not readable from the switch",
-v_accept:"Accept",v_ing_all:"All",v_ing_apply:"Apply ingress modes",v_del_t:"Delete VLAN",
+v_optional:"optional",v_setmgmt_q:"Set {n} as the management ID?",v_setmgmt_t:"Management VLAN",
+v_member:"Member",v_pvid:"PVID",v_add:"Add a new VLAN", v_mgmt_c:"WARNING: You must be able to access this VLAN to continue to manage the switch.",
+v_legend:"U = untagged member, T = tagged member, - = not a member. PVID is automatically assigned based on the untagged membership.",
+v_accept:"Accept",v_ing_all:"All",v_del_t:"Delete VLAN",v_rename:"Rename",v_rename_t:"Rename VLAN",
 v_del_q:"Delete VLAN {n}?",v_del_d:"Ports keep their PVID until reassigned.",
-v_vid_err:"Enter a VLAN ID (1-4094)",v_name_err:"Name must start with a letter (letters, digits, _)",
+v_vid_err:"Enter a VLAN ID (1-4094)",v_name_err:"Name must start with a letter (letters, digits, _) and cannot be just 'd' or 'mgmt'",
 v_loaded:"Loaded VLAN {n}",v_notfound:"VLAN {n} not found (a new one can still be created)",
-v_nomember:"Select at least one member port (or delete the VLAN instead)",
-v_ing_none:"Pick an ingress mode for at least one port",v_vid_first:"Enter a VLAN ID first",
-v_mgmt_q:"Set VLAN {n} as management VLAN?",
+v_nomember:"Select at least one member port (or delete the VLAN instead)",v_vid_first:"Enter a VLAN ID first",
+v_mgmt_q:"Set VLAN {n} as management VLAN?",v_vid_err:"VLAN ID already exists",
 v_mgmt_d:"The switch will start tagging its own traffic with that VLAN. If the port you are connected through does not carry it, this page becomes unreachable and the setting can only be undone over the console.",
+v_mgmt_tt:"The management VLAN cannot be deleted, you need to assign management to another VLAN first.",
 l2_title:"MAC address table",l2_filter:"filter...",l2_flush:"Flush learned entries",l2_static:"static",
 l2_learned:"learned",l2_loading:"loading...",l2_failed:"load failed",l2_entries:"entries",
 l2_del_t:"Delete entry",l2_flush_q:"Flush all learned MAC entries?",
@@ -179,14 +178,12 @@ v_empty:"VLAN は設定されていません。",v_mgmt:"管理 VLAN",v_mgmt_non
 v_optional:"任意",v_setmgmt:"管理 VLAN に設定",v_setmgmt_t:"この VLAN を管理 VLAN にする",
 v_member:"メンバー",v_pvid:"PVID",
 v_legend:"U = タグ無しメンバー、T = タグ付きメンバー、- = 非メンバー。PVID はタグ無し受信トラフィックをこの VLAN に割り当てます。",
-v_ingress:"受信フィルタ",v_ingress_h:"書き込み専用: 現在の状態はスイッチから読み取れません",
 v_accept:"受け入れ",v_ing_all:"すべて",v_ing_apply:"受信モードを適用",v_del_t:"VLAN を削除",
 v_del_q:"VLAN {n} を削除しますか?",v_del_d:"ポートの PVID は再割り当てされるまで維持されます。",
 v_vid_err:"VLAN ID (1〜4094) を入力してください",v_name_err:"名前は英字で始めてください (英字、数字、_)",
 v_loaded:"VLAN {n} を読み込みました",v_notfound:"VLAN {n} は存在しません (新規作成は可能です)",
 v_nomember:"メンバーポートを 1 つ以上選択してください (または VLAN を削除してください)",
-v_ing_none:"1 つ以上のポートの受信モードを選択してください",v_vid_first:"先に VLAN ID を入力してください",
-v_mgmt_q:"VLAN {n} を管理 VLAN に設定しますか?",
+v_vid_first:"先に VLAN ID を入力してください",v_mgmt_q:"VLAN {n} を管理 VLAN に設定しますか?",
 v_mgmt_d:"スイッチは自身のトラフィックにこの VLAN のタグを付けるようになります。接続中のポートがこの VLAN を通さない場合、このページにアクセスできなくなり、コンソールからしか元に戻せません。",
 l2_title:"MAC アドレステーブル",l2_filter:"フィルタ...",l2_flush:"学習エントリを消去",l2_static:"静的",
 l2_learned:"学習",l2_loading:"読み込み中...",l2_failed:"読み込み失敗",l2_entries:"エントリ",
@@ -292,14 +289,12 @@ v_empty:"尚未配置 VLAN。",v_mgmt:"管理 VLAN",v_mgmt_none:"untagged",v_edi
 v_optional:"可选",v_setmgmt:"设为管理 VLAN",v_setmgmt_t:"将此 VLAN 设为管理 VLAN",
 v_member:"成员",v_pvid:"PVID",
 v_legend:"U = untagged 成员，T = tagged 成员，- = 非成员。PVID 将入方向的未标记流量归入此 VLAN。",
-v_ingress:"入方向过滤",v_ingress_h:"只写: 当前状态无法从交换机读取",
 v_accept:"接受",v_ing_all:"全部",v_ing_apply:"应用入方向模式",v_del_t:"删除 VLAN",
 v_del_q:"删除 VLAN {n}?",v_del_d:"端口的 PVID 在重新分配前保持不变。",
 v_vid_err:"请输入 VLAN ID (1-4094)",v_name_err:"名称必须以字母开头 (字母、数字、_)",
 v_loaded:"已读取 VLAN {n}",v_notfound:"VLAN {n} 不存在 (仍可新建)",
 v_nomember:"请至少选择一个成员端口 (或改为删除该 VLAN)",
-v_ing_none:"请至少为一个端口选择入方向模式",v_vid_first:"请先输入 VLAN ID",
-v_mgmt_q:"将 VLAN {n} 设为管理 VLAN?",
+v_vid_first:"请先输入 VLAN ID",v_mgmt_q:"将 VLAN {n} 设为管理 VLAN?",
 v_mgmt_d:"交换机将开始为自身流量打上该 VLAN 标签。如果您所连接的端口不属于该 VLAN，本页面将无法访问，且只能通过控制台撤销此设置。",
 l2_title:"MAC 地址表",l2_filter:"筛选...",l2_flush:"清除学习条目",l2_static:"静态",
 l2_learned:"动态学习",l2_loading:"加载中...",l2_failed:"加载失败",l2_entries:"条",
@@ -405,14 +400,12 @@ v_empty:"No hay VLANs configuradas.",v_mgmt:"VLAN de gestión",v_mgmt_none:"sin 
 v_optional:"opcional",v_setmgmt:"Establecer como VLAN de gestión",v_setmgmt_t:"Hacer esta la VLAN de gestión",
 v_member:"Miembro",v_pvid:"PVID",
 v_legend:"U = miembro sin etiquetar, T = miembro etiquetado, - = no miembro. PVID asigna esta VLAN al tráfico entrante sin etiquetar.",
-v_ingress:"Filtrado de entrada",v_ingress_h:"solo escritura: el estado no se puede leer desde el switch",
 v_accept:"Aceptar",v_ing_all:"Todos",v_ing_apply:"Aplicar modos de entrada",v_del_t:"Eliminar VLAN",
 v_del_q:"¿Eliminar VLAN {n}?",v_del_d:"Los puertos conservan su PVID hasta que se reasignen.",
 v_vid_err:"Introduce un ID de VLAN (1-4094)",v_name_err:"El nombre debe empezar por una letra (letras, dígitos, _)",
 v_loaded:"VLAN {n} cargada",v_notfound:"VLAN {n} no encontrada (aún se puede crear una nueva)",
 v_nomember:"Selecciona al menos un puerto miembro (o elimina la VLAN)",
-v_ing_none:"Elige un modo de entrada para al menos un puerto",v_vid_first:"Introduce primero un ID de VLAN",
-v_mgmt_q:"¿Establecer VLAN {n} como VLAN de gestión?",
+v_vid_first:"Introduce primero un ID de VLAN",v_mgmt_q:"¿Establecer VLAN {n} como VLAN de gestión?",
 v_mgmt_d:"El switch empezará a etiquetar su propio tráfico con esa VLAN. Si el puerto por el que te conectas no la transporta, esta página dejará de ser accesible y el ajuste solo podrá deshacerse por la consola.",
 l2_title:"Tabla de direcciones MAC",l2_filter:"filtrar...",l2_flush:"Vaciar entradas aprendidas",l2_static:"estática",
 l2_learned:"aprendida",l2_loading:"cargando...",l2_failed:"error de carga",l2_entries:"entradas",
@@ -517,14 +510,12 @@ v_empty:"Aucun VLANs configuré.",v_mgmt:"VLAN de management",v_mgmt_none:"déta
 v_optional:"optionel",v_setmgmt:"Mette en VLAN de management",v_setmgmt_t:"Mettre celui-ci en VLAN de management",
 v_member:"Membre",v_pvid:"PVID",
 v_legend:"U = Membre détagué (UnTagged), T = membre tagué (Tagged), - = non membre. PVID (Port VLan ID) assigne ce VLAN au trafic entrant non tagué.",
-v_ingress:"Filtrage entrant",v_ingress_h:"en ériture seule: cet état n'est pas lisible depuis le communtateur réseau",
 v_accept:"Accepté",v_ing_all:"Tous",v_ing_apply:"Appliquer les filtes",v_del_t:"Supprimer le VLAN",
 v_del_q:"Supprimer le VLAN {n}?",v_del_d:"Les ports conservent leur PVID tant qu'ils ne sont pas réassignés.",
 v_vid_err:"Entrez un identifiant VLAN (1-4094)",v_name_err:"Le nom doit commencer par une lettre (lettre, chiffres, _)",
 v_loaded:"VLAN chargés {n}",v_notfound:"VLAN {n} non trouvé (un nouveau peut toutefois être créé)",
 v_nomember:"Selectionnez au moins un port membre (ou supprimez le VLAN)",
-v_ing_none:"Sélectionnez le mode entrant pour au moins un port",v_vid_first:"Entrez un identifiant VLAN d'abord",
-v_mgmt_q:"Mettre ce VLAN {n} en tant que VLAN de management?",
+v_vid_first:"Entrez un identifiant VLAN d'abord",v_mgmt_q:"Mettre ce VLAN {n} en tant que VLAN de management?",
 v_mgmt_d:"Ce commutateur commencera par taguer son propre trafic avec ce VLAN. Si le port avec lequel vous êtes connecté ne le permet pas, cette page deviendra inaccessible et les paramètres ne pourront plus être changés que via la console.",
 l2_title:"Table des adresses MAC",l2_filter:"filtre...",l2_flush:"Effacer les entrées apprises",l2_static:"static",
 l2_learned:"appris",l2_loading:"chargement...",l2_failed:"chargement non réussi",l2_entries:"entrées",
@@ -635,14 +626,12 @@ v_empty:"Keine VLANs konfiguriert.",v_mgmt:"Management-VLAN",v_mgmt_none:"untagg
 v_optional:"optional",v_setmgmt:"Als Management-VLAN",v_setmgmt_t:"Dieses VLAN zum Management-VLAN machen",
 v_member:"Mitglied",v_pvid:"PVID",
 v_legend:"U = Mitglied untagged, T = Mitglied tagged, - = kein Mitglied. PVID ordnet eingehenden Verkehr ohne Tag diesem VLAN zu.",
-v_ingress:"Ingress-Filter",v_ingress_h:"nur schreibbar: der Zustand lässt sich vom Switch nicht auslesen",
 v_accept:"Annehmen",v_ing_all:"Alle",v_ing_apply:"Ingress-Modi übernehmen",v_del_t:"VLAN löschen",
 v_del_q:"VLAN {n} löschen?",v_del_d:"Die Ports behalten ihre PVID, bis sie neu zugewiesen wird.",
 v_vid_err:"VLAN-ID eingeben (1-4094)",v_name_err:"Der Name muss mit einem Buchstaben beginnen (Buchstaben, Ziffern, _)",
 v_loaded:"VLAN {n} geladen",v_notfound:"VLAN {n} nicht gefunden (es kann neu angelegt werden)",
 v_nomember:"Mindestens einen Mitglieds-Port wählen (oder das VLAN stattdessen löschen)",
-v_ing_none:"Für mindestens einen Port einen Ingress-Modus wählen",v_vid_first:"Zuerst eine VLAN-ID eingeben",
-v_mgmt_q:"VLAN {n} als Management-VLAN setzen?",
+v_vid_first:"Zuerst eine VLAN-ID eingeben",v_mgmt_q:"VLAN {n} als Management-VLAN setzen?",
 v_mgmt_d:"Der Switch versieht dann seinen eigenen Verkehr mit diesem VLAN-Tag. Führt der Port, über den du verbunden bist, dieses VLAN nicht, ist diese Seite nicht mehr erreichbar und die Einstellung lässt sich nur noch über die serielle Konsole zurücknehmen.",
 l2_title:"MAC-Adresstabelle",l2_filter:"filtern...",l2_flush:"Gelernte Einträge löschen",l2_static:"statisch",
 l2_learned:"gelernt",l2_loading:"lädt...",l2_failed:"Laden fehlgeschlagen",l2_entries:"Einträge",
@@ -800,34 +789,49 @@ function getJSON(p){return api(p).then(function(r){if(!r.ok)throw new Error(p+" 
 function getText(p){return api(p).then(function(r){if(!r.ok)throw new Error(p+" "+r.status);return r.body})}
 
 var CONF_CMDS=[
-  /^ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^ip\s+dhcp$/,
-  /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,/^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
-  /^syslog\s+(on|off)$/,/^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,/^syslog\s+port\s+\d{1,5}$/,
+  /^ip\s+(\d{1,3}\.){3}\d{1,3}$/,
+  /^ip\s+dhcp$/,
+  /^gw\s+(\d{1,3}\.){3}\d{1,3}$/,
+  /^netmask\s+(\d{1,3}\.){3}\d{1,3}$/,
+  /^syslog\s+(on|off)$/,
+  /^syslog\s+ip\s+(\d{1,3}\.){3}\d{1,3}$/,
+  /^syslog\s+port\s+\d{1,5}$/,
   /^session\s+\d{1,5}$/,
   /^dns\s+server\s+(\d{1,3}\.){3}\d{1,3}(\s+(\d{1,3}\.){3}\d{1,3})?$/,
-  /^ntp\s+(on|off)$/,/^ntp\s+server\s+[A-Za-z0-9.-]{1,47}$/,/^ntp\s+interval\s+\d{1,4}$/,
-  /^ntp\s+timezone\s+[+-]?\d{1,2}(:\d{2})?$/,/^ntp\s+dst\s+(off|eu|us)$/,
+  /^ntp\s+(on|off)$/,
+  /^ntp\s+server\s+[A-Za-z0-9.-]{1,47}$/,
+  /^ntp\s+interval\s+\d{1,4}$/,
+  /^ntp\s+timezone\s+[+-]?\d{1,2}(:\d{2})?$/,
+  /^ntp\s+dst\s+(off|eu|us)$/,
   /^passwd\s+\S+$/,/^hostname\s+\S{1,23}$/,
-  /^vlan\s+\d{1,4}\s+d$/,/^vlan\s+\d{1,4}\s+mgmt$/,
-  /^vlan\s+\d{1,4}(\s+[a-zA-Z]\w*)?(\s+\d{1,2}t?)+$/,
-  /^pvid\s+\d{1,2}\s+\d{1,4}$/,
-  /^ingress(\s+\d{1,2}[tua])+$/,/^ingress\s+[tua]$/,
-  /^port\s+\d{1,2}\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
-  /^port\s+\d{1,2}\s+name\s+\S+$/,
-  /^port\s+\d{1,2}\s+lldp\s+(permit|block)+$/,
-  /^eee\s+(on|off)(\s+\d{1,2})?(\s+(100m|1g|2g5))?$/,
-  /^mirror(\s+\d{1,2})(\s+\d{1,2}[tr]?)+$/,/^mirror\s+off$/,
-  /^lag\s+[1-4](\s+\d{1,2})+$/,/^lag\s+[1-4]\s+d$/,/^lag\s+[1-4]\s+lacp(\s+\d{1,2})+$/,/^lag\s+[1-4]\s+lacp\s+off$/,/^laghash\s+[1-4](\s+\w+)+$/,
-  /^isolate\s+\d{1,2}(\s+(off|\d{1,2}))+$/,
-  /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d{1,2}$/,
+  /^vlan\s+\d+\s+(d|mgmt)$/m,
+  /^vlan\s+\d+(\s+[a-zA-Z]\w*)?(\s+\d+t?)*$/m,
+  /^pvid\s+\d+\s+\d+$/m,
+  /^ingress(\s+\d+[tua])+$/,/^ingress\s+[tua]$/,
+  /^port\s+\d+\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
+  /^port\s+\d+\s+name\s+\S+$/,
+  /^port\s+\d+\s+lldp\s+(permit|block)+$/,
+  /^eee\s+(on|off)(\s+\d+)?(\s+(100m|1g|2g5))?$/,
+  /^mirror(\s+\d+)(\s+\d+[tr]?)+$/,/^mirror\s+off$/,
+  /^lag\s+[1-4](\s+\d+)+$/,/^lag\s+[1-4]\s+d$/,
+  /^lag\s+[1-4]\s+lacp(\s+\d+)+$/,
+  /^lag\s+[1-4]\s+lacp\s+off$/,
+  /^laghash\s+[1-4](\s+\w+)+$/,
+  /^isolate\s+\d+(\s+(off|\d+))+$/,
+  /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d+$/,
   /^stp\s+version\s+(rstp|stp)$/,
-  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(on|off)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+edge\s+(on|off|auto)$/,
-  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+cost\s+\d{1,9}$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+prio\s+\d{1,3}$/,
-  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,/^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+filter\s+(on|off)$/,
-  /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
-  /^igmp\s+(on|off)$/,/^mtu\s+\d{1,2}\s+\d+$/,/^lldp\s+(on|off)$/,
-  /^bw\s+(in|out)\s+\d{1,2}\s+\S+$/,
-  /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\s+(off|\d{1,8}\s+(pps|kbps))$/,
+  /^stp\s+(port\s+\d+|lag\s+[1-4])\s+(on|off)$/,
+  /^stp\s+(port\s+\d+|lag\s+[1-4])\s+edge\s+(on|off|auto)$/,
+  /^stp\s+(port\s+\d+|lag\s+[1-4])\s+cost\s+\d+$/,
+  /^stp\s+(port\s+\d+|lag\s+[1-4])\s+prio\s+\d+$/,
+  /^stp\s+(port\s+\d+|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,
+  /^stp\s+(port\s+\d+|lag\s+[1-4])\s+filter\s+(on|off)$/,
+  /^stp\s+(port\s+\d=|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
+  /^igmp\s+(on|off)$/,
+  /^mtu\s+\d+\s+\d+$/,
+  /^lldp\s+(on|off)$/,
+  /^bw\s+(in|out)\s+\d+\s+\S+$/,
+  /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -850,7 +854,6 @@ function postCmds(list){
   list.forEach(function(c){p=p.then(function(){return postCmd(c,true)})});
   return p.then(function(){toast(t("t_cmds",{n:list.length}),"ok")});
 }
-
 function toast(msg,cls){
   var el=h("div",{class:"toast "+(cls||""),text:msg});
   $("toasts").appendChild(el);
@@ -1461,131 +1464,283 @@ function rangeStr(list){
   }
   return parts.join(", ");
 }
-function vlanRefresh(){
-  var tb=$("vtable").tBodies[0];
-  return getJSON("/vlanlist").then(function(d){
-    var vl=d.vlan||[];
-    $("vmgmtcur").textContent=d.mgmt?String(d.mgmt):t("v_mgmt_none");
-    $("vempty").style.display=vl.length?"none":"";
-    tb.innerHTML="";
-    var p=Promise.resolve();
-    vl.forEach(function(v){
-      p=p.then(function(){return getJSON("/vlan.json?vid="+v.id).catch(function(){return null})}).then(function(d){
-        var tr=tb.insertRow();
-        tr.insertCell().appendChild(h("a",{href:"#vlan",text:String(v.id),onclick:function(e){
-          e.preventDefault();$("vvid").value=v.id;vlanLoad();
-        }}));
-        tr.insertCell().textContent=v.name||"";
-        if(!d){for(var c=0;c<4;c++)tr.insertCell().textContent="?";}
-        else{
-          var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
-          var pv=parseInt(d.pvid,16)&0x3ff;
-          tr.insertCell().textContent=rangeStr(maskToPorts(mem));
-          tr.insertCell().textContent=rangeStr(maskToPorts(mem&~unt));
-          tr.insertCell().textContent=rangeStr(maskToPorts(unt));
-          tr.insertCell().textContent=rangeStr(maskToPorts(pv));
+
+function vlanRefresh() {
+  var tb = $("vtable").tBodies[0];
+  tb.style="cursor:pointer;"
+  return getJSON("/vlanlist").then(function(d) {
+    var vl = d.vlan || [];
+    $("vmgmtcur").dataset.id = d.mgmt;
+    $("vempty").style.display = vl.length ? "none" : "";
+    tb.innerHTML = "";
+    var p = Promise.resolve();
+    vl.forEach(function(v) {
+      p = p.then(function() {
+        return getJSON("/vlan.json?vid=" + v.id).catch(function() {
+          return null
+        })
+      }).then(function(d) {
+        var tr = tb.insertRow();
+        tr.onclick = function(e) {
+            e.preventDefault();
+            vlanLoad(v.id);
+        };
+        var l = h("a", {
+          href: "#vlan",
+          text: String(v.id) + ($("vmgmtcur").dataset.id == v.id ? " ("+t("v_mgmt")+")":""),
+          "data-id": v.id,
+          "data-name": v.name,
+          onclick: function(e) {
+            e.preventDefault();
+            vlanLoad(v.id);
+          }
+        });
+        tr.insertCell().appendChild(l);
+        tr.insertCell().textContent = v.name || "";
+        if (!d) {
+          for (var c = 0; c < 4; c++) tr.insertCell().textContent = "?";
+        } else {
+          var m = parseInt(d.members, 16),
+            mem = m & 0x3ff,
+            unt = ((m >> 10) & 0x3ff) & mem,
+            tag = mem & ~unt;
+          var pv = parseInt(d.pvid, 16) & 0x3ff;
+          tr.insertCell().textContent = rangeStr(maskToPorts(mem));
+          tr.insertCell().textContent = rangeStr(maskToPorts(tag));
+          tr.insertCell().textContent = rangeStr(maskToPorts(unt));
+          tr.insertCell().textContent = rangeStr(maskToPorts(pv));
+          l.dataset.t = maskToPorts(tag);
+          l.dataset.u = maskToPorts(unt);
         }
-        var del=tr.insertCell();
-        if(v.id!==1)del.appendChild(h("button",{class:"ctl",text:"\u2715",title:t("v_del_t"),onclick:function(){
-          confirmModal(t("v_del_q",{n:v.id}),t("v_del_d"),function(){
-            postCmd("vlan "+v.id+" d").then(vlanRefresh).catch(function(){});
-          });
-        }}));
-      }).catch(function(){});
+        var act = tr.insertCell();
+        act.onclick=function(e){e.stopPropagation()};
+        act.appendChild(h("button", {
+            class: "ctl",
+            text: t("v_rename"),
+            title: t("v_rename_t"),
+            onclick: function() {
+              var body = h("div");
+              body.appendChild(h("p", null, [
+                h("label", {class: "row"}, [
+                  h("span",{class:"lb", "data-i18n":"c_name"},[document.createTextNode(t("c_name"))]),
+                  h("input", {id: "nvlrename", class: "in", size: "12", maxlength: "15", "data-i18n-p": "v_optional", value:(v.name||"")})
+                ])
+              ]));
+              modal("Rename VLAN "+v.id, body, [h("button", {
+                class: "ctl pri", text: t("v_rename_t"),
+                onclick: function(){
+                  if(!validVlanName($("nvlrename").value)) return;
+                  postCmd(vlan2str(v.id,$("nvlrename").value,mySplit(l.dataset.t),mySplit(l.dataset.u))).then(function(){closeModal();vlanRefresh()});
+                }
+              })]);
+            },
+          }));
+        if (v.id == $("vmgmtcur").dataset.id) {
+          act.appendChild(h("span",{class:"ctl", title:t("v_mgmt_tt"), class:"hint", style:"color: var(--fg2); font-size: 150%; padding-left: 10px;"},[document.createTextNode("\u{1F6C8}")]));
+        } else {
+          act.appendChild(h("button", {
+            class: "ctl",
+            text: "\u2715",
+            title: t("v_del_t"),
+            style: "margin-left: 5px;",
+            onclick: function() {
+              confirmModal(t("v_del_q", { n: v.id }), t("v_del_d"), function() {
+                postCmd("vlan " + v.id + " d").then(vlanRefresh).catch(function() {});
+              });
+            }
+          }));
+        }
+      }).catch(function() {});
     });
     return p;
   });
 }
-function buildVlanEdit(){
-  var tb=$("vedit").tBodies[0];
-  if(tb.rows.length||!S.n)return;
-  var hd=tb.insertRow();hd.insertCell().className="mut";
-  var rM=tb.insertRow();rM.insertCell().textContent=t("v_member");
-  var rP=tb.insertRow();rP.insertCell().textContent=t("v_pvid");
-  for(var p=1;p<=S.n;p++)(function(p){
-    hd.insertCell().innerHTML='<b>'+p+'</b>';
-    var seg=h("span",{class:"seg",id:"vm"+p});
-    ["-","U","T"].forEach(function(s,ix){
-      seg.appendChild(h("button",{text:s,"data-v":ix,onclick:function(){
-        seg.querySelectorAll("button").forEach(function(b){b.classList.remove("on")});
-        this.classList.add("on");
-      }}));
+
+function buildVlanEdit() {
+  var tb = $("vedit").tBodies[0];
+  if (tb.rows.length || !S.n) return;
+  var hd = tb.insertRow();
+  hd.insertCell().className = "mut";
+  var rM = tb.insertRow();
+  rM.insertCell().textContent = t("v_member");
+  var rP = tb.insertRow();
+  rP.insertCell().textContent = t("v_pvid");
+  for (var p = 1; p <= S.n; p++)(function(p) {
+    hd.insertCell().innerHTML = '<b>' + p + '</b>';
+    var seg = h("span", { class: "seg", id: "vm" + p });
+    ["-", "U", "T"].forEach(function(s, ix) {
+      seg.appendChild(h("button", {
+        text: s,
+        "data-v": ix,
+        onclick: function() {
+          seg.querySelectorAll("button").forEach(function(b) { b.classList.remove("on") });
+          this.classList.add("on");
+        }
+      }));
     });
     seg.children[0].classList.add("on");
     rM.insertCell().appendChild(seg);
-    rP.insertCell().appendChild(h("input",{type:"checkbox",id:"vp"+p}));
+    rP.insertCell().appendChild(h("span", { id: "vp" + p }));
   })(p);
-  var it=$("ingress").tBodies[0];
-  var ih=it.insertRow();ih.insertCell().className="mut";
-  var ir=it.insertRow();ir.insertCell().textContent=t("v_accept");
-  for(var q=1;q<=S.n;q++)(function(q){
-    ih.insertCell().innerHTML='<b>'+q+'</b>';
-    var sel=h("select",{class:"in",id:"ing"+q});
-    [["","-"],["a",t("v_ing_all")],["u",t("v_untagged")],["t",t("v_tagged")]].forEach(function(o){
-      sel.appendChild(h("option",{value:o[0],text:o[1]}));
-    });
-    ir.insertCell().appendChild(sel);
-  })(q);
 }
-function segVal(p){
-  return Number($("vm"+p).querySelector("button.on").getAttribute("data-v"));
-}
-function segSet(p,v){
-  $("vm"+p).querySelectorAll("button").forEach(function(b,i){b.classList.toggle("on",i===v)});
-}
-function vlanLoad(){
-  var vid=parseInt($("vvid").value,10);
-  if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  getJSON("/vlan.json?vid="+vid).then(function(d){
-    $("vname").value=d.name||"";
-    var m=parseInt(d.members,16),mem=m&0x3ff,unt=((m>>10)&0x3ff)&mem;
-    var pv=parseInt(d.pvid,16)&0x3ff;
-    for(var p=1;p<=S.n;p++){
-      var bit=S.physToLog[p-1];
-      segSet(p,(mem>>bit)&1?(((unt>>bit)&1)?1:2):0);
-      $("vp"+p).checked=!!((pv>>bit)&1);
-    }
-    toast(t("v_loaded",{n:vid}),"ok");
-  }).catch(function(){toast(t("v_notfound",{n:vid}),"err")});
-}
-function vlanApply(){
-  var vid=parseInt($("vvid").value,10);
-  if(!vid||vid<1||vid>4094){toast(t("v_vid_err"),"err");return;}
-  var name=$("vname").value.trim();
-  if(name&&!/^[a-zA-Z]\w*$/.test(name)){toast(t("v_name_err"),"err");return;}
-  var cmd="vlan "+vid+(name?" "+name:""),members=0;
-  for(var p=1;p<=S.n;p++){
-    var v=segVal(p);
-    if(v===1){cmd+=" "+p;members++;}
-    else if(v===2){cmd+=" "+p+"t";members++;}
-  }
-  if(!members){toast(t("v_nomember"),"err");return;}
-  var cmds=[cmd];
-  for(var q=1;q<=S.n;q++)if($("vp"+q).checked)cmds.push("pvid "+q+" "+vid);
-  postCmds(cmds).then(vlanRefresh).catch(function(){});
-}
-function ingressApply(){
-  var cmd="ingress",any=false;
-  for(var p=1;p<=S.n;p++){
-    var v=$("ing"+p).value;
-    if(v){cmd+=" "+p+v;any=true;}
-  }
-  if(!any){toast(t("v_ing_none"),"err");return;}
-  postCmd(cmd).catch(function(){});
-}
-$("vload").addEventListener("click",vlanLoad);
-$("vapply").addEventListener("click",vlanApply);
-$("ingapply").addEventListener("click",ingressApply);
-$("vmgmt").addEventListener("click",function(){
-  var vid=parseInt($("vvid").value,10);
-  if(!vid){toast(t("v_vid_first"),"err");return;}
-  confirmModal(t("v_mgmt_q",{n:vid}),t("v_mgmt_d"),
-    function(){postCmd("vlan "+vid+" mgmt").then(vlanRefresh).catch(function(){})});
-});
-tabHooks.vlan={
-  enter:function(){needPorts(function(){buildVlanEdit();vlanRefresh().catch(function(){})})},
-};
 
+function segVal(p) {
+  return Number($("vm" + p).querySelector("button.on").getAttribute("data-v"));
+}
+
+function segSet(p, v) {
+  $("vm" + p).querySelectorAll("button").forEach(function(b, i) { b.classList.toggle("on", i === v) });
+}
+
+function vlanLoad(vid) {
+  if (!vid || vid < 1 || vid > 4094) {
+    toast(t("v_vid_err"), "err");
+    return;
+  }
+  getJSON("/vlan.json?vid=" + vid).then(function(d) {
+    $("vtitle").innerText = "VLAN " + vid + (d.name ? " (" + (d.name) + ")" : "");
+    $("vtitle").dataset.id = vid;
+    $("vtitle").dataset.name = d.name;
+    var m = parseInt(d.members, 16),
+      mem = m & 0x3ff,
+      unt = ((m >> 10) & 0x3ff) & mem;
+    var pv = parseInt(d.pvid, 16) & 0x3ff;
+    for (var p = 1; p <= S.n; p++) {
+      var bit = S.physToLog[p - 1];
+      segSet(p, (mem >> bit) & 1 ? (((unt >> bit) & 1) ? 1 : 2) : 0);
+      $("vp" + p).innerText = (!!((pv >> bit) & 1))?"Y":"N";
+    }
+    $("vmgmtpromote").checked = ($("vmgmtcur").dataset.id == vid);
+    toast(t("v_loaded", {n: vid}), "ok");
+    for(const vlanRow of $("vtable").tBodies[0].rows) {
+      vlanRow.className=vlanRow.firstChild.firstChild.dataset.id == vid ? "sel":"";
+    }
+  }).catch(function() {toast(t("v_notfound", {n: vid}), "err")});
+}
+
+function vlan2str(i, n, t, u){
+  return ("vlan " + i + (n ? " " + n : "") + " " + t.map((x)=>x+"t").concat(u).join(" ")).trim();
+}
+function pvidcmd(i, p){
+  return "pvid " + p + " " + i;
+}
+function mySplit(a){
+  if(a.trim()=="") return [];
+  return a.trim().split(",");
+}
+function vlanApply() {
+  var vid = $("vtitle").dataset.id;
+  var vname = $("vtitle").dataset.name;
+  if (!vid || vid < 1 || vid > 4094) {
+    toast(t("v_vid_err"), "err");
+    return;
+  }
+  var top_cmds = [], tail_cmds = [], vlansPerPort=[], thisVlanInStructure={id:vid, tagged:[], untagged:[]};
+  for (var p = 1; p <= S.n; p++) {
+    var v = segVal(p);
+    vlansPerPort[p]={t:[],u:[]};
+    if (v === 1) {
+      thisVlanInStructure.untagged.push(p);
+      vlansPerPort[p].u.push(vid);
+    } else if (v === 2) {
+      thisVlanInStructure.tagged.push(p);
+      vlansPerPort[p].t.push(vid);
+    }
+  }
+  if (thisVlanInStructure.tagged.length + thisVlanInStructure.untagged.length == 0) {
+    toast(t("v_nomember"), "err");
+    return;
+  }
+  for(const vlanRow of $("vtable").tBodies[0].rows){
+    var rowData = vlanRow.firstChild.firstChild.dataset,
+      rowUntagged = mySplit(rowData.u),
+      rowTagged = mySplit(rowData.t);
+    if(rowData.id == vid) continue;
+    for(const newVlanPort of thisVlanInStructure.untagged) {
+      if(rowUntagged.includes(""+newVlanPort)) rowUntagged.splice(rowUntagged.indexOf(""+newVlanPort),1);
+    }
+    for(const rut of rowUntagged) {
+      vlansPerPort[rut].u.push(rowData.id);
+    }
+    for(const rt of rowTagged) {
+      vlansPerPort[rt].t.push(rowData.id)
+    }
+    top_cmds.push(vlan2str(rowData.id,rowData.name,rowTagged,rowUntagged));
+  }
+  tail_cmds.push(vlan2str(vid, vname, thisVlanInStructure.tagged, thisVlanInStructure.untagged));
+
+  for (p in vlansPerPort){/*park all ports with only tagged membership*/
+    if (vlansPerPort[p].u.length == 0 && vlansPerPort[p].t.length > 0) {
+      tail_cmds.push(pvidcmd(0, p));
+    }
+  }
+  for(const up of thisVlanInStructure.untagged){
+    tail_cmds.push(pvidcmd(vid,up));
+  }
+  if($("vmgmtpromote").checked){/*must be the last command*/
+    tail_cmds.push("vlan " + vid + " mgmt");
+  }
+  var cmd = top_cmds.concat(tail_cmds);
+  postCmd(cmd.join("\n"),true).then(function(){toast(t("t_cmds",{n:cmd.length}),"ok")}).then(vlanRefresh).catch(function() {}).then(function() {
+    vlanLoad(vid)
+  });
+}
+$("vapply").addEventListener("click", vlanApply);
+$("vlan_add").addEventListener("click", function() {
+  var body = h("div");
+  body.appendChild(h("p", null, [
+    h("label", {class: "row"}, [
+      h("span",{class:"lb", "data-i18n":"v_vid"},[document.createTextNode(t("v_vid"))]),
+      h("input", {id: "nvlid", class: "in sm", type: "number", min: "1", max: "4094"})
+    ])
+  ]));
+  body.appendChild(h("p", null, [
+    h("label", {class: "row"}, [
+      h("span",{class:"lb", "data-i18n":"c_name"},[document.createTextNode(t("c_name"))]),
+      h("input", {id: "nvlname", class: "in", size: "12", maxlength: "15", "data-i18n-p": "v_optional"})
+    ])
+  ]));
+  modal("Add VLAN", body, [h("button", {
+    class: "ctl pri", text: t("v_add"),
+    onclick: addVlan
+  })]);
+});
+function validVlanName(n){
+  if (n && (!/^[a-zA-Z]\w*$/.test(n) || n == "d" || n == "mgmt")) {
+    toast(t("v_name_err"), "err");
+    return false;
+  }
+  return true;
+}
+function addVlan() {
+  var vid = parseInt($("nvlid").value, 10);
+  for (const r of $("vtable").tBodies[0].rows) {
+    if (r.firstChild.firstChild.dataset.id == vid) {
+      toast(t("v_vid_err"), "err");
+      return;
+    }
+  }
+  var name = $("nvlname").value;
+  if(!validVlanName(name)) return false;
+  var cmd = "vlan " + vid + (name ? " " + name : "");
+  postCmd(cmd).then(function() {
+    closeModal();
+    vlanRefresh().then(function(){vlanLoad(vid)});
+  }).catch(function() {});
+}
+tabHooks.vlan = {
+  enter: function() {
+    needPorts(function() {
+      buildVlanEdit();
+      vlanRefresh().catch(function() {}).then(function() {
+        VlanInit();
+      })
+    })
+  },
+};
+function VlanInit() {
+  $("vtable").tBodies[0].firstChild.firstChild.firstChild.click();
+};
 var l2Rows=[],l2SortCol="pport",l2SortDir=1,l2Gen=0;
 function l2Load(){
   var seen={},all=[],idx=0,guard=0,gen=++l2Gen;
