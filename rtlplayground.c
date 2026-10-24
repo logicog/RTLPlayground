@@ -1210,7 +1210,7 @@ static void handle_tick(void)
 		lacp_timers();
 	health_phase(HEALTH_PH_STP);
 	lldp_tick();
-	health_phase(HEALTH_LLDP);
+	health_phase(HEALTH_PH_LLDP);
 	cabletest_tick();
 }
 

@@ -39,6 +39,22 @@
     reads resume once the SFR engine and statistics selector are idle.
   - Align SNMP status labels and values with the existing settings-row spacing,
     typography and theme colors.
+- Time
+  - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
+    boards without 10G ports both SerDes stayed off, and with SDS 0 off `RTL837X_REG_SEC_COUNTER`
+    does not hold a written value: NTP never retried after a failed first attempt at boot and
+    froze the clock after a sync.
+
+- Web UI
+  - Firefox no longer fills a saved login into the new admin password fields. It also put the
+    user name into the NTP poll interval, which marked the Time card as edited, so it kept its
+    defaults (NTP off, no server, UTC-12:00) instead of the switch's settings.
+  - Accept firmware uploads regardless of the file part's MIME type, including
+    `application/macbinary` sent by Chrome on macOS for `.bin` files.
+
+- Health
+  - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which
+    corrupted the `link` slow counter and the DHCP client state. #658
 - Config
   - A startup configuration line longer than the command buffer no longer stops the replay:
     the offending line is skipped and the following lines are still applied.

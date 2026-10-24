@@ -108,7 +108,7 @@ void lldp_send(void) __banked __reentrant
      */
     uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + (p - LLDP_O->payload);
 
-    for (uint8_t port = machine.min_port; port <= machine.max_port; port++) {
+    for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
 
         if ((1 << port) & lldp_logical_port_status) {
             LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];

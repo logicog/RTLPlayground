@@ -1,6 +1,7 @@
 .gitignore
 .idea/
 output/
+output-main/
 html_data.c
 html_data.h
 version.h
@@ -21,3 +22,4 @@ test/build/
 
 # Ephemeral dependencies for the browser regression suite
 node_modules/
+.vscode

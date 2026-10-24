@@ -451,15 +451,9 @@ static uint8_t config_take(void)
 // unlike scan_header(), keeps no auth state, so it may run on every buffered segment
 static uint16_t preamble_payload_start(uint16_t n)
 {
-	uint16_t pos;
+	// Skip the HTTP header separator retained by handle_post().
+	uint16_t pos = 4;
 
-	for (pos = 0; pos + 24 <= n; pos++) {
-		if (strstart(&config_buf[pos], "application/octet-stream"))
-			break;
-	}
-	if (pos + 24 > n)
-		return 0;
-	pos += 24;
 	while (pos + 3 < n && !strstart(&config_buf[pos], "\r\n\r\n"))
 		pos++;
 	if (pos + 3 >= n)
