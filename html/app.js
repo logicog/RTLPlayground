@@ -16,7 +16,7 @@ d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"State",p_disabled:"disabled",p_up:"up",p_txgb:"TX good / bad",p_rxgb:"RX good / bad",
+p_state:"State",p_disabled:"disabled",p_up:"up",
 p_pkts:"pkts",p_module:"Module",p_temp:"Temperature",p_vcc:"Vcc",p_txbias:"TX bias",p_txpower:"TX power",
 p_rxpower:"RX power",p_txfault:"TX fault",p_txdis:"TX disabled",p_rxlos:"RX LOS",p_adv:"Advertising",
 pt_title:"Port configuration",pt_conn:"Devices learned",pt_speed:"Speed",pt_mtu:"MTU",
@@ -147,7 +147,7 @@ d_system:"システム",d_traffic:"トラフィック",
 d_traffic_h:"パケット/秒、リアルタイム",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 異常",d_rxbad:"RX 異常",
 i_host:"ホスト名",i_ip:"IP アドレス",i_mask:"ネットマスク",i_gw:"ゲートウェイ",i_mac:"MAC",i_fw:"ファームウェア",
 i_built:"ビルド日",i_hw:"ハードウェア",i_temp:"温度",i_flash:"フラッシュ",i_syslog:"Syslog",
-p_state:"状態",p_disabled:"無効",p_up:"アップ",p_txgb:"TX 正常 / 異常",p_rxgb:"RX 正常 / 異常",
+p_state:"状態",p_disabled:"無効",p_up:"アップ",
 p_pkts:"pkts",p_module:"モジュール",p_temp:"温度",p_vcc:"電圧",p_txbias:"TX バイアス",p_txpower:"TX 電力",
 p_rxpower:"RX 電力",p_txfault:"TX 障害",p_txdis:"TX 無効",p_rxlos:"RX 信号ロス",p_adv:"アドバタイズ",
 pt_title:"ポート設定",pt_conn:"学習済みデバイス",pt_speed:"速度",pt_mtu:"MTU",
@@ -260,7 +260,7 @@ d_system:"系统",d_traffic:"流量",
 d_traffic_h:"包/秒，实时",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 错误",d_rxbad:"RX 错误",
 i_host:"主机名",i_ip:"IP 地址",i_mask:"子网掩码",i_gw:"网关",i_mac:"MAC",i_fw:"固件",
 i_built:"构建日期",i_hw:"硬件",i_temp:"温度",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"状态",p_disabled:"已禁用",p_up:"已连接",p_txgb:"TX 正常 / 错误",p_rxgb:"RX 正常 / 错误",
+p_state:"状态",p_disabled:"已禁用",p_up:"已连接",
 p_pkts:"个包",p_module:"模块",p_temp:"温度",p_vcc:"供电电压",p_txbias:"TX 偏置电流",p_txpower:"TX 光功率",
 p_rxpower:"RX 光功率",p_txfault:"TX 故障",p_txdis:"TX 禁用",p_rxlos:"RX 信号丢失",p_adv:"通告能力",
 pt_title:"端口配置",pt_conn:"已学习设备",pt_speed:"速率",pt_mtu:"MTU",
@@ -373,7 +373,7 @@ d_system:"Sistema",d_traffic:"Tráfico",
 d_traffic_h:"paquetes/s, en vivo",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX erróneos",d_rxbad:"RX erróneos",
 i_host:"Nombre de host",i_ip:"Dirección IP",i_mask:"Máscara de red",i_gw:"Puerta de enlace",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Compilado",i_hw:"Hardware",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"Estado",p_disabled:"deshabilitado",p_up:"activo",p_txgb:"TX correctos / erróneos",p_rxgb:"RX correctos / erróneos",
+p_state:"Estado",p_disabled:"deshabilitado",p_up:"activo",
 p_pkts:"paquetes",p_module:"Módulo",p_temp:"Temperatura",p_vcc:"Vcc",p_txbias:"Polarización TX",p_txpower:"Potencia TX",
 p_rxpower:"Potencia RX",p_txfault:"Fallo TX",p_txdis:"TX deshabilitado",p_rxlos:"Pérdida RX (LOS)",p_adv:"Anunciado",
 pt_title:"Configuración de puerto",pt_conn:"Dispositivos aprendidos",pt_speed:"Velocidad",pt_mtu:"MTU",
@@ -485,7 +485,7 @@ d_system:"Système",d_traffic:"Trafic",
 d_traffic_h:"paquets/s (en direct)",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX KO",d_rxbad:"RX KO",
 i_host:"Nom d'hote",i_ip:"Adresse IP",i_mask:"Masque réseau",i_gw:"Passerelle",i_mac:"Adresse MAC",i_fw:"Micro logiciel",
 i_built:"Compilé le",i_hw:"Matériel",i_temp:"Température",i_flash:"Taille Flash",i_syslog:"Journal système",
-p_state:"Etat",p_disabled:"Inactif",p_up:"Actif",p_txgb:"TX bon / mauvais",p_rxgb:"RX bon / mauvais",
+p_state:"Etat",p_disabled:"Inactif",p_up:"Actif",
 p_pkts:"paquets",p_module:"Module",p_temp:"Température",p_vcc:"Vcc",p_txbias:"TX biais",p_txpower:"TX puissance",
 p_rxpower:"RX puissance",p_txfault:"TX erreur",p_txdis:"TX désactivé",p_rxlos:"RX pertes de signaux",p_adv:"Capacités",
 pt_title:"Configuration du port",pt_conn:"Appareils appris",pt_speed:"Vitesse",pt_mtu:"MTU",
@@ -602,7 +602,7 @@ d_system:"System",d_traffic:"Datenverkehr",
 d_traffic_h:"Pakete/s, live",d_txpps:"TX Pakete/s",d_rxpps:"RX Pakete/s",d_txbad:"TX fehlerhaft",d_rxbad:"RX fehlerhaft",
 i_host:"Hostname",i_ip:"IP-Adresse",i_mask:"Netzmaske",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Erstellt",i_hw:"Hardware",i_temp:"Temperatur",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"Zustand",p_disabled:"deaktiviert",p_up:"verbunden",p_txgb:"TX gut / fehlerhaft",p_rxgb:"RX gut / fehlerhaft",
+p_state:"Zustand",p_disabled:"deaktiviert",p_up:"verbunden",
 p_pkts:"Pakete",p_module:"Modul",p_temp:"Temperatur",p_vcc:"Vcc",p_txbias:"TX-Bias",p_txpower:"Sendeleistung",
 p_rxpower:"Empfangsleistung",p_txfault:"TX-Fehler",p_txdis:"TX deaktiviert",p_rxlos:"RX LOS",p_adv:"Angeboten",
 pt_title:"Port-Konfiguration",pt_conn:"Gelernte Geräte",pt_speed:"Geschwindigkeit",pt_mtu:"MTU",
@@ -836,6 +836,7 @@ function isConfCmd(line){
 function setDirty(d){
   S.dirty=d;
   $("dirty").classList.toggle("show",d);
+  $("saveBtn").classList.toggle("pri",d);
 }
 function postCmd(cmd,quiet){
   return api("/cmd",{method:"POST",body:cmd}).then(function(r){
@@ -1024,8 +1025,10 @@ function portRows(p){
   var rows=[[t("c_port"),String(p.portNum)],[t("c_type"),p.isSFP?"SFP":"RJ45"]];
   if(p.name)rows.push([t("c_name"),p.name]);
   rows.push([t("p_state"),!p.enabled?t("p_disabled"):(p.link>0?t("p_up")+" "+LINKS[p.link]:t("c_down"))]);
-  rows.push([t("p_txgb"),BigInt(p.txG)+" / "+BigInt(p.txB)+" "+t("p_pkts")]);
-  rows.push([t("p_rxgb"),BigInt(p.rxG)+" / "+BigInt(p.rxB)+" "+t("p_pkts")]);
+  rows.push([t("st_txg"),BigInt(p.txG)+" "+t("p_pkts")]);
+  rows.push([t("st_txb"),BigInt(p.txB)+" "+t("p_pkts")]);
+  rows.push([t("st_rxg"),BigInt(p.rxG)+" "+t("p_pkts")]);
+  rows.push([t("st_rxb"),BigInt(p.rxB)+" "+t("p_pkts")]);
   if(p.isSFP){
     if(p.sfp_vendor)rows.push([t("p_module"),[p.sfp_vendor,p.sfp_model,p.sfp_serial].filter(Boolean).join(" / ")]);
     var ext=p.sfp_options&0x40;
@@ -2243,14 +2246,14 @@ var CONF_OVERWRITE=[
   /^ntp\s+server\b/,/^ntp\s+interval\b/,/^ntp\s+timezone\b/,/^ntp\s+dst\b/,
   /^vlan\s+\d{1,4}\s+mgmt$/,/^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
   /^pvid\s+\d{1,2}\b/,
-  /^port\s+\d{1,2}(?!\s+name\b)/,/^port\s+\d{1,2}\s+name\b/,
+  /^port\s+\d{1,2}(?!\s+(name|lldp)\b)/,/^port\s+\d{1,2}\s+name\b/,
   /^mirror\b/,
   /^lag\s+\d\b/,/^laghash\s+\d\b/,/^isolate\s+\d{1,2}\b/,
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
@@ -2268,6 +2271,7 @@ function mergeConf(base,texts){
       }
       if((m=line.match(/^lag (\d) lacp off$/))){drop(new RegExp("^lag "+m[1]+" lacp( |$)"));return;}
       if(line==="mirror off"){drop(/^mirror /);return;}
+      if((m=line.match(/^(port \d{1,2} lldp) (permit|block)$/))){drop(new RegExp("^"+m[1]+" (permit|block)$"));conf.push(line);return;}
       if(!isConfCmd(line))return;
       if((m=line.match(/^ingress (.+)$/))){
         if(/^[tua]$/.test(m[1])){drop(/^ingress /);conf.push(line);return;}
@@ -2300,7 +2304,7 @@ function mergeConf(base,texts){
           var key=line.match(rx)[0];
           conf=conf.filter(function(item){
             return!(item===key||(item.indexOf(key+" ")===0
-              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0));
+              &&!/\smgmt$/.test(item)&&item.indexOf(key+" name ")!==0&&item.indexOf(key+" lldp ")!==0));
           });
           break;
         }

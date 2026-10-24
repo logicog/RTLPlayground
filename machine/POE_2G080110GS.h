@@ -2,5 +2,6 @@
 #define _MACHINE_POE_2G080110GS_H_
 
 #define MACHINE_MODEL "MokerLink POE-2G080110GS"
+#define MACHINE_CHIPSET RTL8373
 
 #endif

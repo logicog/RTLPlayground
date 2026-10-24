@@ -1,11 +1,13 @@
 # MokerLink POE-2G080110GS
 
 The `POE-2G080110GS` is an unmanaged 8x2.5G RJ45 and 1xSFP+ PoE switch sold by Mokerlink. There is also a `POE-2G080110GSM` managed version of the switch which may be similar but this has not been verified on actual hardware.
+The`KP-9000-9XHP-X` is the KeepLink rebrand for same product.
 
 ## Brands
 | Brand  | Type             |Managed| PCB              | Flash           | Chip RTL      |
 |--------|------------------|-------|------------------|-----------------|---------------|
 | Mokerlink | POE-2G080110GS | No | 2M-PCB51-ML-V1.1 | 4MB (W25Q32JV) | 8373N + 8224N |
+| KeepLink  | KP-9000-9XHP-X | No | 2M-PCB51-ML-V1.1 | 4MB (W25Q32JV) | 8373N + 8224N |
 
 ## Hardware overview
 Front

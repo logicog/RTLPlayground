@@ -15,7 +15,50 @@
 
 #define MACHINE_INC(dir,file) MACHINE_STR(dir/file)
 
+#define RTL8370 0x70
+#define RTL8372 0x72
+#define RTL8373 0x73
+
 #include  MACHINE_INC(MACHINE_DEF_DIR,MACHINE_NAME.h)
+
+
+#ifndef MACHINE_CHIPSET
+#error "MACHINE_CHIPSET shall be defined in <machine>.h file"
+#endif
+
+#ifndef MACHINE_MIN_PORT
+#if MACHINE_CHIPSET == RTL8372
+#define MACHINE_MIN_PORT 3
+#else
+#define MACHINE_MIN_PORT 0
+#endif
+#endif
+
+#ifndef MACHINE_MAX_PORT
+#if MACHINE_CHIPSET == RTL8370
+#define MACHINE_MAX_PORT 7
+#else
+#define MACHINE_MAX_PORT 8
+#endif
+#endif
+
+#define MACHINE_PORT_VALID(p) \
+	((uint8_t)((p) - MACHINE_MIN_PORT) <= (MACHINE_MAX_PORT - MACHINE_MIN_PORT))
+
+// auto derive SOC_FAMILY
+#define RTL836X 6
+#define RTL837X 7
+
+#ifdef SOC_FAMILY
+#error "SOC_FAMILY can not be manually defined, shall be auto derived"
+#endif
+#if (MACHINE_CHIPSET == RTL8372) || (MACHINE_CHIPSET == RTL8373)
+#define SOC_FAMILY RTL837X
+#elif (MACHINE_CHIPSET == RTL8370 )
+#define SOC_FAMILY RTL836X
+#else
+#error "Unsupported MACHINE_CHIPSET is specified!"
+#endif
 
 #define LED_27 1
 // SYSTEM LED
@@ -41,10 +84,6 @@ struct sfp_port
 struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
-	// Lowest logical port number
-	uint8_t min_port;
-	// Highest logical port number
-	uint8_t max_port;
 	uint8_t n_sfp;
 	uint8_t n_10g;
 	uint8_t log_to_phys_port[9];

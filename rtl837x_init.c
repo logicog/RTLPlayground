@@ -221,9 +221,11 @@ void rtl8372_init(void) __banked
 	} else if(machine.n_10g == 2) {
 		REG_SET(RTL837X_REG_SDS_MODES, 0x1ad); // Both 10g ports use SDS_QXGMII
 	} else {
+		// Replace the reset value 0xbff (both SDS off) instead of ORing into it:
+		// RTL837X_REG_SEC_COUNTER only holds a written value while SDS 0 is on
 		reg_read_m(RTL837X_REG_SDS_MODES);
-		sfr_mask_data(1, 0, 0x03);
-		sfr_mask_data(0, 0, 0xe2);
+		sfr_mask_data(1, 0xff, 0x03);
+		sfr_mask_data(0, 0xff, 0xe2);
 		reg_write_m(RTL837X_REG_SDS_MODES);
 	}
 
@@ -246,7 +248,7 @@ void rtl8372_init(void) __banked
 	// [...]
 	///
 	uint16_t reg = 0x1238 + 0x300; // Port base register for the bits we set
-	for (char i = machine.min_port; i <= machine.max_port; i++) {
+	for (char i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		// Bit 7 (0x40) enables replacement of the RTL-VLAN tag with an 802.1Q VLAN tag
 		REG_SET(reg, 0xe77);
 		reg += 0x100;

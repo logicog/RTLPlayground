@@ -89,6 +89,7 @@ table.t th{
   padding:6px 8px;border-bottom:1px solid var(--bd);white-space:nowrap;
 }
 table.t th[data-sort]{cursor:pointer;user-select:none}
+table.t th.num{text-align:right}
 table.t td{padding:6px 8px;border-bottom:1px solid var(--bd);vertical-align:middle}
 table.t tr:last-child td{border-bottom:0}
 table.t tr:hover td{background:var(--sel)}
@@ -223,7 +224,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
     <span id="ttitle"></span>
     <div id="strip"></div>
     <span id="dirty" data-i18n="hdr_dirty" data-i18n-t="hdr_dirty_t">unsaved changes</span>
-    <button class="ctl pri" id="saveBtn" data-i18n="hdr_save" data-i18n-t="hdr_save_t">Save to flash</button>
+    <button class="ctl" id="saveBtn" data-i18n="hdr_save" data-i18n-t="hdr_save_t">Save to flash</button>
   </header>
 
   <main>
@@ -437,8 +438,8 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <p class="small mut" style="margin-top:8px" data-i18n="sy_time_note">The switch has no battery backed clock.</p>
         </div>
         <div class="card"><h2 data-i18n="sy_password">Admin password</h2>
-          <label class="row"><span class="lb" data-i18n="sy_newpw">New password</span><input class="in" id="sy-pw1" type="password" maxlength="20"></label>
-          <label class="row"><span class="lb" data-i18n="sy_repeat">Repeat</span><input class="in" id="sy-pw2" type="password" maxlength="20"></label>
+          <label class="row"><span class="lb" data-i18n="sy_newpw">New password</span><input class="in" id="sy-pw1" type="password" autocomplete="new-password" maxlength="20"></label>
+          <label class="row"><span class="lb" data-i18n="sy_repeat">Repeat</span><input class="in" id="sy-pw2" type="password" autocomplete="new-password" maxlength="20"></label>
           <button class="ctl pri" id="sy-pwapply" style="margin-top:8px" data-i18n="sy_pwapply">Change password</button>
           <p class="small mut" style="margin-top:8px" data-i18n="sy_pw_note">Takes effect immediately; save to flash to keep it after reboot.</p>
         </div>

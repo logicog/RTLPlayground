@@ -74,8 +74,8 @@ $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/u
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # CPU VLAN initialization with full and reduced user-port ranges.
-$(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DRTLP_TEST_MAX_PORT=7
-$(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DRTLP_TEST_MAX_PORT=7 -DRTLP_TEST_MIN_PORT=3 -DRTLP_TEST_IS8373=0
+$(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DMACHINE_MAX_PORT=7
+$(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_PORT=3 -DRTLP_TEST_IS8373=0
 $(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 

@@ -2,5 +2,6 @@
 #define _MACHINE_K0501W_V2_0_H_
 
 #define MACHINE_MODEL "K0501W V2.0"
+#define MACHINE_CHIPSET RTL8372
 
 #endif

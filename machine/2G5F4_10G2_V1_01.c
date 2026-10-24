@@ -1,10 +1,7 @@
 #include "machine_defs.h"
 
 __code const struct machine machine = {
-	.machine_name = MACHINE_MODEL,
-	.isRTL8373 = 0,
-	.min_port = 3,
-	.max_port = 8,
+	MACHINE_COMMON_SETTING,
 	.n_sfp = 2,
 	/* Same 2M-PCB43-V1.1 board family as the KP-9000-6XH-X2 (see
 	 * machine/KP_9000_6XHML_X2.c), but the two SFP+ cages (physical ports 5 and
@@ -44,8 +41,8 @@ __code const struct machine machine = {
 	 * at 2.5G only) and LED-ID2 carries the SFP single LED. The "solid"
 	 * conditions (LINK/speed) barely drive the LEDs here and ACT is what
 	 * actually lights them, which is why the white LED used to glow faintly at
-	 * non-2.5G speeds; the fix for that is LED_GLB_IO_EN bit 6, set in
-	 * machine_init.c. */
+	 * non-2.5G speeds; the fix for that is LED_GLB_IO_EN bit 6, set in the
+	 * shared machine_custom_init() hook (machine/2G5F4_10G2_V1_01_init.c). */
 	.led_sets = { { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
 			LEDS_2G5 | LEDS_LINK | LEDS_10G,
 			LEDS_1G | LEDS_LINK,
