@@ -5,9 +5,9 @@ Generic UDP validation, NIC RX bounds, endian handling and startup CRLF support
 are unconditional. The generic UDP allocator stays in BANK1 in both configurations.
 
 The agent starts disabled and unconfigured. There is no default community or
-compile-time credential header. In **System ג†’ SNMP**, enter the allowed manager
+compile-time credential header. In **System → SNMP**, enter the allowed manager
 IP/CIDR and a community, choose the agent state, then click **Apply**. Use `/32`
-for one manager. The community accepts 1ג€“32 printable ASCII characters without
+for one manager. The community accepts 1–32 printable ASCII characters without
 spaces; leave it blank to retain an existing community. **Refresh** discards
 unapplied edits. Protocol, access mode and UDP port are informational.
 
@@ -22,7 +22,7 @@ snmp off
 ```
 
 Use your actual trusted manager address; the example is an RFC 5737 alias.
-Manager prefixes 1ג€“32 are accepted; host bits are normalized to the network.
+Manager prefixes 1–32 are accepted; host bits are normalized to the network.
 Invalid input preserves current settings. Changes apply immediately but require
 the existing **Save to Flash** confirmation to survive reboot. Save serializes
 manager, community and on/off from runtime state, not stale command history.
@@ -104,7 +104,7 @@ for image identity, completed physical Ethernet/basic SNMP/stress observations a
 remaining acceptance gates. GETBULK, walk ordering and bounded fault recovery have
 passing host tests; complete physical GETBULK/walk and forced-fault evidence is
 still required. Static stack capacity is not measured runtime headroom. The
-publication integration preserves the single **System ג†’ SNMP** configuration card.
+publication integration preserves the single **System → SNMP** configuration card.
 Authenticated configuration export still contains the community for Save; visual
 masking does not protect it from an authenticated browser or network observation.
 

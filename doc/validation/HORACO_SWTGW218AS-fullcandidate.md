@@ -1,4 +1,4 @@
-# HORACO SWTGW218AS ג€” Full Integration Candidate validation
+# HORACO SWTGW218AS — Full Integration Candidate validation
 
 Date: 22 October 2026
 
@@ -140,3 +140,44 @@ requires Bash, and `ONT_S207CW_62TS_SE` has an overlong model initializer.
 The same SDCC error 147 was reproduced on untouched upstream main. A continued
 per-profile compile survey passed 52 of 53 definitions; this is not 53 passing
 firmware builds. No unrelated profile or CI expectation was changed.
+
+## 24 October upstream refresh (offline validation only)
+
+The new integration merges upstream
+`cffe4793b19ba453f7e8924b3739ae0b085c152f` into the preserved 22 October
+publication candidate. It adopts profile port macros in place of removed
+`machine.min_port/max_port` fields and preserves front-panel mapping,
+SFP metadata, CPU exclusion and numeric OID ordering. No OIDs or configuration
+features are added; the reviewed System SNMP form remains in place.
+
+GCC/Clang ASAN/UBSAN with `-Werror`, existing SNMP/HTTP/UDP suites, real
+RTL8372 and HORACO mapping coverage, restricted/CPU-reaching test profiles, five
+GUI suites and 24 source plus 24 packaged Chrome cases passed. All eight strict
+SDCC 4.5.0 comparison builds passed, including both chip families SNMP off/on,
+HORACO off/on, CI V3.1 SNMP on, and CI HEALTH. Each image is 512 KiB and has a
+valid CRC16. Initial SDCC redundant-condition diagnostics were corrected with
+equivalent compile-time bounds; no warning was suppressed.
+
+For HORACO SNMP on, BANK1/2/3 use 40,738 / 46,609 / 48,133 bytes; BANK3 has
+1,019 bytes free. DATA chart allocation is 103 bytes, IDATA zero, XDATA 16,998,
+and static stack capacity 132 bytes (initial SP 0x7B). Relative to `ad0e297`,
+code banks shrink by 275 / 247 / 428 bytes; DATA grows by two and static stack
+capacity drops by two. The added DATA bytes are upstream loop variables in
+LACP and LED dump, also present with SNMP off. HEALTH-only XDATA grows by
+three bytes for upstream's corrected LLDP phase arrays. These are allocation
+measurements, not runtime headroom or stack-safety evidence.
+
+The standard machine-definition check passes all 53 profiles under Bash, with
+the existing ONT overlong-model warning 147. Default /bin/sh fails on the
+existing pipefail syntax in this local environment. With `CI=1`/`--Werror`,
+ONT warning 147 becomes an error; the continued strict survey passes 52/53.
+All outcomes reproduce on a pristine archive of the exact same upstream.
+No new profile failure or unrelated fix is introduced.
+
+The refreshed HORACO SNMP-on comparison image SHA-256 is
+`9486a3581892dc740545250e114c4c0d750991bf5cc653be668c948238b45988`.
+It is **not byte-identical** to either the originally hardware-tested image or
+the 22 October publication comparison image, even with matching version/date
+metadata. It has not been flashed. Original physical test results remain
+scoped to the original SHA-256; full hardware acceptance is still incomplete.
+Publication readiness and hardware acceptance are separate decisions.
