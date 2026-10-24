@@ -10,6 +10,7 @@ Binary files (.ico) are copied through unchanged.
 
 Usage: minify.py <src> <dst>
 """
+import os
 import re
 import shutil
 import sys
@@ -93,7 +94,7 @@ def main():
         out = html_min(s)
     with open(dst, 'w', encoding='utf-8') as f:
         f.write(out)
-    print('%s: %d -> %d bytes' % (src.split('/')[-1], len(s), len(out)))
+    print('%s: %d -> %d bytes' % (src.split('/')[-1], os.path.getsize(src), os.path.getsize(dst)))
 
 
 if __name__ == '__main__':
