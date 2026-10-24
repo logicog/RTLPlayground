@@ -122,6 +122,7 @@ void rtl8373_init(void) __banked
 	pval = SFR_DATA_U16;
 	sds_write_v(0, 0x06, 0x01, pval & 0xfffb);
 
+	phy_reset_wait(0xff);
 	phy_config_8224();
 	sds_config_mac(1, SDS_OFF);    // Off for now until SFP+ port used
 	sds_config_mac(2, SDS_SGMII);  // For RTL8224
@@ -206,6 +207,7 @@ void rtl8372_init(void) __banked
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();
+	phy_reset_wait(0xf0);
 	if (machine.n_10g != 2)
 		phy_config(8);	// PHY configuration: External 8221B?
 	if (machine.n_10g)
