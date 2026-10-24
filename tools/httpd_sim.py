@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 HOST = "0.0.0.0"
 PORT = 8081
 PASSWORD = "1234"
-
+VERBOSE = False
 PORTS = 6
 NSFP = 1
 N_COUNTERS = 52
@@ -69,6 +69,9 @@ last_called = int(time.time())
 sessions = set()
 uploaded_config = None
 
+def vprint(string):
+    if VERBOSE:
+        print(string)
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -646,30 +649,42 @@ class Handler(SimpleHTTPRequestHandler):
             "state": state
         }
 
-# Parse the provided .c file to attempt to make the simulator act more like that configuration
-def loadMachineConfig(c_file):
+# Parse the provided .c or .h file to attempt to make the simulator act more like that configuration
+def loadMachineConfig(filename):
     global machine_config, PORTS, NSFP, phys_to_log_port, tx_g, rx_g, tx_b, rx_b
+    c_file=filename[:-1] +'c'
     c_content = ""
     with open(c_file, 'r') as file:
         c_content = file.read()
+
+    h_file=filename[:-1] + 'h'
+    h_content=""
+    with open(h_file, 'r') as file:
+        h_content = file.read()
+
+    combined_file_content = h_content+"\n"+c_content
 
     regexForCArrayLiteral=r"\{\s*\d\s*(?:,\s*\d\s*)*\}"
 
     patterns = [
         r"\.(isRTL8373)\s*=\s*(\d+)\s*",
         r"\.(n_sfp)\s*=\s*(\d+)\s*",
-        r"\.(MACHINE_CHIPSET)\s+(\S+)\s*",
+        r"\s(MACHINE_CHIPSET)\s+(\S+)\s*",
         r"\.(log_to_phys_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
         r"\.(phys_to_log_port)\s*=\s*("+regexForCArrayLiteral+r")\s*",
         r"\.(is_sfp)\s*=\s*("+regexForCArrayLiteral+r")\s*",
     ]
 
-    machine_config = { "file": c_file }
+    machine_config = { "file": c_file, "header": h_file }
+
+    vprint("Parsing File content:\n--------\n")
+    vprint(combined_file_content)
+    vprint("-------")
 
     for pattern in patterns:    
-        matches = re.search(pattern, c_content)
+        matches = re.search(pattern, combined_file_content)
         if not matches:
-            return
+            continue
         bits = matches.groups()
         value = str(bits[1])
         if value[0] == "{":
@@ -697,15 +712,25 @@ def loadMachineConfig(c_file):
     tx_b = [0] * PORTS
     rx_b = [0] * PORTS
 
+    vprint("------------")
+    vprint(machine_config)
+    vprint("------------")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--machine", default=None, help="Path to machine.c file to parse")
+    parser.add_argument("--machine", default=None, help="Path to machine.c or .h file to parse")
     parser.add_argument("--port", default=8081, type=int, help="Port to bind to")
     parser.add_argument("--bindaddr", default="127.0.0.1", help="Address to bind")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+
     args = parser.parse_args()
 
+    if(args.verbose):
+        VERBOSE = True
+
     if(args.machine is not None):
+        vprint("Loading machine configuration:"+args.machine)
         loadMachineConfig(args.machine)
 
     HOST = args.bindaddr
