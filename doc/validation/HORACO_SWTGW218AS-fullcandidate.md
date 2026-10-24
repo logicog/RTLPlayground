@@ -1,4 +1,4 @@
-# HORACO SWTGW218AS — Full Integration Candidate validation
+# HORACO SWTGW218AS ג€” Full Integration Candidate validation
 
 Date: 22 October 2026
 
@@ -101,7 +101,7 @@ Raw packet/UART artifacts and original acceptance records are retained locally. 
 - [SNMPv2c agent PR #615](https://github.com/logicog/RTLPlayground/pull/615)
 - [Full-candidate SNMP follow-up proposal](https://github.com/avicarmeli/RTLPlayground/pull/1)
 
-## Publication integration boundary
+## 22 October publication preparation (historical)
 
 The publication integration retains the original PR #615 history, merges upstream
 `c9e8403c6e2845e5cf9b3bb2f96d1995dc7a6bf0`, and retains Andre Brait's four
@@ -110,7 +110,7 @@ A separate rebuild of the original source snapshot reproduced the hardware-teste
 SHA-256 above exactly, using SDCC 4.5.0 #15242, `GIT_VERSION=fullcandidate` and
 `SOURCE_DATE_EPOCH=1792051732`. The original snapshot was not a Git commit.
 
-The proposed publication tree is deliberately different: it omits temporary
+The 22 October publication tree (`ad0e297`) is deliberately different: it omits temporary
 `banktest` diagnostics and unrelated dashboard/translation edits, preserves
 upstream NIC tests, and keeps Andre Brait's scoped System-card styling.
 SNMP engine, hardware adapter and control source are unchanged apart from line
@@ -125,7 +125,7 @@ card overflow relative to the upstream page, not an absence of all pre-existing
 page overflow. This does not resolve pending device interoperability, hardware
 GETBULK/walk, recovery, banking or runtime stack requirements.
 
-Publication preparation also reran GCC 13.3 / Clang 18.1 ASAN/UBSAN host tests
+The 22 October publication preparation also reran GCC 13.3 / Clang 18.1 ASAN/UBSAN host tests
 with `-Werror`, five Node GUI suites, and the same 24 browser cases against
 HTML/JavaScript extracted from a packaged image: all passed. Eight SDCC 4.5.0
 strict images passed: RTL8372 KP 6-port, RTL8373 KP V3.2 and exact HORACO with
