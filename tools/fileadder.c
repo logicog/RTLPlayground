@@ -110,16 +110,16 @@ static struct argp argp = {
 int addfile(const char *name, char *dst, size_t cap)
 {
 	int dataptr = open(name, 0);
-	if (!dataptr) {
+	if (dataptr < 0) {
 		fprintf(stderr, "%s: ", name);
 		perror("Cannot open file for reading");
-		return 0;
+		exit(5);
 	}
 
 	int data_read = read(dataptr, dst, cap);
 	if (data_read < 0) {
 		perror("Error reading file");
-		return 0;
+		exit(5);
 	}
 	close(dataptr);
 
