@@ -18,6 +18,8 @@
 // Use a 4MB buffer, the same as the flash rom size
 #define BUFFER_SIZE 0x400000
 char buffer[BUFFER_SIZE];
+// Individual files are read and optionally compressed via this temporary buffer
+char scratch[BUFFER_SIZE];
 FILE *inptr, *dataptr, *ofile;
 int outptr;
 #define PATH_SIZE 20480
@@ -105,7 +107,7 @@ static struct argp argp = {
 };
 
 
-int addfile(const char *name, int addr)
+int addfile(const char *name, char *dst, size_t cap)
 {
 	int dataptr = open(name, 0);
 	if (!dataptr) {
@@ -114,7 +116,7 @@ int addfile(const char *name, int addr)
 		return 0;
 	}
 
-	int data_read = read(dataptr, &buffer[addr], sizeof(buffer) - addr);
+	int data_read = read(dataptr, dst, cap);
 	if (data_read < 0) {
 		perror("Error reading file");
 		return 0;
@@ -126,11 +128,10 @@ int addfile(const char *name, int addr)
 
 
 /*
- * gzip-compresses the data at buffer[addr] in place (gzip format, as
- * expected by the Content-Encoding: gzip header the httpd serves it
- * with).  Returns the compressed size.
+ * gzip-compresses len bytes at src into dst, writing at most cap bytes.
+ * Returns the compressed size.
  */
-int gzipBuffer(int addr, int len)
+int gzipBuffer(const char *src, int len, char *dst, size_t cap)
 {
 	uLong bound = compressBound(len);
 	unsigned char *out = malloc(bound);
@@ -147,7 +148,7 @@ int gzipBuffer(int addr, int len)
 		free(out);
 		return 0;
 	}
-	zs.next_in = (Bytef *)&buffer[addr];
+	zs.next_in = (Bytef *)src;
 	zs.avail_in = len;
 	zs.next_out = out;
 	zs.avail_out = bound;
@@ -160,7 +161,11 @@ int gzipBuffer(int addr, int len)
 	int out_len = zs.total_out;
 	deflateEnd(&zs);
 
-	memcpy(&buffer[addr], out, out_len);
+	if ((size_t)out_len > cap) {
+		fprintf(stderr, "gzip: would exceed output buffer by %zu bytes\n", (size_t)out_len - cap);
+		exit(5);
+	}
+	memcpy(dst, out, out_len);
 	free(out);
 	return out_len;
 }
@@ -223,18 +228,18 @@ int addidx(const char *name, int addr, int len)
  * It is assumed that the possibly expanded string will fit into the buffer
  * Takes the length of the data and returns its new length
  */
-int replaceCalls(int pos, int len)
+int replaceCalls(char *buf, int len)
 {
 	int i = 0;
 	char function_buf[256];
 
 	while (i < len) {
-		if (buffer[pos + i] == '#' && i + 1 < len && buffer[pos + i + 1] == '{') {
+		if (buf[i] == '#' && i + 1 < len && buf[i + 1] == '{') {
 			int j = 2;
 			while (i + j < len) {
-				if (buffer[pos + i + j] == '}')
+				if (buf[i + j] == '}')
 					break;
-				function_buf[j - 2] = buffer[pos + i + j];
+				function_buf[j - 2] = buf[i + j];
 				j++;
 				if (j >= 255) {
 					function_buf[255] = '\0';
@@ -247,9 +252,9 @@ int replaceCalls(int pos, int len)
 			if (i + j >= len)
 				return len;
 			// Because the buffers overlap we cannot use strcpy
-			memmove(&buffer[pos + i + 5], &buffer[pos + i + j], len - (i + j));
-			sprintf(&buffer[pos + i + 2], "%03d", callNum);
-			buffer[pos + i + 5] = '}';
+			memmove(&buf[i + 5], &buf[i + j], len - (i + j));
+			sprintf(&buf[i + 2], "%03d", callNum);
+			buf[i + 5] = '}';
 			len -= j - 5;
 			i += 6;
 			fbuf_p += snprintf(&fbuf[fbuf_p], DEF_SIZE - fbuf_p, "  %s,\n", function_buf);
@@ -357,24 +362,29 @@ int main(int argc, char **argv)
 			if (! (s.st_mode & S_IFREG))
 				continue;
 
-			size_t data_read = addfile(pathbuffer, addr);
+			size_t data_read = addfile(pathbuffer, scratch, sizeof(scratch));
 			size_t file_len = data_read;
-			if (data_read) {
-			if (arguments.add_zero) {
+			if (data_read && arguments.add_zero) {
 				/* NUL-terminate the data so the file table and the
 				 * strlen()-based size computation are deterministic
 				 * (the buffer past the file is otherwise uninitialised) */
-				buffer[addr + data_read] = '\0';
+				scratch[data_read] = '\0';
 				data_read++;
 			}
-				printf("Data inserted from %s at 0x%x, size: %ld\n", pathbuffer, addr, data_read);
+			data_read = replaceCalls(scratch, file_len);
+			if (arguments.gzip) {
+				data_read = gzipBuffer(scratch, data_read, &buffer[addr], sizeof(buffer) - addr);
+			} else {
+				if (data_read > sizeof(buffer) - addr) {
+					fprintf(stderr, "%s: data exceeds buffer by %zu bytes\n", pathbuffer, addr + data_read - sizeof(buffer));
+					exit(5);
+				}
+				memcpy(&buffer[addr], scratch, data_read);
 			}
-			int old_len = data_read;
-			data_read = replaceCalls(addr, file_len);
-			if (old_len > data_read)
-				memset(buffer + addr + data_read, 0, old_len - data_read);
-			if (arguments.gzip)
-				data_read = gzipBuffer(addr, data_read);
+
+			if (data_read)
+				printf("Data inserted from %s at 0x%x, size: %ld\n", pathbuffer, addr, data_read);
+
 			addidx(in_file->d_name, addr, data_read);
 			addr += data_read;
 		}
@@ -382,7 +392,7 @@ int main(int argc, char **argv)
 			free(entries[e]);
 		free(entries);
 	} else {
-		size_t data_read = addfile(arguments.data_file, arguments.address);
+		size_t data_read = addfile(arguments.data_file, &buffer[arguments.address], sizeof(buffer) - arguments.address);
 
 		if (data_read) {
 			if (arguments.add_zero) {
