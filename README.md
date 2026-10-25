@@ -127,6 +127,13 @@ The name selects the board definition `machine/<name>.c`; `make` without a
 `MACHINE` value stops with an error listing what is expected. If your board is
 not in the list yet, see [Adding a new device](doc/adding-a-device.md).
 
+To embed a machine-specific startup configuration, pass `CONFIG`:
+```
+make MACHINE=DEFAULT_8C_1SFP CONFIG=configs/DEFAULT_8C_1SFP.txt
+```
+`CONFIG` defaults to `config.txt`; the selected file is embedded in the image
+and changing it triggers a rebuild.
+
 > [!TIP]
 > You can write configuration parameters in config.txt (see below) in order your switch to get
 > straight at the first boot, a correct IP configuration.
