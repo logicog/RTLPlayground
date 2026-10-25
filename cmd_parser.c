@@ -24,6 +24,7 @@
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
+#include "sessions.h"
 #include "dns.h"
 #include "ntp.h"
 #include "uip/uip.h"
@@ -1479,6 +1480,9 @@ void parse_passwd(void)
 			passwd[j++] = c;
 		} while (c != NUL && j < 20);
 		passwd[j] = NUL;
+		/* Logins made with the old password end here. With one session the next
+		 * login pushed a leftover one out; with several it would stay valid. */
+		session_init();
 		return;
 	}
 	cmd_error("Missing password\n");

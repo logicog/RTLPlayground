@@ -30,6 +30,9 @@ __xdata char session_id[SESSIONS][SESSION_ID_LENGTH + 1];
 __xdata uint32_t last_session_use[SESSIONS];
 
 static __xdata uint8_t ss_slot, ss_i, ss_oldest, ss_c;
+/* The slot whose cookie the last request came with; only meaningful while
+ * authenticated is set, which only session_check() does */
+static __xdata uint8_t ss_hit;
 
 static __code const char ss_hex[] = "0123456789abcdef";
 /* What may follow a cookie value: ';' separates cookies in a Cookie header */
@@ -40,6 +43,14 @@ static __code const char ss_end[] = " \t:?=\n\r;";
 static uint8_t ss_stale(void)
 {
 	if (now - last_session_use[ss_slot] > session_timeout)
+		return 1;
+	return 0;
+}
+
+/* Likewise a leaf: the 32-bit comparison needs no stack of its own this way */
+static uint8_t ss_older(void)
+{
+	if (last_session_use[ss_slot] < last_session_use[ss_oldest])
 		return 1;
 	return 0;
 }
@@ -76,6 +87,7 @@ void session_check(void) __banked
 			session_id[ss_slot][0] = NUL;
 		} else if (ss_match()) {
 			authenticated = 1;
+			ss_hit = ss_slot;
 			last_session_use[ss_slot] = now;
 			return;
 		}
@@ -84,16 +96,23 @@ void session_check(void) __banked
 
 void session_new(void) __banked
 {
-	/* A free or expired slot, else the least recently used */
-	ss_oldest = 0;
-	for (ss_slot = 0; ss_slot < SESSIONS; ss_slot++) {
-		if (!session_id[ss_slot][0] || ss_stale())
-			break;
-		if (last_session_use[ss_slot] < last_session_use[ss_oldest])
-			ss_oldest = ss_slot;
+	if (authenticated && session_id[ss_hit][0]) {
+		/* The login came with a cookie that is still valid: its slot gets the
+		 * new id. A second slot for the same browser would leave the old one
+		 * looking fresh and push out someone else at the next login. */
+		ss_slot = ss_hit;
+	} else {
+		/* A free or expired slot, else the least recently used */
+		ss_oldest = 0;
+		for (ss_slot = 0; ss_slot < SESSIONS; ss_slot++) {
+			if (!session_id[ss_slot][0] || ss_stale())
+				break;
+			if (ss_older())
+				ss_oldest = ss_slot;
+		}
+		if (ss_slot == SESSIONS)
+			ss_slot = ss_oldest;
 	}
-	if (ss_slot == SESSIONS)
-		ss_slot = ss_oldest;
 
 	last_session_use[ss_slot] = now;
 	for (ss_i = 0; ss_i < SESSION_ID_LENGTH; ss_i++) {

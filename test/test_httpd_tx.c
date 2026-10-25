@@ -144,7 +144,8 @@ void clear_command_history(void) { }
 void udp_callbacks(void) { }
 void tcpip_output(void) { }
 void get_random_32(void) { }
-void read_reg_timer(uint32_t *tmr) { *tmr = 0; }
+static uint32_t fake_now;
+void read_reg_timer(uint32_t *tmr) { *tmr = fake_now; }
 
 /* uip-conf.h asks uIP not to define the packet buffer: on the switch it lives
  * at a fixed XDATA address, so the bench provides the storage itself. */
@@ -193,9 +194,9 @@ void send_lldp(void) {}
 
 extern uint8_t authenticated;
 extern char session_id[];
+extern uint32_t last_session_use[];
 extern char passwd[21];
 extern uint16_t session_timeout;
-extern uint32_t last_session_use;
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
  * to confirm the port httpd_init() asked for is the one uIP is watching. */
@@ -879,6 +880,77 @@ static void scenario_split_get_header_terminator(void)
 	      "fragmented GET terminator: CRLFCRLF may span receive events");
 }
 
+/* The sessions of the login tests below: four in use, slot 1 the least recently used */
+#define ID_STRIDE	13	/* SESSION_ID_LENGTH + 1 */
+
+static const char *slot_id(int i)
+{
+	return session_id + i * ID_STRIDE;
+}
+
+static void fill_sessions(void)
+{
+	static const char *const ids[4] = { "0123456789ab", "aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc" };
+	static const uint32_t used[4] = { 50, 10, 60, 70 };
+
+	fake_now = 100;
+	for (int i = 0; i < 4; i++) {
+		strcpy(session_id + i * ID_STRIDE, ids[i]);
+		last_session_use[i] = used[i];
+	}
+}
+
+static int others_kept(int first, int second, int third)
+{
+	static const char *const ids[4] = { "0123456789ab", "aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc" };
+
+	return !strcmp(slot_id(first), ids[first]) && !strcmp(slot_id(second), ids[second]) &&
+	       !strcmp(slot_id(third), ids[third]);
+}
+
+static void scenario_login_with_valid_cookie_reuses_its_slot(void)
+{
+	static const char post[] =
+		"POST /login HTTP/1.1\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=1234";
+
+	login_session_start();
+	fill_sessions();
+	client_send(TCP_ACK | TCP_PSH, post, (int)strlen(post));
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "login with a valid cookie: accepted");
+	CHECK(strcmp(slot_id(0), "0123456789ab") != 0,
+	      "login with a valid cookie: its own slot gets the new id");
+	CHECK(others_kept(1, 2, 3),
+	      "login with a valid cookie: nobody else is pushed out");
+	fake_now = 0;
+}
+
+static void scenario_login_without_cookie_replaces_least_recently_used(void)
+{
+	static const char post[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=1234";
+
+	login_session_start();
+	fill_sessions();
+	client_send(TCP_ACK | TCP_PSH, post, (int)strlen(post));
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "login without a cookie: accepted");
+	CHECK(strcmp(slot_id(1), "aaaaaaaaaaaa") != 0,
+	      "login without a cookie: the least recently used slot is taken");
+	CHECK(others_kept(0, 2, 3),
+	      "login without a cookie: the other three stay");
+	fake_now = 0;
+}
+
 static void scenario_fragmented_get_without_cookie(void)
 {
 	static const char first[] =
@@ -1043,7 +1115,7 @@ static void scenario_upload(const char *name, const char *part_type, int split)
 	session_start(MSS_FULL);
 	strcpy(session_id, "0123456789ab");
 	session_timeout = 200;
-	last_session_use = 0; /* read_reg_timer() returns zero in this bench. */
+	last_session_use[0] = 0; /* read_reg_timer() returns zero in this bench. */
 	flash_size = 0x100000;
 	flash_written_len = 0;
 	flash_write_bad = 0;
@@ -1115,6 +1187,9 @@ int main(int argc, char **argv)
 	scenario_upload("octet-stream control", "Content-Type: application/octet-stream\r\n", 0);
 	scenario_upload("MacBinary, split part terminator", "Content-Type: application/macbinary\r\n", 1);
 	scenario_upload("no part Content-Type", "", 0);
+
+	scenario_login_with_valid_cookie_reuses_its_slot();
+	scenario_login_without_cookie_replaces_least_recently_used();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
