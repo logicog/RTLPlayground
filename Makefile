@@ -4,11 +4,14 @@ DEFAULT_CONFIG_LOCATION = 454656
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
 
-SDCC_PREFIX = toolchain/sdcc-$(shell cat sdcc/* | cksum | cut -d' ' -f1)
+SDCC_TOOLCHAIN = sdcc-$(shell cat sdcc/* | cksum | cut -d' ' -f1)
+SDCC_PREFIX = toolchain/$(SDCC_TOOLCHAIN)
 ifeq ($(origin CC),default)
 SDCC = $(SDCC_PREFIX)/bin/sdcc
 CC = $(SDCC)
 ASM = $(SDCC_PREFIX)/bin/sdas8051
+else
+SDCC_TOOLCHAIN = system
 endif
 CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
 ASM ?= sdas8051
@@ -172,6 +175,7 @@ $(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
 		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
 		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
+		"#define SDCC_TOOLCHAIN \"$(SDCC_TOOLCHAIN)\"" \
 		"#endif" > $(VERSION_HEADER).tmp
 	@cmp -s $(VERSION_HEADER).tmp $(VERSION_HEADER) \
 		&& rm -f $(VERSION_HEADER).tmp \
