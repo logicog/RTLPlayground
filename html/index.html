@@ -345,6 +345,12 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <thead><tr><th data-i18n="c_port">Port Number</th><th data-i18n="lldp_portname">Name</th><th data-i18n="lldp_enable">Send Frames</th></tr></thead>
           <tbody></tbody></table></div>
       </div>
+      <div class="card" style="margin-top:14px"><h2 data-i18n="lldp_nb_title">Neighbors</h2>
+        <div class="scrollx"><table class="t" id="lldp_nb">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="lldp_sysname">System name</th><th data-i18n="lldp_chassis">Chassis ID</th><th data-i18n="lldp_portid">Port ID</th><th data-i18n="lldp_portdesc">Port description</th><th data-i18n="lldp_mgmt">Management address</th><th data-i18n="lldp_caps">Capabilities</th><th data-i18n="lldp_ttl">Expires</th></tr></thead>
+          <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:6px" data-i18n="lldp_nb_note">Learned from LLDP frames received while LLDP is enabled; an entry is removed when its TTL expires or the link goes down.</p>
+      </div>
     </section>
 
     <section class="tab" id="tab-isolate">

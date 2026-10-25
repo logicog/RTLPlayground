@@ -41,6 +41,10 @@ stp_en_d:"Ports start blocked and take up to twice the forward delay to reach fo
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
 lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_nb_title:"Neighbors",lldp_sysname:"System name",lldp_chassis:"Chassis ID",lldp_portid:"Port ID",lldp_portdesc:"Port description",
+lldp_mgmt:"Management address",lldp_caps:"Capabilities",lldp_ttl:"Expires",lldp_nb_empty:"No neighbors seen",lldp_nb_off:"Enable LLDP to discover neighbors",
+lldp_nb_note:"Learned from LLDP frames received while LLDP is enabled; an entry is removed when its TTL expires or the link goes down.",
+lldp_cap_sup:"Supported",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -510,6 +514,10 @@ stp_en_d:"Les ports sont d'abord bloqués et cela prend deux fois le délai de r
 stp_dis_q:"Désactiver l'arborescence ?",stp_dis_d:"Tous les ports vont être retransmis; la protection de boucles est perdue.",
 stp_cost_err:"Le coût du chemin doit être compris entre 0 et 200000000",
 lldp_enabled: "Activer LLDP",lldp_title:"Protocole de découverte de la couche de liason (LLDP)",lldp_portname:"Nom",lldp_enable:"Envoi de trames",
+lldp_nb_title:"Voisins",lldp_sysname:"Nom du système",lldp_chassis:"ID du châssis",lldp_portid:"ID du port",lldp_portdesc:"Description du port",
+lldp_mgmt:"Adresse de gestion",lldp_caps:"Capacités",lldp_ttl:"Expire dans",lldp_nb_empty:"Aucun voisin détecté",lldp_nb_off:"Activer LLDP pour découvrir les voisins",
+lldp_nb_note:"Appris à partir des trames LLDP reçues lorsque LLDP est activé ; une entrée est supprimée à l'expiration de son TTL ou à la perte du lien.",
+lldp_cap_sup:"Prises en charge",
 st_title:"Statiqtique du port",st_h:"cumul depuis le démarrage",st_txg:"TX OK",st_txb:"TX KO",st_rxg:"RX OK",
 st_rxb:"RX KO",st_details:"Détails",st_counters:"Compteur MIB",st_nonzero:"non-zero seulement",
 st_autoref:"rafraichissement automatique",st_counter:"Compteur",st_value:"Valeur",st_fail:"Erreur au chargement des compteurs",
@@ -638,6 +646,10 @@ stp_en_d:"Die Ports starten blockiert und brauchen bis zum doppelten Forward Del
 stp_dis_q:"Spanning Tree deaktivieren?",stp_dis_d:"Alle Ports leiten sofort weiter; der Schutz vor Netzwerkschleifen entfällt.",
 stp_cost_err:"Pfadkosten müssen zwischen 0 und 200000000 liegen",
 nav_lldp:"LLDP",lldp_enabled:"LLDP aktiv",lldp_title:"Dienststatus",lldp_portname:"Name",lldp_enable:"Pakete senden",
+lldp_nb_title:"Nachbarn",lldp_sysname:"Systemname",lldp_chassis:"Chassis-ID",lldp_portid:"Port-ID",lldp_portdesc:"Portbeschreibung",
+lldp_mgmt:"Management-Adresse",lldp_caps:"Fähigkeiten",lldp_ttl:"Läuft ab in",lldp_nb_empty:"Keine Nachbarn gefunden",lldp_nb_off:"LLDP aktivieren, um Nachbarn zu erkennen",
+lldp_nb_note:"Aus LLDP-Paketen gelernt, die bei aktivem LLDP empfangen wurden; ein Eintrag verschwindet, wenn seine TTL abläuft oder der Link ausfällt.",
+lldp_cap_sup:"Unterstützt",
 st_title:"Port-Statistik",st_h:"Summen seit dem Start",st_txg:"TX gut",st_txb:"TX fehlerhaft",st_rxg:"RX gut",
 st_rxb:"RX fehlerhaft",st_details:"Details",st_counters:"MIB-Zähler",st_nonzero:"nur ungleich null",
 st_autoref:"automatisch aktualisieren",st_counter:"Zähler",st_value:"Wert",st_fail:"Zähler konnten nicht geladen werden",
@@ -1913,11 +1925,43 @@ function lldpLoad(){
   });
 }
 
+// IEEE 802.1AB system capability bits
+var LLDP_CAPS=["Other","Repeater","Bridge","WLAN AP","Router","Telephone","DOCSIS","Station"];
+function lldpCaps(bits){
+  return LLDP_CAPS.filter(function(n,i){return bits&(1<<i)}).join(", ");
+}
+function lldpNbLoad(){
+  return getJSON("/lldp_nb.json").then(function(a){
+    var tb=$("lldp_nb").tBodies[0];tb.innerHTML="";
+    if(!a.length){
+      tb.appendChild(h("tr",null,[h("td",{class:"mut",colspan:"8",
+        text:t($("lldp_en").checked?"lldp_nb_empty":"lldp_nb_off")})]));
+      return;
+    }
+    a.sort(function(x,y){return x.port-y.port}).forEach(function(n){
+      var ip=n.ip?h("a",{href:"http://"+n.ip+"/",target:"_blank",rel:"noopener",text:n.ip}):document.createTextNode("-");
+      tb.appendChild(h("tr",null,[
+        h("td",{text:n.port}),
+        h("td",{text:n.sn||"-"}),
+        h("td",{class:"mono",text:n.ch}),
+        h("td",{class:"mono",text:n.pi}),
+        h("td",{text:n.pd||"-"}),
+        h("td",{class:"mono"},[ip]),
+        h("td",{text:lldpCaps(n.ecap)||"-",title:t("lldp_cap_sup")+": "+(lldpCaps(n.cap)||"-")}),
+        h("td",{text:n.ttl+" s"})
+      ]));
+    });
+  });
+}
+var lldpNbPoller=new Poller(lldpNbLoad,5000);
+
 $("lldp_en").addEventListener("change",function(){
   var el=this;
-  postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
+  postCmd("lldp "+(el.checked?"on":"off")).then(function(){setTimeout(lldpNbLoad,300)})
+    .catch(function(){el.checked=!el.checked});
 });
-tabHooks.lldp={enter:lldpLoad};
+tabHooks.lldp={enter:function(){lldpLoad().then(function(){lldpNbPoller.start()}).catch(function(){})},
+  leave:function(){lldpNbPoller.stop()}};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);

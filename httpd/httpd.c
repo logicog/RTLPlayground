@@ -7,6 +7,7 @@
 #include "rtl837x_flash.h"
 #include "uip.h"
 #include "sessions.h"
+#include "rtl837x_lldp.h"
 #include "html_data.h"
 
 // #define DEBUG
@@ -1053,6 +1054,8 @@ void httpd_appcall(void)
 				send_stp();
 			} else if (is_word(q, "/lldp.json")) {
 				send_lldp();
+			} else if (is_word(q, "/lldp_nb.json")) {
+				lldp_neighbors_json();
 			} else if (is_word(q, "/lacp.json")) {
 				send_lacp();
 			} else if (is_word(q, "/vlanlist")) {

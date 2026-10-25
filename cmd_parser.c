@@ -2085,10 +2085,13 @@ void cmd_parser(void) __banked
 				print_string("LLDP enabled\n");
 				lldp_enabled = 1;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
+			} else if (cmd_compare(1, "show")) {
+				lldp_show();
 			} else {
 				print_string("LLDP disabled\n");
 				lldp_enabled = 0;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
+				lldp_neighbors_clear();
 			}
 		}
 		else {

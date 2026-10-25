@@ -490,6 +490,19 @@ void send_lldp(int s)
 	json_object_put(c);
 }
 
+void send_lldp_nb(int s)
+{
+	char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+	char *body = "[{\"port\":1,\"ttl\":112,\"ch\":\"00:1b:21:aa:bb:cc\",\"pi\":\"eth0\","
+		"\"pd\":\"uplink\",\"sn\":\"nas\",\"ip\":\"192.168.1.7\",\"cap\":128,\"ecap\":128},"
+		"{\"port\":5,\"ttl\":95,\"ch\":\"4c:5e:0c:11:22:33\",\"pi\":\"ether2\","
+		"\"pd\":\"\",\"sn\":\"core-router\",\"ip\":\"\",\"cap\":20,\"ecap\":20}]";
+
+	write(s, header, strlen(header));
+	write(s, body, strlen(body));
+}
+
 void send_cmd_log(int s)
 {
         char *header = "HTTP/1.1 200 OK\r\n"
@@ -734,6 +747,13 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_vlan(new_socket, vlan);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/lldp_nb.json", 13)) {
+					printf("LLDP neighbor request\n");
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_lldp_nb(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/lldp.json", 10)) {
 					printf("LLDP request");

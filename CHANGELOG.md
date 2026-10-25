@@ -15,6 +15,13 @@
     target selects single-IO flash reads (`flash_sio`). New machine target
     `MACHINE_2G5F4_10G2_V1_01`, see `doc/devices/2G5F4_10G2_V1.01.md`.
 
+- LLDP
+  - Neighbor discovery: with `lldp on`, received LLDPDUs are parsed and the partner on each port
+    (chassis ID, port ID, port description, system name, capabilities, IPv4 management address)
+    is kept until its TTL expires, a shutdown LLDPDU arrives or the link goes down. Shown by
+    `lldp show` on the console, served as `/lldp_nb.json` and listed in a Neighbors table on the
+    LLDP page. Received frames used to be trapped to the CPU and dropped.
+
 - Web UI
   - Compress the embedded assets (minify + gzip) and switch to a single-page layout. #315
   - Replace the multi-page UI with a themed single-page app: light, dark and Selenized themes following the browser by default,
@@ -24,6 +31,12 @@
 ## Changed
 
 ## Fixed
+
+- LLDP
+  - The per-port "Send Frames" setting is set to all ports in `lldp_init()`. Its `= 0xffff`
+    initializer was never applied: SDCC copies xdata initializers with `movx @r0` through
+    MPAGE, and on the RTL837x those bytes do not arrive, so the mask held whatever the RAM
+    contained at power-up.
 
 - Time
   - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
