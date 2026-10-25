@@ -31,7 +31,7 @@ Top side
 
 <img src="photos/SWTG024AS-A-V2_0_1_19650/horaco-zx-sg4t2-pcb-top.jpg" width="300" />
 
-The reset button is soldered at `SW1` (GPIO48).
+The reset button on SL902-SWTG015AS is soldered at `SW1` (GPIO48).
 
 Bottom
 
