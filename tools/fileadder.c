@@ -133,30 +133,29 @@ int addfile(const char *name, char *dst, size_t cap)
  */
 int gzipBuffer(const char *src, int len, char *dst, size_t cap)
 {
-	uLong bound = compressBound(len);
-	unsigned char *out = malloc(bound);
-	if (!out) {
-		perror("malloc");
-		return 0;
-	}
-
 	z_stream zs;
 	memset(&zs, 0, sizeof(zs));
 	if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
 			 Z_DEFAULT_STRATEGY) != Z_OK) {
 		fprintf(stderr, "gzip: deflateInit2 failed\n");
-		free(out);
-		return 0;
+		exit(5);
 	}
+
+	// Account for the gzip header and trailer
+	uLong bound = deflateBound(&zs, len);
+	unsigned char *out = malloc(bound);
+	if (!out) {
+		perror("malloc");
+		exit(5);
+	}
+
 	zs.next_in = (Bytef *)src;
 	zs.avail_in = len;
 	zs.next_out = out;
 	zs.avail_out = bound;
 	if (deflate(&zs, Z_FINISH) != Z_STREAM_END) {
 		fprintf(stderr, "gzip: deflate failed\n");
-		deflateEnd(&zs);
-		free(out);
-		return 0;
+		exit(5);
 	}
 	int out_len = zs.total_out;
 	deflateEnd(&zs);
