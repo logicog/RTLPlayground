@@ -10,8 +10,9 @@ ifeq ($(origin CC),default)
 SDCC = $(SDCC_PREFIX)/bin/sdcc
 CC = $(SDCC)
 ASM = $(SDCC_PREFIX)/bin/sdas8051
+SDCC_BANNER = $(SDCC_TOOLCHAIN) ($(words $(wildcard sdcc/*.patch)) patches)
 else
-SDCC_TOOLCHAIN = system
+SDCC_BANNER = system
 endif
 CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
 ASM ?= sdas8051
@@ -175,7 +176,7 @@ $(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
 		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
 		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
-		"#define SDCC_TOOLCHAIN \"$(SDCC_TOOLCHAIN)\"" \
+		"#define SDCC_TOOLCHAIN \"$(SDCC_BANNER)\"" \
 		"#endif" > $(VERSION_HEADER).tmp
 	@cmp -s $(VERSION_HEADER).tmp $(VERSION_HEADER) \
 		&& rm -f $(VERSION_HEADER).tmp \
