@@ -82,7 +82,7 @@ static uint8_t written_config[CONFIG_LEN];
 static uint16_t written_config_len;
 static uint32_t config_erase_addr, config_write_addr;
 static int config_erases, config_writes;
-static uint8_t flash_written[64];
+static uint8_t flash_written[1024];
 static size_t flash_written_len;
 static int flash_write_bad;
 
@@ -178,7 +178,8 @@ static void (*httpd_tx_udp_app)(void);	/* scenario-installed application; NULL l
 void udp_callbacks(void) { udp_dispatch_calls++; if (httpd_tx_udp_app) httpd_tx_udp_app(); }
 void tcpip_output(void) { }
 void get_random_32(void) { }
-void read_reg_timer(uint32_t *tmr) { *tmr = 0; }
+static uint32_t fake_now;
+void read_reg_timer(uint32_t *tmr) { *tmr = fake_now; }
 
 /* uip-conf.h asks uIP not to define the packet buffer: on the switch it lives
  * at a fixed XDATA address, so the bench provides the storage itself. */
@@ -237,9 +238,9 @@ void send_lldp(void) {}
 
 extern uint8_t authenticated;
 extern char session_id[];
+extern uint32_t last_session_use[];
 extern char passwd[21];
 extern uint16_t session_timeout;
-extern uint32_t last_session_use;
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
  * to confirm the port httpd_init() asked for is the one uIP is watching. */
@@ -614,19 +615,20 @@ static void scenario_udp_lengths(void)
 
 static void scenario_information_auth(void)
 {
-    extern char session_id[13];extern uint32_t last_session_use;
     const char *denied="GET /information.json HTTP/1.1\r\nHost: sw\r\n\r\n";
     const char *allowed="GET /information.json HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\n\r\n";
     session_start(MSS_FULL);information_calls=0;
     client_send(TCP_ACK|TCP_PSH,denied,strlen(denied));drain(MSS_FULL);
     stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
     CHECK(strstr((char *)stream,"401 Unauthorized") && !information_calls,"information.json requires authentication before serialization");
-    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use=0;
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use[0]=0;
     client_send(TCP_ACK|TCP_PSH,allowed,strlen(allowed));drain(MSS_FULL);
     stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
     CHECK(strstr((char *)stream,"200 OK") && information_calls==1,"authenticated information.json reaches existing serializer");
     const char *config="GET /config HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\n\r\n";
-    session_start(MSS_FULL);configuration_reads=0;
+    /* session_start() reinitializes HTTP, including upstream's session table. */
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use[0]=0;
+    configuration_reads=0;
     client_send(TCP_ACK|TCP_PSH,config,strlen(config));drain(MSS_FULL);
     stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
     CHECK(strstr((char *)stream,"200 OK") && strstr((char *)stream,"ip 192.0.2.1") &&
@@ -637,7 +639,7 @@ static void scenario_information_auth(void)
     client_send(TCP_ACK|TCP_PSH,snmp_denied,strlen(snmp_denied));drain(MSS_FULL);
     stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
     CHECK(strstr((char *)stream,"401 Unauthorized")&&!command_calls,"SNMP toggle command requires authentication");
-    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use=0;
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use[0]=0;
     client_send(TCP_ACK|TCP_PSH,snmp_allowed,strlen(snmp_allowed));drain(MSS_FULL);
     stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
     CHECK(strstr((char *)stream,"200 OK")&&command_calls==1,"authenticated SNMP toggle command uses existing command endpoint");
@@ -645,7 +647,7 @@ static void scenario_information_auth(void)
 }
 
 /* Private HTTP lifecycle values; drive the real callback, not a model. */
-enum { TSTATE_NONE = 0, TSTATE_TX = 1 };
+enum { TSTATE_NONE = 0, TSTATE_TX = 1, TSTATE_POST = 4 };
 extern uint16_t slen, cont_len, sent_len, bindex, crc_final, write_len;
 extern uint8_t boundary[], verify_crc, outbuf[];
 extern struct { uint8_t *p; uint16_t bptr, plen; } upload_settings;
@@ -973,6 +975,77 @@ static void scenario_split_get_header_terminator(void)
 	      "fragmented GET terminator: CRLFCRLF may span receive events");
 }
 
+/* The sessions of the login tests below: four in use, slot 1 the least recently used */
+#define ID_STRIDE	13	/* SESSION_ID_LENGTH + 1 */
+
+static const char *slot_id(int i)
+{
+	return session_id + i * ID_STRIDE;
+}
+
+static void fill_sessions(void)
+{
+	static const char *const ids[4] = { "0123456789ab", "aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc" };
+	static const uint32_t used[4] = { 50, 10, 60, 70 };
+
+	fake_now = 100;
+	for (int i = 0; i < 4; i++) {
+		strcpy(session_id + i * ID_STRIDE, ids[i]);
+		last_session_use[i] = used[i];
+	}
+}
+
+static int others_kept(int first, int second, int third)
+{
+	static const char *const ids[4] = { "0123456789ab", "aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc" };
+
+	return !strcmp(slot_id(first), ids[first]) && !strcmp(slot_id(second), ids[second]) &&
+	       !strcmp(slot_id(third), ids[third]);
+}
+
+static void scenario_login_with_valid_cookie_reuses_its_slot(void)
+{
+	static const char post[] =
+		"POST /login HTTP/1.1\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=1234";
+
+	login_session_start();
+	fill_sessions();
+	client_send(TCP_ACK | TCP_PSH, post, (int)strlen(post));
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "login with a valid cookie: accepted");
+	CHECK(strcmp(slot_id(0), "0123456789ab") != 0,
+	      "login with a valid cookie: its own slot gets the new id");
+	CHECK(others_kept(1, 2, 3),
+	      "login with a valid cookie: nobody else is pushed out");
+	fake_now = 0;
+}
+
+static void scenario_login_without_cookie_replaces_least_recently_used(void)
+{
+	static const char post[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=1234";
+
+	login_session_start();
+	fill_sessions();
+	client_send(TCP_ACK | TCP_PSH, post, (int)strlen(post));
+	CHECK(stream_contains("Location: index.html\r\n"),
+	      "login without a cookie: accepted");
+	CHECK(strcmp(slot_id(1), "aaaaaaaaaaaa") != 0,
+	      "login without a cookie: the least recently used slot is taken");
+	CHECK(others_kept(0, 2, 3),
+	      "login without a cookie: the other three stay");
+	fake_now = 0;
+}
+
 static void scenario_fragmented_get_without_cookie(void)
 {
 	static const char first[] =
@@ -1244,7 +1317,7 @@ static void scenario_upload(const char *name, const char *part_type, int split)
 	session_start(MSS_FULL);
 	strcpy(session_id, "0123456789ab");
 	session_timeout = 200;
-	last_session_use = 0; /* read_reg_timer() returns zero in this bench. */
+	last_session_use[0] = 0; /* read_reg_timer() returns zero in this bench. */
 	flash_size = 0x100000;
 	flash_written_len = 0;
 	flash_write_bad = 0;
@@ -1285,6 +1358,115 @@ static void scenario_upload(const char *name, const char *part_type, int split)
 	flash_size = saved_flash_size;
 }
 
+extern uint32_t uptr;
+
+#define UPLOAD_LEN	600
+#define UPLOAD_BOUNDARY	"\r\n--XyZ"
+#define UPLOAD_TRAILER	UPLOAD_BOUNDARY "--\r\n"
+
+static int upload_in_two(uint8_t *body, uint16_t body_len, uint16_t split)
+{
+	uptr = FIRMWARE_UPLOAD_START;
+	write_len = 0;
+	bindex = 0;
+	verify_crc = 0;
+	flash_written_len = 0;
+	flash_write_bad = 0;
+	strcpy((char *)boundary, UPLOAD_BOUNDARY);
+	uip_conn = &uip_conns[0];
+	uip_conn->appstate.tstate = TSTATE_POST;
+
+	upload_settings.p = body;
+	upload_settings.bptr = 0;
+	upload_settings.plen = split;
+	stream_upload();
+	if (uip_conn->appstate.tstate == TSTATE_POST) {
+		upload_settings.p = body + split;
+		upload_settings.bptr = 0;
+		upload_settings.plen = body_len - split;
+		stream_upload();
+	}
+	return uip_conn->appstate.tstate == TSTATE_NONE
+		&& uptr == FIRMWARE_UPLOAD_START + UPLOAD_LEN && !flash_write_bad
+		&& flash_written_len == UPLOAD_LEN + 1 && !flash_written[UPLOAD_LEN];
+}
+
+static void scenario_upload_cr_before_boundary(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len, split;
+	int completed = 0, intact = 0, splits = 0;
+
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = pattern(i);
+	body[UPLOAD_LEN - 2] = 'x';
+	body[UPLOAD_LEN - 1] = '\r';
+	body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+
+	for (split = 0; split <= body_len; split++) {
+		splits++;
+		if (upload_in_two(body, body_len, split)) {
+			completed++;
+			if (!memcmp(flash_written, body, UPLOAD_LEN))
+				intact++;
+		}
+	}
+	if (verbose)
+		printf("      %d of %d splits complete, %d intact\n", completed, splits, intact);
+
+	CHECK(completed == splits,
+	      "upload: an image ending in CR still finds the closing boundary");
+	CHECK(intact == splits,
+	      "upload: the CR and the bytes before it reach the flash unchanged");
+}
+
+static int upload_whole_and_split(uint8_t *body, uint16_t body_len)
+{
+	return upload_in_two(body, body_len, body_len) && !memcmp(flash_written, body, UPLOAD_LEN)
+		&& upload_in_two(body, body_len, UPLOAD_LEN) && !memcmp(flash_written, body, UPLOAD_LEN);
+}
+
+static void scenario_upload_last_byte(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+	int bad = -1;
+
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = pattern(i);
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+	for (int last = 0; last < 256 && bad < 0; last++) {
+		body[UPLOAD_LEN - 1] = last;
+		if (!upload_whole_and_split(body, body_len))
+			bad = last;
+	}
+	if (bad >= 0)
+		printf("      last byte 0x%02x loses the closing boundary\n", bad);
+	CHECK(bad < 0, "upload: the part ends after the payload whatever its last byte");
+
+	body[UPLOAD_LEN - 1] = '\r';
+	body[UPLOAD_LEN - 2] = '\r';
+	CHECK(upload_whole_and_split(body, body_len), "upload: an even run of CR before the boundary");
+	body[UPLOAD_LEN - 3] = '\r';
+	CHECK(upload_whole_and_split(body, body_len), "upload: an odd run of CR before the boundary");
+}
+
+static void scenario_upload_broken_matches(void)
+{
+	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
+	uint16_t body_len = UPLOAD_LEN + sizeof(UPLOAD_TRAILER) - 1;
+
+	memcpy(body + UPLOAD_LEN, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+	memset(body, '\r', UPLOAD_LEN);
+	CHECK(upload_whole_and_split(body, body_len),
+	      "upload: a run of CR longer than a flash page is staged intact");
+	for (uint16_t i = 0; i < UPLOAD_LEN; i++)
+		body[i] = "\r\n-"[i % 3];
+	CHECK(upload_whole_and_split(body, body_len),
+	      "upload: repeated partial delimiters are staged as payload");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "-v"))
@@ -1319,6 +1501,12 @@ int main(int argc, char **argv)
 	scenario_upload("octet-stream control", "Content-Type: application/octet-stream\r\n", 0);
 	scenario_upload("MacBinary, split part terminator", "Content-Type: application/macbinary\r\n", 1);
 	scenario_upload("no part Content-Type", "", 0);
+	scenario_upload_cr_before_boundary();
+	scenario_upload_last_byte();
+	scenario_upload_broken_matches();
+
+	scenario_login_with_valid_cookie_reuses_its_slot();
+	scenario_login_without_cookie_replaces_least_recently_used();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",

@@ -16,7 +16,7 @@ d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"State",p_disabled:"disabled",p_up:"up",p_txgb:"TX good / bad",p_rxgb:"RX good / bad",
+p_state:"State",p_disabled:"disabled",p_up:"up",
 p_pkts:"pkts",p_module:"Module",p_temp:"Temperature",p_vcc:"Vcc",p_txbias:"TX bias",p_txpower:"TX power",
 p_rxpower:"RX power",p_txfault:"TX fault",p_txdis:"TX disabled",p_rxlos:"RX LOS",p_adv:"Advertising",
 pt_title:"Port configuration",pt_conn:"Devices learned",pt_speed:"Speed",pt_mtu:"MTU",
@@ -147,7 +147,7 @@ d_system:"システム",d_traffic:"トラフィック",
 d_traffic_h:"パケット/秒、リアルタイム",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 異常",d_rxbad:"RX 異常",
 i_host:"ホスト名",i_ip:"IP アドレス",i_mask:"ネットマスク",i_gw:"ゲートウェイ",i_mac:"MAC",i_fw:"ファームウェア",
 i_built:"ビルド日",i_hw:"ハードウェア",i_temp:"温度",i_flash:"フラッシュ",i_syslog:"Syslog",
-p_state:"状態",p_disabled:"無効",p_up:"アップ",p_txgb:"TX 正常 / 異常",p_rxgb:"RX 正常 / 異常",
+p_state:"状態",p_disabled:"無効",p_up:"アップ",
 p_pkts:"pkts",p_module:"モジュール",p_temp:"温度",p_vcc:"電圧",p_txbias:"TX バイアス",p_txpower:"TX 電力",
 p_rxpower:"RX 電力",p_txfault:"TX 障害",p_txdis:"TX 無効",p_rxlos:"RX 信号ロス",p_adv:"アドバタイズ",
 pt_title:"ポート設定",pt_conn:"学習済みデバイス",pt_speed:"速度",pt_mtu:"MTU",
@@ -260,7 +260,7 @@ d_system:"系统",d_traffic:"流量",
 d_traffic_h:"包/秒，实时",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX 错误",d_rxbad:"RX 错误",
 i_host:"主机名",i_ip:"IP 地址",i_mask:"子网掩码",i_gw:"网关",i_mac:"MAC",i_fw:"固件",
 i_built:"构建日期",i_hw:"硬件",i_temp:"温度",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"状态",p_disabled:"已禁用",p_up:"已连接",p_txgb:"TX 正常 / 错误",p_rxgb:"RX 正常 / 错误",
+p_state:"状态",p_disabled:"已禁用",p_up:"已连接",
 p_pkts:"个包",p_module:"模块",p_temp:"温度",p_vcc:"供电电压",p_txbias:"TX 偏置电流",p_txpower:"TX 光功率",
 p_rxpower:"RX 光功率",p_txfault:"TX 故障",p_txdis:"TX 禁用",p_rxlos:"RX 信号丢失",p_adv:"通告能力",
 pt_title:"端口配置",pt_conn:"已学习设备",pt_speed:"速率",pt_mtu:"MTU",
@@ -373,7 +373,7 @@ d_system:"Sistema",d_traffic:"Tráfico",
 d_traffic_h:"paquetes/s, en vivo",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX erróneos",d_rxbad:"RX erróneos",
 i_host:"Nombre de host",i_ip:"Dirección IP",i_mask:"Máscara de red",i_gw:"Puerta de enlace",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Compilado",i_hw:"Hardware",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"Estado",p_disabled:"deshabilitado",p_up:"activo",p_txgb:"TX correctos / erróneos",p_rxgb:"RX correctos / erróneos",
+p_state:"Estado",p_disabled:"deshabilitado",p_up:"activo",
 p_pkts:"paquetes",p_module:"Módulo",p_temp:"Temperatura",p_vcc:"Vcc",p_txbias:"Polarización TX",p_txpower:"Potencia TX",
 p_rxpower:"Potencia RX",p_txfault:"Fallo TX",p_txdis:"TX deshabilitado",p_rxlos:"Pérdida RX (LOS)",p_adv:"Anunciado",
 pt_title:"Configuración de puerto",pt_conn:"Dispositivos aprendidos",pt_speed:"Velocidad",pt_mtu:"MTU",
@@ -472,7 +472,7 @@ fw_timeout:"el switch no ha vuelto tras 150 s: comprueba la alimentación / cons
 fr:{
 nav_dash:"Tableau de bord",nav_ports:"Ports",nav_stp:"Arborescence",nav_stats:"Statistiques",
 nav_vlan:"LANs virtuels",nav_l2:"Table MAC",nav_mirror:"Mise en mirroir",nav_lag:"Aggrégation",nav_eee:"Energie",
-nav_bw:"Bande passante",nav_system:"Système",nav_fw:"Micro logiciel",
+nav_bw:"Bande passante",nav_system:"Système",nav_fw:"Micro logiciel",nav_lldp:"Couche de Liaison",
 hdr_dirty:"Changements non sauvegardés",hdr_dirty_t:"La configuration utilisée diffère de celle au démarrage",
 hdr_save:"Sauvegarder en flash",hdr_save_t:"Maintenir la configuration actuelle en flash",
 th_auto:"Système",th_auto_sel:"Système (sélénisé)",sy_display:"Affichage",sy_theme:"Thème",sy_display_note:"Enregistré seulement dans ce navigateur.",th_light:"Clair",th_dark:"Sombre",
@@ -485,7 +485,7 @@ d_system:"Système",d_traffic:"Trafic",
 d_traffic_h:"paquets/s (en direct)",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX KO",d_rxbad:"RX KO",
 i_host:"Nom d'hote",i_ip:"Adresse IP",i_mask:"Masque réseau",i_gw:"Passerelle",i_mac:"Adresse MAC",i_fw:"Micro logiciel",
 i_built:"Compilé le",i_hw:"Matériel",i_temp:"Température",i_flash:"Taille Flash",i_syslog:"Journal système",
-p_state:"Etat",p_disabled:"Inactif",p_up:"Actif",p_txgb:"TX bon / mauvais",p_rxgb:"RX bon / mauvais",
+p_state:"Etat",p_disabled:"Inactif",p_up:"Actif",
 p_pkts:"paquets",p_module:"Module",p_temp:"Température",p_vcc:"Vcc",p_txbias:"TX biais",p_txpower:"TX puissance",
 p_rxpower:"RX puissance",p_txfault:"TX erreur",p_txdis:"TX désactivé",p_rxlos:"RX pertes de signaux",p_adv:"Capacités",
 pt_title:"Configuration du port",pt_conn:"Appareils appris",pt_speed:"Vitesse",pt_mtu:"MTU",
@@ -509,6 +509,7 @@ stp_en_q:"Activer l'arbrescence?",
 stp_en_d:"Les ports sont d'abord bloqués et cela prend deux fois le délai de retransmission pour atteindre l'état de retransmission; les ports en bordures recouvrent immédiatement leur état.",
 stp_dis_q:"Désactiver l'arborescence ?",stp_dis_d:"Tous les ports vont être retransmis; la protection de boucles est perdue.",
 stp_cost_err:"Le coût du chemin doit être compris entre 0 et 200000000",
+lldp_enabled: "Activer LLDP",lldp_title:"Protocole de découverte de la couche de liason (LLDP)",lldp_portname:"Nom",lldp_enable:"Envoi de trames",
 st_title:"Statiqtique du port",st_h:"cumul depuis le démarrage",st_txg:"TX OK",st_txb:"TX KO",st_rxg:"RX OK",
 st_rxb:"RX KO",st_details:"Détails",st_counters:"Compteur MIB",st_nonzero:"non-zero seulement",
 st_autoref:"rafraichissement automatique",st_counter:"Compteur",st_value:"Valeur",st_fail:"Erreur au chargement des compteurs",
@@ -542,6 +543,9 @@ e_idle:"Inactif",e_na:"N/A",
 bw_title:"Limitations de bande passante",bw_h:"Mbit/s, 0.016-10000",bw_in:"Limite entrante",bw_out:"Limite sortante",
 bw_exceed:"Lorsque dépassé",bw_fc:"Limiter",bw_drop:"Rejetter",
 bw_in_err:"La limite entrante doit être comprise entre 0.016 et 10000 Mbit/s",bw_out_err:"La limite sortante doit être comprise entre 0.016 et 10000 Mbit/s",
+sc_title:"Contrôle des tempêtes",sc_h:"par port et par type de diffusion (générale ou groupée), vide = inactif",sc_bcast:"Générale (Broadcast)",sc_mcast:"Groupée (Multicast)",
+sc_ucast:"Unicast inconnu",sc_umcast:"Multicast inconnu",sc_err:" La limite de tempête doit être comprise entre 1 à 1048575 pps ou 1 à 10000000 kbit/s",
+sc_note:"Les trames de chacun des types ci-dessus dépassant les limites sont abandonnées lorsqu'elles arrivent sur le communtateur.",
 sy_network:"Réseau",sy_dhcp:"Uiliser DHCP",sy_dhcp_t:"Aquérir l'adresse via le protocole DHCP",sy_services:"Services",
 sy_igmp:"Surveillance IGMP",sy_sysip:"IP du serveur...",sy_server:"Serveur",sy_port:"Port",
 sy_sesstmo:"Temps mort de session (s)",sy_sesstmo_err:"Le temps morts de session doit être compris en 1-65535 s",  
@@ -556,6 +560,13 @@ sy_net_q:"Appliquer les paramètres réseau?",sy_net_d:"L'adresse IP de  managem
 sy_ip_changed:"L'adresse IP a changée, reconnectez-vous à http://{ip}/",sy_dhcp_q:"Passer en DHCP?",
 sy_dhcp_d:"Le commutateur va demander une addresse via le DHCP. Vous devrez rechercher sa prochaine adresse IP pour vous reconnecter.",
 sy_sysip_err:"Adresse IP du serveur Syslog invalide",sy_sysport_err:"Le port Syslog doit être compris entre 1 et 65535",
+sy_time:"Temps",sy_ntp:"NTP",sy_ntpsrv:"Serveur NTP",sy_ntpsrv_p:"Nom d'hôte ou adresse IPv4",sy_ntpint:"intervalle de scrutation [min]",
+sy_tz:"Fuseau horaire",sy_dst:"Heure d'été",sy_dst_eu:"Europe",
+sy_dst_us:"Etats-Unis",sy_now:"Heure locale",
+sy_sync:"Dernière synchronisation",sy_ntpaddr:"Adresse du serveur",sy_nosync:"Désynchronisé",sy_waiting:"En attente du serveur",
+sy_ago:"depuis {n} minutes",sy_ntp_err:"Entrez le nom d'hôte ou l'adresse IPv4 du serveur NTP",sy_ntpint_err:"L'intervalle de scrutation doit être compris entre 1 et 1440",
+sy_time_note:"Le commutateur n'a pas d'horloge sauvegardée par batterie: L'heure est donc perdue à chaque redémarrage et doit être récupérée grâce au serveur NTP une fois le réseau fonctionnel. Sauvegardez en mémoire flash pour enregistrer les paramètres.",
+sy_sysport_err:"Le port Syslog doit être compris entre 1 et 65535",
 sy_pw_len:"Mot de passe : 1 à 20 caractères",sy_pw_space:"Le mot de passe ne doit pas contenir d'espaces",sy_pw_match:"Les mots de passe ne correspondent pas",
 sy_pw_q:"Changer le mot de passe d'administration?",sy_pw_d:"Cela prend effet immédiatement dès la prochaine connection. Enregistrez en Flash pour rendre la modification persistante.",
 sy_reboot_q:"Redémarrer le commutateur ?",sy_reboot_d:"Il y a des paramètres NON SAUVEGARDES qui vont être perdus. Sauvegardez-les au préalable en mémoire flash si vous souhaitez les conserver.",
@@ -602,7 +613,7 @@ d_system:"System",d_traffic:"Datenverkehr",
 d_traffic_h:"Pakete/s, live",d_txpps:"TX Pakete/s",d_rxpps:"RX Pakete/s",d_txbad:"TX fehlerhaft",d_rxbad:"RX fehlerhaft",
 i_host:"Hostname",i_ip:"IP-Adresse",i_mask:"Netzmaske",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
 i_built:"Erstellt",i_hw:"Hardware",i_temp:"Temperatur",i_flash:"Flash",i_syslog:"Syslog",
-p_state:"Zustand",p_disabled:"deaktiviert",p_up:"verbunden",p_txgb:"TX gut / fehlerhaft",p_rxgb:"RX gut / fehlerhaft",
+p_state:"Zustand",p_disabled:"deaktiviert",p_up:"verbunden",
 p_pkts:"Pakete",p_module:"Modul",p_temp:"Temperatur",p_vcc:"Vcc",p_txbias:"TX-Bias",p_txpower:"Sendeleistung",
 p_rxpower:"Empfangsleistung",p_txfault:"TX-Fehler",p_txdis:"TX deaktiviert",p_rxlos:"RX LOS",p_adv:"Angeboten",
 pt_title:"Port-Konfiguration",pt_conn:"Gelernte Geräte",pt_speed:"Geschwindigkeit",pt_mtu:"MTU",
@@ -837,6 +848,7 @@ function isConfCmd(line){
 function setDirty(d){
   S.dirty=d;
   $("dirty").classList.toggle("show",d);
+  $("saveBtn").classList.toggle("pri",d);
 }
 function postCmd(cmd,quiet){
   var safe=redactSnmp(cmd),secret=safe!==cmd;
@@ -1026,8 +1038,10 @@ function portRows(p){
   var rows=[[t("c_port"),String(p.portNum)],[t("c_type"),p.isSFP?"SFP":"RJ45"]];
   if(p.name)rows.push([t("c_name"),p.name]);
   rows.push([t("p_state"),!p.enabled?t("p_disabled"):(p.link>0?t("p_up")+" "+LINKS[p.link]:t("c_down"))]);
-  rows.push([t("p_txgb"),BigInt(p.txG)+" / "+BigInt(p.txB)+" "+t("p_pkts")]);
-  rows.push([t("p_rxgb"),BigInt(p.rxG)+" / "+BigInt(p.rxB)+" "+t("p_pkts")]);
+  rows.push([t("st_txg"),BigInt(p.txG)+" "+t("p_pkts")]);
+  rows.push([t("st_txb"),BigInt(p.txB)+" "+t("p_pkts")]);
+  rows.push([t("st_rxg"),BigInt(p.rxG)+" "+t("p_pkts")]);
+  rows.push([t("st_rxb"),BigInt(p.rxB)+" "+t("p_pkts")]);
   if(p.isSFP){
     if(p.sfp_vendor)rows.push([t("p_module"),[p.sfp_vendor,p.sfp_model,p.sfp_serial].filter(Boolean).join(" / ")]);
     var ext=p.sfp_options&0x40;

@@ -43,6 +43,6 @@ puts("PASS real Flash replay: live engine, CRLF, burst boundary, legacy defaults
 out=r/'test/build/snmp-control-replay';out.mkdir(parents=True,exist_ok=True);c=out/'control.c';c.write_text(code)
 for cc in shlex.split(os.environ.get('REPLAY_CC', os.environ.get('CC', 'cc'))):
  exe=out/('test-'+Path(cc).name)
- args=[cc,'-std=gnu11','-g','-O1','-Wall','-Wextra','-Werror','-Wno-unused-parameter','-Wno-unknown-pragmas','-Wno-pointer-sign','-DSNMP','-DMACHINE_MAX_PORT=7','-DSNMP_REAL_REPLAY','-DRTLP_HOST_TEST','-include','test/sdcc_shim.h','-Itest/stub','-Itest','-I.','-Ihttpd','-Iuip','-fsanitize=address,undefined','-fno-sanitize-recover=all','-fno-omit-frame-pointer',str(c),'snmp.c','snmp_control.c','uip/uip.c','httpd/httpd.c','-o',str(exe)]
+ args=[cc,'-std=gnu11','-g','-O1','-Wall','-Wextra','-Werror','-Wno-unused-parameter','-Wno-unknown-pragmas','-Wno-pointer-sign','-DSNMP','-DMACHINE_MAX_PORT=7','-DSNMP_REAL_REPLAY','-DRTLP_HOST_TEST','-include','test/sdcc_shim.h','-Itest/stub','-Itest','-I.','-Ihttpd','-Iuip','-fsanitize=address,undefined','-fno-sanitize-recover=all','-fno-omit-frame-pointer',str(c),'snmp.c','snmp_control.c','uip/uip.c','httpd/httpd.c','sessions.c','-o',str(exe)]
  if 'clang' not in subprocess.check_output([cc,'--version'],text=True):args+=['-Wno-builtin-declaration-mismatch']
  subprocess.run(args,cwd=r,check=True);subprocess.run([str(exe)],check=True)

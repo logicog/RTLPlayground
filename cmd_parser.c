@@ -24,6 +24,7 @@
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
+#include "sessions.h"
 #include "dns.h"
 #include "ntp.h"
 #ifdef SNMP
@@ -852,7 +853,7 @@ void parse_mirror(void)
 			print_string("NOT Enabled: ");
 		}
 		print_string("Mirroring port: ");
-		print_phys_port(mirroring_port);
+		print_phys_port(mPort >> 1);
 		reg_read_m(RTL837x_MIRROR_CONF);
 		uint16_t m = sfr_data[0];
 		m = (m << 8) | sfr_data[1];
@@ -1482,6 +1483,9 @@ void parse_passwd(void)
 			passwd[j++] = c;
 		} while (c != NUL && j < 20);
 		passwd[j] = NUL;
+		/* Logins made with the old password end here. With one session the next
+		 * login pushed a leftover one out; with several it would stay valid. */
+		session_init();
 		return;
 	}
 	cmd_error("Missing password\n");

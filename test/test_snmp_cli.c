@@ -103,7 +103,6 @@ int main(void)
 	snmp_listener->lport = oldport;
 	assert(command("snmp community late-community"));
 	scenario_information_auth();
-	extern char session_id[13];
 	const char *requests[] = {
 	    "GET /snmp_config HTTP/1.1\r\nHost: sw\r\n\r\n",
 	    "GET /snmp_config HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\n\r\n"};
