@@ -5,6 +5,7 @@ It is highly similar to SWTG024AS-V2.0, with the only difference being the GPIO 
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
 | Horaco | HC-SWTGW215AS |  | PCB-SWTG024AS-A-V2.0.1_19650 | W25Q16JV | 8272N |
+| Sodola | SL902-SWTG015AS |  | PCB-SWTG024AS-A-V2.0.1_19650 |  |  |
 
 ### Label specifications
 
@@ -28,7 +29,9 @@ The device is fully supported:
 
 Top side
 
-<!-- <img src="" width="300" /> -->
+<img src="photos/SWTG024AS-A-V2_0_1_19650/horaco-zx-sg4t2-pcb-top.jpg" width="300" />
+
+The reset button is soldered at `SW1` (GPIO48).
 
 Bottom
 
