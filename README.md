@@ -56,11 +56,18 @@ device simulator is provided, which runs entirely under Linux as a local webserv
 
 ## (0) Compiling Requirements
 
-Install the following particular build requisites (Debian 12/13), note that Ubuntu 24.04
-still has an older version of sdcc, but you will need sdcc version 4.5 for the code to compile:
+Install the following particular build requisites (Debian 12/13):
 ```
-sudo apt install make gcc sdcc xxd python-is-python3 libjson-c-dev zlib1g-dev
+sudo apt install make gcc g++ bison flex libboost-dev patch bzip2 curl xxd python-is-python3 libjson-c-dev zlib1g-dev
 ```
+
+The first `make` downloads SDCC 4.6.0, applies the fixes in `sdcc/` and builds it into
+`toolchain/`, which takes a few minutes. Later builds reuse it. The released SDCC 4.5.0
+and 4.6.0 miscompile parts of this code, see [SDCC bug #4153](https://sourceforge.net/p/sdcc/bugs/4153/)
+and [#4154](https://sourceforge.net/p/sdcc/bugs/4154/); both fixes are in SDCC trunk since
+r17039. The third patch is for [#4070](https://sourceforge.net/p/sdcc/bugs/4070/), where the
+assembler drops the top byte of a `__sfr32` address list; it is proposed upstream and lets
+`SFR_DATA_U32` be used again. To use an SDCC you installed yourself instead, run `make CC=sdcc ...`.
 
 <details>
 <summary>If using Docker (click to expand)</summary>
