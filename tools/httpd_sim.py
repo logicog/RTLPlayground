@@ -422,6 +422,7 @@ class Handler(SimpleHTTPRequestHandler):
             item = {
                 "portNum": i,
                 "logPort": machine_config["phys_to_log_port"][n],
+                "name": "",
                 "isSFP": machine_config["is_sfp"][i],
                 "enabled": int(i % 4 != 0),
                 "link": (5 if i == 1 else 2) if i % 2 else 0,
