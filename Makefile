@@ -234,12 +234,14 @@ $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.i
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
 # Every machine/ definition is compiled, so a machine added to machine/ is
-# covered without registering it anywhere. The _init.c files are excluded here:
-# they are the boot hooks, compiled separately below (the board's own if it
-# exists, otherwise default_machine_init.c). The machine-specific defines are
-# filtered out of $(CC_FLAGS) and supplied per iteration instead, so this also
-# works as "make machine_check MACHINE=...".
-MACHINE_DEFS := $(sort $(patsubst machine/%.c,%,$(filter-out machine/%_init.c,$(wildcard machine/*.c))))
+# covered without registering it anywhere. A board only counts once both its
+# <machine>.c and its <machine>.h are present: the header is what the rest of
+# the build includes, so a .c without one is an incomplete board. The _init.c
+# files are excluded here: they are the boot hooks, compiled separately below
+# (the board's own if it exists, otherwise default_machine_init.c). The
+# machine-specific defines are filtered out of $(CC_FLAGS) and supplied per
+# iteration instead, so this also works as "make machine_check MACHINE=...".
+MACHINE_DEFS := $(sort $(filter $(patsubst machine/%.h,%,$(wildcard machine/*.h)),$(patsubst machine/%.c,%,$(filter-out machine/%_init.c,$(wildcard machine/*.c)))))
 MACHINE_LESS_CC_FLAGS = $(filter-out -DMACHINE_%,$(CC_FLAGS))
 
 .PHONY: machine_check
