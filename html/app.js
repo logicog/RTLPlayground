@@ -559,7 +559,7 @@ sy_ip_err:"Erreur d'IP / masque réseau / passerelle",sy_host_err:"Nom d'hôte :
 sy_net_q:"Appliquer les paramètres réseau?",sy_net_d:"L'adresse IP de  management va devenir {ip}: merci de réouvrir le page depuis cette adresse.",
 sy_ip_changed:"L'adresse IP a changée, reconnectez-vous à http://{ip}/",sy_dhcp_q:"Passer en DHCP?",
 sy_dhcp_d:"Le commutateur va demander une addresse via le DHCP. Vous devrez rechercher sa prochaine adresse IP pour vous reconnecter.",
-sy_sysip_err:"Adresse IP du serveur Syslog invalide",sy_sysport_err:"Le port Syslog doit être compris entre 1 et 65535",
+sy_sysip_err:"Adresse IP du serveur Syslog invalide",sy_dns1:"DNS principal",sy_dns2:"DNS secondaire",sy_dns_err:"Adresse IP du DNS invalide",sy_dns_dhcp:"émis par le DHCP: {ip}",
 sy_time:"Temps",sy_ntp:"NTP",sy_ntpsrv:"Serveur NTP",sy_ntpsrv_p:"Nom d'hôte ou adresse IPv4",sy_ntpint:"intervalle de scrutation [min]",
 sy_tz:"Fuseau horaire",sy_dst:"Heure d'été",sy_dst_eu:"Europe",
 sy_dst_us:"Etats-Unis",sy_now:"Heure locale",
