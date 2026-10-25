@@ -1560,6 +1560,8 @@ function buildVlanEdit() {
   if (tb.rows.length || !S.n) return;
   var hd = tb.insertRow();
   hd.insertCell().className = "mut";
+  var rN = tb.insertRow();
+  rN.insertCell().textContent = t("c_name");
   var rM = tb.insertRow();
   rM.insertCell().textContent = t("v_member");
   var rP = tb.insertRow();
@@ -1578,6 +1580,7 @@ function buildVlanEdit() {
       }));
     });
     seg.children[0].classList.add("on");
+    rN.insertCell().appendChild(document.createTextNode((S.ports.filter(x=>x.portNum==p)[0]).name));
     rM.insertCell().appendChild(seg);
     rP.insertCell().appendChild(h("span", { id: "vp" + p }));
   })(p);
