@@ -10,7 +10,13 @@ ifeq ($(origin CC),default)
 SDCC = $(SDCC_PREFIX)/bin/sdcc
 CC = $(SDCC)
 ASM = $(SDCC_PREFIX)/bin/sdas8051
-SDCC_BANNER = $(SDCC_TOOLCHAIN) ($(words $(wildcard sdcc/*.patch)) patches)
+SDCC_REV := $(shell git log -1 --format=%h -- sdcc 2>/dev/null)
+ifneq ($(SDCC_REV),)
+ifneq ($(shell git status --porcelain --untracked-files=no -- sdcc 2>/dev/null),)
+SDCC_REV := $(SDCC_REV)-dirty
+endif
+endif
+SDCC_BANNER = $(if $(SDCC_REV),sdcc/ at $(SDCC_REV),$(SDCC_TOOLCHAIN)) ($(words $(wildcard sdcc/*.patch)) patches)
 else
 SDCC_BANNER = system
 endif
