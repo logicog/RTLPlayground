@@ -57,13 +57,16 @@ const uint8_t hex_chars[] = "0123456789abcdef";
 uint8_t *hex = (uint8_t *)hex_chars;
 
 /* ---- a 9-port RTL8373 whose logical ports map to themselves ---- */
+#ifndef RTLP_TEST_IS8373
+#define RTLP_TEST_IS8373 1
+#endif
 const struct machine machine = {
 	.machine_name = "HOSTTEST",
 	.n_sfp = 0,
 	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
 	.phys_to_log_port = { 0, 1, 2, 3, 4, 5, 6, 7, 8 },
 };
-struct machine_runtime machine_detected = { .isRTL8373 = 1 };
+struct machine_runtime machine_detected = { .isRTL8373 = RTLP_TEST_IS8373 };
 
 /* ---- firmware state the modules read or write ---- */
 uint8_t  outbuf[TCP_OUTBUF_SIZE];
