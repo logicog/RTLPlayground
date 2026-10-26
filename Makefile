@@ -8,10 +8,6 @@ HTML_LOCATION = 262144
 # machine with its own configuration: make MACHINE=<name> CONFIG=<file>
 CONFIG ?= config.txt
 
-# Startup configuration embedded in the image. Override it to build a specific
-# machine with its own configuration: make MACHINE=<name> CONFIG=<file>
-CONFIG ?= config.txt
-
 SDCC_PREFIX = toolchain/sdcc-$(shell cat sdcc/* | cksum | cut -d' ' -f1)
 ifeq ($(origin CC),default)
 SDCC = $(SDCC_PREFIX)/bin/sdcc
