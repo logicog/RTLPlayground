@@ -6,8 +6,6 @@
  * extracts that image from stock_fw/<machine>.bin (see tools/poe_extract.c),
  * so this file only has to hand the image to the chip driver selected by
  * MACHINE_POE_CHIP.
- *
- * Only compiled when the Makefile selected PoE support for the machine.
  */
 #pragma codeseg BANK3
 #pragma constseg BANK3
