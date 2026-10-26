@@ -65,14 +65,14 @@ POE_SRCS := poe/poe.c
 
 MACHINE_POE_CHIP := $(shell \
 	grep -hE '^[[:space:]]*#[[:space:]]*define[[:space:]]+MACHINE_POE_CHIP([[:space:]]|$$)' \
-		machine/$(MACHINE).h 2>/dev/null | head -n 1 | awk '{ print $$3 }')
+		machine/$(MACHINE).h 2>/dev/null | head -n 1 | sed -n 's/^.*MACHINE_POE_CHIP[[:space:]]//p' )
 
 POE_FW_DIR := poe/firmware
 ifneq ($(MACHINE_POE_CHIP),)
 ifndef NO_POE
 POE_ENABLED := 1
 POE_STOCK_FW := stock_fw/$(MACHINE).bin
-POE_FW_SRC := $(POE_FW_DIR)/poe_fw_$(MACHINE_POE_CHIP).c
+POE_FW_SRC := $(POE_FW_DIR)/poe_fw_$(MACHINE_POE_CHIP)_$(MACHINE).c
 
 # Driver source list per controller. A value without an entry fails the build
 # rather than silently producing a firmware without PoE support.

@@ -59,20 +59,26 @@ static void poe_bus_setup(void)
 }
 
 
+/* place holder function for poe support */
 void poe_bringup(void) __banked
 {
 }
 
+/* place holder function for poe support */
 void poe_port_set(uint8_t port_num, uint8_t port_on) __banked
 {
+	(void) port_num;
+	(void) port_on;
 }
 
+/* place holder function for poe support */
 void poe_global_set(uint8_t on) __banked
 {
 	(void) on;
 }
 
 
+/* place holder function for poe support */
 bool poe_chip_init(void) __banked
 {
 	poe_bus_setup();

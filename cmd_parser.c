@@ -1878,7 +1878,7 @@ static void parse_poe(void)
 	return;
 
 err:
-	cmd_error("poe load|port <n> <on|off>|global <on|off>\nstatus: GET /poe.json\n");
+	cmd_error("poe load|port <n> <on|off>|global <on|off>\n");
 #else
 	print_string("PoE not supported on this machine\n");
 #endif /* POE_PRESENT */
