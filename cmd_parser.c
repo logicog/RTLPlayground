@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_macsec.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
@@ -1675,6 +1676,55 @@ err:
 	print_string("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
 }
 
+
+static uint8_t parse_hex_bytes(uint8_t idx, __xdata uint8_t * __xdata dst, __xdata uint8_t n)
+{
+	uint8_t c, i;
+	__xdata uint8_t v = 0;
+
+	for (i = 0; i < n * 2; i++) {
+		c = cmd_buffer[idx + i];
+		if ((uint8_t)(c - '0') < 10) {
+			c -= '0';
+		} else {
+			c |= 0x20;
+			c -= 'a';
+			if (c > 5)
+				return 0;
+			c += 10;
+		}
+		v = (v << 4) | c;
+		if (i & 1)
+			dst[i >> 1] = v;
+	}
+	c = cmd_buffer[idx + i];
+	return c == ' ' || c == NUL;
+}
+
+
+static __xdata uint8_t macsec_key[MACSEC_KEY_LEN + MACSEC_SCI_LEN];
+
+void parse_macsec(void)
+{
+	__xdata uint8_t port;
+
+	if (cmd_words_len == 1)
+		return macsec_show();
+	if (cmd_words_len < 3 || !cmd_parse_port_separator(cmd_words_b[1]))
+		goto err;
+	port = atoi_results_u8;
+	if (cmd_words_len == 3 && cmd_compare(2, "off"))
+		return macsec_off(port);
+	if (cmd_words_len != 6 || !cmd_compare(2, "key") || !cmd_compare(4, "peer")
+	    || !parse_hex_bytes(cmd_words_b[3], macsec_key, MACSEC_KEY_LEN)
+	    || !parse_hex_bytes(cmd_words_b[5], macsec_key + MACSEC_KEY_LEN, MACSEC_SCI_LEN))
+		goto err;
+	return macsec_on(port, macsec_key, macsec_key + MACSEC_KEY_LEN);
+
+err:
+	print_string("usage: macsec [<port> key <32 hex digits> peer <16 hex digits>|<port> off]\n");
+}
+
 void parse_syslog(void)
 {
 	if (cmd_words_len < 2) // no argument -> print status
@@ -2069,6 +2119,8 @@ void cmd_parser(void) __banked
 			parse_temp();
 		} else if (cmd_compare(0, "storm")) {
 			parse_storm();
+		} else if (cmd_compare(0, "macsec")) {
+			parse_macsec();
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "history")) {
