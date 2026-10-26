@@ -1070,6 +1070,11 @@ void httpd_appcall(void)
 				uip_close();
 				delay(1000); //wait for the close packet to be sent, otherwise the browser will retry
 				reset_chip();
+			} else if (is_word(q, "/factory_reset")) {
+				flash_default_config();
+				uip_close();
+				delay(1000); //wait for the close packet to be sent, otherwise the browser will retry
+				reset_chip();
 			} else {
 				send_not_found();
 			}
