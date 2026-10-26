@@ -1840,6 +1840,8 @@ void print_gpio_status(void) {
 void print_sw_version(void) __banked {
 	print_string("Software version: " VERSION_SW);
 	print_string("\nBuild date: " BUILD_DATE);
+	print_string("\nCompiler: SDCC " STR(__SDCC_VERSION_MAJOR) "." STR(__SDCC_VERSION_MINOR) "." STR(__SDCC_VERSION_PATCH) " #" STR(__SDCC_REVISION));
+	print_string("\nToolchain: " SDCC_TOOLCHAIN);
 	print_string("\nHardware: ");
 	print_string(machine.machine_name);
 	write_char('\n');
@@ -2015,10 +2017,10 @@ void cmd_parser(void) __banked
 				cmd_error("lacp (show | off); a group starts LACP with: lag <1-4> lacp <port>...\n");
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
-			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
+			    && atoi_short(cmd_words_b[2]) && atoi_results_short <= 4094)
 				port_pvid_set(atoi_results_u8, atoi_results_short);
 			else {
-				cmd_error("pvid <port> <1-4094>\n");
+				cmd_error("pvid <port> <0-4094>\n");
 			}
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();

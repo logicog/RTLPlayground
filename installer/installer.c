@@ -348,7 +348,7 @@ void installer(void)
 {
 
 	CKCON = 0;	// Initial Clock configuration
-	SFR_97 = 0;	// HADDR?
+	MAP_FLASH_PAGE_TO_XDATA = 0;	// HADDR?
 
 	// Set in managed mode:
 	SFR_b9 = 0x00;
