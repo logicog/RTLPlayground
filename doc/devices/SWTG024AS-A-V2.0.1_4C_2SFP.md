@@ -5,6 +5,7 @@ It is highly similar to SWTG024AS-V2.0, with the only difference being the GPIO 
 |Brand    |Type          |Managed|PCB                           |Flash           |Chip RTL|
 |---------|--------------|-------|------------------------------|----------------|--------|
 | Horaco  | ZX-SG4T2     | No    | PCB-SWTG024AS-A-V2.0.1_19650 | 512K (P25D40SH)| 8372N  |
+| Horaco  | HC-SWTG124AS | Yes   | PCB-SWTG024AS-A-V2.0.1_19650 | 2M   (W25Q16JV)| 8372N  |
 | Horaco  | HC-SWTG124AS | Yes   | PCB-SWTG024AS-A-V2.0.1       | 2M   (W25Q16JV)| 8372N  |
 | GoodTop | GT-ST024M    | Yes   | PCB-SWTG024AS-A-V2.0.1       | 2M             | 8372N  |
 
@@ -34,6 +35,8 @@ Top side
 Bottom
 
 <img src="photos/SWTG024AS-A-V2_0_1_19650/horaco-zx-sg4t2-pcb-bottom.jpg" width="300" />
+
+On Horaco HC-SWTG124AS with board PCB-SWTG024AS-A-V2.0.1_19650 the reset button is soldered at `SW1` (on the top left).
 
 ### J1, serial console
 
