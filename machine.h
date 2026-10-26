@@ -45,6 +45,16 @@
 #define MACHINE_PORT_VALID(p) \
 	((uint8_t)((p) - MACHINE_MIN_PORT) <= (MACHINE_MAX_PORT - MACHINE_MIN_PORT))
 
+#ifndef MACHINE_NUM_RJ45
+#if (MACHINE_CHIPSET == RTL8372)
+#define MACHINE_NUM_RJ45 4
+#elif (MACHINE_CHIPSET == RTL8373)
+#define MACHINE_NUM_RJ45 8
+#elif (MACHINE_CHIPSET == RTL8370)
+#define MACHINE_NUM_RJ45 8
+#endif
+#endif
+
 // auto derive SOC_FAMILY
 #define RTL836X 6
 #define RTL837X 7

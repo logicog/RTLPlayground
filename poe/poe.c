@@ -18,7 +18,7 @@
 #include "machine.h"
 #include "rtl837x_common.h"
 
-#if (MACHINE_POE_CHIP == POE_NONE ) || defined(NO_POE)
+#ifndef POE_PRESENT
 void poe_init(void) __banked
 {
 	print_string("\nNo PoE Support.\n");

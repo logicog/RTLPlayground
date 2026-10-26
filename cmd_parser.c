@@ -1848,6 +1848,43 @@ void print_sw_version(void) __banked {
 }
 
 
+// POE support
+static void parse_poe(void)
+{
+#ifdef POE_PRESENT
+	if (cmd_words_len < 2)
+		goto err;
+
+	if (cmd_compare(1, "load")) {
+		// Re-run the full PoE bring-up - the same sequence the boot runs.
+		poe_bringup();
+	} else if (cmd_compare(1, "port")) {
+		// Enable/disable PoE on a single port: `poe port <1-n> <on|off>`.
+		if (cmd_words_len >= 4 && atoi_byte(cmd_words_b[2])
+		    && atoi_results_u8 >= 1 && atoi_results_u8 <= MACHINE_NUM_RJ45
+		    && (cmd_compare(3, "on") || cmd_compare(3, "off"))) {
+			poe_port_set(atoi_results_u8 - 1, cmd_compare(3, "on") ? 1 : 0);	// 1-n -> 0-based
+		} else {
+			goto err;
+		}
+	} else if (cmd_compare(1, "global")) {
+		// Enable/disable ALL ports at once: `poe global <on|off>`.
+		if (!cmd_compare(2, "on") && !cmd_compare(2, "off"))
+			goto err;
+		poe_global_set(cmd_compare(2, "on") ? 1 : 0);
+	} else {
+		goto err;
+	}
+	return;
+
+err:
+	cmd_error("poe load|port <n> <on|off>|global <on|off>\nstatus: GET /poe.json\n");
+#else
+	print_string("PoE not supported on this machine\n");
+#endif /* POE_PRESENT */
+}
+
+
 // Identify command
 void cmd_parser(void) __banked
 {
@@ -1872,6 +1909,8 @@ void cmd_parser(void) __banked
 			reset_chip();
 		} else if (cmd_compare(0, "sfp")) {
 			parse_sfp();
+		} else if (cmd_compare(0, "poe")) {
+			parse_poe();
 		} else if (cmd_compare(0, "stat")) {
 			port_stats_print();
 		} else if (cmd_compare(0, "flash") && cmd_words_len == 2) {

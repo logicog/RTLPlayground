@@ -59,6 +59,19 @@ static void poe_bus_setup(void)
 }
 
 
+void poe_bringup(void) __banked
+{
+}
+
+void poe_port_set(uint8_t port_num, uint8_t port_on) __banked
+{
+}
+
+void poe_global_set(uint8_t on) __banked
+{
+	(void) on;
+}
+
 
 bool poe_chip_init(void) __banked
 {
