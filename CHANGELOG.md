@@ -47,6 +47,12 @@
   - The web UI and the configuration upload now refuse a line the replay cannot take,
     instead of writing it to flash.
 
+- Startup
+  - Initialised and zero-initialised globals above xdata 0x4000 now get their values at boot.
+    Hardware reset leaves SFR 0x97 at 1, which maps xdata 0x4000-0xbfff to the flash image,
+    and it was cleared only in `main()`, after the C startup code had copied and cleared them.
+    This showed as a random web session timeout and LLDP blocked on some ports without config.
+
 ## Breaking changes
 
 - Config
