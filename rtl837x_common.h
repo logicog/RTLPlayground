@@ -19,6 +19,8 @@
 #define MAC_ADDR_LEN    6
 #define PORT_BIT(p)     ((uint16_t)1 << (p))
 #define NUL			'\0'
+#define STR_(x)		#x
+#define STR(x)		STR_(x)
 
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff
