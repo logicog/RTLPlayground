@@ -1866,7 +1866,12 @@ void cmd_parser(void) __banked
 #endif
 	if (cmd_words_len >= 1) {
 		if (cmd_compare(0, "reset")) {
-			print_string("\nRESET\n\n");
+			if (cmd_compare(1, "defaults") || cmd_compare(1, "factory")) {
+				print_string("\nFACTORY RESET\n\n");
+				flash_default_config();
+			} else {
+				print_string("\nRESET\n\n");
+			}
 			reset_chip();
 		} else if (cmd_compare(0, "sfp")) {
 			parse_sfp();

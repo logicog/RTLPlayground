@@ -129,6 +129,7 @@ const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
 static unsigned reset_calls;
 void reset_chip(void) { reset_calls++; }
+void flash_default_config(void) { }
 void delay(uint16_t t) { (void)t; }
 void write_char(char c) { (void)c; }
 void write_char_no_syslog(char c) { (void)c; }
