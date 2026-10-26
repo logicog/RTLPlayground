@@ -205,6 +205,11 @@
     "pcb": "PCB_SWTG115AS_V2_0_16030"
   },
   {
+    "machine": "MERCURY_SE106_PRO_V1_0",
+    "friendly_name": "Mercury SE106 Pro V1.0",
+    "pcb": "2088501190"
+  },
+  {
     "machine": "MOKERLINK_2G040210GSM",
     "friendly_name": "MokerLink 2G040210GSM",
     "pcb": "2M_PCB43_V1_1"
