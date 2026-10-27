@@ -177,9 +177,9 @@ example of compilation console output
 RTLPlayground/installer$ make
 mkdir -p output
 gcc updatebuilder.c -o output/updatebuilder
-sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
-sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
-sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
+../toolchain/sdcc-3390765201/bin/sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
+../toolchain/sdcc-3390765201/bin/sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
+../toolchain/sdcc-3390765201/bin/sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
 ./output/updatebuilder -i output/rtlinstaller.ihx -o output/rtlplayground_oem_upgrade.bin ../output/rtlplayground.bin
 Input file size: 524288
 Bytes read: 524288
