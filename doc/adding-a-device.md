@@ -116,6 +116,7 @@ Keep it as the first initializer and list the board-specific fields after it.
 | `led_sets[4][4]` | Each port can have up to 4 GPIO output pins assigned. 4 sets of LEDs with 4 LED-conditions per set; the conditions define which GPIO pins become active for a port given a port link-state. Which LEDs are then enabled depends on the wiring of the pins to up to 3 LEDs for that port, which can make a logical combination of the 4 LED output-pins. |
 | `led_mux_custom` / `led_mux[28]` | `1` plus the 28 mux values when the stock LED muxing does not fit the board |
 | `mac_flash_offset` | flash offset of the factory MAC address, omit or `0` if the board does not store one |
+| `phy_mdi_reverse` | RTL8372 only: `PHY_MDI_REVERSE(bits)` with bit n reversing the MDI pair order of logical port 4 + n; omit for the default `0xc`. A copper port wired the other way receives nothing (no link, link partner ability `0`) |
 | `gpio_exp` | a PCA9555-style I2C GPIO expander, see below; omit if the board has none |
 
 Each `struct sfp_port` entry holds `pin_detect`, `pin_los`, `pin_tx_disable`,

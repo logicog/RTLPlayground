@@ -231,7 +231,7 @@ void rtl8372_init(void) __banked
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
-	sfr_mask_data(0, 0x0f, 0x0c);
+	sfr_mask_data(0, 0x0f, machine.phy_mdi_reverse ? machine.phy_mdi_reverse & 0x0f : 0x0c);
 	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
 
 	// Disable PHYs for configuration

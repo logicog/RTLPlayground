@@ -65,6 +65,9 @@
 #define LED_28_SYS 2
 #define LED_29 4
 
+// MDI pair reversal of the RTL8372 copper ports, bit n = logical port 4 + n
+#define PHY_MDI_REVERSE(bits) (0x80 | (bits))
+
 struct high_leds {
 	// Defines MUX and LED enabling for pins 27-29
 	uint8_t mux : 3;
@@ -118,6 +121,8 @@ struct machine {
 	// random resets. Costs management-plane speed only, the ASIC keeps
 	// forwarding in hardware.
 	uint8_t flash_sio;
+	// PHY_MDI_REVERSE() value for RTL837X_CFG_PHY_MDI_REVERSE, 0 keeps the default 0xc
+	uint8_t phy_mdi_reverse;
 	struct gpio_exp gpio_exp;
 };
 
