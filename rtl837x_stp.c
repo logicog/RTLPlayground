@@ -133,6 +133,7 @@ __xdata uint8_t  stp_lag;
 #define FWD_S		(stp_root_port == 0xff ? stp_fwddelay_s : stp_root_fwd)
 #define FWD_TICKS	((uint16_t)FWD_S * STP_HZ)
 #define P2P(i)		(stp_pp2p[i] != 2)
+#define STP_RUNS(i)	((stp_pflags[i] & (STP_PF_ENABLED | STP_PF_TRIPPED)) == STP_PF_ENABLED)
 #define SEND_RSTP(i)	(stp_rstp && !((stp_legacy >> (i)) & 1))
 #define STP_MIGRATE	(3 * STP_HZ)
 
@@ -508,7 +509,7 @@ static uint8_t stp_tc_prop(uint8_t from) __reentrant
 	for (stp_k = 0; stp_k < STP_ENTITIES; stp_k++) {
 		if (stp_k == from || !stp_ent_active(stp_k) || stp_tcwhile[stp_k] || stp_state_get(stp_k) != 0b11)
 			continue;
-		if (!(stp_pflags[stp_k] & STP_PF_ENABLED) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
+		if (!STP_RUNS(stp_k) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
 			continue;
 		stp_forget(stp_k);
 		stp_new_tc_while(stp_k);
@@ -545,7 +546,7 @@ static void stp_sync(uint8_t from) __reentrant
 	for (stp_k = 0; stp_k < STP_ENTITIES; stp_k++) {
 		if (!stp_ent_active(stp_k))
 			continue;
-		if (stp_k == from || stp_k == stp_root_port || !(stp_pflags[stp_k] & STP_PF_ENABLED)
+		if (stp_k == from || stp_k == stp_root_port || !STP_RUNS(stp_k)
 		    || (stp_pflags[stp_k] & STP_PF_OPEREDGE) || ((stp_alt >> stp_k) & 1)
 		    || !((stp_link_prev >> stp_k) & 1))
 			continue;
@@ -572,9 +573,7 @@ static void stp_loop_hold_peer(uint8_t port) __reentrant
 {
 	if (!stp_ent_active(port))
 		return;
-	if (!(stp_pflags[port] & STP_PF_ENABLED))
-		return;
-	if (stp_pflags[port] & STP_PF_TRIPPED)
+	if (!STP_RUNS(port))
 		return;
 	if (!port_timers[port]) {
 		print_string("STP: loop detected, blocking port ");
@@ -651,7 +650,7 @@ static void stp_reroot_tree(void) __reentrant
 		if (!stp_ent_active(stp_k))
 			continue;
 		if (stp_k == stp_root_port || !stp_rrwhile[stp_k]
-		    || !(stp_pflags[stp_k] & STP_PF_ENABLED) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
+		    || !STP_RUNS(stp_k) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
 			continue;
 		stp_reroot |= (uint16_t)1 << stp_k;
 		if (stp_state_get(stp_k) != 0b01) {
@@ -673,7 +672,7 @@ static void stp_reselect(void)
 	for (stp_j = 0; stp_j < STP_ENTITIES; stp_j++) {
 		if (!stp_ent_active(stp_j))
 			continue;
-		if (!(stp_pflags[stp_j] & STP_PF_ENABLED) || (stp_pflags[stp_j] & STP_PF_ROOTGUARD))
+		if (!STP_RUNS(stp_j) || (stp_pflags[stp_j] & STP_PF_ROOTGUARD))
 			continue;
 		if (!((stp_link_now >> stp_j) & 1) || !stp_info_fresh(stp_j))
 			continue;
@@ -712,7 +711,7 @@ static void stp_reselect(void)
 	for (stp_j = 0; stp_j < STP_ENTITIES; stp_j++) {
 		if (!stp_ent_active(stp_j))
 			continue;
-		if (!(stp_pflags[stp_j] & STP_PF_ENABLED))
+		if (!STP_RUNS(stp_j))
 			continue;
 		if (stp_j != stp_root_port && stp_info_fresh(stp_j)
 		    && stp_cmp_designated(stp_j) < 0) {
@@ -1011,6 +1010,7 @@ void stp_in(void) __banked
 		print_string("STP: BPDU guard tripped, disabling port ");
 		print_port_nl(port);
 		stp_pflags[port] |= STP_PF_TRIPPED;
+		port_timers[port] = 0;
 		stp_state_set(port, 0b00);
 		stp_tc_count++;
 		return;
@@ -1158,7 +1158,7 @@ static void stp_ent_reset(uint8_t e) __reentrant
 	stp_heard &= ~stp_ent_bit;
 	stp_newinfo &= ~stp_ent_bit;
 	stp_link_prev = (stp_link_prev & ~stp_ent_bit) | (stp_link_now & stp_ent_bit);
-	stp_pflags[e] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
+	stp_pflags[e] &= ~STP_PF_OPEREDGE;
 	stp_loop_held[e] = 0;
 	stp_bpdu_age[e] = 0;
 	stp_tx_budget[e] = stp_txhold;
@@ -1169,8 +1169,14 @@ static void stp_ent_reset(uint8_t e) __reentrant
 	stp_rbwhile[e] = 0;
 	port_timers[e] = 0;
 	port_hello[e] = (uint16_t)stp_hello_s * STP_HZ;
-	if (!stp_ent_active(e))
+	if (!stp_ent_active(e)) {
+		stp_pflags[e] &= ~STP_PF_TRIPPED;
 		return;
+	}
+	if ((stp_pflags[e] & STP_PF_ENABLED) && (stp_pflags[e] & STP_PF_TRIPPED)) {
+		stp_state_set(e, 0b00);
+		return;
+	}
 	if (!(stp_pflags[e] & STP_PF_ENABLED) || (stp_pflags[e] & STP_PF_ADMEDGE)) {
 		if (stp_pflags[e] & STP_PF_ADMEDGE)
 			stp_pflags[e] |= STP_PF_OPEREDGE;
@@ -1218,7 +1224,7 @@ void stp_timers(void) __banked
 			for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 				if (!stp_ent_active(stp_i))
 					continue;
-				if (!(stp_pflags[stp_i] & STP_PF_ENABLED))
+				if (!STP_RUNS(stp_i))
 					continue;
 				if (!((stp_link_now ^ stp_link_prev) >> stp_i & 1))
 					continue;
@@ -1258,7 +1264,7 @@ void stp_timers(void) __banked
 	}
 
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
-		if (!stp_ent_active(stp_i) || !(stp_pflags[stp_i] & STP_PF_ENABLED))
+		if (!stp_ent_active(stp_i) || !STP_RUNS(stp_i))
 			continue;
 
 		if (stp_bpdu_age[stp_i] < 0xffff)

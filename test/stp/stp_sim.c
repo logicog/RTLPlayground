@@ -1110,6 +1110,91 @@ static void scen_link_loss_no_tc(void)
 	check(tc_frames[2] == tc3 && tc_frames[8] == tc9, "no TC goes out");
 }
 
+static struct sim_bpdu rogue_on(uint8_t port)
+{
+	struct sim_bpdu b = { .port = port, .root_prio = 0x80, .br_prio = 0x80, .port_id = 1 };
+
+	memcpy(b.root_mac, PEER_MAC, 6);
+	memcpy(b.br_mac, PEER_MAC, 6);
+	return b;
+}
+
+static int ticks_forwarding(uint8_t port, struct sim_bpdu *b, unsigned s)
+{
+	int fwd = 0;
+
+	for (unsigned t = 0; t < s * STP_HZ; t++) {
+		if (b && t % (2 * STP_HZ) == 0)
+			bpdu_in(b);
+		stp_timers();
+		if (port_state(port) == 3)
+			fwd++;
+	}
+	return fwd;
+}
+
+static void scen_guard_in_listen(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+
+	printf("59. a port tripped by BPDU guard while listening stays off\n");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	tick(STP_HZ / 2);
+	bpdu_in(&r);
+	check(stp_pflags[3] & STP_PF_TRIPPED, "the BPDU trips port 4");
+	check(ticks_forwarding(3, NULL, 10) == 0, "it does not go forwarding once the sender falls silent");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	tick(STP_HZ / 2);
+	check(ticks_forwarding(3, &r, 20) == 0, "nor while the sender keeps sending hellos");
+}
+
+static void scen_guard_link_flap(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+
+	printf("60. a link flap does not bring a tripped port back\n");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	secs(6);
+	bpdu_in(&r);
+	check_state(3, 0, "the BPDU trips the edge port");
+	links_set(0);
+	secs(2);
+	links_set(1 << 3);
+	check(ticks_forwarding(3, NULL, 10) == 0, "carrier coming back leaves it off");
+	sim_cmd("stp port 4 on");
+	check(!(stp_pflags[3] & STP_PF_TRIPPED), "stp port on clears the trip");
+	check(ticks_forwarding(3, NULL, 5) > 0, "and the port can forward again");
+}
+
+static void scen_guard_lag_change(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+
+	printf("61. a tripped group stays off when its membership changes\n");
+	reset_all();
+	links_set((1 << 3) | (1 << 4) | (1 << 5));
+	sim_lag[0] = (1 << 3) | (1 << 4);
+	secs(1);
+	sim_cmd("stp lag 1 guard bpdu");
+	secs(6);
+	bpdu_in(&r);
+	check(port_state(3) == 0 && port_state(4) == 0, "the BPDU trips both members");
+	sim_lag[0] |= 1 << 5;
+	secs(1);
+	check(stp_pflags[STP_LAG_BASE] & STP_PF_TRIPPED, "a new member does not clear the trip");
+	check(port_state(5) == 0, "the new member joins switched off");
+	check(ticks_forwarding(3, &r, 10) == 0, "the group stays off");
+	sim_lag[0] = 0;
+	secs(1);
+	check(!(stp_pflags[STP_LAG_BASE] & STP_PF_TRIPPED), "dissolving the group drops the trip with it");
+}
+
 static void scen_proposal_agreement(void)
 {
 	struct sim_bpdu r;
@@ -2338,6 +2423,9 @@ int main(int argc, char **argv)
 	scen_alt_forgets();
 	scen_edge_no_tc();
 	scen_link_loss_no_tc();
+	scen_guard_in_listen();
+	scen_guard_link_flap();
+	scen_guard_lag_change();
 	scen_proposal_agreement();
 	scen_no_agreement();
 	scen_sync_on_proposal();
