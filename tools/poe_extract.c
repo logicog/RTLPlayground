@@ -9,14 +9,30 @@
  * firmware version, so the tool locates them by content rather than by a
  * recorded offset:
  *
- * Every image begins with a six-byte container header: two zero bytes, the
- * little-endian signature 0x8239 and a per-chip u16 (0x000f for 8238B, 0x000b
- * for 8238C). The header is part of the image - the 8238B one ends exactly
- * where the 8238C one starts - and its whole six bytes are unique in the
- * vendor image, so they are used as the search pattern. The container carries
- * no length field, so the size of each image stays a property of the chip
- * entry below. The tool refuses to extract when the header is missing or
- * occurs more than once, rather than guessing which match is meant.
+ * Every image is a self-describing container with a 16-byte little-endian
+ * header:
+ *
+ *   0..1   two zero bytes             }
+ *   2..3   signature 0x8239           } the unique search pattern
+ *   4..5   per-chip id (0x000f 8238B / 0x000b 8238C)
+ *   6..13  four u16 section lengths   } the payload, section 0 first
+ *   14..15 two zero bytes
+ *
+ * followed by the payload the four sections describe, followed by a 4-byte
+ * checksum chosen so that the whole container - read as little-endian 32-bit
+ * words - sums to zero: the trailer is the two's complement of the sum of
+ * everything before it. The header therefore also fixes the image size,
+ *
+ *   image_len == 16 + seclen[0] + seclen[1] + seclen[2] + seclen[3] + 4
+ *
+ * so the tool takes the length from the image itself and checks what it
+ * extracted instead of trusting a size recorded here: a container whose header
+ * and checksum do not add up is refused rather than linked into the firmware.
+ *
+ * The tool refuses to extract when the header is missing or occurs more than
+ * once, when the sections describe more than the payload bound or more than
+ * what is left of the vendor image, or when the checksum does not match,
+ * rather than guessing which match is meant.
  *
  * The output is generated vendor firmware: it stays in the build tree (see
  * .gitignore) and must not be committed.
@@ -28,18 +44,32 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define HEADER_LEN 6
+#define HEADER_LEN	16	/* container header, described above */
+#define PATTERN_LEN	6	/* leading bytes that identify the container */
+#define TRAILER_LEN	4	/* checksum behind the payload */
+
+/* The chip's loader assembles the payload in its own memory, so the four
+ * sections may not describe more than 64 KiB between them. The tighter bound
+ * comes from the driver: it passes the size of the whole container - 20 bytes
+ * more than the payload - on as a uint16_t, so the payload stops one byte below
+ * 64 KiB (65535 - 16 - 4). */
+#define SECTION_TOTAL_MAX	(UINT16_MAX - HEADER_LEN - TRAILER_LEN)
 
 struct image {
 	const char *chip;
-	uint8_t header[HEADER_LEN];	/* start of the image, as found in the file */
-	uint32_t length;	/* image size including the header, not stored in it */
+	uint8_t pattern[PATTERN_LEN];	/* start of the container, as found in the file */
 	const char *vendor_action;
 };
 
+/* The image as its own header describes it. */
+struct container {
+	uint16_t section[4];	/* the four section lengths */
+	uint32_t sections;	/* their sum: the payload size */
+	uint32_t size;		/* header + payload + trailer */
+};
+
 static const struct image images[] = {
-	{ "RTL8238C", { 0x00, 0x00, 0x39, 0x82, 0x0b, 0x00 }, 0x1f5cu,
-	  "load 8238C pse image" },
+	{ "RTL8238C", { 0x00, 0x00, 0x39, 0x82, 0x0b, 0x00 }, "load 8238C pse image" },
 };
 
 struct arguments {
@@ -61,7 +91,7 @@ static struct argp_option options[] = {
 	  .doc = "Write the generated C source here" },
 	{ 0 }
 };
-const char *argp_program_version = "poe_extract 0.2";
+const char *argp_program_version = "poe_extract 0.3";
 
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
@@ -129,11 +159,11 @@ static uint8_t *read_file(const char *name, size_t *size)
 }
 
 
-static void print_header(char *buf, size_t len, const struct image *img)
+static void print_pattern(char *buf, size_t len, const struct image *img)
 {
 	snprintf(buf, len, "%02x %02x %02x %02x %02x %02x",
-		 img->header[0], img->header[1], img->header[2],
-		 img->header[3], img->header[4], img->header[5]);
+		 img->pattern[0], img->pattern[1], img->pattern[2],
+		 img->pattern[3], img->pattern[4], img->pattern[5]);
 }
 
 
@@ -141,28 +171,28 @@ static void print_header(char *buf, size_t len, const struct image *img)
 static int locate_image(const char *name, const uint8_t *data, size_t size,
 			const struct image *img, size_t *offset)
 {
-	char header[32];
+	char pattern[32];
 	size_t found = 0;
 	size_t first = 0;
 
-	for (size_t i = 0; i + HEADER_LEN <= size; i++) {
-		if (memcmp(data + i, img->header, HEADER_LEN))
+	for (size_t i = 0; i + PATTERN_LEN <= size; i++) {
+		if (memcmp(data + i, img->pattern, PATTERN_LEN))
 			continue;
 		if (!found)
 			first = i;
 		found++;
 	}
 
-	print_header(header, sizeof(header), img);
+	print_pattern(pattern, sizeof(pattern), img);
 	if (!found) {
 		fprintf(stderr, "%s: no %s image header (%s) found\n",
-			name, img->chip, header);
+			name, img->chip, pattern);
 		return 1;
 	}
 	if (found > 1) {
 		fprintf(stderr,
 			"%s: ambiguous, %zu %s image headers (%s), first at 0x%zx\n",
-			name, found, img->chip, header, first);
+			name, found, img->chip, pattern, first);
 		return 1;
 	}
 
@@ -171,8 +201,85 @@ static int locate_image(const char *name, const uint8_t *data, size_t size,
 }
 
 
+static uint16_t rd16(const uint8_t *p)
+{
+	return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+}
+
+
+static uint32_t rd32(const uint8_t *p)
+{
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+	       ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+
+/*
+ * Read the container's self-describing header and check that the image it
+ * describes is complete, within bounds and intact. The size comes from the
+ * header - 16 + the four sections + 4 - and everything is checked against what
+ * the vendor image actually holds, so a truncated or damaged container is
+ * refused instead of being linked into the firmware.
+ */
+static int parse_container(const char *name, const char *chip, const uint8_t *data,
+			   size_t size, size_t offset, struct container *ctr)
+{
+	const uint8_t *c = data + offset;
+	size_t remaining = size - offset;
+	uint32_t sum = 0;
+	uint32_t trailer;
+	uint32_t expected;
+
+	ctr->sections = 0;
+	for (int i = 0; i < 4; i++) {
+		ctr->section[i] = rd16(c + 6 + 2 * i);
+		ctr->sections += ctr->section[i];
+	}
+	ctr->size = HEADER_LEN + ctr->sections + TRAILER_LEN;
+
+	if (c[14] || c[15]) {
+		fprintf(stderr, "%s: %s image at 0x%zx has a non-zero header pad (%02x %02x)\n",
+			name, chip, offset, c[14], c[15]);
+		return 1;
+	}
+	if (ctr->sections > SECTION_TOTAL_MAX) {
+		fprintf(stderr,
+			"%s: %s image at 0x%zx describes %u bytes in its four sections, over the %u byte bound\n",
+			name, chip, offset, ctr->sections, SECTION_TOTAL_MAX);
+		return 1;
+	}
+	if (ctr->size > remaining) {
+		fprintf(stderr,
+			"%s: %s image at 0x%zx is %u bytes (16 + %u + 4), only %zu bytes left in the file\n",
+			name, chip, offset, ctr->size, ctr->sections, remaining);
+		return 1;
+	}
+	if (ctr->size % 4) {
+		fprintf(stderr,
+			"%s: %s image at 0x%zx is %u bytes, not a multiple of 4, so it cannot hold its dword checksum\n",
+			name, chip, offset, ctr->size);
+		return 1;
+	}
+
+	/* The trailer makes the container sum to zero over its little-endian
+	 * 32-bit words, i.e. it is the two's complement of the sum before it. */
+	for (uint32_t i = 0; i < ctr->size - TRAILER_LEN; i += 4)
+		sum += rd32(c + i);
+	trailer = rd32(c + ctr->size - TRAILER_LEN);
+	expected = 0 - sum;
+	if (trailer != expected) {
+		fprintf(stderr,
+			"%s: %s image at 0x%zx (%u bytes) fails its checksum: trailer %08x, expected %08x\n",
+			name, chip, offset, ctr->size, trailer, expected);
+		return 1;
+	}
+
+	return 0;
+}
+
+
 static int write_c(const char *path, const char *input, const struct image *img,
-		   size_t offset, const uint8_t *data)
+		   size_t offset, const uint8_t *data, const struct container *ctr)
 {
 	char tmp[4096];
 	FILE *out;
@@ -192,7 +299,8 @@ static int write_c(const char *path, const char *input, const struct image *img,
 		" * Generated by tools/poe_extract from %s - do not edit.\n"
 		" *\n"
 		" * %s PSE firmware image (%u bytes, found at file offset 0x%zx by\n"
-		" * header scan, vendor loader message \"%s\").\n"
+		" * header scan; sections %u+%u+%u+%u = %u bytes, checksum verified;\n"
+		" * vendor loader message \"%s\").\n"
 		" *\n"
 		" * The vendor keeps this image in the switch firmware and downloads it\n"
 		" * over I2C at boot. It is vendor property and must not be committed;\n"
@@ -205,13 +313,15 @@ static int write_c(const char *path, const char *input, const struct image *img,
 		"#pragma codeseg BANK3\n"
 		"#pragma constseg BANK3\n\n"
 		"__code const uint8_t poe_firmware[] = {\n",
-		input, img->chip, img->length, offset, img->vendor_action);
+		input, img->chip, ctr->size, offset,
+		ctr->section[0], ctr->section[1], ctr->section[2], ctr->section[3],
+		ctr->sections, img->vendor_action);
 
-	for (uint32_t i = 0; i < img->length; i++) {
+	for (uint32_t i = 0; i < ctr->size; i++) {
 		if (!(i % 12))
 			fprintf(out, "\t");
 		fprintf(out, "0x%02x,", data[offset + i]);
-		if (i % 12 == 11 || i + 1 == img->length)
+		if (i % 12 == 11 || i + 1 == ctr->size)
 			fprintf(out, "\n");
 		else
 			fprintf(out, " ");
@@ -220,7 +330,7 @@ static int write_c(const char *path, const char *input, const struct image *img,
 	fprintf(out,
 		"};\n\n"
 		"__code const uint16_t poe_firmware_len = %u;\n",
-		img->length);
+		ctr->size);
 
 	if (fclose(out)) {
 		perror(tmp);
@@ -239,6 +349,7 @@ static int write_c(const char *path, const char *input, const struct image *img,
 int main(int argc, char **argv)
 {
 	struct arguments arguments = { 0 };
+	struct container ctr;
 	const struct image *img;
 	uint8_t *data;
 	size_t size;
@@ -269,18 +380,15 @@ int main(int argc, char **argv)
 		free(data);
 		return 1;
 	}
-	if ((uint64_t)offset + img->length > size) {
-		fprintf(stderr,
-			"%s: %s image at 0x%zx is truncated (%u bytes, %zu left)\n",
-			arguments.input, img->chip, offset, img->length,
-			size - offset);
+	if (parse_container(arguments.input, img->chip, data, size, offset, &ctr)) {
 		free(data);
 		return 1;
 	}
-	printf("Found %s PSE image at 0x%zx (%u bytes)\n",
-		img->chip, offset, img->length);
+	printf("Found %s PSE image at 0x%zx (%u bytes, sections %u+%u+%u+%u, checksum OK)\n",
+	       img->chip, offset, ctr.size, ctr.section[0], ctr.section[1],
+	       ctr.section[2], ctr.section[3]);
 
-	ret = write_c(arguments.output, arguments.input, img, offset, data);
+	ret = write_c(arguments.output, arguments.input, img, offset, data, &ctr);
 	free(data);
 	return ret;
 }
