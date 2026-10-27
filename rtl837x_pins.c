@@ -70,8 +70,69 @@ static void gpio_mux_setup(uint8_t pin) __banked
 	}
 }
 
+__xdata uint8_t gpio_exp_out[2];
+__xdata uint8_t gpio_exp_dir[2];
+
+/*
+ * Transfer one register of the I2C GPIO expander: 0/1 inputs, 2/3 outputs,
+ * 6/7 directions. A write sends the byte in RTL837X_REG_I2C_OUT, a read
+ * leaves it there.
+ */
+static bool gpio_exp_xfer(uint8_t reg, bool write) __banked
+{
+	uint8_t dev = machine.gpio_exp.addr;
+
+	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
+	REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00,
+		  0x1 << (I2C_MEM_ADDR_WIDTH - 16),
+		  (dev >> 5) | machine.gpio_exp.i2c,
+		  ((dev << 3) & 0xff) | (write ? 0x5 : 0x1));
+
+	do {
+		reg_read(RTL837X_REG_I2C_CTRL);
+	} while (SFR_DATA_0 & 0x1);
+
+	return !(SFR_DATA_0 & 0x2);
+}
+
+static void gpio_exp_write(uint8_t reg, uint8_t val) __banked
+{
+	REG_WRITE(RTL837X_REG_I2C_OUT, 0, 0, 0, val);
+	gpio_exp_xfer(reg, true);
+}
+
+void gpio_exp_setup(void) __banked
+{
+	gpio_exp_out[0] = machine.gpio_exp.out[0];
+	gpio_exp_out[1] = machine.gpio_exp.out[1];
+	gpio_exp_dir[0] = machine.gpio_exp.dir[0];
+	gpio_exp_dir[1] = machine.gpio_exp.dir[1];
+
+	// Levels first, so pins that become outputs start at them
+	gpio_exp_write(2, gpio_exp_out[0]);
+	gpio_exp_write(3, gpio_exp_out[1]);
+	gpio_exp_write(6, gpio_exp_dir[0]);
+	gpio_exp_write(7, gpio_exp_dir[1]);
+}
+
+bool gpio_exp_test(uint8_t pin) __banked
+{
+	pin -= GPIO_EXP_BASE;
+	if (!gpio_exp_xfer(pin >> 3, false))
+		return true;
+	reg_read(RTL837X_REG_I2C_OUT);
+	return SFR_DATA_0 & (1 << (pin & 7));
+}
+
 void gpio_input_setup(uint8_t pin) __banked {
-	if (pin == GPIO_NA) { 
+	if (pin == GPIO_NA) {
+		return;
+	}
+
+	if (pin >= GPIO_EXP_BASE) {
+		pin -= GPIO_EXP_BASE;
+		gpio_exp_dir[pin >> 3] |= 1 << (pin & 7);
+		gpio_exp_write(6 + (pin >> 3), gpio_exp_dir[pin >> 3]);
 		return;
 	}
 
@@ -80,9 +141,26 @@ void gpio_input_setup(uint8_t pin) __banked {
 }
 
 void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) __banked{
-	if (pin == GPIO_NA) { 
+	if (pin == GPIO_NA) {
 		return;
 	}
+
+	if (pin >= GPIO_EXP_BASE) {
+		uint8_t port, bit;
+
+		pin -= GPIO_EXP_BASE;
+		port = pin >> 3;
+		bit = 1 << (pin & 7);
+		if (initial_val)
+			gpio_exp_out[port] |= bit;
+		else
+			gpio_exp_out[port] &= ~bit;
+		gpio_exp_write(2 + port, gpio_exp_out[port]);
+		gpio_exp_dir[port] &= ~bit;
+		gpio_exp_write(6 + port, gpio_exp_dir[port]);
+		return;
+	}
+
 	gpio_mux_setup(pin);
 
 	// We need to setup value before enabling output on PIN

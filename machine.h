@@ -81,6 +81,15 @@ struct sfp_port
 	uint8_t i2c;
 };
 
+// A PCA9555-style I2C GPIO expander; its pins are GPIO_EXP(n)
+struct gpio_exp
+{
+	uint8_t addr;	// 7-bit I2C address, 0 = no expander
+	uint8_t i2c;	// I2CBUS() it sits on
+	uint8_t out[2];	// output registers 2/3 written at boot
+	uint8_t dir[2];	// direction registers 6/7 written at boot, 1 = input
+};
+
 struct machine {
 	char machine_name[30];
 	uint8_t isRTL8373;
@@ -109,6 +118,7 @@ struct machine {
 	// random resets. Costs management-plane speed only, the ASIC keeps
 	// forwarding in hardware.
 	uint8_t flash_sio;
+	struct gpio_exp gpio_exp;
 };
 
 struct machine_runtime
