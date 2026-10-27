@@ -97,6 +97,14 @@ docker run --rm -v $(pwd):/workspace rtlplayground-dev make MACHINE=DEFAULT_8C_1
 
 The resulting `.bin` file appears in `output/` on your host.
 
+Build the OEM web upgrade bin (after building the firmware bin)
+
+```
+docker run --rm -v $(pwd):/workspace rtlplayground-dev make -C installer
+```
+
+The resulting `rtlplayground_oem_upgrade.bin` file appears in `installer/output/` on your host.
+
 Build host tools only:
 
 ```
