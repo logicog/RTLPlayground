@@ -41,6 +41,12 @@ static uint32_t      vlan_tbl[4096];
 static struct hw_l2  l2[HW_L2_MAX];
 static uint64_t      counters[16][64];
 
+#define HW_I2C_DEVS 4
+#define HW_I2C_LOG  64
+static struct { bool used; uint8_t bus, addr, regs[256]; } i2c_devs[HW_I2C_DEVS];
+static struct hw_i2c_xfer i2c_log[HW_I2C_LOG];
+static int                i2c_n;
+
 void hw_reset(void)
 {
 	memset(regfile, 0, sizeof(regfile));
@@ -48,8 +54,30 @@ void hw_reset(void)
 	memset(l2, 0, sizeof(l2));
 	memset(counters, 0, sizeof(counters));
 	memset(sfr_data, 0, sizeof(sfr_data));
+	memset(i2c_devs, 0, sizeof(i2c_devs));
+	i2c_n = 0;
 	hw_reads = hw_writes = 0;
 }
+
+uint8_t *hw_i2c_dev(uint8_t bus, uint8_t addr)
+{
+	int i;
+
+	for (i = 0; i < HW_I2C_DEVS; i++)
+		if (i2c_devs[i].used && i2c_devs[i].bus == bus && i2c_devs[i].addr == addr)
+			return i2c_devs[i].regs;
+	for (i = 0; i < HW_I2C_DEVS; i++)
+		if (!i2c_devs[i].used) {
+			i2c_devs[i].used = true;
+			i2c_devs[i].bus = bus;
+			i2c_devs[i].addr = addr;
+			return i2c_devs[i].regs;
+		}
+	abort();
+}
+
+int                       hw_i2c_count(void) { return i2c_n; }
+const struct hw_i2c_xfer *hw_i2c_at(int n)   { return &i2c_log[n]; }
 
 void     hw_reg_set(uint16_t addr, uint32_t v) { regfile[addr] = v; }
 uint32_t hw_reg_get(uint16_t addr)             { return regfile[addr]; }
@@ -257,6 +285,44 @@ static void stat_exec(uint32_t v)
 	regfile[RTL837X_STAT_V_LOW]  = (uint32_t)c;
 }
 
+/* I2C_CTRL: bit 0 go, bit 1 error, bit 2 write, bits 9:3 device address,
+ * bits 14:10 bus, bits 19:16 length - 1. I2C_IN holds the register, I2C_OUT
+ * onwards the data, low byte first. */
+static void i2c_exec(uint32_t ctrl)
+{
+	uint8_t  addr = (ctrl >> 3) & 0x7f, bus = (ctrl >> 8) & 0x7c;
+	uint8_t  reg = regfile[RTL837X_REG_I2C_IN] & 0xff, len = ((ctrl >> 16) & 0xf) + 1;
+	bool     write = ctrl & 0x4;
+	uint8_t *dev = NULL;
+	struct hw_i2c_xfer *x = i2c_n < HW_I2C_LOG ? &i2c_log[i2c_n++] : NULL;
+	int      i;
+
+	for (i = 0; i < HW_I2C_DEVS; i++)
+		if (i2c_devs[i].used && i2c_devs[i].bus == bus && i2c_devs[i].addr == addr)
+			dev = i2c_devs[i].regs;
+	if (x) {
+		memset(x, 0, sizeof(*x));
+		x->ctrl = ctrl; x->reg = reg; x->len = len; x->write = write;
+	}
+	if (!dev) {
+		regfile[RTL837X_REG_I2C_CTRL] = (ctrl & ~1u) | 0x2;
+		return;
+	}
+	for (i = 0; i < len; i++) {
+		uint16_t w = RTL837X_REG_I2C_OUT + (i / 4) * 4;
+		int      shift = (i % 4) * 8;
+		uint8_t *r = &dev[(reg + i) & 0xff];
+
+		if (write)
+			*r = regfile[w] >> shift;
+		else
+			regfile[w] = (regfile[w] & ~(0xffu << shift)) | (uint32_t)*r << shift;
+		if (x)
+			x->data[i] = *r;
+	}
+	regfile[RTL837X_REG_I2C_CTRL] = ctrl & ~3u;
+}
+
 static void reg_store(uint16_t addr, uint32_t v)
 {
 	hw_writes++;
@@ -279,6 +345,10 @@ static void reg_store(uint16_t addr, uint32_t v)
 			stat_exec(v);
 			regfile[addr] = v & ~1u;
 		}
+		break;
+	case RTL837X_REG_I2C_CTRL:
+		if (v & 1)
+			i2c_exec(v);
 		break;
 	}
 }

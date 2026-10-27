@@ -56,4 +56,18 @@ void hw_l2_decode(const struct hw_l2 *e, uint8_t mac[6], uint16_t *vid, uint16_t
 /* MIB counter the next STAT_GET for (port, counter) returns */
 void hw_counter_set(uint8_t port, uint8_t counter, uint64_t value);
 
+/* I2C master: writing I2C_CTRL with bit 0 set runs the transfer at once on a
+ * device added here, a 256-byte register file at a bus (as I2CBUS() encodes
+ * it) and 7-bit address. A transfer to a missing device sets the error bit,
+ * as a NAK would. Transfers are logged for inspection. */
+uint8_t *hw_i2c_dev(uint8_t bus, uint8_t addr);	/* adds the device on first use */
+struct hw_i2c_xfer {
+	uint32_t ctrl;		/* the I2C_CTRL word that started it */
+	uint8_t  reg, len;
+	bool     write;
+	uint8_t  data[16];
+};
+int                       hw_i2c_count(void);
+const struct hw_i2c_xfer *hw_i2c_at(int n);
+
 #endif /* TEST_HW_MOCK_H */
