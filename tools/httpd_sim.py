@@ -552,6 +552,8 @@ class Handler(SimpleHTTPRequestHandler):
         vlan_list = []
         for i in state["vlans"].keys():
             if i in state["vlans"] and state["vlans"][i]["active"]:
+                if(i == 0):
+                    continue
                 vlan_list.append({
                     "id": i,
                     "name": state["vlans"][i]["name"],
