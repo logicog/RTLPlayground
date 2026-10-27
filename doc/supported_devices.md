@@ -52,6 +52,7 @@ The following devices have been tested and are fully working:
 | YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           | 2M    | 4 + 2 |
 | YuanLey | YS25-0402M       | Yes     | [SIRIVISION_S25G2206FP_V1_1](devices/SIRIVISION_S25G2206FP_V1_1.md)       | 2M    | 4 + 2 |
 | Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
+| ZoeRax   | HG0402XG        | No      | [HG0402XG_V1.1](devices/ZOERAX_HG0402XG_V1.1.md)                          | 1M    | 4 + 2 |
 
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label
