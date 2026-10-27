@@ -1,10 +1,22 @@
-# Steamemo IG204-V1
+# Steamemo/Goalake IG204-V1
 
 Following is documentation for unmanaged switch marked as `IG204-V1`.
 
-Using SPI clamp in-board is the only method for initial installation.
+Original software is running UART on 9600 baud rate, contains a rudimentary CLI.
 
-### Label specifications
+Initial installation is only possible via a direct write to the SPI flash.
+
+### Brands
+
+| Brand    | Type       | Managed | PCB        | Flash       | Chip RTL      |
+|----------|------------|---------|------------|-------------|------------|
+| Goalake  | IG204-V1 (no V1 on case)  | No      | PB-2131    | cFeon QE32A 4096K | 8372  |
+| STEAMEMO | IG204-V1   | No      | PB-2131    | cFeon Q32A | 8372  |
+
+### Targets
+`MACHINE=STEAMEMO_IG204_V1` or `MACHINE=GOALAKE_IG204_V1`. The define only changes branding in the UI, hardware config is identical.
+
+### Label specifications (STEAMEMO)
 
 - **Name**: 2.5G Ethernet Switch  
 - **Model**: IG204 V1
@@ -12,21 +24,75 @@ Using SPI clamp in-board is the only method for initial installation.
   - 4 × RJ45: 10/100/1000/2500 Mbps  
   - 2 × SFP: 1000 / 2500 / 10000 Mbps  
 
-### What works (expected from label + similar devices)
+### What works
 
-- Four 2.5GBASE-T RJ45 ports at 10/100/1000/2500 Mbps  
-- Two SFP ports supporting 1G, 2.5G and 10G modules 
+- All four 2.5GBASE-T RJ45 ports at 10/100/1000/2500 Mbps  
+- Both SFP ports supporting 1G, 2.5G and 10G modules 
 - LEDs
 
-### PCB overview
+## Connectors
+
+### Front overview
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                          ┌───────────┐   ┌───────────┐ │
+│        ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │ SFP (U45) │   │ SFP (U63) │ │
+│   O    │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │   │ PORT   5  │   │ PORT   6  │ │
+│   O    │  PORT 1 │ │  PORT 2 │ │  PORT 3 │ │  PORT 4 │   │ LOG    8  │   │ LOG    3  │ │
+│ "VLAN" │  LOG  4 │ │  LOG  5 │ │  LOG  6 │ │  LOG  7 │   │ SerDes 1  │   │ SerDes 0  │ │
+│        └─────────┘ └─────────┘ └─────────┘ └─────────┘   └───────────┘   └───────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+
+`U45` SFP1 PINs | Signal | GPIO | Notes |
+|---------------|--------|------|-------|
+|2|	TX_FAULT	      | --- | | 
+|3|	TX_DISABLE	      | --- | |
+|4|	MODDEF2 – SDA     | GPIO39 | |
+|5|	MODDEF1 – SCL     | GPIO40	| Shared with both SFP |
+|6|	MODDEF0 – PRESENT | GPIO30 | |
+|7|	RATE SEL          | ---    | |
+|8|	LOS	              | GPIO37 | | 
+|9|	TO?               | ---    | |
+`
+
+`U45` SFP1 PINs | Signal | GPIO | Notes |
+|---------------|--------|------|-------|
+|2|	TX_FAULT	      | --- | | 
+|3|	TX_DISABLE	      | --- | |
+|4|	MODDEF2 – SDA     | GPIO41 | |
+|5|	MODDEF1 – SCL     | GPIO40	| Shared with both SFP |
+|6|	MODDEF0 – PRESENT | GPIO50 | |
+|7|	RATE SEL          | ---    | |
+|8|	LOS	              | GPIO51 | | 
+|9|	TO?               | ---    | |
+
+### VLAN switch
+PB-2131 contains a front switch labeled "VLAN", wired to `GPIO36`. Flipping it to ON pulls the GPIO high. On stock firmware this enables port isolation on the RJ45 ports. In RTLPlayground it currently has no function.
+
+
+### Misc
+
+`GPIO34` and `GPIO42` are left floating and cause noisy readings when using the `gpio` command.
+
+## PCB overview
 
 **Board markings**  
 - Top silkscreen: PB-2131
 
+Top side PCB
 
-Top side
+<img src="photos/STEAMEMO_IG204_V1/PCB-top-STEAMEMO-IG204.jpg" width="600" />
 
-<img src="photos/STEAMEMO_IG204_V1/PCB-top.jpg" width="600" />
+Case front Goalake
+
+<img src="photos/STEAMEMO_IG204_V1/case-Goalake-IG204.jpeg" width="600" />
+
+Case bottom Goalake
+
+<img src="photos/STEAMEMO_IG204_V1/label-Goalake-IG204.jpeg" width="600" />
 
 ### Connectors
 ### T7, serial console
@@ -40,4 +106,4 @@ Top side
 
 ### Power supply
 
-Input power is delivered via barell plug, `12V 1A` adapter was provided.
+Input power is delivered via barrel plug, a `12V 1A` adapter is provided.
