@@ -707,10 +707,10 @@ def loadMachineConfig(filename):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--machine", default=None, help="Path to machine.c or .h file to parse")
-    parser.add_argument("--port", default=8081, type=int, help="Port to bind to")
-    parser.add_argument("--bindaddr", default="127.0.0.1", help="Address to bind")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("--machine", default=None, help="path to machine.c or .h file to parse (optional)")
+    parser.add_argument("--port", default=8081, type=int, help="port to bind to (default 8081)")
+    parser.add_argument("--bindaddr", default="127.0.0.1", help="address to bind (default 127.0.0.1)")
+    parser.add_argument("--verbose", action="store_true", help="enable verbose output")
 
     args = parser.parse_args()
 
