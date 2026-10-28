@@ -15,6 +15,8 @@ extern __xdata uint8_t  mstp_dg_step;	/* next block of the digest computation, M
 extern __xdata uint16_t mstp_lo;	/* arguments of mstp_vids_set() and mstp_msti_clear() */
 extern __xdata uint16_t mstp_hi;
 extern __xdata uint8_t  mstp_msti;
+extern __xdata uint16_t mstp_chg_lo;
+extern __xdata uint16_t mstp_chg_hi;
 extern __xdata uint16_t mstp_used;	/* bit per instance with at least one VLAN */
 
 void mstp_defaults(void) __banked;
