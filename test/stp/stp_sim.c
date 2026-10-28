@@ -1490,6 +1490,7 @@ static void scen_backup_role(void)
 	check_state(3, 1, "port 4, the worse of the two, is blocked");
 	check(((stp_backup >> 3) & 1) == 1, "and has the backup role");
 	check(((stp_backup >> 2) & 1) == 0, "port 3 is not a backup");
+	check(stp_loop_held[3] == 2 + 1, "port 3 is recorded as the one that keeps the segment");
 	for (int i = 0; i < 20; i++) {
 		bpdu_in(&r);
 		secs(2);

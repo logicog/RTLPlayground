@@ -77,6 +77,7 @@ extern __xdata uint8_t  stp_root_fwd;
 extern __xdata uint16_t stp_link_prev;
 extern __xdata uint16_t stp_alt;
 extern __xdata uint16_t stp_backup;
+extern __xdata uint8_t  stp_loop_held[STP_ENTITIES];
 extern __xdata uint16_t stp_legacy;
 extern __xdata uint16_t stp_rrwhile[STP_ENTITIES];
 extern __xdata uint16_t stp_rbwhile[STP_ENTITIES];
