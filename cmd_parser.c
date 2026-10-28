@@ -29,6 +29,7 @@
 #include "ntp.h"
 #include "uip/uip.h"
 #include "version.h"
+#include "rtlos_hal.h"
 
 #include "machine.h"
 #include "rtl837x_leds.h"
@@ -43,7 +44,6 @@ extern __code const uint8_t log_to_phys_port[9];
 extern __xdata bool lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
-extern volatile __xdata uint8_t sfr_data[4];
 
 extern __code const uint8_t * __code const greeting;
 extern __code const uint8_t * __code const hex;
@@ -2317,7 +2317,7 @@ void health_show(void) __banked
 	__xdata uint8_t i;
 
 	print_string("up ");
-	reg_read_m(RTL837X_REG_SEC_COUNTER);
+	get_time_sec();
 	print_byte(sfr_data[0]); print_byte(sfr_data[1]);
 	print_byte(sfr_data[2]); print_byte(sfr_data[3]);
 	print_string(" ticks ");

@@ -8,6 +8,7 @@
 #include "uip.h"
 #include "sessions.h"
 #include "html_data.h"
+#include "rtlos_hal.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -23,7 +24,6 @@ __xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 #pragma codeseg BANK1
 #pragma constseg BANK1
 
-extern volatile __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
 extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
 extern __code const uint8_t * __code const hex;
