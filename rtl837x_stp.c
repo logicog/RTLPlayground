@@ -506,11 +506,13 @@ static uint8_t stp_tc_prop(uint8_t from) __reentrant
 {
 	stp_armed = 0;
 	for (stp_k = 0; stp_k < STP_ENTITIES; stp_k++) {
-		if (stp_k == from || !stp_ent_active(stp_k) || stp_tcwhile[stp_k] || stp_state_get(stp_k) != 0b11)
+		if (stp_k == from || !stp_ent_active(stp_k) || stp_state_get(stp_k) != 0b11)
 			continue;
 		if (!(stp_pflags[stp_k] & STP_PF_ENABLED) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
 			continue;
 		stp_forget(stp_k);
+		if (stp_tcwhile[stp_k])
+			continue;
 		stp_new_tc_while(stp_k);
 		stp_armed = 1;
 	}
