@@ -1,4 +1,4 @@
-### SWTG024AS-V2.1
+### PCB_SWTG018AS_V2_1_0
 
 ## Brands
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
