@@ -106,14 +106,9 @@ uint8_t  stp_port_state(uint8_t port) { (void)port; return 3; }
 
 /* ---- STP state send_stp() prints; the tree is not under test here ---- */
 #include "rtl837x_stp.h"
-struct bridge root_bridge;
-struct bridge stp_dbridge[STP_ENTITIES];
 uint16_t stp_bpdu_age[STP_ENTITIES];
-uint16_t stp_dpid[STP_ENTITIES];
 uint16_t stp_lag_mask[STP_LAG_COUNT];
 uint16_t stp_tc_count;
-uint32_t root_bridge_cost;
-uint32_t stp_dcost[STP_ENTITIES];
 uint32_t stp_pcost[STP_TREES * STP_ENTITIES];
 uint8_t  stp_ent_of[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 uint8_t  stp_fwddelay_s = 15, stp_hello_s = 2, stp_maxage_s = 20;
