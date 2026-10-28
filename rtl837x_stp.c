@@ -698,7 +698,8 @@ static void stp_tc_detected(uint8_t port) __reentrant
 {
 	if (stp_pflags[port] & STP_PF_OPEREDGE)
 		return;
-	stp_tc_count++;
+	if (!stp_t)
+		stp_tc_count++;
 	stp_new_tc_while(port);
 	stp_tc_prop(port);
 }
@@ -2068,7 +2069,15 @@ void stp_mstp_changed(void) __banked
 	}
 	stp_tree(0);
 	stp_hw_msti = 1;
-	stp_fdb_update(PMASK_CPU);
+	for (; mstp_chg_lo <= mstp_chg_hi; mstp_chg_lo++) {
+		if (vlan_get(mstp_chg_lo) < 0 || !(sfr_data[0] & 0x02))
+			continue;
+		stp_st = mstp_vid_msti(mstp_chg_lo);
+		if (((sfr_data[1] >> 4) & 0x0f) != stp_st)
+			stp_vlan_msti_write(mstp_chg_lo);
+	}
+	mstp_chg_lo = 0xffff;
+	mstp_chg_hi = 0;
 }
 
 
