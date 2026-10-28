@@ -35,6 +35,7 @@
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
+#include "rtlos_hal.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -91,6 +92,10 @@ __code const uint8_t netmask[] = { 255, 255, 255, 0};
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
+volatile __xdata uint8_t sec_counter;
+volatile __xdata uint8_t sec_pending;
+volatile __xdata uint32_t time_sec;
+
 __xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
@@ -108,7 +113,7 @@ __xdata volatile uint8_t sbuf_ptr;
 __xdata uint8_t sbuf[SBUF_SIZE];
 
 // Registry data in sfr is in *big endian* order, so sfr_data[0] is the MSB and sfr_data[3] the LSB
-__xdata uint8_t sfr_data[4];
+__xdata volatile uint8_t sfr_data[4];
 
 extern __xdata uint8_t gpio_last_value[8];
 
@@ -210,6 +215,11 @@ void isr_timer2(void) __interrupt(5)
 	ticks++;
 	tick_pending = 1;
 
+	if ( sec_counter >= SYS_TICK_HZ ){
+		sec_counter -= SYS_TICK_HZ;
+		time_sec ++;
+		sec_pending = 1;
+	}
 	// Clear TF2 & EXF2 by software
 	T2CON &= ~0xC0;
 }
@@ -849,20 +859,6 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 }
 
 
-void read_reg_timer(__xdata uint32_t * tmr)
-{
-	uint8_t * val = (uint8_t *)tmr;
-	SFR_REG_ADDR_U16 = RTL837X_REG_SEC_COUNTER;
-	SFR_EXEC_GO = SFR_EXEC_READ_REG;
-	do {
-	} while (SFR_EXEC_STATUS != 0);
-	*val++ = SFR_DATA_0;
-	*val++ = SFR_DATA_8;
-	*val++ = SFR_DATA_16;
-	*val = SFR_DATA_24;
-}
-
-
 // Delay for given number of ticks without doing housekeeping
 void delay(uint16_t t)
 {
@@ -870,7 +866,6 @@ void delay(uint16_t t)
 	while (!timer_expired(&delay_timer))
 		PCON |= 1;
 }
-
 
 
 /*
@@ -1074,7 +1069,7 @@ void handle_button(void)
 	if (button_last != button_pressed)
 	{
 		print_string(button_pressed ? "Button pressed\n" : "Button released\n");
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
+		get_time_sec();
 		uint8_t diff_sec_counter = sfr_data[3] - button_sec_counter_last;
 		button_last = button_pressed;
 		button_sec_counter_last = sfr_data[3];
@@ -1149,32 +1144,13 @@ void check_links(void)
 //
 static void handle_tick(void)
 {
-	if (timer_expired(&second)) {
-		timer_reset(&second);
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
-		uint8_t v = sfr_data[3];
+	if ( sec_pending ) {
+		sec_pending = 0;
 #ifdef DEBUG
 		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
 #endif
-		v++;
-		sfr_data[3] = v;
-		if (!v) {
-			v = sfr_data[2];
-			v++;
-			sfr_data[2] = v;
-			if (!v) {
-				v = sfr_data[1];
-				v++;
-				sfr_data[1] = v;
-				if (!v) {
-					v = sfr_data[0];
-					v++;
-					sfr_data[0] = v;
-				}
-			}
-		}
+		get_time_sec();
 		reg_write_m(RTL837X_REG_SEC_COUNTER);
-		reg_read_m(RTL837X_REG_SEC_COUNTER);
 
 		// Check for button presses once a second
 		handle_button();
