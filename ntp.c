@@ -10,6 +10,7 @@
 #include "uip/uip.h"
 #include "dns.h"
 #include "ntp.h"
+#include "rtlos_hal.h"
 
 #pragma codeseg BANK3
 #pragma constseg BANK3
@@ -25,7 +26,6 @@
 #define NTP_SEND	2
 #define NTP_WAIT	3
 
-extern __xdata uint8_t sfr_data[4];
 
 __xdata struct ntp_state ntp_state;
 __xdata uip_ipaddr_t ntp_ip;
@@ -42,11 +42,7 @@ static __code const char ntp_default_server[] = "pool.ntp.org";
 
 static uint32_t ntp_uptime(void) __reentrant
 {
-	reg_read_m(RTL837X_REG_SEC_COUNTER);
-	((__xdata uint8_t *)&ntp_now)[0] = sfr_data[3];
-	((__xdata uint8_t *)&ntp_now)[1] = sfr_data[2];
-	((__xdata uint8_t *)&ntp_now)[2] = sfr_data[1];
-	((__xdata uint8_t *)&ntp_now)[3] = sfr_data[0];
+	read_reg_timer(&ntp_now);
 	return ntp_now;
 }
 

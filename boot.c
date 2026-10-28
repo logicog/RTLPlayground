@@ -17,10 +17,10 @@
 #include "phy.h"
 #include "boot.h"
 #include "timer.h"
+#include "rtlos_hal.h"
 
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
-extern __xdata uint8_t sfr_data[4];
 #define RTL8224_RELEASE_TICKS (SYS_TICK_HZ * 5 / 2)
 #define BOOT_HOLD_MIN_TICKS (10 * SYS_TICK_HZ)
 #define BOOT_HOLD_MAX_TICKS (30 * SYS_TICK_HZ)
