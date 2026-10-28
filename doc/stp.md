@@ -142,6 +142,8 @@ Among ports offering the same root, the lowest root path cost wins, then the
 designated bridge, the designated port ID, and finally this switch's own port
 ID. A worse BPDU from a different bridge does not replace what a port holds;
 a worse one from the same designated bridge and port does.
+The number in a port ID is the one on the front panel, and 101 and up for
+the LAGs, so it matches the port labels on both ends of a link.
 
 ## Topology changes
 
