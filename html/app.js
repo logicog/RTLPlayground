@@ -159,6 +159,7 @@ var LANG = {
         mst_inst: "Instance",
         mst_vlans: "VLANs",
         mst_n_err: "Instance must be 1-15",
+        mst_region_err: "Region name: up to 32 characters, no spaces or quotes",
         mst_note: "Instances run while spanning tree is on in MSTP mode. A VLAN not given to an instance belongs to the CIST. Bridges of one region need the same region name, revision and VLANs per instance.",
         stp_times: "max age / forward delay",
         stp_proto: "Protocol",
@@ -2363,7 +2364,7 @@ var CONF_CMDS = [
     /^laghash\s+[1-4](\s+\w+)+$/,
     /^isolate\s+\d+(\s+(off|\d+))+$/,
     /^stp\s+(on|off)$/, /^stp\s+(prio|hello|maxage|fwd|txhold|maxhops)\s+\d+$/,
-    /^stp\s+region\s+\S{1,32}$/,
+    /^stp\s+region(\s+[^\s"]{1,32})?$/,
     /^stp\s+revision\s+\d+$/,
     /^stp\s+msti\s+\d+\s+vlan\s+(none|[\d,-]+)$/,
     /^stp\s+msti\s+\d+\s+prio\s+\d+$/,
@@ -3216,7 +3217,8 @@ function stpCnt(c) {
 }
 
 var mstCur = {},
-    mstSig = "";
+    mstSig = "",
+    mstTried = 0;
 
 function stpText(cmd) {
     return api("/cmd", {
@@ -3228,6 +3230,7 @@ function stpText(cmd) {
 }
 
 function mstLoad() {
+    mstTried = 1;
     return stpText("stp mstp").then(function(tx) {
         var m = tx.match(/MSTP region "([^"]*)" revision (\d+) hops (\d+)/);
         if (!m) return;
@@ -3356,7 +3359,7 @@ function stpLoad() {
             $("stpp" + p).value = v.p2p;
         });
         var more = Promise.resolve();
-        if (mstCur.region === undefined) more = more.then(mstLoad);
+        if (!mstTried) more = more.then(mstLoad);
         if ($("stpcntd").open) more = more.then(function() {
             return getJSON("/stpcnt.json").then(stpCnt)
         });
@@ -3404,13 +3407,18 @@ $("stpbapply").addEventListener("click", function() {
         cmds = [];
     var ver = $("stpver").value,
         prio = $("stpprio").value;
+    var reg = $("stpregion").value.trim();
+    if (reg.length > 32 || /[\s"]/.test(reg)) {
+        toast(t("mst_region_err"), "err");
+        return;
+    }
     [
         ["stpregion", "region", "region"],
         ["stprev", "revision", "rev"],
         ["stphops", "maxhops", "hops"]
     ].forEach(function(f) {
-        var v = $(f[0]).value.replace(/\s+/g, "");
-        if (mstCur[f[2]] !== undefined && v !== mstCur[f[2]]) cmds.push("stp " + f[1] + " " + v);
+        var v = $(f[0]).value.trim();
+        if (mstCur[f[2]] !== undefined && v !== mstCur[f[2]]) cmds.push(("stp " + f[1] + " " + v).trim());
     });
     if (ver !== stpVer(s)) cmds.push("stp version " + ver);
     if (prio !== String(s.prio)) cmds.push("stp prio " + prio);

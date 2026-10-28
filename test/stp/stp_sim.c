@@ -3433,6 +3433,16 @@ static void scen_msti_tc_count(void)
 	check(stp_tc_count - tc == 1, "and the counter moves once");
 }
 
+static void scen_region_name_cli(void)
+{
+	printf("102. the region name can be cleared but takes no quotes\n");
+	mstp_setup();
+	sim_cmd("stp region");
+	check(mstp_region[0] == 0, "stp region with no name clears it");
+	sim_cmd("stp region a\"b");
+	check(mstp_region[0] == 0, "a name with a quote is refused");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3530,6 +3540,7 @@ int main(int argc, char **argv)
 	scen_mst_digest_boundary();
 	scen_msti_vlan_writes();
 	scen_msti_tc_count();
+	scen_region_name_cli();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
