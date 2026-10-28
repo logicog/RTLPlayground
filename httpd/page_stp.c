@@ -133,6 +133,10 @@ void send_stp(void) __banked
 		stp_itoa_html(stp_pflags[i]);
 		slen += strtox(outbuf + slen, ",\"pc\":\"");
 		pi_u32 = stp_pcost[i]; u32hex_html();
+		if (i >= STP_LAG_BASE) {
+			slen += strtox(outbuf + slen, "\",\"mbr\":\"");
+			pi_u32 = stp_lag_mask[i - STP_LAG_BASE]; u32hex_html();
+		}
 		slen += strtox(outbuf + slen, "\",\"prio\":");
 		stp_itoa_html(stp_pprio[i]);
 		slen += strtox(outbuf + slen, ",\"p2\":");
