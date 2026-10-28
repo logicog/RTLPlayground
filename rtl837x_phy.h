@@ -18,6 +18,8 @@ struct phy_settings {
 };
 
 extern __xdata struct phy_settings phy_settings;
+// Bit N set: logical port N does not advertise pause (port <n> fc off)
+extern __xdata uint16_t phy_pause_off;
 
 void rtl8224_phy_enable(void) __banked;
 void phy_config(uint8_t phy) __banked;

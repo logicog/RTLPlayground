@@ -29,6 +29,10 @@
 #define PHY_EEE_ADV2		0x3e
 #define PHY_EEE_LP_ABILITY2	0x3f
 
+// PHY_ANEG_ADV and PHY_ANEG_LP_ABILITY: 802.3x pause capabilities
+#define PHY_ANEG_PAUSE		0x0400
+#define PHY_ANEG_ASYM_PAUSE	0x0800
+
 // Register bits for EEE capabilities at a given speed
 // PHY_EEE_ADV2
 #define PHY_EEE_BIT_2G5		0x01
