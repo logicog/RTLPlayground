@@ -673,9 +673,8 @@ void send_lldp(void)
 
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
-		else
-			char_to_html(']');
 	}
+	char_to_html(']');
 	char_to_html('}');
 }
 
@@ -723,9 +722,8 @@ void send_eee(void)
 		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
-		else
-			char_to_html(']');
 	}
+	char_to_html(']');
 }
 
 
@@ -766,9 +764,8 @@ void send_bandwidth(void)
 		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
-		else
-			char_to_html(']');
 	}
+	char_to_html(']');
 }
 
 
@@ -800,9 +797,8 @@ void send_storm(void)
 		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
-		else
-			char_to_html(']');
 	}
+	char_to_html(']');
 }
 
 
@@ -846,9 +842,8 @@ void send_mtu(void)
 		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
-		else
-			char_to_html(']');
 	}
+	char_to_html(']');
 }
 
 
@@ -981,9 +976,8 @@ void send_status(void)
 		slen += strtox(outbuf + slen, "\"}");
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
-		else
-			char_to_html(']');
 	}
+	char_to_html(']');
 }
 
 
