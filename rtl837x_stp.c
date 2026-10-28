@@ -1210,7 +1210,8 @@ static uint8_t stp_mst_valid(void) __reentrant
 	    || stp_rxlen < (uint16_t)(MST_I - (__xdata uint8_t *)uip_buf) + 66)
 		return 0;
 	stp_v3len = ((uint16_t)MST_I[0] << 8) | MST_I[1];
-	return stp_v3len >= MST_V3_FIXED && !((stp_v3len - MST_V3_FIXED) & 0x0f)
+	return stp_v3len <= stp_rxlen
+	       && stp_v3len >= MST_V3_FIXED && !((stp_v3len - MST_V3_FIXED) & 0x0f)
 	       && HTONS(STP_I->msg_len) >= stp_v3len + 41
 	       && stp_rxlen >= (uint16_t)(MST_I - (__xdata uint8_t *)uip_buf) + 2 + stp_v3len;
 }
