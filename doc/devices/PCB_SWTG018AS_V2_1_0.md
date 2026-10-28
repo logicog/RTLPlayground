@@ -25,11 +25,7 @@
 
 Top side
 
-<img src="photos/SWTG024AS-V2.1.0/pcb-top.jpg" width="300" />
-
-Bottom
-
-<img src="photos/SWTG024AS-V2.1.0/pcb-bottom.jpg" width="300" />
+<img src="doc/devices/photos/PCB_SWTG018AS_V2_1_0/Top Side PCB_SWTG018AS_V2_1_0.jpg" width="300" />
 
 ### Serial console
 
