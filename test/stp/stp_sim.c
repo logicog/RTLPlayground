@@ -152,8 +152,12 @@ static uint32_t sim_vlan[4096];
 static uint32_t sim_tbl_in;
 struct vlan_settings vlan_settings;
 
+static int vlan_reads;
+static int msti_writes;
+
 int8_t vlan_get(uint16_t vlan)
 {
+	vlan_reads++;
 	if (vlan >= 0xfff)
 		return -1;
 	sfr_data[0] = sim_vlan[vlan] >> 24;
@@ -271,6 +275,8 @@ void reg_write_m(uint16_t addr)
 	if (addr == RTL837X_TBL_CTRL && sfr_data[2] == TBL_VLAN && (sfr_data[3] & TBL_WRITE))
 		sim_vlan[(((uint16_t)sfr_data[0] << 8) | sfr_data[1]) & 0xfff] = sim_tbl_in;
 	if (addr >= RTL837X_MSTP_STATES && addr <= RTL837X_MSTP_STATES + 60 && !((addr - RTL837X_MSTP_STATES) & 3)) {
+		if (addr != RTL837X_MSTP_STATES)
+			msti_writes++;
 		memcpy(mstp_regs[(addr - RTL837X_MSTP_STATES) >> 2], sfr_data, 4);
 		for (uint8_t q = 0; q < 10; q++)
 			ever_state[(addr - RTL837X_MSTP_STATES) >> 2][q] |= 1
@@ -3300,6 +3306,87 @@ static void scen_region_changed(void)
 	check(!((stp_internal >> 8) & 1), "a new revision gives up the boundary too");
 }
 
+static void msti_root_on_9(int seconds)
+{
+	struct sim_bpdu b = root_on(8);
+
+	for (int i = 0; i < seconds; i++) {
+		sim_nrec = 0;
+		sim_rec(1, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+		sim_rec(2, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+		mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+		secs(1);
+	}
+}
+
+static void scen_mst_boundary_vector(void)
+{
+	struct sim_bpdu b;
+
+	printf("96. an MST BPDU from another region is taken as its sender's own region\n");
+	mstp_setup();
+	b = root_on(8);
+	mst_bpdu_in(&b, "other", 5000, PEER_MAC, 0x80, 20, NULL);
+	check(!((stp_internal >> 8) & 1), "the port is a boundary port");
+	check(!memcmp(stp_pv[8].rroot.mac, PEER_MAC, 6) && stp_pv[8].rroot.prio == 0x80,
+		"the regional root of the message is the sending bridge");
+	check(be32(stp_pv[8].icost) == 0, "and its internal cost is zero");
+}
+
+static void scen_mst_root_guard_internal(void)
+{
+	struct sim_bpdu b;
+
+	printf("97. a root guard port facing a better root in the region is not made internal\n");
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	sim_cmd("stp port 9 guard root");
+	b = root_on(8);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	msti_writes = 0;
+	for (int i = 0; i < 5; i++) {
+		mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+		secs(2);
+	}
+	check(!((stp_internal >> 8) & 1), "the guarded port stays a boundary port");
+	check(msti_writes <= 5, "and its instances are not set up and torn down on every BPDU");
+}
+
+static void scen_msti_tc_needs_forwarding(void)
+{
+	struct sim_bpdu r = { .port = 5, .root_prio = 0x40, .root_cost = 40000, .br_prio = 0x90, .port_id = 1, .flags = 0x09 };
+
+	printf("98. a TC heard on a boundary port that does not forward yet stays out of the instances\n");
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	sim_cmd("stp msti 2 vlan 20");
+	msti_root_on_9(40);
+	check(tree_state(1, 8) == 3, "the internal root port forwards in the instance");
+	stp_pflags[5] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 3) | (1 << 5) | (1 << 8));
+	tick(STP_HZ);
+	memcpy(r.root_mac, ROOT_MAC, 6);
+	memcpy(r.br_mac, PEER_MAC, 6);
+	memset(flush_count, 0, sizeof(flush_count));
+	bpdu_in(&r);
+	tick(2);
+	check_state(5, 1, "port 6 is still discarding");
+	check(flush_count[8] == 0 && flush_count[3] == 0, "and its TC flushes no port in any tree");
+}
+
+static void scen_mst_digest_boundary(void)
+{
+	struct sim_bpdu b;
+
+	printf("99. a new instance table gives up the old region boundary at once\n");
+	mstp_setup();
+	b = root_on(8);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	check((stp_internal >> 8) & 1, "the neighbour in the region is internal");
+	sim_cmd("stp msti 1 vlan 10");
+	check(!((stp_internal >> 8) & 1), "after the table changes it is a boundary port until it shows the new digest");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3391,6 +3478,10 @@ int main(int argc, char **argv)
 	scen_msti_tc_boundary();
 	scen_digest_at_once();
 	scen_region_changed();
+	scen_mst_boundary_vector();
+	scen_mst_root_guard_internal();
+	scen_msti_tc_needs_forwarding();
+	scen_mst_digest_boundary();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;

@@ -309,6 +309,7 @@ static uint8_t stp_state_get(uint8_t port) __reentrant;
 static uint8_t stp_ent_active(uint8_t e) __reentrant;
 static void stp_msti_tx(uint8_t port) __reentrant;
 static void stp_internal_update(uint8_t port, uint8_t now) __reentrant;
+static uint8_t stp_region_match(void) __reentrant;
 
 static __code const uint8_t stp_tree_base[STP_TREES] = {
 	0 * STP_ENTITIES, 1 * STP_ENTITIES, 2 * STP_ENTITIES, 3 * STP_ENTITIES,
@@ -477,10 +478,16 @@ static void stp_msg_build(void) __reentrant
 	stp_vcopy((__xdata struct stp_vec *)&stp_msg.root, (__xdata struct stp_vec *)&STP_I->root, 8);
 	stp_vcopy((__xdata struct stp_vec *)stp_msg.ext, (__xdata struct stp_vec *)&STP_I->root_path_cost, 4);
 	stp_vcopy((__xdata struct stp_vec *)&stp_msg.rroot, (__xdata struct stp_vec *)&STP_I->bridge, 8);
-	if (stp_mst_rx) {
+	if (stp_mst_rx && stp_rstp == STP_VER_MSTP && stp_region_match()) {
 		stp_vcopy((__xdata struct stp_vec *)stp_msg.icost, (__xdata struct stp_vec *)(MST_I + 53), 4);
 		stp_vcopy((__xdata struct stp_vec *)&stp_msg.dbr, (__xdata struct stp_vec *)(MST_I + 57), 8);
 		stp_msg_hops = MST_I[65];
+	} else if (stp_mst_rx) {
+		for (stp_k = 0; stp_k < 4; stp_k++)
+			stp_msg.icost[stp_k] = 0;
+		stp_vcopy((__xdata struct stp_vec *)&stp_msg.dbr, (__xdata struct stp_vec *)(MST_I + 57), 8);
+		stp_vcopy((__xdata struct stp_vec *)&stp_msg.rroot, (__xdata struct stp_vec *)(MST_I + 57), 8);
+		stp_msg_hops = stp_maxhops;
 	} else {
 		for (stp_k = 0; stp_k < 4; stp_k++)
 			stp_msg.icost[stp_k] = 0;
@@ -1425,6 +1432,16 @@ void stp_in(void) __banked
 
 	stp_mst_rx = stp_mst_valid();
 	stp_msg_build();
+	if ((stp_pflags[port] & STP_PF_ROOTGUARD)
+	    && cmpBytes((__xdata uint8_t *)&stp_msg.root, (__xdata uint8_t *)&RV.root, 8) < 0) {
+		print_string("STP: root guard blocking port ");
+		print_port_nl(port);
+		stp_internal_update(port, 0);
+		stp_state_set(port, 0b01);
+		port_timers[PT(port)] = FWD_TICKS;
+		stp_pflags[port] &= ~STP_PF_OPEREDGE;
+		return;
+	}
 	if (stp_mst_rx && stp_rstp == STP_VER_MSTP && cmpBytes(stp_msg.dbr.mac, uip_ethaddr.addr, 6)
 	    && stp_region_match())
 		stp_internal_update(port, 1);
@@ -1469,19 +1486,8 @@ void stp_in(void) __banked
 	if ((STP_I->flags & BPDU_FLAG_TC) && stp_state_get(port) == 0b11 && stp_tc_prop(port))
 		stp_tc_count++;
 	if ((STP_I->flags & BPDU_FLAG_TC) && stp_trees != 1 && !((stp_internal >> port) & 1)
-	    && !((ALT >> port) & 1))
+	    && stp_state_get(port) == 0b11)
 		stp_tc_instances(port);
-
-	if ((stp_pflags[port] & STP_PF_ROOTGUARD)
-	    && cmpBytes((__xdata uint8_t *)&stp_msg.root, (__xdata uint8_t *)&RV.root, 8) < 0) {
-		print_string("STP: root guard blocking port ");
-		print_port_nl(port);
-		stp_internal_update(port, 0);
-		stp_state_set(port, 0b01);
-		port_timers[PT(port)] = FWD_TICKS;
-		stp_pflags[port] &= ~STP_PF_OPEREDGE;
-		return;
-	}
 
 	stp_rcv_info(port);
 	stp_reselect();
@@ -2033,6 +2039,9 @@ void stp_mstp_changed(void) __banked
 	if (!stp_enabled || stp_rstp != STP_VER_MSTP)
 		return;
 	mstp_digest_now();
+	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++)
+		stp_internal_update(stp_i, 0);
+	stp_newinfo |= stp_link_now;
 	stp_rsel = stp_trees;
 	stp_trees_update();
 	stp_st = 0;
