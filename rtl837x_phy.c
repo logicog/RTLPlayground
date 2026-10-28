@@ -27,6 +27,7 @@ extern volatile __xdata uint32_t ticks;
 extern __xdata uint32_t rtl8224_release_tick;
 
 __xdata struct phy_settings phy_settings;
+__xdata uint16_t phy_pause_off;
 
 // SDS-settings for RTL8224 first SerDes which is connected to the RTL837x-SOC.
 // Array contrains register-value, and SDS-CMD, which already encodes (sds_index, page, reg).
@@ -330,10 +331,12 @@ void phy_set_speed(void) __banked
 	if (v & 0x0800)
 		phy_write(phy_settings.port, PHY_MMD31, 0xa610, v & 0xf7ff);
 
+	// Advertise pause unless "port <n> fc off" took it away from this port
+	uint16_t pause = (phy_pause_off >> phy_settings.port) & 1 ? 0 : PHY_ANEG_PAUSE;
 	if (phy_settings.speed == PHY_SPEED_AUTO) {
 			// AN Advertisement Register (MMD 7.0x0010)
-			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
-			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x15e1);
+			// bits 0-4: 0x1 (802.3 supported), bit 10: PAUSE, Extended Next Page format used
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x11e1 | pause);
 			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 			// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
@@ -350,29 +353,29 @@ void phy_set_speed(void) __banked
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
 			uint16_t adv10;
 			if (phy_settings.duplex == PHY_DUPLEX_HALF)
-				adv10 = 0x1421;
+				adv10 = 0x1021 | pause;
 			else if (phy_settings.duplex == PHY_DUPLEX_FULL)
-				adv10 = 0x1441;
+				adv10 = 0x1041 | pause;
 			else
-				adv10 = 0x1461;
+				adv10 = 0x1061 | pause;
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, adv10);
 			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else if (phy_settings.speed == PHY_SPEED_100M) {
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6001);
 			uint16_t adv100;
 			if (phy_settings.duplex == PHY_DUPLEX_HALF)
-				adv100 = 0x1481;
+				adv100 = 0x1081 | pause;
 			else if (phy_settings.duplex == PHY_DUPLEX_FULL)
-				adv100 = 0x1501;
+				adv100 = 0x1101 | pause;
 			else
-				adv100 = 0x1581;
+				adv100 = 0x1181 | pause;
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, adv100);
 			phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 		} else {
 			// AN Advertisement Register (MMD 7.0x0010)
 			// bits 0-4: 0x1 (802.3 supported), bit 10: PAUSE,
 			// Extended Next Page format used
-			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1401);
+			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x1001 | pause);
 			if (phy_settings.speed == PHY_SPEED_1G) {
 				// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
 				// bit 14: SLAVE, bit 13: Multi-Port device, 1: LD Loop timin enableed
@@ -425,17 +428,18 @@ void phy_set_duplex(void) __banked
 	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x2000);
 	phy_read(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV);
 	v = SFR_DATA_U16;
+	// Swap the duplex bit only: the rest of the advertisement, pause included, stays
 	if (v & 0x0060) {
 		if (phy_settings.duplex)
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffbf, 0x0040);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0020, 0x0040);
 		else
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xffdf, 0x0020);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0040, 0x0020);
 	}
 	if (v & 0x0180) {
 		if (phy_settings.duplex)
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xfeff, 0x0100);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0080, 0x0100);
 		else
-			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0xff7f, 0x0080);
+			phy_modify(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x0100, 0x0080);
 	}
 	// Restart AN
 	phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);

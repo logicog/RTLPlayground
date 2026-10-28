@@ -12,6 +12,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
+#include "rtl837x_pause.h"
 #include "machine.h"
 #include "page_impl.h"
 #include "support.h"
@@ -193,13 +194,138 @@ static void t_status_macs(void)
 	hw_reset(); out_reset();
 	hw_reg_set(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (1 << 2), 0x21);
 	send_status();
-	p1 = strstr(body(), "\"logPort\":1,");
+	p1 = strstr(body(), "{\"portNum\":2,");	// logical port 1
 	end = p1 ? strchr(p1, '}') : NULL;
 	mac = p1 ? strstr(p1, "\"macs\":\"0x21\"") : NULL;
 	CHECK(mac && mac < end, "port 1 shows its learned count");
 	CHECK(has("\"macs\":\"0x0\""), "a port without learned addresses shows 0");
 	CHECK(slen <= TCP_OUTBUF_SIZE, "fits the buffer");
 	CHECK(balanced(), "valid JSON");
+}
+
+extern uint16_t phy_mock_an[9][0x40];
+extern uint16_t phy_mock_mod[5];
+extern uint16_t phy_pause_off;
+
+/* The numeric value of key inside the port's own object of /status.json, or -1. */
+static int field_of(int port, const char *key)
+{
+	char pk[16], k[16];
+	snprintf(pk, sizeof pk, "{\"portNum\":%d,", port);
+	snprintf(k, sizeof k, "\"%s\":", key);
+	const char *p = strstr(body(), pk);
+	const char *end = p ? strchr(p, '}') : NULL;
+	const char *f = p ? strstr(p, k) : NULL;
+	return f && f < end ? atoi(f + strlen(k)) : -1;
+}
+
+static void t_status_fc(void)
+{
+	printf("[test] /status.json reports advertised, offered and negotiated pause per port\n");
+	hw_reset(); out_reset();
+	memset(phy_mock_an, 0, sizeof phy_mock_an);
+	phy_mock_an[1][0x10] = 0x15e1;	// logical port 1 advertises pause
+	phy_mock_an[1][0x13] = 0xdde1;	// and its partner pause and asymmetric pause
+	phy_mock_an[5][0x10] = 0x11e1;	// port 5 advertises none ("port <n> fc off")
+	phy_mock_an[5][0x13] = 0x0800;	// its partner asymmetric pause only
+	phy_mock_an[6][0x10] = 0x0800;	// port 6 asymmetric pause only
+	hw_reg_set(RTL837X_MAC_TX_PAUSE_STS, (1 << 2) | (1 << 3) | (1 << 8));	// logical ports 2, 3 and 8: TX
+	hw_reg_set(RTL837X_MAC_RX_PAUSE_STS, (1 << 3) | (1 << 7));		// logical ports 3 and 7: RX
+	send_status();
+	/* The test machine maps logical port N to portNum N + 1 */
+	CHECK(field_of(2, "fc") == (PAUSE_ADV | PAUSE_LP | PAUSE_LP_ASYM), "port 1: our pause, the partner's pause and asymmetric pause");
+	CHECK(field_of(6, "fc") == PAUSE_LP_ASYM, "port 5: no pause from us, asymmetric from the partner");
+	CHECK(field_of(7, "fc") == PAUSE_ADV_ASYM, "port 6: our asymmetric pause");
+	CHECK(field_of(3, "fc") == PAUSE_NEG_TX, "port 2 negotiated only TX");
+	CHECK(field_of(4, "fc") == (PAUSE_NEG_TX | PAUSE_NEG_RX), "port 3 both ways");
+	CHECK(field_of(8, "fc") == PAUSE_NEG_RX, "port 7 only RX");
+	CHECK(field_of(9, "fc") == PAUSE_NEG_TX, "port 8, in the second byte, only TX");
+	CHECK(field_of(1, "fc") == 0 && field_of(5, "fc") == 0, "the others nothing");
+	CHECK(slen <= TCP_OUTBUF_SIZE, "fits the buffer");
+	CHECK(balanced(), "valid JSON");
+	out_reset();
+	hw_reg_set(RTL837X_MAC_TX_PAUSE_STS, 0);
+	hw_reg_set(RTL837X_MAC_RX_PAUSE_STS, 1 << 8);
+	send_status();
+	CHECK(field_of(9, "fc") == PAUSE_NEG_RX, "port 8, in the second byte, only RX");
+}
+
+static void t_status_eee(void)
+{
+	printf("[test] /status.json reports advertised, offered and active EEE per copper port\n");
+	hw_reset(); out_reset();
+	memset(phy_mock_an, 0, sizeof phy_mock_an);
+	phy_mock_an[2][0x3c] = 0x0006;	// logical port 2 advertises 100M and 1G
+	phy_mock_an[2][0x3e] = 0x0001;	// and 2.5G
+	phy_mock_an[2][0x3d] = 0x0004;	// its partner 1G
+	phy_mock_an[2][0x3f] = 0x0001;	// and 2.5G
+	phy_mock_an[4][0x3c] = 0x0002;	// port 4 only 100M, partner nothing
+	phy_mock_an[8][0x3c] = 0x0004;	// external PHY on logical port 8 advertises 1G
+	hw_reg_set(RTL8373_PHY_EEE_ABLTY, (1 << 2) | (1 << 8));	// EEE in use on ports 2 and 8
+	send_status();
+	CHECK(field_of(3, "eee") == (EEE_ADV_100M | EEE_ADV_1G | EEE_ADV_2G5 | EEE_LP_1G | EEE_LP_2G5 | EEE_ACTIVE),
+	      "port 2: all three speeds, partner 1G and 2.5G, active");
+	CHECK(field_of(5, "eee") == EEE_ADV_100M, "port 4: only 100M, idle");
+	CHECK(field_of(9, "eee") == (EEE_ADV_1G | EEE_ACTIVE), "port 8: active bit in the second byte");
+	CHECK(field_of(1, "eee") == 0, "a port with EEE off reports 0");
+	CHECK(!has("\"logPort\""), "the port mapping is no longer repeated in every poll");
+	CHECK(slen <= TCP_OUTBUF_SIZE, "fits the buffer");
+	CHECK(balanced(), "valid JSON");
+	out_reset();
+	port_eee_status(8);
+	CHECK(strstr(out_buf, " ACTIVE ") != NULL, "CLI reports EEE active on port 8");
+	hw_reg_set(RTL8373_PHY_EEE_ABLTY, 1 << 2);
+	out_reset();
+	send_status();
+	CHECK(field_of(9, "eee") == EEE_ADV_1G, "port 8: port 2's active bit does not make it active");
+	out_reset();
+	port_eee_status(8);
+	CHECK(strstr(out_buf, " INACTIVE ") != NULL, "CLI reports EEE inactive on port 8");
+}
+
+static void t_status_eee_multigig(void)
+{
+	printf("[test] /status.json preserves independent 5G and 10G EEE abilities\n");
+	hw_reset(); out_reset();
+	memset(phy_mock_an, 0, sizeof phy_mock_an);
+	phy_mock_an[3][0x3c] = 0x0008;	// port 3 advertises only 10G
+	phy_mock_an[3][0x3f] = 0x0002;	// its partner only 5G
+	phy_mock_an[8][0x3e] = 0x0002;	// port 8 advertises only 5G
+	phy_mock_an[8][0x3d] = 0x0008;	// its partner only 10G
+	phy_mock_an[1][0x3c] = phy_mock_an[1][0x3d] = 0x000e;
+	phy_mock_an[1][0x3e] = phy_mock_an[1][0x3f] = 0x0003;	// all five speeds on both sides
+	hw_reg_set(RTL8373_PHY_EEE_ABLTY, (1 << 1) | (1 << 3) | (1 << 8));
+	send_status();
+	CHECK(field_of(4, "eee") == 1296, "port 3: 10G advertised, partner 5G, active");
+	CHECK(field_of(9, "eee") == 1544, "port 8: 5G advertised, partner 10G, active");
+	CHECK(field_of(2, "eee") == 2047, "all five speeds and active fit without truncation");
+	CHECK(slen <= TCP_OUTBUF_SIZE, "fits the buffer");
+	CHECK(balanced(), "valid JSON");
+}
+
+static void t_info_mapping(void)
+{
+	printf("[test] /information.json lists the chip port of every front-panel port\n");
+	hw_reset(); out_reset();
+	send_basic_info();
+	CHECK(has("\"logPort\":[0,1,2,3,4,5,6,7,8]}"), "front-panel order, closing the object");
+	CHECK(balanced(), "valid JSON");
+}
+
+static void t_pause_set(void)
+{
+	printf("[test] port <n> fc on|off sets the advertisement and remembers it for phy_set_speed\n");
+	phy_pause_off = 0;
+	port_pause_set(3, false);
+	CHECK(phy_pause_off == 1 << 3, "off marks the port");
+	CHECK(phy_mock_mod[0] == 3 && phy_mock_mod[1] == 7 && phy_mock_mod[2] == 0x10, "on MMD 7.0x0010 of that port");
+	CHECK(phy_mock_mod[3] == 0x0c00 && phy_mock_mod[4] == 0, "clearing pause and asymmetric pause, nothing else");
+	port_pause_set(5, false);
+	CHECK(phy_pause_off == ((1 << 3) | (1 << 5)), "off for a second port keeps the first");
+	port_pause_set(3, true);
+	CHECK(phy_pause_off == 1 << 5, "on unmarks only that port");
+	CHECK(phy_mock_mod[3] == 0x0c00 && phy_mock_mod[4] == 0x0400, "and advertises symmetric pause");
+	phy_pause_off = 0;
 }
 
 static void t_status_counters(void)
@@ -229,6 +355,11 @@ int main(void)
 	t_l2_page();
 	t_status_counters();
 	t_status_macs();
+	t_status_fc();
+	t_status_eee();
+	t_status_eee_multigig();
+	t_info_mapping();
+	t_pause_set();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }
