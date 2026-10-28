@@ -107,6 +107,11 @@ void stp_parse(void) __banked __reentrant
 		mstp_show();
 		return;
 	}
+	if (cmd_compare(1, "region") && cmd_words_len == 2) {
+		mstp_region[0] = 0;
+		stp_region_changed();
+		return;
+	}
 	if (cmd_words_len < 3)
 		goto err;
 
@@ -222,6 +227,8 @@ void stp_parse(void) __banked __reentrant
 			stp_cli_n = cmd_buffer[cmd_words_b[2] + stp_cli_i];
 			if (!stp_cli_n || stp_cli_n == ' ')
 				break;
+			if (stp_cli_n == '"')
+				goto err;
 		}
 		if (stp_cli_i > MSTP_NAME_LEN || cmd_words_len != 3)
 			goto err;
