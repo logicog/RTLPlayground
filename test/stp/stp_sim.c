@@ -3387,6 +3387,52 @@ static void scen_mst_digest_boundary(void)
 	check(!((stp_internal >> 8) & 1), "after the table changes it is a boundary port until it shows the new digest");
 }
 
+static void scen_msti_vlan_writes(void)
+{
+	printf("100. changing the VLANs of an instance reads only those VLANs\n");
+	mstp_setup();
+	sim_vlan[105] = 0x02000200;
+	vlan_reads = 0;
+	sim_cmd("stp msti 2 vlan 100-110");
+	check(vlan_reads <= 11, "eleven VLANs, at most eleven VLAN table reads");
+	check(((sim_vlan[105] >> 20) & 15) == 2, "and the VLAN that exists gets its instance");
+}
+
+static void scen_msti_tc_count(void)
+{
+	struct sim_bpdu down = { .port = 5, .root_prio = 0x40, .root_cost = 20000, .br_prio = 0x90, .port_id = 1, .flags = 0x38 };
+	struct sim_bpdu b;
+	uint16_t tc;
+
+	printf("101. a port that starts forwarding in every tree counts as one topology change\n");
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	sim_cmd("stp msti 2 vlan 20");
+	msti_root_on_9(40);
+	memcpy(down.root_mac, ROOT_MAC, 6);
+	memcpy(down.br_mac, PEER_MAC, 6);
+	stp_pflags[5] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 3) | (1 << 5) | (1 << 8));
+	tc = stp_tc_count;
+	b = root_on(8);
+	for (int i = 0; i < 40; i++) {
+		sim_nrec = 0;
+		sim_rec(1, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+		sim_rec(2, 0x3c, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
+		mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+		sim_nrec = 0;
+		sim_rec(1, 0x38, 0x10, PEER_MAC, 20000, 0x90, 0x80, 19);
+		sim_rec(2, 0x38, 0x10, PEER_MAC, 20000, 0x90, 0x80, 19);
+		mst_bpdu_in(&down, "lab", 20000, PEER_MAC, 0x90, 19, NULL);
+		secs(1);
+	}
+	check(tree_state(0, 5) == 3 && tree_state(1, 5) == 3 && tree_state(2, 5) == 3,
+		"port 6 forwards in the CIST and both instances");
+	if (stp_tc_count - tc != 1)
+		printf("  counter moved by %u\n", (unsigned)(stp_tc_count - tc));
+	check(stp_tc_count - tc == 1, "and the counter moves once");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3482,6 +3528,8 @@ int main(int argc, char **argv)
 	scen_mst_root_guard_internal();
 	scen_msti_tc_needs_forwarding();
 	scen_mst_digest_boundary();
+	scen_msti_vlan_writes();
+	scen_msti_tc_count();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;

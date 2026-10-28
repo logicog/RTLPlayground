@@ -346,3 +346,8 @@ LLC header included.
 * A backup port, one that hears the BPDUs of another port of this switch,
   is blocked and reported as Backup, but keeps sending BPDUs: loop detection
   on that segment relies on them.
+* A topology change in one instance flushes all addresses learned on the
+  ports it reaches, not only those of the instance's VLANs, so the other
+  trees on those ports relearn as well.
+* The topology change counter and the time since the last change count the
+  CIST only.

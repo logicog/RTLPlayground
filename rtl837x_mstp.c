@@ -18,6 +18,8 @@ __xdata uint8_t  mstp_dg_step;
 __xdata uint16_t mstp_lo;
 __xdata uint16_t mstp_hi;
 __xdata uint8_t  mstp_msti;
+__xdata uint16_t mstp_chg_lo;
+__xdata uint16_t mstp_chg_hi;
 
 __xdata uint8_t  mstp_map[2048];	/* MSTI of each VID, a nibble per VID, VID 0 in the low nibble of byte 0 */
 __xdata uint8_t  mstp_inner[16];	/* digest of the inner HMAC pass */
@@ -82,6 +84,10 @@ static void mstp_put(uint16_t vid, uint8_t msti) __reentrant
 		mstp_map[vid >> 1] = (mstp_map[vid >> 1] & 0x0f) | (msti << 4);
 	else
 		mstp_map[vid >> 1] = (mstp_map[vid >> 1] & 0xf0) | msti;
+	if (vid < mstp_chg_lo)
+		mstp_chg_lo = vid;
+	if (vid > mstp_chg_hi)
+		mstp_chg_hi = vid;
 }
 
 
@@ -95,6 +101,8 @@ void mstp_defaults(void) __banked
 {
 	for (mstp_v = 0; mstp_v < sizeof(mstp_map); mstp_v++)
 		mstp_map[mstp_v] = 0;
+	mstp_chg_lo = 0xffff;
+	mstp_chg_hi = 0;
 	for (md5_i = 0; md5_i < 16; md5_i++)
 		mstp_count[md5_i] = 0;
 	mstp_used = 0;
