@@ -9,7 +9,7 @@ void stp_off(void) __banked;
 void stp_parse(void) __banked __reentrant;
 void stp_defaults(void) __banked;
 void stp_status(void) __banked;
-void stp_port_admin(uint8_t port, uint8_t on) __banked;
+void stp_port_admin(uint8_t port) __banked;
 void stp_prio_apply(void) __banked;
 void stp_port_mcheck(uint8_t port) __banked;
 uint8_t stp_port_role(uint8_t port) __banked;

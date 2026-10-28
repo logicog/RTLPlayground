@@ -676,6 +676,37 @@ static void scen_info_expiry(void)
 	check(stp_root_port == 0xff, "gone after 3 s with a 1 s hello");
 }
 
+static void scen_port_off_forgets(void)
+{
+	struct sim_bpdu r;
+	int as_root = 0;
+
+	printf("63. switching STP off on a port drops what it heard there\n");
+	reset_all();
+	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
+	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 1) | (1 << 2) | (1 << 8));
+	secs(1);
+	r = root_on(8);
+	for (int i = 0; i < 21; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	check(stp_root_port == 8, "port 9 is the root port");
+	sim_cmd("stp port 9 off");
+	check(stp_root_port != 8, "it stops being the root port at once");
+	check_state(8, 3, "and forwards as a plain port");
+	secs(30);
+	sim_cmd("stp port 9 on");
+	for (int t = 0; t < 10 * STP_HZ; t++) {
+		stp_timers();
+		if (stp_root_port == 8)
+			as_root++;
+	}
+	check(as_root == 0, "no root port from information heard before it was switched off");
+	check(port_state(8) == 3, "port 9 comes back through the listen period");
+}
+
 static void scen_dport_tiebreak(void)
 {
 	struct sim_bpdu a;
@@ -2324,6 +2355,7 @@ int main(int argc, char **argv)
 	scen_root_times();
 	scen_too_old();
 	scen_info_expiry();
+	scen_port_off_forgets();
 	scen_dport_tiebreak();
 	scen_rxport_tiebreak();
 	scen_inferior_info();

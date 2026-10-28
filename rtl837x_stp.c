@@ -1498,14 +1498,11 @@ void stp_off(void) __banked
 }
 
 
-void stp_port_admin(uint8_t port, uint8_t on) __banked
+void stp_port_admin(uint8_t port) __banked
 {
-	if (on) {
-		stp_state_set(port, 0b01);
-		port_timers[port] = FWD_TICKS;
-	} else {
-		stp_state_set(port, 0b11);
-	}
+	stp_ent_reset(port);
+	if (port == stp_root_port)
+		stp_reselect();
 }
 
 
