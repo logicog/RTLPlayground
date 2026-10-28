@@ -718,7 +718,8 @@ static void stp_reselect(void)
 		    && stp_cmp_designated(stp_j) < 0) {
 			stp_pflags[stp_j] &= ~STP_PF_OPEREDGE;
 			port_timers[stp_j] = 0;
-			stp_state_set(stp_j, 0b01);
+			if (stp_state_get(stp_j) != 0b01)
+				stp_state_set(stp_j, 0b01);
 			if (!((stp_alt >> stp_j) & 1)) {
 				stp_alt |= (uint16_t)1 << stp_j;
 				stp_forget(stp_j);
