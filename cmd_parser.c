@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_pause.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
@@ -910,6 +911,7 @@ void parse_port(void)
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
 					 "\nport <port> lldp [block|permit]" \
+					 "\nport <port> fc [on|off]" \
 					 "\nport <port> cabletest [show]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
@@ -953,6 +955,13 @@ void parse_port(void)
 		} else {
 			print_string ("Unknown port <port> lldp [block|permit] command\n");
 		}
+	} else if (cmd_compare(2, "fc")) {
+		if (cmd_words_len == 4 && cmd_compare(3, "on"))
+			port_pause_set(phy_settings.port, true);
+		else if (cmd_words_len == 4 && cmd_compare(3, "off"))
+			port_pause_set(phy_settings.port, false);
+		else
+			cmd_error("port <port> fc on|off\n");
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
 	} else if (cmd_compare(2, "cabletest")) {
@@ -1553,7 +1562,6 @@ void parse_eee(void)
 		cmd_error("eee [on|off|status] [port] [100m|1g|2g5]\n");
 	}
 }
-
 
 void parse_bw(void)
 {
