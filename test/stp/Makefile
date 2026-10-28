@@ -11,19 +11,21 @@ CFLAGS  += -Wno-builtin-declaration-mismatch
 endif
 LDFLAGS  = -fsanitize=address,undefined
 
-SRCS = stp_sim.c $(SRCROOT)/rtl837x_stp.c $(SRCROOT)/rtl837x_stp_cli.c
+SRCS = stp_sim.c $(SRCROOT)/rtl837x_stp.c $(SRCROOT)/rtl837x_stp_cli.c $(SRCROOT)/rtl837x_mstp.c
 
-all: build/stp_sim
+all: test
+
+test: build/stp_sim
 	./build/stp_sim
 
 verbose: build/stp_sim
 	./build/stp_sim -v
 
-build/stp_sim: $(SRCS) $(SRCROOT)/rtl837x_stp.h
+build/stp_sim: $(SRCS) $(SRCROOT)/rtl837x_stp.h $(SRCROOT)/rtl837x_mstp.h
 	mkdir -p build
 	$(CC) $(CFLAGS) $(SRCS) -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf build
 
-.PHONY: all verbose clean
+.PHONY: all test verbose clean

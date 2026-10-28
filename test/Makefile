@@ -75,6 +75,9 @@ $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/u
 # the login sessions httpd.c calls into
 $(BUILDDIR)/test_httpd_tx: $(SRCROOT)/sessions.c
 
+# Simulators with a Makefile of their own; each fails the run when it fails.
+SUBTESTS = stp
+
 # CPU VLAN initialization with full and reduced user-port ranges.
 $(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DMACHINE_MAX_PORT=7
 $(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_PORT=3 -DRTLP_TEST_IS8373=0
@@ -87,9 +90,15 @@ run: $(TESTS)
 		$$t || fail=1; \
 		echo; \
 	done; \
+	for d in $(SUBTESTS); do \
+		echo "=== $$d ==="; \
+		$(MAKE) -C $$d test || fail=1; \
+		echo; \
+	done; \
 	if [ $$fail -ne 0 ]; then echo "TESTS FAILED"; exit 1; else echo "ALL TESTS PASSED"; fi
 
 clean:
 	rm -rf $(BUILDDIR)
+	@for d in $(SUBTESTS); do $(MAKE) -C $$d clean; done
 
 .PHONY: all run clean
