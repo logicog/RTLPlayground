@@ -17,7 +17,7 @@ uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
 struct uip_eth_addr uip_ethaddr = { .addr = { 0x1c, 0x2a, 0xa3, 0x1a, 0x72, 0x4e } };
 const struct machine machine = {
-	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8, 9 }
+	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 10, 8, 9 }
 };
 struct machine_runtime machine_detected = { .isRTL8373 = 1 };
 uint8_t sfr_data[4];
@@ -2049,7 +2049,7 @@ static void scen_lag(void)
 	t.legacy = 2;
 	bpdu_in(&t);
 	check(tx_frames[1] == 1 && tx_frames[2] == 0, "a reply leaves through the lowest member");
-	check(last_tx[1].port_id == STP_LAG_BASE + 1, "with the group's own port id");
+	check(last_tx[1].port_id == 101, "with the group's own port id");
 
 	memset(flush_count, 0, sizeof(flush_count));
 	links_set((1 << 2) | (1 << 8));
@@ -2292,6 +2292,24 @@ static void scen_mikrotik_wire_capture(void)
 	check(attributed, "both VLAN layouts select the captured root and change RX and edge status only on the ingress port");
 }
 
+static void scen_port_id_panel(void)
+{
+	struct sim_bpdu own = {
+		.port = 0, .root_prio = 0x40, .root_cost = 20000,
+		.br_prio = 0x80, .port_id = 10
+	};
+
+	printf("66. the port ID is the front panel number, not the chip port\n");
+	reset_all();
+	links_set((1 << 0) | (1 << 6) | (1 << 8));
+	follow_root(5);
+	check(last_tx[6].port_id == 10, "chip port 6 sends front panel number 10");
+	memcpy(own.root_mac, ROOT_MAC, 6);
+	memcpy(own.br_mac, uip_ethaddr.addr, 6);
+	bpdu_in(&own);
+	check_state(6, 1, "its BPDU coming back on another port blocks chip port 6");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2353,6 +2371,7 @@ int main(int argc, char **argv)
 	scen_loop_peer_heard_bpdu();
 	scen_loop_peer_autoedge_off();
 	scen_mikrotik_wire_capture();
+	scen_port_id_panel();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;

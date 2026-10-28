@@ -153,7 +153,7 @@ void send_stp(void) __banked
 		bridge_to_html();
 		slen += strtox(outbuf + slen, "\",\"dp\":\"");
 		stp_byte_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[i]);
-		stp_byte_html(dsg ? stp_dpid[i] : (i + 1));
+		stp_byte_html(dsg ? stp_dpid[i] : j);
 		slen += strtox(outbuf + slen, "\",\"dc\":\"");
 		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
 		slen += strtox(outbuf + slen, "\"},");
