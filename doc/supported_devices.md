@@ -43,15 +43,19 @@ The following devices have been tested and are fully working:
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                             | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                       | 1M    | 8 + 1 |
 | SICSOLINK| SL-G0402F       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
+| Sirivision | SR-S25G2109F  | Yes     | [S25G1109FP V1.3](devices/S25G1109FP_V1_3.md)                             | 2M    | 8 + 1 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 2M    | 4 + 2 |
+| Sodola   | SL902-SWTG024AS | Yes     | [SWTG024AS-v2.1.0](devices/SWTG024AS-V2.1.0.md)                           | 2M    | 4 + 2 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/STEAMEMO_IG204_V1.md)                                   |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [TEG-S563/EU H/W: V1.0R](devices/TEG-S562.md)                             | 2M    | 4 + 2 |
 | XikeStor | SKS3200M-4GPY2XF| Yes     | [SWTG024AS-v1.0](devices/SWTG024AS.md)                                    |       | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
+| XikeStor | SKS3200-4E2X    | Yes     | [SWTG024AS-v2.1.0](devices/SWTG024AS-V2.1.0.md)                           | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V1.0](devices/PCB-K0402WS-V1.0.md)                           | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           | 2M    | 4 + 2 |
 | YuanLey | YS25-0402M       | Yes     | [SIRIVISION_S25G2206FP_V1_1](devices/SIRIVISION_S25G2206FP_V1_1.md)       | 2M    | 4 + 2 |
 | Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
+| ZoeRax   | HG0402XG        | No      | [HG0402XG_V1.1](devices/ZOERAX_HG0402XG_V1.1.md)                          | 1M    | 4 + 2 |
 
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label

@@ -4,11 +4,25 @@ DEFAULT_CONFIG_LOCATION = 454656
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
 
-SDCC_PREFIX = toolchain/sdcc-$(shell cat sdcc/* | cksum | cut -d' ' -f1)
+# Startup configuration embedded in the image. Override it to build a specific
+# machine with its own configuration: make MACHINE=<name> CONFIG=<file>
+CONFIG ?= config.txt
+
+SDCC_TOOLCHAIN = sdcc-$(shell cat sdcc/* | cksum | cut -d' ' -f1)
+SDCC_PREFIX = toolchain/$(SDCC_TOOLCHAIN)
 ifeq ($(origin CC),default)
 SDCC = $(SDCC_PREFIX)/bin/sdcc
 CC = $(SDCC)
 ASM = $(SDCC_PREFIX)/bin/sdas8051
+SDCC_REV := $(shell git log -1 --format=%h -- sdcc 2>/dev/null)
+ifneq ($(SDCC_REV),)
+ifneq ($(shell git status --porcelain --untracked-files=no -- sdcc 2>/dev/null),)
+SDCC_REV := $(SDCC_REV)-dirty
+endif
+endif
+SDCC_BANNER = $(if $(SDCC_REV),sdcc/ at $(SDCC_REV),$(SDCC_TOOLCHAIN)) ($(words $(wildcard sdcc/*.patch)) patches)
+else
+SDCC_BANNER = system
 endif
 CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
 ASM ?= sdas8051
@@ -50,6 +64,7 @@ ifndef BUILDDIR
 	BUILDDIR = output/$(MACHINE)
 endif
 
+CONFIG_STAMP := $(BUILDDIR)/.config
 VERSION_HEADER := version.h
 
 GIT_VERSION := $(shell git rev-parse --short HEAD)
@@ -72,9 +87,10 @@ BUILD_DATE := $(shell date -u -d @$(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S" 2>/d
 	|| date -u -r $(SOURCE_DATE_EPOCH) +"%Y-%m-%d %H:%M:%S")
 endif
 
-# $(MACHINE_SRC) is listed here so an unknown $MACHINE fails before anything else
-# is built, including the tools/ subdirectory.
-all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
+# $(MACHINE_SRC) and $(CONFIG) are listed here so an unknown $MACHINE or a
+# missing config file fails before anything else is built, including the tools/
+# subdirectory.
+all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(CONFIG) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
 
 bank_size:
 	tools/bank_occupancy.sh "$(MACHINE)"
@@ -93,6 +109,12 @@ $(MACHINE_SRC):
 	@echo "       Every machine is one file pair under machine/, named after the" >&2
 	@echo "       MACHINE_* symbol it defines; see machine/*.c for the full list." >&2
 	@echo "       Example: make MACHINE=KP_9000_6XHML_X2" >&2
+	@false
+
+# Fail with a clear message when CONFIG names a file that does not exist.
+$(CONFIG):
+	@echo "ERROR: CONFIG='$(CONFIG)' does not exist." >&2
+	@echo "       Point CONFIG at a configuration file, or omit it to use config.txt." >&2
 	@false
 
 # Keep the per-machine definition in first position to fail immediately on an
@@ -132,10 +154,12 @@ SRCS += \
 	rtl837x_lldp.c \
 	rtl837x_storm.c \
 	rtl837x_lacp.c \
-	rtl837x_trap.c
+	rtl837x_trap.c \
+	rtl837x_stp_cli.c
 SRCS += \
 	httpd/httpd.c \
-	httpd/page_impl.c
+	httpd/page_impl.c \
+	httpd/page_stp.c
 SRCS += \
 	uip/timer.c \
 	uip/uip.c \
@@ -180,6 +204,7 @@ $(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
 		"#define VERSION_SW \"$(VERSION_EXTENSION)\"" \
 		"#define BUILD_DATE \"$(BUILD_DATE)\"" \
+		"#define SDCC_TOOLCHAIN \"$(SDCC_BANNER)\"" \
 		"#endif" > $(VERSION_HEADER).tmp
 	@cmp -s $(VERSION_HEADER).tmp $(VERSION_HEADER) \
 		&& rm -f $(VERSION_HEADER).tmp \
@@ -217,6 +242,12 @@ FORCE:
 $(CCFLAGS_STAMP): FORCE | create_build_dir
 	@echo '$(CC_FLAGS)' | cmp -s - $@ 2>/dev/null || echo '$(CC_FLAGS)' > $@
 
+# The same for $(CONFIG): its path is stamped so switching to a config file
+# older than the image still rebuilds it, while $(CONFIG) itself as a normal
+# prerequisite covers edits to the selected file.
+$(CONFIG_STAMP): FORCE | create_build_dir
+	@echo '$(CONFIG)' | cmp -s - $@ 2>/dev/null || echo '$(CONFIG)' > $@
+
 $(BUILDDIR)/%.rel: %.c $(CCFLAGS_STAMP) | create_build_dir html_data.h
 	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
 
@@ -225,18 +256,19 @@ $(BUILDDIR)/%.rel: %.asm $(CCFLAGS_STAMP) | create_build_dir
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
 $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel
-	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-r -o $@ $^
+	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-bBANK4=0x44000 -Wl-r -o $@ $^
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img | tools
+$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) test/check_banked_calls.py | tools
 	if [ -e $@ ]; then rm $@; fi
-	tools/$(BUILDDIR)/imagebuilder -i $^ $@
-	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
-	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d config.txt $@
+	tools/$(BUILDDIR)/imagebuilder -i $(BUILDDIR)/rtlplayground.img $@
+	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" $@
+	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" $@
 	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
 	tools/$(BUILDDIR)/crc_calculator -u $@
+	python3 test/check_banked_calls.py $(BUILDDIR) --image $@
 	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/../rtlplayground.bin
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir

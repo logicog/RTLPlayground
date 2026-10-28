@@ -7,7 +7,6 @@
 #pragma codeseg BANK2
 #pragma constseg BANK2
 extern __xdata uint8_t cmd_words_len, cmd_words_b[], save_cmd;
-extern uint8_t cmd_compare(uint8_t start, __code const uint8_t *cmd);
 extern __xdata uint8_t outbuf[];
 extern __xdata uint16_t slen;
 static __xdata uint8_t output_http;
@@ -182,29 +181,51 @@ void snmp_export_config(void) __banked
 	}
 	text(snmp_agent_enabled ? "snmp on\n" : "snmp off\n");
 }
+/* Keep code-pointer reads in the literal's bank. A banked wrapper around
+ * cmd_compare() cannot preserve a caller's bank-relative __code pointer.
+ * Based on gnacho's fix, 7ea3b97f088ced8bddbd16871a8a86b5417bee3a.
+ * Explicit XDATA storage preserves the tight direct-RAM/stack budget. */
+static bool cmd_word_is(__xdata uint8_t start, __code const uint8_t *__xdata cmd)
+{
+	__xdata uint8_t *__xdata b;
+	__xdata uint8_t j, c;
+	if (start >= cmd_words_len)
+		return false;
+	b = cmd_buffer + cmd_words_b[start];
+	for (j = 0; ; j++) {
+		c = cmd[j];
+		if (!c)
+			return b[j] == ' ' || b[j] == NUL;
+		if (c != b[j])
+			return false;
+	}
+}
+
 bool snmp_command(void) __banked
 {
 	__xdata const uint8_t *__xdata p;
 	__xdata uint8_t len = 0;
 	if (cmd_words_len == 2) {
-		if (cmd_compare(1, "show")) {
+		if (cmd_word_is(1, "show")) {
 			snmp_show();
 			return true;
 		}
-		if (cmd_compare(1, "on") || cmd_compare(1, "off"))
-			return snmp_set_enabled(cmd_compare(1, "on"));
+		if (cmd_word_is(1, "on"))
+			return snmp_set_enabled(1);
+		if (cmd_word_is(1, "off"))
+			return snmp_set_enabled(0);
 	}
 	if (cmd_words_len != 3)
 		return false;
 	p = cmd_buffer + cmd_words_b[2];
 	while (len < CMD_BUF_SIZE - cmd_words_b[2] && p[len] && p[len] != ' ')
 		len++;
-	if (cmd_compare(1, "community"))
+	if (cmd_word_is(1, "community"))
 		return snmp_set_community(p, len);
-	if (cmd_compare(1, "manager"))
+	if (cmd_word_is(1, "manager"))
 		return snmp_set_manager(p, len);
 	/* Ignore old timestamp metadata during startup migration only. */
-	if (!save_cmd && cmd_compare(1, "changed"))
+	if (!save_cmd && cmd_word_is(1, "changed"))
 		return true;
 	return false;
 }

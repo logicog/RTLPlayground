@@ -95,7 +95,7 @@ $(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_POR
 $(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-run: $(TESTS) snmp snmp-horaco-profile snmp-status snmp-cli snmp-replay config-replay
+run: bank-audit-unit $(TESTS) snmp snmp-horaco-profile snmp-status snmp-cli snmp-replay config-replay
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
@@ -214,3 +214,7 @@ $(BUILDDIR)/test_snmp_port_map_cpu_bound: test_snmp_port_map.c test_snmp.c test_
 
 $(BUILDDIR)/test_snmp_hw_cpu_bound: test_snmp_hw.c $(SRCROOT)/snmp_hw.c | $(BUILDDIR)
 	$(CC) $(SNMPFLAGS) -DMACHINE_MAX_PORT=CPU_PORT test_snmp_hw.c -o $@ $(LDFLAGS)
+
+.PHONY: bank-audit-unit
+bank-audit-unit:
+	python3 test_banked_calls.py

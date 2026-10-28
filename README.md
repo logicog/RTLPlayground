@@ -97,6 +97,14 @@ docker run --rm -v $(pwd):/workspace rtlplayground-dev make MACHINE=DEFAULT_8C_1
 
 The resulting `.bin` file appears in `output/` on your host.
 
+Build the OEM web upgrade bin (after building the firmware bin)
+
+```
+docker run --rm -v $(pwd):/workspace rtlplayground-dev make -C installer
+```
+
+The resulting `rtlplayground_oem_upgrade.bin` file appears in `installer/output/` on your host.
+
 Build host tools only:
 
 ```
@@ -126,6 +134,13 @@ make MACHINE=DEFAULT_8C_1SFP
 The name selects the board definition `machine/<name>.c`; `make` without a
 `MACHINE` value stops with an error listing what is expected. If your board is
 not in the list yet, see [Adding a new device](doc/adding-a-device.md).
+
+To embed a machine-specific startup configuration, pass `CONFIG`:
+```
+make MACHINE=DEFAULT_8C_1SFP CONFIG=configs/DEFAULT_8C_1SFP.txt
+```
+`CONFIG` defaults to `config.txt`; the selected file is embedded in the image
+and changing it triggers a rebuild.
 
 > [!TIP]
 > You can write configuration parameters in config.txt (see below) in order your switch to get
@@ -170,9 +185,9 @@ example of compilation console output
 RTLPlayground/installer$ make
 mkdir -p output
 gcc updatebuilder.c -o output/updatebuilder
-sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
-sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
-sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
+../toolchain/sdcc-3390765201/bin/sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
+../toolchain/sdcc-3390765201/bin/sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
+../toolchain/sdcc-3390765201/bin/sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
 ./output/updatebuilder -i output/rtlinstaller.ihx -o output/rtlplayground_oem_upgrade.bin ../output/rtlplayground.bin
 Input file size: 524288
 Bytes read: 524288

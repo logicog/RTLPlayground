@@ -42,6 +42,9 @@ int main(void)
 	snmp_init();
 	assert(test_snmp_configure(comm, sizeof(comm) - 1, network, acl));
 	save_cmd = 1;
+	CHECK(!command("snmp foo bar") && !command("snmp onx") &&
+		  !command("snmp communityx value") && !command("snmp managerx value"),
+	      "unknown CLI words and command prefixes are rejected");
 	CHECK(packet(comm, source, 0xa0) > 0, "old community initially works");
 	CHECK(command("snmp community changed-secret"), "live CLI community change");
 	CHECK(!packet(comm, source, 0xa0), "old community stops immediately");

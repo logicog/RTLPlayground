@@ -1574,6 +1574,15 @@ void check_and_flash_update_image(void)
 }
 
 
+/* Called by the SDCC startup code before it copies XINIT to XISEG and clears XSEG.
+ * Hardware reset starts us with MAP_FLASH_PAGE_TO_XDATA = 1, which maps xdata
+ * 0x4000-0xbfff to the flash image (reads return flash, writes are lost), so it
+ * must be 0 by then. */
+unsigned char __sdcc_external_startup(void)
+{
+	MAP_FLASH_PAGE_TO_XDATA = 0;
+	return 0;
+}
 
 void main(void)
 {
@@ -1584,7 +1593,6 @@ void main(void)
 	sbuf_ptr = 0;
 
 	CKCON = 0;	// Initial Clock configuration
-	SFR_97 = 0;	// HADDR?
 
 	// Set in managed mode:
 	SFR_b9 = 0x00;

@@ -2,6 +2,7 @@
 
 __code const struct machine machine = {
     MACHINE_COMMON_SETTING,
+    .mac_flash_offset = 0x1FC000,
     .n_sfp = 2,
     .log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
     .phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
@@ -21,7 +22,7 @@ __code const struct machine machine = {
     .sfp_port[1].sds = 1,
     .sfp_port[1].i2c =  I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
-    .reset_pin = GPIO_NA,
+    .reset_pin = GPIO48_I2C_SCL1,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
     .led_sets = {
