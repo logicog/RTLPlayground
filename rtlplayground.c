@@ -1042,6 +1042,8 @@ void handle_tx(void)
 
 bool gpio_pin_test(uint8_t pin)
 {
+	if (pin >= GPIO_EXP_BASE && pin != GPIO_NA)
+		return gpio_exp_test(pin);
 	reg_read_m(RTL837X_REG_GPIO_00_31_INPUT + (pin > 31 ? 4 : 0));
 	return sfr_data[3-((pin >> 3) & 3)] & (1 << (pin & 7));
 }

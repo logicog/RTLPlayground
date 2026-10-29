@@ -116,10 +116,21 @@ Keep it as the first initializer and list the board-specific fields after it.
 | `led_sets[4][4]` | Each port can have up to 4 GPIO output pins assigned. 4 sets of LEDs with 4 LED-conditions per set; the conditions define which GPIO pins become active for a port given a port link-state. Which LEDs are then enabled depends on the wiring of the pins to up to 3 LEDs for that port, which can make a logical combination of the 4 LED output-pins. |
 | `led_mux_custom` / `led_mux[28]` | `1` plus the 28 mux values when the stock LED muxing does not fit the board |
 | `mac_flash_offset` | flash offset of the factory MAC address, omit or `0` if the board does not store one |
+| `phy_mdi_reverse` | RTL8372 only: `PHY_MDI_REVERSE(bits)` with bit n reversing the MDI pair order of logical port 4 + n; omit for the default `0xc`. A copper port wired the other way receives nothing (no link, link partner ability `0`) |
+| `gpio_exp` | a PCA9555-style I2C GPIO expander, see below; omit if the board has none |
 
 Each `struct sfp_port` entry holds `pin_detect`, `pin_los`, `pin_tx_disable`,
 `sds` (which SerDes drives the cage) and `i2c` (built with `I2CBUS(sda, scl)`,
 or `GPIO_NA`-based values where a cage has no such pin).
+
+Some boards wire the SFP and reset button signals to an I2C GPIO expander
+instead of SoC GPIOs. Describe it with `.gpio_exp = { .addr, .i2c, .out, .dir }`:
+its 7-bit I2C address, the `I2CBUS()` it sits on, and the output (registers
+2/3) and direction (registers 6/7, bit set = input) values written at boot.
+Its pins are `GPIO_EXP(n)`, with P0.x as `n = x` and P1.x as `n = 8 + x`, and
+can be used for `pin_detect`, `pin_los`, `pin_tx_disable` and `reset_pin`.
+Take the boot values from the stock firmware, so pins the board uses for
+something else keep their stock levels.
 
 `I2CBUS(...)` only accepts the pin pairs listed in `machine_defs.h`. A wrong
 pair is caught at compile time: SDCC reports

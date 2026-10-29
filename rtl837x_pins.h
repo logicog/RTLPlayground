@@ -2,6 +2,7 @@
 #define _RTL837X_PINS_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define GPIO0_LED0                0
 #define GPIO1_LED1                1
@@ -71,17 +72,27 @@
 /* Not available GPIO */
 #define GPIO_NA                   0xFF
 
+/* Pin n of the machine's I2C GPIO expander: P0.x is n = x, P1.x is n = 8 + x */
+#define GPIO_EXP_BASE             0x40
+#define GPIO_EXP(n)               (GPIO_EXP_BASE + (n))
+
 /*
  * Setup a GPIO pin as input
- * pin: GPIO pin number 0-63
+ * pin: GPIO pin number 0-63 or GPIO_EXP(n)
  */
 void gpio_input_setup(uint8_t pin) __banked;
 
 /*
  * Setup a GPIO pin as output
- * pin: GPIO pin number 0-63
+ * pin: GPIO pin number 0-63 or GPIO_EXP(n)
  * initial_val: 1 for bit set in RTL837X_REG_GPIO_xx_OUTPUT, 0 for bit not set
  */
 void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) __banked;
+
+/* Write the machine's power-up values to the I2C GPIO expander */
+void gpio_exp_setup(void) __banked;
+
+/* Level of an expander pin, high if the expander does not answer */
+bool gpio_exp_test(uint8_t pin) __banked;
 
 #endif
