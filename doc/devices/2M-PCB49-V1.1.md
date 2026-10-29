@@ -35,8 +35,8 @@ Tested on one switch:
 - Boot, web UI and web firmware updates. The first install was with a CH341A clip (flashrom chip
   name `W25Q16.V`).
 - All four RJ45 ports, each on the matching front-panel port (tested at 1G).
-- Both SFP+ ports: module detect, EEPROM and diagnostics, and a 10G link with traffic between the
-  two cages (see [SFP](#sfp)).
+- Both SFP+ ports: module detect, EEPROM and diagnostics, and a DAC in port 6 linking at 10G and
+  carrying a VLAN trunk (see [SFP](#sfp)).
 - The LEDs (see [LEDs](#leds)).
 - The reset button, GPIO48: held more than 3 s it restarts the switch.
 - The MAC address, read from the stock firmware's copy at `0x1FC000`. Keep that sector when writing
@@ -92,11 +92,13 @@ Found by moving a module between the cages while watching the GPIO inputs:
 | Module detect (low = module in) | GPIO38 | GPIO37 |
 | EEPROM I²C SDA | GPIO39 | GPIO41 |
 | EEPROM I²C SCL | GPIO40 | GPIO40 |
-| SerDes | 0 | 1 |
+| MAC / SerDes | 8 / 1 | 3 / 0 |
 | LOS | not found | not found |
 
-No GPIO input followed LOS, so it may not be wired to a GPIO. With a fibre jumper between modules
-in the two cages, both ports linked at 10G and passed frames both ways.
+No GPIO input followed LOS, so it may not be wired to a GPIO. The MAC and SerDes mapping is the
+SWTG024AS boards' (`SWGT024_V2_0_MANAGED` has the same tables); a DAC in the right cage links on
+MAC 3. A fibre jumper between the two cages doesn't show which way round it is, since frames sent
+out of one port arrive at the other either way.
 
 ### LEDs
 
