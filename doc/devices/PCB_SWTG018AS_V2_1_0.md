@@ -3,8 +3,8 @@
 ## Brands
 |Compatible|Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
-|   Yes    | Sodola   | SL902-SWTGW218AS | Yes | PCB_SWTG018AS_V2_1_0 |   2M     | 8372N |
-|   No     | Sodola   | SL902-SWTG018AS | No | PCB_SWTG018AS_V2_1_0 |   512KB  | 8372N |
+|Yes|Sodola|SL902-SWTGW218AS|Yes|PCB_SWTG018AS_V2_1_0|2M|8372N|
+|No|Sodola|SL902-SWTG018AS|No|PCB_SWTG018AS_V2_1_0|512KB|8372N|
 
 *Sodola SL902-SWTG018AS is not fully compatible with RTLPlayground as it has limited flash memory, and therefore unable to support web GUI firmware updates.
 
