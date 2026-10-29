@@ -2005,6 +2005,45 @@ static void scen_last_tc(void)
 	check(stp_tc_secs <= 1, "and starts again at the next change");
 }
 
+static void scen_tc_count_real_only(void)
+{
+	struct sim_bpdu r;
+	struct sim_bpdu better;
+	struct sim_bpdu rogue = { .port = 3, .root_prio = 0x80, .br_prio = 0x80, .port_id = 1 };
+	uint16_t tc;
+
+	printf("65. the topology change counter counts topology changes only\n");
+	reset_all();
+	links_set(1 << 8);
+	secs(1);
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	tc = stp_tc_count;
+	better = r;
+	better.root_prio = 0x30;
+	better.br_prio = 0x30;
+	memcpy(better.root_mac, THIRD_MAC, 6);
+	memcpy(better.br_mac, THIRD_MAC, 6);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&better);
+		secs(2);
+	}
+	check(stp_root_port == 8 && root_bridge.prio == 0x30, "a better root heard on the root port takes over");
+	check(stp_tc_count == tc, "without a topology change being counted");
+	sim_cmd("stp port 4 guard bpdu");
+	links_set((1 << 8) | (1 << 3));
+	secs(6);
+	tc = stp_tc_count;
+	memcpy(rogue.root_mac, PEER_MAC, 6);
+	memcpy(rogue.br_mac, PEER_MAC, 6);
+	bpdu_in(&rogue);
+	check(stp_pflags[3] & STP_PF_TRIPPED, "a BPDU trips the guarded edge port");
+	check(stp_tc_count == tc, "and the trip is not counted as a topology change");
+}
+
 static void scen_lag(void)
 {
 	struct sim_bpdu before;
@@ -2364,6 +2403,7 @@ int main(int argc, char **argv)
 	scen_path_cost_method();
 	scen_bpdu_handling();
 	scen_last_tc();
+	scen_tc_count_real_only();
 	scen_lag();
 	scen_tc_needs_forwarding();
 	scen_root_port_needs_link();
