@@ -26,13 +26,13 @@ web() {
 
 print_line() {
   local name=$1 main=$2 branch=$3
-  echo "| $name | $main | $branch | $((${branch:-0} - ${main:-0})) |"
+  printf '| %-15s | %7s | %7s | %7s |\n' "$name" "$main" "$branch" "$((${branch:-0} - ${main:-0}))"
 }
 
 echo "### $MACHINE"
 echo
-echo "| segment | main | branch | change |"
-echo "| --- | ---: | ---: | ---: |"
+printf '| %-15s | %7s | %7s | %7s |\n' "segment" "main" "branch" "change"
+echo "| --------------- | ------: | ------: | ------: |"
 for s in HOME CSEG BANK1 BANK2 BANK3 BANK4 DSEG XSEG; do
     print_line "$s" "$(seg "$s" "$MAIN")" "$(seg "$s" "$BRANCH")"
 done
