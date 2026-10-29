@@ -839,6 +839,11 @@ var CONF_CMDS=[
   /^laghash\s+[1-4](\s+\w+)+$/,
   /^isolate\s+\d+(\s+(off|\d+))+$/,
   /^stp\s+(on|off)$/,/^stp\s+(prio|hello|maxage|fwd|txhold)\s+\d+$/,
+  /^rma\s+(0[0-4]|08|0d|0e|1[0-3]|18|1a|2[0-2]|cdp|csstp|lldp)(\s+(forward|trap|drop|nocpu|(storm|keep|vlanleak|isoleak)\s+(on|off)))+$/,
+  /^rma\s+priority\s+[0-7]$/,
+  /^rma\s+lldpmatch\s+(on|off)$/,
+  /^rma\s+ptp\s+(priority\s+[0-7]|cpu\s+[0-3])$/,
+  /^rma\s+ptp\s+\d(\s+((eth2|udp)\s+(forward|trap|drop|nocpu)|(delay|pdelay|asm)\s+(on|off)))+$/,
   /^stp\s+version\s+(rstp|stp)$/,
   /^stp\s+pathcost\s+(long|short)$/,
   /^stp\s+bpdu\s+(filter|flood)$/,
@@ -2456,6 +2461,7 @@ var CONF_OVERWRITE=[
   /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
+  /^rma\s+(0[0-4]|08|0d|0e|1[0-3]|18|1a|2[0-2]|cdp|csstp|lldp)\b/,/^rma\s+(priority|lldpmatch)\b/,/^rma\s+ptp\s+(priority|cpu|\d)\b/,
 ];
 var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
