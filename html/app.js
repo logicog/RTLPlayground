@@ -848,7 +848,7 @@ var CONF_CMDS=[
   /^stp\s+(port\s+\d+|lag\s+[1-4])\s+prio\s+\d+$/,
   /^stp\s+(port\s+\d+|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,
   /^stp\s+(port\s+\d+|lag\s+[1-4])\s+filter\s+(on|off)$/,
-  /^stp\s+(port\s+\d=|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
+  /^stp\s+(port\s+\d+|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
   /^igmp\s+(on|off)$/,
   /^mtu\s+\d+\s+\d+$/,
   /^lldp\s+(on|off)$/,
@@ -1233,7 +1233,7 @@ function fmtBridge(hex){
 }
 function stpEnt(pt){pt.lag=pt.p>100?pt.p-100:0}
 function stpKey(pt){return pt.lag?"L"+pt.lag:String(pt.p)}
-function stpName(pt){return pt.lag?"LAG"+pt.lag:String(pt.p)}
+function stpName(pt){return pt.lag?"LAG"+pt.lag+" ("+rangeStr(maskToPorts(parseInt(pt.mbr,16)))+")":String(pt.p)}
 function stpDhms(x){return Math.floor(x/86400)+"d "+Math.floor(x/3600)%24+"h "+Math.floor(x/60)%60+"m "+x%60+"s"}
 function stpPre(k){return k.charAt(0)==="L"?"stp lag "+k.slice(1)+" ":"stp port "+k+" "}
 function stpBuild(ports){
@@ -1289,7 +1289,7 @@ function stpLoad(){
   return getJSON("/stp.json").then(function(s){
     s.ports.forEach(stpEnt);
     s.ports.sort(function(a,b){return(a.lag-b.lag)||(a.p-b.p)});
-    var sig=s.ports.map(stpKey).join();
+    var sig=s.ports.map(function(pt){return stpKey(pt)+(pt.mbr||"")}).join();
     if(sig!==stpSig){stpSig=sig;stpBuild(s.ports);}
     stpCur=s;
     var en=$("stpen");
