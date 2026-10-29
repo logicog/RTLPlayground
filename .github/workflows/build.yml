@@ -29,20 +29,23 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install make gcc g++ bison flex libboost-dev patch bzip2 curl ca-certificates xxd python-is-python3 libjson-c-dev zlib1g-dev -y
+          apt install make gcc g++ clang bison flex libboost-dev patch bzip2 curl ca-certificates xxd python-is-python3 libjson-c-dev zlib1g-dev -y
       - name: Cache the patched SDCC
         uses: actions/cache@v4
         with:
           path: branch/toolchain
           key: sdcc-${{ hashFiles('branch/sdcc/*') }}
       - name: Run the host-side unit tests
-        run: cd branch && make -C test
+        run: |
+          cd branch
+          make -C test
+          make -C test CC=clang BUILDDIR=build/clang
       - name: Check that every machine definition can be compiled
         run: cd branch && make machine_check
       - name: Make project (4x2/RTL8372)
         run: cd branch && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map /tmp/branch.map
-      - name: Make project (8x1/RTL8373)
-        run: cd branch && make CI=1 MACHINE="KP_9000_9XHML_X_V3_1"
+      - name: Make project (8x1/RTL8373, SNMP compiled but unconfigured)
+        run: cd branch && make CI=1 SNMP=1 MACHINE="KP_9000_9XHML_X_V3_1"
       - name: Make project with the health instrumentation
         run: cd branch && make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" HEALTH=1
       - name: Make main

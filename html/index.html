@@ -101,8 +101,8 @@ input.in,select.in,textarea.in{
 }
 input.in:focus,select.in:focus,textarea.in:focus{border-color:var(--ac)}
 input.in.sm{width:7em}
-label.row{display:flex;align-items:center;gap:10px;margin:8px 0}
-label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 .switch{position:relative;display:inline-block;width:34px;height:19px;flex:none}
 .switch input{opacity:0;width:0;height:0}
 .switch i{
@@ -195,10 +195,12 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   #ttitle{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #dirty{padding:2px 7px}
 }
+#sy-snmp .row>.lb{flex:0 0 132px;width:132px;min-width:0}#sy-snmp .row>span:not(.lb){min-width:0;overflow-wrap:anywhere}
 @media (max-width:720px){
   #ttitle{flex:1}
   #strip{order:3;flex-basis:100%}
 }
+#sy-snmp .row>.in{flex:1;min-width:0;width:0}
 </style>
 <script>
 (function(){
@@ -469,7 +471,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
               <option value="fr">Français</option>
               <option value="ja">日本語</option>
               <option value="zh">中文</option>
-              
+
             </select></label>
           <label class="row"><span class="lb" data-i18n="sy_theme">Theme</span>
             <select class="in" id="themeSel">
@@ -482,6 +484,22 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
             </select></label>
           <p class="small mut" data-i18n="sy_display_note">Stored in this browser only.</p>
         </div>
+        <div class="card" id="sy-snmp" style="display:none"><h2>SNMP</h2>
+          <div class="row"><span class="lb">SNMP agent</span><span id="sy-snmp-enabled"></span>
+            <label class="switch" style="margin-left:auto"><input type="checkbox" id="sy-snmp-toggle" aria-label="Enable SNMP agent"><i></i></label></div>
+          <label class="row"><span class="lb">Allowed manager</span><input class="in mono" id="sy-snmp-manager" maxlength="18" placeholder="192.0.2.250/32" aria-describedby="sy-snmp-manager-note"></label>
+          <p class="small mut" id="sy-snmp-manager-note">Manager IP or network in CIDR notation. Use /32 for one host.</p>
+          <label class="row"><span class="lb">Community</span><input class="in" id="sy-snmp-secret" type="password" maxlength="32" autocomplete="new-password" aria-describedby="sy-snmp-community"></label>
+          <p class="small mut" id="sy-snmp-community"></p>
+          <div style="display:flex;gap:10px;margin:12px 0">
+            <button class="ctl pri" id="sy-snmp-apply" data-i18n="c_apply">Apply</button>
+            <button class="ctl" id="sy-snmp-refresh" data-i18n="c_refresh">Refresh</button>
+          </div>
+          <div class="row"><span class="lb">Protocol</span><span>SNMPv2c</span></div>
+          <div class="row"><span class="lb">Access</span><span>Read-only</span></div>
+          <div class="row"><span class="lb">UDP port</span><span>161</span></div>
+          <p class="small mut">Apply updates the running settings. Use Save to flash to keep them after reboot.</p>
+          </div>
       </div>
       <div class="card" style="margin-top:16px"><h2><span data-i18n="sy_startup">Startup configuration</span>
         <span class="hint"><span id="cfgbytes"></span>, <span data-i18n="sy_replayed">replayed on every boot</span></span></h2>

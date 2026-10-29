@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 /* Some hosts ship these in <sys/_endian.h>, and they assign to their argument;
  * uip.h refuses to be included next to them. The firmware definitions are the
@@ -96,6 +97,10 @@ const struct f_data f_data[] = {
 
 void flash_read_bulk(uint8_t *dst)
 {
+#ifdef SNMP_REAL_REPLAY
+    extern uint8_t replay_image[CONFIG_LEN];
+    if(flash_region.addr>=CONFIG_START&&flash_region.addr<CONFIG_START+CONFIG_LEN){memcpy(dst,replay_image+(flash_region.addr-CONFIG_START),flash_region.len);return;}
+#endif
 	for (uint16_t i = 0; i < flash_region.len; i++)
 		dst[i] = pattern(flash_region.addr + i);
 }
@@ -130,18 +135,47 @@ void crc16_bank1(uint8_t *v) { (void)v; }
 static unsigned reset_calls;
 void reset_chip(void) { reset_calls++; }
 void delay(uint16_t t) { (void)t; }
-void write_char(char c) { (void)c; }
+void write_char(char c) {
+#ifdef SNMP_CONTROL_TEST
+    extern void control_console_char(char c);control_console_char(c);
+#else
+    (void)c;
+#endif
+}
 void write_char_no_syslog(char c) { (void)c; }
 void itoa_no_syslog(uint8_t v) { (void)v; }
 void print_string(const char *p) { (void)p; }
 void print_string_no_syslog(const char *p) { (void)p; }
 void print_string_newline_no_syslog(const char *p) { (void)p; }
 void set_sys_led_state(uint8_t state) { (void)state; }
+#ifndef SNMP_REAL_REPLAY
 void cmd_parser(void) { }
 void execute_config(void) { }
-void execute_commands(uint8_t *p) { (void)p; }
+#endif
+static unsigned command_calls;
+void execute_commands(uint8_t *p) { (void)p;command_calls++; }
+#ifdef SNMP
+#include "ntp.h"
+#include "cmd_parser.h"
+uint8_t cmd_buffer[CMD_BUF_SIZE],cmd_words_len,cmd_words_b[15],save_cmd=1;
+#ifndef SNMP_REAL_REPLAY
+uint8_t cmd_compare(uint8_t start,const uint8_t *word) {
+    if(start>=cmd_words_len)return 0;
+    const uint8_t *p=cmd_buffer+cmd_words_b[start];size_t n=strlen((const char *)word);
+    return !memcmp(p,word,n)&&(p[n]==0||p[n]==' ');
+}
+#endif
+#if !defined(SNMP_TRANSPORT_TEST) || defined(SNMP_HORACO_CONTROL_CLOCK)
+struct ntp_state ntp_state;
+static uint32_t control_seconds=100;
+void reg_read_m(uint16_t reg) {(void)reg;sfr_data[0]=control_seconds>>24;sfr_data[1]=control_seconds>>16;sfr_data[2]=control_seconds>>8;sfr_data[3]=control_seconds;}
+#endif
+#endif
+
 void clear_command_history(void) { }
-void udp_callbacks(void) { }
+static unsigned udp_dispatch_calls;
+static void (*httpd_tx_udp_app)(void);	/* scenario-installed application; NULL leaves the stub */
+void udp_callbacks(void) { udp_dispatch_calls++; if (httpd_tx_udp_app) httpd_tx_udp_app(); }
 void tcpip_output(void) { }
 void get_random_32(void) { }
 static uint32_t fake_now;
@@ -174,7 +208,13 @@ bool strstart_x(const uint8_t *a, const uint8_t *b) { return strstart(a, b); }
 bool send_counters(uint8_t phys_port) { (void)phys_port; return false; }
 void send_status(void) { }
 void send_vlan(uint16_t vlan) { (void)vlan; }
-void send_basic_info(void) { }
+extern uint8_t outbuf[TCP_OUTBUF_SIZE];
+extern uint16_t slen;
+static unsigned information_calls;
+void send_basic_info(void) {
+    information_calls++;
+    slen=strtox(outbuf,"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n{}\n");
+}
 void send_bandwidth(void) { }
 void send_storm(void) { }
 void send_isolation(void) { }
@@ -183,7 +223,11 @@ void send_l2(uint16_t idx) { (void)idx; }
 void l2_delete(uint16_t idx) { (void)idx; }
 void send_mirror(void) { }
 void send_mtu(void) { }
-void send_config(void) { }
+static unsigned configuration_reads;
+void send_config(void) {
+    configuration_reads++;
+    slen=strtox(outbuf,"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\nip 192.0.2.1\n");
+}
 void send_cmd_log(void) { }
 void send_lacp(void) { }
 void send_lag(void) { }
@@ -550,6 +594,57 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+
+/* Same UDP length guard must protect services with SNMP compiled out. */
+static void scenario_udp_lengths(void)
+{
+    const unsigned lengths[]={7,9,11,8};
+    for(unsigned i=0;i<4;i++) {
+        uip_init();struct uip_udp_conn *socket=uip_udp_new(NULL,0);assert(socket);
+        uip_udp_bind(socket,HTONS(12345));
+        uint8_t *packet=uip_buf+UIP_LLH_LEN;memset(packet,0,28);
+        packet[0]=0x45;packet[2]=0;packet[3]=28;packet[8]=64;packet[9]=17;
+        packet[12]=192;packet[14]=2;packet[15]=10;memcpy(packet+16,uip_hostaddr,4);
+        packet[20]=0x9c;packet[21]=0x40;packet[22]=12345>>8;packet[23]=12345&255;
+        packet[25]=lengths[i];memset(rx_headers,0,sizeof(rx_headers));
+        udp_dispatch_calls=0;uip_len=28;uip_input();
+        CHECK(udp_dispatch_calls==(i==3),"generic UDP length checked before application dispatch");
+    }
+    uip_init();
+}
+
+static void scenario_information_auth(void)
+{
+    const char *denied="GET /information.json HTTP/1.1\r\nHost: sw\r\n\r\n";
+    const char *allowed="GET /information.json HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\n\r\n";
+    session_start(MSS_FULL);information_calls=0;
+    client_send(TCP_ACK|TCP_PSH,denied,strlen(denied));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"401 Unauthorized") && !information_calls,"information.json requires authentication before serialization");
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use[0]=0;
+    client_send(TCP_ACK|TCP_PSH,allowed,strlen(allowed));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"200 OK") && information_calls==1,"authenticated information.json reaches existing serializer");
+    const char *config="GET /config HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\n\r\n";
+    /* session_start() reinitializes HTTP, including upstream's session table. */
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use[0]=0;
+    configuration_reads=0;
+    client_send(TCP_ACK|TCP_PSH,config,strlen(config));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"200 OK") && strstr((char *)stream,"ip 192.0.2.1") &&
+          configuration_reads==1,"existing authenticated configuration-read endpoint remains routed correctly");
+    const char *snmp_denied="POST /cmd HTTP/1.1\r\nHost: sw\r\nContent-Type: text/plain\r\nContent-Length: 8\r\n\r\nsnmp off";
+    const char *snmp_allowed="POST /cmd HTTP/1.1\r\nHost: sw\r\nCookie: session=012345abcdef\r\nContent-Type: text/plain\r\nContent-Length: 8\r\n\r\nsnmp off";
+    session_start(MSS_FULL);command_calls=0;
+    client_send(TCP_ACK|TCP_PSH,snmp_denied,strlen(snmp_denied));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"401 Unauthorized")&&!command_calls,"SNMP toggle command requires authentication");
+    session_start(MSS_FULL);strcpy(session_id,"012345abcdef");last_session_use[0]=0;
+    client_send(TCP_ACK|TCP_PSH,snmp_allowed,strlen(snmp_allowed));drain(MSS_FULL);
+    stream[stream_len<STREAM_MAX?stream_len:STREAM_MAX-1]=0;
+    CHECK(strstr((char *)stream,"200 OK")&&command_calls==1,"authenticated SNMP toggle command uses existing command endpoint");
+    session_id[0]=0;
+}
 
 /* Private HTTP lifecycle values; drive the real callback, not a model. */
 enum { TSTATE_NONE = 0, TSTATE_TX = 1, TSTATE_POST = 4 };
@@ -1100,6 +1195,113 @@ static void scenario_config_upload(void)
 	      "multipart/config: every split writes the exact configuration and NUL to its sector");
 }
 
+/* The application deliberately attempts sends on polls as well as receives;
+ * wildcard-poll safety must come from uIP, not from the test application's guard. */
+static void udp_echo_app(void)
+{
+	if (uip_newdata())
+		uip_send(uip_appdata, uip_datalen());
+	else
+		uip_send("poll", 4);
+}
+
+/* IPv4/UDP datagram from src to this host, delivered through uip_input(). */
+static void udp_in_datagram(const uint8_t src[4], uint16_t sport, uint16_t dport,
+			    const char *payload, uint16_t n)
+{
+	uint8_t *ip = uip_buf + UIP_LLH_LEN;
+
+	memset(ip, 0, 28 + n);
+	ip[0] = 0x45;
+	ip[2] = (28 + n) >> 8;
+	ip[3] = (28 + n) & 255;
+	ip[8] = 64;
+	ip[9] = 17;
+	memcpy(ip + 12, src, 4);
+	memcpy(ip + 16, uip_hostaddr, 4);
+	ip[20] = sport >> 8;
+	ip[21] = sport & 255;
+	ip[22] = dport >> 8;
+	ip[23] = dport & 255;
+	ip[24] = (8 + n) >> 8;
+	ip[25] = (8 + n) & 255;
+	memcpy(ip + 28, payload, n);
+	memset(rx_headers, 0, sizeof(rx_headers));
+	uip_len = 28 + n;
+	uip_input();
+}
+
+/* True when uip_buf holds a reply from this host's sport to dst:dport with payload. */
+static int udp_reply_matches(const uint8_t dst[4], uint16_t dport, uint16_t sport,
+			     const char *payload, uint16_t n)
+{
+	const uint8_t *ip = uip_buf + UIP_LLH_LEN;
+
+	return uip_len == 28 + n && !memcmp(ip + 12, uip_hostaddr, 4) &&
+	       !memcmp(ip + 16, dst, 4) && ip[20] == sport >> 8 && ip[21] == (sport & 255) &&
+	       ip[22] == dport >> 8 && ip[23] == (dport & 255) && !memcmp(ip + 28, payload, n);
+}
+
+/* A wildcard UDP listener answers whichever peer sent the datagram being answered,
+ * stays wildcard, and sends nothing on a timer poll. A connected socket keeps its
+ * configured peer. */
+static void scenario_udp_wildcard_reply(void)
+{
+	static const uint8_t peer_a[4] = {192, 0, 2, 10}, peer_b[4] = {192, 0, 2, 20},
+			     peer_c[4] = {192, 0, 2, 30};
+	struct uip_udp_conn *listener, *connected;
+	uip_ipaddr_t remote;
+
+	uip_init();
+	listener = uip_udp_new(NULL, 0);
+	assert(listener);
+	uip_udp_bind(listener, HTONS(5300));
+	httpd_tx_udp_app = udp_echo_app;
+
+	udp_in_datagram(peer_a, 5001, 5300, "alpha", 5);
+	CHECK(udp_reply_matches(peer_a, 5001, 5300, "alpha", 5),
+	      "wildcard UDP reply goes back to the first datagram's source");
+	CHECK(listener->lport == HTONS(5300) && listener->rport == 0 &&
+	      !listener->ripaddr[0] && !listener->ripaddr[1],
+	      "wildcard UDP listener stays wildcard after first reply");
+
+	udp_in_datagram(peer_b, 6002, 5300, "bravo", 5);
+	CHECK(udp_reply_matches(peer_b, 6002, 5300, "bravo", 5),
+	      "wildcard UDP reply goes back to the second datagram's source");
+	CHECK(listener->lport == HTONS(5300) && listener->rport == 0 &&
+	      !listener->ripaddr[0] && !listener->ripaddr[1],
+	      "wildcard UDP listener stays wildcard after second reply");
+
+	uip_udp_periodic(listener - uip_udp_conns);
+	CHECK(!uip_len, "timer poll of wildcard UDP listener sends nothing");
+	CHECK(listener->rport == 0 && !listener->ripaddr[0] && !listener->ripaddr[1],
+	      "wildcard UDP listener stays wildcard after timer poll");
+
+	uip_ipaddr(remote, 192, 0, 2, 30);
+	connected = uip_udp_new(&remote, HTONS(7100));
+	assert(connected);
+	uip_udp_bind(connected, HTONS(5400));
+	udp_in_datagram(peer_c, 7100, 5400, "charlie", 7);
+	CHECK(udp_reply_matches(peer_c, 7100, 5400, "charlie", 7),
+	      "connected UDP endpoint replies to its configured peer");
+	uip_udp_periodic(connected - uip_udp_conns);
+	CHECK(udp_reply_matches(peer_c, 7100, 5400, "poll", 4),
+	      "connected UDP periodic sends use the configured peer");
+
+	/* DHCP receives from a concrete server but sends through its broadcast socket. */
+	uip_ipaddr(remote, 255, 255, 255, 255);
+	connected = uip_udp_new(&remote, HTONS(67));
+	assert(connected);
+	uip_udp_bind(connected, HTONS(68));
+	udp_in_datagram(peer_a, 67, 68, "dhcp", 4);
+	static const uint8_t broadcast[4] = {255, 255, 255, 255};
+	CHECK(udp_reply_matches(broadcast, 67, 68, "dhcp", 4),
+	      "connected broadcast UDP replies retain DHCP destination, not incoming source");
+
+	httpd_tx_udp_app = NULL;
+	uip_init();
+}
+
 /* Requiring octet-stream would leave alternate or absent MIME types buffered
  * as headers forever instead of staging the binary and checking its CRC. */
 static void scenario_upload(const char *name, const char *part_type, int split)
@@ -1276,6 +1478,8 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_information_auth();
+	scenario_udp_lengths();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();
@@ -1293,6 +1497,7 @@ int main(int argc, char **argv)
 	scenario_oversized_get_header();
 	scenario_split_method_names();
 	scenario_config_upload();
+	scenario_udp_wildcard_reply();
 	scenario_upload("octet-stream control", "Content-Type: application/octet-stream\r\n", 0);
 	scenario_upload("MacBinary, split part terminator", "Content-Type: application/macbinary\r\n", 1);
 	scenario_upload("no part Content-Type", "", 0);

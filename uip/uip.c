@@ -476,6 +476,8 @@ uip_connect(__xdata uip_ipaddr_t *ripaddr, __xdata u16_t rport) __banked
 #endif /* UIP_ACTIVE_OPEN */
 /*---------------------------------------------------------------------------*/
 #if UIP_UDP
+/* SDCC codeseg is translation-unit-wide. Keep this generic allocator in
+ * the BANK1 selected above, independently of optional applications. */
 __xdata struct uip_udp_conn *
 uip_udp_new(__xdata uip_ipaddr_t * __xdata ripaddr, __xdata u16_t rport) __banked
 {
@@ -1127,6 +1129,9 @@ uip_process(u8_t flag) __banked
 #if UIP_UDP
   /* UDP input processing. */
  udp_input:
+  /* Validate before checksum processing or dispatch to any UDP application. */
+  if(uip_len < UIP_IPUDPH_LEN || ntohs(UDPBUF->udplen) != uip_len - UIP_IPH_LEN)
+    goto drop;
   /* UDP processing is really just a hack. We don't do anything to the
      UDP/IP headers, but let the UDP application do all the hard
      work. If the application sets uip_slen, it has a packet to
@@ -1202,11 +1207,19 @@ uip_process(u8_t flag) __banked
   UDPBUF->udplen = HTONS(uip_slen + UIP_UDPH_LEN);
   UDPBUF->udpchksum = 0;
 
-  BUF->srcport  = uip_udp_conn->lport;
-  BUF->destport = uip_udp_conn->rport;
-
+  if(uip_udp_conn->rport == 0) {
+    /* A wildcard socket can only reply to the current received datagram. */
+    if(!(uip_flags & UIP_NEWDATA) || BUF->srcport == 0) {
+      goto drop;
+    }
+    uip_ipaddr_copy(BUF->destipaddr, BUF->srcipaddr);
+    BUF->destport = BUF->srcport;
+  } else {
+    uip_ipaddr_copy(BUF->destipaddr, uip_udp_conn->ripaddr);
+    BUF->destport = uip_udp_conn->rport;
+  }
+  BUF->srcport = uip_udp_conn->lport;
   uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
-  uip_ipaddr_copy(BUF->destipaddr, uip_udp_conn->ripaddr);
    
   uip_appdata = &uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN];
 

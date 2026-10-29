@@ -1,5 +1,11 @@
 #include "cmd_parser.h"
 #include "machine.h"
+/* CLI input/history can contain an SNMP community; never mirror echoes to syslog. */
+#ifdef SNMP
+#define editor_write_char write_char_no_syslog
+#else
+#define editor_write_char write_char
+#endif
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
@@ -44,7 +50,7 @@ void cmd_edit(void) __banked
 			// line is full, drop the character but still fall through to advance the
 			// serial-ring read pointer below; a 'continue' here would spin forever.
 			if (cmd_line_len < CMD_BUF_SIZE - 1) {
-				write_char(sbuf[l]);
+				editor_write_char(sbuf[l]);
 				// Shift buffer to right
 				for (uint8_t i = cmd_line_len; i > cursor; i--)
 					cmd_buffer[i] = cmd_buffer[i-1];
@@ -53,10 +59,10 @@ void cmd_edit(void) __banked
 				cmd_line_len++;
 				// Print rest of line
 				for (uint8_t i = cursor; i < cmd_line_len; i++)
-					write_char(cmd_buffer[i]);
+					editor_write_char(cmd_buffer[i]);
 				// Move backwards
 				for (uint8_t i = cursor; i < cmd_line_len; i++)
-					write_char('\010'); // BS works like cursor-left
+					editor_write_char('\010'); // BS works like cursor-left
 			}
 		} else if (sbuf[l] == '\033') { // ESC-Sequence
 			// Wait until we have at least 3 characters including the ESC character in the serial buffer
@@ -65,21 +71,21 @@ void cmd_edit(void) __banked
 			if (((sbuf_ptr > l ? sbuf_ptr - l : SBUF_SIZE + sbuf_ptr - l) >= 4)
 				   && sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == '3' && sbuf[(l + 3) & SBUF_MASK] == '~') { // DEL
 				if (cursor < cmd_line_len) {
-					write_char('\033'); write_char('['); write_char('1'); write_char('P'); // Delete to end of line
+					editor_write_char('\033'); editor_write_char('['); editor_write_char('1'); editor_write_char('P'); // Delete to end of line
 					cmd_line_len--;
 					for (uint8_t i = cursor; i < cmd_line_len; i++) {
 						cmd_buffer[i] = cmd_buffer[i+1];
-						write_char(cmd_buffer[i]);
+						editor_write_char(cmd_buffer[i]);
 					}
 					for (uint8_t i = cursor; i < cmd_line_len; i++)
-						write_char('\010');
+						editor_write_char('\010');
 				}
 				l += 4;
 				l &= SBUF_MASK;
 				continue;
 			} else if (sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == 'D') { // <CURSOR-LEFT>
 				if (cursor) {
-					write_char('\010'); // BS works like cursor-left
+					editor_write_char('\010'); // BS works like cursor-left
 					cursor--;
 				}
 				l += 3;
@@ -87,7 +93,7 @@ void cmd_edit(void) __banked
 				continue;
 			} else if (sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == 'C') { // <CURSOR-RIGHT>
 				if (cursor < cmd_line_len) {
-					write_char('\033'); write_char('['); write_char('C');
+					editor_write_char('\033'); editor_write_char('['); editor_write_char('C');
 					cursor++;
 				}
 				l += 3;
@@ -103,7 +109,7 @@ void cmd_edit(void) __banked
 				else
 					p = history_editptr;
 				// Move cursor to beginning of line
-				write_char('\033'); write_char('['); itoa(cursor + 2); write_char('D');
+				editor_write_char('\033'); editor_write_char('['); itoa(cursor + 2); editor_write_char('D');
 				cursor = 0;
 				while (cmd_history[p] && cmd_history[p] != '\n') {
 					cursor++;
@@ -116,7 +122,7 @@ void cmd_edit(void) __banked
 					print_string("\033[2K> "); // Clear entire line: ^[[2K and print new prompt
 					for (uint8_t i = 0; i < cursor; i++) {
 						cmd_buffer[i] = cmd_history[p];
-						write_char(cmd_buffer[i]);
+						editor_write_char(cmd_buffer[i]);
 						p = (p+1) & CMD_HISTORY_MASK;
 					}
 					cmd_line_len = cursor;
@@ -130,7 +136,7 @@ void cmd_edit(void) __banked
 				if (history_editptr != 0xffff) {
 					__xdata uint16_t p = (history_editptr + 2) & CMD_HISTORY_MASK;
 					// Move cursor to beginning of line
-					write_char('\033'); write_char('['); itoa(cursor + 2); write_char('D');
+					editor_write_char('\033'); editor_write_char('['); itoa(cursor + 2); editor_write_char('D');
 					print_string("\033[2K> "); // Clear entire line: ^[[2K and print new prompt
 					uint8_t i = 0;
 					while (cmd_history[p] && cmd_history[p] != '\n') {
@@ -139,7 +145,7 @@ void cmd_edit(void) __banked
 					p = (p + 1) & CMD_HISTORY_MASK;
 					while (cmd_history[p] && cmd_history[p] != '\n') {
 						cmd_buffer[i] = cmd_history[p];
-						write_char(cmd_buffer[i++]);
+						editor_write_char(cmd_buffer[i++]);
 						p = (p + 1) & CMD_HISTORY_MASK;
 					}
 					history_editptr = (p - 1) & CMD_HISTORY_MASK;
@@ -147,10 +153,10 @@ void cmd_edit(void) __banked
 						if (current_cmdline[i]) {
 							while (current_cmdline[i]) {
 								cmd_buffer[i] = current_cmdline[i];
-								write_char(cmd_buffer[i++]);
+								editor_write_char(cmd_buffer[i++]);
 							}
 						} else {
-							write_char('\033'); write_char('['); write_char('C');
+							editor_write_char('\033'); editor_write_char('['); editor_write_char('C');
 						}
 						history_editptr = 0xffff;
 						// Move cursor right
@@ -158,11 +164,11 @@ void cmd_edit(void) __banked
 					cmd_line_len = i;
 					cursor = 0;
 					// Move cursor again to beginning of line
-					write_char('\033'); write_char('['); itoa(i); write_char('D');
+					editor_write_char('\033'); editor_write_char('['); itoa(i); editor_write_char('D');
 				} else {
 					// If we are at the last entry of the history, just move the cursor to the end of the line
 					if (cursor < cmd_line_len) {
-						write_char('\033'); write_char('['); itoa(cmd_line_len - cursor); write_char('C');
+						editor_write_char('\033'); editor_write_char('['); itoa(cmd_line_len - cursor); editor_write_char('C');
 					}
 					cursor = cmd_line_len;
 				}
@@ -174,13 +180,13 @@ void cmd_edit(void) __banked
 			}
 		} else if (sbuf[l] == 127 || sbuf[l] == 8) {  // Backspace DEL or BS/^H
 			if (cursor > 0) {
-				write_char('\010');
+				editor_write_char('\010');
 				for (uint8_t i = cursor; i < cmd_line_len; i++)
-					write_char(cmd_buffer[i]);
-				write_char(' '); // Overwrite end of line
+					editor_write_char(cmd_buffer[i]);
+				editor_write_char(' '); // Overwrite end of line
 				// Move backwards n steps:
 				for (uint8_t i = cursor; i <= cmd_line_len; i++)
-					write_char('\010');
+					editor_write_char('\010');
 				cursor--;
 				for (uint8_t i = cursor; i <= cmd_line_len; i++)
 					cmd_buffer[i] = cmd_buffer[i+1];
@@ -192,9 +198,9 @@ void cmd_edit(void) __banked
 			break;
 		// Check whether return was pressed:
 		if (sbuf[l] == '\n' || sbuf[l] == '\r') {
-			write_char('\n');
+			editor_write_char('\n');
 			cmd_buffer[cmd_line_len] = NUL;
-//			write_char('>'); print_string_x(cmd_buffer); write_char('<');
+//			editor_write_char('>'); print_string_x(cmd_buffer); editor_write_char('<');
 			// If there is a command we print the prompt after execution
 			// otherwise immediately because there is nothing to execute
 			if (cmd_line_len)
