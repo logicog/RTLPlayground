@@ -872,7 +872,7 @@ function setDirty(d){
 function postCmd(cmd,quiet){
   return api("/cmd",{method:"POST",body:cmd}).then(function(r){
     if(!r.ok)throw new Error(((r.body||"").split("\n")[0])||t("t_rejected",{c:cmd}));
-    if(isConfCmd(cmd.trim()))setDirty(true);
+    if(cmd.trim().split("\n").some(function(l){return isConfCmd(l.trim())}))setDirty(true);
     if(!quiet)toast(t("t_applied",{c:cmd}),"ok");
     return r;
   },function(e){toast(e.message||t("t_failed",{c:cmd}),"err");throw e;});
@@ -880,7 +880,7 @@ function postCmd(cmd,quiet){
 function postCmds(list){
   var p=Promise.resolve();
   list.forEach(function(c){p=p.then(function(){return postCmd(c,true)})});
-  return p.then(function(){toast(t("t_cmds",{n:list.length}),"ok")});
+  return p.then(function(){toast(t("t_cmds",{n:list.join("\n").split("\n").length}),"ok")});
 }
 function toast(msg,cls){
   var el=h("div",{class:"toast "+(cls||""),text:msg});
@@ -1314,6 +1314,8 @@ function portsStatus(){
 // What Apply sends for one port: its whole state as shown, so the port ends up as displayed
 function portCmds(r,s,o){
   var p=r.p,n=p.portNum,c=[];
+  // Off goes first: a PHY that is off ignores the resets fc and eee would cause
+  if(!s.en)c.push("port "+n+" off");
   if(s.name)c.push("port "+n+" name "+s.name);
   if(s.en){
     if(!p.isSFP)c.push("port "+n+" "+s.spd);
@@ -1325,7 +1327,6 @@ function portCmds(r,s,o){
   }
   if(s.mtu)c.push("mtu "+n+" "+s.mtu);
   if(!p.isSFP){c.push("port "+n+" fc "+(s.fc?"on":"off"));c.push("eee "+(s.eee?"on":"off")+" "+n)}
-  if(!s.en)c.push("port "+n+" off");
   return c;
 }
 function ptChanged(){
@@ -1361,7 +1362,9 @@ function applyPorts(){
     var s=ch[j].s;
     if(s.name&&s.name!==ch[j].o.name&&!/^\S{1,15}$/.test(s.name)){toast(t("pt_name_err"),"err");return;}
     if(s.mtu&&!(/^\d+$/.test(s.mtu)&&+s.mtu>=64&&+s.mtu<=16383)){toast(t("pt_mtu_err"),"err");return;}
-    cmds=cmds.concat(portCmds(ch[j].r,s,ch[j].o));
+    // One POST per port: its commands run back to back instead of one HTTP round trip apart
+    var c=portCmds(ch[j].r,s,ch[j].o);
+    if(c.length)cmds.push(c.join("\n"));
   }
   $("papply").disabled=true;
   // Rebuild from what the switch reports once the links have renegotiated
