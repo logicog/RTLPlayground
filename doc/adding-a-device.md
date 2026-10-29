@@ -213,8 +213,7 @@ Once the board has been tested on hardware:
 
 ### Identifying the CPU variant
 
-For RTL8373-based devices, use the read-only console command below to distinguish
-the N and non-N CPU variants:
+Use the read-only console command below to distinguish the CPU variants:
 
 ```text
 regget 4
@@ -222,7 +221,10 @@ regget 4
 
 | Register 0x0004 value | CPU |
 |---|---|
-| `0x83730000` | RTL8373 (non-N) |
+| `0x83700000` | RTL8370 |
+| `0x83720000` | RTL8372 |
+| `0x83727000` | RTL8372N |
+| `0x83730000` | RTL8373 |
 | `0x83737000` | RTL8373N |
 
 Record the identified CPU in the device documentation. These values identify
