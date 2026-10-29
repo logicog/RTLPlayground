@@ -3310,8 +3310,10 @@ function portCmds(r, s, o) {
     if (!s.en) c.push("port " + n + " off");
     if (s.name) c.push("port " + n + " name " + s.name);
     if (s.en) {
-        if (!p.isSFP) c.push("port " + n + " " + s.spd);
-        else {
+        // Setting the speed restarts autonegotiation, so only when it changed or the port comes back on
+        if (!p.isSFP) {
+            if (s.spd !== o.spd || !p.enabled) c.push("port " + n + " " + s.spd);
+        } else {
             if (!p.enabled) c.push("port " + n + " on");
             // The SFP rate cannot be read back, so it is only sent when it was changed
             if (s.spd !== o.spd) c.push("sfp " + S.sfpSlot[n - 1] + " " + s.spd);
