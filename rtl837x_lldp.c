@@ -177,7 +177,7 @@ void lldp_set_rtl_wrapper(void) __banked {
     LLDP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
     LLDP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
     LLDP_O->rtl_tag.reason = 0x00;
-    LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
+    LLDP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS | RTL_TAG_PRI_CTRL);
 
     LLDP_O->ether_type = HTONS(LLDP_ETHERTYPE);
 }

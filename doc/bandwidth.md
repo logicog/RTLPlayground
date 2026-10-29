@@ -14,9 +14,9 @@ source/destination port. Once in a queue, packets are scheduled for egress
 based on differnent configurable algorithms.
 
 RTLPlayground currently allows only to control the bandwidth at ingress at a port
-or just before packets leave a port. There is no control of the priority assignment
-or queue scheduling mechanisms. The bandwidth can be controlled in steps of 16Kbit/s
-from 16Kbit/s to 10Gbp/s.
+or just before packets leave a port. The bandwidth can be controlled in steps of
+16Kbit/s from 16Kbit/s to 10Gbp/s. Priority assignment and queue scheduling are
+described in [qos.md](qos.md).
 
 The bandwidth control as currently implemented allows e.g. to assign a certain
 share of bandwidth to an attached device (e.g. to share an uplink), or simulate

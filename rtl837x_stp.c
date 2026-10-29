@@ -768,7 +768,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	STP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	STP_O->rtl_tag.reason = 0x00;
-	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
+	STP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS | RTL_TAG_PRI_CTRL);
 	STP_O->rtl_tag.pmask = HTONS(((uint16_t)1) << stp_first(stp_members(port) & stp_link_phys));
 
 	STP_O->dsap = 0x42;
