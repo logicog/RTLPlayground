@@ -945,6 +945,8 @@ void parse_port(void)
 		print_string("\"\n");
 	} else if (cmd_compare(2, "lldp")) {
 		if (cmd_compare(3, "block")){
+			if (lldp_enabled)
+				lldp_shutdown((uint16_t)1 << phy_settings.port);
 			lldp_logical_port_status &= ~((uint16_t)1 << phy_settings.port);
 		} else if (cmd_compare(3, "permit")) {
 			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
@@ -2089,6 +2091,8 @@ void cmd_parser(void) __banked
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
 			} else {
 				print_string("LLDP disabled\n");
+				if (lldp_enabled)
+					lldp_shutdown(lldp_logical_port_status);
 				lldp_enabled = 0;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
 			}
