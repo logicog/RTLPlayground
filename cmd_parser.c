@@ -1219,6 +1219,32 @@ err:
 }
 
 
+static void print_lldp_neighbors(void)
+{
+	bool any = 0;
+
+	print_string("Port  TTL  Chassis ID / Port ID / System name\n");
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		__xdata struct lldp_neighbor *nb = &lldp_neighbors[i];
+		if (!nb->ttl)
+			continue;
+		any = 1;
+		print_phys_port(i);
+		print_string("  ");
+		itoa_short(nb->ttl);
+		print_string("  ");
+		print_string_x(nb->chassis);
+		print_string(" / ");
+		print_string_x(nb->port);
+		print_string(" / ");
+		print_string_x(nb->name);
+		write_char('\n');
+	}
+	if (!any)
+		print_string("No neighbors\n");
+}
+
+
 static void print_temperature(uint16_t reg)
 {
 	int16_t v;
@@ -2095,10 +2121,13 @@ void cmd_parser(void) __banked
 					lldp_shutdown(lldp_logical_port_status);
 				lldp_enabled = 0;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
+				lldp_clear();
+			} else if (cmd_compare(1, "neighbors")) {
+				print_lldp_neighbors();
 			} else if (cmd_words_len == 1) {
 				print_string(lldp_enabled ? "LLDP enabled\n" : "LLDP disabled\n");
 			} else {
-				cmd_error("Usage: lldp [on|off]\n");
+				cmd_error("Usage: lldp [on|off|neighbors]\n");
 			}
 		}
 		else {

@@ -40,7 +40,7 @@ stp_en_q:"Enable spanning tree?",
 stp_en_d:"Ports start blocked and take up to twice the forward delay to reach forwarding; edge ports recover immediately.",
 stp_dis_q:"Disable spanning tree?",stp_dis_d:"All ports go straight to forwarding; loop protection is lost.",
 stp_cost_err:"Path cost must be 0-200000000",
-lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",
+lldp_enabled: "LLDP Enabled",lldp_title:"Service Status",lldp_portname:"Name",lldp_enable:"Send Frames",lldp_nb_name:"Neighbor",lldp_nb_port:"Neighbor port",lldp_nb_chassis:"Chassis ID",lldp_nb_ttl:"TTL (s)",
 stp_pcs:"Path cost",stp_pcs_long:"Long (32 bit)",stp_pcs_short:"Short (16 bit)",
 stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
 stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
@@ -508,7 +508,7 @@ stp_en_q:"Activer l'arbrescence?",
 stp_en_d:"Les ports sont d'abord bloqués et cela prend deux fois le délai de retransmission pour atteindre l'état de retransmission; les ports en bordures recouvrent immédiatement leur état.",
 stp_dis_q:"Désactiver l'arborescence ?",stp_dis_d:"Tous les ports vont être retransmis; la protection de boucles est perdue.",
 stp_cost_err:"Le coût du chemin doit être compris entre 0 et 200000000",
-lldp_enabled: "Activer LLDP",lldp_title:"Protocole de découverte de la couche de liason (LLDP)",lldp_portname:"Nom",lldp_enable:"Envoi de trames",
+lldp_enabled: "Activer LLDP",lldp_title:"Protocole de découverte de la couche de liason (LLDP)",lldp_portname:"Nom",lldp_enable:"Envoi de trames",lldp_nb_name:"Voisin",lldp_nb_port:"Port du voisin",lldp_nb_chassis:"ID de châssis",lldp_nb_ttl:"TTL (s)",
 st_title:"Statiqtique du port",st_h:"cumul depuis le démarrage",st_txg:"TX OK",st_txb:"TX KO",st_rxg:"RX OK",
 st_rxb:"RX KO",st_details:"Détails",st_counters:"Compteur MIB",st_nonzero:"non-zero seulement",
 st_autoref:"rafraichissement automatique",st_counter:"Compteur",st_value:"Valeur",st_fail:"Erreur au chargement des compteurs",
@@ -634,7 +634,7 @@ stp_en_q:"Spanning Tree aktivieren?",
 stp_en_d:"Die Ports starten blockiert und brauchen bis zum doppelten Forward Delay, bis sie weiterleiten; Edge-Ports sind sofort wieder aktiv.",
 stp_dis_q:"Spanning Tree deaktivieren?",stp_dis_d:"Alle Ports leiten sofort weiter; der Schutz vor Netzwerkschleifen entfällt.",
 stp_cost_err:"Pfadkosten müssen zwischen 0 und 200000000 liegen",
-nav_lldp:"LLDP",lldp_enabled:"LLDP aktiv",lldp_title:"Dienststatus",lldp_portname:"Name",lldp_enable:"Pakete senden",
+nav_lldp:"LLDP",lldp_enabled:"LLDP aktiv",lldp_title:"Dienststatus",lldp_portname:"Name",lldp_enable:"Pakete senden",lldp_nb_name:"Nachbar",lldp_nb_port:"Nachbar-Port",lldp_nb_chassis:"Chassis-ID",lldp_nb_ttl:"TTL (s)",
 st_title:"Port-Statistik",st_h:"Summen seit dem Start",st_txg:"TX gut",st_txb:"TX fehlerhaft",st_rxg:"RX gut",
 st_rxb:"RX fehlerhaft",st_details:"Details",st_counters:"MIB-Zähler",st_nonzero:"nur ungleich null",
 st_autoref:"automatisch aktualisieren",st_counter:"Zähler",st_value:"Wert",st_fail:"Zähler konnten nicht geladen werden",
@@ -2102,6 +2102,11 @@ function lldpLoad(){
         }}),h("i")]);
       sw.firstChild.checked=p.permitted;
       tr.insertCell().appendChild(sw);
+      var nb=p.nb||{};
+      tr.insertCell().textContent=nb.name||"-";
+      tr.insertCell().textContent=nb.port||"-";
+      tr.insertCell().textContent=nb.chassis||"-";
+      tr.insertCell().textContent=nb.ttl!=null?nb.ttl:"-";
     });
   });
 }
@@ -2110,7 +2115,8 @@ $("lldp_en").addEventListener("change",function(){
   var el=this;
   postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
-tabHooks.lldp={enter:lldpLoad};
+var lldpPoller=new Poller(function(){return lldpLoad().catch(function(){})},5000);
+tabHooks.lldp={enter:function(){lldpLoad();lldpPoller.start()},leave:function(){lldpPoller.stop()}};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);

@@ -10,6 +10,7 @@
 #include "uip/uip.h"
 #include "machine.h"
 #include "version.h"
+#include "rtl837x_trap.h"
 
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
@@ -19,11 +20,27 @@ extern volatile __xdata uint32_t ticks;
 __xdata uint8_t lldp_tick_last;
 __xdata uint8_t lldp_seconds;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
+__xdata struct lldp_neighbor lldp_neighbors[LLDP_NB_PORTS];
+
+void lldp_clear(void) __banked
+{
+    memset(lldp_neighbors, 0, sizeof(lldp_neighbors));
+}
 
 void lldp_init(void) __banked
 {
     lldp_tick_last = (uint8_t)ticks;
     lldp_seconds = 0;
+    lldp_clear();
+}
+
+// Age the neighbour table once a second
+static void lldp_age(void)
+{
+    for (uint8_t i = 0; i < LLDP_NB_PORTS; i++) {
+        if (lldp_neighbors[i].ttl)
+            lldp_neighbors[i].ttl--;
+    }
 }
 
 void lldp_tick(void) __banked
@@ -31,6 +48,8 @@ void lldp_tick(void) __banked
     if (!TICKS_DUE(lldp_tick_last, SYS_TICK_HZ))
         return;
     lldp_tick_last += SYS_TICK_HZ;
+
+    lldp_age();
 
     if (++lldp_seconds < LLDP_TX_INTERVAL_S)
         return;
@@ -222,4 +241,88 @@ uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked
     *p++ = name_length;
     memcpy(p, port_names[port], name_length);
     return name_length + 2;
+}
+
+// Incoming LLDP frame, trapped to the CPU with an RTL tag in front of the EtherType
+
+static const char hexdigits[] = "0123456789abcdef";
+
+// Copy a TLV value as text: a MAC address if mac is set and the length fits,
+// printable ASCII otherwise
+static void lldp_copy_str(__xdata char *dst, __xdata uint8_t *src, uint16_t len, bool mac)
+{
+    uint8_t n = 0;
+
+    if (mac && len == MAC_ADDR_LEN) {
+        for (uint8_t i = 0; i < MAC_ADDR_LEN; i++) {
+            if (i)
+                dst[n++] = ':';
+            dst[n++] = hexdigits[src[i] >> 4];
+            dst[n++] = hexdigits[src[i] & 0xf];
+        }
+    } else {
+        while (len-- && n < LLDP_NB_STR - 1) {
+            uint8_t c = *src++;
+            dst[n++] = (c < 0x20 || c > 0x7e) ? '.' : c;
+        }
+    }
+    dst[n] = 0;
+}
+
+void lldp_in(void) __banked
+{
+    __xdata uint8_t *p, *end;
+    __xdata struct lldp_neighbor *nb;
+    uint16_t len, ttl = 0;
+    uint8_t type, port, body;
+
+    body = TRAP_RX_BODY();
+    if (uip_len > UIP_BUFSIZE)
+        uip_len = UIP_BUFSIZE;
+    if (uip_len < body + 2)
+        goto out;
+    if (uip_buf[body] != (LLDP_ETHERTYPE >> 8) || uip_buf[body + 1] != (LLDP_ETHERTYPE & 0xff))
+        goto out;
+    // Ignore our own frames
+    if (!memcmp(&uip_buf[MAC_ADDR_LEN], uip_ethaddr.addr, MAC_ADDR_LEN))
+        goto out;
+
+    port = ((uint8_t)HTONS(((__xdata struct rtl_tag *)&uip_buf[2 * MAC_ADDR_LEN])->pmask)) & 0x0f;
+    if (!MACHINE_PORT_VALID(port) || port >= LLDP_NB_PORTS)
+        goto out;
+
+    nb = &lldp_neighbors[port];
+    nb->chassis[0] = nb->port[0] = nb->name[0] = 0;
+
+    p = &uip_buf[body + 2];
+    end = &uip_buf[uip_len];
+    while (p + 2 <= end) {
+        type = p[0] >> 1;
+        len = ((uint16_t)(p[0] & 1) << 8) | p[1];
+        p += 2;
+        if (!type || p + len > end)
+            break;
+        switch (type) {
+        case LLDP_CHASSIS_ID_TLV_TYPE:
+            if (len)
+                lldp_copy_str(nb->chassis, p + 1, len - 1, p[0] == LLDP_CHASSIS_SUBTYPE_MAC);
+            break;
+        case LLDP_PORT_ID_TLV_TYPE:
+            if (len)
+                lldp_copy_str(nb->port, p + 1, len - 1, p[0] == LLDP_PORT_SUBTYPE_MAC);
+            break;
+        case LLDP_TTL_TLV_TYPE:
+            if (len >= 2)
+                ttl = ((uint16_t)p[0] << 8) | p[1];
+            break;
+        case LLDP_SYSNAME_TLV_TYPE:
+            lldp_copy_str(nb->name, p, len, 0);
+            break;
+        }
+        p += len;
+    }
+    // A TTL of 0 (shutdown frame) removes the neighbour
+    nb->ttl = ttl;
+out:
+    uip_len = 0;
 }

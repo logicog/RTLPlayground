@@ -15,6 +15,7 @@
 #include "machine.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_lacp.h"
+#include "rtl837x_lldp.h"
 #include "page_impl.h"
 #include "syslog.h"
 
@@ -647,6 +648,12 @@ void send_lacp(void)
 	slen += strtox(outbuf + slen, "]}");
 }
 
+static void json_str_x_to_html(__xdata const char *s)
+{
+	while (*s)
+		json_char_to_html(*s++);
+}
+
 void send_lldp(void)
 {
 	dbg_string("send_lldp called\n");
@@ -669,6 +676,17 @@ void send_lldp(void)
 
 		slen += strtox(outbuf + slen, "\",\"permitted\":");
 		bool_to_html(1 & (lldp_logical_port_status >> i));
+		if (lldp_neighbors[i].ttl) {
+			slen += strtox(outbuf + slen, ",\"nb\":{\"ttl\":");
+			itoa16_html(lldp_neighbors[i].ttl);
+			slen += strtox(outbuf + slen, ",\"chassis\":\"");
+			json_str_x_to_html(lldp_neighbors[i].chassis);
+			slen += strtox(outbuf + slen, "\",\"port\":\"");
+			json_str_x_to_html(lldp_neighbors[i].port);
+			slen += strtox(outbuf + slen, "\",\"name\":\"");
+			json_str_x_to_html(lldp_neighbors[i].name);
+			slen += strtox(outbuf + slen, "\"}");
+		}
 		slen += strtox(outbuf + slen, "}");
 
 		if (i < MACHINE_MAX_PORT)

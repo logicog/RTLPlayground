@@ -40,6 +40,23 @@
 
 #define LLDP_MAX_PAYLOAD 128
 
+#define LLDP_CHASSIS_SUBTYPE_MAC 4
+#define LLDP_PORT_SUBTYPE_MAC 3
+
+/* Neighbour table: one entry per logical port, strings are NUL-terminated
+ * and hold printable ASCII only. A TTL of 0 marks an unused entry. */
+#define LLDP_NB_PORTS 10
+#define LLDP_NB_STR 32
+
+struct lldp_neighbor {
+    uint16_t ttl;
+    char chassis[LLDP_NB_STR];
+    char port[LLDP_NB_STR];
+    char name[LLDP_NB_STR];
+};
+
+extern __xdata struct lldp_neighbor lldp_neighbors[LLDP_NB_PORTS];
+
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
 void lldp_send(void) __banked;
@@ -49,5 +66,7 @@ void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;
 uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked;
 uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked;
+void lldp_in(void) __banked;
+void lldp_clear(void) __banked;
 
 #endif
