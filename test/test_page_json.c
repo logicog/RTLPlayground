@@ -206,6 +206,7 @@ static void t_status_macs(void)
 extern uint16_t phy_mock_an[9][0x40];
 extern uint16_t phy_mock_mod[5];
 extern uint16_t phy_pause_off;
+extern int phy_mock_writes, phy_mock_resets;
 
 /* The numeric value of key inside the port's own object of /status.json, or -1. */
 static int field_of(int port, const char *key)
@@ -316,6 +317,8 @@ static void t_pause_set(void)
 {
 	printf("[test] port <n> fc on|off sets the advertisement and remembers it for phy_set_speed\n");
 	phy_pause_off = 0;
+	memset(phy_mock_an, 0, sizeof phy_mock_an);
+	phy_mock_an[3][0x10] = phy_mock_an[5][0x10] = 0x15e1;	// both advertise pause
 	port_pause_set(3, false);
 	CHECK(phy_pause_off == 1 << 3, "off marks the port");
 	CHECK(phy_mock_mod[0] == 3 && phy_mock_mod[1] == 7 && phy_mock_mod[2] == 0x10, "on MMD 7.0x0010 of that port");
@@ -325,7 +328,37 @@ static void t_pause_set(void)
 	port_pause_set(3, true);
 	CHECK(phy_pause_off == 1 << 5, "on unmarks only that port");
 	CHECK(phy_mock_mod[3] == 0x0c00 && phy_mock_mod[4] == 0x0400, "and advertises symmetric pause");
+	phy_mock_writes = phy_mock_resets = 0;
+	port_pause_set(3, true);
+	CHECK(phy_mock_writes == 0 && phy_mock_resets == 0, "already advertised: no write, so no link restart");
+	phy_mock_an[3][0x10] = 0x19e1;	// asymmetric pause only
+	port_pause_set(3, true);
+	CHECK(phy_mock_an[3][0x10] == 0x15e1 && phy_mock_resets == 1, "asymmetric only is not a match: rewritten");
 	phy_pause_off = 0;
+}
+
+static void t_eee_set(void)
+{
+	printf("[test] eee on|off writes the advertisement only when it changes\n");
+	memset(phy_mock_an, 0, sizeof phy_mock_an);
+	phy_mock_writes = phy_mock_resets = 0;
+	port_eee_enable(2, EEE_2G5);
+	CHECK(phy_mock_an[2][0x3c] == 0x0006 && phy_mock_an[2][0x3e] == 0x0001, "2.5G: 100M and 1G, plus 2.5G");
+	CHECK(phy_mock_resets == 1, "and restarts the link");
+	phy_mock_writes = phy_mock_resets = 0;
+	port_eee_enable(2, EEE_2G5);
+	CHECK(phy_mock_writes == 0 && phy_mock_resets == 0, "the same again: no write, so no link restart");
+	port_eee_enable(2, EEE_100);
+	CHECK(phy_mock_an[2][0x3c] == 0x0002 && phy_mock_an[2][0x3e] == 0, "100M alone clears 2.5G");
+	phy_mock_resets = 0;
+	port_eee_disable(2);
+	CHECK(phy_mock_an[2][0x3c] == 0 && phy_mock_an[2][0x3e] == 0 && phy_mock_resets == 1, "off clears both");
+	phy_mock_writes = phy_mock_resets = 0;
+	port_eee_disable(2);
+	CHECK(phy_mock_writes == 0 && phy_mock_resets == 0, "off again: no write");
+	port_eee_enable(4, EEE_10G | EEE_NORESET);
+	CHECK(phy_mock_an[4][0x3c] == 0x000e && phy_mock_an[4][0x3e] == 0x0003 && phy_mock_resets == 0,
+	      "10G at boot: every speed, no reset");
 }
 
 static void t_status_counters(void)
@@ -360,6 +393,7 @@ int main(void)
 	t_status_eee_multigig();
 	t_info_mapping();
 	t_pause_set();
+	t_eee_set();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

@@ -105,16 +105,26 @@ void     phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg)
 {
 	SFR_DATA_U16 = (dev_id == 7 && phy_id < 9 && reg < 0x40) ? phy_mock_an[phy_id][reg] : 0;
 }
-void     phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t val) { (void)phy_id; (void)dev_id; (void)reg; (void)val; }
+/* Writes and resets since the test last cleared them: a skipped write leaves both at 0 */
+int phy_mock_writes, phy_mock_resets;
+void     phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t val)
+{
+	phy_mock_writes++;
+	if (dev_id == 7 && phy_id < 9 && reg < 0x40)
+		phy_mock_an[phy_id][reg] = val;
+}
 /* The last phy_modify(), for the tests of what the firmware writes */
 uint16_t phy_mock_mod[5];
 void     phy_modify(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t mask, uint16_t set)
 {
 	phy_mock_mod[0] = phy_id; phy_mock_mod[1] = dev_id; phy_mock_mod[2] = reg;
 	phy_mock_mod[3] = mask; phy_mock_mod[4] = set;
+	phy_mock_writes++;
+	if (dev_id == 7 && phy_id < 9 && reg < 0x40)
+		phy_mock_an[phy_id][reg] = (phy_mock_an[phy_id][reg] & ~mask) | set;
 }
 uint16_t phy_pause_off;
-void     phy_reset(uint8_t port) { (void)port; }
+void     phy_reset(uint8_t port) { (void)port; phy_mock_resets++; }
 uint8_t  stp_port_role(uint8_t port) { (void)port; return 0; }
 uint8_t  stp_port_state(uint8_t port) { (void)port; return 3; }
 

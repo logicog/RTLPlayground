@@ -35,6 +35,10 @@ void port_pause_set(__xdata uint8_t port, __xdata bool on) __banked
 		phy_pause_off &= ~(1 << port);
 	else
 		phy_pause_off |= 1 << port;
+	// Changing the advertisement restarts the link, so leave a matching one alone
+	phy_read(port, PHY_MMD_AN, PHY_ANEG_ADV);
+	if ((SFR_DATA_U16 & (PHY_ANEG_PAUSE | PHY_ANEG_ASYM_PAUSE)) == (on ? PHY_ANEG_PAUSE : 0))
+		return;
 	phy_modify(port, PHY_MMD_AN, PHY_ANEG_ADV, PHY_ANEG_PAUSE | PHY_ANEG_ASYM_PAUSE, on ? PHY_ANEG_PAUSE : 0);
 	phy_reset(port);
 }
