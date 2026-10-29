@@ -4,7 +4,11 @@
  * MokerLink POE-2G040210GSM, PCB 2M-PCB49-V1.1: 4 x 2.5G PoE + 2 x 10G SFP+,
  * RTL8372. Started from the non-PoE 2G040210GSM (2M-PCB43-V1.1,
  * KP_9000_6XHML_X2_V1_1); every pin below was checked on this board.
- * See doc/devices/2M-PCB49-V1.1.md. PoE isn't configured.
+ * See doc/devices/2M-PCB49-V1.1.md.
+ *
+ * PoE: POE_2G040210GSM_init.c loads the RTL8238B's image at boot when the
+ * firmware image carries one (tools/add_pse_image.py). Without it the switch
+ * works normally and PoE stays off.
  */
 __code const struct machine machine = {
 	MACHINE_COMMON_SETTING,

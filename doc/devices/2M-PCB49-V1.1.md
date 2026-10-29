@@ -42,13 +42,46 @@ Tested on one switch:
 - The MAC address, read from the stock firmware's copy at `0x1FC000`. Keep that sector when writing
   a full 2 MiB image with a clip: an image padded with `0xFF` erases it, and the switch then makes up
   a locally administered MAC. Web updates leave it alone.
+- PoE, with an image added to the firmware (see [PoE](#poe)): a class 0 device on port 1 powers up
+  and links. Without the image the switch works normally and PoE stays off.
+
 Not tested: 2.5G links (and so the green LEDs), the 10 s reset to defaults.
 
 ### PoE
 
 The PoE controller is an RTL8238B on a daughterboard (StandardPOE8-V1.0), with no microcontroller
-of its own, on the RTL8372's I²C bus 0 (SDA `GPIO47`, SCL `GPIO46`) at `0x20` and `0x21`. RTLPlayground
-doesn't configure it, so PoE is off.
+of its own. It sits on the RTL8372's I²C bus 0 (SDA `GPIO47`, SCL `GPIO46`) at `0x20` and `0x21`.
+It does nothing until an image is uploaded to it, which the stock firmware does at every boot.
+
+`machine/POE_2G040210GSM_init.c` repeats the stock firmware's start-up sequence at boot (the steps
+are listed at the top of the file). The image is the PoE controller vendor's firmware, so it isn't
+in this repository. To use PoE, take the images from your own switch's stock flash backup and add
+them to a built firmware image:
+
+```
+tools/add_pse_image.py output/POE_2G040210GSM/rtlplayground-<version>-POE_2G040210GSM.bin \
+    image0.bin image1.bin rtlplayground-poe.bin
+```
+
+Then install `rtlplayground-poe.bin` as usual. The tool places the images at `0x34000`, between the
+last code bank and the web UI, and recalculates the image CRC.
+
+In a 2 MiB stock dump of this board the two images are back to back, both starting with
+`00 00 39 82`:
+
+| | Offset | Length | Used when |
+| --- | --- | --- | --- |
+| `image0.bin` | `0xf8428` | `0x52ac` | register `0xe8` doesn't read 2 (this board) |
+| `image1.bin` | `0xfd6d4` | `0x1f5c` | register `0xe8` reads 2 |
+
+For example: `dd if=stock.bin of=image0.bin bs=1 skip=$((0xf8428)) count=$((0x52ac))`.
+
+The controller powers valid PoE devices by itself once it runs. Per-port PoE control and readings
+aren't implemented. For reference, from the stock firmware's PoE pages: front ports 1-4 are channels
+3, 2, 1, 0 of `0x20`; per channel, register `0x30 + 4 * ch` holds the current (low 16 bits,
+`raw * 125 / 4096` mA) and voltage (high 16 bits `& 0x7fff`, `raw / 512` V), `0x0c + ch` the
+detection (low nibble, 4 = valid) and class (high nibble, `0xc` = class 0), and bit `4 + ch` of
+`0x10` is set while the port is powered. Registers read back least significant byte first.
 
 ### SFP
 
@@ -134,6 +167,6 @@ Bottom:
 
 - 2.5G links and the green LEDs.
 - SFP LOS.
-- PoE.
+- Per-port PoE control and readings.
 - The serial console on `T9` (pins and baud rate unconfirmed).
 - Making the "S" LED blink.
