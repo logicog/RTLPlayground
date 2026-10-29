@@ -82,3 +82,15 @@ Voltage is made by a `Techcode TD1720` .
 Voltage is created by chip marked as `Techcode TD1720`.
 
 **There seems to have been a miscalculation when choosing the inductor and the device is ~25% more efficient with an 5V power supply.**
+
+
+## Reset Mod
+
+A reset button can be easily added by soldering a push button from TP131 (near the Spi ROM) to ground via a 1KOhm resistor.
+
+**PS:** `The reset button GPIO must be defined in the machine.c file before building the image, it must be selected the GPIO30_ACL_BIT3_EN instead of GPIO_NA under the PCB_K0402WS-V3.0 configurations.`
+
+Photo of the mod
+
+<img src="photos/PCB-K0402WS-V3.0/Reset_mod.jpg" width="300" />
+
