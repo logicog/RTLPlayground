@@ -53,6 +53,10 @@ void hw_l2_put(uint16_t idx, const uint8_t mac[6], uint16_t vid, uint16_t port_o
 void hw_l2_decode(const struct hw_l2 *e, uint8_t mac[6], uint16_t *vid, uint16_t *port_or_pmask,
 		  bool *valid, bool *is_static, bool *mc);
 
+/* ACL tables: rule entry (bit 7 of entry selects the data half) and action entry words */
+uint32_t hw_acl_rule(uint8_t entry, uint8_t word);
+uint32_t hw_acl_act(uint8_t entry, uint8_t word);
+
 /* MIB counter the next STAT_GET for (port, counter) returns */
 void hw_counter_set(uint8_t port, uint8_t counter, uint64_t value);
 
