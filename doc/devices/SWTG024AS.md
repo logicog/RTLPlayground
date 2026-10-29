@@ -12,6 +12,27 @@ Also the RJ45 connectors can be all plastic/non-shielded or with metal shielding
 | Horaco |ZX-SWTG124AS | Yes |  SWTG024AS-v2.0 | ??? | ??? | 8272 |
 | Xikestore |SKS3200M-4GPY2XF | Yes |  SWTG024AS-v1.0 | CM-23-08-2043 023-16721 | 2048 KiB | 8272 |
 | Sodola | SL-SWTG124AS-D | Yes | SWTG024AS-v2.0-17452 | ??? | 2048 KiB | 8272 |
+| Xikestore |SKS3200M-4GPY2XF | Yes |  SWTG024AS-v2.0 | ??? | 2048 KiB (FM25Q16) | ??? |
+| MokerLink |2G040210GS | No |  SWTG024AS-V2.0 | ??? | 512 KiB (W25Q40) | ??? |
+
+## Machine targets
+
+| Layout | Target |
+| --- | --- |
+| managed (reset button, system LED, 2 MiB flash or more) | `make MACHINE=SWGT024_V2_0_MANAGED` |
+| unmanaged (no reset button, 512 KiB flash) | `make MACHINE=SWGT024_V2_0_UNMANAGED` |
+
+Tested with these targets:
+
+- **XikeStor SKS3200M-4GPY2XF**, `SWTG024AS-v2.0` managed layout, FM25Q16 2 MiB flash:
+  `SWGT024_V2_0_MANAGED`. Tested over several days: web UI, firmware updates through the web UI,
+  and switching and IGMP snooping between ports. The MAC address is read from the stock
+  firmware's copy at `0x1FC000`.
+- **MokerLink 2G040210GS**, `SWTG024AS-V2.0` unmanaged layout, Winbond W25Q40 512 KiB flash:
+  `SWGT024_V2_0_UNMANAGED`. Boots, switches and serves the web UI. The link LED colours are the
+  other way round from the stock firmware (green for 1G and below, amber for 2.5G), as reported in
+  [#310](https://github.com/logicog/RTLPlayground/issues/310). The 512 KiB flash is too small for
+  web updates with the standard layout, so install and update it with a programmer.
 
 ## PCB
 
