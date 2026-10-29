@@ -50,7 +50,7 @@ extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
 
-extern __xdata uint16_t lldp_logical_port_status;
+#include "rtl837x_lldp.h"
 extern __xdata bool lldp_enabled;
 
 __code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
@@ -669,12 +669,15 @@ void send_lldp(void)
 
 		slen += strtox(outbuf + slen, "\",\"permitted\":");
 		bool_to_html(1 & (lldp_logical_port_status >> i));
+		slen += strtox(outbuf + slen, ",\"listening\":");
+		bool_to_html(1 & (lldp_rx_port_status >> i));
 		slen += strtox(outbuf + slen, "}");
 
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
 	}
 	char_to_html(']');
+	lldp_neighbors_to_html();
 	char_to_html('}');
 }
 

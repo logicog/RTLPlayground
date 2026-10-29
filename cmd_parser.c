@@ -909,7 +909,7 @@ void parse_port(void)
 		cmd_error("\nUsage:" \
 					 "\nport <port> [show|on|off]" \
 					 "\nport <port> [10m|100m|1g|2g5|duplex] [half|full]" \
-					 "\nport <port> lldp [block|permit]" \
+					 "\nport <port> lldp [block|permit|ignore|listen]" \
 					 "\nport <port> cabletest [show]" \
 					 "\nport <port> name [custom port name]\n");
 		return;
@@ -950,8 +950,13 @@ void parse_port(void)
 			lldp_logical_port_status &= ~((uint16_t)1 << phy_settings.port);
 		} else if (cmd_compare(3, "permit")) {
 			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
+		} else if (cmd_compare(3, "ignore")) {
+			lldp_rx_port_status &= ~((uint16_t)1 << phy_settings.port);
+			lldp_forget_port(phy_settings.port);
+		} else if (cmd_compare(3, "listen")) {
+			lldp_rx_port_status |= (uint16_t)1 << phy_settings.port;
 		} else {
-			print_string ("Unknown port <port> lldp [block|permit] command\n");
+			print_string ("Unknown port <port> lldp [block|permit|ignore|listen] command\n");
 		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
@@ -2089,12 +2094,17 @@ void cmd_parser(void) __banked
 				print_string("LLDP enabled\n");
 				lldp_enabled = 1;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
-			} else {
+			} else if (cmd_compare(1, "off")) {
 				print_string("LLDP disabled\n");
 				if (lldp_enabled)
 					lldp_shutdown(lldp_logical_port_status);
 				lldp_enabled = 0;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
+				lldp_init();
+			} else if (cmd_compare(1, "show")) {
+				lldp_show();
+			} else {
+				cmd_error("Usage: lldp [on|off|show]\n");
 			}
 		}
 		else {
