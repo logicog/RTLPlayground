@@ -8,15 +8,16 @@
  *    SDA / GPIO46 SCL) does nothing until an image is uploaded to it, which
  *    the stock firmware does at every boot. This repeats the stock sequence,
  *    taken from a disassembly of the stock flash:
- *      - reset: write 00 00 00 20 to register 0x1a, wait 100 ms
+ *      - reset: write 0x20 to register 0x1a, wait 100 ms
  *      - write 03 00 00 00 to 0xec, wait 1 ms, read 0xec
  *      - if bit 2 of its first byte is clear: write 00 00 20 39 to 0x18,
  *        wait 10 ms, write 03 00 00 00 to 0xec again
  *      - read 0xe8: 2 picks image 1, anything else image 0
  *      - write the whole image to register 0xf4 as one I2C transfer
  *      - wait 10 ms, read 0xec: bit 5 of its first byte set = loaded
- *    Writes go out in the order shown; the chip returns registers least
- *    significant byte first.
+ *    The registers are bytes, laid out like a TI TPS23861's (0x1a is the
+ *    reset register), and multi-byte accesses cover consecutive registers in
+ *    address order, in both directions.
  *
  *    The image is the PoE controller vendor's firmware and isn't part of this
  *    repository. tools/add_pse_image.py puts it into a built firmware image at
@@ -216,6 +217,17 @@ static bool pse_write(uint8_t reg)
 	return true;
 }
 
+// Reset the chip: one byte, 0x20, to the reset register 0x1a. The chip may not
+// acknowledge the byte as it resets, so only the address phase has to succeed.
+static bool pse_reset(void)
+{
+	if (!pse_begin(0x1a))
+		return false;
+	i2c_write_byte(0x20);
+	i2c_stop();
+	return true;
+}
+
 // Read 4 bytes from a register into pse_buf, in the order received
 static bool pse_read(uint8_t reg)
 {
@@ -289,8 +301,7 @@ static void pse_load(void)
 	}
 	i2c_setup();
 
-	pse_set(0x00, 0x00, 0x00, 0x20);
-	if (!pse_write(0x1a)) {
+	if (!pse_reset()) {
 		print_string("PSE: no answer from the RTL8238B\n");
 		return;
 	}
