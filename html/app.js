@@ -15,7 +15,7 @@ c_full:"full",c_half:"half",c_yes:"yes",c_no:"no",
 d_system:"System",d_traffic:"Traffic",
 d_traffic_h:"packets/s, live",d_txpps:"TX pps",d_rxpps:"RX pps",d_txbad:"TX bad",d_rxbad:"RX bad",
 i_host:"Hostname",i_ip:"IP address",i_mask:"Netmask",i_gw:"Gateway",i_mac:"MAC",i_fw:"Firmware",
-i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",
+i_built:"Built",i_hw:"Hardware",i_temp:"Temperature",i_flash:"Flash",i_syslog:"Syslog",i_lldp:"LLDP neighbours",
 p_state:"State",p_disabled:"disabled",p_up:"up",
 p_pkts:"pkts",p_module:"Module",p_temp:"Temperature",p_vcc:"Vcc",p_txbias:"TX bias",p_txpower:"TX power",
 p_rxpower:"RX power",p_txfault:"TX fault",p_txdis:"TX disabled",p_rxlos:"RX LOS",p_adv:"Advertising",
@@ -46,6 +46,7 @@ stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
 stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
 stp_mcheck:"Check",stp_mcheck_t:"Send RST BPDUs again to find out whether the neighbour still needs 802.1D",
 stp_cnt:"Counters",stp_crx:"BPDUs received",stp_ctx:"BPDUs sent",stp_ctrx:"TC received",stp_cttx:"TC sent",stp_cage:"Last BPDU [s]",
+lldp_nb_title:"Neighbours",lldp_nb_chassis:"Chassis ID",lldp_nb_portid:"Port ID",lldp_nb_sysname:"System Name",lldp_nb_ttl:"TTL",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -1099,7 +1100,8 @@ function portDetail(i){
 function renderInfo(){
   var m=[["i_host","hostname"],["i_ip","ip_address"],["i_mask","ip_netmask"],
     ["i_gw","ip_gateway"],["i_mac","mac_address"],["i_fw","sw_ver"],["i_built","build_date"],
-    ["i_hw","hw_ver"],["i_temp","chip_temp"],["i_flash","flash_size"],["i_syslog","syslog_server"]];
+    ["i_hw","hw_ver"],["i_temp","chip_temp"],["i_flash","flash_size"],["i_syslog","syslog_server"],
+    ["i_lldp","lldp_neighbors"]];
   var tb=$("sysinfo");tb.innerHTML="";
   m.forEach(function(r){
     var v=S.info[r[1]];
@@ -2103,6 +2105,15 @@ function lldpLoad(){
       sw.firstChild.checked=p.permitted;
       tr.insertCell().appendChild(sw);
     });
+    var nb=$("lldp_nb_table").tBodies[0];nb.innerHTML="";
+    (s.neighbors||[]).sort(function(a,b){return a.port-b.port}).forEach(function(n){
+      var tr=nb.insertRow();
+      tr.insertCell().textContent=n.port;
+      tr.insertCell().textContent=n.chassis;
+      tr.insertCell().textContent=n.portId;
+      tr.insertCell().textContent=n.sysName;
+      tr.insertCell().textContent=n.ttl;
+    });
   });
 }
 
@@ -2110,7 +2121,8 @@ $("lldp_en").addEventListener("change",function(){
   var el=this;
   postCmd("lldp "+(el.checked?"on":"off")).catch(function(){el.checked=!el.checked});
 });
-tabHooks.lldp={enter:lldpLoad};
+var lldpPoller=new Poller(lldpLoad,5000);
+tabHooks.lldp={enter:function(){lldpPoller.start()},leave:function(){lldpPoller.stop()}};
 
 function eeeFlags(bits){
   var b=parseInt(bits,2);

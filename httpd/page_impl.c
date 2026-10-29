@@ -50,7 +50,7 @@ extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
 
-extern __xdata uint16_t lldp_logical_port_status;
+#include "rtl837x_lldp.h"
 extern __xdata bool lldp_enabled;
 
 __code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
@@ -304,7 +304,9 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, BUILD_DATE);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
-	slen += strtox(outbuf + slen, "\",\"chip_temp\":\"");
+	slen += strtox(outbuf + slen, "\",\"lldp_neighbors\":");
+	itoa_html(lldp_neighbor_count());
+	slen += strtox(outbuf + slen, ",\"chip_temp\":\"");
 	temp_to_html();
 	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
@@ -675,6 +677,7 @@ void send_lldp(void)
 			char_to_html(',');
 	}
 	char_to_html(']');
+	lldp_neighbors_to_html();
 	char_to_html('}');
 }
 
