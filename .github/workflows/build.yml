@@ -40,7 +40,7 @@ jobs:
       - name: Check that every machine definition can be compiled
         run: cd branch && make machine_check
       - name: Make project (4x2/RTL8372)
-        run: mkdir -p /tmp/branch /tmp/main && cd branch && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map output/KP_9000_6XHML_X2/rtlplayground.mem /tmp/branch/
+        run: mkdir -p /tmp/branch /tmp/main && cd branch && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp -r output/KP_9000_6XHML_X2/rtlplayground.map output/KP_9000_6XHML_X2/rtlplayground.mem output/KP_9000_6XHML_X2/html_min /tmp/branch/
       - name: Make project (8x1/RTL8373)
         run: cd branch && make CI=1 MACHINE="KP_9000_9XHML_X_V3_1"
       - name: Make project with the health instrumentation
@@ -49,7 +49,7 @@ jobs:
         run: |
           ln -s ../branch/toolchain main/toolchain
           PATH="$(echo "$PWD"/branch/toolchain/sdcc-*/bin):$PATH"
-          cd main && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map output/KP_9000_6XHML_X2/rtlplayground.mem /tmp/main/
+          cd main && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp -r output/KP_9000_6XHML_X2/rtlplayground.map output/KP_9000_6XHML_X2/rtlplayground.mem output/KP_9000_6XHML_X2/html_min /tmp/main/
       - name: Calculate bank growth
         run: |
-          sh branch/tools/size_summary.sh /tmp/main /tmp/branch main/output/KP_9000_6XHML_X2/html_min branch/output/KP_9000_6XHML_X2/html_min >> "$GITHUB_STEP_SUMMARY"
+          bash branch/tools/bank_occupancy.sh KP_9000_6XHML_X2 /tmp/main /tmp/branch >> "$GITHUB_STEP_SUMMARY"
