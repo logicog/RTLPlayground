@@ -46,6 +46,8 @@ stp_bh:"BPDUs while disabled",stp_bh_flood:"Flood",stp_bh_filter:"Filter",
 stp_r4:"Backup",stp_times:"max age / forward delay",stp_proto:"Protocol",stp_nolink:"no link",stp_lasttc:"last",
 stp_mcheck:"Check",stp_mcheck_t:"Send RST BPDUs again to find out whether the neighbour still needs 802.1D",
 stp_cnt:"Counters",stp_crx:"BPDUs received",stp_ctx:"BPDUs sent",stp_ctrx:"TC received",stp_cttx:"TC sent",stp_cage:"Last BPDU [s]",
+rl_title:"Loop detection",rl_h:"RLDP",rl_check:"Check",rl_ok:"no loop",rl_loop:"loop",rl_blocked:"blocked, {n} s",
+rl_note:"Checked ports send test frames. A port whose frames come back is blocked for 60 s and then checked again; of two looped ports only the higher numbered one is blocked.",
 st_title:"Port statistics",st_h:"totals since boot",st_txg:"TX good",st_txb:"TX bad",st_rxg:"RX good",
 st_rxb:"RX bad",st_details:"Details",st_counters:"MIB counters",st_nonzero:"non-zero only",
 st_autoref:"auto-refresh",st_counter:"Counter",st_value:"Value",st_fail:"failed to load counters",
@@ -854,6 +856,8 @@ var CONF_CMDS=[
   /^lldp\s+(on|off)$/,
   /^bw\s+(in|out)\s+\d+\s+\S+$/,
   /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
+  /^rldp\s+(on|off)$/,
+  /^rldp\s+\d{1,2}\s+(on|off)$/,
 ];
 function isConfCmd(line){
   for(var i=0;i<CONF_CMDS.length;i++)if(CONF_CMDS[i].test(line))return true;
@@ -1381,8 +1385,36 @@ $("stpen").addEventListener("change",function(){
   for(var i=0;i<16;i++)sel.appendChild(h("option",{value:String(i),text:i+" ("+(i*4096)+")"}));
 })();
 $("stpcntd").addEventListener("toggle",function(){if(this.open)stpLoad()});
-var stpPoller=new Poller(stpLoad,3000);
-tabHooks.stp={enter:function(){stpPoller.start()},leave:function(){stpPoller.stop()}};
+function rlLoad(){
+  return getJSON("/rldp.json").then(function(s){
+    var en=$("rlen");
+    if(document.activeElement!==en)en.checked=!!s.on;
+    var ports=byPort(s.ports),tb=$("rltable").tBodies[0];
+    var sig=ports.map(function(p){return p.portNum}).join();
+    if(tb.dataset.sig!==sig){
+      tb.dataset.sig=sig;tb.innerHTML="";
+      ports.forEach(function(p){
+        var n=p.portNum,tr=tb.insertRow();
+        tr.insertCell().textContent=n;
+        tr.insertCell().appendChild(h("label",{class:"switch"},[
+          h("input",{type:"checkbox",id:"rlc"+n,onchange:function(){
+            postCmd("rldp "+n+" "+(this.checked?"on":"off")).then(rlLoad).catch(function(){});
+          }}),h("i")]));
+        tr.insertCell().id="rls"+n;
+      });
+    }
+    ports.forEach(function(p){
+      var n=p.portNum;
+      $("rlc"+n).checked=!!p.en;
+      $("rls"+n).innerHTML=!s.on||!p.en?"-":p.blk?badge(t("rl_blocked",{n:p.blk}),"bad"):p.loop?badge(t("rl_loop")):badge(t("rl_ok"),"ok");
+    });
+  }).catch(function(){});
+}
+$("rlen").addEventListener("change",function(){
+  postCmd("rldp "+(this.checked?"on":"off")).then(rlLoad).catch(function(){});
+});
+var stpPoller=new Poller(stpLoad,3000),rlPoller=new Poller(rlLoad,3000);
+tabHooks.stp={enter:function(){stpPoller.start();rlPoller.start()},leave:function(){stpPoller.stop();rlPoller.stop()}};
 
 var MIB=[
   "Interface in Octets",8,"",0,"Interface out Octets",8,"",0,
@@ -2457,7 +2489,7 @@ var CONF_OVERWRITE=[
   /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
   /^igmp\b/,/^mtu\s+\d{1,2}\b/,/^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE=[/^(syslog)\s+(on|off)$/,/^(ntp)\s+(on|off)$/,/^(rldp)\s+(on|off)$/,/^(rldp\s+\d{1,2})\s+(on|off)$/,/^(stp)\s+(on|off)$/,/^(lldp)\s+(on|off)$/,/^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 function mergeConf(base,texts){
   var conf=base.slice();
   function drop(rx){conf=conf.filter(function(c){return!rx.test(c)})}
