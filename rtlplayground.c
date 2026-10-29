@@ -978,7 +978,7 @@ void handle_rx(void)
 		print_string(" MGMT-VLAN: "); print_short(management_vlan); write_char('\n');
 #endif
 		if ((stp_enabled || lacpEnabled) && uip_buf[0] == 0x01 && uip_buf[1] == 0x80
-			&& uip_buf[2] == 0xc2 && uip_buf[3] == 0x00 && uip_buf[4] == 0x00) {
+			&& uip_buf[2] == 0xc2 && uip_buf[3] == 0x00 && uip_buf[4] == 0x00 && uip_buf[5] != 0x0e) {
 			if (stp_enabled && uip_buf[5] == 0x00) {
 				stp_in();
 				if (uip_len) {
@@ -988,6 +988,7 @@ void handle_rx(void)
 			} else if (lacpEnabled && uip_buf[5] == 0x02) {
 				lacp_in();
 			}
+		} else if (lldp_enabled && lldp_in()) {
 		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
 			&& igmp_packet_handler()) {
 			if (uip_len) {
