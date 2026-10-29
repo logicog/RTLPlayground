@@ -9,6 +9,9 @@ To compile for your added device, do:
 make MACHINE=<NAME>
 ```
 
+## Choosing a name
+The `NAME` referred to throughout should ideally be the PCB-name which is normally printed on the silkscreen near the top of the board.
+
 ## What a new device consists of
 
 | File | Purpose |
@@ -58,6 +61,9 @@ The device product string is what the CLI or the Web-Interface will print to ide
 from a blank file, the field meanings are easier to see in a real example.
 The best choice is usually a device that has the same number and type of Ethernet
 ports and the same number of SFP+ cages.
+
+The struct should contain only important comments such as the LED colour and
+port-type as shown in the following example:
 
 ```c
 #include "machine_defs.h"
@@ -197,6 +203,9 @@ Once the board has been tested on hardware:
 2. Add `doc/devices/<name>.md` describing the board, the build target
    (`make MACHINE=MY_BOARD_1_0`), what works and what is unverified, plus
    photos and the PCB silkscreen marking.
+   The photos should consist of: the front and reverse of the PCB and should be
+   as straight as possible and croppped to show just the PCB; front and rear
+   of the device. Other photos such as the label are not required.
 3. If the board shares a PCB with other revisions, follow
    `doc/devices/KP-9000-6XH-X2.md` and document which `MACHINE` to pick for
    which silkscreen.
