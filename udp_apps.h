@@ -5,6 +5,7 @@
 #include "syslog.h"
 #include "dns.h"
 #include "ntp.h"
+#include "sflow.h"
 
 void udp_callbacks(void);
 
