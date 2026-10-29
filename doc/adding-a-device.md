@@ -204,8 +204,9 @@ Once the board has been tested on hardware:
    (`make MACHINE=MY_BOARD_1_0`), what works and what is unverified, plus
    photos and the PCB silkscreen marking.
    The photos should consist of: the front and reverse of the PCB and should be
-   as straight as possible and croppped to show just the PCB; front and rear
-   of the device. Other photos such as the label are not required.
+   as straight as possible and croppped to show just the PCB; front of the device.
+   The rear of the device is only necessary if it has a switch or power-port, other
+   photos such as the label are not required.
 3. If the board shares a PCB with other revisions, follow
    `doc/devices/KP-9000-6XH-X2.md` and document which `MACHINE` to pick for
    which silkscreen.
