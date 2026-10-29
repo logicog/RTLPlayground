@@ -6,6 +6,10 @@ toolchain/
 html_data.c
 html_data.h
 version.h
+# PSE firmware extracted from the local vendor image (stock_fw/)
+stock_fw/*
+!stock_fw/README.md
+poe/firmware/
 tools/httpd_sim
 tools/injector
 tools/fileadder
