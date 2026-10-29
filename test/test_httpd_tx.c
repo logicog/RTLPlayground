@@ -191,6 +191,7 @@ void send_stp(void) { }
 void send_stp_counters(void) { }
 void send_vlanlist(void) { }
 void send_lldp(void) {}
+void send_dot1x(void) {}
 
 extern uint8_t authenticated;
 extern char session_id[];

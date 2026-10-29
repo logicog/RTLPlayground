@@ -33,7 +33,10 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_cpu_vlan_restricted \
         $(BUILDDIR)/test_cpu_vlan_8372 \
         $(BUILDDIR)/test_nic_rx \
-        $(BUILDDIR)/test_lacp
+        $(BUILDDIR)/test_lacp \
+        $(BUILDDIR)/test_md5 \
+        $(BUILDDIR)/test_radius \
+        $(BUILDDIR)/test_eapol
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -67,6 +70,18 @@ $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR
 # rtl837x_lacp.c is compiled UNMODIFIED from the firmware tree.
 $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# md5.c is compiled UNMODIFIED from the firmware tree.
+$(BUILDDIR)/test_md5: test_md5.c support.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/md5.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# radius.c and md5.c are compiled UNMODIFIED from the firmware tree.
+$(BUILDDIR)/test_radius: test_radius.c support.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/md5.c $(SRCROOT)/radius.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# eapol.c and rtl837x_port.c are compiled UNMODIFIED from the firmware tree.
+$(BUILDDIR)/test_eapol: test_eapol.c $(TABLE_ENV) $(SRCROOT)/eapol.c hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
 # this test carries the environment below them itself.
