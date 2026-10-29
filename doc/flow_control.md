@@ -8,7 +8,8 @@ port <n> fc on|off       # advertise pause on a copper port, or not
 port <n> show            # ends with "Pause negotiated: TX RX", "TX", "RX" or "none"
 ```
 
-Switching a port renegotiates its link, which drops it for a moment. The
+Switching a port renegotiates its link, which drops it for a moment. Asking for
+the setting the port already has changes nothing and keeps the link up. The
 choice is kept when the speed or duplex of the port changes later.
 
 ## Web interface

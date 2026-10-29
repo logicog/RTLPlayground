@@ -29,6 +29,8 @@
 - Commands
   - `port <port> fc on|off` advertises 802.3x pause on a copper port, or not.
     The choice survives later speed and duplex changes.
+  - `port <port> fc` and `eee on|off` leave the link up when the port already has that setting.
+    `eee on <port> 100m` now also stops advertising 2.5G and 5G EEE.
 
 ## Changed
 

@@ -821,16 +821,17 @@ void launch(struct Server *server)
 					printf("CMD: %s\n", p + 4);
 					strcpy(cmd_history[cmd_ptr], p + 4);
 					cmd_ptr++;
-					{
+					// Like the firmware, a body may carry several commands, one per line
+					for (char *l = p + 4; l && *l; l = strchr(l, '\n') ? strchr(l, '\n') + 1 : NULL) {
 						char w[16];
 						int n;
-						if (sscanf(p + 4, "port %d fc %3s", &n, w) == 2 && n >= 1 && n <= PORTS)
+						if (sscanf(l, "port %d fc %3s", &n, w) == 2 && n >= 1 && n <= PORTS)
 							pause_off[n] = !strcmp(w, "off");
-						else if (sscanf(p + 4, "eee %3s %d", w, &n) == 2 && n >= 1 && n <= PORTS)
+						else if (sscanf(l, "eee %3s %d", w, &n) == 2 && n >= 1 && n <= PORTS)
 							eee_off[n] = !strcmp(w, "off");
-						else if (sscanf(p + 4, "port %d name %15s", &n, w) == 2 && n >= 1 && n <= PORTS)
+						else if (sscanf(l, "port %d name %15s", &n, w) == 2 && n >= 1 && n <= PORTS)
 							strcpy(port_name[n], w);
-						else if (sscanf(p + 4, "port %d %15s", &n, w) == 2 && n >= 1 && n <= PORTS)
+						else if (sscanf(l, "port %d %15s", &n, w) == 2 && n >= 1 && n <= PORTS)
 							port_set[n] = strcmp(w, "off") ? 1 : 2;
 					}
 					print_cmd_history();

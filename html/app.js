@@ -2444,7 +2444,9 @@ function postCmd(cmd, quiet) {
         if (!r.ok) throw new Error(((r.body || "").split("\n")[0]) || t("t_rejected", {
             c: cmd
         }));
-        if (isConfCmd(cmd.trim())) setDirty(true);
+        if (cmd.trim().split("\n").some(function(l) {
+                return isConfCmd(l.trim())
+            })) setDirty(true);
         if (!quiet) toast(t("t_applied", {
             c: cmd
         }), "ok");
@@ -2466,7 +2468,7 @@ function postCmds(list) {
     });
     return p.then(function() {
         toast(t("t_cmds", {
-            n: list.length
+            n: list.join("\n").split("\n").length
         }), "ok")
     });
 }
@@ -3304,6 +3306,8 @@ function portCmds(r, s, o) {
     var p = r.p,
         n = p.portNum,
         c = [];
+    // Off goes first: a PHY that is off ignores the resets fc and eee would cause
+    if (!s.en) c.push("port " + n + " off");
     if (s.name) c.push("port " + n + " name " + s.name);
     if (s.en) {
         if (!p.isSFP) c.push("port " + n + " " + s.spd);
@@ -3318,7 +3322,6 @@ function portCmds(r, s, o) {
         c.push("port " + n + " fc " + (s.fc ? "on" : "off"));
         c.push("eee " + (s.eee ? "on" : "off") + " " + n)
     }
-    if (!s.en) c.push("port " + n + " off");
     return c;
 }
 
@@ -3381,7 +3384,9 @@ function applyPorts() {
             toast(t("pt_mtu_err"), "err");
             return;
         }
-        cmds = cmds.concat(portCmds(ch[j].r, s, ch[j].o));
+        // One POST per port: its commands run back to back instead of one HTTP round trip apart
+        var c = portCmds(ch[j].r, s, ch[j].o);
+        if (c.length) cmds.push(c.join("\n"));
     }
     $("papply").disabled = true;
     // Rebuild from what the switch reports once the links have renegotiated
