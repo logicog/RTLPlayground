@@ -33,7 +33,9 @@ The following devices have been tested and are fully working:
 | LIANGUO  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/HYWS-SGT0108S.md)                                | 0.5M  | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 0.5M  | 4 + 2 |
 | LIANGUO  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0 / PCB-SWTG115AS-V2.1](devices/SWTGW215AS.md)          | 2M    | 5 + 1 |
+| MokerLink| 2G040210GS      | No      | [SWTG024AS-V2.0](devices/SWTG024AS.md)                                    | 0.5M  | 4 + 2 |
 | MokerLink| 2G040210GSM     | Yes     | [2M-PCB43-V1.1](devices/2M-PCB43-V1.1.md)                                 |       | 4 + 2 |
+| MokerLink| POE-2G040210GSM | Yes     | [2M-PCB49-V1.1](devices/2M-PCB49-V1.1.md)                                 | 2M    | 4 + 2 |
 | MokerLink| POE-2G080110GS  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1_1.md)                           | 4M    | 8 + 1 |
 | MokerLink| ZX-SWTGW218AS   | Yes     | [SWTG118AS-V2.0-16029](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | MokerLink| 2G08110GSN      | No      | [SWTG018AS-A V2.0](devices/SWTG018AS_A_V2_0.md)                           | 0.5M  | 8 + 1 |
@@ -49,7 +51,7 @@ The following devices have been tested and are fully working:
 | Sodola   | SL902-SWTG024AS | Yes     | [SWTG024AS-v2.1.0](devices/SWTG024AS-V2.1.0.md)                           | 2M    | 4 + 2 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/STEAMEMO_IG204_V1.md)                                   |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [TEG-S563/EU H/W: V1.0R](devices/TEG-S562.md)                             | 2M    | 4 + 2 |
-| XikeStor | SKS3200M-4GPY2XF| Yes     | [SWTG024AS-v1.0](devices/SWTG024AS.md)                                    |       | 4 + 2 |
+| XikeStor | SKS3200M-4GPY2XF| Yes     | [SWTG024AS-v1.0, v2.0](devices/SWTG024AS.md)                              | 2M    | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | XikeStor | SKS3200-4E2X    | Yes     | [SWTG024AS-v2.1.0](devices/SWTG024AS-V2.1.0.md)                           | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V1.0](devices/PCB-K0402WS-V1.0.md)                           | 2M    | 4 + 2 |
