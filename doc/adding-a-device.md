@@ -6,11 +6,12 @@ the build selects the definition by name, and CI compiles every file it finds.
 
 To compile for your added device, do:
 ```
-make MACHINE=<NAME>
+make MACHINE=<MACHINENAME>
 ```
 
 ## Choosing a name
-The `NAME` referred to throughout should ideally be the PCB-name which is normally printed on the silkscreen near the top of the board.
+The `PCBNAME` referred to throughout should ideally be the PCB-name which is normally printed on the silkscreen near the top of the board.
+the `MACHINENAME` referred to throughout should ideally be the model printed on the casing or box of the product.
 
 ## Discovering LED's
 With the stock firmware still on the device, you can use the UART console to discover the pinout:
@@ -23,18 +24,19 @@ Further details can be found in [led_gpio_utils/README.md].
 
 | File | Purpose |
 |------|---------|
-| `machine/<NAME>.c` | the `struct machine machine` board definition |
-| `machine/<NAME>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`) |
-| `machine/<NAME>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
-| `doc/devices/<name>.md` + `doc/supported_devices.md` | (only if the board is verified and you want to support it publicly) user-facing documentation |
+| `machine/pcb/<PCBNAME>.c` | the `struct machine machine` board definition |
+| `machine/pcb/<PCBNAME>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
+| `machine/<MACHINENAME>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`) |
+| `machine/<MACHINENAME>.c` | a symlink to the pcb/<PCBNAME>.c file
+| `doc/devices/<MACHINENAME>.md` + `doc/supported_devices.md` | user-facing documentation |
 
-`<NAME>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
+`<MACHINENAME>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
 passed exactly as spelled on the command line: `make MACHINE=MY_BOARD_1_0`
 needs `machine/MY_BOARD_1_0.c` and `machine/MY_BOARD_1_0.h`.
 
 ## Step 1: the board header
 
-`machine/<NAME>.h` carries the product string and the SoC family. Use the
+`machine/<MACHINENAME>.h` carries the product string and the SoC family. Use the
 existing files as the template:
 
 ```c
@@ -170,15 +172,15 @@ be collapsed this way.
 ### Optional custom init hook
 
 If the board needs custom initialization, add
-`machine/<NAME>_init.c` defining `machine_custom_init()`. The Makefile picks the
+`machine/pcb/<PCBNAME>_init.c` defining `machine_custom_init()`. The Makefile picks the
 file up by name and compiles it.
 
 Boards that need the same hook share one file: keep the code in a single
-`machine/<NAME>_init.c` whose `machine/<NAME>.c` is a real file (not a symlink),
+`machine/pcb/<PCBNAME>_init.c` whose `machine/pcb/<PCBNAME>.c` is a real file (not a symlink),
 and make the other boards' `_init.c` symlinks to it, for example:
 
 ```
-ln -s KP_9000_6XH_X2_init.c machine/MY_BOARD_1_0_init.c
+ln -s KP_9000_6XH_X2_init.c machine/pcb/MY_BOARD_1_0_init.c
 ```
 
 ## Step 3: build and verify
@@ -213,7 +215,7 @@ tools for that.
 Once the board has been tested on hardware:
 
 1. Add a row to the table in [Supported devices](supported_devices.md).
-2. Add `doc/devices/<name>.md` describing the board, the build target
+2. Add `doc/devices/<MACHINENAME>.md` describing the board, the build target
    (`make MACHINE=MY_BOARD_1_0`), what works and what is unverified, plus
    photos and the PCB silkscreen marking.
    The photos should consist of: the front and reverse of the PCB and should be
