@@ -8,10 +8,28 @@ To compile for your added device, do:
 ```
 make MACHINE=<MACHINENAME>
 ```
-
 ## Choosing a name
-The `PCBNAME` referred to throughout should ideally be the PCB-name which is normally printed on the silkscreen near the top of the board.
-the `MACHINENAME` referred to throughout should ideally be the model printed on the casing or box of the product.
+Names are derived from the board, not invented.
+
+* <PCB silkscreen> is the name used for documentation. Take the silkscreen
+as printed and replace `<space>` with `_`. It names doc/devices/<PCB silkscreen>.md
+and its photo folder doc/devices/photos/<PCB silkscreen>/. So for example `S25G2206FP V1.1` becomes
+`S25G2206FP_V1.1`; `PCB-K0402W-V3.0` stays as `PCB-K0402W-V3.0`.
+* <PCB model> is the name used for machine/pcb/ file names and needs to be more tool friendly.
+It starts from the same silkscreen and does the further conversion: <space> and all
+punctuation become `_`. So for example machine/pcb/<PCB model>.c for `PCB-K0402W-V3.0` is
+`machine/pcb/PCB_K0402W_V3_0.c`. Vendor names are not part of it. A board with
+no identifying PCB marking is called `NONAME_<model_name>`.
+When differently wired boards share one PCB model, the vendor is appended to disambiguate
+(<PCB model>_<vendor>).
+* <machine> is <vendor>_<model name>. If the same <vendor>_<model name> already exists
+for a different PCB, append the PCB model i.e.: <vendor>_<model name>_<PCB model>.
+* `MACHINE_MODEL` is the human-readable "<Vendor Name> <model_name>".
+When several boards share one configuration, one PCB is the baseline and the
+others symlink to it. The baseline is the lowest revision of the same major
+model, or alphabetically earliest major model when they differ. Boards that
+are electrically different but carry the same PCB model are distinguished in
+the baseline name by <PCB model>_<vendor>.
 
 ## Discovering LED's
 With the stock firmware still on the device, you can use the UART console to discover the pinout:
@@ -24,19 +42,19 @@ Further details can be found in [led_gpio_utils/README.md].
 
 | File | Purpose |
 |------|---------|
-| `machine/pcb/<PCBNAME>.c` | the `struct machine machine` board definition |
-| `machine/pcb/<PCBNAME>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
-| `machine/<MACHINENAME>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`) |
-| `machine/<MACHINENAME>.c` | a symlink to the pcb/<PCBNAME>.c file
-| `doc/devices/<MACHINENAME>.md` + `doc/supported_devices.md` | user-facing documentation |
+| `machine/pcb/<PCB model>.c` | the `struct machine machine` board definition |
+| `machine/pcb/<PCB model>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
+| `machine/<machine>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`) |
+| `machine/<machine>.c` | a symlink to the pcb/<PCBNAME>.c file
+| `doc/devices/<PCB silkscreen>.md` + `doc/supported_devices.md` | user-facing documentation |
 
-`<MACHINENAME>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
+`<machine>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
 passed exactly as spelled on the command line: `make MACHINE=MY_BOARD_1_0`
 needs `machine/MY_BOARD_1_0.c` and `machine/MY_BOARD_1_0.h`.
 
 ## Step 1: the board header
 
-`machine/<MACHINENAME>.h` carries the product string and the SoC family. Use the
+`machine/<machine>.h` carries the product string and the SoC family. Use the
 existing files as the template:
 
 ```c
