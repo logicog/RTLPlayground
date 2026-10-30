@@ -16,6 +16,7 @@
 #include "rtl837x_phy.h"
 #include "phy.h"
 #include "machine.h"
+#include "timer.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
@@ -23,8 +24,7 @@
 extern __code const uint16_t bit_mask[16];
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
-extern volatile __xdata uint32_t ticks;
-extern __xdata uint32_t rtl8224_release_tick;
+extern __xdata struct timer rtl8224_release;
 
 __xdata struct phy_settings phy_settings;
 
@@ -222,7 +222,7 @@ void rtl8224_wait_ready(void) __banked
 		rtl8224_read_reg_u16(RTL837X_REG_CHIP_ID + 1);
 		if (SFR_DATA_U16 == 0x8224)
 			return;
-	} while ((ticks - rtl8224_release_tick) < (SYS_TICK_HZ * 5 / 2));
+	} while (!timer_expired(&rtl8224_release));
 	print_string("\r\nRTL8224 not responding\r\n");
 }
 

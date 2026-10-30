@@ -16,12 +16,14 @@
 #include "machine.h"
 #include "phy.h"
 #include "boot.h"
+#include "timer.h"
 
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
-__xdata uint32_t rtl8224_release_tick;
+#define RTL8224_RELEASE_TICKS (SYS_TICK_HZ * 5 / 2)
+__xdata struct timer rtl8224_release;
 extern __xdata uint8_t tx_seq;
 extern __code const uint8_t * __code const hex;
 
@@ -247,7 +249,7 @@ void rtl8224_enable(void) __banked
 	delay(4);
 	// Set pin 4 high
 	reg_bit_set(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
-	rtl8224_release_tick = ticks;
+	timer_set(&rtl8224_release, RTL8224_RELEASE_TICKS);
 }
 
 
