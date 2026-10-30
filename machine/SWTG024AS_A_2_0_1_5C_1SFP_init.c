@@ -1,1 +1,0 @@
-SWTG024AS_V2_0_init.c

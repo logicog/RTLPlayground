@@ -1,7 +1,0 @@
-#ifndef _MACHINE_ZX_SG4T2_H_
-#define _MACHINE_ZX_SG4T2_H_
-
-#define MACHINE_MODEL "Horaco ZX-SG4T2"
-#define MACHINE_CHIPSET RTL8372
-
-#endif
