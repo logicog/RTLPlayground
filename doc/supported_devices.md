@@ -12,8 +12,8 @@ The following devices have been tested and are fully working:
 | GoodTop  | GT-ST024M       | Yes     | [PCB-SWTG024AS-A V2.0.1_19650](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)               | 2M    | 4 + 2 |
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5GPOE-V1.2.md)                                   | 8M    | 8 + 1 |
 | Hasivo   | S1100WP_8GT_1SX_SE | Yes  | [S1100W-8GT-1SX_SE-V1.05](devices/S1100W-8GT-1SX_SE-V1.05.md)                         | 2M    | 8 + 1 |
-| Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V2.0](devices/PCB-K0402W-V2.0.md)                                        | 2M    | 4 + 2 |
-| Hisource | Hi-K0402WS      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
+| Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V2.0](devices/PCB-K0402W-V2.0.md)                                        | 2M    | 4 + 2 |
+| Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-K0801W-V2.0](devices/PCB-K0801W-V2.0.md)                                         |       | 8 + 1 |
 | hongyavision | HYWS-SGT0204S | No    | [2G5F4_10G2_V1.01](devices/2G5F4_10G2_V1.01.md)                                       | 0.5M  | 4 + 2 |
 | hongyavision | LG-SG5T1    | No      | [PCB-SWTG024AS-V2.0_16895](devices/PCB-SWTG024AS-V2.0_16895.md)                       | 0.5M  | 5 + 1 |
@@ -42,7 +42,7 @@ The following devices have been tested and are fully working:
 | RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)            | 2M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                                         | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                                   | 1M    | 8 + 1 |
-| SICSOLINK| SL-G0402F       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
+| SICSOLINK| SL-G0402F       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
 | Sirivision | SR-S25G2109F  | Yes     | [S25G1109FP V1.3](devices/S25G1109FP-V1.3.md)                                         | 2M    | 8 + 1 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [SWTG024AS-v2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                           | 2M    | 4 + 2 |
 | Sodola   | SL-SWTGW215AS-D | Yes     | [SWTG115AS-V2.1-17443](devices/PCB-SWTG115AS-V2.1-17443.md)                           | 2M    | 5 + 1 |
@@ -52,10 +52,10 @@ The following devices have been tested and are fully working:
 | XikeStor | SKS3200M-4GPY2XF| Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.0-16029.md)                           | 2M    | 8 + 1 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
-| YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V1.0](devices/PCB-K0402W-V1.0.md)                                        | 2M    | 4 + 2 |
-| YuanLey  | YS25-0402       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402W-V3.0.md)                                        | 2M    | 4 + 2 |
+| YuanLey  | YS25-0402       | No      | [PCB-K0402W-V1.0](devices/PCB-K0402W-V1.0.md)                                        | 2M    | 4 + 2 |
+| YuanLey  | YS25-0402       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402M       | Yes     | [SIRIVISION_S25G2206FP_V1_1](devices/S25G2206FP-V1.1.md)                             | 2M    | 4 + 2 |
-| Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
+| Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
 | ZoeRax   | HG0402XG        | No      | [HG0402XG_V1.1](devices/HG0402XG-V1.1.md)                                             | 1M    | 4 + 2 |
 
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
