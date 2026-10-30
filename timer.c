@@ -48,9 +48,6 @@
 #include "clock.h"
 #include "timer.h"
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
-
 /*---------------------------------------------------------------------------*/
 /**
  * Set a timer.
