@@ -44,6 +44,7 @@ The following devices have been tested and are fully working:
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                       | 1M    | 8 + 1 |
 | SICSOLINK| SL-G0402F       | No      | [PCB-K0402WS-V3.0](devices/PCB-K0402WS-V3.0.md)                           |       | 4 + 2 |
 | Sirivision | SR-S25G2109F  | Yes     | [S25G1109FP V1.3](devices/S25G1109FP_V1_3.md)                             | 2M    | 8 + 1 |
+| Sodola   | SL902-SWTGW218AS| Yes     | [PCB_SWTG018AS_V2_1_0](/devices/PCB_SWTG018AS_V2_1_0.md)                  | 2M    | 8 + 1 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [SWTG024AS-v2.0-17452](devices/SWTG024AS.md)                              | 2M    | 4 + 2 |
 | Sodola   | SL-SWTGW215AS-D | Yes     | [SWTG115AS-V2.1-17433](devices/SWTGW215AS.md)                             | 2M    | 5 + 1 |
 | Sodola   | SL902-SWTG024AS | Yes     | [SWTG024AS-v2.1.0](devices/SWTG024AS-V2.1.0.md)                           | 2M    | 4 + 2 |
