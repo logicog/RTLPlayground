@@ -12,6 +12,13 @@ make MACHINE=<NAME>
 ## Choosing a name
 The `NAME` referred to throughout should ideally be the PCB-name which is normally printed on the silkscreen near the top of the board.
 
+## Discovering LED's
+With the stock firmware still on the device, you can use the UART console to discover the pinout:
+```
+./tools/led_gpio_utils/dec_leds_from_rtl837x_uart.py  --port=/dev/ttyUSB0 --baudrate=57600
+```
+Further details can be found in [led_gpio_utils/README.md].
+
 ## What a new device consists of
 
 | File | Purpose |
