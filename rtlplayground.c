@@ -99,7 +99,6 @@ extern __xdata struct dhcp_state dhcp_state;
 static __xdata struct timer second;
 static __xdata struct timer sfp_poll;
 static __xdata struct timer delay_timer;
-static __xdata struct timer sleep_timer;
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -1251,19 +1250,6 @@ void idle(void)
 		print_cmd_prompt();
 	}
 	health_phase(HEALTH_PH_CMD);
-}
-
-
-// Sleep the given number of ticks and perform idle tasks if initialized
-void sleep(uint16_t t)
-{
-	timer_set(&sleep_timer, t);
-	while (!timer_expired(&sleep_timer)) {
-		if (idle_ready)
-			idle();
-		else
-			PCON |= 1;
-	}
 }
 
 
