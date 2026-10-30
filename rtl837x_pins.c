@@ -96,36 +96,36 @@ void gpio_output_setup(uint8_t pin, __xdata uint8_t initial_val) __banked{
 }
 
 
-/*
- * Read up to 16 consecutive registers of the EEPROM via I2C into sfp_buf
- */
-bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
+void sfp_read_start(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
 {
-	uint8_t dev;
-	uint8_t val;
+	uint8_t dev = (reg & 0x80) ? 0x51 : 0x50;	// 0x51 holds the diagnostics, 0x50 the module data
 
-	len--;
-	if (len > 15)
-		return false;
-
-	dev = (reg & 0x80) ? 0x51 : 0x50;	// 0x51 holds the diagnostics, 0x50 the module data
-	reg &= 0x7f;
-
-	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg);
-
+	REG_WRITE(RTL837X_REG_I2C_IN, 0, 0, 0, reg & 0x7f);
 	REG_WRITE(RTL837X_REG_I2C_CTRL, 0x00,
-		  0x1 << (I2C_MEM_ADDR_WIDTH - 16) | len,
+		  0x1 << (I2C_MEM_ADDR_WIDTH - 16) | (len - 1),
 		  (dev >> 5) | machine.sfp_port[slot].i2c,
 		  ((dev << 3) & 0xff) | 0x1);
+}
 
-	do {
-		reg_read(RTL837X_REG_I2C_CTRL);
-	} while (SFR_DATA_0 & 0x1);
 
-	if (SFR_DATA_0 & 0x2)
+bool sfp_read_busy(void) __banked
+{
+	reg_read(RTL837X_REG_I2C_CTRL);
+	return SFR_DATA_0 & 0x1;
+}
+
+
+/*
+ * Copy the result of a finished transaction into sfp_buf
+ */
+bool sfp_read_end(uint8_t len) __banked __reentrant
+{
+	uint8_t val;
+
+	if (SFR_DATA_0 & 0x3)
 		return false;
 
-	for (uint8_t i = 0; i <= len; i++) {
+	for (uint8_t i = 0; i < len; i++) {
 		switch (i & 0x3) {
 		case 0:
 			reg_read(RTL837X_REG_I2C_OUT + i);
@@ -145,4 +145,20 @@ bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
 	}
 
 	return true;
+}
+
+
+/*
+ * Read up to 16 consecutive registers of the EEPROM via I2C into sfp_buf
+ */
+bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
+{
+	if (len == 0 || len > 16)
+		return false;
+
+	sfp_read_start(slot, reg, len);
+	while (sfp_read_busy())
+		;
+
+	return sfp_read_end(len);
 }
