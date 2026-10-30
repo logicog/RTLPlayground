@@ -26,8 +26,8 @@ Port 5 RJ45 is interfaced through a RTL8221B IC.
 
 ## PCB (V2.1)
 
-<img src="photos/PCB-SWTG115AS-V2.1-17433/pcb-top.jpg" width="300" />
-<img src="photos/PCB-SWTG115AS-V2.1-17433/pcb-bottom.jpg" width="300" />
+<img src="photos/PCB-SWTG115AS-V2.1-17443/pcb-top.jpg" width="300" />
+<img src="photos/PCB-SWTG115AS-V2.1-17443/pcb-bottom.jpg" width="300" />
 
 ## Connectors
 
