@@ -74,7 +74,12 @@ void clock_init(void);
  */
 inline clock_time_t clock_time(void)
 {
-  return ticks;
+  clock_time_t t;
+
+  do {
+    t = ticks;
+  } while (t != ticks);
+  return t;
 }
 
 /**
