@@ -5119,6 +5119,7 @@ function mergeConf(base, texts) {
                 return;
             }
             if (!isConfCmd(line)) return;
+            if ((m = line.match(/^acl counter (\d{1,2}) /))) line = "acl counter " + ((+m[1]) & ~1) + line.slice(m[0].length - 1);
             if ((m = line.match(/^ingress (.+)$/))) {
                 if (/^[tua]$/.test(m[1])) {
                     drop(/^ingress /);
