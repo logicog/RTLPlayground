@@ -4,7 +4,7 @@ The following devices have been tested and are fully working:
 | Brand    | Type            | Managed | PCB                                                                                   | Flash | Ports |
 |----------|-----------------|---------|---------------------------------------------------------------------------------------|-------|-------|
 | Ampcom   | WAM902-SWTG018AS| No      | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               |       | 8 + 1 |
-| Binardat | 2G06-04210GSM   | No      | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                            | 0.5M  | 4 + 2 |
+| Binardat | 2G06-04210GSM   | No      | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
 | Davuaz   | Da-K6501W       | No      | [PCB-K0501W-V2.0](devices/PCB-K0501W-V2.0.md)                                         |       | 5 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/PCB-K0402W-U13-V2.0.md)                                 | 2M    | 4 + 2 |
 | Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
@@ -12,8 +12,8 @@ The following devices have been tested and are fully working:
 | GoodTop  | GT-ST024M       | Yes     | [PCB-SWTG024AS-A V2.0.1_19650](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)               | 2M    | 4 + 2 |
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5GPOE-V1.2.md)                                   | 8M    | 8 + 1 |
 | Hasivo   | S1100WP_8GT_1SX_SE | Yes  | [S1100W-8GT-1SX_SE-V1.05](devices/S1100W-8GT-1SX_SE-V1.05.md)                         | 2M    | 8 + 1 |
-| Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V2.0](devices/PCB-K0402W-V2.0.md)                                        | 2M    | 4 + 2 |
-| Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
+| Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V2.0](devices/PCB-K0402W-V2.0.md)                                         | 2M    | 4 + 2 |
+| Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-K0801W-V2.0](devices/PCB-K0801W-V2.0.md)                                         |       | 8 + 1 |
 | hongyavision | HYWS-SGT0204S | No    | [2G5F4_10G2_V1.01](devices/2G5F4_10G2_V1.01.md)                                       | 0.5M  | 4 + 2 |
 | hongyavision | LG-SG5T1    | No      | [PCB-SWTG024AS-V2.0_16895](devices/PCB-SWTG024AS-V2.0_16895.md)                       | 0.5M  | 5 + 1 |
@@ -25,7 +25,8 @@ The following devices have been tested and are fully working:
 | Horaco   | ZX310S-4T2XT    | Yes     | [PCB-310S-4T2XT-V1.0.0_22273](devices/PCB-310S-4T2XT-V1.0.0_22273.md)                 | 2M    | 6     |
 | Horaco   | ZX-SG4T2        | No      | [SWTG024AS-A-V2.0.1_19650_4C_2SFP](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)           | 0.5M  | 4 + 2 |
 | Horaco   | ZX-SWTG124AS    | Yes     | [SWTG024AS-v2.0](devices/PCB-SWTG024AS-V2.0-17452.md)                                 |       | 4 + 2 |
-| keepLINK | KP-9000-6XH-X2 / KP-9000-6XHML-X2 | No/Yes | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                     |       | 4 + 2 |
+| keepLINK | KP-9000-6XH-X2  | No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
+| keepLINK | KP-9000-6XHML-X2| No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](devices/2M-PCB23-V2.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3.1.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.2](devices/2M-PCB23-V3.2.md)                                             | 2M    | 8 + 1 |
@@ -38,11 +39,11 @@ The following devices have been tested and are fully working:
 | MokerLink| ZX_SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.0-16029](devices/PCB-SWTG118AS-V2.0-16029.md)                       | 2M    | 8 + 1 |
 | MokerLink| 2G08110GSN      | No      | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 0.5M  | 8 + 1 |
 | Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
-| ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                            | 0.5M  | 4 + 2 |
-| RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)            | 2M    | 8 + 1 |
+| ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
+| RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)             | 2M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                                         | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                                   | 1M    | 8 + 1 |
-| SICSOLINK| SL-G0402F       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
+| SICSOLINK| SL-G0402F       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | Sirivision | SR-S25G2109F  | Yes     | [S25G1109FP V1.3](devices/S25G1109FP-V1.3.md)                                         | 2M    | 8 + 1 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [SWTG024AS-v2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                           | 2M    | 4 + 2 |
 | Sodola   | SL-SWTGW215AS-D | Yes     | [SWTG115AS-V2.1-17443](devices/PCB-SWTG115AS-V2.1-17443.md)                           | 2M    | 5 + 1 |
@@ -52,10 +53,10 @@ The following devices have been tested and are fully working:
 | XikeStor | SKS3200M-4GPY2XF| Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.0-16029.md)                           | 2M    | 8 + 1 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
-| YuanLey  | YS25-0402       | No      | [PCB-K0402W-V1.0](devices/PCB-K0402W-V1.0.md)                                        | 2M    | 4 + 2 |
-| YuanLey  | YS25-0402       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        | 2M    | 4 + 2 |
-| YuanLey  | YS25-0402M       | Yes     | [SIRIVISION_S25G2206FP_V1_1](devices/S25G2206FP-V1.1.md)                             | 2M    | 4 + 2 |
-| Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                        |       | 4 + 2 |
+| YuanLey  | YS25-0402       | No      | [PCB-K0402W-V1.0](devices/PCB-K0402W-V1.0.md)                                         | 2M    | 4 + 2 |
+| YuanLey  | YS25-0402       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         | 2M    | 4 + 2 |
+| YuanLey  | YS25-0402M      | Yes     | [SIRIVISION_S25G2206FP_V1_1](devices/S25G2206FP-V1.1.md)                              | 2M    | 4 + 2 |
+| Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | ZoeRax   | HG0402XG        | No      | [HG0402XG_V1.1](devices/HG0402XG-V1.1.md)                                             | 1M    | 4 + 2 |
 
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
