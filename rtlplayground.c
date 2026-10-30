@@ -31,6 +31,7 @@
 #include "syslog.h"
 #include "dns.h"
 #include "ntp.h"
+#include "timer.h"
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
@@ -90,16 +91,14 @@ __code const uint8_t netmask[] = { 255, 255, 255, 0};
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
-volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
-__xdata uint8_t stp_tick_last;
 __xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
-#define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
 #define STP_CATCH_UP 8
 #define SFP_TICK_STEP 10
-__xdata uint8_t sfp_tick_last;
+static __xdata struct timer second;
+static __xdata struct timer sfp_poll;
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -212,7 +211,6 @@ void isr_timer2(void) __interrupt(5)
 	tick_pending = 1;
 	if (sleep_ticks > 0)
 		sleep_ticks--;
-	sec_counter++;
 
 	// Clear TF2 & EXF2 by software
 	T2CON &= ~0xC0;
@@ -1153,8 +1151,8 @@ void check_links(void)
 //
 static void handle_tick(void)
 {
-	if (sec_counter >= SYS_TICK_HZ) {
-		sec_counter -= SYS_TICK_HZ;
+	if (timer_expired(&second)) {
+		timer_reset(&second);
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
 		uint8_t v = sfr_data[3];
 #ifdef DEBUG
@@ -1196,8 +1194,8 @@ static void handle_tick(void)
 	}
 
 	health_phase(HEALTH_PH_LINK);
-	if (TICKS_DUE(sfp_tick_last, SFP_TICK_STEP)) {
-		sfp_tick_last += SFP_TICK_STEP;
+	if (timer_expired(&sfp_poll)) {
+		timer_reset(&sfp_poll);
 		handle_sfp();
 	}
 	health_phase(HEALTH_PH_SFP);
@@ -1205,8 +1203,8 @@ static void handle_tick(void)
 	health_phase(HEALTH_PH_TX);
 	if (stp_enabled) {
 		uint8_t n = STP_CATCH_UP;
-		while (n-- && TICKS_DUE(stp_tick_last, STP_TICK_STEP)) {
-			stp_tick_last += STP_TICK_STEP;
+		while (n-- && timer_expired(&stp_step)) {
+			timer_reset(&stp_step);
 			stp_timers();
 		}
 	}
@@ -1578,8 +1576,6 @@ unsigned char __sdcc_external_startup(void)
 void main(void)
 {
 	ticks = 0;
-	stp_tick_last = (uint8_t)ticks;
-	sfp_tick_last = (uint8_t)ticks;
 	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
 
@@ -1703,6 +1699,8 @@ void main(void)
 	syslog_init();
 	dns_init();
 	ntp_init();
+	timer_set(&second, SYS_TICK_HZ);
+	timer_set(&sfp_poll, SFP_TICK_STEP);
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
