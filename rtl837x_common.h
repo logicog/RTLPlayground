@@ -1,11 +1,12 @@
 #ifndef _RTL837X_STDIO_H_
 #define _RTL837X_STDIO_H_
 
+#include "clock-arch.h"
 #include "uip/uip-conf.h"
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SYS_TICK_HZ 200
+#define SYS_TICK_HZ CLOCK_CONF_SECOND
 
 /* Timers of the main loop count system ticks, not loop passes: a pass is as
  * long as the packets it handles, and since #483 the loop no longer sleeps
