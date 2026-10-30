@@ -4,6 +4,11 @@
 #include <stdbool.h>
 
 extern __code const uint8_t * __code const HTTP_RESPONCE_TXT;
+extern __code const uint8_t * __code const HTTP_RESPONCE_JSON;
+
+void bool_to_html(char c);
+void byte_to_html(uint8_t val);
+void itoa_html(uint8_t v);
 
 void itoa16_html(uint16_t v);
 
