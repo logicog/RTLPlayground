@@ -25,21 +25,21 @@ RTL8373-based 8×2.5G PoE + 1×10G SFP+ web-managed switch, sold as the
 
 Front panel:
 
-<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308e/device_front.jpg" width="800" />
+<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308/device_front.jpg" width="800" />
 
 Board mounted in the case, with the internal PSU above it:
 
-<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308e/dev_top_w_pcb.jpg" width="800" />
+<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308/dev_top_w_pcb.jpg" width="800" />
 
 ### PCB overview
 
 Top side:
 
-<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308e/pcb_front.jpg" width="800" />
+<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308/pcb_front.jpg" width="800" />
 
 Bottom side:
 
-<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308e/pcb_back.jpg" width="800" />
+<img src="photos/PCB-AFGW-SWTG218ANS_V2.0.2_23308/pcb_back.jpg" width="800" />
 
 A 4-pad UART header with `RXD` / `TXD` silkscreened sits next to the right heatsink. 
 
