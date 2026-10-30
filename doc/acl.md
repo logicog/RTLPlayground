@@ -4,6 +4,13 @@ The switch matches frames against up to 64 rules and can drop them, send them
 elsewhere, copy them, count them, police them, retag them or remark their
 priority.
 
+The web interface's **ACL** tab lists the running rules directly from the
+hardware. Use **Load** to edit an existing entry, or the rule form to add one.
+The tab also configures the default policy, meters, field selectors, counter
+pairs and GPIO takeover, and displays counters and hardware status. Changes
+apply immediately; **Save to flash** keeps them after reboot. Refreshing the
+tab acknowledges meter-exceeded flags just like `acl show`.
+
 ```
 acl <1-64> [not] <match>... <action>... [<port>...]
 acl <1-64> and <match>... [<port>...]

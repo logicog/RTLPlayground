@@ -134,6 +134,8 @@ extern __xdata uint16_t acl_mk;
 extern __xdata struct acl_req acl_rq;
 
 void acl_reg(void) __banked;
+uint32_t acl_reg_read(uint16_t addr) __banked;
+void acl_tbl_wait(void) __banked;
 uint8_t acl_key(uint8_t ft) __banked;
 void acl_match_begin(void) __banked;
 void acl_match_key(uint8_t ft) __banked __reentrant;

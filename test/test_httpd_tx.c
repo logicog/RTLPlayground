@@ -191,6 +191,21 @@ void send_stp(void) { }
 void send_stp_counters(void) { }
 void send_vlanlist(void) { }
 void send_lldp(void) {}
+static unsigned acl_endpoint, acl_argument;
+extern uint8_t outbuf[];
+extern uint16_t slen;
+static void acl_stub(unsigned endpoint, unsigned argument)
+{
+	acl_endpoint = endpoint;
+	acl_argument = argument;
+	slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n{}");
+}
+void send_acl(void) { acl_stub(1, 0); }
+void send_acl_rules(uint8_t idx) { acl_stub(2, idx); }
+void send_acl_ranges(uint8_t kind) { acl_stub(3, kind); }
+void send_acl_meters(uint8_t idx) { acl_stub(4, idx); }
+void send_acl_fields(void) { acl_stub(5, 0); }
+void send_acl_counters(void) { acl_stub(6, 0); }
 
 extern uint8_t authenticated;
 extern char session_id[];
@@ -840,6 +855,43 @@ static void scenario_fragmented_get_cookie(void)
 	      "fragmented GET cookie: session is not lost on the redirected GET");
 }
 
+static void scenario_acl_routes(void)
+{
+	static const struct {
+		const char *path;
+		unsigned endpoint, argument;
+	} requests[] = {
+		{"/acl.json", 1, 0}, {"/aclrule.json?idx=1", 2, 1},
+		{"/aclrule.json?idx=64", 2, 64}, {"/aclrange.json?kind=0", 3, 0},
+		{"/aclrange.json?kind=2", 3, 2}, {"/aclmeter.json?idx=0", 4, 0},
+		{"/aclmeter.json?idx=63", 4, 63}, {"/aclfield.json", 5, 0},
+		{"/aclcounter.json", 6, 0},
+		{"/aclrule.json", 0, 0}, {"/aclrule.json?idx=", 0, 0},
+		{"/aclrule.json?idx=0", 0, 0}, {"/aclrule.json?idx=65", 0, 0},
+		{"/aclrule.json?idx=6553601", 0, 0}, {"/aclrule.json?idx=1x", 0, 0},
+		{"/aclrange.json?kind=3", 0, 0}, {"/aclmeter.json?idx=64", 0, 0},
+	};
+	char get[200], label[180];
+	for (unsigned i = 0; i < sizeof(requests) / sizeof(requests[0]); i++) {
+		session_start(MSS_FULL);
+		strcpy(session_id, "0123456789ab");
+		acl_endpoint = acl_argument = 0;
+		snprintf(get, sizeof get, "GET %s HTTP/1.1\r\nHost: sw\r\nCookie: session=0123456789ab\r\n\r\n", requests[i].path);
+		client_send(TCP_ACK | TCP_PSH, get, (int)strlen(get));
+		snprintf(label, sizeof label, "ACL route validates %s", requests[i].path);
+		CHECK(acl_endpoint == requests[i].endpoint && acl_argument == requests[i].argument
+		      && stream_contains(requests[i].endpoint ? "HTTP/1.1 200 OK" : "HTTP/1.1 400 Bad Request"), label);
+	}
+	/* Each new read endpoint must pass the existing session check. */
+	for (unsigned i = 0; i < 9; i++) {
+		session_start(MSS_FULL);
+		acl_endpoint = 0;
+		snprintf(get, sizeof get, "GET %s HTTP/1.1\r\nHost: sw\r\n\r\n", requests[i].path);
+		client_send(TCP_ACK | TCP_PSH, get, (int)strlen(get));
+		CHECK(!acl_endpoint && stream_contains("HTTP/1.1 401"), "ACL endpoint requires authentication");
+	}
+}
+
 static void scenario_fragmented_get_cookie_value(void)
 {
 	static const char first[] =
@@ -1286,6 +1338,7 @@ int main(int argc, char **argv)
 	scenario_oversized_post_header();
 	scenario_fragmented_missing_content_length();
 	scenario_fragmented_get_cookie();
+	scenario_acl_routes();
 	scenario_fragmented_get_cookie_value();
 	scenario_split_get_header_terminator();
 	scenario_fragmented_get_without_cookie();

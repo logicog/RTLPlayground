@@ -1,6 +1,156 @@
 "use strict";
 var LANG = {
     en: {
+        nav_acl: "ACL",
+        acl_rules: "ACL rules",
+        acl_rule: "Rule",
+        acl_mode: "Mode",
+        acl_ingress: "Ingress ports",
+        acl_matches: "Match all",
+        acl_actions: "Actions",
+        acl_template: "Template",
+        acl_intro: "Rules apply immediately. Use Save to flash to keep changes after reboot.",
+        acl_order: "Lower numbered rules win for each action type. AND entries extend the preceding rule.",
+        acl_editor: "Add or replace a rule",
+        acl_normal: "Normal",
+        acl_not: "Invert match (NOT)",
+        acl_and: "Join previous (AND)",
+        acl_ingress_note: "Ingress ports: leave all unchecked to apply to every front panel port.",
+        acl_add_match: "Add match",
+        acl_add_action: "Add action",
+        acl_new: "New rule",
+        acl_limits: "Each entry allows 14 words and 126 bytes. Split larger matches into following AND entries; incompatible templates also require AND.",
+        acl_interrupt_note: "A rule with only interrupt or GPIO actions drops matching frames. Add Permit to keep forwarding.",
+        acl_default: "Unmatched traffic",
+        acl_default_permit: "Permit on all ports",
+        acl_default_drop: "Drop on selected ingress ports",
+        acl_default_note: "Any matching rule allows traffic through the default policy. Allow management traffic before dropping unmatched traffic on your management port.",
+        acl_meters: "Meters",
+        acl_meter: "Meter",
+        acl_rate: "Rate",
+        acl_units: "Units",
+        acl_burst: "Burst",
+        acl_ifg: "Include IFG",
+        acl_pps: "packets/s",
+        acl_meter_note: "Rate 0–16777215; burst 0–268435455 bytes (kbps) or packets (pps). A zero burst passes nothing. IFG includes preamble and inter-frame gap.",
+        acl_selectors: "Field selectors",
+        acl_selector: "Selector",
+        acl_format: "Format",
+        acl_offset: "Byte offset",
+        acl_field_note: "Select 16 bits at a byte offset (0–255) into the selected header or payload.",
+        acl_format_off: "Off",
+        acl_format_raw: "Frame after VLAN tags",
+        acl_format_llc: "LLC header",
+        acl_format_ipv4: "IPv4 header",
+        acl_format_arp: "ARP header",
+        acl_format_ipv6: "IPv6 header",
+        acl_format_ip: "IP payload (L4 header)",
+        acl_format_l4: "TCP/UDP payload",
+        acl_counters: "Counters",
+        acl_counter: "Counter",
+        acl_counter_mode: "Mode",
+        acl_width: "Width (bits)",
+        acl_pair: "Counter pair",
+        acl_bytes: "Bytes",
+        acl_packets: "Packets",
+        acl_reset: "Reset all counters",
+        acl_counter_note: "Mode and width apply to each adjacent pair. 64 bit mode combines both counters.",
+        acl_gpio: "ACL GPIO",
+        acl_gpio_note: "Taking over GPIO 52, 53, 54 or 30 removes its board function. Check the board wiring before enabling a pin.",
+        acl_pin_0: "Pin 0 (GPIO 52)",
+        acl_pin_1: "Pin 1 (GPIO 53)",
+        acl_pin_2: "Pin 2 (GPIO 54)",
+        acl_pin_3: "Pin 3 (GPIO 30)",
+        acl_polarity: "Polarity",
+        acl_high: "High",
+        acl_low: "Low",
+        acl_status: "Hardware status",
+        acl_hit: "Hit indicators (hex)",
+        acl_exceeded: "Meters exceeded",
+        acl_none: "None",
+        acl_status_note: "Meter exceeded flags show events since the previous refresh or CLI “acl show”; reading clears these flags. Counters are retained.",
+        acl_empty: "No ACL rules configured.",
+        acl_all_ports: "All ports",
+        acl_any: "Any frame",
+        acl_rule_count: "{n} / 64 rules",
+        acl_delete_q: "Delete ACL rule {n}?",
+        acl_delete_note: "Following AND entries joined to this rule are removed too.",
+        acl_replace_q: "Replace ACL rule {n}?",
+        acl_immediate: "The rule takes effect immediately; following AND entries remain joined to it.",
+        acl_default_q: "Apply the default ACL policy?",
+        acl_gpio_q: "Apply ACL GPIO settings?",
+        acl_reset_q: "Reset all ACL counters?",
+        acl_invalid: "Enter a valid value within the field’s range. Hexadecimal values omit 0x; ranges use a hyphen.",
+        acl_ports_err: "Select at least one valid front panel port.",
+        acl_conflict: "These fields or actions conflict. Use one action of each kind; additional police meters occupy the C-VLAN and S-VLAN action slots.",
+        acl_and_actions: "An AND entry cannot have actions.",
+        acl_need_action: "Add at least one action.",
+        acl_too_long: "The entry exceeds 14 words or 126 bytes. Split its matches into following AND entries.",
+        acl_predecessor: "An AND entry needs an existing rule immediately before it.",
+        acl_dmac: "Destination MAC",
+        acl_smac: "Source MAC",
+        acl_ethertype: "EtherType (hex)",
+        acl_vlan: "C-VLAN ID / range",
+        acl_pri: "C-tag priority",
+        acl_cfi: "C-tag CFI",
+        acl_svlan: "S-VLAN ID / range",
+        acl_spri: "S-tag priority",
+        acl_sdei: "S-tag DEI",
+        acl_tagged: "C-tag present",
+        acl_untagged: "C-tag absent",
+        acl_stagged: "S-tag present",
+        acl_pppoe: "PPPoE session",
+        acl_nonip: "Non-IP",
+        acl_arp: "ARP",
+        acl_ipv4: "IPv4",
+        acl_ipv6: "IPv6",
+        acl_tcp: "TCP",
+        acl_udp: "UDP",
+        acl_icmp: "ICMP / ICMPv6",
+        acl_igmp: "IGMP",
+        acl_l4other: "Other IP protocol",
+        acl_sip: "Source IPv4 / prefix / range",
+        acl_dip: "Destination IPv4 / prefix / range",
+        acl_sip6: "Source IPv6 low 32 bits (hex)",
+        acl_dip6: "Destination IPv6 low 32 bits (hex)",
+        acl_proto: "IPv4 protocol number",
+        acl_tos: "IPv4 ToS (hex)",
+        acl_sport: "Source L4 port / range",
+        acl_dport: "Destination L4 port / range",
+        acl_field: "Custom field (hex)",
+        acl_valid: "Valid field selector",
+        acl_permit: "Permit",
+        acl_drop: "Drop",
+        acl_redirect: "Redirect to ports",
+        acl_copy: "Copy to ports",
+        acl_mirror: "Mirror to ports",
+        acl_isolate: "Restrict to ports",
+        acl_cpu: "Send to CPU",
+        acl_trap: "Trap to CPU",
+        acl_int: "Internal",
+        acl_ext: "External",
+        acl_both: "Both",
+        acl_setvlan: "Classify into C-VLAN",
+        acl_outvlan: "Outgoing C-VID",
+        acl_cvidfromsvid: "C-VID from S-VID",
+        acl_setsvlan: "Classify into S-VLAN",
+        acl_outsvlan: "Outgoing S-VID",
+        acl_svidfromcvid: "S-VID from C-VID",
+        acl_tag: "Add C-tag",
+        acl_untag: "Remove C-tag",
+        acl_keeptag: "Keep received C-tag",
+        acl_keepremark: "Keep C-tag with PCP remark",
+        acl_priority: "Internal priority",
+        acl_pcp: "Remark PCP",
+        acl_dscp: "Remark DSCP",
+        acl_police: "Police with meters",
+        acl_count: "Count in counter",
+        acl_interrupt: "Raise interrupt",
+        acl_gpio_pin: "Pulse ACL GPIO",
+        acl_bypass: "Bypass",
+        acl_storm: "Storm control",
+        acl_stp: "STP source check",
+        acl_v_lan: "VLAN ingress filter",
         nav_dash: "Dashboard",
         nav_ports: "Ports",
         nav_stp: "Spanning tree",
@@ -2510,6 +2660,10 @@ var TABS = [{
         icon: "M4 5h16M4 12h16M4 19h10"
     },
     {
+        id: "acl",
+        icon: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6"
+    },
+    {
         id: "mirror",
         icon: "M12 3v18M7 8l-4 4 4 4M17 8l4 4-4 4"
     },
@@ -4735,6 +4889,427 @@ tabHooks.bw = {
     }
 };
 
+/* ACL helpers */
+// Hardware templates are fixed by acl_tmpl[] in rtl837x_acl.c.
+var ACL_TEMPLATES=[
+  [0,1,2,3,4,5,6,8],
+  [16,17,18,19,52,53,54,8],
+  [48,49,50,51,64,65,66,67],
+  [68,69,70,71,72,73,74,75],
+  [76,77,78,79,7,8,6,52]
+];
+// Each entry describes a CLI field, its GUI label and its value grammar.
+var ACL_MATCHES={
+  dmac:['acl_dmac','mac'],smac:['acl_smac','mac'],ethertype:['acl_ethertype','hex16'],
+  vlan:['acl_vlan','range4095'],pri:['acl_pri','num7'],cfi:['acl_cfi','num1'],
+  svlan:['acl_svlan','range4095'],spri:['acl_spri','num7'],sdei:['acl_sdei','num1'],
+  tagged:['acl_tagged','flag'],untagged:['acl_untagged','flag'],stagged:['acl_stagged','flag'],pppoe:['acl_pppoe','flag'],
+  nonip:['acl_nonip','flag'],arp:['acl_arp','flag'],ipv4:['acl_ipv4','flag'],ipv6:['acl_ipv6','flag'],
+  tcp:['acl_tcp','flag'],udp:['acl_udp','flag'],icmp:['acl_icmp','flag'],igmp:['acl_igmp','flag'],l4other:['acl_l4other','flag'],
+  sip:['acl_sip','ip'],dip:['acl_dip','ip'],sip6:['acl_sip6','hexrange'],dip6:['acl_dip6','hexrange'],
+  proto:['acl_proto','num255'],tos:['acl_tos','hex8'],sport:['acl_sport','range65535'],dport:['acl_dport','range65535'],
+  field:['acl_field','field'],valid:['acl_valid','num15']
+};
+var ACL_ACTIONS={
+  permit:['acl_permit','flag','fwd'],drop:['acl_drop','flag','fwd'],redirect:['acl_redirect','ports','fwd'],
+  copy:['acl_copy','ports','fwd'],mirror:['acl_mirror','ports','fwd'],isolate:['acl_isolate','ports','fwd'],
+  cpu:['acl_cpu','flag','fwd'],trap:['acl_trap','trap','fwd'],
+  setvlan:['acl_setvlan','num4095','cvlan'],outvlan:['acl_outvlan','num4095','cvlan'],cvidfromsvid:['acl_cvidfromsvid','flag','cvlan'],
+  setsvlan:['acl_setsvlan','num4095','svlan'],outsvlan:['acl_outsvlan','num4095','svlan'],svidfromcvid:['acl_svidfromcvid','flag','svlan'],
+  tag:['acl_tag','flag','tag'],untag:['acl_untag','flag','tag'],keeptag:['acl_keeptag','flag','tag'],keepremark:['acl_keepremark','flag','tag'],
+  priority:['acl_priority','num7','priority'],pcp:['acl_pcp','num7','remark'],dscp:['acl_dscp','num63','remark'],
+  police:['acl_police','meters','police'],count:['acl_count','num31','police'],interrupt:['acl_interrupt','flag','interrupt'],
+  gpio:['acl_gpio_pin','num3','gpio'],bypass:['acl_bypass','bypass','bypass']
+};
+function aclFail(k){throw new Error(t(k))}
+function aclInt(v,max,min){
+  if(!/^\d+$/.test(String(v))||+v>max||+v<(min||0))aclFail('acl_invalid');
+  return +v;
+}
+function aclHex(v,max){
+  if(!/^[\da-f]+$/i.test(v)||v.length>8||parseInt(v,16)>max)aclFail('acl_invalid');
+  return parseInt(v,16).toString(16);
+}
+function aclIpNum(v){
+  if(!/^(\d{1,3}\.){3}\d{1,3}$/.test(v))aclFail('acl_invalid');
+  return v.split('.').reduce(function(a,b){return a*256+aclInt(b,255)},0);
+}
+function aclIpText(v){return [v>>>24,(v>>>16)&255,(v>>>8)&255,v&255].join('.')}
+function aclPhysical(){return S.ports.map(function(p){return p.portNum})}
+function aclPortList(v){
+  if(!Array.isArray(v)||!v.length)aclFail('acl_ports_err');
+  var all=aclPhysical(),out=[];
+  v.forEach(function(p){p=aclInt(p,9,1);if(all.indexOf(p)<0)aclFail('acl_ports_err');if(out.indexOf(p)<0)out.push(p)});
+  return out.sort(function(a,b){return a-b});
+}
+function aclValue(entry,spec){
+  var type=spec[1],v=String(entry.value==null?'':entry.value).trim(),parts,lo,hi;
+  if(type==='flag')return [];
+  if(type.slice(0,3)==='num')return [String(aclInt(v,+type.slice(3)))];
+  if(type.slice(0,5)==='range'){
+    parts=v.split('-');if(parts.length>2)aclFail('acl_invalid');
+    lo=aclInt(parts[0],+type.slice(5));hi=parts.length===2?aclInt(parts[1],+type.slice(5)):lo;
+    if(lo>hi)aclFail('acl_invalid');return [lo+(lo===hi?'':'-'+hi)];
+  }
+  if(type==='mac'){
+    if(!/^[\da-f]{2}(:[\da-f]{2}){5}(\/[\da-f]{2}(:[\da-f]{2}){5})?$/i.test(v))aclFail('acl_invalid');
+    return [v.toLowerCase()];
+  }
+  if(type==='hex16'||type==='hex8'||type==='field'){
+    parts=v.split('/');if(parts.length>2)aclFail('acl_invalid');
+    var max=type==='hex8'?255:65535;
+    parts=parts.map(function(p){return aclHex(p,max)});
+    return (type==='field'?[String(aclInt(entry.index,15))]:[]).concat(parts.join('/'));
+  }
+  if(type==='hexrange'){
+    parts=v.split('-');if(parts.length>2)aclFail('acl_invalid');
+    parts=parts.map(function(p){return aclHex(p,0xffffffff)});
+    if(parts.length===2&&parseInt(parts[0],16)>parseInt(parts[1],16))aclFail('acl_invalid');
+    return [parts.join('-')];
+  }
+  if(type==='ip'){
+    parts=v.split(/[-/]/);if(parts.length>2||(/-/.test(v)&&/\//.test(v)))aclFail('acl_invalid');
+    lo=aclIpNum(parts[0]);
+    if(v.indexOf('/')>=0)return [aclIpText(lo)+'/'+aclInt(parts[1],32)];
+    if(parts.length===1)return [aclIpText(lo)];
+    hi=aclIpNum(parts[1]);if(lo>hi)aclFail('acl_invalid');return [aclIpText(lo)+'-'+aclIpText(hi)];
+  }
+  if(type==='ports')return [aclPortList(entry.value).join(',')];
+  if(type==='meters'){
+    parts=v.split(',');if(!parts.length||parts.length>3)aclFail('acl_invalid');
+    return [parts.map(function(p){return aclInt(p,63)}).join(',')];
+  }
+  if(type==='trap'&&(v===''||v==='int'))return [];
+  var opts=type==='trap'?['int','ext','both']:['storm','stp','vlan'];
+  if(opts.indexOf(v)<0)aclFail('acl_invalid');return [v];
+}
+function aclRuleCommand(model){
+  var n=aclInt(model.n,64,1),mode=model.mode,seen={},groups={},tokens=['acl',String(n)],police=0;
+  if(['normal','not','and'].indexOf(mode)<0)aclFail('acl_invalid');
+  if(mode==='and'&&n===1)aclFail('acl_predecessor');
+  if(mode!=='normal')tokens.push(mode);
+  model.matches.forEach(function(e){
+    var spec=ACL_MATCHES[e.key];if(!spec)aclFail('acl_invalid');
+    var key=e.key==='field'?e.key+e.index:(e.key==='valid'?e.key+e.value:e.key),group='';
+    if(['nonip','arp','ipv4','ipv6'].indexOf(e.key)>=0)group='l3';
+    if(['tcp','udp','icmp','igmp','l4other'].indexOf(e.key)>=0)group='l4';
+    if(['tagged','untagged'].indexOf(e.key)>=0)group='ctag';
+    if(seen[key]||(group&&groups[group]))aclFail('acl_conflict');seen[key]=true;if(group)groups[group]=true;
+    tokens.push(e.key);tokens=tokens.concat(aclValue(e,spec));
+  });
+  if(mode==='and'&&model.actions.length)aclFail('acl_and_actions');
+  if(mode!=='and'&&!model.actions.length)aclFail('acl_need_action');
+  groups={};
+  model.actions.forEach(function(e){
+    var spec=ACL_ACTIONS[e.key];if(!spec)aclFail('acl_invalid');
+    var args=aclValue(e,spec),group=spec[2]+(e.key==='bypass'?args[0]:'');
+    if(groups[group])aclFail('acl_conflict');groups[group]=true;
+    if(e.key==='police')police=args[0].split(',').length;
+    tokens.push(e.key);tokens=tokens.concat(args);
+  });
+  if((police>1&&groups.cvlan)||(police>2&&groups.svlan))aclFail('acl_conflict');
+  var ports=model.ports.length?aclPortList(model.ports):[];
+  if(ports.length!==aclPhysical().length)tokens=tokens.concat(ports.map(String));
+  var cmd=tokens.join(' ');
+  if(tokens.length>14||cmd.length>126)aclFail('acl_too_long');
+  return cmd;
+}
+function aclDecodeRule(rule,ranges){
+  var model={n:rule.n,mode:rule.ctrl===0?'and':(rule.ctrl&256?'not':'normal'),matches:[],actions:[],ports:[]},f={};
+  function match(k,v,i){var e={key:k,value:v==null?'':String(v)};if(i!=null)e.index=i;model.matches.push(e)}
+  function action(k,v){model.actions.push({key:k,value:v==null?'':v})}
+  function hex(v,d){return (v>>>0).toString(16).padStart(d||1,'0')}
+  function fm(ft){return f[ft]||[0,0]}
+  rule.fields.forEach(function(e,i){f[ACL_TEMPLATES[rule.t][i]]=e});
+  [0,3].forEach(function(base){
+    var v='',m='',any=false;
+    for(var i=2;i>=0;i--){var a=fm(base+i);v+=hex(a[0],4);m+=hex(a[1],4);any=any||!!a[1]}
+    function mac(x){return x.match(/../g).join(':')}
+    if(any)match(base?'smac':'dmac',mac(v)+(m==='ffffffffffff'?'':'/'+mac(m)));
+  });
+  var a=fm(6);if(a[1])match('ethertype',hex(a[0])+(a[1]===65535?'':'/'+hex(a[1])));
+  [8,7].forEach(function(ft){var a=fm(ft),s=ft===7;
+    if(a[1]&4095)match(s?'svlan':'vlan',a[0]&4095);
+    if(a[1]&0xe000)match(s?'spri':'pri',(a[0]>>>13)&7);
+    if(a[1]&0x1000)match(s?'sdei':'cfi',(a[0]>>>12)&1);
+  });
+  [16,18].forEach(function(ft){
+    var low=fm(ft),high=fm(ft+1),mask=(high[1]*65536+low[1])>>>0,value=(high[0]*65536+low[0])>>>0;
+    if(!mask)return;
+    var prefix=0;while(prefix<32&&((mask>>>(31-prefix))&1))prefix++;
+    match(ft===16?'sip':'dip',aclIpText(value)+(prefix===32?'':'/'+prefix));
+  });
+  a=fm(0x34);if(a[1]&255)match('proto',a[0]&255);
+  if(a[1]&0xff00)match('tos',hex(a[0]>>>8)+(a[1]>>>8===255?'':'/'+hex(a[1]>>>8)));
+  [0x35,0x36].forEach(function(ft){var a=fm(ft);if(a[1])match(ft===0x35?'sport':'dport',a[0])});
+  [0,1,2].forEach(function(kind){var a=fm(0x30+kind);
+    for(var i=0;i<16;i++)if(a[0]&a[1]&(1<<i)){
+      var r=ranges[kind][i],lo=parseInt(r.lo,16),hi=parseInt(r.hi,16),key,value;
+      if(kind===0){key=r.type===1?'vlan':'svlan';value=lo+(lo===hi?'':'-'+hi)}
+      else if(kind===2){key=r.type===1?'sport':'dport';value=lo+(lo===hi?'':'-'+hi)}
+      else {
+        key=['','sip','dip','sip6','dip6'][r.type];value=r.type<3?aclIpText(lo):hex(lo);
+        if(lo!==hi){
+          var bits=Math.log2(hi-lo+1);
+          if(r.type<3&&bits===Math.floor(bits)&&lo%(hi-lo+1)===0)value+='/'+(32-bits);
+          else value+='-'+(r.type<3?aclIpText(hi):hex(hi));
+        }
+      }
+      match(key,value);
+    }
+  });
+  a=fm(0x33);for(var i=0;i<16;i++)if(a[0]&a[1]&(1<<i))match('valid',i);
+  for(var ft=0x40;ft<0x50;ft++){a=fm(ft);if(a[1])match('field',hex(a[0])+(a[1]===65535?'':'/'+hex(a[1])),ft-0x40)}
+  var iv=rule.info[0],im=rule.info[2];
+  if(im&8)match(iv&8?'tagged':'untagged');if(im&16)match('stagged');if(im&32)match('pppoe');
+  if(im&0xc0)match(['nonip','arp','ipv4','ipv6'][(iv>>>6)&3]);
+  if(im&0x700)match(['l4other','icmp','igmp','tcp','udp','','','l4other'][(iv>>>8)&7]);
+  var pm=(iv>>>11)|((rule.info[1]&31)<<5);
+  S.ports.forEach(function(p){if(pm&(1<<p.logPort))model.ports.push(p.portNum)});
+  if(model.mode==='and')return model;
+  var cv=parseInt(rule.act[0],16),q=parseInt(rule.act[1],16),misc=parseInt(rule.act[2],16),ctrl=rule.ctrl;
+  if(ctrl&32){
+    var kind=(q>>>17)&15,mask=(q>>>21)&1023,ports=[];
+    S.ports.forEach(function(p){if(mask&(1<<p.logPort))ports.push(p.portNum)});
+    if(kind===0)action(mask?'copy':'permit',mask?ports:'');
+    else if(kind===1){if(!mask)action('drop');else if(!ports.length)action('cpu');else action('redirect',ports)}
+    else if(kind===2)action('mirror',ports);
+    else if(kind===8)action('isolate',ports);
+    else action('trap',['int','ext','both'][kind-3]);
+  }
+  var meters=[];
+  if(ctrl&16){if(q&0x10000)action('count',(q>>>10)&31);else meters.push((q>>>10)&63)}
+  if(ctrl&1){
+    var vm=(cv>>>2)&3,kind=cv&3;
+    if(vm!==2){if(kind===3)meters.push((cv>>>4)&63);else action(['setvlan','outvlan','cvidfromsvid'][kind],kind===2?'':(cv>>>4)&4095)}
+    if(vm)action(['untag','tag','keeptag','keepremark'][(cv>>>16)&3]);
+  }
+  if(ctrl&2){var kind=(cv>>>18)&3;if(kind===3)meters.push((cv>>>20)&63);else action(['setsvlan','outsvlan','svidfromcvid'][kind],kind===2?'':(cv>>>20)&4095)}
+  if(meters.length)action('police',meters.join(','));
+  if(ctrl&4)action('priority',q&7);
+  if(ctrl&8)action(q&8?'dscp':'pcp',(q>>>4)&(q&8?63:7));
+  if(ctrl&64){if(q&0x80000000)action('interrupt');if(misc&16)action('gpio',misc&3)}
+  if(ctrl&128)['storm','stp','vlan'].forEach(function(k,i){if(misc&(32<<i))action('bypass',k)});
+  return model;
+}
+/* ACL UI */
+S.acl={rules:[],models:[],ranges:[],meters:[],fields:[],global:null,counters:[],loaded:false,busy:false};
+function aclSelect(id,options){
+  var el=h('select',{class:'in',id:id});
+  options.forEach(function(o){el.appendChild(h('option',{value:o[0],text:o[1]}))});return el;
+}
+function aclNumbers(n,start){var r=[];for(var i=start||0;i<n;i++)r.push([i,String(i)]);return r}
+function aclPicks(el,selected){
+  el.innerHTML='';S.ports.forEach(function(p){
+    var input=h('input',{type:'checkbox',value:p.portNum,'aria-label':t('c_port')+' '+portLabel(p)});
+    input.checked=(selected||[]).map(Number).indexOf(p.portNum)>=0;
+    el.appendChild(h('label',null,[input,h('span',{text:portLabel(p)})]));
+  });
+}
+function aclPicked(el){return Array.from(el.querySelectorAll('input:checked')).map(function(e){return +e.value})}
+function aclRowEntry(row){
+  var entry={key:row.querySelector('select').value,value:''},value=row.querySelector('[data-value]'),index=row.querySelector('[data-index]');
+  if(value)entry.value=value.classList.contains('acl-picks')?aclPicked(value):value.value;
+  if(index)entry.index=index.value;return entry;
+}
+function aclAddRow(action,entry){
+  var specs=action?ACL_ACTIONS:ACL_MATCHES,row=h('div',{class:'acl-line'}),sel=aclSelect('',Object.keys(specs).map(function(k){return[k,t(specs[k][0])]})),values=h('span',{class:'acl-line',style:'margin:0'});
+  sel.setAttribute('aria-label',t(action?'acl_actions':'acl_matches'));sel.value=entry?entry.key:(action?'permit':'dmac');
+  function build(){
+    values.innerHTML='';var spec=specs[sel.value],type=spec[1],input;
+    if(type==='flag')return;
+    if(type==='field'){input=h('input',{class:'in sm',type:'number',min:0,max:15,'data-index':'','aria-label':t('acl_selector'),placeholder:'0–15',required:''});values.appendChild(input)}
+    if(type==='ports'){input=h('span',{class:'acl-picks','data-value':''});aclPicks(input);}
+    else if(type==='trap'||type==='bypass'){
+      input=aclSelect('',(type==='trap'?['int','ext','both']:['storm','stp','vlan']).map(function(k){return[k,t(k==='vlan'?'acl_v_lan':'acl_'+k)]}));input.setAttribute('data-value','');
+    }else{
+      var examples={mac:'aa:bb:cc:dd:ee:ff/ff:ff:ff:ff:ff:00',hex16:'0800/ffff',hex8:'b8/fc',ip:'192.168.1.0/24',hexrange:'fd000001-fd0000ff',field:'abcd/ffff',meters:'0,1,2'};
+      input=h('input',{class:'in',type:type.slice(0,3)==='num'?'number':'text','data-value':'',required:'','aria-label':t(spec[0]),placeholder:examples[type]||(type.slice(0,5)==='range'?'0-'+type.slice(5):'0–'+type.slice(3))});
+      if(type.slice(0,3)==='num'){input.min=0;input.max=type.slice(3);input.classList.add('sm')}
+    }
+    values.appendChild(input);
+  }
+  sel.addEventListener('change',function(){build();aclPreview()});build();
+  row.appendChild(sel);row.appendChild(values);
+  row.appendChild(h('button',{type:'button',class:'ctl',text:'×','aria-label':t('c_delete'),onclick:function(){row.remove();aclPreview()}}));
+  $(action?'acl-actions':'acl-matches').appendChild(row);
+  if(entry){var v=row.querySelector('[data-value]'),idx=row.querySelector('[data-index]');if(v){if(v.classList.contains('acl-picks'))aclPicks(v,entry.value);else v.value=entry.value}if(idx)idx.value=entry.index}
+  aclPreview();
+}
+function aclFormModel(){
+  return {n:$('acl-id').value,mode:$('acl-mode').value,ports:aclPicked($('acl-ports')),
+    matches:Array.from($('acl-matches').children).map(aclRowEntry),
+    actions:$('acl-mode').value==='and'?[]:Array.from($('acl-actions').children).map(aclRowEntry)};
+}
+function aclPreview(){
+  try{$('acl-preview').textContent=aclRuleCommand(aclFormModel())}catch(e){$('acl-preview').textContent=e.message}
+}
+function aclMode(){
+  var joined=$('acl-mode').value==='and';
+  $('acl-action-section').hidden=joined;
+  $('acl-action-section').querySelectorAll('input,select,button').forEach(function(el){el.disabled=joined});
+  aclPreview();
+}
+function aclEdit(model){
+  $('acl-id').value=model.n;$('acl-mode').value=model.mode;$('acl-matches').innerHTML='';$('acl-actions').innerHTML='';
+  aclPicks($('acl-ports'),model.ports.length===S.ports.length?[]:model.ports);
+  model.matches.forEach(function(e){aclAddRow(false,e)});model.actions.forEach(function(e){aclAddRow(true,e)});
+  $('acl-form-error').textContent='';aclMode();
+}
+function aclNew(){
+  var n=1;while(n<=64&&S.acl.rules.some(function(r){return r.n===n}))n++;
+  aclEdit({n:Math.min(n,64),mode:'normal',matches:[],actions:[{key:'permit',value:''}],ports:[]});
+}
+function aclDescribe(entries,specs){
+  return entries.map(function(e){var v=Array.isArray(e.value)?e.value.join(', '):e.value;
+    if(e.key==='field')v=e.index+': '+v;
+    if(e.key==='bypass'||e.key==='trap')v=t(v==='vlan'?'acl_v_lan':'acl_'+v);
+    return t(specs[e.key][0])+(v!==''&&v!=null?' '+v:'');
+  }).join('\n');
+}
+function aclRenderRules(){
+  var body=$('acl-rules').tBodies[0];body.innerHTML='';
+  S.acl.models=S.acl.rules.map(function(r){return aclDecodeRule(r,S.acl.ranges)});
+  if(!S.acl.rules.length){body.appendChild(h('tr',null,[h('td',{colspan:7,class:'mut',text:t('acl_empty')})]));return}
+  S.acl.models.forEach(function(m,i){
+    var row=h('tr');[m.n,t('acl_'+m.mode),m.ports.length===S.n?t('acl_all_ports'):m.ports.join(', '),
+      m.matches.length?aclDescribe(m.matches,ACL_MATCHES):t('acl_any'),aclDescribe(m.actions,ACL_ACTIONS),S.acl.rules[i].t].forEach(function(v){row.appendChild(h('td',{class:'acl-expression',text:v}))});
+    row.appendChild(h('td',null,[h('button',{class:'ctl',text:t('c_load'),onclick:function(){aclEdit(m);$('acl-editor').scrollIntoView({behavior:'smooth',block:'start'})}}),
+      h('button',{class:'ctl',text:t('c_delete'),onclick:function(){confirmModal(t('acl_delete_q',{n:m.n}),t('acl_delete_note'),function(){aclRun('acl '+m.n+' off')})}})]));body.appendChild(row);
+  });
+}
+function aclBusy(b){
+  S.acl.busy=b;document.querySelectorAll('#tab-acl button').forEach(function(el){el.disabled=b});
+  if(!b)aclMode();
+}
+function aclRun(cmd,after){
+  if(S.acl.busy)return Promise.resolve();aclBusy(true);$('acl-error').textContent='';
+  var list=Array.isArray(cmd)?cmd:[cmd];
+  var run=Promise.resolve();list.forEach(function(c){run=run.then(function(){return postCmd(c,true)})});
+  return run.then(function(){toast(t('t_cmds',{n:list.length}),'ok');return after?after():aclRulesLoad()}).catch(function(e){$('acl-error').textContent=e.message}).then(function(){aclBusy(false)});
+}
+function aclPaged(path,key,start){
+  var rows=[];
+  function step(idx){return getJSON(path+'?idx='+idx).then(function(data){rows=rows.concat(data[key]);return data.next?step(data.next):rows})}
+  return step(start||0);
+}
+function aclRulesLoad(){
+  $('acl-state').textContent=t('l2_loading');
+  return Promise.all([
+    aclPaged('/aclrule.json','rules',1),
+    Promise.all([0,1,2].map(function(k){return getJSON('/aclrange.json?kind='+k)}))
+  ]).then(function(r){
+    S.acl.rules=r[0];S.acl.ranges=r[1];aclRenderRules();
+    $('acl-state').textContent=t('acl_rule_count',{n:S.acl.rules.length});
+  }).catch(function(e){$('acl-state').textContent=t('l2_failed');throw e});
+}
+function aclMeterLoad(n){
+  return getJSON('/aclmeter.json?idx='+n).then(function(data){
+    data.meters.forEach(function(m){S.acl.meters[m.n]=m});
+    $('acl-meter-id').dispatchEvent(new Event('change'));
+  });
+}
+function aclFieldLoad(){
+  return getJSON('/aclfield.json').then(function(data){
+    S.acl.fields=data;$('acl-field-id').dispatchEvent(new Event('change'));
+  });
+}
+function aclGlobalLoad(){
+  return getJSON('/acl.json').then(function(data){
+    S.acl.global=data;aclRenderGlobals();
+    if(S.acl.counters.length===32)aclRenderCounters();
+  });
+}
+function aclCounterSettingsLoad(){return Promise.all([aclGlobalLoad(),aclCounterLoad()])}
+function aclLoad(){
+  if(S.acl.busy)return Promise.resolve();aclBusy(true);$('acl-state').textContent=t('l2_loading');$('acl-error').textContent='';
+  // api() serializes these requests; each hardware response fits the shared buffer.
+  return Promise.all([
+    getJSON('/acl.json'),aclPaged('/aclrule.json','rules',1),
+    Promise.all([0,1,2].map(function(k){return getJSON('/aclrange.json?kind='+k)})),
+    aclPaged('/aclmeter.json','meters',0),getJSON('/aclfield.json'),getJSON('/aclcounter.json')
+  ]).then(function(r){
+    S.acl.global=r[0];S.acl.rules=r[1];S.acl.ranges=r[2];S.acl.meters=r[3];S.acl.fields=r[4];S.acl.counters=r[5];
+    aclRenderRules();aclRenderGlobals();aclRenderCounters();
+    $('acl-meter-id').dispatchEvent(new Event('change'));$('acl-field-id').dispatchEvent(new Event('change'));
+    if(!S.acl.loaded){aclNew();S.acl.loaded=true}
+    $('acl-state').textContent=t('acl_rule_count',{n:S.acl.rules.length});
+  }).catch(function(e){$('acl-state').textContent=t('l2_failed');$('acl-error').textContent=e.message}).then(function(){aclBusy(false)});
+}
+function aclRenderGlobals(){
+  var g=S.acl.global,drop=[];S.ports.forEach(function(p){if(g.drop&(1<<p.logPort))drop.push(p.portNum)});
+  $('acl-default').value=drop.length?'drop':'permit';aclPicks($('acl-default-ports'),drop);aclDefaultMode();
+  $('acl-pair-id').dispatchEvent(new Event('change'));
+  for(var i=0;i<4;i++)$('acl-gpio-'+i).checked=!!(g.gpio&(1<<i));$('acl-polarity').value=g.polarity?'high':'low';
+  var exceeded=[];g.exceeded.forEach(function(word,i){var v=parseInt(word,16);for(var b=0;b<32;b++)if(v&(1<<b))exceeded.push(i*32+b)});
+  $('acl-status').textContent=t('acl_hit')+': '+g.hit.join(' ')+'\n'+t('acl_exceeded')+': '+(exceeded.length?exceeded.join(', '):t('acl_none'));
+}
+function aclDefaultMode(){$('acl-default-ports').hidden=$('acl-default').value==='permit'}
+function aclRenderCounters(){
+  var body=$('acl-counters').tBodies[0];body.innerHTML='';var g=S.acl.global;
+  for(var i=0;i<32;i++){
+    var wide=!!(g.counterWidth&(1<<(i>>>1))),bytes=!!(g.counterMode&(1<<(i>>>1))),value=BigInt('0x'+S.acl.counters[i]);
+    if(wide)value|=BigInt('0x'+S.acl.counters[i+1])<<32n;
+    var row=h('tr');[wide?i+'–'+(i+1):String(i),t(bytes?'acl_bytes':'acl_packets'),wide?'64':'32',value.toString()].forEach(function(v,j){row.appendChild(h('td',{class:j===3?'num mono':'',text:v}))});body.appendChild(row);if(wide)i++;
+  }
+}
+function aclCounterLoad(){return getJSON('/aclcounter.json').then(function(data){S.acl.counters=data;aclRenderCounters()})}
+function aclSettings(){
+  aclPicks($('acl-ports'));aclPicks($('acl-default-ports'));
+  var meter=$('acl-meter-form'),field=$('acl-field-form'),counter=$('acl-counter-form'),gpio=$('acl-gpio-form');
+  function label(parent,key,control){parent.appendChild(h('label',{class:'row'},[h('span',{class:'lb',text:t(key)}),control]));return control}
+  label(meter,'acl_meter',aclSelect('acl-meter-id',aclNumbers(64)));
+  label(meter,'acl_rate',h('input',{class:'in',id:'acl-rate',type:'number',min:0,max:16777215}));
+  label(meter,'acl_units',aclSelect('acl-units',[['kbps','kbit/s'],['pps',t('acl_pps')]]));
+  label(meter,'acl_burst',h('input',{class:'in',id:'acl-burst',type:'number',min:0,max:268435455}));
+  label(meter,'acl_ifg',h('input',{id:'acl-ifg',type:'checkbox'}));
+  meter.appendChild(h('button',{class:'ctl pri',text:t('c_apply'),onclick:function(){
+    try{var n=aclInt($('acl-meter-id').value,63),rate=aclInt($('acl-rate').value,16777215),burst=aclInt($('acl-burst').value,268435455);
+      aclRun('acl meter '+n+' '+rate+' '+$('acl-units').value+' '+burst+($('acl-ifg').checked?' ifg':''),function(){return aclMeterLoad(n)});
+    }catch(e){$('acl-error').textContent=e.message}
+  }}));
+  $('acl-meter-id').addEventListener('change',function(){var m=S.acl.meters[+this.value];if(!m)return;$('acl-rate').value=m.rate;$('acl-burst').value=m.burst;$('acl-units').value=m.pps?'pps':'kbps';$('acl-ifg').checked=!!m.ifg});
+  label(field,'acl_selector',aclSelect('acl-field-id',aclNumbers(16)));
+  label(field,'acl_format',aclSelect('acl-format',['off','raw','llc','ipv4','arp','ipv6','ip','l4'].map(function(k){return[k,t('acl_format_'+k)]})));
+  label(field,'acl_offset',h('input',{class:'in',id:'acl-offset',type:'number',min:0,max:255}));
+  field.appendChild(h('button',{class:'ctl pri',text:t('c_apply'),onclick:function(){try{var n=aclInt($('acl-field-id').value,15),offset=aclInt($('acl-offset').value,255);aclRun('acl field '+n+' '+$('acl-format').value+' '+offset,aclFieldLoad)}catch(e){$('acl-error').textContent=e.message}}}));
+  $('acl-field-id').addEventListener('change',function(){var f=S.acl.fields[+this.value];if(!f)return;$('acl-format').value=['off','raw','llc','ipv4','arp','ipv6','ip','l4'][f.format];$('acl-offset').value=f.offset});
+  label(counter,'acl_pair',aclSelect('acl-pair-id',aclNumbers(16).map(function(o){return[o[0]*2,o[0]*2+'–'+(o[0]*2+1)]})));
+  label(counter,'acl_counter_mode',aclSelect('acl-counter-mode',[['packets',t('acl_packets')],['bytes',t('acl_bytes')]]));
+  label(counter,'acl_width',aclSelect('acl-counter-width',[['32','32'],['64','64']]));
+  counter.appendChild(h('button',{class:'ctl pri',text:t('c_apply'),onclick:function(){var n=$('acl-pair-id').value;aclRun(['acl counter '+n+' mode '+$('acl-counter-mode').value,'acl counter '+n+' width '+$('acl-counter-width').value],aclCounterSettingsLoad)}}));
+  $('acl-pair-id').addEventListener('change',function(){var g=S.acl.global;if(!g)return;var bit=1<<(+this.value>>>1);$('acl-counter-mode').value=g.counterMode&bit?'bytes':'packets';$('acl-counter-width').value=g.counterWidth&bit?'64':'32'});
+  [52,53,54,30].forEach(function(pin,i){label(gpio,'acl_pin_'+i,h('input',{type:'checkbox',id:'acl-gpio-'+i,title:'GPIO '+pin}))});
+  label(gpio,'acl_polarity',aclSelect('acl-polarity',[['high',t('acl_high')],['low',t('acl_low')]]));
+  gpio.appendChild(h('button',{class:'ctl pri',text:t('c_apply'),onclick:function(){confirmModal(t('acl_gpio_q'),t('acl_gpio_note'),function(){var cmds=[];for(var i=0;i<4;i++)cmds.push('acl gpio '+i+' '+($('acl-gpio-'+i).checked?'on':'off'));cmds.push('acl gpio polarity '+$('acl-polarity').value);aclRun(cmds,aclGlobalLoad)})}}));
+}
+$('acl-add-match').addEventListener('click',function(){aclAddRow(false)});
+$('acl-add-action').addEventListener('click',function(){aclAddRow(true)});
+$('acl-mode').addEventListener('change',aclMode);
+$('acl-editor').addEventListener('input',aclPreview);
+$('acl-editor').addEventListener('change',aclPreview);
+$('acl-new').addEventListener('click',aclNew);
+$('acl-refresh').addEventListener('click',function(){aclLoad()});
+$('acl-editor').addEventListener('submit',function(e){
+  e.preventDefault();$('acl-form-error').textContent='';
+  try{
+    var model=aclFormModel(),cmd=aclRuleCommand(model);
+    if(model.mode==='and'&&!S.acl.rules.some(function(r){return r.n===+model.n-1}))aclFail('acl_predecessor');
+    var apply=function(){aclRun(cmd)};
+    if(S.acl.rules.some(function(r){return r.n===+model.n}))confirmModal(t('acl_replace_q',{n:model.n}),t('acl_immediate'),apply);else apply();
+  }catch(err){$('acl-form-error').textContent=err.message}
+});
+$('acl-default').addEventListener('change',aclDefaultMode);
+$('acl-default-apply').addEventListener('click',function(){
+  try{var cmd='acl default permit';if($('acl-default').value==='drop')cmd='acl default drop '+aclPortList(aclPicked($('acl-default-ports'))).join(' ');
+    confirmModal(t('acl_default_q'),t('acl_default_note'),function(){aclRun(cmd,aclGlobalLoad)});
+  }catch(e){$('acl-error').textContent=e.message}
+});
+$('acl-counter-refresh').addEventListener('click',function(){aclCounterLoad().catch(function(e){$('acl-error').textContent=e.message})});
+$('acl-counter-reset').addEventListener('click',function(){confirmModal(t('acl_reset_q'),'',function(){aclRun('acl counter reset',aclCounterLoad)})});
+var aclBuilt=false;
+tabHooks.acl={enter:function(){needPorts(function(){if(!aclBuilt){aclSettings();aclBuilt=true}aclLoad()})}};
+
 var IPRE = /^(\d{1,3}\.){3}\d{1,3}$/;
 
 function okIp(s) {
@@ -5069,7 +5644,11 @@ var CONF_OVERWRITE = [
 var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
 function mergeConf(base, texts) {
-    var conf = base.slice();
+    // Older startup configurations may still name the odd counter of a pair.
+    var conf = base.map(function(line) {
+        var m = line.match(/^acl counter (\d{1,2}) /);
+        return m ? "acl counter " + ((+m[1]) & ~1) + line.slice(m[0].length - 1) : line;
+    });
 
     function drop(rx) {
         conf = conf.filter(function(c) {

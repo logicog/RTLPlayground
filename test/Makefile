@@ -9,6 +9,7 @@
 #   make clean
 
 CC       = gcc
+NODE    ?= node
 SRCROOT  = ..
 # -include shim first so __xdata/__code/__banked vanish before any firmware header.
 CFLAGS   = -std=gnu11 -g -O1 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unknown-pragmas \
@@ -34,7 +35,8 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_cpu_vlan_8372 \
         $(BUILDDIR)/test_nic_rx \
         $(BUILDDIR)/test_lacp \
-        $(BUILDDIR)/test_acl
+        $(BUILDDIR)/test_acl \
+        $(BUILDDIR)/test_acl_json
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -57,6 +59,18 @@ $(BUILDDIR)/test_port_tables: test_port_tables.c $(TABLE_ENV) hw_mock.h | $(BUIL
 # rtl837x_acl.c and rtl837x_acl_cmd.c are compiled UNMODIFIED from the firmware tree.
 $(BUILDDIR)/test_acl: test_acl.c support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_acl.c $(SRCROOT)/rtl837x_acl_cmd.c hw_mock.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+$(BUILDDIR)/test_acl_json: test_acl_json.c support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_acl.c $(SRCROOT)/rtl837x_acl_cmd.c $(SRCROOT)/httpd/page_acl.c $(SRCROOT)/httpd/page_impl.c $(SRCROOT)/rtl837x_port.c hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+# Run frontend checks when Node is installed, without requiring it in CI.
+ifneq ($(shell command -v $(NODE) 2>/dev/null),)
+test_acl_gui: test_acl_gui.js test_acl_refresh.js $(SRCROOT)/html/app.js test_acl.c
+	$(NODE) test_acl_gui.js
+else
+test_acl_gui:
+	@echo "Skipping ACL GUI tests: $(NODE) is not available."
+endif
 
 $(BUILDDIR)/test_tick_gate: test_tick_gate.c support.c $(SRCROOT)/cmd_editor.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -86,7 +100,7 @@ $(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_POR
 $(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-run: $(TESTS)
+run: $(TESTS) test_acl_gui
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
@@ -97,4 +111,4 @@ run: $(TESTS)
 clean:
 	rm -rf $(BUILDDIR)
 
-.PHONY: all run clean
+.PHONY: all run clean test_acl_gui

@@ -157,6 +157,7 @@ SRCS += \
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c \
+	httpd/page_acl.c \
 	httpd/page_stp.c
 SRCS += \
 	uip/timer.c \

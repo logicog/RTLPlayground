@@ -773,9 +773,7 @@ static uint8_t acl_rule_cmd(void)
 
 static void acl_print_reg(void)
 {
-	reg_read_m(acl_ra);
-	print_long(((uint32_t)sfr_data[0] << 24) | ((uint32_t)sfr_data[1] << 16)
-		   | ((uint16_t)sfr_data[2] << 8) | sfr_data[3]);
+	print_long(acl_reg_read(acl_ra));
 }
 
 static void acl_show(void)

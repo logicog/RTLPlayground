@@ -82,7 +82,14 @@ void acl_reg(void) __banked
 	REG_WRITE(acl_ra, p[3], p[2], p[1], p[0]);
 }
 
-static void acl_tbl_wait(void)
+uint32_t acl_reg_read(uint16_t addr) __banked
+{
+	reg_read_m(addr);
+	return ((uint32_t)sfr_data[0] << 24) | ((uint32_t)sfr_data[1] << 16)
+		| ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+}
+
+void acl_tbl_wait(void) __banked
 {
 	uint8_t guard = 0;
 	do {
