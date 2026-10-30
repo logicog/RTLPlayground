@@ -48,8 +48,21 @@
 #include "clock.h"
 #include "timer.h"
 
+extern volatile __xdata uint32_t ticks;
+
+
 #pragma codeseg BANK1
 #pragma constseg BANK1
+
+static clock_time_t clock_time(void)
+{
+  clock_time_t t;
+
+  do {
+    t = (clock_time_t)ticks;
+  } while (t != (clock_time_t)ticks);
+  return t;
+}
 
 /*---------------------------------------------------------------------------*/
 /**
