@@ -11,6 +11,7 @@
 #include <string.h>
 #include <argp.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <zlib.h>
 
 #define OFFSET 2
@@ -412,20 +413,27 @@ int main(int argc, char **argv)
 		else
 			outptr = mkstemp(tmpfilename);
 
-		if (!outptr) {
+		if (outptr < 0) {
 			printf("Cannot open %s\n", arguments.output_file);
 			return 5;
 		}
 		size_t written = write(outptr, buffer, filesize);
+		close(outptr);
 
 		if (written != filesize) {
 			printf("Error writing output file.\n");
+			if (arguments.overwrite)
+				unlink(tmpfilename);
 			return 5;
 		}
-		close(outptr);
 
-		if (arguments.overwrite)
-			rename(tmpfilename, argv[arg_index]);
+		if (arguments.overwrite) {
+			if (rename(tmpfilename, argv[arg_index])) {
+				fprintf(stderr, "Rename of %s -> %s failed: %s\n", tmpfilename, argv[arg_index], strerror(errno));
+				unlink(tmpfilename);
+				return 5;
+			}
+		}
 	}
 
 	if (arguments.prefix) {
