@@ -5190,7 +5190,15 @@ function mergeConf(base, texts) {
             conf.splice(at, 0, line);
         });
     });
-    return conf;
+    var rules = conf.filter(function(c) {
+            return /^acl \d{1,2} /.test(c)
+        }).sort(function(a, b) {
+            return a.split(" ")[1] - b.split(" ")[1]
+        }),
+        k = 0;
+    return conf.map(function(c) {
+        return /^acl \d{1,2} /.test(c) ? rules[k++] : c
+    });
 }
 
 function writeConfig(txt, title, fromLog) {
