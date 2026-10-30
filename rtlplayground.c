@@ -91,7 +91,6 @@ __code const uint8_t netmask[] = { 255, 255, 255, 0};
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
-volatile __xdata uint16_t sleep_ticks;
 __xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
@@ -99,6 +98,8 @@ extern __xdata struct dhcp_state dhcp_state;
 #define SFP_TICK_STEP 10
 static __xdata struct timer second;
 static __xdata struct timer sfp_poll;
+static __xdata struct timer delay_timer;
+static __xdata struct timer sleep_timer;
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -209,8 +210,6 @@ void isr_timer2(void) __interrupt(5)
 {
 	ticks++;
 	tick_pending = 1;
-	if (sleep_ticks > 0)
-		sleep_ticks--;
 
 	// Clear TF2 & EXF2 by software
 	T2CON &= ~0xC0;
@@ -868,8 +867,8 @@ void read_reg_timer(__xdata uint32_t * tmr)
 // Delay for given number of ticks without doing housekeeping
 void delay(uint16_t t)
 {
-	sleep_ticks = t;
-	while (sleep_ticks > 0)
+	timer_set(&delay_timer, t);
+	while (!timer_expired(&delay_timer))
 		PCON |= 1;
 }
 
@@ -1258,8 +1257,8 @@ void idle(void)
 // Sleep the given number of ticks and perform idle tasks if initialized
 void sleep(uint16_t t)
 {
-	sleep_ticks = t;
-	while (sleep_ticks > 0) {
+	timer_set(&sleep_timer, t);
+	while (!timer_expired(&sleep_timer)) {
 		if (idle_ready)
 			idle();
 		else
