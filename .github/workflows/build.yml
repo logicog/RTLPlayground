@@ -43,6 +43,8 @@ jobs:
         run: cd branch && make CI=1 MACHINE="KP_9000_9XHML_X_V3_1"
       - name: Make project with the health instrumentation
         run: cd branch && make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" HEALTH=1
+      - name: Make project with the debug output
+        run: cd branch && make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" DEBUG=1
       - name: Make main
         run: |
           ln -s ../branch/toolchain main/toolchain
