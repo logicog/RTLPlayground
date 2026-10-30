@@ -75,8 +75,6 @@ void crc16_bank1(__xdata uint8_t *v) __naked;
    - T_TIMER_DIV12_OVERFLOW = F_SYS / DIV12 / 1..65536 = 125MHz / 12 / 1..65536 = 10.42 MHz .. 158.9 Hz
    Selecting dividor 12 settings to get lowest timer tick posiable which is already high.
 */
-#define SYS_TICK_HZ 200
-
 #define TIMER2_DIV (CLOCK_HZ / 12 / SYS_TICK_HZ)
 #if TIMER2_DIV > 0xFFFF
 #error "SYS_TICK_HZ to low, must be >= 159"
