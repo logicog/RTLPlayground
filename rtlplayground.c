@@ -1684,8 +1684,6 @@ void main(void)
 	syslog_init();
 	dns_init();
 	ntp_init();
-	timer_set(&second, SYS_TICK_HZ);
-	timer_set(&sfp_poll, SFP_TICK_STEP);
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
@@ -1742,6 +1740,8 @@ void main(void)
 	/* After the config: a name from it wins, otherwise derive one. */
 	set_hostname_default();
 	print_cmd_prompt();
+	timer_set(&second, SYS_TICK_HZ);
+	timer_set(&sfp_poll, SFP_TICK_STEP);
 	idle_ready = 1;
 
 	set_sys_led_state(SYS_LED_ON);
