@@ -6,6 +6,7 @@
 |---|---|---|---|---|---|
 | Lianguo | ZX-SWTGW215AS | Yes | PCB-SWTG115AS-V2.0 | FM25Q16A | 8372 |
 | sold as Lianguo, actual device unbranded | ZX-SWTGW215AS | Yes | PCB-SWTG115AS-V2.1 | W25Q16JVSIQ (2MiB) | 8372 |
+| Sodola | SL-SWTGW215AS-D | Yes | SWTG115AS-V2.1-17433 | W25Q16JVSIQ (2MiB) | 8372 |
 
 ## RTLPlayground target
 
