@@ -15,7 +15,9 @@ The original software is running UART on 9600 baud rate.
 
 Using a SOIC clamp in-board is the only method for initial installation.
 
-The board has 3 SOIC-8 chips (U2, U7, U8) however only one is a 2M-byte chip. The correct chip to program is the one marked U2. There is a front switch (also unpopulated) on the device that selects between the flash chips marked U2 and U4. These can be programed independently by using said switch - so it is e.g. possible to run the original and new firmware in parallel.
+The board has 3 SOIC-8 chips (U2, U7, U8) however only one is a 2M-byte chip. The correct chip to program is the one marked U2.
+
+Correct build is achieved using `make MACHINE=make MACHINE=MOKERLINK_ZX_SWTGW218AS`.
 
 ### Label specifications
 
