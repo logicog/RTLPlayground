@@ -92,7 +92,6 @@ void json_char_to_html(uint8_t c)
 	outbuf[slen++] = c;
 }
 
-
 //  Convert uint8_t to ascii HEX char.
 void byte_to_html(uint8_t val)
 {
@@ -159,6 +158,22 @@ static void temp_to_html(void)
 	char_to_html('C');
 }
 
+
+void json_add_array_string_item(__code const char *item) {
+    if (slen > 0 && outbuf[slen - 1] != '[')
+        slen += strtox(outbuf + slen, ",");
+
+    slen += strtox(outbuf + slen, item);
+}
+
+void json_add_array_uint_item(uint8_t x) {
+	 if (slen > 0 && outbuf[slen - 1] != '[')
+        slen += strtox(outbuf + slen, ",");
+
+    itoa_html(x);
+}
+
+
 uint16_t stat_content(void)
 {
 	dbg_string("stat_content called\n");
@@ -171,7 +186,6 @@ uint16_t port_status(void)
 	dbg_string("port_status called\n");
 	return 0;
 }
-
 
 /* Converts sfr_data[] into raw hex string.
    Suppress leading zeros.
@@ -322,16 +336,17 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, "\"}");
 }
 
-
 void send_vlan(uint16_t vlan)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	dbg_string("sending VLAN\n");
-	//{"members":"0x00060011"}
-	slen += strtox(outbuf + slen, "{\"members\":\"0x");
+
+	slen += strtox(outbuf + slen, "{" JSONQUOTE("members") ":\"0x");
 	vlan_get(vlan);
 	sfr_data_to_html();
-	slen += strtox(outbuf + slen, "\",\"name\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("members_array") ":[");
+
+	slen += strtox(outbuf + slen, "]," JSONQUOTE("name") ":\"");
 	__xdata uint16_t n = vlan_name(vlan);
 	if (n== 0xffff) {
 		dbg_string("VLAN has no name\n");
@@ -339,15 +354,25 @@ void send_vlan(uint16_t vlan)
 		while(vlan_names[n] && vlan_names[n] != ' ')
 			json_char_to_html(vlan_names[n++]);
 	}
-	slen += strtox(outbuf + slen, "\",\"pvid\":\"0x");
+
 	uint16_t pvid_mask = 0;
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("pvid") ":\"0x");
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		if (port_pvid_get(i) == vlan)
 			pvid_mask |= (1 << i);
-}
+	}
+
 	byte_to_html(pvid_mask >> 8);
 	byte_to_html(pvid_mask);
-	slen += strtox(outbuf + slen, "\"}");
+
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("pvid_array") ":[");
+
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if (port_pvid_get(i) == vlan) { // i is _logical port_
+			json_add_array_uint_item(machine.log_to_phys_port[i]);
+		}
+	}
+	slen += strtox(outbuf + slen, "]}");
 }
 
 /* Send counters
@@ -846,13 +871,6 @@ void send_mtu(void)
 	char_to_html(']');
 }
 
-void json_add_array_item(__code const char *item) {
-    if (slen > 0 && outbuf[slen - 1] != '[')
-        slen += strtox(outbuf + slen, ",");
-
-    slen += strtox(outbuf + slen, item);
-}
-
 void send_status(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -928,23 +946,23 @@ void send_status(void)
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL);
 			uint16_t w = SFR_DATA_U16;
 			if(!!(w & 0x80))
-				json_add_array_item(JSONQUOTE("2.5G"));
+				json_add_array_string_item(JSONQUOTE("2.5G"));
 
 			phy_read(i, PHY_MMD31, PHY_MMD31_GBCR);
 			w = SFR_DATA_U16;
 			if(!!(w & 0x0200))
-				json_add_array_item(JSONQUOTE("1G"));
+				json_add_array_string_item(JSONQUOTE("1G"));
 				
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_ADV);
 			w = SFR_DATA_U16;
 			if(!!(w & 0x0100))
-				json_add_array_item(JSONQUOTE("100M-FD"));
+				json_add_array_string_item(JSONQUOTE("100M-FD"));
 			if(!!(w & 0x80))
-				json_add_array_item(JSONQUOTE("100M-HD"));
+				json_add_array_string_item(JSONQUOTE("100M-HD"));
 			if(!!(w & 0x40))
-				json_add_array_item(JSONQUOTE("10M-HD"));
+				json_add_array_string_item(JSONQUOTE("10M-HD"));
 			if(!!(w & 0x20))
-				json_add_array_item(JSONQUOTE("100M-FD"));
+				json_add_array_string_item(JSONQUOTE("100M-FD"));
 
 			char_to_html(']');
 		}
