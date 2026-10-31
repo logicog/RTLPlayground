@@ -446,11 +446,18 @@ class Handler(SimpleHTTPRequestHandler):
                     "sfp_laser": "0x0000",
                 })
             else:
-                item["adv"] = (
-                    "100000" if i == 1
-                    else "000011" if i == 2
-                    else "000100"
-                )
+                if i == 1: #"100000" if i == 1
+                    item["adv"] = {
+                        "2.5G":1,"1G":1,"100M-FD":1,"100M-HD":1,"10M-HD":1,"10M-FD":1
+                    }
+                elif i == 2: #else "000011" if i == 2
+                    item["adv"] = {
+                        "2.5G":1,"1G":1,"100M-FD":1,"100M-HD":1,"10M-HD":1,"10M-FD":1
+                    }
+                else: #else "000100"
+                    item["adv"] = {
+                        "2.5G":1,"1G":1,"100M-FD":1,"100M-HD":1,"10M-HD":1,"10M-FD":1
+                    }
 
             ports.append(item)
 
