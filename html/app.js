@@ -2202,8 +2202,6 @@ var S = {
     rates: [],
     mtu: [],
 };
-var LINKS = ["Down", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
-var LINKC = [null, "--s10", "--s100", "--s1000", "--s5g", "--s10g", "--s2g5", "--s5g"];
 var $ = function(id) {
     return document.getElementById(id)
 };
@@ -2239,7 +2237,7 @@ function badge(txt, cls) {
 }
 
 function linkBadge(p) {
-    return !p.enabled ? badge(t("c_off")) : (p.link > 0 ? badge(LINKS[p.link], "ok") : badge(t("c_down")));
+    return !p.enabled ? badge(t("c_off")) : (p.link != "DOWN" ? badge(p.link, "ok") : badge(t("c_down")));
 }
 
 function applyTheme() {
@@ -2704,10 +2702,10 @@ function updateStrip() {
             lb = $("ppl" + i);
         if (!el) return;
         el.classList.toggle("dis", !p.enabled);
-        var up = p.enabled && p.link > 0;
+        var up = p.enabled && p.link != "DOWN";
         el.classList.toggle("up", !!up);
-        if (up) el.style.setProperty("--pc", "var(" + (LINKC[p.link] || "--s1000") + ")");
-        lb.textContent = !p.enabled ? t("c_off") : (p.link > 0 ? LINKS[p.link] : t("c_down"));
+        if (up) el.style.setProperty("--pc", "var(" + "--s" + p.link.replace(/\-[HF]D$/,"").replace("2.5G","2G5").toLowerCase() + ")");
+        lb.textContent = !p.enabled ? t("c_off") : (p.link != "DOWN" ? p.link : t("c_down"));
         el.title = portRows(p).map(function(r) {
             return r[0] + ": " + r[1]
         }).join("\n");
@@ -2758,7 +2756,7 @@ function portRows(p) {
         [t("c_type"), p.isSFP ? "SFP" : "RJ45"]
     ];
     if (p.name) rows.push([t("c_name"), p.name]);
-    rows.push([t("p_state"), !p.enabled ? t("p_disabled") : (p.link > 0 ? t("p_up") + " " + LINKS[p.link] : t("c_down"))]);
+    rows.push([t("p_state"), !p.enabled ? t("p_disabled") : (p.link != "DOWN" ? t("p_up") + " " + p.link : t("c_down"))]);
     rows.push([t("st_txg"), BigInt(p.txG) + " " + t("p_pkts")]);
     rows.push([t("st_txb"), BigInt(p.txB) + " " + t("p_pkts")]);
     rows.push([t("st_rxg"), BigInt(p.rxG) + " " + t("p_pkts")]);
@@ -2785,27 +2783,15 @@ function portRows(p) {
             rows.push([t("p_rxlos"), v]);
         }
     } else if (p.adv) {
-        var bits = parseInt(p.adv, 2),
-            names = ["10M " + t("c_half"), "10M " + t("c_full"), "100M " + t("c_half"), "100M " + t("c_full"), "1G", "2.5G"];
-        var on = names.filter(function(_, b) {
-            return bits & (1 << b)
-        });
-        rows.push([t("p_adv"), on.join(", ") || "-"]);
+        rows.push([t("p_adv"), p.adv.join(", ").replaceAll("-HD"," " + t("c_half")).replaceAll("-FD"," " + t("c_full")) || "-"]);
     }
     return rows;
 }
 
 function detailTable(p) {
-    var tb = h("table", {
-        class: "t"
-    });
+    var tb = h("table", { class: "t" });
     portRows(p).forEach(function(r) {
-        tb.appendChild(h("tr", null, [h("td", {
-            class: "mut",
-            text: r[0]
-        }), h("td", {
-            text: r[1]
-        })]));
+        tb.appendChild(h("tr", null, [h("td", { class: "mut", text: r[0] }), h("td", { text: r[1] })]));
     });
     return tb;
 }

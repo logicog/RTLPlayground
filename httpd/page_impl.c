@@ -914,49 +914,96 @@ void send_status(void)
 				bool_to_html(0);
 			}
 		} else {
+			bool n = false;
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, PHY_MMD31, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
-			slen += strtox(outbuf + slen, ",\"adv\":\"");
+			slen += strtox(outbuf + slen, ",\"adv\":[");
+
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL);
 			uint16_t w = SFR_DATA_U16;
-			bool_to_html(!!(w & 0x80));		// 2500BaseN-Full
+			if(!!(w & 0x80)) {
+				slen += strtox(outbuf + slen, "\"2.5G\",");
+				n = true;
+			}
+				
 			phy_read(i, PHY_MMD31, PHY_MMD31_GBCR);
 			w = SFR_DATA_U16;
-			bool_to_html(!!(w & 0x0200));		// 1000Base-Full
+			if(!!(w & 0x0200)) {
+				slen += strtox(outbuf + slen, "\"1G\",");
+				n = true;
+			}
+				
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_ADV);
 			w = SFR_DATA_U16;
-			bool_to_html(!!(w & 0x0100));		// 100Base-Full
-			bool_to_html(!!(w & 0x80));		// 100Base-Half
-			bool_to_html(!!(w & 0x40));		// 10Base-Full
-			bool_to_html(!!(w & 0x20));		// 10Base-Half
-			char_to_html('"');
+			if(!!(w & 0x0100)) {
+				slen += strtox(outbuf + slen, "\"100M-FD\",");
+				n = true;
+			}
+			if(!!(w & 0x80)) {
+				slen += strtox(outbuf + slen, "\"100M-HD\",");
+				n = true;
+			}
+			if(!!(w & 0x40)) {
+				slen += strtox(outbuf + slen, "\"10M-HD\",");
+				n = true;
+			}
+			if(!!(w & 0x20)) {
+				slen += strtox(outbuf + slen, "\"10M-FD\",");
+				n = true;
+			}
+			if(n)
+				slen -= 1; // remove comma
+
+			char_to_html(']');
 		}
 
-		slen += strtox(outbuf + slen, ",\"link\":");
+		slen += strtox(outbuf + slen, ",\"link\":\"");
 		
 		uint8_t b = 0;
 		// Determine link state
 		reg_read_m(RTL837X_REG_LINKS_STS);
 		if(!((sfr_data[(i / 8) + 1] >> (i % 8 ) & 1)))
 		{
-			b = 0; //link down
+			slen += strtox(outbuf + slen, "DOWN");
 		}
 		else
 		{
-				//Determine link speed
-				if (i < 8)
-					reg_read_m(RTL837X_REG_LINKS);
-				else
-					reg_read_m(RTL837X_REG_LINKS_89);
-				
-				b = sfr_data[3 - ((i & 7) >> 1)];
-				b = ((i & 1) ? b >> 4 : b & 0xf) + 1;
+			//Determine link speed	//TODO: harmonize code with phy_show()
+			if (i < 8)
+				reg_read_m(RTL837X_REG_LINKS);
+			else
+				reg_read_m(RTL837X_REG_LINKS_89);
+			
+			b = sfr_data[3 - ((i & 7) >> 1)];
+			b = ((i & 1) ? b >> 4 : b & 0xf);
+			switch(b){
+				case 0:
+					slen += strtox(outbuf + slen, "10M");
+				break;
+				case 1:
+					slen += strtox(outbuf + slen, "100M");
+				break;
+				case 2:
+					slen += strtox(outbuf + slen, "1000M");
+				break;
+				case 3:
+					slen += strtox(outbuf + slen, "500M");
+				break;
+				case 4:
+					slen += strtox(outbuf + slen, "10G");
+				break;
+				case 5:
+					slen += strtox(outbuf + slen, "2.5G");
+				break;
+				case 6:
+					slen += strtox(outbuf + slen, "5G");
+				break;
+			}
 		}
-		char_to_html('0' + b);
 
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
-		slen += strtox(outbuf + slen, ",\"txG\":\"0x");
+		slen += strtox(outbuf + slen, "\",\"txG\":\"0x");
 		counter_to_html();
 
 		slen += strtox(outbuf + slen, "\",\"txB\":\"0x");

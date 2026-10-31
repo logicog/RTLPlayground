@@ -425,7 +425,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "name": "",
                 "isSFP": machine_config["is_sfp"][i],
                 "enabled": int(i % 4 != 0),
-                "link": (5 if i == 1 else 2) if i % 2 else 0,
+                "link": ("10G" if i == 1 else "100M-HD") if i % 2 else "DOWN",
                 "txG": f"0x{tx_g[n]:016x}",
                 "txB": f"0x{tx_b[n]:016x}",
                 "rxG": f"0x{rx_g[n]:016x}",
@@ -446,11 +446,12 @@ class Handler(SimpleHTTPRequestHandler):
                     "sfp_laser": "0x0000",
                 })
             else:
-                item["adv"] = (
-                    "100000" if i == 1
-                    else "000011" if i == 2
-                    else "000100"
-                )
+                if i == 1: #"100000" if i == 1
+                    item["adv"] = [ "2.5G" ]
+                elif i == 2: #else "000011" if i == 2
+                    item["adv"] = [ "10M-HD", "10M-FD" ]
+                else: #else "000100"
+                    item["adv"] = [ "100M-HD" ]
 
             ports.append(item)
 
