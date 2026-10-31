@@ -40,6 +40,8 @@ static uint32_t      regfile[0x10000];
 static uint32_t      vlan_tbl[4096];
 static struct hw_l2  l2[HW_L2_MAX];
 static uint64_t      counters[16][64];
+static uint32_t      acl_rule_tbl[256][5];
+static uint32_t      acl_act_tbl[128][3];
 
 void hw_reset(void)
 {
@@ -47,6 +49,8 @@ void hw_reset(void)
 	memset(vlan_tbl, 0, sizeof(vlan_tbl));
 	memset(l2, 0, sizeof(l2));
 	memset(counters, 0, sizeof(counters));
+	memset(acl_rule_tbl, 0, sizeof(acl_rule_tbl));
+	memset(acl_act_tbl, 0, sizeof(acl_act_tbl));
 	memset(sfr_data, 0, sizeof(sfr_data));
 	hw_reads = hw_writes = 0;
 }
@@ -55,6 +59,8 @@ void     hw_reg_set(uint16_t addr, uint32_t v) { regfile[addr] = v; }
 uint32_t hw_reg_get(uint16_t addr)             { return regfile[addr]; }
 uint32_t hw_vlan_word(uint16_t vid)            { return vlan_tbl[vid & 0xfff]; }
 void     hw_counter_set(uint8_t port, uint8_t counter, uint64_t value) { counters[port & 0xf][counter & 0x3f] = value; }
+uint32_t hw_acl_rule(uint8_t entry, uint8_t word)  { return acl_rule_tbl[entry][word % 5]; }
+uint32_t hw_acl_act(uint8_t entry, uint8_t word)   { return acl_act_tbl[entry & 0x7f][word % 3]; }
 
 /* ---- L2 table -------------------------------------------------------- */
 
@@ -173,6 +179,17 @@ static void table_exec(uint32_t ctrl)
 			vlan_tbl[idx] = regfile[RTL837x_TBL_DATA_IN_A];
 		else
 			regfile[RTL837x_L2_DATA_OUT_A] = vlan_tbl[idx];
+		return;
+	}
+	if (type == TBL_ACL_RULE || type == TBL_ACL_ACT) {
+		for (int w = 0; w < (type == TBL_ACL_RULE ? 5 : 3); w++) {
+			uint32_t *slot = type == TBL_ACL_RULE ? &acl_rule_tbl[idx & 0xff][w]
+							      : &acl_act_tbl[idx & 0x7f][w];
+			if (write)
+				*slot = regfile[RTL837x_TBL_DATA_IN_A + 4 * w];
+			else
+				regfile[RTL837x_L2_DATA_OUT_A + 4 * w] = *slot;
+		}
 		return;
 	}
 	if (type != TBL_L2_UNICAST)
