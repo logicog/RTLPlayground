@@ -37,6 +37,11 @@ uint8_t sfr_data[4];
 unsigned long hw_reads, hw_writes;
 
 static uint32_t      regfile[0x10000];
+uint8_t              hw_eeprom[HW_I2C_BUSES][2][256];
+unsigned             hw_i2c_busy_reads;
+bool                 hw_i2c_fail;
+unsigned             hw_i2c_started, hw_i2c_polls, hw_i2c_clobbered;
+static unsigned      i2c_left;
 static uint32_t      vlan_tbl[4096];
 static struct hw_l2  l2[HW_L2_MAX];
 static uint64_t      counters[16][64];
@@ -49,6 +54,10 @@ void hw_reset(void)
 	memset(counters, 0, sizeof(counters));
 	memset(sfr_data, 0, sizeof(sfr_data));
 	hw_reads = hw_writes = 0;
+	memset(hw_eeprom, 0, sizeof(hw_eeprom));
+	hw_i2c_busy_reads = hw_i2c_started = hw_i2c_polls = hw_i2c_clobbered = 0;
+	hw_i2c_fail = false;
+	i2c_left = 0;
 }
 
 void     hw_reg_set(uint16_t addr, uint32_t v) { regfile[addr] = v; }
@@ -257,9 +266,31 @@ static void stat_exec(uint32_t v)
 	regfile[RTL837X_STAT_V_LOW]  = (uint32_t)c;
 }
 
+static void i2c_finish(void)
+{
+	uint32_t ctrl = regfile[RTL837X_REG_I2C_CTRL];
+	uint8_t  bus  = (ctrl >> 10) & (HW_I2C_BUSES - 1);
+	uint8_t  dev  = ((ctrl >> 8) & 3) << 5 | ((ctrl >> 3) & 0x1f);
+	uint8_t  len  = ((ctrl >> 16) & 0xf) + 1;
+	uint8_t  reg  = regfile[RTL837X_REG_I2C_IN] & 0xff;
+
+	if (hw_i2c_fail) {
+		hw_i2c_fail = false;
+		regfile[RTL837X_REG_I2C_CTRL] = (ctrl & ~1u) | 2;
+		return;
+	}
+	regfile[RTL837X_REG_I2C_CTRL] = ctrl & ~3u;
+	for (uint8_t i = 0; i < 16; i += 4)
+		regfile[RTL837X_REG_I2C_OUT + i] = 0;
+	for (uint8_t i = 0; i < len; i++)
+		regfile[RTL837X_REG_I2C_OUT + (i & ~3)] |= (uint32_t)hw_eeprom[bus][dev == 0x51][(uint8_t)(reg + i)] << (8 * (i & 3));
+}
+
 static void reg_store(uint16_t addr, uint32_t v)
 {
 	hw_writes++;
+	if (i2c_left && (addr == RTL837X_REG_I2C_CTRL || addr == RTL837X_REG_I2C_IN))
+		hw_i2c_clobbered++;
 	regfile[addr] = v;
 	switch (addr) {
 	case RTL837X_TBL_CTRL:
@@ -280,6 +311,14 @@ static void reg_store(uint16_t addr, uint32_t v)
 			regfile[addr] = v & ~1u;
 		}
 		break;
+	case RTL837X_REG_I2C_CTRL:
+		if (v & 1) {
+			hw_i2c_started++;
+			i2c_left = hw_i2c_busy_reads;
+			if (!i2c_left)
+				i2c_finish();
+		}
+		break;
 	}
 }
 
@@ -296,6 +335,13 @@ static void sfr_load(uint32_t v)
 void reg_read(uint16_t addr)
 {
 	hw_reads++;
+	if (addr == RTL837X_REG_I2C_CTRL && (regfile[addr] & 1)) {
+		hw_i2c_polls++;
+		if (i2c_left)
+			i2c_left--;
+		if (!i2c_left)
+			i2c_finish();
+	}
 	sfr_load(regfile[addr]);
 }
 
