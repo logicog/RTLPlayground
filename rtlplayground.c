@@ -1255,6 +1255,7 @@ void idle(void)
 		print_cmd_prompt();
 	}
 	health_phase(HEALTH_PH_CMD);
+	sfp_task();
 }
 
 
