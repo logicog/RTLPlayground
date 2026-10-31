@@ -6,6 +6,7 @@
 #include "rtl837x_phy.h"
 #include "phy.h"
 #include "machine.h"
+#include "timer.h"
 
 #pragma codeseg BANK3
 #pragma constseg BANK3
@@ -42,13 +43,12 @@
 #define CT_POLL_TICKS		(SYS_TICK_HZ / 20)
 #define CT_POLLS		100
 
-extern volatile __xdata uint32_t ticks;
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 
 __xdata uint8_t ct_state = CT_IDLE;
 __xdata uint8_t ct_port;
-__xdata uint8_t ct_last;
+__xdata struct timer ct_timer;
 __xdata uint8_t ct_polls;
 __xdata uint8_t ct_valid;
 __xdata uint8_t ct_have = 0;
@@ -166,7 +166,7 @@ void cabletest_run(void) __banked
 
 	// Forcing the speed leaves the link up; only a power-down silences the partner.
 	phy_write(ct_port, PHY_MMD31, PHY_MMD31_FEDCR, BMCR_PDOWN_1G_FULL);
-	ct_last = ticks;
+	timer_set(&ct_timer, SYS_TICK_HZ);
 	ct_have = 0;
 	ct_state = CT_SILENCE;
 	print_string("Cable test started\n");
@@ -185,7 +185,7 @@ void cabletest_show(void) __banked
 void cabletest_tick(void) __banked
 {
 	if (ct_state == CT_SILENCE) {
-		if (!TICKS_DUE(ct_last, SYS_TICK_HZ))
+		if (!timer_expired(&ct_timer))
 			return;
 		phy_read(ct_port, PHY_MMD31, PHY_POWER);
 		if (SFR_DATA_U16 & PHY_POWER_OFF) {
@@ -196,13 +196,13 @@ void cabletest_tick(void) __banked
 		}
 		rtl_phy_cable_test_start(ct_port);
 		ct_polls = CT_POLLS;
-		ct_last = ticks;
+		timer_set(&ct_timer, CT_POLL_TICKS);
 		ct_state = CT_RUN;
 		return;
 	}
-	if (ct_state != CT_RUN || !TICKS_DUE(ct_last, CT_POLL_TICKS))
+	if (ct_state != CT_RUN || !timer_expired(&ct_timer))
 		return;
-	ct_last = ticks;
+	timer_restart(&ct_timer);
 
 	ct_valid = rtl_phy_cable_test_get_status(ct_port);
 	if (!ct_valid && --ct_polls)

@@ -16,6 +16,7 @@
 #include "rtl837x_port.h"
 #include "uip.h"
 #include "machine.h"
+#include "timer.h"
 
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
@@ -97,8 +98,7 @@ __xdata uint8_t  lacp_ntt[10];
 
 #define LACP_TICK_STEP	(SYS_TICK_HZ / 50)
 #define LACP_CATCH_UP	8
-__xdata uint8_t lacp_tick_last;
-extern volatile __xdata uint32_t ticks;
+static __xdata struct timer lacp_step_timer;
 
 __xdata uint16_t lacp_lag_ports[LACP_NUM_LAGS];
 __xdata uint8_t  lacp_port_lag[10];
@@ -346,8 +346,8 @@ static void lacp_step(void)
 void lacp_timers(void) __banked
 {
 	uint8_t n = LACP_CATCH_UP;
-	while (n-- && TICKS_DUE(lacp_tick_last, LACP_TICK_STEP)) {
-		lacp_tick_last += LACP_TICK_STEP;
+	while (n-- && timer_expired(&lacp_step_timer)) {
+		timer_reset(&lacp_step_timer);
 		lacp_step();
 	}
 }
@@ -388,7 +388,7 @@ static uint8_t lacp_any_lag(void)
 
 static void lacp_engine_on(void)
 {
-	lacp_tick_last = (uint8_t)ticks;
+	timer_set(&lacp_step_timer, LACP_TICK_STEP);
 	lacpEnabled = 1;
 	trap_rma_set(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_TRAP);
 }

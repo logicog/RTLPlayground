@@ -131,6 +131,7 @@ SRCS = \
 	ntp.c \
 	ntp_cli.c \
 	syslog.c \
+	timer.c \
 	udp_apps.c
 
 # RTL837x
@@ -157,7 +158,6 @@ SRCS += \
 	httpd/page_impl.c \
 	httpd/page_stp.c
 SRCS += \
-	uip/timer.c \
 	uip/uip.c \
 	uip/uiplib.c \
 	uip/uip_arp.c \

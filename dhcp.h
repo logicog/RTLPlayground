@@ -23,7 +23,6 @@ struct dhcp_state {
 	uint8_t state;
 	uint32_t transaction_id;
 	uint16_t dhcp_timer;
-	uint8_t ticks;
 	uint16_t opt_ptr;
 	uint8_t current_ip[4];
 	uint8_t server[4];
