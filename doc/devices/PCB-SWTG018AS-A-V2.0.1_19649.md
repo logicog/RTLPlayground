@@ -15,7 +15,7 @@ The original software is running UART on 9600 baud rate.
 
 Using a SOIC clamp in-board is the only method for initial installation.
 
-The board has a single flash chips `BS` with 2M-byte size. The front switch, switches between the two flash chips.
+The board has a single flash chips `BS` (marked as U2 on the Apcom board) with 2M-byte size. The front switch, switches between the two flash chips.
 These can be programed independently by using said switch - so it is e.g. possible to run the original and new firmware in parallel.
 
 ### Label specifications
