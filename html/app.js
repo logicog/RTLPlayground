@@ -2202,17 +2202,6 @@ var S = {
     rates: [],
     mtu: [],
 };
-var LINKC = {
-    "DOWN": null,
-    "10M": "--s10",
-    "100M": "--s100",
-    "1000M": "--s1000",
-    "500M": "--s5g",
-    "10G": "--s10g",
-    "2.5G": "s2g5",
-    "5G": "--s5g"
-};
-
 var $ = function(id) {
     return document.getElementById(id)
 };
@@ -2715,7 +2704,7 @@ function updateStrip() {
         el.classList.toggle("dis", !p.enabled);
         var up = p.enabled && p.link != "DOWN";
         el.classList.toggle("up", !!up);
-        if (up) el.style.setProperty("--pc", "var(" + (LINKC[p.link] || "--s1000") + ")");
+        if (up) el.style.setProperty("--pc", "var(" + "--s" + p.link.replace("2.5G","2G5").toLowerCase() + ")");
         lb.textContent = !p.enabled ? t("c_off") : (p.link != "DOWN" ? p.link : t("c_down"));
         el.title = portRows(p).map(function(r) {
             return r[0] + ": " + r[1]
