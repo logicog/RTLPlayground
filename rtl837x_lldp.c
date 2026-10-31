@@ -10,31 +10,25 @@
 #include "uip/uip.h"
 #include "machine.h"
 #include "version.h"
+#include "timer.h"
 
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
 
-extern volatile __xdata uint32_t ticks;
-
-__xdata uint8_t lldp_tick_last;
-__xdata uint8_t lldp_seconds;
+static __xdata struct timer lldp_timer;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 
 void lldp_init(void) __banked
 {
-    lldp_tick_last = (uint8_t)ticks;
-    lldp_seconds = 0;
+    timer_set(&lldp_timer, LLDP_TX_INTERVAL_TICKS);
 }
 
 void lldp_tick(void) __banked
 {
-    if (!TICKS_DUE(lldp_tick_last, SYS_TICK_HZ))
+    if (!timer_expired(&lldp_timer))
         return;
-    lldp_tick_last += SYS_TICK_HZ;
 
-    if (++lldp_seconds < LLDP_TX_INTERVAL_S)
-        return;
-    lldp_seconds = 0;
+    timer_reset(&lldp_timer);
 
     if (lldp_enabled)
         lldp_send();

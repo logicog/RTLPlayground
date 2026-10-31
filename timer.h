@@ -76,10 +76,10 @@ struct timer {
   clock_time_t interval;
 };
 
-void timer_set(__xdata struct timer *t, clock_time_t interval);
-void timer_reset(__xdata struct timer *t);
-void timer_restart(__xdata struct timer *t);
-int timer_expired(__xdata struct timer *t);
+void timer_set(__xdata struct timer *t, clock_time_t interval) __banked;
+void timer_reset(__xdata struct timer *t) __banked;
+void timer_restart(__xdata struct timer *t) __banked;
+int timer_expired(__xdata struct timer *t) __banked;
 
 #endif /* __TIMER_H__ */
 

@@ -48,8 +48,21 @@
 #include "clock.h"
 #include "timer.h"
 
+extern volatile __xdata uint32_t ticks;
+
+
 #pragma codeseg BANK1
 #pragma constseg BANK1
+
+static clock_time_t clock_time(void)
+{
+  clock_time_t t;
+
+  do {
+    t = (clock_time_t)ticks;
+  } while (t != (clock_time_t)ticks);
+  return t;
+}
 
 /*---------------------------------------------------------------------------*/
 /**
@@ -64,7 +77,7 @@
  *
  */
 void
-timer_set(__xdata struct timer *t, clock_time_t interval)
+timer_set(__xdata struct timer *t, clock_time_t interval) __banked
 {
   t->interval = interval;
   t->start = clock_time();
@@ -84,7 +97,7 @@ timer_set(__xdata struct timer *t, clock_time_t interval)
  * \sa timer_restart()
  */
 void
-timer_reset(__xdata struct timer *t)
+timer_reset(__xdata struct timer *t) __banked
 {
   t->start += t->interval;
 }
@@ -104,7 +117,7 @@ timer_reset(__xdata struct timer *t)
  * \sa timer_reset()
  */
 void
-timer_restart(__xdata struct timer *t)
+timer_restart(__xdata struct timer *t) __banked
 {
   t->start = clock_time();
 }
@@ -121,7 +134,7 @@ timer_restart(__xdata struct timer *t)
  *
  */
 int
-timer_expired(__xdata struct timer *t)
+timer_expired(__xdata struct timer *t) __banked
 {
   return (clock_time_t)(clock_time() - t->start) >= (clock_time_t)t->interval;
 }
