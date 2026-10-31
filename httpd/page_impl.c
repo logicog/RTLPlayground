@@ -1088,7 +1088,5 @@ void send_vlanlist(void)
 		slen += strtox(outbuf + slen, "\"}");
 
 	}
-
-	char_to_html(']');
-	char_to_html('}');
+	slen += strtox(outbuf + slen, "]}");
 }
