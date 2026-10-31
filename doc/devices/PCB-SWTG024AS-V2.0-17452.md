@@ -8,10 +8,10 @@ Also the RJ45 connectors can be all plastic/non-shielded or with metal shielding
 ## Brands
 |Brand|Type|Managed|PCB|PCB Label|Flash|Chip RTL|
 |---|---|---|---|---|---|---|
-| LIANGUO |SWTG024AS |No|  SWTG024AS-v2.0-17452 | CM-23-11-2336 023-17453| 512 KiB | 8272 |
-| Horaco |ZX-SWTG124AS | Yes |  SWTG024AS-v2.0 | ??? | ??? | 8272 |
-| Xikestore |SKS3200M-4GPY2XF | Yes |  PCB-SWTG024AS-V2.0-17452 | CM-23-08-2043 023-16721 | 2048 KiB | 8272 |
-| Sodola | SL-SWTG124AS-D | Yes | SWTG024AS-v2.0-17452 | ??? | 2048 KiB | 8272 |
+| LIANGUO |SWTG024AS |No| PCB-SWTG024AS-V2.0-17452 | CM-23-11-2336 023-17453| 512 KiB | 8272 |
+| Horaco |ZX-SWTG124AS | Yes | PCB-SWTG024AS-V2.0-17452 | ??? | ??? | 8272 |
+| Xikestore |SKS3200M-4GPY2XF | Yes | PCB-SWTG024AS-V2.0-17452 | CM-23-08-2043 023-16721 | 2048 KiB | 8272 |
+| Sodola | SL-SWTG124AS-D | Yes | PCB-SWTG024AS-V2.0-17452 | ??? | 2048 KiB | 8272 |
 
 ## PCB
 
