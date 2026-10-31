@@ -192,12 +192,12 @@ for the resistor orientation.
 
 ### J<n>, serial console
 
-| `<J1>` pin | GPIO | Signal |
-|------------|------|--------|
-| 1 | | <3V3 / TX (Output)> |
-| 2 | | <GND> |
-| 3 | | <RX (Input)> |
-| 4 | <GPIO31> | <TX (Output) / 3V3> |
+| `<J1>` pin | Signal |
+|------------|--------|
+| 1 |  < VCC /3.3V > |
+| 2 |  < GND > |
+| 3 |  <RX (Input)> |
+| 4 |  <TX (Output) / 3V3> |
 
 - Settings: <115200 baud, 8N1, 3.3 V TTL>; stock firmware uses <57600>.
 - <Header unpopulated, holes filled — clear them with a 1.2 mm drill or
