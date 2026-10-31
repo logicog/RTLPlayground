@@ -39,9 +39,8 @@ two `_` (underscores). Additional plugins are appended with a single underscore 
 
 The current known list of plugins is:
 * POE: POE
-* Reset/VLAN-switch:
-* * No reset or VLAN-switch: _UNMANAGED
-* * VLAN-Switch: _VLANSW
+* Reset/VLAN-switch: _VLANSW
+* Special Case*: _UNMANAGED
 
 Uplink port configurations:
 * 1xSFP+1xRJ45: _1S1C
@@ -49,6 +48,10 @@ Uplink port configurations:
 * For the 8x1-variant: _1C
 
 For example for `MY_BOARD_V1.0.c` the 1SFP, 1RJ, POE variant would be: `MY_BOARD_V1.0__1S1C_POE.c`
+
+Special Case*: This is only used in the situation where it is necessary to disambiguate between a
+managed and unmanaged device that share the same PCB but do not share the same pin map. In all cases
+the managed switch assumes the base name and the unmanaged has _UNMANAGED appended.
 
 ## Discovering LED's
 With the stock firmware still on the device, you can use the UART console to discover the pinout:
