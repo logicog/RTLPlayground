@@ -36,7 +36,7 @@
 
 #include <stdint.h>
 
-typedef uint32_t clock_time_t;
-#define CLOCK_CONF_SECOND 100
+typedef uint16_t clock_time_t;
+#define CLOCK_CONF_SECOND 200
 
 #endif /* __CLOCK_ARCH_H__ */

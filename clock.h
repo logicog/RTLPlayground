@@ -54,28 +54,6 @@
 
 #include "clock-arch.h"
 
-extern volatile __xdata uint32_t ticks;
-
-/**
- * Initialize the clock library.
- *
- * This function initializes the clock library and should be called
- * from the main() function of the system.
- *
- */
-void clock_init(void);
-
-/**
- * Get the current clock time.
- *
- * This function returns the current system clock time.
- *
- * \return The current clock time, measured in system ticks.
- */
-inline clock_time_t clock_time(void)
-{
-  return ticks;
-}
 
 /**
  * A second, measured in system clock time.

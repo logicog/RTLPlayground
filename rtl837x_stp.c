@@ -16,6 +16,8 @@
 #include "uip.h"
 #include "machine.h"
 
+__xdata struct timer stp_step;
+
 extern __xdata uint8_t err_status;
 
 // All entry points are __banked and nothing here runs from an interrupt,
@@ -1443,6 +1445,7 @@ void stp_counters_clear(void) __banked __reentrant
 
 void stp_setup(void) __banked
 {
+	timer_set(&stp_step, STP_TICK_STEP);
 	stp_times_check();
 	stp_counters_clear();
 	stp_tc_seen = stp_tc_count;
