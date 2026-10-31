@@ -31,6 +31,25 @@ model, or alphabetically earliest major model when they differ. Boards that
 are electrically different but carry the same PCB model are distinguished in
 the baseline name by <PCB model>_<vendor>.
 
+In addition to the PCB and model, devices can have "plugins" (usually in a literal sense)
+and are usually additional boards that add functionality to the base model. They are
+also used to clarify differences in the Uplink/10GBE port population on boards.
+These are represented by the following suffixes, appended onto the <PCB model> with
+two `_` (underscores). Additional plugins are appended with a single underscore (`_`)
+
+The current known list of plugins is:
+* POE: POE
+* Reset/VLAN-switch:
+* * No reset or VLAN-switch: _UNMANAGED
+* * VLAN-Switch: _VLANSW
+
+Uplink port configurations:
+* 1xSFP+1xRJ45: _1S1C
+* 2xRJ45: _2C
+* For the 8x1-variant: _1C
+
+For example for `MY_BOARD_V1.0.c` the 1SFP, 1RJ, POE variant would be: `MY_BOARD_V1.0__1S1C_POE.c`
+
 ## Discovering LED's
 With the stock firmware still on the device, you can use the UART console to discover the pinout:
 ```
