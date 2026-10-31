@@ -6,6 +6,8 @@
 extern __code const uint8_t * __code const HTTP_RESPONCE_TXT;
 
 void itoa16_html(uint16_t v);
+void long_to_html(uint32_t value) __banked;
+void reg_to_html_long(uint16_t reg) __banked;
 
 bool send_counters(uint8_t phys_port);
 void send_status(void);
@@ -27,6 +29,12 @@ void send_lldp(void);
 void send_lacp(void);
 void send_stp_counters(void) __banked;
 void send_vlanlist(void);
+void send_acl(void) __banked;
+void send_acl_rules(uint8_t idx) __banked;
+void send_acl_ranges(__xdata uint8_t kind) __banked;
+void send_acl_meters(uint8_t idx) __banked;
+void send_acl_fields(void) __banked;
+void send_acl_counters(void) __banked;
 
 /*  Convert only the lower nibble to ascii HEX char.
     For convenience the upper nibble is masked out.

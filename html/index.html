@@ -184,6 +184,14 @@ textarea.cfg{
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
 .mut{color:var(--fg2)}
 .small{font-size:12px}
+.acl-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.acl-line select{max-width:100%}
+.acl-picks{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.acl-picks label{display:inline-flex;gap:5px;align-items:center}
+#tab-acl [hidden]{display:none}
+.acl-expression{white-space:pre-wrap;overflow-wrap:anywhere;max-width:460px}
+#acl-rules td:last-child button+button{margin-inline-start:6px}
+.acl-error{color:var(--bad);margin:8px 0;white-space:pre-wrap}
 .dangerzone{border-color:color-mix(in srgb,var(--bad) 40%,var(--bd))}
 button.danger{background:var(--bad);color:#fff;border-color:transparent}
 @media (max-width:820px){
@@ -331,6 +339,52 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <thead><tr><th data-sort="pport"><span data-i18n="c_port">Port</span><span class="arrow"></span></th><th data-sort="mac">MAC<span class="arrow"></span></th><th data-sort="vlan">VLAN<span class="arrow"></span></th><th data-sort="stat"><span data-i18n="c_type">Type</span><span class="arrow"></span></th><th></th></tr></thead>
           <tbody></tbody></table></div>
       </div>
+    </section>
+
+    <section class="tab" id="tab-acl">
+      <div class="card"><h2 data-i18n="acl_rules">ACL rules</h2>
+        <p class="small mut" data-i18n="acl_intro">Rules apply immediately. Use Save to flash to keep changes after reboot.</p>
+        <div class="acl-line"><button class="ctl" id="acl-refresh" data-i18n="c_refresh">Refresh</button><span class="small mut" id="acl-state" role="status"></span></div>
+        <p class="acl-error" id="acl-error" role="alert"></p>
+        <div class="scrollx"><table class="t" id="acl-rules"><thead><tr>
+          <th data-i18n="acl_rule">Rule</th><th data-i18n="acl_mode">Mode</th><th data-i18n="acl_ingress">Ingress ports</th><th data-i18n="acl_matches">Match all</th><th data-i18n="acl_actions">Actions</th><th data-i18n="acl_template">Template</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+        <p class="small mut" data-i18n="acl_order">Lower numbered rules win for each action type. AND entries extend the preceding rule.</p>
+      </div>
+      <form class="card" id="acl-editor">
+        <h2 data-i18n="acl_editor">Add or replace a rule</h2>
+        <div class="acl-line"><label><span data-i18n="acl_rule">Rule</span> <input class="in sm" id="acl-id" type="number" min="1" max="64" value="1" required></label>
+          <label><span data-i18n="acl_mode">Mode</span> <select class="in" id="acl-mode"><option value="normal" data-i18n="acl_normal">Normal</option><option value="not" data-i18n="acl_not">Invert match (NOT)</option><option value="and" data-i18n="acl_and">Join previous (AND)</option></select></label>
+        </div>
+        <p class="small mut" data-i18n="acl_ingress_note">Ingress ports: leave all unchecked to apply to every front panel port.</p>
+        <div class="acl-picks" id="acl-ports"></div>
+        <h2 style="margin-top:16px" data-i18n="acl_matches">Match all</h2><div id="acl-matches"></div>
+        <button class="ctl" type="button" id="acl-add-match" data-i18n="acl_add_match">Add match</button>
+        <div id="acl-action-section"><h2 style="margin-top:16px" data-i18n="acl_actions">Actions</h2><div id="acl-actions"></div>
+          <button class="ctl" type="button" id="acl-add-action" data-i18n="acl_add_action">Add action</button>
+          <p class="small mut" style="margin-top:8px" data-i18n="acl_interrupt_note">A rule with only interrupt or GPIO actions drops matching frames. Add Permit to keep forwarding.</p></div>
+        <p class="small mut" style="margin-top:12px" data-i18n="acl_limits">Each entry allows 14 words and 126 bytes. Split larger matches into following AND entries; incompatible templates also require AND.</p>
+        <div class="acl-expression mono" id="acl-preview" style="margin-top:8px"></div>
+        <p class="acl-error" id="acl-form-error" role="alert"></p>
+        <div class="acl-line"><button class="ctl pri" type="submit" id="acl-apply" data-i18n="c_apply">Apply</button><button class="ctl" type="button" id="acl-new" data-i18n="acl_new">New rule</button></div>
+      </form>
+      <div class="card" id="acl-default-card"><h2 data-i18n="acl_default">Unmatched traffic</h2>
+        <select class="in" id="acl-default"><option value="permit" data-i18n="acl_default_permit">Permit on all ports</option><option value="drop" data-i18n="acl_default_drop">Drop on selected ingress ports</option></select>
+        <div class="acl-picks" id="acl-default-ports" style="margin:12px 0"></div>
+        <p class="small mut" data-i18n="acl_default_note">Any matching rule allows traffic through the default policy. Allow management traffic before dropping unmatched traffic on your management port.</p>
+        <button class="ctl pri" id="acl-default-apply" style="margin-top:10px" data-i18n="c_apply">Apply</button>
+      </div>
+      <div class="grid2">
+        <div class="card" id="acl-meter-card"><h2 data-i18n="acl_meters">Meters</h2><div id="acl-meter-form"></div><p class="small mut" data-i18n="acl_meter_note">Rate 0–16777215; burst 0–268435455 bytes (kbps) or packets (pps). A zero burst passes nothing. IFG includes preamble and inter-frame gap.</p></div>
+        <div class="card" id="acl-field-card"><h2 data-i18n="acl_selectors">Field selectors</h2><div id="acl-field-form"></div><p class="small mut" data-i18n="acl_field_note">Select 16 bits at a byte offset (0–255) into the selected header or payload.</p></div>
+      </div>
+      <div class="card" style="margin-top:16px" id="acl-counter-card"><h2 data-i18n="acl_counters">Counters</h2>
+        <p class="small mut" data-i18n="acl_counter_note">Mode and width apply to each adjacent pair. 64 bit mode combines both counters.</p><div id="acl-counter-form"></div>
+        <div class="acl-line"><button class="ctl" id="acl-counter-refresh" data-i18n="c_refresh">Refresh</button><button class="ctl" id="acl-counter-reset" data-i18n="acl_reset">Reset all counters</button></div>
+        <div class="scrollx"><table class="t" id="acl-counters"><thead><tr><th data-i18n="acl_counter">Counter</th><th data-i18n="acl_counter_mode">Mode</th><th data-i18n="acl_width">Width</th><th class="num" data-i18n="st_value">Value</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card" id="acl-gpio-card"><h2 data-i18n="acl_gpio">ACL GPIO</h2><p class="small mut" data-i18n="acl_gpio_note">Taking over GPIO 52, 53, 54 or 30 removes its board function. Check the board wiring before enabling a pin.</p><div id="acl-gpio-form"></div></div>
+      <div class="card"><h2 data-i18n="acl_status">Hardware status</h2><div id="acl-status" class="mono acl-expression"></div><p class="small mut" data-i18n="acl_status_note">Meter exceeded flags show events since the previous refresh or CLI “acl show”; reading clears these flags. Counters are retained.</p></div>
     </section>
 
     <section class="tab" id="tab-mirror">

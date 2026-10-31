@@ -205,7 +205,16 @@ void reg_to_html(uint16_t reg)
 }
 
 
-void reg_to_html_long(uint16_t reg)
+void long_to_html(uint32_t value) __banked
+{
+	byte_to_html(value >> 24);
+	byte_to_html(value >> 16);
+	byte_to_html(value >> 8);
+	byte_to_html(value);
+}
+
+
+void reg_to_html_long(uint16_t reg) __banked
 {
 	reg_read_m(reg);
 	byte_to_html(sfr_data[0]);

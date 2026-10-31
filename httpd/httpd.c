@@ -251,6 +251,27 @@ uint8_t parse_short(__xdata uint8_t *p)
 	return err;
 }
 
+/* ACL pages use bounded, complete decimal parameters. Do not let an absent
+ * query read past the request path or a large number wrap into a valid index. */
+static bool acl_query(__xdata uint8_t *p, __code const char * __xdata prefix,
+		      __xdata uint8_t min, __xdata uint8_t max)
+{
+	uint8_t digit;
+
+	if (!p) return false;
+	while (*prefix)
+		if (*p++ != *prefix++) return false;
+	if (!*p || *p == ' ' || *p == '\t') return false;
+	short_parsed = 0;
+	while (*p && *p != ' ' && *p != '\t') {
+		digit = *p++ - '0';
+		if (digit > 9) return false;
+		short_parsed = short_parsed * 10 + digit;
+		if (short_parsed > max) return false;
+	}
+	return short_parsed >= min;
+}
+
 
 void send_not_found(void)
 {
@@ -1004,6 +1025,7 @@ void httpd_appcall(void)
 		__xdata uint8_t *q = p;
 		while (*p && !is_separator(*p))
 			p++;
+		__xdata uint8_t *acl_args = *p == '?' ? p + 1 : 0;
 		*p = NUL;
 		dbg_string_x(q);
 		dbg_char('\n');
@@ -1035,6 +1057,24 @@ void httpd_appcall(void)
 				send_bandwidth();
 			} else if (is_word(q, "/storm.json")) {
 				send_storm();
+			} else if (!strcmp(q, "/acl.json")) {
+				send_acl();
+			} else if (is_word(q, "/aclrule.json")) {
+				if (acl_query(acl_args, "idx=", 1, 64))
+					send_acl_rules(short_parsed);
+				else send_bad_request();
+			} else if (is_word(q, "/aclrange.json")) {
+				if (acl_query(acl_args, "kind=", 0, 2))
+					send_acl_ranges(short_parsed);
+				else send_bad_request();
+			} else if (is_word(q, "/aclmeter.json")) {
+				if (acl_query(acl_args, "idx=", 0, 63))
+					send_acl_meters(short_parsed);
+				else send_bad_request();
+			} else if (!strcmp(q, "/aclfield.json")) {
+				send_acl_fields();
+			} else if (!strcmp(q, "/aclcounter.json")) {
+				send_acl_counters();
 			} else if (is_word(q, "/l2.json")) {
 				parse_short(q + 13); // e.g.: /l2.json?idx=10
 				send_l2(short_parsed);
