@@ -945,7 +945,6 @@ void send_status(void)
 		reg_read_m(RTL837X_REG_LINKS_STS);
 		if(!((sfr_data[(i / 8) + 1] >> (i % 8 ) & 1)))
 		{
-			//b = 0; //link down
 			slen += strtox(outbuf + slen, "DOWN");
 		}
 		else
