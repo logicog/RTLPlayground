@@ -11,7 +11,7 @@
 The following is a documentation for the unmanaged switch marked as `PCB-SWTG018AS-A V2.0.1_19649`.
 It is e.g. sold under the Ampcom brand, but no branh-markings are found on the device.
 
-The original software is running UART on 9600 baud rate. 
+The original software is running UART on 9600 baud rate. The UART is not working, however, as the resistors R53 and R52 are not populated on the board, so the signals from the CPU are not connected to the header pins for connector J1. If you want to make the connector work, you need to provide 0 ohm resistor for R52 and R53 (or create a solder connection).
 
 Using a SOIC clamp in-board is the only method for initial installation.
 
