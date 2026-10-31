@@ -172,7 +172,6 @@ void print_reg(uint16_t reg);
 void sfp_read_start(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant;
 bool sfp_read_busy(void) __banked;
 bool sfp_read_end(uint8_t len) __banked __reentrant;
-bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant;
 extern __xdata uint8_t sfp_buf[16];
 void reg_bit_set(uint16_t reg_addr, char bit);
 void reg_bit_clear(uint16_t reg_addr, char bit);

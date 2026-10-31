@@ -30,8 +30,20 @@ __xdata uint8_t sfp_options[2];
 __xdata uint8_t sfp_buf[16];	/* scratch for one I2C transaction, the controller reads at most 16 bytes */
 __xdata uint8_t sfp_speed[2];
 __xdata uint8_t sfp_quirks[2];
+__xdata uint8_t sfp_id[2][2];
+__xdata uint8_t sfp_cal[2][36];
+__xdata uint8_t sfp_dom[2][16];
+__xdata uint8_t sfp_ready;
 __xdata struct timer sfp_wake[2];
 __xdata uint8_t sfp_wake_pending[2];
+static __xdata struct timer sfp_dom_poll;
+static __xdata struct timer sfp_io;
+static __xdata uint8_t sfp_dom_pending;
+static __xdata uint8_t sfp_busy;
+static __xdata uint8_t sfp_cur;
+static __xdata uint8_t sfp_first;
+static __xdata uint8_t sfp_i;
+static __xdata uint8_t sfp_rate;
 
 
 __code enum sfp_quirk {
@@ -68,30 +80,9 @@ static inline uint8_t sfp_rate_to_sds_config(uint8_t rate)
 
 
 
-bool sfp_print_info(uint8_t sfp) __banked
-{
-	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
-	for (uint8_t i = 16; i < 64; i++) {
-		if (!(i & 0xf) && !sfp_read_block(sfp, i, 16))
-			return false;
-		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
-			continue;
-		uint8_t c = sfp_buf[i & 0xf];
-		if (c)
-			write_char(c);
-	}
-	print_string("\n");
-
-	return true;
-}
-
-
 // Normalize strings from EEPROM by removing any trailing spaces; this allows simpler comparisons
-bool sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t length) __banked __reentrant
+static void sfp_store_field(__xdata char *dst, uint8_t length) __reentrant
 {
-	if (!sfp_read_block(sfp, start, length))
-		return false;
-
 	dst[length] = NUL;
 	for (uint8_t i = 0; i < length; i++) {
 		uint8_t c = sfp_buf[i];
@@ -102,42 +93,17 @@ bool sfp_read_field(__xdata char *dst, uint8_t sfp, uint8_t start, uint8_t lengt
 
 	while (length-- > 0 && (dst[length] == ' ' || dst[length] == NUL))
 		dst[length] = NUL;
-
-	return true;
 }
 
 
-
-bool sfp_get_info(uint8_t sfp) __banked
+static void sfp_lookup_quirks(void)
 {
-	if (!sfp_read_field(sfp_module_vendor[sfp], sfp, 20, 16))
-		return false;
-	if (!sfp_read_field(sfp_module_model[sfp], sfp, 40, 16))
-		return false;
-
-	return sfp_read_field(sfp_module_serial[sfp], sfp, 68, 16);
-}
-
-
-
-void sfp_apply_quirks(uint8_t sfp) __banked __reentrant
-{
-	sfp_quirks[sfp] = 0;
+	sfp_quirks[sfp_cur] = 0;
 
 	for (uint8_t i = 0; i < sizeof(sfp_quirk_table) / sizeof(*sfp_quirk_table); i++) {
-		if (!sfp_quirk_table[i].vendor || !strcmp(sfp_module_vendor[sfp], sfp_quirk_table[i].vendor)) {
-			if (!sfp_quirk_table[i].model || !strcmp(sfp_module_model[sfp], sfp_quirk_table[i].model)) {
-				sfp_quirks[sfp] |= sfp_quirk_table[i].quirks;
-			}
-		}
-	}
-
-	if (sfp_quirks[sfp] & SFP_QUIRK_DDM) {
-		if (!(sfp_options[sfp] & 0x40)) {
-			// The module reports that DDM is not implemented, but try a dummy read to confirm
-			// 0xff would mean a failed I2C read or an impossible (per spec) voltage greater than 6.5V
-			if (sfp_read_block(sfp, 226, 1) && sfp_buf[0] != 0xff) {
-				sfp_options[sfp] |= 0x40;
+		if (!sfp_quirk_table[i].vendor || !strcmp(sfp_module_vendor[sfp_cur], sfp_quirk_table[i].vendor)) {
+			if (!sfp_quirk_table[i].model || !strcmp(sfp_module_model[sfp_cur], sfp_quirk_table[i].model)) {
+				sfp_quirks[sfp_cur] |= sfp_quirk_table[i].quirks;
 			}
 		}
 	}
@@ -152,48 +118,162 @@ void setup_sfp_gpio(void) __banked
 		gpio_input_setup(machine.sfp_port[sfp].pin_los);
 		gpio_output_setup(machine.sfp_port[sfp].pin_tx_disable, 0);
 	}
+	timer_set(&sfp_dom_poll, SFP_DOM_TICKS);
 }
 
 
 
-static bool sfp_module_read(uint8_t sfp)
+#define SFP_STEP_DDM 5
+#define SFP_STEP_CAL 6
+#define SFP_STEP_DOM 9
+
+
+static bool sfp_due(void)
 {
-	uint8_t rate;
+	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		if (sfp_wake_pending[sfp] && timer_expired(&sfp_wake[sfp])) {
+			sfp_wake_pending[sfp] = 0;
+			sfp_cur = sfp;
+			sfp_first = 0;
+			return true;
+		}
+	}
 
-	// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
-	// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
-	if (!sfp_read_block(sfp, 11, 2))
-		return false;
+	if (timer_expired(&sfp_dom_poll)) {
+		timer_reset(&sfp_dom_poll);
+		sfp_dom_pending = sfp_ready;
+	}
+	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		if (sfp_dom_pending & sfp_ready & (1 << sfp)) {
+			sfp_dom_pending &= ~(1 << sfp);
+			if (sfp_options[sfp] & 0x40) {
+				sfp_cur = sfp;
+				sfp_first = SFP_STEP_DOM;
+				return true;
+			}
+		}
+	}
 
-	rate = sfp_buf[1];
-	if (sfp_speed[sfp] == SFP_SPEED_100M)
-		rate = 0x1;
-	else if (sfp_speed[sfp] == SFP_SPEED_1G)
-		rate = 0xc;
-	else if (sfp_speed[sfp] == SFP_SPEED_2G5)
-		rate = 0x19;
-	else if (sfp_speed[sfp] == SFP_SPEED_10G)
-		rate = 0x69;
-	print_string("  Rate: "); print_byte(rate);  // Normally 1, but 0 for DAC, can be ignored?
-	print_string("  Encoding: "); print_byte(sfp_buf[0]);
-	print_string("  Module: ");
-	if (!sfp_print_info(sfp))
-		return false;
-	print_string("\n");
-
-	if (!sfp_read_block(sfp, 92, 1))
-		return false;
-	sfp_options[sfp] = sfp_buf[0];
-	if (!sfp_get_info(sfp))
-		return false;
-
-	sfp_apply_quirks(sfp);
-	sds_config(machine.sfp_port[sfp].sds, sfp_rate_to_sds_config(rate));
-
-	return true;
+	return false;
 }
 
 
+static void sfp_retry(void)
+{
+	print_string("SFP: an I2C read failed, retrying on the next poll\n");
+	sfp_pins_last |= 0x01 << (sfp_cur << 2);
+}
+
+
+static __code const uint8_t sfp_steps[][2] = {
+	{ 11, 2 }, { 92, 1 }, { 20, 16 }, { 40, 16 }, { 68, 16 }, { 226, 1 },
+	{ 184, 16 }, { 200, 16 }, { 216, 4 }, { 224, 16 }
+};
+
+#define SFP_STEPS (sizeof(sfp_steps) / sizeof(*sfp_steps))
+
+
+static bool sfp_skip(void)
+{
+	uint8_t options = sfp_options[sfp_cur];
+
+	// The module reports that DDM is not implemented, but try a dummy read to confirm
+	if (sfp_i == SFP_STEP_DDM)
+		return !(sfp_quirks[sfp_cur] & SFP_QUIRK_DDM) || (options & 0x40);
+	if (sfp_i == SFP_STEP_DOM)
+		return !(options & 0x40);
+	if (sfp_i >= SFP_STEP_CAL)
+		return (options & 0x50) != 0x50;
+	return false;
+}
+
+
+static void sfp_step(void)
+{
+	switch (sfp_i) {
+	case 0:
+		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
+		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
+		sfp_id[sfp_cur][0] = sfp_buf[0];
+		sfp_id[sfp_cur][1] = sfp_buf[1];
+		sfp_rate = sfp_buf[1];
+		if (sfp_speed[sfp_cur] == SFP_SPEED_100M)
+			sfp_rate = 0x1;
+		else if (sfp_speed[sfp_cur] == SFP_SPEED_1G)
+			sfp_rate = 0xc;
+		else if (sfp_speed[sfp_cur] == SFP_SPEED_2G5)
+			sfp_rate = 0x19;
+		else if (sfp_speed[sfp_cur] == SFP_SPEED_10G)
+			sfp_rate = 0x69;
+		break;
+	case 1:
+		sfp_options[sfp_cur] = sfp_buf[0];
+		break;
+	case 2:
+		sfp_store_field(sfp_module_vendor[sfp_cur], 16);
+		break;
+	case 3:
+		sfp_store_field(sfp_module_model[sfp_cur], 16);
+		break;
+	case 4:
+		sfp_store_field(sfp_module_serial[sfp_cur], 16);
+		sfp_lookup_quirks();
+		break;
+	case SFP_STEP_DDM:
+		// 0xff would mean a failed I2C read or an impossible (per spec) voltage greater than 6.5V
+		if (sfp_buf[0] != 0xff)
+			sfp_options[sfp_cur] |= 0x40;
+		break;
+	case SFP_STEP_DOM:
+		memcpy(sfp_dom[sfp_cur], sfp_buf, sfp_steps[sfp_i][1]);
+		break;
+	default:
+		memcpy(sfp_cal[sfp_cur] + ((sfp_i - SFP_STEP_CAL) << 4), sfp_buf, sfp_steps[sfp_i][1]);
+	}
+}
+
+
+void sfp_task(void) __banked
+{
+	if (!sfp_busy) {
+		if (!sfp_due())
+			return;
+		sfp_i = sfp_first;
+	}
+
+	for (;;) {
+		if (sfp_busy) {
+			if (sfp_read_busy() && !timer_expired(&sfp_io))
+				return;
+			sfp_busy = 0;
+			if (sfp_read_end(sfp_steps[sfp_i][1])) {
+				sfp_step();
+			} else if (sfp_i != SFP_STEP_DDM) {
+				if (!sfp_first)
+					sfp_retry();
+				return;
+			}
+			sfp_i++;
+		}
+		while (sfp_i < SFP_STEPS && sfp_skip())
+			sfp_i++;
+		if (sfp_i >= SFP_STEPS)
+			break;
+		sfp_read_start(sfp_cur, sfp_steps[sfp_i][0], sfp_steps[sfp_i][1]);
+		timer_set(&sfp_io, SFP_IO_TICKS);
+		sfp_busy = 1;
+	}
+
+	if (sfp_first || (sfp_pins_last & (0x1 << (sfp_cur << 2))))
+		return;
+	print_string("  Rate: "); print_byte(sfp_rate);  // Normally 1, but 0 for DAC, can be ignored?
+	print_string("  Encoding: "); print_byte(sfp_id[sfp_cur][0]);
+	print_string("  Module: "); print_string_x(sfp_module_vendor[sfp_cur]); write_char(' ');
+	print_string_x(sfp_module_model[sfp_cur]); write_char(' ');
+	print_string_x(sfp_module_serial[sfp_cur]); write_char('\n');
+	sfp_ready |= 1 << sfp_cur;
+	sds_config(machine.sfp_port[sfp_cur].sds, sfp_rate_to_sds_config(sfp_rate));
+}
 
 
 void handle_sfp(void) __banked
@@ -202,20 +282,16 @@ void handle_sfp(void) __banked
 		if (!gpio_pin_test(machine.sfp_port[sfp].pin_detect)) {
 			if (sfp_pins_last & (0x1 << (sfp << 2))) {
 				sfp_pins_last &= ~(0x01 << (sfp << 2));
+				sfp_ready &= ~(1 << sfp);
 				print_string("\n<MODULE INSERTED>  Slot: "); write_char('1' + sfp);
 				timer_set(&sfp_wake[sfp], SFP_WAKE_TICKS);
 				sfp_wake_pending[sfp] = 1;
-			} else if (sfp_wake_pending[sfp] && timer_expired(&sfp_wake[sfp])) {
-				sfp_wake_pending[sfp] = 0;
-				if (!sfp_module_read(sfp)) {
-					print_string("SFP: an I2C read failed, retrying on the next poll\n");
-					sfp_pins_last |= 0x01 << (sfp << 2);
-				}
 			}
 		} else {
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
 				sfp_pins_last |= 0x01 << (sfp << 2);
 				sfp_wake_pending[sfp] = 0;
+				sfp_ready &= ~(1 << sfp);
 				print_string("\n<MODULE REMOVED>  Slot: "); write_char('1' + sfp); write_char('\n');
 			}
 		}
