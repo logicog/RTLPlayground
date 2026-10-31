@@ -5,7 +5,8 @@ This script talks to the switch's serial console and reads the LED registers wit
 the firmware's own ``regget`` command. The report it prints is the same as
 ``dec_leds_from_dump.py``: the LED pad mux (``.led_mux``), the four LED sets
 (``.led_sets``) and the set each port uses (``.port_led_set``) - exactly what a
-``machine/<NAME>.c`` definition needs.
+``machine/<NAME>.c`` definition needs - followed by the pin mux, i.e. the
+function every GPIO pin is set to.
 
 Run it against the firmware that still holds the wiring you want to learn, i.e.
 the *stock* firmware of a new board: RTLPlayground overwrites the LED registers
@@ -53,6 +54,10 @@ RTL837X_REG_LED_GLB_MUX_1 = 0x65E0  # pads 0..27, five 6-bit fields per word
 RTL837X_REG_LED3_0_SET1 = 0x6528    # LED type, upper nibbles of sets 0/1
 RTL837X_REG_LED1_0_SET0 = 0x6548    # LED type, lower 16 bits of a set
 RTL837X_LED_PORT_SET_SEL = 0x654C   # 2 bits per port selecting the LED set
+RTL837X_REG_LED_GLB_IO_EN = 0x65DC  # globals for the LED pads
+RTL837X_PIN_MUX_0 = 0x7F8C          # pads 0..29: 0 = LED function, 1 = GPIO
+RTL837X_PIN_MUX_1 = 0x7F90          # one or two bits per pin, see below
+RTL837X_PIN_MUX_2 = 0x7F94          # pins 30, 52..54: 0 = GPIO, 1 = ACL function
 
 # Upper 16 bits of MODEL_NAME_INFO. An RTL8373 serves ports 0..8, the boards
 # built around an RTL8372 only 3..8.
@@ -71,55 +76,167 @@ GPIO_REGS = [
 LED_TYPES = [
     " 10G",
     16,
+    "LEDS_10G",
     " TWO_5G",
     17,
+    "LEDS_TWO_PAIR_5G",
     " 5G",
     18,
+    "LEDS_5G",
     " TWO_2G5",
     19,
+    "LEDS_TWO_PAIR_2G5",
     " 2G5",
     0,
+    "LEDS_2G5",
     " TWO_1G",
     1,
+    "LEDS_TWO_PAIR_1G",
     " 1G",
     2,
+    "LEDS_1G",
     " 500M",
     3,
+    "LEDS_500M",
     " 100M",
     4,
+    "LEDS_100M",
     " 10M",
     5,
+    "LEDS_10M",
     " LINK",
     6,
+    "LEDS_LINK",
     " LINK_FLASH",
     7,
+    "LEDS_LINK_FLASH",
     " ACT",
     8,
+    "LEDS_ACT",
     " RX",
     9,
+    "LEDS_RX",
     " TX",
     10,
+    "LEDS_TX",
     " COL",
     11,
+    "LEDS_COL",
     " DUPLEX",
     12,
+    "LEDS_DUPLEX",
     " TRAINING",
     13,
+    "LEDS_TRAINING",
     " MASTER",
     14,
+    "LEDS_MASTER",
     "",
     15,
+    "",
 ]
 
+# The pin mux tables below decode PIN_MUX_0/1/2, see doc/gpio.md and
+# rtl837x_pins.c.
+
+# Pads 0-29 are the LED pads: 0 leaves the pad to the LED engine, 1 makes it a
+# GPIO.
+led_pad_functions = {pin: f"LED{pin}" for pin in range(28)}
+led_pad_functions[28] = "SYS_LED"
+led_pad_functions[29] = "GLB_RLDP_LED_EN"
+
+# PIN_MUX_1, one bit per pin: (bit, function name, bit value that selects it).
+# GPIO31/UART0_TX is the exception: the stock firmware has bit 0 set, and no
+# console would come out of the pad if a 1 meant GPIO there.
+mux1_bits = {
+    31: (0, "UART0_TX", 1),
+    32: (0, "UART0_RX", 1),
+    33: (2, "GPIO_INT", 0),
+    34: (3, "MDC0", 0),
+    35: (4, "MDIO0", 0),
+    55: (19, "PTP_CLK125M_IN", 0),
+    56: (20, "PTP_CLK_OUT", 0),
+    57: (21, "PTP_TOD_OUT", 0),
+    58: (22, "PTP_PPS_OUT", 0),
+    59: (23, "PTP_TOD_IN", 0),
+    60: (24, "PTP_PPS_IN", 0),
+    61: (27, "SYNCELOCK0", 0),
+    62: (28, "SYNCELOCK1", 0),
+    39: (29, "I2C_SDA4", 0),
+    36: (30, "PWM_OUT", 0),
+}
+
+# PIN_MUX_1, two bits per pin: (low bit, {field value: function}).
+# GPIO40/41 share one field; 0b00 is GPIO on all of these.
+mux1_fields = {
+    40: (5, {0: "GPIO", 1: "MDC1", 2: "I2C_SCL3"}),
+    41: (5, {0: "GPIO", 1: "MDIO1", 2: "I2C_SDA3"}),
+    46: (7, {0: "GPIO", 1: "I2C_SCL0"}),
+    47: (9, {0: "GPIO", 1: "I2C_SDA0"}),
+    48: (11, {0: "GPIO", 1: "I2C_SCL1"}),
+    49: (13, {0: "GPIO", 1: "I2C_SDA1"}),
+    50: (15, {0: "GPIO", 1: "I2C_SCL2"}),
+    51: (17, {0: "GPIO", 1: "I2C_SDA2"}),
+}
+
+# PIN_MUX_2, one bit per pin: 0 = GPIO, 1 = the pin's ACL function.
+mux2_bits = {
+    52: (0, "ACL_BIT0_EN"),
+    53: (1, "ACL_BIT1_EN"),
+    54: (2, "ACL_BIT2_EN"),
+    30: (3, "ACL_BIT3_EN"),
+}
+
+# Pins with no mux field.
+fixed_pins = {
+    37: "GPIO (no mux field)",
+    38: "GPIO (no mux field)",
+    42: "SPI flash (no mux field)",
+    43: "SPI flash (no mux field)",
+    44: "SPI flash (no mux field)",
+    45: "SPI flash (no mux field)",
+    63: "no mux field of its own",
+}
+
+
+def pin_setting(pin, mux0, mux1, mux2):
+    """Field, field value and function of one pin, from the three mux registers."""
+    if pin < 30:
+        bit = (mux0 >> pin) & 1
+        return f"PIN_MUX_0[{pin}]", f"{bit}", "GPIO" if bit else led_pad_functions[pin]
+
+    if pin in mux2_bits:
+        bit, name = mux2_bits[pin]
+        val = (mux2 >> bit) & 1
+        return f"PIN_MUX_2[{bit}]", f"{val}", name if val else "GPIO"
+
+    if pin in mux1_bits:
+        bit, name, function_level = mux1_bits[pin]
+        val = (mux1 >> bit) & 1
+        return f"PIN_MUX_1[{bit}]", f"{val}", name if val == function_level else "GPIO"
+
+    if pin in mux1_fields:
+        bit, functions = mux1_fields[pin]
+        val = (mux1 >> bit) & 3
+        return f"PIN_MUX_1[{bit + 1}:{bit}]", f"0b{val:02b}", functions.get(val, "undecoded")
+
+    return "-", "-", fixed_pins.get(pin, "no mux field")
+
+
 # What an answer to a register read looks like. Stock firmware:
-# "reg 0x65e0,data 0x8144040", RTLPlayground: "REGGET: 65e0: VAL: 0000ffff".
+# "reg 0x65e0,data 0x8144040", RTLPlayground: "REGGET: 0x65e0: VAL: 0x0000ffff".
 # Both name the register they answer for, and that is what makes a read
 # trustworthy: this console drops the characters of the command, and the rest of
 # the line is executed on its own ("regget x65e4" answers "reg 0x0,data 0x0"),
 # so an answer is only used when it names the address that was asked for.
 ANSWER_PATTERNS = [
     re.compile(r"\breg\s+0x([0-9a-fA-F]{1,4})\s*,\s*data\s+(?:0x)?([0-9a-fA-F]{1,8})\b"),
-    re.compile(r"\bREGGET:\s*([0-9a-fA-F]{1,4})\s*:\s*VAL:\s*(?:0x)?([0-9a-fA-F]{1,8})\b"),
+    # RTLPlayground prints both the register and the value with a 0x prefix:
+    # "REGGET: 0x7f8c: VAL: 0x28000000".
+    re.compile(
+        r"\bREGGET:\s*(?:0x)?([0-9a-fA-F]{1,4})\s*:\s*"
+        r"VAL:\s*(?:0x)?([0-9a-fA-F]{1,8})\b"
+    ),
 ]
 
 # Answers of firmware that names only the value. With --lenient these are
@@ -178,6 +295,12 @@ def register_addresses(with_gpio):
     ]
     addrs += [RTL837X_REG_LED3_0_SET1 - 4 * (i >> 1) for i in range(4)]
     addrs.append(RTL837X_LED_PORT_SET_SEL)
+    addrs += [
+        RTL837X_PIN_MUX_0,
+        RTL837X_PIN_MUX_1,
+        RTL837X_PIN_MUX_2,
+        RTL837X_REG_LED_GLB_IO_EN,
+    ]
     if with_gpio:
         addrs += [addr for _, addr in GPIO_REGS]
     return sorted(set(addrs))
@@ -370,12 +493,15 @@ def decode_leds(values, ports):
 
     led_set = []
     led_set_str = []
+    led_set_def = []
     print("\nLED-set Configuration:")
     print("LED-ID         0               1               2               3")
     for i in range(4):
         idval = []
         idvalstr = []
+        defvalstr = []
         for id in range(4):
+            defstr = []
             val = 0xFFFF & (
                 values[RTL837X_REG_LED1_0_SET0 - 8 * i - ((id >> 1) << 2)]
                 >> (16 * (id & 1))
@@ -390,11 +516,18 @@ def decode_leds(values, ports):
             val += valhi
             idval.append(val)
             valstr = "("
-            for bit in range(0, len(LED_TYPES), 2):
+            for bit in range(0, len(LED_TYPES), 3):
                 if val & (1 << (LED_TYPES[bit + 1])):
                     valstr += LED_TYPES[bit]
+                    defstr.append(LED_TYPES[bit + 2])
             valstr += ")"
             idvalstr.append(valstr)
+            tmpdefstr = " | ".join(defstr)
+            if not tmpdefstr:
+                tmpdefstr = "0"
+            defvalstr.append(tmpdefstr)
+        led_set_def.append("{ " + ",\n\t\t\t".join(defvalstr) + "\n\t\t      }")
+
         led_set.append(idval)
         led_set_str.append(idvalstr)
         idstr = "           ".join([f"{d:05x}" for d in idval])
@@ -404,6 +537,26 @@ def decode_leds(values, ports):
     for i in range(ports[0], ports[1] + 1):
         sel = (portsel >> (i << 1)) & 3
         print(f"Port {i}: SET {sel}: {', '.join(led_set_str[sel])}")
+
+    print("\n\n\t.led_sets = { " + ",\n\t\t      ".join(led_set_def) + "\n\t\t},")
+
+
+def print_pin_mux(values):
+    """Print the pin mux registers and the function of every pin."""
+    mux0 = values[RTL837X_PIN_MUX_0]
+    mux1 = values[RTL837X_PIN_MUX_1]
+    mux2 = values[RTL837X_PIN_MUX_2]
+    glb_io_en = values[RTL837X_REG_LED_GLB_IO_EN]
+    print("\nPin MUX Configuration:")
+    print(f"PIN_MUX_0 (0x{RTL837X_PIN_MUX_0:04x}) = 0x{mux0:08x}   pads 0-29: 0 = LED function, 1 = GPIO")
+    print(f"PIN_MUX_1 (0x{RTL837X_PIN_MUX_1:04x}) = 0x{mux1:08x}   one or two bits per pin, see below")
+    print(f"PIN_MUX_2 (0x{RTL837X_PIN_MUX_2:04x}) = 0x{mux2:08x}   pins 30, 52-54: 0 = GPIO, 1 = ACL function")
+    print(f"PIN_GLB_IO_EN (0x{RTL837X_REG_LED_GLB_IO_EN:04x}) = 0x{glb_io_en:08x}")
+    print()
+    print(f"{'Pin':<9}{'Field':<18}{'Value':<9}Function")
+    for pin in range(64):
+        field, val, function = pin_setting(pin, mux0, mux1, mux2)
+        print(f"GPIO{pin:<5}{field:<18}{val:<9}{function}")
 
 
 def print_gpio(values):
@@ -554,6 +707,7 @@ def main():
             source = "--ports" if args.ports else f"model 0x{model_info:08x}"
             print(f"Decoding ports {ports[0]}..{ports[1]} (from {source})", file=sys.stderr)
         decode_leds(values, ports)
+        print_pin_mux(values)
         if args.gpio:
             print_gpio(values)
     except ConsoleError as exc:
