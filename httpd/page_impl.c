@@ -21,6 +21,8 @@
 // #define DEBUG
 #include "debug.h"
 
+#define JSONQUOTE(x) #x
+
 #define L2_MAX_TRANSFER 30
 
 #pragma codeseg BANK1
@@ -262,64 +264,62 @@ void send_basic_info(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	dbg_string("send_basic_info called\n");
-	slen += strtox(outbuf + slen, "{\"ip_address\":\"");
+	slen += strtox(outbuf + slen, "{" JSONQUOTE("ip_address") ":\"");
 	itoa_html(uip_hostaddr[0]); char_to_html('.');
 	itoa_html(uip_hostaddr[0] >> 8); char_to_html('.');
 	itoa_html(uip_hostaddr[1]); char_to_html('.');
 	itoa_html(uip_hostaddr[1] >> 8);
-	slen += strtox(outbuf + slen, "\",\"ip_gateway\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("ip_gateway") ":\"");
 	itoa_html(uip_draddr[0]); char_to_html('.');
 	itoa_html(uip_draddr[0] >> 8); char_to_html('.');
 	itoa_html(uip_draddr[1]); char_to_html('.');
 	itoa_html(uip_draddr[1] >> 8);
-	slen += strtox(outbuf + slen, "\",\"ip_netmask\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("ip_netmask") ":\"");
 	itoa_html(uip_netmask[0]); char_to_html('.');
 	itoa_html(uip_netmask[0] >> 8); char_to_html('.');
 	itoa_html(uip_netmask[1]); char_to_html('.');
 	itoa_html(uip_netmask[1] >> 8);
-	slen += strtox(outbuf + slen, "\",\"syslog_server\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("syslog_server") ":\"");
 	itoa_html(syslog_state.server_ip[0]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[1]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[2]); char_to_html('.');
 	itoa_html(syslog_state.server_ip[3]); char_to_html(':');
 	itoa16_html(syslog_state.server_port);
-	slen += strtox(outbuf + slen, "\",\"session_timeout\":");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("session_timeout") ":");
 	itoa16_html(session_timeout);
-	slen += strtox(outbuf + slen, ",\"mac_address\":\"");
+	slen += strtox(outbuf + slen, "," JSONQUOTE("mac_address") ":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[2]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[3]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[4]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[5]);
-	slen += strtox(outbuf + slen, "\",\"hostname\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("hostname") ":\"");
 	{
 		__xdata char *hp = hostname;	/* sanitized on ingest, emit verbatim */
 		while (*hp)
 			char_to_html(*hp++);
 	}
-	slen += strtox(outbuf + slen, "\",\"sw_ver\":\"");
+	slen += strtox(outbuf + slen, "\","JSONQUOTE("sw_ver") ":\"");
 	slen += strtox(outbuf + slen, VERSION_SW);
-	slen += strtox(outbuf + slen, "\",\"build_date\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("build_date") ":\"");
 	slen += strtox(outbuf + slen, BUILD_DATE);
-	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("hw_ver") ":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
-	slen += strtox(outbuf + slen, "\",\"chip_temp\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("chip_temp") ":\"");
 	temp_to_html();
-	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("flash_size") ":\"");
 	string_to_html(get_flash_size_str());
 
 	if (machine.n_sfp) {
-		slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("sfp_slot_0") ":\"");
 		send_sfp_info(0);
 		if (machine.n_sfp == 2) {
-			slen += strtox(outbuf + slen, "\",\"sfp_slot_1\":\"");
+			slen += strtox(outbuf + slen, "\"," JSONQUOTE("sfp_slot_1") ":\"");
 			send_sfp_info(1);
 		}
 	}
-	char_to_html('"');
-
-	char_to_html('}');
+	slen += strtox(outbuf + slen, "\"}");
 }
 
 
@@ -853,8 +853,6 @@ void json_add_array_item(__code const char *item) {
     slen += strtox(outbuf + slen, item);
 }
 
-#define JSONQUOTE(x) #x
-
 void send_status(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -1093,9 +1091,9 @@ void send_vlanlist(void)
 	uint8_t first = 1;
 
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
-	slen += strtox(outbuf + slen, "{\"mgmt\":");
+	slen += strtox(outbuf + slen, "{" JSONQUOTE("mgmt") ":");
 	itoa16_html(management_vlan);
-	slen += strtox(outbuf + slen, ",\"vlan\":[");
+	slen += strtox(outbuf + slen, "," JSONQUOTE("vlan") ":[");
 
 	for (i = 1; i < 4095; i++) {
 		vlan_get(i);
@@ -1109,9 +1107,9 @@ void send_vlanlist(void)
 			char_to_html(',');
 		first = 0;
 
-		slen += strtox(outbuf + slen, "{\"id\":");
+		slen += strtox(outbuf + slen, "{" JSONQUOTE("id") ":");
 		itoa16_html(i);
-		slen += strtox(outbuf + slen, ",\"name\":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("name") ":\"");
 
 		n = vlan_name(i);
 		if (n != 0xffff) {
