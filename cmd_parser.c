@@ -1053,25 +1053,20 @@ err:
 	return;
 }
 
-bool sfp_print_measurements(uint8_t sfp)
+void sfp_print_measurements(uint8_t sfp)
 {
-	if (!sfp_read_block(sfp, 92, 1))
-		return false;
+	__xdata uint8_t *d = sfp_dom[sfp];
 
-	print_string("Options: "); print_byte(sfp_buf[0]); write_char('\n');
+	print_string("Options: "); print_byte(sfp_options[sfp]); write_char('\n');
 	if (!(sfp_options[sfp] & 0x40))
-		return true;
-	if (!sfp_read_block(sfp, 224, 16))
-		return false;
-	print_string("Temp: "); print_byte(sfp_buf[0]); print_byte(sfp_buf[1]); write_char('\n');
-	print_string("Vcc: "); print_byte(sfp_buf[2]); print_byte(sfp_buf[3]); write_char('\n');
-	print_string("TX Bias: "); print_byte(sfp_buf[4]); print_byte(sfp_buf[5]); write_char('\n');
-	print_string("TX Power: "); print_byte(sfp_buf[6]); print_byte(sfp_buf[7]); write_char('\n');
-	print_string("RX Power: "); print_byte(sfp_buf[8]); print_byte(sfp_buf[9]); write_char('\n');
-	print_string("Laser: "); print_byte(sfp_buf[10]); print_byte(sfp_buf[11]); write_char('\n');
-	print_string("State: "); print_byte(sfp_buf[14]); write_char('\n');
-
-	return true;
+		return;
+	print_string("Temp: "); print_byte(d[0]); print_byte(d[1]); write_char('\n');
+	print_string("Vcc: "); print_byte(d[2]); print_byte(d[3]); write_char('\n');
+	print_string("TX Bias: "); print_byte(d[4]); print_byte(d[5]); write_char('\n');
+	print_string("TX Power: "); print_byte(d[6]); print_byte(d[7]); write_char('\n');
+	print_string("RX Power: "); print_byte(d[8]); print_byte(d[9]); write_char('\n');
+	print_string("Laser: "); print_byte(d[10]); print_byte(d[11]); write_char('\n');
+	print_string("State: "); print_byte(d[14]); write_char('\n');
 }
 
 
@@ -1089,15 +1084,17 @@ void parse_sfp(void)
 				print_string(" - empty\n");
 				continue;
 			}
-			if (!sfp_read_block(slot, 11, 2)) {
-				print_string(" - I2C read failed on this slot\n");
+			if (!(sfp_ready & (1 << slot))) {
+				print_string(" - not read yet\n");
 				continue;
 			}
-			print_string(" - Rate: "); print_byte(sfp_buf[1]);
-			print_string("  Encoding: "); print_byte(sfp_buf[0]);
+			print_string(" - Rate: "); print_byte(sfp_id[slot][1]);
+			print_string("  Encoding: "); print_byte(sfp_id[slot][0]);
 			write_char('\n');
-			if (!sfp_print_info(slot) || !sfp_print_measurements(slot))
-				print_string("I2C read failed on this slot\n");
+			print_string_x(sfp_module_vendor[slot]); write_char(' ');
+			print_string_x(sfp_module_model[slot]); write_char(' ');
+			print_string_x(sfp_module_serial[slot]); write_char('\n');
+			sfp_print_measurements(slot);
 		}
 		return;
 	}

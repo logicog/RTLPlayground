@@ -146,19 +146,3 @@ bool sfp_read_end(uint8_t len) __banked __reentrant
 
 	return true;
 }
-
-
-/*
- * Read up to 16 consecutive registers of the EEPROM via I2C into sfp_buf
- */
-bool sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) __banked __reentrant
-{
-	if (len == 0 || len > 16)
-		return false;
-
-	sfp_read_start(slot, reg, len);
-	while (sfp_read_busy())
-		;
-
-	return sfp_read_end(len);
-}

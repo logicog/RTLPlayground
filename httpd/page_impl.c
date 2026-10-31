@@ -49,6 +49,9 @@ extern __xdata char sfp_module_vendor[2][17];
 extern __xdata char sfp_module_model[2][17];
 extern __xdata char sfp_module_serial[2][17];
 extern __xdata uint8_t sfp_options[2];
+extern __xdata uint8_t sfp_ready;
+extern __xdata uint8_t sfp_dom[2][16];
+extern __xdata uint8_t sfp_cal[2][36];
 
 extern __xdata uint16_t lldp_logical_port_status;
 extern __xdata bool lldp_enabled;
@@ -231,30 +234,20 @@ void counter_to_html(void)
 
 void send_sfp_info(uint8_t sfp)
 {
-	// This loops over the Vendor-name, Vendor OUI, Vendor PN and Vendor rev ASCII fields
-	for (uint8_t i = 16; i < 64; i++) {
-		if (!(i & 0xf) && !sfp_read_block(sfp, i, 16))
-			return;
-		if (i < 20 || i >= 60 || (i >= 36 && i < 40)) // Skip Non-ASCII codes
-			continue;
-		uint8_t c = sfp_buf[i & 0xf];
-		if (c)
-			json_char_to_html(c);
-	}
+	if (!(sfp_ready & (1 << sfp)))
+		return;
+	str_x_to_html(sfp_module_vendor[sfp]);
+	char_to_html(' ');
+	str_x_to_html(sfp_module_model[sfp]);
 }
 
 
 void sfp_send_data(uint8_t slot, uint8_t reg, uint8_t len)
 {
-	// maximum supported transfer size is 16 bytes
-	if (len > 16)
-		return;
+	__xdata uint8_t *p = reg >= 224 ? &sfp_dom[slot][reg - 224] : &sfp_cal[slot][reg - 184];
 
-	if (!sfp_read_block(slot, reg, len))
-		return;
-
-	for (uint8_t i = 0; i < len; i++)
-		byte_to_html(sfp_buf[i]);
+	while (len--)
+		byte_to_html(*p++);
 }
 
 
@@ -867,7 +860,7 @@ void send_status(void)
 		if (machine.is_sfp[i]) {
 			uint8_t sfp = machine.is_sfp[i] - 1;
 			slen += strtox(outbuf + slen, ",\"isSFP\":1,\"enabled\":");
-			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
+			if (sfp_ready & (1 << sfp)) {
 				bool_to_html(1);
 				slen += strtox(outbuf + slen,",\"sfp_options\":\"0x");
 				byte_to_html(sfp_options[sfp]);

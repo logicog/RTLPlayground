@@ -81,6 +81,10 @@ uint8_t  sfp_options[2];
 char     sfp_module_vendor[2][17];
 char     sfp_module_model[2][17];
 char     sfp_module_serial[2][17];
+uint8_t  sfp_ready;
+uint8_t  sfp_dom[2][16];
+uint8_t  sfp_cal[2][36];
+uint8_t  sfp_id[2][2];
 char     hostname[24] = "hosttest";
 char     port_names[9][PORT_NAME_SIZE];
 struct flash_region_t flash_region;
@@ -130,7 +134,6 @@ uint8_t  stp_ent_id(uint8_t e) { return e >= STP_LAG_BASE ? e + 101 - STP_LAG_BA
 
 /* ---- SFP: no module present, reads fail ---- */
 uint8_t sfp_buf[16];
-bool    sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) { (void)slot; (void)reg; (void)len; return false; }
 void    print_phys_port(uint8_t port) { itoa_short(machine.log_to_phys_port[port]); }
 
 uint8_t  lacpEnabled;
