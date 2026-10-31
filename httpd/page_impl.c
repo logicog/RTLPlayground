@@ -846,6 +846,14 @@ void send_mtu(void)
 	char_to_html(']');
 }
 
+void json_add_array_item(__code const char *item) {
+    if (slen > 0 && outbuf[slen - 1] != '[')
+        slen += strtox(outbuf + slen, ",");
+
+    slen += strtox(outbuf + slen, item);
+}
+
+#define JSONQUOTE(x) #x
 
 void send_status(void)
 {
@@ -914,7 +922,6 @@ void send_status(void)
 				bool_to_html(0);
 			}
 		} else {
-			bool n = false;
 			slen += strtox(outbuf + slen, ",\"isSFP\":0,\"enabled\":");
 			phy_read(i, PHY_MMD31, 0xa610);
 			bool_to_html(SFR_DATA_8 == 0x20);
@@ -922,38 +929,24 @@ void send_status(void)
 
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL);
 			uint16_t w = SFR_DATA_U16;
-			if(!!(w & 0x80)) {
-				slen += strtox(outbuf + slen, "\"2.5G\",");
-				n = true;
-			}
-				
+			if(!!(w & 0x80))
+				json_add_array_item(JSONQUOTE("2.5G"));
+
 			phy_read(i, PHY_MMD31, PHY_MMD31_GBCR);
 			w = SFR_DATA_U16;
-			if(!!(w & 0x0200)) {
-				slen += strtox(outbuf + slen, "\"1G\",");
-				n = true;
-			}
+			if(!!(w & 0x0200))
+				json_add_array_item(JSONQUOTE("1G"));
 				
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_ADV);
 			w = SFR_DATA_U16;
-			if(!!(w & 0x0100)) {
-				slen += strtox(outbuf + slen, "\"100M-FD\",");
-				n = true;
-			}
-			if(!!(w & 0x80)) {
-				slen += strtox(outbuf + slen, "\"100M-HD\",");
-				n = true;
-			}
-			if(!!(w & 0x40)) {
-				slen += strtox(outbuf + slen, "\"10M-HD\",");
-				n = true;
-			}
-			if(!!(w & 0x20)) {
-				slen += strtox(outbuf + slen, "\"10M-FD\",");
-				n = true;
-			}
-			if(n)
-				slen -= 1; // remove comma
+			if(!!(w & 0x0100))
+				json_add_array_item(JSONQUOTE("100M-FD"));
+			if(!!(w & 0x80))
+				json_add_array_item(JSONQUOTE("100M-HD"));
+			if(!!(w & 0x40))
+				json_add_array_item(JSONQUOTE("10M-HD"));
+			if(!!(w & 0x20))
+				json_add_array_item(JSONQUOTE("100M-FD"));
 
 			char_to_html(']');
 		}
