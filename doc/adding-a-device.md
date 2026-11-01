@@ -257,13 +257,13 @@ __code const struct machine machine = {
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
 	.led_sets = {
 		{   /* RJ45: Green LED */
-			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
+			 LEDS_10G | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_ACT | LEDS_LINK,
 			0,
 			/* Amber LED */
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
 			0
 		}, { /* SFP PORT: SINGLE GREEN LED */
-			LEDS_10M | LEDS_100M | LEDS_1G | LEDS_2G5 | LEDS_10G | LEDS_LINK | LEDS_ACT,
+			LEDS_10G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_ACT | LEDS_LINK,
 			0,
 			0,
 			0,
