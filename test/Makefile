@@ -33,7 +33,8 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_cpu_vlan_restricted \
         $(BUILDDIR)/test_cpu_vlan_8372 \
         $(BUILDDIR)/test_nic_rx \
-        $(BUILDDIR)/test_lacp
+        $(BUILDDIR)/test_lacp \
+        $(BUILDDIR)/test_aes
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -74,6 +75,10 @@ $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/u
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 # the login sessions httpd.c calls into
 $(BUILDDIR)/test_httpd_tx: $(SRCROOT)/sessions.c
+
+# aes128.c is compiled UNMODIFIED from the firmware tree.
+$(BUILDDIR)/test_aes: test_aes.c $(SRCROOT)/aes128.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # CPU VLAN initialization with full and reduced user-port ranges.
 $(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DMACHINE_MAX_PORT=7
