@@ -130,7 +130,7 @@ static void t_l2(void)
 	printf("[test] /l2.json walks the table\n");
 	hw_reset(); out_reset();
 	put(0x010, 0x01, 1, 4, false);
-	put(0x020, 0x02, 2, CPU_PORT, true);
+	put(0x020, 0x02, 2, CPU_LOGICAL_PORT, true);
 	put(0x8f0, 0x03, 1, 7, false);
 	send_l2(0);
 	CHECK(count("\"mac\":") == 4, "three entries, and the first one again: that repeat is how the page sees the wrap");

@@ -8,7 +8,8 @@
 
 #define SYS_TICK_HZ CLOCK_CONF_SECOND
 
-#define CPU_PORT        9
+#define CPU_LOGICAL_PORT        9
+#define CPU_PHYSICAL_PORT       0
 #define MAC_ADDR_LEN    6
 #define PORT_BIT(p)     ((uint16_t)1 << (p))
 #define NUL			'\0'
@@ -18,7 +19,7 @@
 // Define Port-masks for 9-port devices and 6-port devices
 #define PMASK_9		0x1ff
 #define PMASK_6		0x1f8
-#define PMASK_CPU	((uint16_t)(1 << CPU_PORT))
+#define PMASK_CPU	((uint16_t)(1 << CPU_LOGICAL_PORT))
 
 // Defines a port mask for dropping all packets on Lookup-miss
 #define LOOKUP_MISS_DROP_6  0x00015540

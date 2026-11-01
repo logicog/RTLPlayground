@@ -123,7 +123,7 @@ static void t_static_mgmt(void)
 		uint8_t m[6]; uint16_t vid, p; bool valid, st, mc;
 		hw_l2_decode(e, m, &vid, &p, &valid, &st, &mc);
 		CHECK(valid && st && !mc, "valid, static, unicast");
-		CHECK(p == CPU_PORT, "on the CPU port");
+		CHECK(p == CPU_LOGICAL_PORT, "on the CPU port");
 	}
 	port_l2_static_mgmt(mac, 0, false);
 	CHECK(hw_l2_find(mac, 1) != 0, "management VLAN 0 means VLAN 1");
