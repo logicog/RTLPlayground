@@ -12,6 +12,7 @@
 void lacp_init(void) __banked;
 void lacp_in(void) __banked;
 void lacp_timers(void) __banked;
+void lacp_link_change(void) __banked;
 void lacp_off(void) __banked;
 void lacp_show(void) __banked;
 void lacp_lag_set(uint8_t lag, __xdata uint16_t ports) __banked;
