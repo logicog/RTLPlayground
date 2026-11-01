@@ -568,7 +568,7 @@ static void stp_sync(uint8_t from) __reentrant
  * port that won the Port ID compare (see stp_in) - a different port than
  * the one held, except when the frame came back on the port it left.
  */
-static void stp_loop_hold_peer(uint8_t port) __reentrant
+static void stp_loop_hold_peer(uint8_t port, uint8_t by) __reentrant
 {
 	if (!stp_ent_active(port))
 		return;
@@ -584,7 +584,7 @@ static void stp_loop_hold_peer(uint8_t port) __reentrant
 		stp_forget(port);
 		stp_tcwhile[port] = 0;
 	}
-	stp_loop_held[port] = 1;
+	stp_loop_held[port] = by + 1;
 	stp_backup |= (uint16_t)1 << port;
 	port_timers[port] = FWD_TICKS;
 }
@@ -1073,7 +1073,7 @@ void stp_in(void) __banked
 		} else if (stp_loop_peer < stp_pnum(port)) {
 			return;
 		}
-		stp_loop_hold_peer(stp_ent_by_pnum(stp_loop_peer));
+		stp_loop_hold_peer(stp_ent_by_pnum(stp_loop_peer), port);
 		return;
 	}
 
