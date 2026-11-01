@@ -425,7 +425,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "name": "",
                 "isSFP": machine_config["is_sfp"][i],
                 "enabled": int(i % 4 != 0),
-                "link": (5 if i == 1 else 2) if i % 2 else 0,
+                "link": ("10G" if i == 1 else "100M-HD") if i % 2 else "DOWN",
                 "txG": f"0x{tx_g[n]:016x}",
                 "txB": f"0x{tx_b[n]:016x}",
                 "rxG": f"0x{rx_g[n]:016x}",
@@ -446,11 +446,12 @@ class Handler(SimpleHTTPRequestHandler):
                     "sfp_laser": "0x0000",
                 })
             else:
-                item["adv"] = (
-                    "100000" if i == 1
-                    else "000011" if i == 2
-                    else "000100"
-                )
+                if i == 1: #"100000" if i == 1
+                    item["adv"] = [ "2.5G" ]
+                elif i == 2: #else "000011" if i == 2
+                    item["adv"] = [ "10M-HD", "10M-FD" ]
+                else: #else "000100"
+                    item["adv"] = [ "100M-HD" ]
 
             ports.append(item)
 
@@ -487,10 +488,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _api_mirror(self):
         return {
-            "mPort": 1,
+            "mirrorPort": 2,
             "enabled": 1,
-            "mirror_tx": f"{0b000110:016b}",
-            "mirror_rx": f"{0b000010:016b}",
+            "mirror_rx": [6,5],
+            "mirror_tx": [6,4]
         }
 
     def _api_lacp(self):
@@ -621,7 +622,7 @@ class Handler(SimpleHTTPRequestHandler):
         return [
                 {
                     "portNum": i,
-                    "allow": "03ff"
+                    "allow": [x for x in range(1, PORTS + 1)]
                 }
                 for i in range(1, PORTS + 1)
             ]

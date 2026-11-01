@@ -2221,8 +2221,6 @@ var S = {
     rates: [],
     mtu: [],
 };
-var LINKS = ["Down", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G"];
-var LINKC = [null, "--s10", "--s100", "--s1000", "--s5g", "--s10g", "--s2g5", "--s5g"];
 var $ = function(id) {
     return document.getElementById(id)
 };
@@ -2258,7 +2256,7 @@ function badge(txt, cls) {
 }
 
 function linkBadge(p) {
-    return !p.enabled ? badge(t("c_off")) : (p.link > 0 ? badge(LINKS[p.link], "ok") : badge(t("c_down")));
+    return !p.enabled ? badge(t("c_off")) : (p.link != "DOWN" ? badge(p.link, "ok") : badge(t("c_down")));
 }
 
 function applyTheme() {
@@ -2723,10 +2721,10 @@ function updateStrip() {
             lb = $("ppl" + i);
         if (!el) return;
         el.classList.toggle("dis", !p.enabled);
-        var up = p.enabled && p.link > 0;
+        var up = p.enabled && p.link != "DOWN";
         el.classList.toggle("up", !!up);
-        if (up) el.style.setProperty("--pc", "var(" + (LINKC[p.link] || "--s1000") + ")");
-        lb.textContent = !p.enabled ? t("c_off") : (p.link > 0 ? LINKS[p.link] : t("c_down"));
+        if (up) el.style.setProperty("--pc", "var(" + "--s" + p.link.replace(/\-[HF]D$/,"").replace("2.5G","2G5").toLowerCase() + ")");
+        lb.textContent = !p.enabled ? t("c_off") : (p.link != "DOWN" ? p.link : t("c_down"));
         el.title = portRows(p).map(function(r) {
             return r[0] + ": " + r[1]
         }).join("\n");
@@ -2777,7 +2775,7 @@ function portRows(p) {
         [t("c_type"), p.isSFP ? "SFP" : "RJ45"]
     ];
     if (p.name) rows.push([t("c_name"), p.name]);
-    rows.push([t("p_state"), !p.enabled ? t("p_disabled") : (p.link > 0 ? t("p_up") + " " + LINKS[p.link] : t("c_down"))]);
+    rows.push([t("p_state"), !p.enabled ? t("p_disabled") : (p.link != "DOWN" ? t("p_up") + " " + p.link : t("c_down"))]);
     rows.push([t("st_txg"), BigInt(p.txG) + " " + t("p_pkts")]);
     rows.push([t("st_txb"), BigInt(p.txB) + " " + t("p_pkts")]);
     rows.push([t("st_rxg"), BigInt(p.rxG) + " " + t("p_pkts")]);
@@ -2804,27 +2802,15 @@ function portRows(p) {
             rows.push([t("p_rxlos"), v]);
         }
     } else if (p.adv) {
-        var bits = parseInt(p.adv, 2),
-            names = ["10M " + t("c_half"), "10M " + t("c_full"), "100M " + t("c_half"), "100M " + t("c_full"), "1G", "2.5G"];
-        var on = names.filter(function(_, b) {
-            return bits & (1 << b)
-        });
-        rows.push([t("p_adv"), on.join(", ") || "-"]);
+        rows.push([t("p_adv"), p.adv.join(", ").replaceAll("-HD"," " + t("c_half")).replaceAll("-FD"," " + t("c_full")) || "-"]);
     }
     return rows;
 }
 
 function detailTable(p) {
-    var tb = h("table", {
-        class: "t"
-    });
+    var tb = h("table", { class: "t" });
     portRows(p).forEach(function(r) {
-        tb.appendChild(h("tr", null, [h("td", {
-            class: "mut",
-            text: r[0]
-        }), h("td", {
-            text: r[1]
-        })]));
+        tb.appendChild(h("tr", null, [h("td", { class: "mut", text: r[0] }), h("td", { text: r[1] })]));
     });
     return tb;
 }
@@ -3955,7 +3941,7 @@ function l2Load() {
                 seen[e.idx] = 1;
                 e.vlan = parseInt(e.vlan, 16);
                 e.stat = e.type === "s";
-                e.pport = e.port === 9 ? "CPU" : S.logToPhys[e.port];
+                e.pport = e.port === 0 ? "CPU" : e.port;
                 e.where = e.lag ? "LAG" + e.lag : String(e.pport);
                 all.push(e);
             });
@@ -4097,12 +4083,9 @@ function mirrorLoad() {
     return getJSON("/mirror.json").then(function(m) {
         $("mstate").textContent = t(m.enabled ? "m_active" : "c_off");
         $("mstate").className = "badge " + (m.enabled ? "ok" : "");
-        if (m.enabled) $("mport").value = m.mPort;
-        var tx = parseInt(m.mirror_tx, 2),
-            rx = parseInt(m.mirror_rx, 2);
+        if (m.enabled) $("mport").value = m.mirrorPort;
         for (var p = 1; p <= S.n; p++) {
-            var bit = S.physToLog[p - 1];
-            var v = (((rx >> bit) & 1) ? 1 : 0) + (((tx >> bit) & 1) ? 2 : 0);
+            var v = (m.mirror_rx.includes(p) ? 1 : 0) + (m.mirror_tx.includes(p) ? 2: 0);
             $("mm" + p).querySelectorAll("button").forEach(function(b, i) {
                 b.classList.toggle("on", i === v)
             });
@@ -4219,13 +4202,12 @@ function isoLoad() {
         isoAllow = s;
         if ($("isotbl").dataset.dirty) return;
         s.forEach(function(e) {
-            var m = parseInt(e.allow, 16);
             for (var c = 1; c <= S.n; c++) {
                 var b = isoBox(e.portNum, c);
-                if (b) b.checked = !!((m >> S.physToLog[c - 1]) & 1);
+                if (b) b.checked = e.allow.includes(c);
             }
             var cpu = isoBox(e.portNum, S.n + 1);
-            if (cpu) cpu.checked = !!(m & 0x200);
+            if (cpu) cpu.checked = e.allow.includes(0);
         });
         isoMark();
     });
@@ -4394,9 +4376,9 @@ function lagLoad() {
         s.forEach(function(l) {
             var g = l.lagNum + 1;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            var members = lacpCfg[g] || parseInt(l.members, 2);
+            var members = lacpCfg[g] || l.members;
             for (var p = 1; p <= S.n; p++)
-                $("lg" + g + "p" + p).checked = !!((members >> S.physToLog[p - 1]) & 1);
+                $("lg" + g + "p" + p).checked = members.includes(p);
             var hash = parseInt(l.hash, 16);
             HASHF.forEach(function(f, i) {
                 $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)

@@ -10,7 +10,7 @@ extern __xdata uint8_t sfr_data[4];
 
 void trap_init(void) __banked
 {
-	REG_SET(RTL837X_EXT_CPU_CTRL, CPU_PORT);
+	REG_SET(RTL837X_EXT_CPU_CTRL, CPU_LOGICAL_PORT);
 }
 
 void trap_rma_set(uint16_t reg, uint8_t act) __banked
