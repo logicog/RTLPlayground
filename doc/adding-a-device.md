@@ -6,7 +6,7 @@ the build selects the definition by name, and CI compiles every file it finds.
 
 To compile for your added device, do:
 ```
-make MACHINE=<NAME>
+make MACHINE=<MACHINE>
 ```
 ## Names
 Names are derived from the board, not invented. Using an example device here we can see how
@@ -23,7 +23,7 @@ the PCB inside the casing and the photo shows where this is from.
 - `<MACHINE_PCB>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308`: the `PCB_DOC_NAME` with every remaining punctuation character (hyphens, dots, ...) converted to `_`.
 - `<MACHINE_PCB_EXT>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308__POE`: `<MACHINE_PCB>` plus an extension suffix for an _optional_ add-on; see the later section for details.
 - `<MACHINE_MODEL>` is `RealHD PSW8-25MG` — the human-readable vendor and model string shown in the UI.
-- `<MACHINE>` is `REALHD_PSW8_25MG`: `<MACHINE_MODEL>` in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
+- `<MACHINE>` is `REALHD_PSW8_25MG`: (`<MACHINE_MODEL>`) in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
 
 ### Quick Start
 1. Start from your `<PCB_LABEL>`, not from the printed vendor or model name: those are often misleading, and the same product name can correspond to several different PCBs.
@@ -62,20 +62,20 @@ the managed switch assumes the base name and the unmanaged has _UNMANAGED append
 
 | File | Purpose |
 |------|---------|
-| `machine/pcb/<PCB model>.c` | the `struct machine machine` board definition |
-| `machine/pcb/<PCB model>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
-| `machine/<machine>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
-| `machine/<machine>.c` | a symlink to the pcb/<PCBNAME>.c file
-| `doc/devices/<PCB silkscreen>.md` + `doc/supported_devices.md` | user-facing documentation |
+| `machine/pcb/<MACHINE_PCB>.c` | the `struct machine machine` board definition |
+| `machine/pcb/<MACHINE_PCB>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
+| `machine/<MACHINE>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
+| `machine/<MACHINE>.c` | a symlink to the pcb/<PCBNAME>.c file
+| `doc/devices/<PCB_DOC_NAME>.md` and `doc/supported_devices.md` | user-facing documentation |
 
-`<machine>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
+`<MACHINE>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
 passed exactly as spelled on the command line: `make MACHINE=MY_BOARD_1_0`
 needs `machine/MY_BOARD_1_0.c` and `machine/MY_BOARD_1_0.h`.
 - when everything works, update the documentation and open a pull request.
 
 ## Step 1: the board header
 
-`machine/<machine>.h` carries the product string and the SoC family. Use the
+`machine/<MACHINE>.h` carries the product string and the SoC family. Use the
 existing files as the template:
 
 ```c
@@ -104,7 +104,7 @@ The device product string is what the CLI or the Web-Interface will print to ide
 
 ## Step 2: the board definition
 
-`machine/<NAME>.c` starts with the shared prelude and then defines the single
+`machine/<MACHINE>.c` starts with the shared prelude and then defines the single
 `machine` object. Copy the closest existing board and adjust it — do not start
 from a blank file, the field meanings are easier to see in a real example.
 The best choice is usually a device that has the same number and type of Ethernet
