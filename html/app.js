@@ -3922,7 +3922,7 @@ function l2Load() {
                 seen[e.idx] = 1;
                 e.vlan = parseInt(e.vlan, 16);
                 e.stat = e.type === "s";
-                e.pport = e.port === 9 ? "CPU" : S.logToPhys[e.port];
+                e.pport = e.port === 0 ? "CPU" : e.port;
                 e.where = e.lag ? "LAG" + e.lag : String(e.pport);
                 all.push(e);
             });

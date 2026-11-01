@@ -492,12 +492,12 @@ void send_l2(uint16_t idx)
 			first = false;
 
 			// VLAN, taken from the read above instead of reading the register twice
-			slen += strtox(outbuf + slen, "{\"vlan\":\"");
+			slen += strtox(outbuf + slen, "{" JSONQUOTE("vlan") ":\"");
 			charhex_to_html(sfr_data[0] & 0x0f);
 			byte_to_html(sfr_data[1]);
 
 			// MAC
-			slen += strtox(outbuf + slen, "\",\"mac\":\"");
+			slen += strtox(outbuf + slen, "\"," JSONQUOTE("mac") ":\"");
 			byte_to_html(sfr_data[2]); char_to_html(':');
 			byte_to_html(sfr_data[3]); char_to_html(':');
 			port = (sfr_data[0] >> 6) & 0x3;
@@ -510,13 +510,13 @@ void send_l2(uint16_t idx)
 			// type
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
 			if (sfr_data[1] & 0x1)
-				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
+				slen += strtox(outbuf + slen, "\"," JSONQUOTE("type") ":" JSONQUOTE("s") "," JSONQUOTE("port") ":");
 			else
-				slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
+				slen += strtox(outbuf + slen, "\"," JSONQUOTE("type")":" JSONQUOTE("l") "," JSONQUOTE("port") ":");
 
 			port |= (sfr_data[3] & 0x3) << 2;
-			itoa_html(port);
-			slen += strtox(outbuf + slen, ",\"lag\":");
+			itoa_html(machine.log_to_phys_port[port]);
+			slen += strtox(outbuf + slen, "," JSONQUOTE("lag") ":");
 			lag = port_lag_of(port);
 			itoa_html(lag == PORT_LAG_NONE ? 0 : lag + 1);
 		}
@@ -525,7 +525,7 @@ void send_l2(uint16_t idx)
 		reg_read_m(RTL837x_TBL_DATA_0);
 		entry = (((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3];
 		if (valid) {
-			slen += strtox(outbuf + slen, ",\"idx\":\"");
+			slen += strtox(outbuf + slen, "," JSONQUOTE("idx") ":\"");
 			byte_to_html(entry >> 8);
 			byte_to_html(entry);
 			char_to_html('"');
