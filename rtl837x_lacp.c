@@ -22,6 +22,7 @@ extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint16_t management_vlan;
 extern __xdata struct uip_eth_addr uip_ethaddr;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
+extern __xdata uint8_t sfr_data[4];
 
 /* 20-byte Actor/Partner information body (802.3ad 43.4.2.2), network byte order */
 struct lacp_info {
@@ -111,6 +112,7 @@ __xdata uint8_t  lacp_scratch_flag;
 __xdata uint8_t  lacp_scratch_lag;
 
 __xdata uint16_t lacp_rx_count[10];
+__xdata uint16_t lacp_link_last;
 
 
 static uint8_t lacp_sys_eq(__xdata uint8_t *a, __xdata uint8_t *b)
@@ -278,6 +280,8 @@ void lacp_in(void) __banked
 
 	lacp_rx_state[port] = LACP_RX_CURRENT;
 	lacp_timeout[port] = LACP_SHORT_TIMEOUT;
+	if ((lacp_partner_state[port] & LACP_STATE_TIMEOUT) && lacp_periodic[port] > LACP_FAST_PERIODIC)
+		lacp_periodic[port] = LACP_FAST_PERIODIC;
 
 	if (!lacp_agg_valid[lag]) {
 		memcpy(lacp_agg_sys[lag], LACP_I->actor.sys, MAC_ADDR_LEN);
@@ -302,7 +306,8 @@ static void lacp_step(void)
 		if (lacp_port_lag[i] == LACP_LAG_NONE)
 			continue;
 
-		if (lacp_periodic[i]) {
+		if (lacp_rx_state[i] == LACP_RX_PORT_DISABLED) {
+		} else if (lacp_periodic[i]) {
 			lacp_periodic[i]--;
 		} else {
 			lacp_periodic[i] = (lacp_partner_state[i] & LACP_STATE_TIMEOUT) ?
@@ -319,7 +324,7 @@ static void lacp_step(void)
 			}
 		}
 
-		if (lacp_ntt[i])
+		if (lacp_ntt[i] && lacp_rx_state[i] != LACP_RX_PORT_DISABLED)
 			lacp_send(i);
 	}
 
@@ -353,18 +358,48 @@ void lacp_timers(void) __banked
 }
 
 
+
+void lacp_link_change(uint16_t bounced) __banked
+{
+	uint16_t now = port_link_mask();
+
+	lacp_scratch_mask = (now ^ lacp_link_last) | (bounced & now);
+	if (!lacp_scratch_mask)
+		return;
+	lacp_link_last = now;
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if (lacp_port_lag[i] == LACP_LAG_NONE || !(lacp_scratch_mask & PORT_BIT(i)))
+			continue;
+		lacp_partner_state[i] &= ~LACP_STATE_SYNC;
+		if (lacp_link_last & PORT_BIT(i)) {
+			lacp_rx_state[i] = LACP_RX_EXPIRED;
+			lacp_partner_state[i] |= LACP_STATE_TIMEOUT;
+			lacp_timeout[i] = LACP_SHORT_TIMEOUT;
+			lacp_periodic[i] = LACP_FAST_PERIODIC;
+			lacp_ntt[i] = 1;
+		} else {
+			lacp_rx_state[i] = LACP_RX_PORT_DISABLED;
+			lacp_timeout[i] = 0;
+			lacp_ntt[i] = 0;
+		}
+		lacp_mux_machine(i);
+	}
+	lacp_mux_update();
+}
+
 static void lacp_port_init(uint8_t port)
 {
 	lacp_actor_state[port] = LACP_STATE_ACTIVITY | LACP_STATE_AGGREGATION |
 		LACP_STATE_TIMEOUT;
-	lacp_rx_state[port] = LACP_RX_INITIALIZE;
-	lacp_partner_state[port] = LACP_STATE_DEFAULTED;
+	lacp_rx_state[port] = (port_link_mask() & PORT_BIT(port)) ?
+		LACP_RX_EXPIRED : LACP_RX_PORT_DISABLED;
+	lacp_partner_state[port] = LACP_STATE_DEFAULTED | LACP_STATE_TIMEOUT;
 	memset(lacp_partner_sys[port], 0, MAC_ADDR_LEN);
 	lacp_partner_key[port] = 0;
 	lacp_partner_port[port] = 0;
 	lacp_periodic[port] = LACP_FAST_PERIODIC;
-	lacp_timeout[port] = 0;
-	lacp_ntt[port] = 1;
+	lacp_timeout[port] = LACP_SHORT_TIMEOUT;
+	lacp_ntt[port] = lacp_rx_state[port] == LACP_RX_EXPIRED;
 	lacp_rx_count[port] = 0;
 }
 
@@ -389,6 +424,7 @@ static uint8_t lacp_any_lag(void)
 static void lacp_engine_on(void)
 {
 	lacp_tick_last = (uint8_t)ticks;
+	lacp_link_last = port_link_mask();
 	lacpEnabled = 1;
 	trap_rma_set(RTL837X_RMA2_CONF, RTL837X_RMA_ACT_TRAP);
 }
