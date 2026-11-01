@@ -12,18 +12,18 @@ make MACHINE=<MACHINE>
 Names are derived from the board, not invented. Using an example device here we can see how
 to construct the name.
 
-The example uses `RealHD` as the vendor Name and `PSW8-25MG` as the switch model (these are from
+The example uses `CSCI` as the vendor Name and `SW-425A` as the switch model (these are from
 labels on the outside of the device itself/the box it came from/the advert). The other text is from
 the PCB inside the casing and the photo shows where this is from.
 
-![PCB](images/PSW8-25MG_pcb_label.jpg)
+![PCB](images/S1100W-88T-1SX_SE_PCB_IDENTIFIER.jpg)
 
-- `<PCB_IDENTIFIER>` is `PCB-AFGW SWTG218ANS_V2.0.2_23308` — the text inside the red box in the picture.
-- `<PCB_DOC_NAME>` is `PCB-AFGW_SWTG218ANS_V2.0.2_23308`: the identifier with each space replaced by `_`.
-- `<MACHINE_PCB>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308`: the `PCB_DOC_NAME` with every remaining punctuation character (hyphens, dots, ...) converted to `_`.
-- `<MACHINE_PCB_EXT>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308__POE`: `<MACHINE_PCB>` plus an extension suffix for an _optional_ add-on; see the later section for details.
-- `<MACHINE_MODEL>` is `RealHD PSW8-25MG` — the human-readable vendor and model string shown in the UI.
-- `<MACHINE>` is `REALHD_PSW8_25MG`: (`<MACHINE_MODEL>`) in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
+- `<PCB_IDENTIFIER>` is `S1100W-88T-1SX_SE V1.05` — the text inside the red box in the picture, even large distances between characters should be represented by a single space.
+- `<PCB_DOC_NAME>` is `S1100W-88T-1SX_SE_V1.05`: the identifier with each space replaced by `_`.
+- `<MACHINE_PCB>` is `S1100W_88T_1SX_SE_V1_05`: the `PCB_DOC_NAME` with every remaining punctuation character (hyphens, dots, ...) converted to `_`.
+- `<MACHINE_PCB_EXT>` is `S1100W_88T_1SX_SE_V1_05__POE`: `<MACHINE_PCB>` plus an extension suffix for an _optional_ add-on; see the later section for details.
+- `<MACHINE_MODEL>` is `CSCI SW-425A` — the human-readable vendor and model string shown in the UI.
+- `<MACHINE>` is `CSCI_SW-425A`: (`<MACHINE_MODEL>`) in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
 
 ### Quick Start
 1. Start from your `<PCB_IDENTIFIER>`, not from the printed vendor or model name: those are often misleading, and the same product name can correspond to several different PCBs.
