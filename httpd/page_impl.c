@@ -344,7 +344,40 @@ void send_vlan(uint16_t vlan)
 	slen += strtox(outbuf + slen, "{" JSONQUOTE("members") ":\"0x");
 	vlan_get(vlan);
 	sfr_data_to_html();
-	slen += strtox(outbuf + slen, "\"," JSONQUOTE("members_array") ":[");
+	slen += strtox(outbuf + slen, "\"," JSONQUOTE("untagged_members") ":[");
+
+	uint32_t m = ((uint32_t)sfr_data[0] << 24) |
+				((uint32_t)sfr_data[1] << 16) |
+				((uint32_t)sfr_data[2] <<  8) |
+				((uint32_t)sfr_data[3]);
+
+	uint16_t members = (uint16_t)(m & 0x3FF);
+	uint16_t untagged = (uint16_t)(((m >> 10) & 0x3FF) & members);
+
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if(members & (1<<i)) {
+			if((untagged & (1<<i))) {
+				itoa_html(machine.log_to_phys_port[i]);
+				json_char_to_html(',');
+			}
+		}
+	}
+	if(outbuf[slen - 1] == ',') {
+		slen--;
+	}
+
+	slen += strtox(outbuf + slen, "]," JSONQUOTE("tagged_members") ":[");
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if(members & (1<<i)) {
+			if(!(untagged & (1<<i))) {
+				itoa_html(machine.log_to_phys_port[i]);
+				json_char_to_html(',');
+			}
+		}
+	}
+	if(outbuf[slen - 1] == ','){
+		slen--;
+	}
 
 	slen += strtox(outbuf + slen, "]," JSONQUOTE("name") ":\"");
 	__xdata uint16_t n = vlan_name(vlan);
