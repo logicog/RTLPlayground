@@ -1085,7 +1085,7 @@ void parse_sfp(void)
 				continue;
 			}
 			if (!(sfp_ready & (1 << slot))) {
-				print_string(" - not read yet\n");
+				print_string(sfp_state[slot] == SFP_FAULT ? " - fault\n" : " - not read yet\n");
 				continue;
 			}
 			print_string(" - Rate: "); print_byte(sfp_id[slot][1]);
@@ -1129,7 +1129,7 @@ void parse_sfp(void)
 	} else {
 		goto err;
 	}
-	sfp_pins_last |= 0x1 << (slot << 2);
+	sfp_state[slot] = SFP_ABSENT;
 	handle_sfp();
 	return;
 err:
