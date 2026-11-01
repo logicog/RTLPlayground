@@ -515,7 +515,12 @@ void send_l2(uint16_t idx)
 				slen += strtox(outbuf + slen, "\"," JSONQUOTE("type")":" JSONQUOTE("l") "," JSONQUOTE("port") ":");
 
 			port |= (sfr_data[3] & 0x3) << 2;
-			itoa_html(machine.log_to_phys_port[port]);
+
+			if ( port == CPU_PORT )
+				itoa_html(0);
+			else
+				itoa_html(machine.log_to_phys_port[port]);
+
 			slen += strtox(outbuf + slen, "," JSONQUOTE("lag") ":");
 			lag = port_lag_of(port);
 			itoa_html(lag == PORT_LAG_NONE ? 0 : lag + 1);
