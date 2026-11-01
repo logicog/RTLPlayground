@@ -16,10 +16,10 @@
 #include "machine.h"
 #include "phy.h"
 #include "boot.h"
+#include "rtlos_hal.h"
 
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
-extern __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
 __xdata uint32_t rtl8224_release_tick;
 extern __xdata uint8_t tx_seq;

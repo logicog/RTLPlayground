@@ -16,6 +16,7 @@
 #include "rtl837x_phy.h"
 #include "phy.h"
 #include "machine.h"
+#include "rtlos_hal.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
