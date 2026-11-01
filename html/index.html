@@ -173,6 +173,11 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 #mbody{padding:14px 18px;overflow:auto}
 #mfoot{padding:12px 18px;border-top:1px solid var(--bd);display:flex;gap:10px;justify-content:flex-end}
 #mfoot:empty{display:none}
+#ptip{position:fixed;display:none;z-index:35;pointer-events:none;white-space:nowrap;background:var(--panel);border:1px solid var(--bd);border-radius:6px;box-shadow:var(--shadow);padding:4px 8px}
+#ptip.show{display:block}
+#ptip::before{content:"";position:absolute;top:-6px;left:var(--ax,50%);width:9px;height:9px;background:var(--panel);border-top:1px solid var(--bd);border-left:1px solid var(--bd);transform:translateX(-50%) rotate(45deg)}
+#ptip td{padding:1px 0;border:0;font-size:11px}
+#ptip td.mut{padding-right:8px}
 pre.cfg{
   background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;
   font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;
@@ -517,6 +522,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   <div id="mhead"><span id="mtitle"></span><button id="mx">&#x2715;</button></div>
   <div id="mbody"></div><div id="mfoot"></div>
 </div></div>
+<div id="ptip"></div>
 
 <script src="/app.js"></script>
 </body>
