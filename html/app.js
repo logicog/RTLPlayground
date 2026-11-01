@@ -1499,7 +1499,10 @@ function vlanRefresh(){
               n: mgmtID
             }), h("div").appendChild(h("p",{class:"small",text:t("v_mgmt_d")})),
             [
-              h("button",{class:"ctl pri",text:t("c_confirm"),onclick:function(){closeModal();/*postCmd("vlan " + mgmtID + " mgmt").then(vlanRefresh).catch(function(){})*/}})            
+              h("button",{class:"ctl pri",text:t("c_confirm"),onclick:function(){
+                closeModal();
+                postCmd("vlan " + mgmtID + " mgmt").then(vlanRefresh).catch(function(){})}
+              })            
             ]);
         }}));
         if (v.id == mgmtID) mgmtBtn.children[0].classList.add("on");
