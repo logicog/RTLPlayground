@@ -19,8 +19,8 @@
 
 extern __code const struct machine machine;
 
-// SFP1 b0 = 1 => module missing, b1 = 1 => LOS;
-// SFP2 b4 = 1 => module missing, b5 = 1 => LOS;
+// SFP1 b1 = 1 => LOS;
+// SFP2 b5 = 1 => LOS;
 
 __xdata uint8_t sfp_pins_last;
 __xdata char sfp_module_vendor[2][17];
@@ -34,8 +34,9 @@ __xdata uint8_t sfp_id[2][2];
 __xdata uint8_t sfp_cal[2][36];
 __xdata uint8_t sfp_dom[2][16];
 __xdata uint8_t sfp_ready;
-__xdata struct timer sfp_wake[2];
-__xdata uint8_t sfp_wake_pending[2];
+__xdata uint8_t sfp_state[2];
+static __xdata struct timer sfp_wake[2];
+static __xdata uint8_t sfp_tries[2];
 static __xdata struct timer sfp_dom_poll;
 static __xdata struct timer sfp_io;
 static __xdata uint8_t sfp_dom_pending;
@@ -44,6 +45,8 @@ static __xdata uint8_t sfp_cur;
 static __xdata uint8_t sfp_first;
 static __xdata uint8_t sfp_i;
 static __xdata uint8_t sfp_rate;
+static __xdata uint8_t sfp_sum;
+static __xdata uint8_t sfp_bad;
 
 
 __code enum sfp_quirk {
@@ -123,16 +126,16 @@ void setup_sfp_gpio(void) __banked
 
 
 
-#define SFP_STEP_DDM 5
-#define SFP_STEP_CAL 6
-#define SFP_STEP_DOM 9
+#define SFP_STEP_DDM 9
+#define SFP_STEP_CAL 10
+#define SFP_STEP_DOM 13
 
 
 static bool sfp_due(void)
 {
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
-		if (sfp_wake_pending[sfp] && timer_expired(&sfp_wake[sfp])) {
-			sfp_wake_pending[sfp] = 0;
+		if (sfp_state[sfp] == SFP_WAKE && timer_expired(&sfp_wake[sfp])) {
+			sfp_state[sfp] = SFP_READ;
 			sfp_cur = sfp;
 			sfp_first = 0;
 			return true;
@@ -158,16 +161,35 @@ static bool sfp_due(void)
 }
 
 
+static void sfp_wait(uint8_t sfp, __xdata clock_time_t ticks)
+{
+	timer_set(&sfp_wake[sfp], ticks);
+	sfp_state[sfp] = SFP_WAKE;
+}
+
+
+static void sfp_fault(void)
+{
+	sfp_state[sfp_cur] = SFP_FAULT;
+	sds_config_mac(machine.sfp_port[sfp_cur].sds, SDS_OFF);
+}
+
+
 static void sfp_retry(void)
 {
-	print_string("SFP: an I2C read failed, retrying on the next poll\n");
-	sfp_pins_last |= 0x01 << (sfp_cur << 2);
+	if (++sfp_tries[sfp_cur] >= SFP_TRIES) {
+		print_string("SFP: I2C read failed\n");
+		sfp_fault();
+		return;
+	}
+	print_string("SFP: an I2C read failed, retrying\n");
+	sfp_wait(sfp_cur, SFP_RETRY_TICKS);
 }
 
 
 static __code const uint8_t sfp_steps[][2] = {
-	{ 11, 2 }, { 92, 1 }, { 20, 16 }, { 40, 16 }, { 68, 16 }, { 226, 1 },
-	{ 184, 16 }, { 200, 16 }, { 216, 4 }, { 224, 16 }
+	{ 0, 16 }, { 16, 4 }, { 20, 16 }, { 36, 4 }, { 40, 16 }, { 56, 8 }, { 64, 4 }, { 68, 16 }, { 84, 12 },
+	{ 226, 1 }, { 184, 16 }, { 200, 16 }, { 216, 4 }, { 224, 16 }
 };
 
 #define SFP_STEPS (sizeof(sfp_steps) / sizeof(*sfp_steps))
@@ -190,13 +212,20 @@ static bool sfp_skip(void)
 
 static void sfp_step(void)
 {
+	uint8_t last = sfp_buf[sfp_steps[sfp_i][1] - 1];
+
+	if (sfp_i < SFP_STEP_DDM) {
+		for (uint8_t i = 0; i < sfp_steps[sfp_i][1]; i++)
+			sfp_sum += sfp_buf[i];
+	}
+
 	switch (sfp_i) {
 	case 0:
 		// Read Reg 11: Encoding, see SFF-8472 and SFF-8024
 		// Read Reg 12: Signalling rate (including overhead) in 100Mbit: 0xd: 1Gbit, 0x67:10Gbit
-		sfp_id[sfp_cur][0] = sfp_buf[0];
-		sfp_id[sfp_cur][1] = sfp_buf[1];
-		sfp_rate = sfp_buf[1];
+		sfp_id[sfp_cur][0] = sfp_buf[11];
+		sfp_id[sfp_cur][1] = sfp_buf[12];
+		sfp_rate = sfp_buf[12];
 		if (sfp_speed[sfp_cur] == SFP_SPEED_100M)
 			sfp_rate = 0x1;
 		else if (sfp_speed[sfp_cur] == SFP_SPEED_1G)
@@ -206,18 +235,23 @@ static void sfp_step(void)
 		else if (sfp_speed[sfp_cur] == SFP_SPEED_10G)
 			sfp_rate = 0x69;
 		break;
-	case 1:
-		sfp_options[sfp_cur] = sfp_buf[0];
-		break;
 	case 2:
 		sfp_store_field(sfp_module_vendor[sfp_cur], 16);
 		break;
-	case 3:
+	case 4:
 		sfp_store_field(sfp_module_model[sfp_cur], 16);
 		break;
-	case 4:
+	case 5:
+		if ((uint8_t)(sfp_sum - last) != last && sfp_speed[sfp_cur] == SFP_SPEED_AUTO)
+			sfp_bad = 1;
+		sfp_sum = 0;
+		break;
+	case 7:
 		sfp_store_field(sfp_module_serial[sfp_cur], 16);
 		sfp_lookup_quirks();
+		break;
+	case 8:
+		sfp_options[sfp_cur] = ((uint8_t)(sfp_sum - last) != last) ? 0 : sfp_buf[92 - 84];
 		break;
 	case SFP_STEP_DDM:
 		// 0xff would mean a failed I2C read or an impossible (per spec) voltage greater than 6.5V
@@ -227,7 +261,9 @@ static void sfp_step(void)
 	case SFP_STEP_DOM:
 		memcpy(sfp_dom[sfp_cur], sfp_buf, sfp_steps[sfp_i][1]);
 		break;
-	default:
+	case SFP_STEP_CAL:
+	case SFP_STEP_CAL + 1:
+	case SFP_STEP_CAL + 2:
 		memcpy(sfp_cal[sfp_cur] + ((sfp_i - SFP_STEP_CAL) << 4), sfp_buf, sfp_steps[sfp_i][1]);
 	}
 }
@@ -235,10 +271,14 @@ static void sfp_step(void)
 
 void sfp_task(void) __banked
 {
+	uint8_t mode;
+
 	if (!sfp_busy) {
 		if (!sfp_due())
 			return;
 		sfp_i = sfp_first;
+		sfp_sum = 0;
+		sfp_bad = 0;
 	}
 
 	for (;;) {
@@ -246,6 +286,8 @@ void sfp_task(void) __banked
 			if (sfp_read_busy() && !timer_expired(&sfp_io))
 				return;
 			sfp_busy = 0;
+			if (sfp_state[sfp_cur] != (sfp_first ? SFP_UP : SFP_READ))
+				return;
 			if (sfp_read_end(sfp_steps[sfp_i][1])) {
 				sfp_step();
 			} else if (sfp_i != SFP_STEP_DDM) {
@@ -257,22 +299,34 @@ void sfp_task(void) __banked
 		}
 		while (sfp_i < SFP_STEPS && sfp_skip())
 			sfp_i++;
-		if (sfp_i >= SFP_STEPS)
+		if (sfp_i >= SFP_STEPS || sfp_bad)
 			break;
 		sfp_read_start(sfp_cur, sfp_steps[sfp_i][0], sfp_steps[sfp_i][1]);
 		timer_set(&sfp_io, SFP_IO_TICKS);
 		sfp_busy = 1;
 	}
 
-	if (sfp_first || (sfp_pins_last & (0x1 << (sfp_cur << 2))))
+	if (sfp_first)
 		return;
+	if (sfp_bad) {
+		print_string("SFP: EEPROM checksum error\n");
+		sfp_fault();
+		return;
+	}
+	mode = sfp_rate_to_sds_config(sfp_rate);
+	if (mode == 0xff) {
+		print_string("SFP: unknown rate\n");
+		sfp_fault();
+		return;
+	}
 	print_string("  Rate: "); print_byte(sfp_rate);  // Normally 1, but 0 for DAC, can be ignored?
 	print_string("  Encoding: "); print_byte(sfp_id[sfp_cur][0]);
 	print_string("  Module: "); print_string_x(sfp_module_vendor[sfp_cur]); write_char(' ');
 	print_string_x(sfp_module_model[sfp_cur]); write_char(' ');
 	print_string_x(sfp_module_serial[sfp_cur]); write_char('\n');
 	sfp_ready |= 1 << sfp_cur;
-	sds_config(machine.sfp_port[sfp_cur].sds, sfp_rate_to_sds_config(sfp_rate));
+	sfp_state[sfp_cur] = SFP_UP;
+	sds_config(machine.sfp_port[sfp_cur].sds, mode);
 }
 
 
@@ -280,17 +334,15 @@ void handle_sfp(void) __banked
 {
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
 		if (!gpio_pin_test(machine.sfp_port[sfp].pin_detect)) {
-			if (sfp_pins_last & (0x1 << (sfp << 2))) {
-				sfp_pins_last &= ~(0x01 << (sfp << 2));
+			if (sfp_state[sfp] == SFP_ABSENT) {
 				sfp_ready &= ~(1 << sfp);
 				print_string("\n<MODULE INSERTED>  Slot: "); write_char('1' + sfp);
-				timer_set(&sfp_wake[sfp], SFP_WAKE_TICKS);
-				sfp_wake_pending[sfp] = 1;
+				sfp_tries[sfp] = 0;
+				sfp_wait(sfp, SFP_WAKE_TICKS);
 			}
 		} else {
-			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
-				sfp_pins_last |= 0x01 << (sfp << 2);
-				sfp_wake_pending[sfp] = 0;
+			if (sfp_state[sfp] != SFP_ABSENT) {
+				sfp_state[sfp] = SFP_ABSENT;
 				sfp_ready &= ~(1 << sfp);
 				print_string("\n<MODULE REMOVED>  Slot: "); write_char('1' + sfp); write_char('\n');
 			}
