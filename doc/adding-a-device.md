@@ -183,7 +183,7 @@ Further details can be found in [led_gpio_utils/README.md].
 |------|---------|
 | `machine/pcb/<PCB model>.c` | the `struct machine machine` board definition |
 | `machine/pcb/<PCB model>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
-| `machine/<machine>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`) |
+| `machine/<machine>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
 | `machine/<machine>.c` | a symlink to the pcb/<PCBNAME>.c file
 | `doc/devices/<PCB silkscreen>.md` + `doc/supported_devices.md` | user-facing documentation |
 
@@ -245,13 +245,13 @@ __code const struct machine machine = {
 	.sfp_port[0].pin_los = GPIO_NA,
 	.sfp_port[0].pin_tx_disable = GPIO_NA,
 	.sfp_port[0].sds = 1,
-	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ), /* GPIO 39 */
+	.sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 	// Right SFP port (J2)
 	.sfp_port[1].pin_detect = GPIO50_I2C_SCL2_UART1_TX,
 	.sfp_port[1].pin_los = GPIO_NA,
 	.sfp_port[1].pin_tx_disable = GPIO_NA,
 	.sfp_port[1].sds = 0,
-	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ), /* GPIO 40 */
+	.sfp_port[1].i2c = I2CBUS( GPIO41_I2C_SDA3_MDIO1, GPIO40_I2C_SCL3_MDC1 ),
 	.reset_pin = GPIO54_ACL_BIT2_EN,
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
