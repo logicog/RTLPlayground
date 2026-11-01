@@ -290,4 +290,8 @@ machine_check: $(SDCC)
 	done
 	@rm -rf $(BUILDDIR)/tmp
 
+.PHONY: translate
+translate:
+	python3 tools/rtl_translation_editor.py . --open
+
 -include $(DEPS)
