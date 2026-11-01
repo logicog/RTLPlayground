@@ -163,6 +163,7 @@ void port_l2_forget_port(uint8_t port)
 }
 
 static uint8_t mstp_reg[4];
+static int mstp_writes;
 static uint16_t sim_lag[4];
 
 uint16_t port_lag_members_get(uint8_t lag)
@@ -223,6 +224,7 @@ void reg_read_m(uint16_t addr)
 void reg_write_m(uint16_t addr)
 {
 	if (addr == RTL837X_MSTP_STATES) {
+		mstp_writes++;
 		memcpy(mstp_reg, sfr_data, 4);
 		if (verbose > 1)
 			printf("    [mstp <- %02x %02x %02x %02x]\n", mstp_reg[0], mstp_reg[1], mstp_reg[2],
@@ -551,6 +553,27 @@ static void scen_alt_survives_link_bounce(void)
 	}
 	check_state(0, 1, "port 1 never reaches forwarding while the peer is better");
 	check(stp_root_port == 8, "the uplink is still the root port");
+}
+
+static void scen_alt_no_rewrites(void)
+{
+	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu from_peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+
+	printf("64. an alternate port that stays alternate is not written again\n");
+	ring();
+	memcpy(from_root.root_mac, ROOT_MAC, 6);
+	memcpy(from_root.br_mac, ROOT_MAC, 6);
+	memcpy(from_peer.root_mac, ROOT_MAC, 6);
+	memcpy(from_peer.br_mac, PEER_MAC, 6);
+	mstp_writes = 0;
+	for (int i = 0; i < 10; i++) {
+		bpdu_in(&from_root);
+		bpdu_in(&from_peer);
+		secs(2);
+	}
+	check_state(0, 1, "port 1 is still discarding");
+	check(mstp_writes == 0, "and the port state register was not rewritten");
 }
 
 static void scen_speed_cost(void)
@@ -2320,6 +2343,7 @@ int main(int argc, char **argv)
 	scen_cheaper_path();
 	scen_we_are_better();
 	scen_alt_survives_link_bounce();
+	scen_alt_no_rewrites();
 	scen_speed_cost();
 	scen_root_times();
 	scen_too_old();
