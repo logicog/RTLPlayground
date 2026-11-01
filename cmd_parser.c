@@ -299,7 +299,7 @@ uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
 
 	if (ret == 0 && cmd_buffer[idx] == '0') {
 		ret = 1;
-		atoi_results_u8 = CPU_PORT;
+		atoi_results_u8 = CPU_LOGICAL_PORT;
 	}
 
 	if (ret != 0) {

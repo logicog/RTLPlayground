@@ -24,7 +24,7 @@ void stp_counters_clear(void) __banked __reentrant;
 #define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
 extern __xdata struct timer stp_step;
 
-#define STP_PORTS	(CPU_PORT + 1)
+#define STP_PORTS	(CPU_LOGICAL_PORT + 1)
 #define STP_LAG_BASE	STP_PORTS
 #define STP_LAG_COUNT	4
 #define STP_ENTITIES	(STP_LAG_BASE + STP_LAG_COUNT)
