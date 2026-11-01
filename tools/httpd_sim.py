@@ -622,7 +622,7 @@ class Handler(SimpleHTTPRequestHandler):
         return [
                 {
                     "portNum": i,
-                    "allow": "03ff"
+                    "allow": [x for x in range(1, PORTS + 1)]
                 }
                 for i in range(1, PORTS + 1)
             ]
