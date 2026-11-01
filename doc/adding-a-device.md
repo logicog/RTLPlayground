@@ -43,14 +43,14 @@ are insufficient to do so. These are represented by the following suffixes, appe
 `<MACHINE_PCB>` with two `_` (underscores). Additional plugins are appended with a single underscore (`_`).
 
 The current list of suffixes is:
-* POE: POE
-* Reset/VLAN-switch: _VLANSW
-* Special Case[^1]: _UNMANAGED
+* POE: `POE`
+* Reset/VLAN-switch: `VLANSW`
+* Special Case[^1]: `UNMANAGED`
 
 Uplink port configurations:
-* 1xSFP+1xRJ45: _1S1C
-* 2xRJ45: _2C
-* For the 8x1-variant: _1C
+* 1xSFP + 1xRJ45: `1S1C`
+* 2xRJ45: `2C`
+* For the 8x1-variant: `1C`
 
 For example for `MY_BOARD_V1.0.c` the 1SFP, 1RJ, POE variant would be: `MY_BOARD_V1.0__1S1C_POE.c`
 
