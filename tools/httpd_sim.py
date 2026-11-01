@@ -362,7 +362,7 @@ class Handler(SimpleHTTPRequestHandler):
         if(vid in state["vlans"]):
             for checkVlan in state["vlans"]:
                 for checkDup in state["vlans"].values():
-                    checkDup["pvid"] = [x for x in item["pvid"] if x != machine_config["phys_to_log_port"][port-1]]
+                    checkDup["pvid"] = [x for x in checkDup["pvid"] if x != machine_config["phys_to_log_port"][port-1]]
             state["vlans"][vid]["pvid"].append(machine_config["phys_to_log_port"][port-1])
         else :
             state["vlans"][vid] = self.newVlan("")
