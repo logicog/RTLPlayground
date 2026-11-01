@@ -978,6 +978,38 @@ static void scen_tc_propagation(void)
 	check(tc_frames[8] == tc9, "no TC is echoed back to the root");
 }
 
+static void scen_tc_each_flushes(void)
+{
+	struct sim_bpdu r;
+	struct sim_bpdu rtc;
+	int tc2;
+
+	printf("62. every TC heard inside the TC window flushes again\n");
+	reset_all();
+	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
+	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 1) | (1 << 2) | (1 << 8));
+	secs(1);
+	r = root_on(8);
+	for (int i = 0; i < 21; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	memset(flush_count, 0, sizeof(flush_count));
+	rtc = r;
+	rtc.flags = 0x3d;
+	bpdu_in(&rtc);
+	tick(2);
+	tc2 = tc_frames[1];
+	tick(STP_HZ);
+	bpdu_in(&rtc);
+	tick(2);
+	check(flush_count[1] == 2 && flush_count[2] == 2, "the second TC flushes ports 2 and 3 again");
+	check(flush_count[8] == 0, "but never the port it came in on");
+	tick(5 * STP_HZ);
+	check(tc_frames[1] - tc2 <= 2, "and does not stretch the TC window");
+}
+
 static void scen_tc_legacy_tcn(void)
 {
 	struct sim_bpdu r;
@@ -2334,6 +2366,7 @@ int main(int argc, char **argv)
 	scen_tc_via_root_port();
 	scen_tc_window_rstp();
 	scen_tc_propagation();
+	scen_tc_each_flushes();
 	scen_tc_legacy_tcn();
 	scen_alt_forgets();
 	scen_edge_no_tc();
