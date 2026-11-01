@@ -341,28 +341,32 @@ class Handler(SimpleHTTPRequestHandler):
                 name = pieces[2]
                 startIndex=3
 
-        if not vid in state["vlans"]:
-            state["vlans"][vid] = self.newVlan(name)
-        else:
-            state["vlans"][vid]["name"] = name
+        if len(pieces) > 3:
 
-        state["vlans"][vid]["tagged"] = []
-        state["vlans"][vid]["untagged"] = []
-
-        for i in pieces[startIndex:]:
-            if i[-1] == "t":
-                state["vlans"][vid]["tagged"].append(machine_config["phys_to_log_port"][int(i[:-1])-1])
+            if not vid in state["vlans"]:
+                state["vlans"][vid] = self.newVlan(name)
             else:
-                state["vlans"][vid]["untagged"].append(machine_config["phys_to_log_port"][int(i)-1])
+                state["vlans"][vid]["name"] = name
+
+            state["vlans"][vid]["tagged"] = []
+            state["vlans"][vid]["untagged"] = []
+
+            for i in pieces[startIndex:]:
+                if i[-1] == "t":
+                    state["vlans"][vid]["tagged"].append(machine_config["phys_to_log_port"][int(i[:-1])-1])
+                else:
+                    state["vlans"][vid]["untagged"].append(machine_config["phys_to_log_port"][int(i)-1])
 
     def _parse_pvid(self, pieces):
         global state
         port = int(pieces[1])
         vid = int(pieces[2])
         if(vid in state["vlans"]):
+            for checkDup in state["vlans"].values():
+                checkDup["pvid"] = [x for x in checkDup["pvid"] if x != machine_config["phys_to_log_port"][port-1]]
             state["vlans"][vid]["pvid"].append(machine_config["phys_to_log_port"][port-1])
-        else :
-            state["vlans"][vid] = self.newVlan("")
+#        else :
+#            state["vlans"][vid] = self.newVlan("")
 
     def _parse_lldp(self, pieces):
         global state
