@@ -4064,12 +4064,9 @@ function mirrorLoad() {
     return getJSON("/mirror.json").then(function(m) {
         $("mstate").textContent = t(m.enabled ? "m_active" : "c_off");
         $("mstate").className = "badge " + (m.enabled ? "ok" : "");
-        if (m.enabled) $("mport").value = m.mPort;
-        var tx = parseInt(m.mirror_tx, 2),
-            rx = parseInt(m.mirror_rx, 2);
+        if (m.enabled) $("mport").value = m.mirrorPort;
         for (var p = 1; p <= S.n; p++) {
-            var bit = S.physToLog[p - 1];
-            var v = (((rx >> bit) & 1) ? 1 : 0) + (((tx >> bit) & 1) ? 2 : 0);
+            var v = (m.mirror_rx.includes(p) ? 1 : 0) + (m.mirror_tx.includes(p) ? 2: 0);
             $("mm" + p).querySelectorAll("button").forEach(function(b, i) {
                 b.classList.toggle("on", i === v)
             });

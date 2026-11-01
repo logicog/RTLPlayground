@@ -488,10 +488,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _api_mirror(self):
         return {
-            "mPort": 1,
+            "mirrorPort": 2,
             "enabled": 1,
-            "mirror_tx": f"{0b000110:016b}",
-            "mirror_rx": f"{0b000010:016b}",
+            "mirror_rx": [6,5],
+            "mirror_tx": [6,4]
         }
 
     def _api_lacp(self):
