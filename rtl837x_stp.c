@@ -696,7 +696,6 @@ static void stp_reselect(void)
 			root_bridge.prio = stp_droot[stp_best].prio;
 			root_bridge.ext = stp_droot[stp_best].ext;
 			memcpy(root_bridge.mac, stp_droot[stp_best].mac, 6);
-			stp_tc_count++;
 		}
 		root_bridge_cost = stp_rpcost[stp_best];
 		stp_msg_age = stp_rxage[stp_best];
@@ -706,7 +705,6 @@ static void stp_reselect(void)
 		print_string("STP: root aged out, claiming root\n");
 		stp_synced_root = 0xff;
 		stp_claim_root();
-		stp_tc_count++;
 	}
 
 	for (stp_j = 0; stp_j < STP_ENTITIES; stp_j++) {
@@ -1012,7 +1010,6 @@ void stp_in(void) __banked
 		print_port_nl(port);
 		stp_pflags[port] |= STP_PF_TRIPPED;
 		stp_state_set(port, 0b00);
-		stp_tc_count++;
 		return;
 	}
 
