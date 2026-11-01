@@ -1531,7 +1531,6 @@ function vlanRefresh(){
                     }
                   })
                   if(cmdText.split(" ").length < 3){toast(t("v_nomember"),"err");return;}   
-                  console.log("Running command " + cmdText);               
                   postCmd(cmdText).then(vlanRefresh).catch(function(){});
               }}));
             });
