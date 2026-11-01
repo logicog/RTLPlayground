@@ -413,13 +413,28 @@ static uint8_t stp_ent_active(uint8_t e) __reentrant
 }
 
 
+static uint8_t stp_pnum(uint8_t e) __reentrant
+{
+	if (e >= STP_LAG_BASE)
+		return e + 101 - STP_LAG_BASE;
+	return machine.log_to_phys_port[e];
+}
+
+
+static uint8_t stp_ent_by_pnum(uint8_t n) __reentrant
+{
+	for (stp_ss_i = 0; stp_ss_i < STP_ENTITIES; stp_ss_i++)
+		if (stp_ent_active(stp_ss_i) && stp_pnum(stp_ss_i) == n)
+			return stp_ss_i;
+	return 0xff;
+}
+
+
 uint8_t stp_ent_id(uint8_t e) __banked
 {
 	if (!stp_ent_active(e))
 		return 0;
-	if (e >= STP_LAG_BASE)
-		return e + 101 - STP_LAG_BASE;
-	return machine.log_to_phys_port[e];
+	return stp_pnum(e);
 }
 
 
@@ -624,9 +639,9 @@ static int8_t stp_cmp_designated(uint8_t port) __reentrant
 	stp_cmp = cmpBytes((__xdata uint8_t *)&stp_dbridge[port], (__xdata uint8_t *)&stp_self, 8);
 	if (stp_cmp)
 		return stp_cmp;
-	if (stp_dpid[port] == (((uint16_t)stp_pprio[port] << 8) | (port + 1)))
+	if (stp_dpid[port] == (((uint16_t)stp_pprio[port] << 8) | stp_pnum(port)))
 		return 0;
-	return stp_dpid[port] < (((uint16_t)stp_pprio[port] << 8) | (port + 1)) ? -1 : 1;
+	return stp_dpid[port] < (((uint16_t)stp_pprio[port] << 8) | stp_pnum(port)) ? -1 : 1;
 }
 
 
@@ -814,7 +829,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->bridge.ext = 0x00;
 
 	STP_O->port_prio = stp_pprio[port];
-	STP_O->port_id = port + 1;
+	STP_O->port_id = stp_pnum(port);
 	/* Message age, incremented by one second per bridge we relay through.
 	 * The timer fields are in 1/256 s on the wire, and sdcc stores uint16
 	 * little-endian, so assigning the plain second count lands the value in
@@ -898,8 +913,8 @@ static int8_t stp_msg_vs_ours(uint8_t port) __reentrant
 		return stp_cmp;
 	if (STP_I->port_prio != stp_pprio[port])
 		return STP_I->port_prio < stp_pprio[port] ? -1 : 1;
-	if (STP_I->port_id != port + 1)
-		return STP_I->port_id < port + 1 ? -1 : 1;
+	if (STP_I->port_id != stp_pnum(port))
+		return STP_I->port_id < stp_pnum(port) ? -1 : 1;
 	return 0;
 }
 
@@ -1047,7 +1062,6 @@ void stp_in(void) __banked
 		stp_loop_peer = STP_I->port_id;		/* 1-based, as we send it */
 		if (!stp_loop_peer)
 			return;
-		stp_loop_peer--;
 		/* A Port ID is (priority, number) and priority is compared
 		 * first - stp_cnf_send() puts stp_pprio[] on the wire next to
 		 * the number, so "stp port N prio" has to be able to decide
@@ -1056,10 +1070,10 @@ void stp_in(void) __banked
 		if (STP_I->port_prio != stp_pprio[port]) {
 			if (STP_I->port_prio < stp_pprio[port])
 				return;			/* peer is better: it decides */
-		} else if (stp_loop_peer < port) {
+		} else if (stp_loop_peer < stp_pnum(port)) {
 			return;
 		}
-		stp_loop_hold_peer(stp_loop_peer);
+		stp_loop_hold_peer(stp_ent_by_pnum(stp_loop_peer));
 		return;
 	}
 

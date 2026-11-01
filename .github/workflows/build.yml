@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 jobs:
   build:
@@ -40,19 +38,16 @@ jobs:
       - name: Check that every machine definition can be compiled
         run: cd branch && make machine_check
       - name: Make project (4x2/RTL8372)
-        run: cd branch && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map /tmp/branch.map
+        run: mkdir -p /tmp/branch /tmp/main && cd branch && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" && cp -r output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2/html_min /tmp/branch/
       - name: Make project (8x1/RTL8373)
-        run: cd branch && make CI=1 MACHINE="KP_9000_9XHML_X_V3_1"
+        run: cd branch && make CI=1 MACHINE="KEEPLINK_KP_9000_9XHML_X_V3_1"
       - name: Make project with the health instrumentation
-        run: cd branch && make clean && make CI=1 MACHINE="KP_9000_6XHML_X2" HEALTH=1
+        run: cd branch && make clean && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" HEALTH=1
       - name: Make main
         run: |
           ln -s ../branch/toolchain main/toolchain
           PATH="$(echo "$PWD"/branch/toolchain/sdcc-*/bin):$PATH"
-          cd main && make CI=1 MACHINE="KP_9000_6XHML_X2" && cp output/KP_9000_6XHML_X2/rtlplayground.map /tmp/main.map
+          cd main && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" && cp -r output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2/html_min /tmp/main/
       - name: Calculate bank growth
         run: |
-          sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/MAIN_\1=\3/p' /tmp/main.map | sort -u >> "$GITHUB_ENV"
-          sed -rn 's/^([XCD]SEG|(BANK[0-9])).*=\s+([0-9]+)\. bytes.*$/BRANCH_\1=\3/p' /tmp/branch.map | sort -u >> "$GITHUB_ENV"
-          du -sb main/output/KP_9000_6XHML_X2/html_min | awk '{print "MAIN_WEB="$1}' >> "$GITHUB_ENV"
-          du -sb branch/output/KP_9000_6XHML_X2/html_min | awk '{print "BRANCH_WEB="$1}' >>"$GITHUB_ENV"
+          bash branch/tools/bank_occupancy.sh KP_9000_6XHML_X2 /tmp/main /tmp/branch >> "$GITHUB_STEP_SUMMARY"
