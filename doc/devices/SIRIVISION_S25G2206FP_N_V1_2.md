@@ -5,6 +5,8 @@
 |---|---|---|---|---|---|
 | NICGIGA | S25-0402-N | No | SIRIVISION_S25G2206F_N_V1_2 | 2M | 8372N |
 
+Likely also supports the Sirivision-branded SR-S25G2206F, but this is not confirmed.
+
 ### Label specifications
 
 - **Name**:

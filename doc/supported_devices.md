@@ -38,6 +38,7 @@ The following devices have been tested and are fully working:
 | MokerLink| ZX-SWTGW218AS   | Yes     | [SWTG118AS-V2.0-16029](devices/SWTGW218AS.md)                             | 2M    | 8 + 1 |
 | MokerLink| 2G08110GSN      | No      | [SWTG018AS-A V2.0](devices/SWTG018AS_A_V2_0.md)                           | 0.5M  | 8 + 1 |
 | Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                             | 4M    | 8 + 1 |
+| Nicgiga  | SS25-0402-N     | No      | [SR S25G2206F-N-V1.2](devices/SIRIVISION_S25G2206FP_N_V1_2.md)            | 2M    | 4 + 2 |
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/ONT-S207CW-62TS-SE.md)                    | 0.5M  | 4 + 2 |
 | RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW_SWTG218ANS_V2.0.2.md)       | 2M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                             | 4M    | 4 + 2 |
