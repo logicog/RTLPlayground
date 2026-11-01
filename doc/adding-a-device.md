@@ -18,15 +18,15 @@ the PCB inside the casing and the photo shows where this is from.
 
 ![PCB](images/PSW8-25MG_pcb_label.jpg)
 
-- `<PCB_LABEL>` is `PCB-AFGW SWTG218ANS_V2.0.2_23308` — the text inside the red box in the picture.
-- `<PCB_DOC_NAME>` is `PCB-AFGW_SWTG218ANS_V2.0.2_23308`: the label with each space replaced by `_`.
+- `<PCB_IDENTIFIER>` is `PCB-AFGW SWTG218ANS_V2.0.2_23308` — the text inside the red box in the picture.
+- `<PCB_DOC_NAME>` is `PCB-AFGW_SWTG218ANS_V2.0.2_23308`: the identifier with each space replaced by `_`.
 - `<MACHINE_PCB>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308`: the `PCB_DOC_NAME` with every remaining punctuation character (hyphens, dots, ...) converted to `_`.
 - `<MACHINE_PCB_EXT>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308__POE`: `<MACHINE_PCB>` plus an extension suffix for an _optional_ add-on; see the later section for details.
 - `<MACHINE_MODEL>` is `RealHD PSW8-25MG` — the human-readable vendor and model string shown in the UI.
 - `<MACHINE>` is `REALHD_PSW8_25MG`: (`<MACHINE_MODEL>`) in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
 
 ### Quick Start
-1. Start from your `<PCB_LABEL>`, not from the printed vendor or model name: those are often misleading, and the same product name can correspond to several different PCBs.
+1. Start from your `<PCB_IDENTIFIER>`, not from the printed vendor or model name: those are often misleading, and the same product name can correspond to several different PCBs.
 2. Check whether `doc/devices/<PCB_DOC_NAME>.md` exists. If it does, your device is most likely already supported.
    - If you find a doc file that matches your `<PCB_DOC_NAME>` except for punctuation, please file a bug report so we can investigate as this should not happen.
 3. If your device's PCB is already covered then reuse the existing definition:
