@@ -2388,6 +2388,12 @@ var CONF_CMDS = [
     /^lldp\s+(on|off)$/,
     /^bw\s+(in|out)\s+\d+\s+\S+$/,
     /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
+    /^acl\s+\d{1,2}\s+\S.*$/,
+    /^acl\s+meter\s+\d{1,2}\s+\d+\s+(kbps|pps)\s+\d+(\s+ifg)?$/,
+    /^acl\s+field\s+\d{1,2}\s+(off(\s+\d{1,3})?|(raw|llc|ipv4|arp|ipv6|ip|l4)\s+\d{1,3})$/,
+    /^acl\s+default\s+(permit|drop(\s+\d)+)$/,
+    /^acl\s+counter\s+\d{1,2}\s+(mode\s+(bytes|packets)|width\s+(32|64))$/,
+    /^acl\s+gpio\s+([0-3]\s+(on|off)|polarity\s+(high|low))$/,
 ];
 
 function isConfCmd(line) {
@@ -5077,6 +5083,7 @@ var CONF_OVERWRITE = [
     /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
     /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
+    /^acl\s+\d{1,2}\b/, /^acl\s+(meter|field)\s+\d{1,2}\b/, /^acl\s+counter\s+\d{1,2}\s+(mode|width)\b/, /^acl\s+gpio\s+([0-3]|polarity)\b/, /^acl\s+default\b/,
 ];
 var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
@@ -5120,7 +5127,18 @@ function mergeConf(base, texts) {
                 conf.push(line);
                 return;
             }
+            if ((m = line.match(/^acl (\d{1,2}) off$/))) {
+                var n = +m[1];
+                do {
+                    drop(new RegExp("^acl " + n + " "));
+                    n++
+                } while (conf.some(function(c) {
+                    return c.indexOf("acl " + n + " and ") === 0
+                }));
+                return;
+            }
             if (!isConfCmd(line)) return;
+            if ((m = line.match(/^acl counter (\d{1,2}) /))) line = "acl counter " + ((+m[1]) & ~1) + line.slice(m[0].length - 1);
             if ((m = line.match(/^ingress (.+)$/))) {
                 if (/^[tua]$/.test(m[1])) {
                     drop(/^ingress /);
@@ -5173,22 +5191,33 @@ function mergeConf(base, texts) {
                     break;
                 }
             }
+            var at = conf.length,
+                mg = /^vlan \d{1,4} mgmt$/.test(line);
             for (var j = 0; j < CONF_OVERWRITE.length; j++) {
                 var rx = CONF_OVERWRITE[j];
                 if (rx.test(line)) {
                     var key = line.match(rx)[0];
-                    conf = conf.filter(function(item) {
-                        return !(item === key || (item.indexOf(key + " ") === 0 &&
-                            !/\smgmt$/.test(item) && item.indexOf(key + " name ") !== 0 && item.indexOf(key + " lldp ") !== 0));
+                    conf = conf.filter(function(item, i) {
+                        var hit = item === key || (mg && /^vlan \d{1,4} mgmt$/.test(item)) || (item.indexOf(key + " ") === 0 &&
+                            !/\smgmt$/.test(item) && item.indexOf(key + " name ") !== 0 && item.indexOf(key + " lldp ") !== 0);
+                        if (hit && i < at) at = i;
+                        return !hit;
                     });
                     break;
                 }
             }
-            if (/^vlan \d{1,4} mgmt$/.test(line)) drop(/^vlan \d{1,4} mgmt$/);
-            conf.push(line);
+            conf.splice(at, 0, line);
         });
     });
-    return conf;
+    var rules = conf.filter(function(c) {
+            return /^acl \d{1,2} /.test(c)
+        }).sort(function(a, b) {
+            return a.split(" ")[1] - b.split(" ")[1]
+        }),
+        k = 0;
+    return conf.map(function(c) {
+        return /^acl \d{1,2} /.test(c) ? rules[k++] : c
+    });
 }
 
 function writeConfig(txt, title, fromLog) {
