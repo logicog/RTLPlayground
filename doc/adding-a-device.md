@@ -343,7 +343,7 @@ ln -s KP_9000_6XH_X2_init.c machine/pcb/MY_BOARD_1_0_init.c
 ## Step 3: build and verify
 
 ```
-make MACHINE=MY_BOARD_1_0
+make MACHINE=MY_BOARD_1_0 CI=1
 ```
 
 The generated flash image appears as `output/rtlplayground-<version>-MY_BOARD_1_0.bin`. An
