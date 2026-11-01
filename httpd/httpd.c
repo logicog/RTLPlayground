@@ -885,6 +885,8 @@ void httpd_appcall(void)
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
+		if (s->fw_reset_pending && uip_acked())
+			reset_chip();
 	} else if (uip_aborted() || uip_timedout()) {
 		dbg_string("Connection aborted\n");
 		uip_close();
@@ -1067,9 +1069,8 @@ void httpd_appcall(void)
 				clear_command_history();
 				send_mtu(); // dummy response
 			} else if (is_word(q, "/reset")) {
-				uip_close();
-				delay(1000); //wait for the close packet to be sent, otherwise the browser will retry
-				reset_chip();
+				slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+				s->fw_reset_pending = 1;
 			} else {
 				send_not_found();
 			}
