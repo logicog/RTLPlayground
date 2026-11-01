@@ -12,8 +12,8 @@ make MACHINE=<MACHINENAME>
 Names are derived from the board, not invented.
 
 * <PCB silkscreen> is the name used for documentation. Take the silkscreen
-as printed and replace `<space>` with `_`. It names doc/devices/<PCB silkscreen>.md
-and its photo folder doc/devices/photos/<PCB silkscreen>/. So for example `S25G2206FP V1.1` becomes
+as printed and replace `<space>` with `_`. It names `doc/devices/<PCB silkscreen>.md`
+and its photo folder `doc/devices/photos/<PCB silkscreen>/`. So for example `S25G2206FP V1.1` becomes
 `S25G2206FP_V1.1`; `PCB-K0402W-V3.0` stays as `PCB-K0402W-V3.0`.
 * <PCB model> is the name used for machine/pcb/ file names and needs to be more tool friendly.
 It starts from the same silkscreen and does the further conversion: <space> and all
@@ -40,7 +40,7 @@ two `_` (underscores). Additional plugins are appended with a single underscore 
 The current known list of plugins is:
 * POE: POE
 * Reset/VLAN-switch: _VLANSW
-* Special Case*: _UNMANAGED
+* Special Case[^1]: _UNMANAGED
 
 Uplink port configurations:
 * 1xSFP+1xRJ45: _1S1C
@@ -49,7 +49,7 @@ Uplink port configurations:
 
 For example for `MY_BOARD_V1.0.c` the 1SFP, 1RJ, POE variant would be: `MY_BOARD_V1.0__1S1C_POE.c`
 
-Special Case*: This is only used in the situation where it is necessary to disambiguate between a
+[^1]: This is only used in the situation where it is necessary to disambiguate between a
 managed and unmanaged device that share the same PCB but do not share the same pin map. In all cases
 the managed switch assumes the base name and the unmanaged has _UNMANAGED appended.
 
