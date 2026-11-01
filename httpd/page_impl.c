@@ -647,15 +647,17 @@ void send_lag(void)
 
 	char_to_html('[');
 	for (uint8_t l=0; l < 4; l++) {
-		slen += strtox(outbuf + slen, "{\"lagNum\":");
+		slen += strtox(outbuf + slen, "{" JSONQUOTE("lagNum") ":");
 		itoa_html(l);
-		slen += strtox(outbuf + slen, ",\"members\":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("members") ":[");
 		uint16_t ports = port_lag_members_get(l);
-		for (uint8_t i = 0; i < 16; i++) {
-			bool_to_html(!!(ports & 0x8000));
+		for (uint8_t i = 16; i > 0; i--) {
+			if(!!(ports & 0x8000)) {
+				json_add_array_uint_item(machine.log_to_phys_port[i-1]);
+			}
 			ports <<= 1;
 		}
-		slen += strtox(outbuf + slen, "\",\"hash\":\"");
+		slen += strtox(outbuf + slen, "]," JSONQUOTE("hash") ":\"");
 		reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (l << 2));
 		sfr_data_to_html();
 		slen += strtox(outbuf + slen, "\"},");

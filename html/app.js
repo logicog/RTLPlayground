@@ -4357,9 +4357,9 @@ function lagLoad() {
         s.forEach(function(l) {
             var g = l.lagNum + 1;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            var members = lacpCfg[g] || parseInt(l.members, 2);
+            var members = lacpCfg[g] || l.members;
             for (var p = 1; p <= S.n; p++)
-                $("lg" + g + "p" + p).checked = !!((members >> S.physToLog[p - 1]) & 1);
+                $("lg" + g + "p" + p).checked = members.includes(p);
             var hash = parseInt(l.hash, 16);
             HASHF.forEach(function(f, i) {
                 $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)
