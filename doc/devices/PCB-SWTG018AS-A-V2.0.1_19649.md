@@ -11,12 +11,13 @@
 The following is a documentation for the unmanaged switch marked as `PCB-SWTG018AS-A V2.0.1_19649`.
 It is e.g. sold under the Ampcom brand, but no branh-markings are found on the device.
 
-The original software is running UART on 9600 baud rate. 
+The original software is running UART on 9600 baud rate. The UART is not working, however, as the resistors R53 and R52 are not populated on the board, so the signals from the CPU are not connected to the header pins for connector J1. If you want to make the connector work, you need to provide 0 ohm resistor for R52 and R53 (or create a solder connection).
 
 Using a SOIC clamp in-board is the only method for initial installation.
 
-The board has a single flash chips `BS` with 2M-byte size. The front switch, switches between the two flash chips.
-These can be programed independently by using said switch - so it is e.g. possible to run the original and new firmware in parallel.
+The board has 3 SOIC-8 chips (U2, U7, U8) however only one is a 2M-byte chip. The correct chip to program is the one marked U2.
+
+Correct build is achieved using `make MACHINE=make MACHINE=MOKERLINK_ZX_SWTGW218AS`.
 
 ### Label specifications
 
