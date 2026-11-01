@@ -19,7 +19,7 @@ The following devices have been tested and are fully working:
 | hongyavision | HYWS-SGT0204S | No    | [2G5F4_10G2_V1.01](devices/2G5F4_10G2_V1.01.md)                                       | 0.5M  | 4 + 2 |
 | hongyavision | LG-SG5T1    | No      | [PCB-SWTG024AS-V2.0_16895](devices/PCB-SWTG024AS-V2.0_16895.md)                       | 0.5M  | 5 + 1 |
 | Horaco   | HC-SWTG124AS    | Yes     | [PCB-SWTG024AS-A-V2.0.1_19650](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)               | 2M    | 4 + 2 |
-| Horaco   | HC-SWTGW215AS   | Yes     | [PCB-SWTG024AS-A-V2.0.1_19650-HORACO](devices/PCB-SWTG024AS-A-V2.0.1_19650-HORACO.md) | ?     | 5 + 1 |
+| Horaco   | HC-SWTGW215AS   | Yes     | [SWTG024AS-A-V2.0.1_19650_5C_1SFP](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)           | 2M    | 5 + 1 |
 | Horaco   | HC-SWTGW218AS   | Yes     | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               |       | 8 + 1 |
 | Horaco   | HC-SWTGW218AS   | Yes     | [SWTG118AS-V2.1](devices/PCB-SWTG118AS-V2.0-16029.md)                                 | 2M    | 8 + 1 |
 | Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](devices/PCB-SL310S-4T1T1X-V1.0.1-24107.md)           | 2M    | 5 + 1 |
@@ -50,7 +50,7 @@ The following devices have been tested and are fully working:
 | Sodola   | SL-SWTGW215AS-D | Yes     | [SWTG115AS-V2.1-17443](devices/PCB-SWTG115AS-V2.1-17443.md)                           | 2M    | 5 + 1 |
 | Sodola   | SL902-SWTG024AS | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                                         |       | 4 + 2 |
-| TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1-REV.A1](devices/270-NB1-MS206B004A1-REV.A1.md)                   | 2M    | 4 + 2 |
+| TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1_REV.A1](devices/270-NB1-MS206B004A1_REV.A1.md)                   | 2M    | 4 + 2 |
 | XikeStor | SKS3200M-4GPY2XF| Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.0-16029.md)                           | 2M    | 8 + 1 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
