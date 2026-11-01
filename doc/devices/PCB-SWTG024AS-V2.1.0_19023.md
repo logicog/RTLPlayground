@@ -1,16 +1,28 @@
 ### SWTG024AS-V2.1
 
 ## Brands
-|Brand|Type|Managed|PCB|Flash|Chip RTL|
-|---|---|---|---|---|---|
-| Xikestor | SKS3200-4E2X    | Yes | PCB-SWTG024AS-V2.1.0_19023 | 25Q16A | 8372N |
-| Solola   | SL902-SWTG024AS | Yes | PCB-SWTG024AS-V2.1.0_19023 |        | 8372N |
+|Brand|Type|Managed|PCB|Flash|Chip RTL|Ports|
+|---|---|---|---|---|---|---|
+| Xikestor | SKS3200-4E2X     | Yes | PCB-SWTG024AS-V2.1.0_19023 | 25Q16A         | 8372N | 4 + 2 |
+| Solola   | SL902-SWTG024AS  | Yes | PCB-SWTG024AS-V2.1.0_19023 |                | 8372N | 4 + 2 |
+| Sodola   | SL902-SWTGW215AS | Yes | PCB-SWTG024AS-V2.1.0_19023 | W25Q16JV (2MB) | 8372N | 5 + 1 |
+
+## Variants
+The PCB is populated in two variants:
+
+| Variant | Ports | Build |
+|---|---|---|
+| 2xSFP | 4 × RJ45 + 2 × SFP+ | `make MACHINE=PCB_SWTG024AS_V2_1_0` |
+| 1xSFP+1xRJ45 | 5 × RJ45 + 1 × SFP+ | `make MACHINE=SODOLA_SL902_SWTGW215AS` |
 
 ### Label specifications
 
-- **Ports**:
+- **Ports** (2xSFP):
   - 4 × RJ45: 10/100/1000/2500 Mbps
   - 2 × SFP+: 1000/2500/10000 Mbps
+- **Ports** (1xSFP+1xRJ45):
+  - 5 × RJ45: 10/100/1000/2500 Mbps
+  - 1 × SFP+: 1000/2500/10000 Mbps
 - **Power**: 1A @ 12V DC
 
 #### Xikestore SKS-3200-4E2X label
@@ -25,6 +37,8 @@
 
 **Board markings**
 - Top silkscreen: PCB-SWTG024AS-V2.1.0_19023
+
+On the Sodola SL902-SWTGW215AS (1xSFP+1xRJ45) the reset button is on GPIO48 (active low).
 
 Top side
 
