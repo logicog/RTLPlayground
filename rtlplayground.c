@@ -815,9 +815,9 @@ void print_reg(uint16_t reg)
 // Print the physical port of a logical port number.
 void print_phys_port(uint8_t port)
 {
-	if (port < CPU_PORT)
+	if (port < CPU_LOGICAL_PORT)
 		write_char(machine.log_to_phys_port[port] + '0');
-	else if (port == CPU_PORT)
+	else if (port == CPU_LOGICAL_PORT)
 		print_string("CPU");
 	else {
 		print_string("UNKNOWN ");

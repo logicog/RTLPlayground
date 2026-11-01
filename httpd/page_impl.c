@@ -516,8 +516,8 @@ void send_l2(uint16_t idx)
 
 			port |= (sfr_data[3] & 0x3) << 2;
 
-			if ( port == CPU_PORT )
-				itoa_html(0);
+			if ( port == CPU_LOGICAL_PORT )
+				itoa_html(CPU_PHYSICAL_PORT);
 			else
 				itoa_html(machine.log_to_phys_port[port]);
 

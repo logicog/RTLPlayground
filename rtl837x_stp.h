@@ -21,7 +21,7 @@ void stp_counters_clear(void) __banked __reentrant;
 /* Tick rate of stp_timers(), also used by the web UI. */
 #define STP_HZ 50
 
-#define STP_PORTS	(CPU_PORT + 1)
+#define STP_PORTS	(CPU_LOGICAL_PORT + 1)
 #define STP_LAG_BASE	STP_PORTS
 #define STP_LAG_COUNT	4
 #define STP_ENTITIES	(STP_LAG_BASE + STP_LAG_COUNT)
