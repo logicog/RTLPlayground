@@ -6,38 +6,43 @@ the build selects the definition by name, and CI compiles every file it finds.
 
 To compile for your added device, do:
 ```
-make MACHINE=<MACHINENAME>
+make MACHINE=<NAME>
 ```
-## Choosing a name
-Names are derived from the board, not invented.
+## Names
+Names are derived from the board, not invented. Using an example device here we can see how
+to construct the name.
 
-* `<PCB silkscreen>` is the name used for documentation. Take the silkscreen
-as printed and replace `<space>` with `_`. It names `doc/devices/<PCB silkscreen>.md`
-and its photo folder `doc/devices/photos/<PCB silkscreen>/`. So for example `S25G2206FP V1.1` becomes
-`S25G2206FP_V1.1`; `PCB-K0402W-V3.0` stays as `PCB-K0402W-V3.0`.
-* `<PCB model>` is the name used for machine/pcb/ file names and needs to be more tool friendly.
-It starts from the same silkscreen and does the further conversion: <space> and all
-punctuation become `_`. So for example machine/pcb/<PCB model>.c for `PCB-K0402W-V3.0` is
-`machine/pcb/PCB_K0402W_V3_0.c`. Vendor names are not part of it. A board with
-no identifying PCB marking is called `NONAME_<model_name>`.
-When differently wired boards share one PCB model, the vendor is appended to disambiguate
-(<PCB model>_<vendor>).
-* `<machine>` is <vendor>_<model name>. If the same <vendor>_<model name> already exists
-for a different PCB, append the PCB model i.e.: <vendor>_<model name>_<PCB model>.
-* `MACHINE_MODEL` is the human-readable "<Vendor Name> <model_name>".
-When several boards share one configuration, one PCB is the baseline and the
-others symlink to it. The baseline is the lowest revision of the same major
-model, or alphabetically earliest major model when they differ. Boards that
-are electrically different but carry the same PCB model are distinguished in
-the baseline name by <PCB model>_<vendor>.
+The example uses `RealHD` as the vendor Name and `PSW8-25MG` as the switch model (these are from
+labels on the outside of the device itself/the box it came from/the advert). The other text is from
+the PCB inside the casing and the photo shows where this is from.
 
-In addition to the PCB and model, devices can have "plugins" (usually in a literal sense)
-and are usually additional boards that add functionality to the base model. They are
-also used to clarify differences in the Uplink/10GBE port population on boards.
-These are represented by the following suffixes, appended onto the <PCB model> with
-two `_` (underscores). Additional plugins are appended with a single underscore (`_`)
+![PCB](images/PSW8-25MG_pcb_label.jpg)
 
-The current known list of plugins is:
+- `<PCB_LABEL>` is `PCB-AFGW SWTG218ANS_V2.0.2_23308` — the text inside the red box in the picture.
+- `<PCB_DOC_NAME>` is `PCB-AFGW_SWTG218ANS_V2.0.2_23308`: the label with each space replaced by `_`.
+- `<MACHINE_PCB>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308`: the `PCB_DOC_NAME` with every remaining punctuation character (hyphens, dots, ...) converted to `_`.
+- `<MACHINE_PCB_EXT>` is `PCB_AFGW_SWTG218ANS_V2.0.2_23308__POE`: `<MACHINE_PCB>` plus an extension suffix for an _optional_ add-on; see the later section for details.
+- `<MACHINE_MODEL>` is `RealHD PSW8-25MG` — the human-readable vendor and model string shown in the UI.
+- `<MACHINE>` is `REALHD_PSW8_25MG`: `<MACHINE_MODEL>` in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
+
+### Quick Start
+1. Start from your `<PCB_LABEL>`, not from the printed vendor or model name: those are often misleading, and the same product name can correspond to several different PCBs.
+2. Check whether `doc/devices/<PCB_DOC_NAME>.md` exists. If it does, your device is most likely already supported.
+   - If you find a doc file that matches your `<PCB_DOC_NAME>` except for punctuation, please file a bug report so we can investigate as this should not happen.
+3. If your device's PCB is already covered then reuse the existing definition:
+   - run `ls machine/pcb/<MACHINE_PCB>*.c | grep -v "_init.c"` to list the supported variants and pick the one matching your PCB
+   - create the symlink `ln -s pcb/<MACHINE_PCB>.c machine/<MACHINE>.c` or `ln -s pcb/<MACHINE_PCB_EXT>.c machine/<MACHINE>.c`
+   - write `machine/<MACHINE>.h`, and symlink `_init.c` as needed (details below)
+   - build with `make MACHINE=<MACHINE> CI=1` and verify on your hardware
+   - when everything works, update the documentation and open a pull request.
+
+### Extension suffixes
+These are usually additional boards that add functionality to the base model. They are also 
+used to clarify differences in the Uplink/10GBE port population on boards where the PCB markings
+are insufficient to do so. These are represented by the following suffixes, appended onto the 
+`<MACHINE_PCB>` with two `_` (underscores). Additional plugins are appended with a single underscore (`_`).
+
+The current list of suffixes is:
 * POE: POE
 * Reset/VLAN-switch: _VLANSW
 * Special Case[^1]: _UNMANAGED
@@ -53,130 +58,6 @@ For example for `MY_BOARD_V1.0.c` the 1SFP, 1RJ, POE variant would be: `MY_BOARD
 managed and unmanaged device that share the same PCB but do not share the same pin map. In all cases
 the managed switch assumes the base name and the unmanaged has _UNMANAGED appended.
 
-## Discovering LED's
-With the stock firmware still on the device, you can use the UART console to discover the pinout:
-```
-$ ./tools/led_gpio_utils/dec_leds_from_rtl837x_uart.py  --port=/dev/ttyUSB0 --baudrate=57600
-Reading 22 registers from /dev/ttyUSB0 at 57600 baud, about 17 s ...
-Decoding ports 0..8 (from model 0x83737000)
-LED pad Configuration:
-00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 11 12 13 14 15 16 17 18 19 1a 1b
-00 01 04 05 08 09 0c 09 0d 10 11 0e 14 11 12 15 15 16 18 19 1a 19 1d 1e 1c 1d 20 21
-.led_mux = { 0x00, 0x01, 0x04, 0x05, 0x08, 0x09, 0x0c, 0x09, 0x0d, 0x10, 0x11, 0x0e, 0x14, 0x11, 0x12, 0x15, 0x15, 0x16, 0x18, 0x19, 0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21 },
-
-LED-set Configuration:
-LED-ID         0               1               2               3
-SET 0:     00141           00174           01000           00141
-SET 1:     00155           10140           00041           01800
-SET 2:     00170           00144           40141           10140
-SET 3:     00400           00200           f013f           f007f
-Port 0: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 1: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 2: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 3: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 4: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 5: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 6: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 7: SET 0: ( 2G5 LINK ACT), ( 1G 100M 10M LINK ACT), ( DUPLEX), ( 2G5 LINK ACT)
-Port 8: SET 1: ( 2G5 1G 100M LINK ACT), ( 10G LINK ACT), ( 2G5 LINK), ( COL DUPLEX)
-
-
-        .led_sets = { { LEDS_2G5 | LEDS_LINK | LEDS_ACT,
-                        LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
-                        LEDS_DUPLEX,
-                        LEDS_2G5 | LEDS_LINK | LEDS_ACT
-                      },
-                      { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
-                        LEDS_10G | LEDS_LINK | LEDS_ACT,
-                        LEDS_2G5 | LEDS_LINK,
-                        LEDS_COL | LEDS_DUPLEX
-                      },
-                      { LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
-                        LEDS_1G | LEDS_LINK | LEDS_ACT,
-                        LEDS_5G | LEDS_2G5 | LEDS_LINK | LEDS_ACT,
-                        LEDS_10G | LEDS_LINK | LEDS_ACT
-                      },
-                      { LEDS_TX,
-                        LEDS_RX,
-                        LEDS_10G | LEDS_TWO_PAIR_5G | LEDS_5G | LEDS_TWO_PAIR_2G5 | LEDS_2G5 | LEDS_TWO_PAIR_1G | LEDS_1G | LEDS_500M | LEDS_100M | LEDS_10M | LEDS_ACT,
-                        LEDS_10G | LEDS_TWO_PAIR_5G | LEDS_5G | LEDS_TWO_PAIR_2G5 | LEDS_2G5 | LEDS_TWO_PAIR_1G | LEDS_1G | LEDS_500M | LEDS_100M | LEDS_10M | LEDS_LINK
-                      }
-                },
-
-Pin MUX Configuration:
-PIN_MUX_0 (0x7f8c) = 0x20db6880   pads 0-29: 0 = LED function, 1 = GPIO
-PIN_MUX_1 (0x7f90) = 0x40000041   one or two bits per pin, see below
-PIN_MUX_2 (0x7f94) = 0x00000000   pins 30, 52-54: 0 = GPIO, 1 = ACL function
-PIN_GLB_IO_EN (0x65dc) = 0x7f24977f
-
-Pin      Field             Value    Function
-GPIO0    PIN_MUX_0[0]      0        LED0
-GPIO1    PIN_MUX_0[1]      0        LED1
-GPIO2    PIN_MUX_0[2]      0        LED2
-GPIO3    PIN_MUX_0[3]      0        LED3
-GPIO4    PIN_MUX_0[4]      0        LED4
-GPIO5    PIN_MUX_0[5]      0        LED5
-GPIO6    PIN_MUX_0[6]      0        LED6
-GPIO7    PIN_MUX_0[7]      1        GPIO
-GPIO8    PIN_MUX_0[8]      0        LED8
-GPIO9    PIN_MUX_0[9]      0        LED9
-GPIO10   PIN_MUX_0[10]     0        LED10
-GPIO11   PIN_MUX_0[11]     1        GPIO
-GPIO12   PIN_MUX_0[12]     0        LED12
-GPIO13   PIN_MUX_0[13]     1        GPIO
-GPIO14   PIN_MUX_0[14]     1        GPIO
-GPIO15   PIN_MUX_0[15]     0        LED15
-GPIO16   PIN_MUX_0[16]     1        GPIO
-GPIO17   PIN_MUX_0[17]     1        GPIO
-GPIO18   PIN_MUX_0[18]     0        LED18
-GPIO19   PIN_MUX_0[19]     1        GPIO
-GPIO20   PIN_MUX_0[20]     1        GPIO
-GPIO21   PIN_MUX_0[21]     0        LED21
-GPIO22   PIN_MUX_0[22]     1        GPIO
-GPIO23   PIN_MUX_0[23]     1        GPIO
-GPIO24   PIN_MUX_0[24]     0        LED24
-GPIO25   PIN_MUX_0[25]     0        LED25
-GPIO26   PIN_MUX_0[26]     0        LED26
-GPIO27   PIN_MUX_0[27]     0        LED27
-GPIO28   PIN_MUX_0[28]     0        SYS_LED
-GPIO29   PIN_MUX_0[29]     1        GPIO
-GPIO30   PIN_MUX_2[3]      0        GPIO
-GPIO31   PIN_MUX_1[0]      1        UART0_TX
-GPIO32   PIN_MUX_1[0]      1        UART0_RX
-GPIO33   PIN_MUX_1[2]      0        GPIO_INT
-GPIO34   PIN_MUX_1[3]      0        MDC0
-GPIO35   PIN_MUX_1[4]      0        MDIO0
-GPIO36   PIN_MUX_1[30]     1        GPIO
-GPIO37   -                 -        GPIO (no mux field)
-GPIO38   -                 -        GPIO (no mux field)
-GPIO39   PIN_MUX_1[29]     0        I2C_SDA4
-GPIO40   PIN_MUX_1[6:5]    0b10     I2C_SCL3
-GPIO41   PIN_MUX_1[6:5]    0b10     I2C_SDA3
-GPIO42   -                 -        SPI flash (no mux field)
-GPIO43   -                 -        SPI flash (no mux field)
-GPIO44   -                 -        SPI flash (no mux field)
-GPIO45   -                 -        SPI flash (no mux field)
-GPIO46   PIN_MUX_1[8:7]    0b00     GPIO
-GPIO47   PIN_MUX_1[10:9]   0b00     GPIO
-GPIO48   PIN_MUX_1[12:11]  0b00     GPIO
-GPIO49   PIN_MUX_1[14:13]  0b00     GPIO
-GPIO50   PIN_MUX_1[16:15]  0b00     GPIO
-GPIO51   PIN_MUX_1[18:17]  0b00     GPIO
-GPIO52   PIN_MUX_2[0]      0        GPIO
-GPIO53   PIN_MUX_2[1]      0        GPIO
-GPIO54   PIN_MUX_2[2]      0        GPIO
-GPIO55   PIN_MUX_1[19]     0        PTP_CLK125M_IN
-GPIO56   PIN_MUX_1[20]     0        PTP_CLK_OUT
-GPIO57   PIN_MUX_1[21]     0        PTP_TOD_OUT
-GPIO58   PIN_MUX_1[22]     0        PTP_PPS_OUT
-GPIO59   PIN_MUX_1[23]     0        PTP_TOD_IN
-GPIO60   PIN_MUX_1[24]     0        PTP_PPS_IN
-GPIO61   PIN_MUX_1[27]     0        SYNCELOCK0
-GPIO62   PIN_MUX_1[28]     0        SYNCELOCK1
-GPIO63   -                 -        no mux field of its own
-```
-Further details can be found in [led_gpio_utils/README.md].
-
 ## What a new device consists of
 
 | File | Purpose |
@@ -190,6 +71,7 @@ Further details can be found in [led_gpio_utils/README.md].
 `<machine>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
 passed exactly as spelled on the command line: `make MACHINE=MY_BOARD_1_0`
 needs `machine/MY_BOARD_1_0.c` and `machine/MY_BOARD_1_0.h`.
+- when everything works, update the documentation and open a pull request.
 
 ## Step 1: the board header
 
