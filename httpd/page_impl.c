@@ -53,20 +53,12 @@ extern __xdata uint8_t sfp_options[2];
 extern __xdata uint16_t lldp_logical_port_status;
 extern __xdata bool lldp_enabled;
 
-__code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
 __code const uint8_t * __code const HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
 // Convert uint8_t to ascii HEX char push on html-buffer.
 void charhex_to_html(char c)
 {
 	outbuf[slen++] = itohex(c);
-}
-
-
-// Convert (uint8_t) bool to ascii '0' or '1' char push on html-buffer.
-void bool_to_html(char c)
-{
-	outbuf[slen++] = c ? '1' : '0';
 }
 
 
@@ -90,35 +82,6 @@ void json_char_to_html(uint8_t c)
 	outbuf[slen++] = c;
 }
 
-
-//  Convert uint8_t to ascii HEX char.
-void byte_to_html(uint8_t val)
-{
-	uint8_t cnt = 2;
-	do {
-		val = (val >> 4) | (val << 4);
-		charhex_to_html(val);
-		cnt -= 1;
-	} while(cnt);
-}
-
-/* Converts a uint8_t to raw string.
-   Suppress leading zeros.
-*/
-void itoa_html(uint8_t v)
-{
-	uint8_t t = (v / 100);
-	// when print_zeros is not zero, we know that a non-zero number has printed.
-	// That have to print all the next numbers.
-	uint8_t print_zeros = t;
-	if (print_zeros)
-		char_to_html('0' + t);
-	t = (v / 10) % 10;
-	print_zeros |= t;
-	if (print_zeros)
-		char_to_html('0' + t);
-	char_to_html('0' + (v % 10));
-}
 
 void itoa16_html(uint16_t v) /* up to five digits (65535) */
 {
