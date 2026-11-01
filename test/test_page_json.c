@@ -117,12 +117,12 @@ static void t_vlanlist(void)
 
 static const uint8_t base_mac[6] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x00 };
 
-static void put(uint16_t idx, uint8_t last, uint16_t vid, uint8_t port, bool st)
+static void put(uint16_t idx, uint8_t last, uint16_t vid, uint8_t logicalport, bool st)
 {
 	uint8_t m[6];
 	memcpy(m, base_mac, 6);
 	m[5] = last;
-	hw_l2_put(idx, m, vid, port, st);
+	hw_l2_put(idx, m, vid, logicalport, st);
 }
 
 static void t_l2(void)
@@ -135,8 +135,8 @@ static void t_l2(void)
 	send_l2(0);
 	CHECK(count("\"mac\":") == 4, "three entries, and the first one again: that repeat is how the page sees the wrap");
 	CHECK(count("\"idx\":\"0010\"") == 2 && strstr(body(), "\"idx\":\"0010\"}]"), "the repeat closes the list");
-	CHECK(has("{\"vlan\":\"001\",\"mac\":\"00:11:22:33:44:01\",\"type\":\"l\",\"port\":4,\"lag\":0,\"idx\":\"0010\"}"), "learned entry, VLAN, port and index");
-	CHECK(has("\"mac\":\"00:11:22:33:44:02\",\"type\":\"s\",\"port\":9"), "static entry on the CPU port");
+	CHECK(has("{\"vlan\":\"001\",\"mac\":\"00:11:22:33:44:01\",\"type\":\"l\",\"port\":5,\"lag\":0,\"idx\":\"0010\"}"), "learned entry, VLAN, port and index");
+	CHECK(has("\"mac\":\"00:11:22:33:44:02\",\"type\":\"s\",\"port\":0"), "static entry on the CPU port");
 	CHECK(has("\"idx\":\"08f0\""), "an index above 0x800 keeps its high bit");
 	CHECK(balanced(), "valid JSON");
 
