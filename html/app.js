@@ -4183,13 +4183,12 @@ function isoLoad() {
         isoAllow = s;
         if ($("isotbl").dataset.dirty) return;
         s.forEach(function(e) {
-            var m = parseInt(e.allow, 16);
             for (var c = 1; c <= S.n; c++) {
                 var b = isoBox(e.portNum, c);
-                if (b) b.checked = !!((m >> S.physToLog[c - 1]) & 1);
+                if (b) b.checked = e.allow.includes(c);
             }
             var cpu = isoBox(e.portNum, S.n + 1);
-            if (cpu) cpu.checked = !!(m & 0x200);
+            if (cpu) cpu.checked = e.allow.includes(0);
         });
         isoMark();
     });

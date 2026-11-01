@@ -875,14 +875,19 @@ void send_isolation(void)
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	char_to_html('[');
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		slen += strtox(outbuf + slen, "{\"portNum\":");
+		slen += strtox(outbuf + slen, "{" JSONQUOTE("portNum") ":");
 		itoa_html(machine.log_to_phys_port[i]);
-		slen += strtox(outbuf + slen, ",\"allow\":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("allow") ":[");
 		allow = port_isolation_get(i);
-		byte_to_html(allow >> 8);
-		byte_to_html(allow & 0xff);
-		char_to_html('"');
-		char_to_html('}');
+		for (uint8_t j = MACHINE_MIN_PORT; j <= MACHINE_MAX_PORT; j++) {
+			if ((allow >> j) & 1) {
+				json_add_array_uint_item(machine.log_to_phys_port[j]);
+			}
+		}
+		if((allow >> CPU_LOGICAL_PORT) & 1)
+			json_add_array_uint_item(CPU_PHYSICAL_PORT);
+		
+		slen += strtox(outbuf + slen, "]}");
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
 	}
