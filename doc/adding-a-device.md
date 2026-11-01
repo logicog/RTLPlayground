@@ -11,18 +11,18 @@ make MACHINE=<MACHINENAME>
 ## Choosing a name
 Names are derived from the board, not invented.
 
-* <PCB silkscreen> is the name used for documentation. Take the silkscreen
+* `<PCB silkscreen>` is the name used for documentation. Take the silkscreen
 as printed and replace `<space>` with `_`. It names `doc/devices/<PCB silkscreen>.md`
 and its photo folder `doc/devices/photos/<PCB silkscreen>/`. So for example `S25G2206FP V1.1` becomes
 `S25G2206FP_V1.1`; `PCB-K0402W-V3.0` stays as `PCB-K0402W-V3.0`.
-* <PCB model> is the name used for machine/pcb/ file names and needs to be more tool friendly.
+* `<PCB model>` is the name used for machine/pcb/ file names and needs to be more tool friendly.
 It starts from the same silkscreen and does the further conversion: <space> and all
 punctuation become `_`. So for example machine/pcb/<PCB model>.c for `PCB-K0402W-V3.0` is
 `machine/pcb/PCB_K0402W_V3_0.c`. Vendor names are not part of it. A board with
 no identifying PCB marking is called `NONAME_<model_name>`.
 When differently wired boards share one PCB model, the vendor is appended to disambiguate
 (<PCB model>_<vendor>).
-* <machine> is <vendor>_<model name>. If the same <vendor>_<model name> already exists
+* `<machine>` is <vendor>_<model name>. If the same <vendor>_<model name> already exists
 for a different PCB, append the PCB model i.e.: <vendor>_<model name>_<PCB model>.
 * `MACHINE_MODEL` is the human-readable "<Vendor Name> <model_name>".
 When several boards share one configuration, one PCB is the baseline and the
