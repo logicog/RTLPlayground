@@ -7,8 +7,8 @@
 #include "cmd_parser.h"
 #include "machine.h"
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
+#pragma codeseg BANK4
+#pragma constseg BANK4
 
 #define DS_IP_OFFSET	(12 + RTL_TAG_SIZE + VLAN_TAG_SIZE + 2)
 #define DS_BOOTP_MIN	240
