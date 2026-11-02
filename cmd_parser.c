@@ -10,8 +10,8 @@
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
-#include "rtl837x_phy.h"
-#include "rtl837x_regs.h"
+#include "rtlos_phy.h"
+#include "rtlos_regs.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_lacp.h"
@@ -523,7 +523,11 @@ void parse_lag(void)
 				members >>= 1;
 			}
 			print_string(" (hash: 0x"); 
+#if SOC_FAMILY == RTL836X
+			reg_read_m(RTL836x_TRUNK_CTRL_REG);
+#else
 			reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (i << 2));
+#endif
 			print_byte(sfr_data[3]);
 			print_string(")\n");
 		}
@@ -848,6 +852,20 @@ void parse_mirror(void)
 	__xdata uint16_t tx_pmask = 0;
 
 	if (cmd_compare(1, "status")) {
+#if SOC_FAMILY == RTL836X
+		reg_read_m(RTL836x_MIRROR_CTRL_REG);
+		uint16_t mc = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		print_string((mc & (RTL836x_MIRROR_RX_BIT | RTL836x_MIRROR_TX_BIT)) ? "Enabled: " : "NOT Enabled: ");
+		print_string("Mirroring port: ");
+		print_phys_port((mc >> RTL836x_MIRROR_MONITOR_SHIFT) & 0xf);
+		reg_read_m(RTL836x_MIRROR_SRC_PMSK_REG);
+		uint16_t msrc = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		print_string(", Port mask RX: ");
+		print_short((mc & RTL836x_MIRROR_RX_BIT) ? msrc : 0);
+		print_string(", Port mask TX: ");
+		print_short((mc & RTL836x_MIRROR_TX_BIT) ? msrc : 0);
+		write_char('\n');
+#else
 		reg_read_m(RTL837x_MIRROR_CTRL);
 		uint8_t mPort = sfr_data[3];
 		if (mPort & 1) {
@@ -867,6 +885,7 @@ void parse_mirror(void)
 		print_string(", Port mask TX: ");
 		print_short(m);
 		write_char('\n');
+#endif
 		return;
 	} else if (cmd_compare(1, "off")) {
 		port_mirror_del();
@@ -1029,8 +1048,19 @@ void parse_mtu(void)
 
 	if (cmd_compare(1, "show")) {
 		for (p = MACHINE_MIN_PORT; p <= MACHINE_MAX_PORT; p++) {
+#if SOC_FAMILY == RTL836X
+			reg_read_m(RTL836x_SWC0_REG);
+			uint16_t mtu;
+			switch ((SFR_DATA_8 >> 5) & 0x3) {
+			case 1:  mtu = 1536; break;
+			case 2:  mtu = 1552; break;
+			case 3:  mtu = 16000; break;
+			default: mtu = 1522; break;
+			}
+#else
 			reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8));
 			uint16_t mtu = SFR_DATA_U16 & 0x3fff;
+#endif
 			print_string("Port "); print_phys_port(p);
 			write_char(' '); print_short(mtu); write_char('\n');
 		}
@@ -1049,8 +1079,28 @@ void parse_mtu(void)
 		cmd_error("MTU must be 64..16383\n");
 		return;
 	}
+#if SOC_FAMILY == RTL836X
+	{
+		uint8_t code;
+		if (atoi_results_short <= 1522)
+			code = 0;
+		else if (atoi_results_short <= 1536)
+			code = 1;
+		else if (atoi_results_short <= 1552)
+			code = 2;
+		else
+			code = 3;
+		uint16_t v;
+		reg_read_m(RTL836x_SWC0_REG);
+		v = (uint16_t)(SFR_DATA_U16 & ~(uint16_t)RTL836x_SWC0_MAX_LENGTH_MASK);
+		v |= (uint16_t)((uint16_t)code << RTL836x_SWC0_MAX_LENGTH_SHIFT);
+		REG_SET(RTL836x_SWC0_REG, v);
+		print_string(" (global max-frame size)");
+	}
+#else
 	REG_WRITE(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) p << 8), (atoi_results_short >> 10) & 0xf, (atoi_results_short >> 2) & 0xff,
 		  ((atoi_results_short & 0x3) << 6) | ((atoi_results_short >> 8) & 0x3f), atoi_results_short & 0xff);
+#endif
 	write_char('\n');
 	return;
 
@@ -1499,6 +1549,14 @@ void parse_passwd(void)
 
 void parse_eee(void)
 {
+#if SOC_FAMILY == RTL836X
+	/* The RTL8367B EEE MAC registers are not ported, so there is no speed or
+	 * port state to change here: refuse the command instead of parsing values
+	 * that nothing below would ever use. */
+	if (cmd_words_len > 2) {
+		cmd_error("eee [on|off|status] [port]\n");
+	}
+#else
 	__xdata int8_t port = -1;
 	__xdata uint8_t speed = EEE_2G5;
 	__xdata uint8_t speed_word = 0;
@@ -1558,6 +1616,7 @@ void parse_eee(void)
 	} else {
 		cmd_error("eee [on|off|status] [port] [100m|1g|2g5]\n");
 	}
+#endif
 }
 
 
@@ -2055,6 +2114,12 @@ void cmd_parser(void) __banked
 			parse_regget();
 		} else if (cmd_compare(0, "regset")) {
 			parse_regset();
+#if SOC_FAMILY == RTL836X
+		} else if (cmd_compare(0, "nicinit")) {
+			nic8370_init();
+		} else if (cmd_compare(0, "nicstat")) {
+			nic8370_status();
+#endif
 		} else if (cmd_compare(0, "sdsget")) {
 			parse_sdsget();
 		} else if (cmd_compare(0, "sdsset")) {

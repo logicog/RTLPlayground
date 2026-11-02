@@ -3,7 +3,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
 #include "rtl837x_cabletest.h"
-#include "rtl837x_phy.h"
+#include "rtlos_phy.h"
 #include "phy.h"
 #include "machine.h"
 #include "timer.h"

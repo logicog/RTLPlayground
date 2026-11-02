@@ -4,11 +4,11 @@
 // #define REGDBG 1
 
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_pins.h"
-#include "rtl837x_phy.h"
+#include "rtlos_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_nic.h"
@@ -17,7 +17,7 @@
 #include "rtl837x_igmp.h"
 #include "rtl837x_leds.h"
 #include "rtl837x_bandwidth.h"
-#include "rtl837x_init.h"
+#include "rtlos_init.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_cabletest.h"
 #include "dhcp.h"
@@ -45,7 +45,11 @@ __xdata struct machine_runtime machine_detected;
 void crc16_bank1(__xdata uint8_t *v) __naked;
 
 // See setup_serial_timer1() for valid baudrate settings!
+#if SOC_FAMILY == RTL836X
+#define SERIAL_BAUD_RATE 57600
+#else
 #define SERIAL_BAUD_RATE 115200
+#endif
 
 /* All RTL839x switches have an external 25MHz Oscillator,
    VALID RTL8372/3 CPU frequencies found in switches are:
@@ -56,8 +60,12 @@ void crc16_bank1(__xdata uint8_t *v) __naked;
    For the following frequencies, divider settings are known
    and can be selected on all known HW (Register 0x6040)
 */
+#if SOC_FAMILY == RTL836X
+#define CLOCK_HZ 62500000
+#else
 #define CLOCK_HZ 125000000
 //#define CLOCK_HZ 20800000
+#endif
 
 // Derive the divider settings for the internal clock
 #if CLOCK_HZ == 20800000
@@ -88,6 +96,9 @@ __xdata uint8_t idle_ready;
 __code const uint8_t ownIP[] = { 192, 168, 2, 2 };
 __code const uint8_t gatewayIP[] = { 192, 168, 2, 22};
 __code const uint8_t netmask[] = { 255, 255, 255, 0};
+#if SOC_FAMILY == RTL836X
+__code const uint8_t ownMac[] = { 0x06, 0x00, 0x10, 0x83, 0x70, 0x01};
+#endif
 
 __xdata struct uip_eth_addr uip_ethaddr;
 
@@ -612,8 +623,13 @@ void reg_read_m(uint16_t reg_addr)
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	do {
 	} while (SFR_EXEC_STATUS != 0);
+#if SOC_FAMILY == RTL836X
+	sfr_data[0] = 0;
+	sfr_data[1] = 0;
+#else
 	sfr_data[0] = SFR_DATA_24;
 	sfr_data[1] = SFR_DATA_16;
+#endif
 	sfr_data[2] = SFR_DATA_8;
 	sfr_data[3] = SFR_DATA_0;
 #ifdef REGDBG
@@ -641,10 +657,17 @@ void reg_write_m(uint16_t reg_addr)
 	}
 #endif
 	SFR_REG_ADDR_U16 = reg_addr;
+#if SOC_FAMILY == RTL836X
+	SFR_DATA_24 = sfr_data[2];
+	SFR_DATA_16 = sfr_data[3];
+	SFR_DATA_8 = 0;
+	SFR_DATA_0 = 0;
+#else
 	SFR_DATA_24 = sfr_data[0] ;
 	SFR_DATA_16 = sfr_data[1];
 	SFR_DATA_8 = sfr_data[2];
 	SFR_DATA_0 = sfr_data[3];
+#endif
 
 	SFR_EXEC_GO = SFR_EXEC_WRITE_REG;
 	do {
@@ -729,6 +752,8 @@ void get_random_32(void)
 	reg_bit_set(RTL837X_RLDP_RLPP, RLDP_RND_EN);
 	reg_read_m(RTL837X_RAND_NUM0);
 }
+
+
 
 
 /* Read flash using the MMIO capabilities of the DW8051 core
@@ -887,6 +912,9 @@ void tcpip_output(void)
 		FRAME_Q->tci = HTONS(management_vlan);
 	}
 
+#if SOC_FAMILY == RTL836X
+	nic8370_tx();
+#else
 	reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
 	uint16_t ring_ptr = ((uint16_t)sfr_data[2]) << 8;
 	ring_ptr |= sfr_data[3];
@@ -903,13 +931,26 @@ void tcpip_output(void)
 
 	// Do actual TX of data on ASIC side
 	REG_SET(RTL837X_REG_NIC_TXCMD, 1);
+#endif
 }
 
 
 #define RX_BUDGET 4
+#define NIC8370_RX_BURST	8
+
 
 void handle_rx(void)
 {
+#if SOC_FAMILY == RTL836X
+	for (uint8_t nic_rx_n = 0; nic_rx_n < NIC8370_RX_BURST; nic_rx_n++) {
+		if (!nic8370_rx_fetch())
+			break;
+
+		uip_len = (((uint16_t)rx_headers[6]) << 8) | rx_headers[7];
+		rx_packet_vlan = (uip_buf[12] == 0x81 && uip_buf[13] == 0x00)
+			? ((((uint16_t)uip_buf[14] << 8) | uip_buf[15]) & 0x0fff)
+			: management_vlan;
+#else
 	__xdata uint8_t budget = RX_BUDGET;
 
 	while (budget--) {
@@ -951,6 +992,7 @@ void handle_rx(void)
 		uip_len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
 
 		rx_packet_vlan = NTOHS(ETH_IN->vlan_tag.vlan) & 0x0fff;
+#endif	/* SOC_FAMILY == RTL836X: receive path */
 
 #ifdef RXTXDBG
 		print_string(" RX-VLAN: "); print_short(rx_packet_vlan); write_char('\n');
@@ -1110,6 +1152,7 @@ void check_links(void)
 		print_string(">\n");
 		linkbits_last_p89 = linkbits_p89;
 		if (!machine_detected.isRTL8373 && machine.n_sfp != 2) {
+#if (SOC_FAMILY != RTL836X)
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
@@ -1124,6 +1167,7 @@ void check_links(void)
 				sds_config(0, SDS_QXGMII);
 			if (machine.n_10g == 2)
 				sds_config(1, SDS_QXGMII);
+#endif
 		} else {
 			cpy_4(linkbits_last, sfr_data);
 		}
@@ -1142,7 +1186,9 @@ static void handle_tick(void)
 		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
 #endif
 		get_time_sec();
+#if SOC_FAMILY != RTL836X
 		reg_write_m(RTL837X_REG_SEC_COUNTER);
+#endif /* SOC_FAMILY != RTL836X */
 
 		// Check for button presses once a second
 		handle_button();
@@ -1192,22 +1238,30 @@ void idle(void)
 		tick_pending = 0;
 		handle_tick();
 	}
+#if SOC_FAMILY != RTL836X
 	if (link_irq) {
 		link_irq = 0;
 		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
 		EX0 = 1;
 		check_links();
 	}
+#endif
 	health_phase(HEALTH_PH_LINK);
 	if (rx_irq) {
 		rx_irq = 0;
 		handle_rx();
+#if SOC_FAMILY == RTL836X
+		/* INT1 follows the NIC's RXIS, so re-arming re-fires it if a
+		 * further frame is pending and nothing is left in the ring. */
+		EX1 = 1;
+#else
 		REG_SET(RTL837X_NIC_INT_STS, NIC_INT_RXIS);
 		reg_read(RTL837X_REG_NIC_RX_BUFF_DATA);
 		if (SFR_DATA_U16)
 			rx_irq = 1;
 		else
 			EX1 = 1;
+#endif
 	}
 	health_phase(HEALTH_PH_RX);
 	if (cmd_available) {
@@ -1223,13 +1277,21 @@ void idle(void)
 
 void reset_chip(void)
 {
+#if SOC_FAMILY == RTL836X
+	REG_SET(RTL836x_REG_RESET, 1);
+#else
 	REG_SET(RTL837X_REG_RESET, 1);
+#endif
 	while(1);
 }
 
 
 void setup_external_irqs(void)
 {
+#if SOC_FAMILY == RTL836X
+	rx_irq = 1;
+	EX1 = 1;	// External IRQ 1: the NIC has received a packet
+#else
 	REG_SET(RTL837X_ISR_SW_INT_MODE, 0x42);
 	REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
 	REG_SET(RTL837X_IMR_INT_PORT_LINK_STS_CHG, 0x3ff);
@@ -1243,12 +1305,14 @@ void setup_external_irqs(void)
 	EX2 = 1;	// External IRQ 2 enable: bit EIE.0
 	EX3 = 1;	// External IRQ 3 enable: bit EIE.1
 	PX3 = 1;	// Set EIP.1 = 1: External IRQ 3 set to high priority
+#endif	/* SOC_FAMILY == RTL836X: internal NIC -> INT1 wiring */
 }
 
 
 /*
  * Set dividers for a chosen CPU frequency
  */
+#if SOC_FAMILY != RTL836X
 void setup_clock(void)
 {
 	reg_read_m(RTL837X_REG_HW_CONF);
@@ -1266,6 +1330,29 @@ void setup_clock(void)
 	sfr_mask_data(0, 0x1, 0x1);
 	reg_write_m(RTL837X_PIN_MUX_1);
 }
+#else
+void setup_clock(void)
+{
+	/* DW8051RATE = 4 -> F_SYS 62.5 MHz (bit0: DW8051_READY). */
+	SFR_DATA_24 = 0x00;
+	SFR_DATA_16 = 0x41;
+	reg_write(0x1336);
+
+	/* Console pinmux, byte-exact from the stock kernel and present in every
+	 * image that ever toggled TX on this die: 0x1d32 <- 0x0004. Without this
+	 * mux the TX pin never drives and the line stays flat. */
+	SFR_DATA_24 = 0x00;
+	SFR_DATA_16 = 0x04;
+	reg_write(0x1d32);
+
+	/* The stock MISC_CONFIGURE0 enable set: FLASH | NIC | PON_LIGHT | DW8051
+	 * | AUTOLOAD. It has to precede the first flash op and the NIC bring-up.
+	 */
+	SFR_DATA_24 = 0x14;
+	SFR_DATA_16 = 0x70;
+	reg_write(0x130c);
+}
+#endif	/* SOC_FAMILY: RTL836x takes its clock from 0x1336[6:4] */
 
 
 /*
@@ -1369,12 +1456,14 @@ void phy_modify(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t mask, uin
 }
 
 
+#if (SOC_FAMILY != RTL836X )			       
 void set_sys_led_state(uint8_t state)
 {
 	reg_read_m(RTL837X_REG_LED_MODE);
 	sfr_mask_data(2, 0x03, state);
 	reg_write_m(RTL837X_REG_LED_MODE);
 }
+#endif
 
 
 
@@ -1395,9 +1484,10 @@ void set_sys_led_state(uint8_t state)
  * |    57600 |   1   |   4 |    34 | 0xde |  57444.9 | −0.27% |
  * |   115200 |   1   |   4 |    17 | 0xef | 114889.7 | −0.27% |
  */
-#if CLOCK_HZ != 125000000
+#if (CLOCK_HZ != 125000000) && (SOC_FAMILY != RTL836X)
 #warning "SERIAL 0 baudrate setting may only valid for F_CPU = 125 MHz!"
 #endif
+
 void setup_serial_timer1(void)
 {
 	// Timer 1: Mode 2: automatic reload
@@ -1567,6 +1657,9 @@ void main(void)
 	machine_detected.isRTL8373 = 0;
 	machine_detected.isN = 0;
 	print_string("Detecting CPU: RTL837");
+#if SOC_FAMILY == RTL836X
+	write_char('0');
+#else
 	reg_read_m(RTL837X_REG_CHIP_ID);
 	if (sfr_data[1] == 0x73) { // Register was 0x8373xx00
 		machine_detected.isRTL8373 = 1;
@@ -1579,17 +1672,21 @@ void main(void)
 		machine_detected.isN = 1;
 		write_char('N');
 	}
+#endif
 	write_char('\n');
+#if SOC_FAMILY != RTL836X
 	if (machine.isRTL8373 != machine_detected.isRTL8373) {
 		print_string("INCORRECT MACHINE!");
 	}
 	if (machine_detected.isRTL8373) {
 		rtl8224_enable();  // Power on the RTL8224
 	}
+#endif
 
 	// Print SW version
 	print_sw_version();
 
+#if SOC_FAMILY != RTL836X
 	// Set AUTONEG for SFP ports
 	sfp_speed[0] = sfp_speed[1] = SFP_SPEED_AUTO;
 	// Reset NIC
@@ -1598,6 +1695,7 @@ void main(void)
 		reg_read(RTL837X_REG_RESET);
 	} while (SFR_DATA_0 & (1 << RESET_NIC_BIT));
 	print_string("NIC reset\n");
+#endif
 
 	uip_ipaddr(&uip_hostaddr, ownIP[0], ownIP[1], ownIP[2], ownIP[3]);
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
@@ -1615,6 +1713,14 @@ void main(void)
 		}
 	}
 	if (uip_ethaddr.addr[0] == 0xff) {  // no valid flash MAC -> generate locally-administered
+#if SOC_FAMILY == RTL836X
+		uip_ethaddr.addr[0] = ownMac[0];
+		uip_ethaddr.addr[1] = ownMac[1];
+		uip_ethaddr.addr[2] = ownMac[2];
+		uip_ethaddr.addr[3] = ownMac[3];
+		uip_ethaddr.addr[4] = ownMac[4];
+		uip_ethaddr.addr[5] = ownMac[5];
+#else
 		reg_read_m(RTL837X_REG_CHIP_UUID);
 		uip_ethaddr.addr[0] = 0x06;  // LAA prefix
 		uip_ethaddr.addr[3] = sfr_data[0] ^ sfr_data[3];
@@ -1623,12 +1729,14 @@ void main(void)
 		reg_read_m(RTL837X_REG_CHIP_LOT_NO);
 		uip_ethaddr.addr[1] = sfr_data[0] ^ sfr_data[2];
 		uip_ethaddr.addr[2] = sfr_data[1] ^ sfr_data[3];
+#endif
 	}
 	print_string("Setting MAC to: ");
 	print_byte(uip_ethaddr.addr[0]); write_char(':'); print_byte(uip_ethaddr.addr[1]); write_char(':');
 	print_byte(uip_ethaddr.addr[2]); write_char(':'); print_byte(uip_ethaddr.addr[3]); write_char(':');
 	print_byte(uip_ethaddr.addr[4]); write_char(':'); print_byte(uip_ethaddr.addr[5]); write_char('\n');
 
+#if SOC_FAMILY != RTL836X
 	REG_SET(RTL837X_PIN_MUX_2, 0x0); // Disable pins for ACL
 	init_smi();
 	if (machine_detected.isRTL8373)
@@ -1645,6 +1753,9 @@ void main(void)
 		rtl8373_init();
 	else
 		rtl8372_init();
+#else
+	rtl8370_init();
+#endif
 	delay(1000);
 
 	check_and_flash_update_image();
@@ -1653,6 +1764,7 @@ void main(void)
 	dns_init();
 	ntp_init();
 
+#if SOC_FAMILY != RTL836X
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
 	// Is correctly configured. Therefore, we can test it, here...
@@ -1670,12 +1782,15 @@ void main(void)
 	REG_SET(RTL837X_REG_SEC_COUNTER, 0x3); write_char(' ');
 	print_reg(RTL837X_REG_SEC_COUNTER);
 #endif
+#endif	/* SOC_FAMILY != RTL836X (seconds-counter test) */
 	stp_enabled = 0;
 	stp_defaults();		/* 802.1D/w default config before any "stp ..." replay */
 	lacpEnabled = 0;
 	lacp_init();
 	nic_setup();
+#if SOC_FAMILY != RTL836X
 	trap_init();
+#endif
 	vlan_setup();
 	port_l2_setup();
 	igmp_setup();
@@ -1687,10 +1802,13 @@ void main(void)
 
 	management_vlan = 1; // Default management VLAN is 1
 
+#if SOC_FAMILY != RTL836X
 	setup_i2c();
 	setup_sfp_gpio();
+#endif
 	print_string(greeting);
 
+#if SOC_FAMILY != RTL836X
 	print_string("\nClock register: ");
 	print_reg(0x6040);
 	print_string("\nRegister 0x7b20/RTL837X_REG_SDS_MODES: ");
@@ -1701,6 +1819,7 @@ void main(void)
 	port_stats_print();
 
 	early_boot_handle_button();
+#endif
 
 	execute_config();
 	// After the config so the entry lands in the final management VLAN
@@ -1721,3 +1840,4 @@ void main(void)
 		idle(); // Enter Idle mode until interrupt occurs
 	}
 }
+

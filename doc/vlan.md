@@ -51,6 +51,80 @@ on given port. When package contains VLAN not in member list, package is dropped
 The default PVID on all port is 1, ingress VLAN filtering is enabled and all types of
 frames are accepted on input on all ports.
 
+On the RTL836xB the PVID register (0x0700-0x0705) holds an *index* into the
+member-config table, not a VLAN ID, and index 0 is empty on this board. Every
+port that would otherwise come up on that empty index is therefore given the
+default PVID 1 at boot: `port_pvid_default_unset()` runs right after the saved
+configuration is replayed, so a real `pvid` line wins and only genuinely unset
+ports move. The CPU port (fabric 10, register 0x0705) is included, and its row
+is shown by `vlan show` (see below). It runs before any filter is armed, so it
+changes what a port reads as its PVID without taking the board off the network.
+
+On the RTL836xB the 4K (CVLAN) entry is **three** words, and the member and
+untag fields are **eleven** bits wide (fabric ports 0-10), split across two of
+them: member ports 0-7 and untag ports 0-7 live in word 0, member ports 10:8 in
+word 2 bits 2:0 and untag ports 10:8 in word 2 bits 5:3 (bit 6 is meteridx
+bit 5). That is the packing in the RTL8367C SDK's `_rtl8367c_Vlan4kStUser2Smi()`
+- the SDK whose HAL describes this exact die (`rtl8370b_hal_Ctrl`: maximum
+physical port 10, CPU = EXT_PORT2). The CPU/ring NIC is fabric port 10, so its
+member bit is word 2 bit 2. This port used to write only words 0 and 1, so the
+CPU could never be a member of a VLAN; `rtl836x_vlan4k_set()` writes word 2 now,
+and every VLAN names the CPU - untagged in the default VLAN 1, tagged in a
+user-created VLAN (`vlan_create()`), matching the vendor SDK
+(`mbrmsk | BIT(CPU_PORT)`). Without that member bit, turning the global 0x07a8
+filter on starves the CPU and the board loses ping and web.
+
+The default VLAN 1 is ensured on every boot even when every port already has a
+PVID: `port_pvid_default_unset()` reads the 4K entry, creates it if missing and
+adds the CPU member bit if an older image programmed it without one. That is
+what keeps the filter from cutting management.
+
+## Default filtering state (RTL836xB)
+Ingress VLAN filtering is **on by default**, matching the RTL8372/3 machines.
+At boot the RTL836x path runs `port_pvid_default_unset()` and then
+`port_vlan_filter_default_on()` (rtlplayground.c), which writes 0x07a9 = 0xff
+(one bit per UTP port) and sets the global 0x07a8 gate. The other machines'
+`vlan_setup()` does the same unconditionally at boot; only the order is
+different here, because the PVID default must land first so no port is left on
+an empty MC entry.
+
+This is safe only because the CPU/ring NIC is a member of the default VLAN:
+with the 4K member field widened to eleven bits (word 2) and the CPU written
+into it, VLAN 1 reads back `member=0x04ff untag=0x04ff` and the gate no longer
+starves management. A saved configuration still wins - it is replayed before
+the default - so a `pvid`/`vlan` layout defines what the filter enforces. There
+is no per-port console command to change it: to clear the filter wholesale, use
+`regset 07a8 0000` (global gate) and `regset 07a9 0000` (all port bits).
+
+## Management VLAN and TX tagging (RTL836xB)
+The RTL836x now tags its own management frames with `management_vlan` before
+handing them to the ring NIC, exactly as the RTL8372/3 path always did. That is
+what makes `vlan <id> mgmt` work on this die: the CPU port's PVID is fixed at
+VLAN 1 (there is no console command to change it), so without the tag a reply
+was always classified into VLAN 1 and could only leave through a VLAN 1 port.
+With the tag the frame follows the management VLAN, and `vlan <id> mgmt`
+selects which ports can reach the switch.
+
+Three pieces make it work together:
+- the CPU is a member of every VLAN (the 4K word-2 member bit), so the frame is
+  not filtered on its way to the CPU;
+- `port_vlan_egress_original()` sets each front port's egress mode to ORIGINAL
+  (`0x000e + p*0x20`, bits 5:4 = `0b00`) at boot. The chip's reset default is
+  REAL KEEP (`0b11`, measured live as `0x48b0` on every port), which transmits
+  an inserted tag verbatim; ORIGINAL "output will follow VLAN untag setting",
+  so the tag is stripped again for an untagged member and the host still sees a
+  plain untagged frame;
+- `tcpip_output()` inserts the 802.1Q header on this machine too. It used to
+  be compiled out with a "no 802.1Q insertion" note, which was correct only
+  while VLAN processing was off (`0x07a8 = 0`) and egress stayed REAL KEEP.
+
+Verified live on the SL-SG008W: with the host on port 6 moved off VLAN 1 into
+VLAN 100 and `vlan 100 mgmt`, ping and the authenticated web UI both work from
+port 6. Setting `management_vlan` back to 1 moves management back to the VLAN 1
+ports (port 8 works, port 6 stops). Setting one port's egress mode back to REAL
+KEEP breaks that port again - the A/B proof that the egress mode is
+load-bearing. Untagged traffic on a flat VLAN 1 board is unaffected.
+
 By default, the ports transmit Ethernet frames with Realtek's proprietary
 tag format. By setting bit 6 (0x40) of the respective port configuration
 registers 0x1238, 0x1338, ...
@@ -77,13 +151,21 @@ vlan <VLAN-ID> d
   deletes the VLAN
 
 vlan show
-  Dumps the current ingress vlan settings.
+  Dumps the current ingress vlan settings. On the RTL836xB the dump ends with
+a `CPU` row for fabric port 10 (its PVID from register 0x0705, its acceptable
+frame type from 0x07ab, Filtering always `Disabled` -- 0x07a9 has no CPU bit).
+This is what makes the boot-time default PVID 1 on the CPU port visible without
+a raw `regget 0705`. The CPU port is read-only here: `pvid` and `ingress` still
+refuse it.
 
 vlan <VLAN-ID> mgmt
   Restricts network access to the switch (web UI, syslog) to the given
   VLAN. Use `vlan 0 mgmt` to disable the filter. Default is `vlan 1 mgmt`.
-  Warning: setting this to an unreachable VLAN locks out the web UI;
-  recovery requires serial console.
+  On the RTL836xB the switch tags its management frames with this VLAN, so a
+  port can only reach the switch if it is a member of it: `vlan 100 mgmt`
+  serves the ports in VLAN 100 (and stops serving the VLAN 1 ports).
+  Warning: setting this to a VLAN no reachable port is a member of locks out
+  the web UI; recovery requires the serial console.
 
 pvid <port> <VLAN-ID>
   assigns PVID to a port. ports are numbered as on the casing
@@ -98,4 +180,5 @@ ingress [p]<t|u|a>...
   Example:
   `ingress 1t 2a` -> Set port 1 as tagged input only, set port 2 accepting any frames.
   `ingress a` -> Set all ports to accept both tagged and untagged frames (default behaviour).
+
 ```

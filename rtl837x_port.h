@@ -2,18 +2,36 @@
 #define _RTL837X_PORT_H_
 
 #include <stdint.h>
-#include "rtl837x_regs.h"
+#include <stdbool.h>
+#include "rtlos_regs.h"
 
 #define STAT_COUNTER_TX_PKTS	46
 #define STAT_COUNTER_RX_PKTS	47
 #define STAT_COUNTER_ERR_PKTS	48
 
+/*
+ * STAT_GET -- latch one MIB counter and wait for the MIB engine to drop BUSY.
+ *
+ * THE WAIT MUST BE BOUNDED, and on the RTL836x this register must not be
+ * touched at all: 0x0f60 bit0 stays 1 on that die, so an unbounded poll
+ * wedges the CPU (console dead, power-cycle to recover). The web path shares
+ * the macro -- send_status() and send_counters() call it many times -- so a
+ * stuck BUSY froze the whole board with a browser open.
+ *
+ * RTL836x reads its counters through the 0x1000 window instead (see
+ * rtlos_regs.h), so skip the latch entirely here. Other machines: bound the
+ * BUSY poll (TABLE_WAIT_TOUT, rtl837x_port.c).
+ */
+#if SOC_FAMILY == RTL836X
+#define STAT_GET(cnt, port) do { (void)(cnt); (void)(port); } while (0)
+#else
 #define STAT_GET(cnt, port) do { \
 	REG_WRITE(RTL837X_STAT_GET, 0x00, 0x00, cnt >> 3, (cnt << 5) | (port << 1) | 1); \
 	do { \
 		reg_read_m(RTL837X_STAT_GET); \
 	} while (sfr_data[3] & 0x1); \
 	} while (0)
+#endif
 
 // Possible values for ingress filter type
 typedef enum {
@@ -51,9 +69,13 @@ void port_l2_learned(void) __banked;
 void port_stats_print(void) __banked;
 void port_media_show(uint8_t port) __banked;
 int8_t vlan_get(uint16_t vlan) __banked;
+
 __xdata uint16_t vlan_name(uint16_t vlan) __banked;
 void vlan_name_remove(uint16_t vlan) __banked;
 void vlan_setup(void) __banked;
+void port_pvid_default_unset(void) __banked;
+void port_vlan_filter_default_on(void) __banked;
+void port_vlan_egress_original(void) __banked;
 void port_pvid_set(uint8_t port, __xdata uint16_t pvid) __banked;
 uint16_t port_pvid_get(uint8_t port) __banked;
 void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked;
@@ -84,4 +106,32 @@ void port_isolate(uint8_t port, __xdata uint16_t pmask) __banked;
 uint16_t port_isolation_get(uint8_t port) __banked;
 void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked;
 
+#define L2_WALK_END 0xffff
+#define L2_WALK_PORT_UNKNOWN 0xff
+struct l2_walk_entry {
+	uint8_t mac[6];
+	uint16_t fid;		/* forwarding id the entry was learned under (= VLAN) */
+	uint8_t port;		/* logical port, or L2_WALK_PORT_UNKNOWN */
+	uint8_t is_static;
+	uint8_t is_mcast;
+	uint16_t portmask;	/* member mask when is_mcast (0 = unreadable here) */
+};
+extern __xdata struct l2_walk_entry l2_walk;
+uint16_t rtl836x_l2_walk_next(__xdata uint16_t *slot) __banked __reentrant;
+uint8_t rtl836x_l2_delete_slot(uint16_t slot) __banked __reentrant;
+extern __xdata uint8_t mib_value[8];
+void rtl836x_mib_reset(void) __banked;
+#define MIB_ST_TX_GOOD	0
+#define MIB_ST_RX_GOOD	1
+#define MIB_ST_TX_BAD	2
+#define MIB_ST_RX_BAD	3
+uint8_t rtl836x_mib_read(uint8_t idx, uint8_t port) __banked __reentrant;
+uint8_t rtl836x_mib_slot(uint8_t slot, uint8_t port) __banked __reentrant;
+uint8_t rtl836x_mib_status(uint8_t which, uint8_t port) __banked __reentrant;
+uint32_t rtl836x_mib_result(void) __banked __reentrant;
+
+void nic8370_init(void) __banked;
+bool nic8370_rx_fetch(void) __banked;
+void nic8370_tx(void) __banked;
+void nic8370_status(void) __banked;
 #endif

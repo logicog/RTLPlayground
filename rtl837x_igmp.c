@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_igmp.h"
 #include "machine.h"
 
@@ -30,6 +30,37 @@ extern __xdata uint8_t sfr_data[4];
 extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 
+#if SOC_FAMILY == RTL836X
+void igmp_setup(void) __banked
+{
+	igmpEnabled = 0;
+}
+
+void igmp_enable(void) __banked
+{
+	igmpEnabled = 0;
+	print_string("IGMP snooping is not ported to this chip\n");
+}
+
+void igmp_router_port_set(uint16_t pmask) __banked
+{
+	(void)pmask;
+	print_string("IGMP snooping is not ported to this chip\n");
+}
+
+void igmp_show(void) __banked
+{
+	print_string("IGMP snooping is not ported to this chip\n");
+}
+
+uint8_t igmp_packet_handler(void) __banked
+{
+	/* igmpEnabled is always 0 on this die, so the caller never reaches this;
+	 * report "not consumed" in case it ever does. */
+	return 0;
+}
+
+#else
 __xdata uint16_t idx;
 #define IGMP_IP_HDR		offsetof(struct igmp_pkt, hlen)
 #define IGMP_IP_IHL		0x0f
@@ -402,3 +433,5 @@ uint8_t igmp_packet_handler(void) __banked
 #endif
 	return 1;
 }
+
+#endif	/* SOC_FAMILY != RTL836X (IGMP snooping) */

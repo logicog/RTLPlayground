@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_port.h"
 #include "rtl837x_trap.h"
@@ -95,6 +95,35 @@ __xdata uint32_t stp_cnt[STP_CNT_N][STP_ENTITIES];	/* per-port counters, first i
 __xdata uint16_t stp_sec_tick;		/* 1 s window for the tx budget */
 __xdata uint16_t stp_link_prev;		/* carrier bitmap as of the last check */
 __xdata uint16_t stp_link_now;
+
+#if SOC_FAMILY == RTL836X
+static void stp_mstp_read(void) __reentrant
+{
+	uint8_t b3, b2;
+
+	reg_read_m(RTL836x_MSTP_STATE_REG(0));
+	b3 = sfr_data[3]; b2 = sfr_data[2];
+	reg_read_m(RTL836x_MSTP_STATE_REG(8));
+	sfr_data[0] = sfr_data[2];	sfr_data[1] = sfr_data[3];
+	sfr_data[2] = b2;		sfr_data[3] = b3;
+}
+#else
+#define stp_mstp_read()		reg_read_m(RTL837X_MSTP_STATES)
+#endif
+
+#if SOC_FAMILY == RTL836X
+static void stp_mstp_write(void) __reentrant
+{
+	uint8_t b0, b1;
+
+	b0 = sfr_data[0]; b1 = sfr_data[1];
+	reg_write_m(RTL836x_MSTP_STATE_REG(0));	/* ports 0-7 */
+	sfr_data[2] = b0;		sfr_data[3] = b1;
+	reg_write_m(RTL836x_MSTP_STATE_REG(8));	/* ports 8-15 */
+}
+#else
+#define stp_mstp_write()	reg_write_m(RTL837X_MSTP_STATES)
+#endif
 
 __xdata uint8_t  stp_scratch;
 __xdata uint8_t  stp_tx_flags_extra;	/* one-shot flags OR-ed into the next BPDU (TCA) */
@@ -458,7 +487,7 @@ static uint8_t stp_first(uint16_t mask) __reentrant
 static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 {
 	stp_ss_mask = stp_members(port);
-	reg_read_m(RTL837X_MSTP_STATES);
+	stp_mstp_read();
 	for (stp_ss_i = 0; stp_ss_i < STP_PORTS; stp_ss_i++) {
 		if (!((stp_ss_mask >> stp_ss_i) & 1))
 			continue;
@@ -466,7 +495,7 @@ static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 		sfr_data[stp_scratch] &= ~(uint8_t)(0b11 << ((stp_ss_i << 1) & 0x7));
 		sfr_data[stp_scratch] |= (uint8_t)(state << ((stp_ss_i << 1) & 0x7));
 	}
-	reg_write_m(RTL837X_MSTP_STATES);
+	stp_mstp_write();
 }
 
 
@@ -474,7 +503,7 @@ static uint8_t stp_state_get(uint8_t port) __reentrant
 {
 	if (stp_first(stp_members(port)) == 0xff)
 		return 0;
-	reg_read_m(RTL837X_MSTP_STATES);
+	stp_mstp_read();
 	return (sfr_data[3 - (stp_ss_i >> 2)] >> ((stp_ss_i << 1) & 0x7)) & 0b11;
 }
 
@@ -1133,8 +1162,19 @@ void stp_lag_map(void) __banked
 
 static void stp_links_read(void) __reentrant
 {
+#if SOC_FAMILY == RTL836X
+	uint8_t p;
+
+	stp_link_phys = 0;
+	for (p = MACHINE_MIN_PORT; p <= MACHINE_MAX_PORT; p++) {
+		reg_read_m(RTL836x_PORT_STATUS_REG(p));
+		if (SFR_DATA_0 & RTL836x_PORT_STATUS_LINK)
+			stp_link_phys |= (uint16_t)1 << p;
+	}
+#else
 	reg_read_m(RTL837X_REG_LINKS_STS);
 	stp_link_phys = (uint16_t)sfr_data[1] | ((uint16_t)sfr_data[2] << 8);
+#endif
 	stp_link_now = 0;
 	for (stp_k = 0; stp_k < STP_ENTITIES; stp_k++) {
 		if (!stp_ent_active(stp_k) || stp_first(stp_members(stp_k) & stp_link_phys) == 0xff)
@@ -1409,7 +1449,15 @@ static void stp_fdb_update(__xdata uint16_t pmask)
 	/* Unlike LACPDUs (always untagged, so per-PVID entries suffice), BPDUs
 	 * can arrive VLAN-tagged and then classify into the tag's VID - cover
 	 * every VLAN that exists in the VLAN table, plus every port's PVID for
-	 * the untagged case. A duplicate VID just overwrites the same slot. */
+	 * the untagged case. A duplicate VID just overwrites the same slot.
+	 *
+	 * RTL836x: skip the 1..4094 table sweep. Every vlan_get() here is a
+	 * 0x0500 table-engine transaction whose settle is a design tick (5 ms),
+	 * so the loop blocked the main loop for ~20 s -- and port_l2mc_set() is
+	 * a no-op on this die anyway (gated off, see rtl837x_port.c), so the
+	 * sweep bought nothing. The per-PVID loop below is cheap direct-register
+	 * reads and is kept. */
+#if SOC_FAMILY != RTL836X
 	for (stp_fdb_vid = 1; stp_fdb_vid < 4095; stp_fdb_vid++) {
 		if (vlan_get(stp_fdb_vid) < 0)
 			continue;
@@ -1417,6 +1465,7 @@ static void stp_fdb_update(__xdata uint16_t pmask)
 			continue;
 		port_l2mc_set(0x00, stp_fdb_vid, pmask);
 	}
+#endif
 	for (stp_fdb_i = MACHINE_MIN_PORT; stp_fdb_i <= MACHINE_MAX_PORT; stp_fdb_i++) {
 		stp_fdb_vid = port_pvid_get(stp_fdb_i);
 		port_l2mc_set(0x00, stp_fdb_vid, pmask);
@@ -1463,7 +1512,7 @@ void stp_setup(void) __banked
 	stp_alt_agreed = 0;
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
 	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
-	reg_write_m(RTL837X_MSTP_STATES);
+	stp_mstp_write();
 	stp_lag_map();
 	stp_links_read();
 	stp_link_prev = stp_link_now;
@@ -1471,7 +1520,16 @@ void stp_setup(void) __banked
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++)
 		stp_ent_reset(stp_i);
 
+#if SOC_FAMILY == RTL836X
+	print_string("MSTP states: ");
+	reg_read_m(RTL836x_MSTP_STATE_REG(0));
+	print_byte(sfr_data[3]); print_byte(sfr_data[2]);
+	reg_read_m(RTL836x_MSTP_STATE_REG(8));
+	print_byte(sfr_data[3]); print_byte(sfr_data[2]);
+	write_char('\n');
+#else
 	print_reg(RTL837X_MSTP_STATES); write_char('\n');
+#endif
 
 	trap_rma_set(RTL837X_RMA0_CONF, RTL837X_RMA_ACT_TRAP);
 }
@@ -1487,8 +1545,13 @@ void stp_off(void) __banked
 		stp_loop_held[stp_i] = 0;
 		port_timers[stp_i] = 0;
 	}
+#if SOC_FAMILY == RTL836X
+	/* Do not block the CPU port (port 10). */
+	sfr_data[3 - (CPU_PORT >> 2)] |= (uint8_t)(0b11 << ((CPU_PORT << 1) & 0x7));
+#else
 	sfr_data[1] |= 0x0c; // Do not block the CPU port (bits 3:2 of byte 1 = port 9)
-	reg_write_m(RTL837X_MSTP_STATES);
+#endif
+	stp_mstp_write();
 
 	if (stp_bpdu_filter) {
 		stp_fdb_update(PMASK_CPU);

@@ -14,8 +14,8 @@
 #include "uip.h"
 #include "rtl837x_flash.h"
 #include "syslog.h"
-#include "rtl837x_phy.h"
-#include <test/support.h>
+#include "rtlos_phy.h"
+#include "support.h"
 #include "rtl837x_lacp.h"
 
 /* ---- console: everything lands in out_buf (support.c) ---- */
@@ -115,7 +115,7 @@ uint16_t stp_tc_count;
 uint32_t root_bridge_cost;
 uint32_t stp_dcost[STP_ENTITIES];
 uint32_t stp_pcost[STP_ENTITIES];
-uint8_t  stp_ent_of[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+uint8_t  stp_ent_of[STP_PORTS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 uint8_t  stp_fwddelay_s = 15, stp_hello_s = 2, stp_maxage_s = 20;
 uint8_t  stp_pflags[STP_ENTITIES];
 uint8_t  stp_pp2p[STP_ENTITIES];
@@ -131,7 +131,15 @@ uint8_t  stp_ent_id(uint8_t e) { return e >= STP_LAG_BASE ? e + 101 - STP_LAG_BA
 /* ---- SFP: no module present, reads fail ---- */
 uint8_t sfp_buf[16];
 bool    sfp_read_block(uint8_t slot, uint8_t reg, uint8_t len) { (void)slot; (void)reg; (void)len; return false; }
-void    print_phys_port(uint8_t port) { itoa_short(machine.log_to_phys_port[port]); }
+void    print_phys_port(uint8_t port)
+{
+	if (port == CPU_PORT)
+		print_string("CPU");
+	else if (port < CPU_PORT && port < 9)
+		itoa_short(machine.log_to_phys_port[port]);
+	else
+		print_string("?");
+}
 
 uint8_t  lacpEnabled;
 uint8_t  lacp_actor_state[10];
@@ -142,5 +150,5 @@ uint16_t lacp_rx_count[10];
 uint8_t  lacp_port_lag[10];
 uint16_t lacp_lag_ports[LACP_NUM_LAGS];
 uint8_t  lacp_agg_sys[LACP_NUM_LAGS][MAC_ADDR_LEN];
-uint8_t  lacp_agg_valid[LACP_NUM_LAGS];
-uint16_t lacp_members_last[LACP_NUM_LAGS];
+uint8_t  lacp_agg_valid[LACP_NUM_LAGS];	uint16_t lacp_members_last[LACP_NUM_LAGS];
+

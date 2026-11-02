@@ -1,6 +1,6 @@
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_trap.h"
 
 #pragma codeseg BANK2

@@ -27,6 +27,9 @@ BUILDDIR = build
 TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_port_tables \
         $(BUILDDIR)/test_page_json \
+        $(BUILDDIR)/test_page_json_8370 \
+        $(BUILDDIR)/test_l2_mgmt_8370 \
+        $(BUILDDIR)/test_vlan_cpu_8370 \
         $(BUILDDIR)/test_httpd_tx \
         $(BUILDDIR)/test_tick_gate \
         $(BUILDDIR)/test_timer \
@@ -73,6 +76,25 @@ $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR
 # rtl837x_lacp.c is compiled UNMODIFIED from the firmware tree.
 $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c $(SRCROOT)/timer.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# Same sources, but selecting the RTL8370 machine, so machine.h derives
+# SOC_FAMILY=RTL836X and the RTL836x branches of page_impl.c / rtl837x_port.c
+# are taken. These three are the ONLY host binaries built that way, so they are
+# the only place those paths are exercised; this one checks the JSON shape
+# of /status.json. SOC_FAMILY is never defined on the command line: machine.h
+# derives it from MACHINE_CHIPSET and rejects a manual definition.
+$(BUILDDIR)/test_page_json_8370: test_page_json_8370.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) -Wno-error -DMACHINE_NAME=SODOLA_SL_SG008W $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+# The management L2 entry port_l2_static_mgmt() stages: its words, the control
+# word, and the same words read back through the walk.
+$(BUILDDIR)/test_l2_mgmt_8370: test_l2_mgmt_8370.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) -Wno-error -DMACHINE_NAME=SODOLA_SL_SG008W $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+# The CPU port's bit in the fabric masks: what a `vlan` command ends up
+# programming, and the logical<->fabric translation port isolation does.
+$(BUILDDIR)/test_vlan_cpu_8370: test_vlan_cpu_8370.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) -Wno-error -DMACHINE_NAME=SODOLA_SL_SG008W $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
 # this test carries the environment below them itself.

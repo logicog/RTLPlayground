@@ -1,7 +1,7 @@
 #include "rtl837x_pins.h"
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "machine.h"
 
 extern __code const struct machine machine;
