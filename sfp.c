@@ -218,6 +218,7 @@ void handle_sfp(void) __banked
 				sfp_pins_last |= 0x01 << (sfp << 2);
 				sfp_wake_pending[sfp] = 0;
 				print_string("\n<MODULE REMOVED>  Slot: "); write_char('1' + sfp); write_char('\n');
+				sds_config_mac(machine.sfp_port[sfp].sds, SDS_OFF);
 			}
 		}
 
