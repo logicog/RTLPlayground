@@ -14,8 +14,8 @@
 #include "rtl837x_port.h"
 #include "machine.h"
 #include "page_impl.h"
-#include "support.h"
-#include "hw_mock.h"
+#include <test/support.h>
+#include <test/hw_mock.h>
 
 extern uint8_t  outbuf[TCP_OUTBUF_SIZE];
 extern uint16_t slen;

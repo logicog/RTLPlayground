@@ -10,7 +10,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_stp.h"
 #include "timer.h"
-#include "support.h"
+#include <test/support.h>
 
 volatile uint32_t ticks;
 
