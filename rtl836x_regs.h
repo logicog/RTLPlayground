@@ -158,10 +158,19 @@
 #define RTL836x_TA_L2_W5		5
 #define RTL836x_TA_L2_W6		6
 #define RTL836x_TA_L2_W3_FID_MASK	0x0fff
-#define RTL836x_TA_L2_W4_AGE_SHIFT	8
-#define RTL836x_TA_L2_W4_AGE_MAX		0x3f	/* fresh learned value, tops out here */
+#define RTL836x_TA_L2_W3_STATIC		0x8000
+#define RTL836x_TA_L2_W4_AGE_SHIFT	11
+#define RTL836x_TA_L2_W4_AGE_MASK	0x1f
+#define RTL836x_TA_L2_W4_AGE_MAX		0x06	/* the fabric's fresh/stored age: weights higher were
+						 * normalized by the fabric (0x3f00 -> 0x3200) */
+#define RTL836x_TA_L2_W4_SPA_SHIFT	8
+#define RTL836x_TA_L2_W4_SPA_MASK	0x07
 #define RTL836x_TA_L2_W5_LIVE		0x0040	/* set on every entry the fabric wrote */
-
+/* LUT spa space of the CPU port: the fabric rewrote the staged invalid spa of
+ * the management entry to 2 (read live on the SL-SG008W logging LUT port 2 for
+ * the static switch-MAC entry, while all learned LAN MACs were learned on
+ * other spa values and per-port learn-count regs agree with the decode). */
+#define RTL836x_CPU_LUT_PORT		2
 #define RTL836x_LUT_PORT_LEARN_LIMIT_REG(p)	(0x0a20 + (p))
 /* Per-port learned-entry count, one register per port (vendor-confirmed
  * address; read live on the SL-SG008W when the fabric was learning). */

@@ -415,11 +415,16 @@ void send_l2(uint16_t idx)
 		byte_to_html(l2_walk.mac[1]); char_to_html(':');
 		byte_to_html(l2_walk.mac[2]); char_to_html(':');
 		byte_to_html(l2_walk.mac[3]); char_to_html(':');
-		byte_to_html(l2_walk.mac[4]); char_to_html(':');
-		byte_to_html(l2_walk.mac[5]);
+		byte_to_html(l2_walk.mac[4]); char_to_html(':');			byte_to_html(l2_walk.mac[5]);
 
-		if (l2_walk.is_static)
-			slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
+			/* The device's own MAC shows as CPU in the web MAC table
+			 * regardless of which live spa id (="CPU's LUT port") it
+			 * carries */
+			if (!memcmp(l2_walk.mac, uip_ethaddr.addr, 6))
+				slen += strtox(outbuf + slen, "\",\"iscpu\":\"1");
+
+			if (l2_walk.is_static)
+				slen += strtox(outbuf + slen, "\",\"type\":\"s\",\"port\":");
 		else
 			slen += strtox(outbuf + slen, "\",\"type\":\"l\",\"port\":");
 		itoa_html(l2_walk.port);

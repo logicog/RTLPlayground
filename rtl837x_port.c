@@ -72,7 +72,6 @@ static __xdata uint16_t rtl836x_vlan_all;
  * send_vlanlist(). */
 #define RTL836x_TBL_FAST_SETTLE_LOOPS	8
 
-/*
 static void rtl836x_tbl_settle_fast(void) __reentrant
 {
 	uint8_t i;
@@ -80,7 +79,6 @@ static void rtl836x_tbl_settle_fast(void) __reentrant
 	for (i = 0; i < RTL836x_TBL_FAST_SETTLE_LOOPS; i++)
 		reg_read(RTL836x_TA_LUT_REG);
 }
-*/
 
 static void rtl836x_tbl_settle(void)
 {
@@ -755,6 +753,9 @@ static __xdata uint16_t rtl836x_l2_e;
 static __xdata uint8_t rtl836x_l2_p;
 /* Status of the last management-entry write (port_l2_static_mgmt). */
 static __xdata uint16_t rtl836x_l2_mgmt_status;
+/* The device's own MAC (what port_l2_static_mgmt pins). Set by config/`mac`;
+ * the L2 listing marks its entry "CPU". Same local extern as cmd_parser.c. */
+extern __xdata struct uip_eth_addr uip_ethaddr;
 
 #define RTL836x_L2_SLOTS		0x1000
 
@@ -806,10 +807,16 @@ static void rtl836x_l2_unpack(void) __reentrant
 	rtl836x_l2_mac[5] = (uint8_t)(rtl836x_l2_word[RTL836x_TA_L2_W0] & 0xff);
 
 	rtl836x_l2_fid = (uint16_t)(rtl836x_l2_word[RTL836x_TA_L2_W3] & RTL836x_TA_L2_W3_FID_MASK);
-	rtl836x_l2_static = 0;
+	rtl836x_l2_static = (rtl836x_l2_word[RTL836x_TA_L2_W3] & RTL836x_TA_L2_W3_STATIC) ? 1 : 0;
 	rtl836x_l2_mcast = (rtl836x_l2_mac[0] & 0x01) ? 1 : 0;
 	rtl836x_l2_portmask = 0;
-	rtl836x_l2_spa = L2_WALK_PORT_UNKNOWN;
+	/* Unicast entries carry the port they were learned on (or were pinned to)
+	 * in word 4's spa field; multicast entries carry a portmask instead of a
+	 * port and its word 4 does not name one. */
+	if (rtl836x_l2_mcast)
+		rtl836x_l2_spa = L2_WALK_PORT_UNKNOWN;
+	else
+		rtl836x_l2_spa = (uint8_t)((rtl836x_l2_word[RTL836x_TA_L2_W4] >> RTL836x_TA_L2_W4_SPA_SHIFT)						  & RTL836x_TA_L2_W4_SPA_MASK);
 }
 
 static uint16_t rtl836x_l2_next(__xdata uint16_t *slot) __reentrant
@@ -956,7 +963,9 @@ void port_l2_learned(void) __banked
 		print_byte(rtl836x_l2_mac[5]); write_char('\t');
 		print_short(rtl836x_l2_fid); write_char('\t');
 		print_string(rtl836x_l2_static ? "static\t" : "learned\t");
-		if (rtl836x_l2_spa == L2_WALK_PORT_UNKNOWN)
+		if (!memcmp(rtl836x_l2_mac, uip_ethaddr.addr, 6))
+			print_string("CPU");
+		else if (rtl836x_l2_spa == L2_WALK_PORT_UNKNOWN)
 			write_char('?');
 		else
 			print_phys_port(rtl836x_l2_spa);
@@ -2037,17 +2046,44 @@ static void l2_mgmt_tbl_prepare(void)
 }
 #endif	/* SOC_FAMILY != RTL836X */
 
+/* Stage the management entry into the LUT write window: fill
+ * rtl836x_l2_word[] with the entry (see rtl836x_l2_mgmt_words()) and push the
+ * seven words out through the RTL836x write-data registers. The commit (the
+ * table WRITE command) and the by-key verification lookup that follows it
+ * stay with port_l2_static_mgmt(), exactly like the RTL8372/3 keeps its
+ * WRITE in the port_l2_static_mgmt() prologue after l2_mgmt_entry_fill().
+ *
+ * There is no prepare step on this die: the RTL836x window is not the
+ * hybrid-word one the 8372/3 l2_mgmt_tbl_prepare() clears. The words already
+ * come out the way the engine reads them. */
 #if SOC_FAMILY == RTL836X
-static void rtl836x_l2_mgmt_words(__xdata uint8_t *mac, uint8_t pin)
+static void rtl836x_l2_mgmt_words(__xdata uint8_t *mac, uint16_t vlan, uint8_t pin)
 {
 	rtl836x_l2_word[RTL836x_TA_L2_W0] = (uint16_t)(((uint16_t)mac[4] << 8) | mac[5]);
 	rtl836x_l2_word[RTL836x_TA_L2_W1] = (uint16_t)(((uint16_t)mac[2] << 8) | mac[3]);
 	rtl836x_l2_word[RTL836x_TA_L2_W2] = (uint16_t)(((uint16_t)mac[0] << 8) | mac[1]);
-	rtl836x_l2_word[RTL836x_TA_L2_W3] = 0;	/* FID 0 -- see above */
+	/* static flag + the entry's cvid: the fabric stored one entry exactly as
+	 * staged in this shape (written over serial), and rewrote an earlier
+	 * firmware staging (FID 0, age field 0x3f00) to exactly these values, so
+	 * they are what the die keeps for the management entry. Without the static
+	 * bit a full-dynamic flush (0xff, port_l2_forget) would clear the pin. */
+	rtl836x_l2_word[RTL836x_TA_L2_W3] = (uint16_t)(RTL836x_TA_L2_W3_STATIC
+						  | (vlan & RTL836x_TA_L2_W3_FID_MASK));
 	rtl836x_l2_word[RTL836x_TA_L2_W4] = pin
-		? (uint16_t)(RTL836x_TA_L2_W4_AGE_MAX << RTL836x_TA_L2_W4_AGE_SHIFT) : 0;
+		? (uint16_t)((RTL836x_TA_L2_W4_AGE_MAX << RTL836x_TA_L2_W4_AGE_SHIFT)
+			     | (RTL836x_CPU_LUT_PORT << RTL836x_TA_L2_W4_SPA_SHIFT))
+		: 0;
 	rtl836x_l2_word[RTL836x_TA_L2_W5] = pin ? RTL836x_TA_L2_W5_LIVE : 0;
 	rtl836x_l2_word[RTL836x_TA_L2_W6] = 0;	/* reads back 0 on this die */
+}
+
+static void l2_mgmt_entry_fill(__xdata uint8_t *mac, uint16_t vlan, uint8_t pin) __reentrant
+{
+	uint8_t i;
+
+	rtl836x_l2_mgmt_words(mac, vlan, pin);
+	for (i = 0; i < RTL836x_TA_L2_NUM_WORDS; i++)
+		REG_SET(RTL836x_TA_WRDATA_REG(i), rtl836x_l2_word[i]);
 }
 #endif	/* SOC_FAMILY == RTL836X (management L2 entry) */
 
@@ -2055,12 +2091,14 @@ static void rtl836x_l2_mgmt_words(__xdata uint8_t *mac, uint8_t pin)
 void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked
 {
 #if SOC_FAMILY == RTL836X
-	(void)vlan;	/* the FID is 0 here -- see rtl836x_l2_mgmt_words() */
+	l2_mgmt_entry_fill(mac, vlan, remove_entry ? 0 : 1);
+	REG_SET(RTL836x_TA_CTRL_REG, RTL836x_TA_CTRL_L2_WRITE);
+	rtl836x_tbl_settle();
 
-	rtl836x_l2_mgmt_words(mac, remove_entry ? 0 : 1);
-	rtl836x_l2_write_key();
-
-	rtl836x_l2_mgmt_words(mac, remove_entry ? 0 : 1);
+	/* Restage the same words for the by-key lookup: after the settle the
+	 * engine's window has been through a transaction, and the lookup has
+	 * to dispatch with the entry's own staged words. */
+	l2_mgmt_entry_fill(mac, vlan, remove_entry ? 0 : 1);
 	REG_SET(RTL836x_TA_CTRL_REG, RTL836x_TA_CTRL_L2_READ_MAC);
 	rtl836x_tbl_settle();
 	reg_read_m(RTL836x_TA_LUT_REG);
