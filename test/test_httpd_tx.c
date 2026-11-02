@@ -190,6 +190,7 @@ void send_lag(void) { }
 void send_stp(void) { }
 void send_stp_counters(void) { }
 void send_vlanlist(void) { }
+void send_cabletest(void) { }
 void send_lldp(void) {}
 
 extern uint8_t authenticated;
@@ -605,6 +606,20 @@ static void scenario_upload_reset_owner(void)
 	httpd_appcall();
 	CHECK(reset_calls == 1 && slen == 0,
 	      "final verdict ACK resets after all response bytes are acknowledged");
+
+	/* urllib and other clients can combine the last ACK with FIN. */
+	for (unsigned kind = 0; kind < 3; kind++) {
+		uip_conn->appstate.tstate = TSTATE_TX;
+		uip_conn->appstate.fw_reset_pending = 1;
+		slen = kind == 1 ? 11 : 10;
+		sent_len = 10;
+		cont_len = 0;
+		reset_calls = 0;
+		uip_flags = UIP_CLOSE | (kind == 2 ? 0 : UIP_ACKDATA);
+		httpd_appcall();
+		CHECK(reset_calls == (kind == 0 ? 1u : 0u),
+		      "FIN only resets with the full verdict ACK, never partial or missing ACK");
+	}
 
 	/* No verdict ACK: a later connection reuses the same slot. */
 	reset_calls = 0;
@@ -1105,7 +1120,7 @@ static void scenario_config_upload(void)
 static void scenario_upload(const char *name, const char *part_type, int split)
 {
 	static const uint8_t payload[] = { 0x00, 0xff, 'R', '\r', '\n', '-', 0x80, 0x00 };
-	static const uint8_t staged[] = { 0x00, 0xff, 'R', '\r', '\n', '-', 0x80, 0x00, 0x00 };
+	static const uint8_t staged[] = { 0x00, 0xff, 'R', '\r', '\n', '-', 0x80, 0x00 };
 	static const char closing[] = "\r\n--upload-boundary--\r\n";
 	char preamble[256], request[512];
 	uint32_t saved_flash_size = flash_size;
@@ -1148,7 +1163,7 @@ static void scenario_upload(const char *name, const char *part_type, int split)
 
 	CHECK(!flash_write_bad && flash_written_len == sizeof(staged) &&
 	      !memcmp(flash_written, staged, sizeof(staged)),
-	      "upload: exact binary payload plus zero terminator staged at image address");
+	      "upload: exact binary payload without an extra terminator staged at image address");
 	CHECK(stream_len >= 12 && !memcmp(stream, "HTTP/1.1 400", 12),
 	      "upload: invalid firmware is rejected with HTTP 400");
 	CHECK(!uip_conn->appstate.fw_reset_pending && reset_calls == 0,
@@ -1186,7 +1201,35 @@ static int upload_in_two(uint8_t *body, uint16_t body_len, uint16_t split)
 	}
 	return uip_conn->appstate.tstate == TSTATE_NONE
 		&& uptr == FIRMWARE_UPLOAD_START + UPLOAD_LEN && !flash_write_bad
-		&& flash_written_len == UPLOAD_LEN + 1 && !flash_written[UPLOAD_LEN];
+		&& flash_written_len == UPLOAD_LEN;
+}
+
+static void scenario_upload_staging_end(void)
+{
+	uint8_t byte = 0;
+	for (unsigned overflow = 0; overflow < 2; overflow++) {
+		uptr = (uint32_t)FIRMWARE_UPLOAD_START * 2;
+		write_len = overflow;
+		boundary[0] = 0;
+		bindex = 0;
+		verify_crc = 1;
+		crc_final = 0xb001;
+		flash_written_len = 0;
+		flash_write_bad = 0;
+		reset_calls = 0;
+		uip_conn = &uip_conns[0];
+		uip_conn->appstate.tstate = TSTATE_POST;
+		uip_conn->appstate.fw_reset_pending = 0;
+		upload_settings.p = &byte;
+		upload_settings.bptr = 0;
+		upload_settings.plen = 1;
+		stream_upload();
+		CHECK(!flash_write_bad && flash_written_len == 0,
+		      "staging end: neither exact-size nor oversize image writes past its region");
+		CHECK(strstr((char *)outbuf, overflow ? "400 Bad Request" : "200 OK") != NULL &&
+		      uip_conn->appstate.fw_reset_pending == (overflow ? 0 : 1),
+		      "staging end: exact size succeeds; one extra byte is rejected before writing");
+	}
 }
 
 static void scenario_upload_cr_before_boundary(void)
@@ -1299,6 +1342,7 @@ int main(int argc, char **argv)
 	scenario_upload_cr_before_boundary();
 	scenario_upload_last_byte();
 	scenario_upload_broken_matches();
+	scenario_upload_staging_end();
 
 	scenario_login_with_valid_cookie_reuses_its_slot();
 	scenario_login_without_cookie_replaces_least_recently_used();

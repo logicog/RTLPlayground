@@ -459,10 +459,21 @@ uint8_t stream_upload(void)
 		// Have we reached the end of the part?
 		if (!boundary[bindex]) {
 			s->tstate = TSTATE_NONE;
+			/* The last partial page needs the same bound as full pages.
+			 * Binary images have no NUL terminator: one at the end of a
+			 * 512 KiB image would write past the staging area. */
+			if (uptr > (uint32_t)FIRMWARE_UPLOAD_START * 2 ||
+			    write_len > (uint32_t)FIRMWARE_UPLOAD_START * 2 - uptr) {
+				slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
+					"Content-Type: text/plain\r\n\r\n"
+					"NO: upload exceeds image area\n");
+				return 0;
+			}
 			dbg_string("len 2: "); dbg_short(write_len); dbg_char(' ');
 			flash_region.addr = uptr;
 			flash_region.len = write_len;
-			flash_write_bytes(flash_buf);
+			if (write_len)
+				flash_write_bytes(flash_buf);
 			uptr += write_len;
 			write_len = 0;
 			if (verify_crc) {
@@ -484,11 +495,6 @@ uint8_t stream_upload(void)
 						"NO: checksum failed, not applied\n");
 				}
 			}
-			// Make sure there is a 0 at the end of the uploaded data
-			flash_buf[0] = 0;
-			flash_region.addr = uptr;
-			flash_region.len = 1;
-			flash_write_bytes(flash_buf);
 			if (upload_settings.bptr >= upload_settings.plen)
 				return 0;
 			return 1;
@@ -884,6 +890,11 @@ void httpd_appcall(void)
 		s->fw_reset_pending = 0; // explicitly initialize reused XDATA appstate
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
+		/* A client can ACK the final response and send FIN together.
+		 * UIP_CLOSE takes this branch before the normal ACK handler. */
+		if (uip_acked() && s->tstate == TSTATE_TX && s->fw_reset_pending &&
+		    slen <= sent_len && !cont_len)
+			reset_chip();
 		s->tstate = TSTATE_CLOSED;
 	} else if (uip_aborted() || uip_timedout()) {
 		dbg_string("Connection aborted\n");
@@ -1059,6 +1070,8 @@ void httpd_appcall(void)
 				send_stp_counters();
 			} else if (is_word(q, "/vlanlist")) {
 				send_vlanlist();
+			} else if (is_word(q, "/cabletest.json")) {
+				send_cabletest();
 			} else if (is_word(q, "/config")) {
 				send_config();
 			} else if (is_word(q, "/cmd_log")) {

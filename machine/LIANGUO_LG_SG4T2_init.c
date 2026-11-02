@@ -1,0 +1,1 @@
+#include "pcb/PCB_SWTG024AS_A_V2_0_1_19650_init.c"

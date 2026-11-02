@@ -1656,7 +1656,11 @@ void main(void)
 	uip_ipaddr(&uip_draddr, gatewayIP[0], gatewayIP[1], gatewayIP[2], gatewayIP[3]);
 	uip_ipaddr(&uip_netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
 	uip_ethaddr.addr[0] = 0xff;
-	if (machine.mac_flash_offset) {
+	/* A shared PCB definition may point at the managed 2 MiB variant's
+	 * factory MAC. Never read beyond a smaller unmanaged unit's Flash. */
+	flash_read_jedecid();
+	if (machine.mac_flash_offset && flash_size >= FLASH_BUF_SIZE &&
+	    machine.mac_flash_offset <= flash_size - FLASH_BUF_SIZE) {
 		flash_region.addr = machine.mac_flash_offset;
 		flash_region.len = FLASH_BUF_SIZE;
 		flash_read_bulk(flash_buf);

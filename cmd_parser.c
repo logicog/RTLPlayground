@@ -648,34 +648,19 @@ void parse_vlan(void)
 		if (!vlan_settings.vlan)
 			goto err;
 
-		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
+		if (cmd_words_len == 3 && cmd_compare(2, "d")) {
 			vlan_delete(vlan_settings.vlan);
 			return;
 		}
 
 		uint8_t w = 2;
 		uint8_t pos = cmd_words_b[w];
-		if (cmd_words_len > w && isletter(cmd_buffer[pos])) {
-			uint8_t i = 0;
-			while (!cmd_is_space_or_nul(pos + i))
-				i++;
-			if (vlan_ptr + i > (VLAN_NAMES_SIZE - 5)) {
-				print_string("VLAN name table full, name ignored\n");
-			} else {
-				vlan_name_remove(vlan_settings.vlan);
-				__xdata uint8_t *vlan_str = &vlan_names[vlan_ptr];
-				*vlan_str++ = hex[(vlan_settings.vlan >> 8) & 0xf];
-				*vlan_str++ = hex[(vlan_settings.vlan >> 4) & 0xf] ;
-				*vlan_str++ = hex[vlan_settings.vlan & 0xf];
-				while(!cmd_is_space_or_nul(pos)) {
-					uint8_t c = name_char(cmd_buffer[pos++]);
-					write_char(c);
-					*vlan_str++ = c;
-				}
-				*vlan_str++ = ' '; *vlan_str = NUL;
-				vlan_ptr = vlan_str - vlan_names;
-				print_string("<\n");
-			}
+		uint8_t name_pos = pos, name_len = 0, have_name = 0;
+		if (cmd_words_len > w && (isletter(cmd_buffer[pos]) || cmd_buffer[pos] >= 0x80 || cmd_buffer[pos] == '-')) {
+			have_name = 1;
+			while (!cmd_is_space_or_nul(pos + name_len)) name_len++;
+			if (name_len == 1 && cmd_buffer[pos] == '-') name_len = 0;
+			if (!vlan_name_valid(&cmd_buffer[name_pos], name_len)) goto err;
 			w++;
 		}
 
@@ -698,6 +683,10 @@ void parse_vlan(void)
 
 			if (!cmd_is_space_or_nul(idx))
 				goto err;
+		}
+		if (have_name && !vlan_name_set(vlan_settings.vlan, &cmd_buffer[name_pos], name_len)) {
+			cmd_error("VLAN name table full\n");
+			return;
 		}
 		vlan_create();
 	} else if (cmd_compare(1, "show")) {

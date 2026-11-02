@@ -27,6 +27,7 @@ void send_lldp(void);
 void send_lacp(void);
 void send_stp_counters(void) __banked;
 void send_vlanlist(void);
+void send_cabletest(void);
 
 /*  Convert only the lower nibble to ascii HEX char.
     For convenience the upper nibble is masked out.

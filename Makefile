@@ -279,7 +279,7 @@ MACHINE_LESS_CC_FLAGS = $(filter-out -DMACHINE_%,$(CC_FLAGS))
 .PHONY: machine_check
 machine_check: $(SDCC)
 	@mkdir -p $(BUILDDIR)/tmp
-	@set -eo pipefail; \
+	@set -e; \
 	for MACHINE in $(MACHINE_DEFS); \
 	do \
 	echo "Checking $${MACHINE}"; \

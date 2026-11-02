@@ -96,7 +96,7 @@ bool rtl_phy_cable_test_get_status(uint8_t port) __banked
 		phy_read(port, PHY_MMD31, RTCT_SRAM_DATA);
 		ct_len[ct_pair] = SFR_DATA_U16;
 		ct_len[ct_pair] = ct_len[ct_pair] > RTCT_LEN_ZERO ? ct_len[ct_pair] - RTCT_LEN_ZERO : 0;
-		ct_len[ct_pair] = ct_len[ct_pair] * 5 / RTCT_LEN_PER_50CM;
+		ct_len[ct_pair] = (uint32_t)ct_len[ct_pair] * 5 / RTCT_LEN_PER_50CM;
 	}
 	return true;
 }
@@ -140,15 +140,24 @@ static void cabletest_print(void)
 	}
 }
 
+bool cabletest_supported(uint8_t port) __banked
+{
+	return (uint8_t)(port - MACHINE_MIN_PORT) <= MACHINE_MAX_PORT - MACHINE_MIN_PORT && !machine.is_sfp[port] &&
+		(machine_detected.isRTL8373 || (port >= 4 && port <= 7));
+}
+
 void cabletest_run(void) __banked
 {
+	extern __xdata uint8_t err_status;
 	if (ct_state) {
+		err_status = ERR_INVALID_ARGUMENT;
 		print_string("Cable test running on port ");
 		print_phys_port(ct_port);
 		write_char('\n');
 		return;
 	}
-	if (!machine_detected.isRTL8373 && (phy_settings.port < 4 || phy_settings.port > 7)) {
+	if (!cabletest_supported(phy_settings.port)) {
+		err_status = ERR_INVALID_ARGUMENT;
 		print_string("No cable test on this PHY\n");
 		return;
 	}
@@ -156,6 +165,7 @@ void cabletest_run(void) __banked
 	// A test started on a port that is off never ends and blocks the PHY until reset.
 	phy_read(phy_settings.port, PHY_MMD31, PHY_POWER);
 	if (SFR_DATA_U16 & PHY_POWER_OFF) {
+		err_status = ERR_INVALID_ARGUMENT;
 		print_string("Port is off\n");
 		return;
 	}

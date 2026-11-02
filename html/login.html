@@ -90,8 +90,9 @@ button:hover{filter:brightness(1.1)}
   };
   var l=null;
   try{l=localStorage.getItem("rtl_lang");}catch(e){}
-  if(!L[l])l=(navigator.language||"en").slice(0,2);
-  var s=L[l]||L.en;
+  if(!L[l])l="zh";
+  var s=L[l];
+  document.documentElement.lang=l==="zh"?"zh-CN":l;
   // Name the tab after the switch: the hostname seen at the last login here,
   // otherwise the address, so several open switches can be told apart
   var host=null;
