@@ -24,8 +24,8 @@ L2_MAX_TRANSFER = 5
 ROOT = Path.cwd().resolve()
 
 machine_config = {
-    "phys_to_log_port": [ 4, 5, 6, 7, 3, 8 ],
-    "is_sfp": [0, 0, 0, 0, 0, 0, 1]
+    "phys_to_log_port": [ 7, 6, 5, 4, 3, 8 ],
+    "is_sfp": [0, 0, 0, 0, 0, 1, 1]
 }
 l2_entries = [
     { "mac": "00:01:2f:00:00:01", "vlan":"001", "type":'l', "port":7, "idx":0x10 },
@@ -44,7 +44,7 @@ l2_entries = [
 
 state = {
     "lldp_enabled": False,
-    "vlans": {1: {"active": True, "name": "", "untagged":[1,2,3,4,5,6,7,8], "tagged":[], "pvid":[1,2,3,4,5,6,7,8]}},
+    "vlans": {1: {"active": True, "name": "", "untagged":[3,4,5,6,7,8], "tagged":[], "pvid":[3,4,5,6,7,8]}},
     "cmd_history": [],
     "mgmt_vlan": 1,
     "lags": [
@@ -341,28 +341,35 @@ class Handler(SimpleHTTPRequestHandler):
                 name = pieces[2]
                 startIndex=3
 
-        if not vid in state["vlans"]:
-            state["vlans"][vid] = self.newVlan(name)
-        else:
-            state["vlans"][vid]["name"] = name
-
-        state["vlans"][vid]["tagged"] = []
-        state["vlans"][vid]["untagged"] = []
-
-        for i in pieces[startIndex:]:
-            if i[-1] == "t":
-                state["vlans"][vid]["tagged"].append(machine_config["phys_to_log_port"][int(i[:-1])-1])
+        if len(pieces) > 3:
+            if not vid in state["vlans"]:
+                state["vlans"][vid] = self.newVlan(name)
             else:
-                state["vlans"][vid]["untagged"].append(machine_config["phys_to_log_port"][int(i)-1])
+                state["vlans"][vid]["name"] = name
+
+            state["vlans"][vid]["tagged"] = []
+            state["vlans"][vid]["untagged"] = []
+
+            for i in pieces[startIndex:]:
+                if i[-1] == "t":
+                    state["vlans"][vid]["tagged"].append(machine_config["phys_to_log_port"][int(i[:-1])-1])
+                else:
+                    state["vlans"][vid]["untagged"].append(machine_config["phys_to_log_port"][int(i)-1])
 
     def _parse_pvid(self, pieces):
         global state
         port = int(pieces[1])
         vid = int(pieces[2])
+        
         if(vid in state["vlans"]):
+            for checkVlan in state["vlans"]:
+                try:
+                    state["vlans"][checkVlan]["pvid"].remove(machine_config["phys_to_log_port"][port-1])
+                except:
+                    pass
             state["vlans"][vid]["pvid"].append(machine_config["phys_to_log_port"][port-1])
-        else :
-            state["vlans"][vid] = self.newVlan("")
+#        else :
+#            state["vlans"][vid] = self.newVlan("")
 
     def _parse_lldp(self, pieces):
         global state
@@ -707,10 +714,10 @@ def loadMachineConfig(filename):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--machine", default=None, help="path to machine.c or .h file to parse (optional)")
-    parser.add_argument("--port", default=8081, type=int, help="port to bind to (default 8081)")
-    parser.add_argument("--bindaddr", default="127.0.0.1", help="address to bind (default 127.0.0.1)")
-    parser.add_argument("--verbose", action="store_true", help="enable verbose output")
+    parser.add_argument("--machine", default=None, help="Path to machine.c or .h file to parse")
+    parser.add_argument("--port", default=8081, type=int, help="Port to bind to")
+    parser.add_argument("--bindaddr", default="127.0.0.1", help="Address to bind")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
