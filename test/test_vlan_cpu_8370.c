@@ -494,6 +494,33 @@ static void t_vlan4k_word2_packing(void)
 	      "member high bits at 2:0 and untag high bits at 5:3, per the SDK");
 }
 
+static void t_ingress_vlan_filter(void)
+{
+	uint16_t reg = RTL836x_VLAN_INGRESS_REG;
+
+	printf("[test] `ingress vlan filter` pins the per-port bit in 0x07a9\n");
+	hw_reset();
+
+	CHECK(port_ingress_vlan_filter_set(3, true), "enabling port 3 is accepted");
+	CHECK((hw_reg_get(reg) & 0x0008) != 0, "and sets port 3's bit in the ingress register");
+	CHECK(port_ingress_vlan_filter_get(3), "the getter reads the same bit");
+	CHECK(hw_reg_get(reg) == 0x0008, "and nothing else moved");
+
+	CHECK(port_ingress_vlan_filter_set(7, true), "port 7 as well");
+	CHECK(hw_reg_get(reg) == 0x0088, "so two ports can be filtered together");
+	CHECK(port_ingress_vlan_filter_get(7) && !port_ingress_vlan_filter_get(2),
+	      "while port 2 stays unfiltered");
+
+	CHECK(port_ingress_vlan_filter_set(3, false), "disabling port 3 is accepted");
+	CHECK(port_ingress_vlan_filter_get(3) == false, "and its bit is gone");
+	CHECK(hw_reg_get(reg) == 0x0080, "port 7's bit untouched");
+
+	/* refusals: the ninth front port does not exist on this die */
+	CHECK(!port_ingress_vlan_filter_set(8, true), "port 8 is rejected");
+	CHECK(!port_ingress_vlan_filter_get(8), "and its getter reports nothing");
+	CHECK(hw_reg_get(reg) == 0x0080, "with no register written");
+}
+
 int main(void)
 {
 	printf("== rtl837x_port.c RTL836x VLAN/CPU-port bit tests ==\n");
@@ -503,6 +530,7 @@ int main(void)
 	t_isolation_cpu_bit();
 	t_l2_setup_isolation();
 	t_ingress_accept_frame_type();
+	t_ingress_vlan_filter();
 	t_boot_pvid_default_unset();
 	t_vlan_filter_default_on();
 	t_vlan_egress_original();

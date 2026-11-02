@@ -166,6 +166,11 @@
 #define RTL836x_TA_L2_W4_SPA_SHIFT	8
 #define RTL836x_TA_L2_W4_SPA_MASK	0x07
 #define RTL836x_TA_L2_W5_LIVE		0x0040	/* set on every entry the fabric wrote */
+/* LUT multicast entry: word 4 replaces the unicast entry's age|spa byte with
+ * the member mask in the port-frame numbering; bits 8-9 are unused (the die
+ * has the eight front ports below them and the CPU at bit 10). Verified with
+ * a staged entry that the die keeps verbatim. */
+#define RTL836x_TA_L2_W4_MC_MASK	0x07ff
 /* LUT spa space of the CPU port: the fabric rewrote the staged invalid spa of
  * the management entry to 2 (read live on the SL-SG008W logging LUT port 2 for
  * the static switch-MAC entry, while all learned LAN MACs were learned on

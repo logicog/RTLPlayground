@@ -1558,7 +1558,7 @@ void stp_off(void) __banked
 		trap_rma_set(RTL837X_RMA0_CONF, RTL837X_RMA_ACT_DROP);
 	} else {
 		/* Restore BPDU transparency: flood them again like an unmanaged switch. */
-		stp_fdb_update(PMASK_CPU | (machine_detected.isRTL8373 ? PMASK_9 : PMASK_6));
+		stp_fdb_update(PMASK_CPU | PMASK_PORT);
 		trap_rma_set(RTL837X_RMA0_CONF, RTL837X_RMA_ACT_FORWARD);
 	}
 }

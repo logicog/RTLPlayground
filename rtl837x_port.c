@@ -646,7 +646,9 @@ void vlan_setup(void) __banked
 	REG_SET(RTL836x_CPU_PEER_FORCE_REG, RTL836x_CPU_FORCE_VALUE);
 	REG_SET(RTL836x_RMA_CTRL00_REG, RTL836x_RMA_CTRL00_VALUE);
 
-	REG_SET(RTL836x_VLAN_INGRESS_REG, RTL836x_MEMBER_MASK);
+	// Ingress filtering on each front port, one bit per port (0x07a9)
+	for (i = 0; i < 8; i++)
+		port_ingress_vlan_filter_set(i, true);
 
 	/* Everything above is unconditional, so these only fill in what was left
 	 * unset -- in practice the CPU port's PVID, which no port loop covers.
@@ -658,7 +660,7 @@ void vlan_setup(void) __banked
 	port_vlan_egress_original();
 
 	print_string("vlan_setup done (VLAN 1: members 0x");
-	print_short(rtl836x_vlan_all); print_string(", ingress filtering off)\n");
+	print_short(rtl836x_vlan_all); print_string(", ingress filtering on)\n");
 }
 
 #else
@@ -793,6 +795,13 @@ static uint8_t rtl836x_l2_stored(void)
 
 static uint8_t rtl836x_l2_held(void)
 {
+	/* Multicast entries do not age: they hold on their static bit plus a
+	 * non-zero member mask in word 4 (which the unicast entry uses as its
+	 * age|spa byte). */
+	if ((rtl836x_l2_word[RTL836x_TA_L2_W2] >> 8) & 0x01)
+		return ((rtl836x_l2_word[RTL836x_TA_L2_W3] & RTL836x_TA_L2_W3_STATIC)
+			&& (rtl836x_l2_word[RTL836x_TA_L2_W4] & RTL836x_TA_L2_W4_MC_MASK)) ? 1 : 0;
+
 	return ((rtl836x_l2_word[RTL836x_TA_L2_W4] >> RTL836x_TA_L2_W4_AGE_SHIFT) &&
 		(rtl836x_l2_word[RTL836x_TA_L2_W5] & RTL836x_TA_L2_W5_LIVE)) ? 1 : 0;
 }
@@ -804,19 +813,21 @@ static void rtl836x_l2_unpack(void) __reentrant
 	rtl836x_l2_mac[2] = (uint8_t)(rtl836x_l2_word[RTL836x_TA_L2_W1] >> 8);
 	rtl836x_l2_mac[3] = (uint8_t)(rtl836x_l2_word[RTL836x_TA_L2_W1] & 0xff);
 	rtl836x_l2_mac[4] = (uint8_t)(rtl836x_l2_word[RTL836x_TA_L2_W0] >> 8);
-	rtl836x_l2_mac[5] = (uint8_t)(rtl836x_l2_word[RTL836x_TA_L2_W0] & 0xff);
-
-	rtl836x_l2_fid = (uint16_t)(rtl836x_l2_word[RTL836x_TA_L2_W3] & RTL836x_TA_L2_W3_FID_MASK);
+	rtl836x_l2_mac[5] = (uint8_t)(rtl836x_l2_word[RTL836x_TA_L2_W0] & 0xff);	rtl836x_l2_fid = (uint16_t)(rtl836x_l2_word[RTL836x_TA_L2_W3] & RTL836x_TA_L2_W3_FID_MASK);
 	rtl836x_l2_static = (rtl836x_l2_word[RTL836x_TA_L2_W3] & RTL836x_TA_L2_W3_STATIC) ? 1 : 0;
 	rtl836x_l2_mcast = (rtl836x_l2_mac[0] & 0x01) ? 1 : 0;
-	rtl836x_l2_portmask = 0;
-	/* Unicast entries carry the port they were learned on (or were pinned to)
-	 * in word 4's spa field; multicast entries carry a portmask instead of a
-	 * port and its word 4 does not name one. */
-	if (rtl836x_l2_mcast)
+	/* Multicast entries carry their member mask in word 4 instead of the
+	 * unicast age|spa byte (see rtl836x_l2_held()); portmask is what their
+	 * lookup is steered by, spa names nothing. */
+	if (rtl836x_l2_mcast) {
 		rtl836x_l2_spa = L2_WALK_PORT_UNKNOWN;
-	else
-		rtl836x_l2_spa = (uint8_t)((rtl836x_l2_word[RTL836x_TA_L2_W4] >> RTL836x_TA_L2_W4_SPA_SHIFT)						  & RTL836x_TA_L2_W4_SPA_MASK);
+		rtl836x_l2_portmask = (uint16_t)(rtl836x_l2_word[RTL836x_TA_L2_W4]
+					       & RTL836x_TA_L2_W4_MC_MASK);
+	} else {
+		rtl836x_l2_portmask = 0;
+		rtl836x_l2_spa = (uint8_t)((rtl836x_l2_word[RTL836x_TA_L2_W4] >> RTL836x_TA_L2_W4_SPA_SHIFT)
+						  & RTL836x_TA_L2_W4_SPA_MASK);
+	}
 }
 
 static uint16_t rtl836x_l2_next(__xdata uint16_t *slot) __reentrant
@@ -918,9 +929,7 @@ uint8_t port_l2_forget(void) __banked
 {
 #if SOC_FAMILY == RTL836X
 	/* RTL836x: one hardware flush of every fabric port. */
-	print_string("\nport_l2_forget (RTL836x) called\n");
 	rtl836x_l2_flush(RTL836x_L2_FLUSH_ALL);
-	print_string("port_l2_forget done\n");
 	return 0;
 #else
 	// Configure the entries to be flushed:
@@ -946,6 +955,8 @@ uint8_t port_l2_forget(void) __banked
 void port_l2_learned(void) __banked
 {
 #if SOC_FAMILY == RTL836X
+	__xdata uint8_t lag;
+
 	rtl836x_l2_slot = 0;
 	rtl836x_l2_shown = 0;
 
@@ -965,10 +976,21 @@ void port_l2_learned(void) __banked
 		print_string(rtl836x_l2_static ? "static\t" : "learned\t");
 		if (!memcmp(rtl836x_l2_mac, uip_ethaddr.addr, 6))
 			print_string("CPU");
-		else if (rtl836x_l2_spa == L2_WALK_PORT_UNKNOWN)
-			write_char('?');
-		else
-			print_phys_port(rtl836x_l2_spa);
+		else if (rtl836x_l2_mcast) {
+			/* a multicast entry's lookup goes by its member mask, so
+			 * that is what the port column shows (spas of a group name
+			 * no port) */
+			/* print_short() already writes the 0x prefix */
+			print_short(rtl836x_l2_portmask);
+		} else {
+			lag = port_lag_of(rtl836x_l2_spa);
+			if (lag == PORT_LAG_NONE)
+				print_phys_port(rtl836x_l2_spa);
+			else {
+				print_string("LAG");
+				itoa(lag + 1);
+			}
+		}
 		write_char('\t');
 		print_short(rtl836x_l2_e);
 		write_char('\n');
@@ -1050,7 +1072,44 @@ void port_l2_learned(void) __banked
 void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmask) __banked
 {
 #if SOC_FAMILY == RTL836X
-	(void)mac_last; (void)vid; (void)pmask;
+	uint8_t i;
+
+	/* Build the 01:80:C2:00:00:<mac_last> group entry in this die's LUT
+	 * word format: the MAC in words 0-2 (same pairing as the unicast
+	 * management entry), the static flag + cvid in word 3, and the member
+	 * mask instead of the age/spa fields in word 4 -- the multicast variant
+	 * of the entry shape walks report (doc/l2.md: "multicast entries
+	 * replace the spa fields with their port mask"). No live flag: the
+	 * entry holds on its static bit plus a non-zero mask, not on aging. */
+	rtl836x_l2_word[RTL836x_TA_L2_W0] = (uint16_t)(mac_last & 0x0ff);
+	rtl836x_l2_word[RTL836x_TA_L2_W1] = 0xc200;
+	rtl836x_l2_word[RTL836x_TA_L2_W2] = 0x0180;
+	rtl836x_l2_word[RTL836x_TA_L2_W3] = (uint16_t)(RTL836x_TA_L2_W3_STATIC
+						  | (vid & RTL836x_TA_L2_W3_FID_MASK));
+	rtl836x_l2_word[RTL836x_TA_L2_W4] = (uint16_t)(pmask & RTL836x_TA_L2_W4_MC_MASK);
+	rtl836x_l2_word[RTL836x_TA_L2_W5] = 0;
+	rtl836x_l2_word[RTL836x_TA_L2_W6] = 0;
+
+	/* Commit it, then read the write's own handshake: every engine command
+	 * completes with its status in 0x0502 -- the found bit plus the staged
+	 * key's hash base in the low bits (measured live: a fresh group entry
+	 * answers 0x51a0 with the entry stored at slot 0x09a0, the 4-way bucket
+	 * member whose low 11 bits name the base). A by-key lookup restage,
+	 * which the RTL8372/3 needs, cannot confirm group entries on this die:
+	 * lookups of multicast MAC keys miss with every key-type bit pattern
+	 * staged (16 codes probed), so the handshake is the honest check. */
+	for (i = 0; i < RTL836x_TA_L2_NUM_WORDS; i++)
+		REG_SET(RTL836x_TA_WRDATA_REG(i), rtl836x_l2_word[i]);
+	REG_SET(RTL836x_TA_CTRL_REG, RTL836x_TA_CTRL_L2_WRITE);
+	rtl836x_tbl_settle();
+	reg_read_m(RTL836x_TA_LUT_REG);
+	rtl836x_l2_mgmt_status = rtl836x_sfr_u16();
+	print_string("\nmc L2 entry written, look-up status ");
+	print_short(rtl836x_l2_mgmt_status);
+	if (!(rtl836x_l2_mgmt_status & RTL836x_TA_LUT_FOUND))
+		print_string(" (the fabric reports no such entry)");
+	write_char('\n');
+	return;
 #else
 	wait_table_ready();
 
@@ -1070,8 +1129,6 @@ void port_l2mc_set(uint8_t mac_last, __xdata uint16_t vid, __xdata uint16_t pmas
 void port_l2_setup(void) __banked
 {
 #if SOC_FAMILY == RTL836X
-	print_string("\nport_l2_setup (RTL836x) called\n");
-
 	rtl836x_l2_flush(RTL836x_L2_FLUSH_ALL);
 	for (rtl836x_l2_p = 0; rtl836x_l2_p <= 7; rtl836x_l2_p++) {
 		REG_SET(RTL836x_LUT_PORT_LEARN_LIMIT_REG(rtl836x_l2_p), 0x1040);
@@ -1081,8 +1138,6 @@ void port_l2_setup(void) __banked
 	reg_read_m(RTL836x_PORT_SECURITY_CTRL_REG);
 	REG_SET(RTL836x_PORT_SECURITY_CTRL_REG,
 		(uint16_t)(rtl836x_sfr_u16() & ~RTL836x_LUT_LEARN_OVER_ACT_MASK));
-
-	print_string("port_l2_setup (RTL836x) done\n");
 #else
 	port_l2_forget();
 
@@ -2016,6 +2071,20 @@ void port_vlan_egress_original(void) __banked
 	}
 }
 
+/** Set the ingress VLAN filtering: one bit per port in 0x07a9 */
+bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
+{
+	if (port > 7)
+		return false;
+
+	if (enabled)
+		reg_bit_set(RTL836x_VLAN_INGRESS_REG, port);
+	else
+		reg_bit_clear(RTL836x_VLAN_INGRESS_REG, port);
+
+	return true;
+}
+
 /** Get the ingress VLAN filtering status */
 bool port_ingress_vlan_filter_get(uint8_t port) __banked
 {
@@ -2095,12 +2164,10 @@ void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bo
 	REG_SET(RTL836x_TA_CTRL_REG, RTL836x_TA_CTRL_L2_WRITE);
 	rtl836x_tbl_settle();
 
-	/* Restage the same words for the by-key lookup: after the settle the
-	 * engine's window has been through a transaction, and the lookup has
-	 * to dispatch with the entry's own staged words. */
-	l2_mgmt_entry_fill(mac, vlan, remove_entry ? 0 : 1);
-	REG_SET(RTL836x_TA_CTRL_REG, RTL836x_TA_CTRL_L2_READ_MAC);
-	rtl836x_tbl_settle();
+	/* The write verifies itself: the engine's handshake lands in 0x0502
+	 * with every command (write-side; port_l2mc_set() names the measured
+	 * evidence). The RTL8372/3-style by-key restage is not needed here, and
+	 * it could not confirm multicast keys on this die anyway. */
 	reg_read_m(RTL836x_TA_LUT_REG);
 	rtl836x_l2_mgmt_status = rtl836x_sfr_u16();
 	print_string(remove_entry ? "\nmgmt L2 entry cleared"

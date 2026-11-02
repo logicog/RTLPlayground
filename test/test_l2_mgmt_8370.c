@@ -131,27 +131,27 @@ static void t_mgmt_pin_words(void)
 	CHECK(staged(RTL836x_TA_L2_W5) == RTL836x_TA_L2_W5_LIVE,
 	      "word 5: the live flag the fabric sets on the entries it writes");
 	CHECK(staged(RTL836x_TA_L2_W6) == 0x0000, "word 6: left clear (it reads back 0 here)");
-	CHECK(reg_u16(RTL836x_TA_CTRL_REG) == RTL836x_TA_CTRL_L2_READ_MAC,
-	      "and the write is followed by the by-key lookup that checks the entry");
+	CHECK(reg_u16(RTL836x_TA_CTRL_REG) == RTL836x_TA_CTRL_L2_WRITE,
+	      "and the write's own engine command is the last one issued (no restage)");
 	CHECK(strstr(out_buf, "mgmt L2 entry written") != NULL, "the console reports the write");
 	CHECK((lut_status() & RTL836x_TA_LUT_FOUND) != 0,
-	      "the by-key lookup answers with the entry the die stored");
+	      "the write handshake answers with the found bit");
 	CHECK(strstr(out_buf, "the fabric reports no such entry") == NULL,
 	      "so the console does not claim the pin was dropped");
 }
 
 static void t_mgmt_pin_lookup_hit(void)
 {
-	printf("[test] a hit from the by-key lookup is not reported as a miss\n");
+	printf("[test] the write handshake names the key's hash base, not a miss\n");
 	hw_reset();
 	out_reset();
 	port_l2_static_mgmt((uint8_t *)mgmt_mac, 1, false);
 
 	CHECK((lut_status() & RTL836x_TA_LUT_FOUND) != 0,
-	      "the die stored the entry, so its lookup status carries the found bit");
-	CHECK((lut_status() & ~RTL836x_TA_LUT_FOUND)
-	      == hw_l2_8370_hash(mgmt_mac, 1),
-	      "and names the slot the key hash placed it in");
+	      "the die stored the entry, so its write handshake carries the found bit");
+	CHECK((lut_status() & 0x07ff)
+	      == (hw_l2_8370_hash(mgmt_mac, 1) & 0x07ff),
+	      "and names the key's hash base: the 4-way bucket's low 11 bits");
 	CHECK(strstr(out_buf, "the fabric reports no such entry") == NULL,
 	      "the console does not claim the entry is missing");
 }
@@ -348,6 +348,112 @@ static void t_mgmt_walk_round_trip(void)
 	      "a table with nothing learned is walked empty");
 }
 
+static const uint8_t mc_mac[6] = { 0x01, 0x80, 0xc2, 0x00, 0x00, 0x0e };
+
+static void t_mc_write_words(void)
+{
+	uint16_t idx;
+
+	printf("[test] a static multicast entry goes out in the LUT's multicast shape\n");
+	hw_reset();
+	out_reset();
+	port_l2mc_set(0x0e, 2, PMASK_CPU);
+
+	CHECK(staged(RTL836x_TA_L2_W0) == 0x000e, "word 0: the group's last octet");
+	CHECK(staged(RTL836x_TA_L2_W1) == 0xc200, "word 1: C2:00");
+	CHECK(staged(RTL836x_TA_L2_W2) == 0x0180, "word 2: 01:80 (a multicast MAC)");
+	CHECK(staged(RTL836x_TA_L2_W3) == (RTL836x_TA_L2_W3_STATIC | 0x0002),
+	      "word 3: static flag + the entry's cvid");
+	CHECK(staged(RTL836x_TA_L2_W4) == PMASK_CPU,
+	      "word 4: the member mask (PMASK_CPU) replaces the age|spa byte");
+	CHECK(staged(RTL836x_TA_L2_W5) == 0x0000,
+	      "word 5: no live flag -- the entry holds without aging");
+	CHECK(staged(RTL836x_TA_L2_W6) == 0x0000, "word 6: left clear");
+	CHECK(reg_u16(RTL836x_TA_CTRL_REG) == RTL836x_TA_CTRL_L2_WRITE,
+	      "the write ends with its own handshake, not a by-key restage");
+	CHECK((lut_status() & RTL836x_TA_LUT_FOUND) != 0,
+	      "the write handshake confirms the die stored the multicast entry");
+	idx = lut_status() & 0x07ff;
+	CHECK(idx == (hw_l2_8370_hash(mc_mac, 2) & 0x07ff),
+	      "naming the key's hash base (MAC + cvid)");
+	CHECK(strstr(out_buf, "mc L2 entry written") != NULL, "the console reports the write");
+	CHECK(strstr(out_buf, "the fabric reports no such entry") == NULL,
+	      "and does not claim the entry is missing");
+}
+
+static void t_mc_walk_roundtrip(void)
+{
+	__xdata uint16_t slot = 0;
+
+	printf("[test] the multicast entry walks back as static with its member mask\n");
+	hw_reset();
+	out_reset();
+	port_l2mc_set(0x0e, 2, PMASK_CPU | 0x0023);
+
+	slot = 0;
+	CHECK(rtl836x_l2_walk_next(&slot) != L2_WALK_END, "the entry is in the table");
+	CHECK(l2_walk.mac[0] == 0x01 && l2_walk.mac[1] == 0x80 && l2_walk.mac[2] == 0xc2
+	      && l2_walk.mac[3] == 0x00 && l2_walk.mac[4] == 0x00 && l2_walk.mac[5] == 0x0e,
+	      "the group address reads back: 01:80:c2:00:00:0e");
+	CHECK(l2_walk.is_mcast, "it is reported multicast");
+	CHECK(l2_walk.is_static, "and static (it ages not)");
+	CHECK(l2_walk.portmask == (PMASK_CPU | 0x0023),
+	      "the walk reports the member mask that steers its lookup");
+	CHECK(l2_walk.port == L2_WALK_PORT_UNKNOWN,
+	      "a group's spa names no port");
+	CHECK(l2_walk.fid == 2, "cvid 2");
+
+	CHECK(rtl836x_l2_walk_next(&slot) == L2_WALK_END, "the walk ends after it");
+}
+
+static void t_mc_replace_and_unhold(void)
+{
+	__xdata uint16_t slot = 0;
+
+	printf("[test] rewriting the same key retargets the mask; a zero mask unholds\n");
+	hw_reset();
+	out_reset();
+	port_l2mc_set(0x0e, 2, PMASK_CPU);
+	port_l2mc_set(0x0e, 2, PMASK_CPU | 0x00ff);
+
+	slot = 0;
+	CHECK(rtl836x_l2_walk_next(&slot) != L2_WALK_END, "the retargeted entry walks");
+	CHECK(l2_walk.portmask == (PMASK_CPU | 0x00ff),
+	      "the mask is the latest one written");
+	CHECK(rtl836x_l2_walk_next(&slot) == L2_WALK_END,
+	      "writing the key again replaced, not added (one entry in the table)");
+
+	/* a maskless staging is the die side of "put the flooding back": the
+	 * key stays the only key, but with nothing to steer to, the entry is
+	 * not held and the walk reports no member ports */
+	port_l2mc_set(0x0e, 2, 0);
+	slot = 0;
+	CHECK(rtl836x_l2_walk_next(&slot) == L2_WALK_END,
+	      "a zero mask is not a held entry any more");
+	/* and the firmware can bring the group back in place */
+	port_l2mc_set(0x0e, 2, PMASK_CPU);
+	slot = 0;
+	CHECK(rtl836x_l2_walk_next(&slot) != L2_WALK_END, "re-pinned with the CPU alone");
+	CHECK(l2_walk.portmask == PMASK_CPU, "back to PMASK_CPU");
+}
+
+static void t_mc_flush_survivor(void)
+{
+	__xdata uint16_t slot = 0;
+
+	printf("[test] a flush of the dynamic entries leaves a multicast entry in place\n");
+	hw_reset();
+	out_reset();
+	port_l2mc_set(0x0e, 2, PMASK_CPU);
+	port_l2_forget();
+
+	slot = 0;
+	CHECK(rtl836x_l2_walk_next(&slot) != L2_WALK_END,
+	      "the multicast entry survives the flush like the static management one");
+	CHECK(l2_walk.is_mcast && (l2_walk.portmask == PMASK_CPU),
+	      "with its member mask intact");
+}
+
 int main(void)
 {
 	printf("== rtl837x_port.c RTL836x L2 entry tests ==\n");
@@ -358,6 +464,10 @@ int main(void)
 	t_delete_keeps_the_key();
 	t_mgmt_pin_readback();
 	t_mgmt_walk_round_trip();
+	t_mc_write_words();
+	t_mc_walk_roundtrip();
+	t_mc_replace_and_unhold();
+	t_mc_flush_survivor();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

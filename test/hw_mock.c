@@ -233,9 +233,21 @@ static struct hw_l2_8370 *l2_8370_find_by_key(uint16_t w0, uint16_t w1, uint16_t
 		if (!e->used || e->words[0] != w0 || e->words[1] != w1
 		    || e->words[2] != w2 || (e->words[3] & 0x0fff) != (fid & 0x0fff))
 			continue;
-		if (held_only && !(((e->words[4] >> RTL836x_TA_L2_W4_AGE_SHIFT) & RTL836x_TA_L2_W4_AGE_MASK)
-				   && (e->words[5] & RTL836x_TA_L2_W5_LIVE)))
-			continue;
+		if (held_only) {
+			/* held() has two shapes: the unicast age|live pair, and
+			 * for multicast MACs (word 2's high octet is odd) the
+			 * static bit plus a non-zero member mask in word 4 --
+			 * the same rule rtl836x_l2_held() applies. */
+			bool held;
+			if ((e->words[2] >> 8) & 1)
+				held = ((e->words[3] & RTL836x_TA_L2_W3_STATIC)
+						&& (e->words[4] & 0x07ff)) != 0;
+			else
+				held = (((e->words[4] >> RTL836x_TA_L2_W4_AGE_SHIFT) & RTL836x_TA_L2_W4_AGE_MASK)
+						&& (e->words[5] & RTL836x_TA_L2_W5_LIVE)) != 0;
+			if (!held)
+				continue;
+		}
 		return e;
 	}
 	return 0;
@@ -307,6 +319,11 @@ static void l2_8370_store(void)
 	/* like the die, which answers the next read with what it stored */
 	for (int w = 0; w < 7; w++)
 		regfile[RTL836x_TA_RDDATA_REG(w)] = words[w];
+	/* and like the die's write handshake: the found bit plus the staged
+	 * key's hash base -- the 4-way bucket = the low 11 bits of the stored
+	 * slot (measured: a fresh group entry answered 0x51a0 with the entry
+	 * stored at 0x09a0). */
+	regfile[RTL836x_TA_LUT_REG] = (uint32_t)(0x5000 | (idx & 0x07ff));
 }
 
 static void l2_8370_read_addr(void)
