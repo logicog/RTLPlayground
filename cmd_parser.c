@@ -1549,14 +1549,11 @@ void parse_passwd(void)
 
 void parse_eee(void)
 {
-#if SOC_FAMILY == RTL836X
-	/* The RTL8367B EEE MAC registers are not ported, so there is no speed or
-	 * port state to change here: refuse the command instead of parsing values
-	 * that nothing below would ever use. */
-	if (cmd_words_len > 2) {
-		cmd_error("eee [on|off|status] [port]\n");
-	}
-#else
+	/* On the RTL8367B (SOC_FAMILY == RTL836X) port_eee_enable() ignores the
+	 * speed argument -- its MAC enable turns 100M and 1G on together and the
+	 * PHY page sequence carries no speed either -- but the parsing below is
+	 * shared with the other dies, so `eee on|off|status [port]` and the web
+	 * EEE toggle work there too; a speed word is accepted and ignored. */
 	__xdata int8_t port = -1;
 	__xdata uint8_t speed = EEE_2G5;
 	__xdata uint8_t speed_word = 0;
@@ -1616,7 +1613,6 @@ void parse_eee(void)
 	} else {
 		cmd_error("eee [on|off|status] [port] [100m|1g|2g5]\n");
 	}
-#endif
 }
 
 

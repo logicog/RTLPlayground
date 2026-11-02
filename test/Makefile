@@ -29,6 +29,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_page_json \
         $(BUILDDIR)/test_page_json_8370 \
         $(BUILDDIR)/test_l2_mgmt_8370 \
+        $(BUILDDIR)/test_eee_8370 \
         $(BUILDDIR)/test_vlan_cpu_8370 \
         $(BUILDDIR)/test_httpd_tx \
         $(BUILDDIR)/test_tick_gate \
@@ -89,6 +90,11 @@ $(BUILDDIR)/test_page_json_8370: test_page_json_8370.c $(TABLE_ENV) hw_mock.h | 
 # The management L2 entry port_l2_static_mgmt() stages: its words, the control
 # word, and the same words read back through the walk.
 $(BUILDDIR)/test_l2_mgmt_8370: test_l2_mgmt_8370.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) -Wno-error -DMACHINE_NAME=SODOLA_SL_SG008W $(filter %.c,$^) -o $@ $(LDFLAGS)
+
+# The EEE round trip on the RTL836x: the MAC enable word, the PHY page
+# sequence, and the status decoder (see the header comment in the test).
+$(BUILDDIR)/test_eee_8370: test_eee_8370.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) -Wno-error -DMACHINE_NAME=SODOLA_SL_SG008W $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # The CPU port's bit in the fabric masks: what a `vlan` command ends up

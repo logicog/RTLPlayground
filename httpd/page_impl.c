@@ -823,9 +823,15 @@ void send_eee(void)
 			bool_to_html((ev & RTL836x_EEE_GIGA_BIT) ? 1 : 0);
 			bool_to_html((ev & RTL836x_EEE_100M_BIT) ? 1 : 0);
 			slen += strtox(outbuf + slen, "\",\"eee_lp\":\"");
+			/* No link-partner EEE register is verified on this die: the port
+			 * PHYs do not answer the MMD reads the other die uses, and no
+			 * register that resolves the partner's EEE ability is defined in
+			 * rtl836x_regs.h. Report the partner column as unknown (000, the
+			 * web tab shows "-") instead of a copy of the local enable
+			 * flags, which is what this branch used to print. */
 			bool_to_html(0);
-			bool_to_html((ev & RTL836x_EEE_GIGA_BIT) ? 1 : 0);
-			bool_to_html((ev & RTL836x_EEE_100M_BIT) ? 1 : 0);
+			bool_to_html(0);
+			bool_to_html(0);
 			slen += strtox(outbuf + slen, "\",\"active\":");
 			bool_to_html((ev & RTL836x_EEE_LPI_BIT) ? 1 : 0);
 #endif

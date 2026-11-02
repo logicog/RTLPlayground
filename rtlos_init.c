@@ -429,6 +429,12 @@ void rtl8370_init(void) __banked
 		reg_write_m(RTL836x_REG_LUT_PORT0_LEARN_LIMITNO + p);
 	}
 
+	/* Arm EEE the way the other dies' init paths do. On this die
+	 * port_eee_enable() ignores the speed (the MAC enable is 100M + 1G
+	 * together and the PHY page sequence carries none), so EEE_1000 documents
+	 * the wired-speed target and EEE_NORESET that init performs no PHY reset. */
+	port_eee_enable_all(EEE_1000 | EEE_NORESET);
+
 	print_string("\nrtl8370_init done\n");
 }
 #endif	/* SOC_FAMILY == RTL836X (rtl8370_init) */
