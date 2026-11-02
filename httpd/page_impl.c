@@ -98,11 +98,6 @@ void itoa16_html(uint16_t v) /* up to five digits (65535) */
 	char_to_html('0' + (v % 10));
 }
 
-void string_to_html(__code const char *s)
-{
-	slen += strtox(outbuf + slen, s);
-}
-
 static void temp_to_html(void)
 {
 	int16_t v;

@@ -28,6 +28,7 @@
     polling while its tab is hidden, so with 200 seconds switching tabs for a few minutes logged
     you out. `session <seconds>` still sets it.
   - Reuse the JSON string appender to reduce BANK1 code usage without changing responses.
+    The appender is shared in the common area, so the STP pages in BANK4 use it too.
 
 ## Fixed
 
