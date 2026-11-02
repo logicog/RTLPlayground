@@ -2382,7 +2382,7 @@ var CONF_CMDS = [
     /^stp\s+(port\s+\d+|lag\s+[1-4])\s+prio\s+\d+$/,
     /^stp\s+(port\s+\d+|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,
     /^stp\s+(port\s+\d+|lag\s+[1-4])\s+filter\s+(on|off)$/,
-    /^stp\s+(port\s+\d=|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
+    /^stp\s+(port\s+\d+|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
     /^igmp\s+(on|off)$/,
     /^mtu\s+\d+\s+\d+$/,
     /^lldp\s+(on|off)$/,
@@ -3101,7 +3101,7 @@ function stpKey(pt) {
 }
 
 function stpName(pt) {
-    return pt.lag ? "LAG" + pt.lag : String(pt.p)
+    return pt.lag ? "LAG" + pt.lag + " (" + rangeStr(maskToPorts(parseInt(pt.mbr, 16))) + ")" : String(pt.p)
 }
 
 function stpDhms(x) {
@@ -3226,7 +3226,9 @@ function stpLoad() {
         s.ports.sort(function(a, b) {
             return (a.lag - b.lag) || (a.p - b.p)
         });
-        var sig = s.ports.map(stpKey).join();
+        var sig = s.ports.map(function(pt) {
+            return stpKey(pt) + (pt.mbr || "")
+        }).join();
         if (sig !== stpSig) {
             stpSig = sig;
             stpBuild(s.ports);
