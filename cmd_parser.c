@@ -634,9 +634,15 @@ void parse_vlan(void)
 		vlan_settings.vlan = atoi_results_short;
 
 		if (cmd_compare(2, "mgmt")) {
+			if (management_vlan == vlan_settings.vlan) {
+				print_string("Management VLAN unchanged\n");
+				return;
+			}
 			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, true);
 			management_vlan = vlan_settings.vlan;
 			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
+			if (dhcp_state.state != DHCP_OFF)
+				dhcp_start();
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
 			else
