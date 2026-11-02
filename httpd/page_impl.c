@@ -698,8 +698,6 @@ void send_lldp(void)
 		slen += strtox(outbuf + slen, "{" JSONQUOTE("portNum") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 
-		slen += strtox(outbuf + slen, "," JSONQUOTE("logPort") ":");
-		itoa_html(i);
 		slen += strtox(outbuf + slen, "," JSONQUOTE("name") ":\"");
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
 			json_char_to_html(port_names[i][j]);
