@@ -819,22 +819,27 @@ void send_storm(void)
 	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		slen += strtox(outbuf + slen, "{" JSONQUOTE("portNum") ":");
 		itoa_html(machine.log_to_phys_port[i]);
-		slen += strtox(outbuf + slen, "," JSONQUOTE("en") ":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("en") ":[");
 		for (t = 0; t < STORM_TYPES; t++)
-			char_to_html(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? '1' : '0');
-		slen += strtox(outbuf + slen, "\"," JSONQUOTE("pps") ":\"");
+			json_add_array_uint_item(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? 1 : 0);
+		slen += strtox(outbuf + slen, "]," JSONQUOTE("pps") ":[");
 		for (t = 0; t < STORM_TYPES; t++) {
 			idx = STORM_METER(i, t);
-			char_to_html(reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f) ? '1' : '0');
+			json_add_array_uint_item(reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f) ? 1 : 0);
 		}
-		slen += strtox(outbuf + slen, "\"," JSONQUOTE("rate") ":\"");
+		slen += strtox(outbuf + slen, "]," JSONQUOTE("rate") ":[");
 		for (t = 0; t < STORM_TYPES; t++) {
 			reg_read_m(RTL837X_METER_RATE + (STORM_METER(i, t) << 2));
+			slen += strtox(outbuf + slen, "\"0x");
 			byte_to_html(sfr_data[1]);
 			byte_to_html(sfr_data[2]);
 			byte_to_html(sfr_data[3]);
+
+			char_to_html('"');
+			if(t < STORM_TYPES-1)
+				char_to_html(',');
 		}
-		char_to_html('"');
+		char_to_html(']');
 		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
