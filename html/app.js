@@ -4517,13 +4517,6 @@ tabHooks.lldp = {
     enter: lldpLoad
 };
 
-function eeeFlags(bits) {
-    var b = parseInt(bits, 2);
-    return ["100M", "1G", "2.5G"].map(function(s, i) {
-        return (b & (4 >> i)) ? s : null;
-    }).filter(Boolean).join(", ") || "-";
-}
-
 function eeeLoad() {
     return getJSON("/eee.json").then(function(s) {
         var tb = $("etable").tBodies[0];
@@ -4536,13 +4529,11 @@ function eeeLoad() {
                 tr.insertCell().textContent = t("e_na");
                 return;
             }
-            tr.insertCell().textContent = eeeFlags(p.eee);
-            tr.insertCell().textContent = eeeFlags(p.eee_lp);
+            tr.insertCell().textContent = p.advertised.join(", ");
+            tr.insertCell().textContent = p.linkPartner.join(", ");
             tr.insertCell().innerHTML = p.active ? badge(t("e_active"), "ok") : badge(t("e_idle"));
-            var on = parseInt(p.eee, 2) !== 0;
-            var sw = h("label", {
-                class: "switch"
-            }, [
+            var on = p.advertised.length != 0;
+            var sw = h("label", { class: "switch" }, [
                 h("input", {
                     type: "checkbox",
                     onchange: function() {
@@ -4576,16 +4567,12 @@ function bwLoad() {
         tb.innerHTML = "";
         byPort(s).forEach(function(p) {
             var n = p.portNum;
-            var iOn = !!Number(p.iLimited),
-                eOn = !!Number(p.eLimited);
-            var iM = (parseInt(p.iBW, 16) * 16 / 1000),
-                eM = (parseInt(p.eBW, 16) * 16 / 1000);
+            var iOn = p.iLimited == 1, eOn = p.eLimited == 1;
+            var iM = (parseInt(p.iBW) * 16 / 1000),
+                eM = (parseInt(p.eBW) * 16 / 1000);
             var tr = tb.insertRow();
             tr.insertCell().textContent = n;
-            var icb = h("input", {
-                type: "checkbox",
-                id: "bwi" + n
-            });
+            var icb = h("input", { type: "checkbox", id: "bwi" + n });
             icb.checked = iOn;
             tr.insertCell().appendChild(icb);
             var iin = h("input", {
@@ -4598,25 +4585,13 @@ function bwLoad() {
             });
             if (iOn) iin.value = +iM.toFixed(3);
             tr.insertCell().appendChild(iin);
-            var msel = h("select", {
-                class: "in",
-                id: "bwm" + n
-            }, [
-                h("option", {
-                    value: "fc",
-                    text: t("bw_fc")
-                }),
-                h("option", {
-                    value: "drop",
-                    text: t("bw_drop")
-                }),
+            var msel = h("select", { class: "in", id: "bwm" + n }, [
+                h("option", { value: "fc", text: t("bw_fc") }),
+                h("option", { value: "drop", text: t("bw_drop") }),
             ]);
             msel.value = Number(p.iFC) === 1 ? "fc" : "drop";
             tr.insertCell().appendChild(msel);
-            var ecb = h("input", {
-                type: "checkbox",
-                id: "bwe" + n
-            });
+            var ecb = h("input", { type: "checkbox", id: "bwe" + n });
             ecb.checked = eOn;
             tr.insertCell().appendChild(ecb);
             var ein = h("input", {
@@ -4629,9 +4604,7 @@ function bwLoad() {
             });
             if (eOn) ein.value = +eM.toFixed(3);
             tr.insertCell().appendChild(ein);
-            tr.insertCell().appendChild(h("button", {
-                class: "ctl",
-                text: t("c_apply"),
+            tr.insertCell().appendChild(h("button", { class: "ctl", text: t("c_apply"),
                 onclick: function() {
                     bwApply(n)
                 }
