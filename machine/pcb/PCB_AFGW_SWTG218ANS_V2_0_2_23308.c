@@ -17,13 +17,13 @@ __code const struct machine machine = {
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
 	.led_mux = { 0x00, 0x01, 0x04, 0x05, 0x08, 0x09, 0x0c, 0x09, 0x0d, 0x10, 0x11, 0x0e, 0x14, 0x11, 0x12, 0x15, 0x15, 0x16, 0x18, 0x19, 0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21 },
 	.led_mux_custom = 1,
-	.led_sets = { { LEDS_2G5 | LEDS_LINK | LEDS_ACT,
-			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+	.led_sets = { { LEDS_2G5 | LEDS_LINK | LEDS_ACT,			// Green LED
+			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,	// Amber LED
 			LEDS_DUPLEX,
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT
 		      },
-		      { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,
-			LEDS_10G | LEDS_LINK | LEDS_ACT,
+		      { LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_LINK | LEDS_ACT,	// Green LED
+			LEDS_10G | LEDS_LINK | LEDS_ACT,			// Blue LED
 			LEDS_2G5 | LEDS_LINK,
 			LEDS_COL | LEDS_DUPLEX
 		      },
