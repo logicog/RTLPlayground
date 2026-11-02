@@ -59,6 +59,9 @@ extern __xdata bool lldp_enabled;
 
 __code const uint8_t * __code const HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
+//TODO share with the copy in rtl837x_storm
+__code const char * __code const http_storm_names[STORM_TYPES] = { "bcast", "mcast", "ucast", "umcast" };
+
 // Convert uint8_t to ascii HEX char push on html-buffer.
 void charhex_to_html(char c)
 {
@@ -810,6 +813,7 @@ void send_bandwidth(void)
 }
 
 
+
 void send_storm(void)
 {
 	__xdata uint8_t i, t, idx;
@@ -819,27 +823,36 @@ void send_storm(void)
 	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		slen += strtox(outbuf + slen, "{" JSONQUOTE("portNum") ":");
 		itoa_html(machine.log_to_phys_port[i]);
-		slen += strtox(outbuf + slen, "," JSONQUOTE("en") ":[");
-		for (t = 0; t < STORM_TYPES; t++)
-			json_add_array_uint_item(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? 1 : 0);
-		slen += strtox(outbuf + slen, "]," JSONQUOTE("pps") ":[");
+		char_to_html(',');
+
 		for (t = 0; t < STORM_TYPES; t++) {
+			char_to_html('"');
+			slen += strtox(outbuf + slen, http_storm_names[t]);
+			slen += strtox(outbuf + slen, "\":{" JSONQUOTE("en") ":");
+			char_to_html(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? '1' : '0');
+
+			slen += strtox(outbuf + slen, "," JSONQUOTE("unit") ":");
 			idx = STORM_METER(i, t);
-			json_add_array_uint_item(reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f) ? 1 : 0);
-		}
-		slen += strtox(outbuf + slen, "]," JSONQUOTE("rate") ":[");
-		for (t = 0; t < STORM_TYPES; t++) {
+
+			if (reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f)) {
+				slen += strtox(outbuf + slen, JSONQUOTE("pps"));
+			} else {
+				slen += strtox(outbuf + slen, JSONQUOTE("kbit/s"));
+			}
+
+			slen += strtox(outbuf + slen, "," JSONQUOTE("rate") ":\"0x");
+
 			reg_read_m(RTL837X_METER_RATE + (STORM_METER(i, t) << 2));
-			slen += strtox(outbuf + slen, "\"0x");
 			byte_to_html(sfr_data[1]);
 			byte_to_html(sfr_data[2]);
 			byte_to_html(sfr_data[3]);
 
 			char_to_html('"');
+
+			char_to_html('}');
 			if(t < STORM_TYPES-1)
 				char_to_html(',');
 		}
-		char_to_html(']');
 		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
