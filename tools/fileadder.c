@@ -47,7 +47,7 @@ static struct argp_option options[] = {
     { "address", 'a', "SIZE", 0, "Address where data is placed, default is 0x1000000 if option is used, otherwise 0x1fd000"},
     { "prefix", 'p', "FILE", 0, "Prefix for header and index file generation"},
     { "bank", 'b', "BANKNAME", 0, "Generate #pragma with given bank-name"},
-    { "gzip", 'z', 0, 0, "gzip-compress the added files"},
+    { "gzip", 'z', 0, 0, "gzip-compress added files only when smaller"},
     { 0 }
 };
 
@@ -126,26 +126,24 @@ int addfile(const char *name, int addr)
 
 
 /*
- * gzip-compresses the data at buffer[addr] in place (gzip format, as
- * expected by the Content-Encoding: gzip header the httpd serves it
- * with).  Returns the compressed size.
+ * Tries gzip compression of buffer[addr], keeping the raw bytes unless
+ * compression makes them smaller. Returns the stored size, or -1 on error.
  */
 int gzipBuffer(int addr, int len)
 {
-	uLong bound = compressBound(len);
-	unsigned char *out = malloc(bound);
-	if (!out) {
-		perror("malloc");
-		return 0;
-	}
-
 	z_stream zs;
 	memset(&zs, 0, sizeof(zs));
 	if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, 15 + 16, 8,
 			 Z_DEFAULT_STRATEGY) != Z_OK) {
 		fprintf(stderr, "gzip: deflateInit2 failed\n");
-		free(out);
-		return 0;
+		return -1;
+	}
+	uLong bound = deflateBound(&zs, len);
+	unsigned char *out = malloc(bound);
+	if (!out) {
+		perror("malloc");
+		deflateEnd(&zs);
+		return -1;
 	}
 	zs.next_in = (Bytef *)&buffer[addr];
 	zs.avail_in = len;
@@ -155,12 +153,15 @@ int gzipBuffer(int addr, int len)
 		fprintf(stderr, "gzip: deflate failed\n");
 		deflateEnd(&zs);
 		free(out);
-		return 0;
+		return -1;
 	}
 	int out_len = zs.total_out;
 	deflateEnd(&zs);
 
-	memcpy(&buffer[addr], out, out_len);
+	if (out_len < len)
+		memcpy(&buffer[addr], out, out_len);
+	else
+		out_len = len;
 	free(out);
 	return out_len;
 }
@@ -199,7 +200,7 @@ char *getMime(const char *name)
 }
 
 
-int addidx(const char *name, int addr, int len)
+int addidx(const char *name, int addr, int len, bool gzip)
 {
 	char s[256];
 	int i = 0;
@@ -212,9 +213,9 @@ int addidx(const char *name, int addr, int len)
 
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "#define FDATA_START_%s 0x%x\n", s, addr);
 	defbuf_p += snprintf(&dbuf[defbuf_p], DEF_SIZE - defbuf_p, "#define FDATA_SIZE_%s %d\n", s, len);
-	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/%s\", FDATA_START_%s, FDATA_SIZE_%s, %s, %d},\n", name, s, s, getMime(name), arguments.gzip? 1 : 0);
+	ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/%s\", FDATA_START_%s, FDATA_SIZE_%s, %s, %d},\n", name, s, s, getMime(name), gzip? 1 : 0);
 	if (!strcmp(name, "index.html"))
-		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/\", FDATA_START_%s, FDATA_SIZE_%s, mime_HTML, %d},\n", s, s, arguments.gzip? 1 : 0);
+		ibuf_p += snprintf(&ibuf[ibuf_p], INDEX_SIZE - ibuf_p, "  {\"/\", FDATA_START_%s, FDATA_SIZE_%s, mime_HTML, %d},\n", s, s, gzip? 1 : 0);
 	return 0;
 }
 
@@ -373,9 +374,15 @@ int main(int argc, char **argv)
 			data_read = replaceCalls(addr, file_len);
 			if (old_len > data_read)
 				memset(buffer + addr + data_read, 0, old_len - data_read);
-			if (arguments.gzip)
-				data_read = gzipBuffer(addr, data_read);
-			addidx(in_file->d_name, addr, data_read);
+			bool gzip = false;
+			if (arguments.gzip) {
+				int stored_len = gzipBuffer(addr, data_read);
+				if (stored_len < 0)
+					return 5;
+				gzip = stored_len < data_read;
+				data_read = stored_len;
+			}
+			addidx(in_file->d_name, addr, data_read, gzip);
 			addr += data_read;
 		}
 		for (int e = 0; e < n_entries; e++)

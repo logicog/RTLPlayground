@@ -116,7 +116,7 @@ uint8_t find_entry(__xdata uint8_t *e)
 {
 	uint8_t i, j;
 
-	for (i = 0; f_data[i].len; i++) {
+	for (i = 0; f_data[i].file; i++) {
 		j = 0;
 		while (f_data[i].file[j] && (f_data[i].file[j] == e[j])) {
 			j++;
