@@ -15,6 +15,21 @@ make clean
 Exit status is non-zero if any check fails, a sanitizer trips, or the watchdog
 fires — so it drops straight into CI.
 
+The default suite uses the existing C toolchain, including the ACL CLI, JSON
+endpoint and HTTP tests. When Node.js is available, it also runs the frontend
+checks; otherwise it prints a skip notice and continues with the C tests.
+
+The frontend checks execute the actual `html/app.js` rule decoding, command
+generation, configuration merging and card refresh logic. To run only these
+checks:
+
+```
+make test_acl_gui
+```
+
+These checks need a JavaScript runtime; the C tests cover the firmware side
+of the page without adding a dependency to CI.
+
 ## How it works
 - **`sdcc_shim.h`** (force-included) erases SDCC 8051 keywords (`__xdata`,
   `__code`, `__banked`, …) so firmware sources compile under host gcc. It changes
