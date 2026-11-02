@@ -731,28 +731,35 @@ void send_eee(void)
 		if (machine.is_sfp[i]) {
 			slen += strtox(outbuf + slen, "," JSONQUOTE("isSFP") ":1");
 		} else {
-			slen += strtox(outbuf + slen, "," JSONQUOTE("isSFP") ":0," JSONQUOTE("eee") ":\"");
+			slen += strtox(outbuf + slen, "," JSONQUOTE("isSFP") ":0," JSONQUOTE("advertised") ":[");
 			uint16_t v;
 			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV2);
 			v = SFR_DATA_U16;
-			bool_to_html(v & PHY_EEE_BIT_2G5);
+
+			if(v & PHY_EEE_BIT_2G5)
+				json_add_array_string_item(JSONQUOTE("2.5G"));
 
 			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV);
 			v = SFR_DATA_U16;
-			bool_to_html(v & PHY_EEE_BIT_1G);
-			bool_to_html(v & PHY_EEE_BIT_100M);
+			if(v & PHY_EEE_BIT_1G)
+				json_add_array_string_item(JSONQUOTE("1G"));
+			if(v & PHY_EEE_BIT_100M)
+				json_add_array_string_item(JSONQUOTE("100M"));
 
 			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY2);
 			v = SFR_DATA_U16;
-			slen += strtox(outbuf + slen, "\"," JSONQUOTE("eee_lp") ":\"");
-			bool_to_html (v & PHY_EEE_BIT_2G5);
+			slen += strtox(outbuf + slen, "]," JSONQUOTE("linkPartner") ":[");
+			if (v & PHY_EEE_BIT_2G5)
+				json_add_array_string_item(JSONQUOTE("2.5G"));
 
 			phy_read(i, PHY_MMD_AN, PHY_EEE_LP_ABILITY);
 			v = SFR_DATA_U16;
-			bool_to_html(v & PHY_EEE_BIT_1G);
-			bool_to_html(v & PHY_EEE_BIT_100M);
+			if(v & PHY_EEE_BIT_1G)
+				json_add_array_string_item(JSONQUOTE("1G"));
+			if(v & PHY_EEE_BIT_100M)
+				json_add_array_string_item(JSONQUOTE("100M"));
 
-			slen += strtox(outbuf + slen, "\"," JSONQUOTE("active") ":");
+			slen += strtox(outbuf + slen, "]," JSONQUOTE("active") ":");
 			bool_to_html(eee_ablty & (1 << i));
 		}
 		char_to_html('}');
@@ -777,7 +784,7 @@ void send_bandwidth(void)
 			char_to_html('1');
 		else
 			char_to_html('0');
-		slen += strtox(outbuf + slen, "," JSONQUOTE("iBW") ":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("iBW") ":\"0x");
 		byte_to_html(sfr_data[1] & 0x0f);
 		byte_to_html(sfr_data[2]);
 		byte_to_html(sfr_data[3]);
@@ -792,7 +799,7 @@ void send_bandwidth(void)
 			char_to_html('1');
 		else
 			char_to_html('0');
-		slen += strtox(outbuf + slen, "," JSONQUOTE("eBW") ":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("eBW") ":\"0x");
 		byte_to_html(sfr_data[1] & 0x0f);
 		byte_to_html(sfr_data[2]);
 		byte_to_html(sfr_data[3]);
