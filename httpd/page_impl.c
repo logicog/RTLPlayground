@@ -643,40 +643,40 @@ void send_lacp(void)
 	dbg_string("send_lacp called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
-	slen += strtox(outbuf + slen, "{\"on\":");
+	slen += strtox(outbuf + slen, "{" JSONQUOTE("on") ":");
 	bool_to_html(lacpEnabled);
-	slen += strtox(outbuf + slen, ",\"lags\":[");
+	slen += strtox(outbuf + slen, "," JSONQUOTE("lags") ":[");
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
-		slen += strtox(outbuf + slen, "{\"cfg\":\"");
+		slen += strtox(outbuf + slen, "{" JSONQUOTE("cfg") ":\"");
 		byte_to_html(lacp_lag_ports[l] >> 8);
 		byte_to_html(lacp_lag_ports[l]);
-		slen += strtox(outbuf + slen, "\",\"aggValid\":");
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("aggValid") ":");
 		bool_to_html(lacp_agg_valid[l]);
-		slen += strtox(outbuf + slen, ",\"agg\":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("agg") ":\"");
 		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
 			byte_to_html(lacp_agg_sys[l][j]);
-		slen += strtox(outbuf + slen, "\",\"members\":\"");
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("members") ":\"");
 		byte_to_html(lacp_members_last[l] >> 8);
 		byte_to_html(lacp_members_last[l]);
 		slen += strtox(outbuf + slen, "\"},");
 	}
 	slen -= 1; // remove comma
-	slen += strtox(outbuf + slen, "],\"ports\":[");
+	slen += strtox(outbuf + slen, "]," JSONQUOTE("ports") ":[");
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		slen += strtox(outbuf + slen, "{\"p\":");
+		slen += strtox(outbuf + slen, "{" JSONQUOTE("p") ":");
 		itoa_html(machine.log_to_phys_port[i]);
-		slen += strtox(outbuf + slen, ",\"lag\":");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("lag") ":");
 		itoa_html(lacp_port_lag[i]);
-		slen += strtox(outbuf + slen, ",\"a\":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("a") ":\"");
 		byte_to_html(lacp_actor_state[i]);
-		slen += strtox(outbuf + slen, "\",\"pt\":\"");
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("pt") ":\"");
 		byte_to_html(lacp_partner_state[i]);
-		slen += strtox(outbuf + slen, "\",\"rs\":");
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("rs") ":");
 		itoa_html(lacp_rx_state[i]);
-		slen += strtox(outbuf + slen, ",\"rx\":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("rx") ":\"");
 		byte_to_html(lacp_rx_count[i] >> 8);
 		byte_to_html(lacp_rx_count[i]);
-		slen += strtox(outbuf + slen, "\",\"psys\":\"");
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("psys") ":\"");
 		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
 			byte_to_html(lacp_partner_sys[i][j]);
 		slen += strtox(outbuf + slen, "\"},");
