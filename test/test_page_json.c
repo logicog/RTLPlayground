@@ -220,6 +220,42 @@ static void t_status_counters(void)
 	CHECK(balanced(), "valid JSON");
 }
 
+static void t_info_flash_capacity(void)
+{
+	extern uint32_t flash_size;
+	printf("[test] /information.json describes safe Flash operations\n");
+	flash_size = 0x80000;
+	out_reset(); send_basic_info();
+	CHECK(has("\"web_update\":0"), "512 KiB has no update staging area");
+	CHECK(has("\"config_max\":4095"), "configuration limit reserves its NUL byte");
+	CHECK(balanced(), "512 KiB information is valid JSON");
+	CHECK(slen < TCP_OUTBUF_SIZE, "information fits its buffer");
+	flash_size = 0x200000;
+	out_reset(); send_basic_info();
+	CHECK(has("\"web_update\":1"), "2 MiB supports staged web updates");
+	CHECK(balanced(), "2 MiB information is valid JSON");
+}
+
+static void t_utf8_and_cable_json(void)
+{
+	extern uint8_t ct_state,ct_port,ct_valid,ct_have,ct_result[4];
+	extern uint16_t ct_len[4];
+	hw_reset(); vlan_ptr=0; vlan_names[0]=0;
+	make_vlan(20,0x15,0);
+	CHECK(vlan_name_set(20,(uint8_t *)"访客网络",12), "Chinese name accepted by production name store");
+	out_reset();send_vlan(20);CHECK(has("访客网络") && balanced(), "vlan detail emits native UTF-8 JSON");
+	out_reset();send_vlanlist();CHECK(has("访客网络") && has("\"complete\":1") && balanced(), "VLAN list emits Chinese and completeness flag");
+	ct_state=0;ct_have=0;out_reset();send_cabletest();CHECK(has("\"state\":\"idle\"") && has("\"port\":0"), "untested cable result never uses uninitialised port");
+	ct_port=4;ct_have=1;ct_valid=1;ct_result[0]=1;ct_result[1]=2;ct_result[2]=3;ct_result[3]=0;
+	ct_len[0]=999;ct_len[1]=123;ct_len[2]=52;ct_len[3]=999;
+	out_reset();send_cabletest();
+	CHECK(has("\"state\":\"done\"") && has("\"distance_dm\":123"), "fault distance represented in decimetres");
+	CHECK(count("\"distance_dm\":null")==2, "normal and unknown pairs do not invent a cable length");
+	CHECK(balanced() && slen<TCP_OUTBUF_SIZE, "cable JSON fits and balances");
+	ct_state=1;out_reset();send_cabletest();CHECK(has("\"state\":\"running\"") && has("\"pairs\":[]"), "running test does not expose stale results");
+	ct_state=0;ct_valid=0;out_reset();send_cabletest();CHECK(has("\"state\":\"timeout\""), "timeout exposed distinctly");
+}
+
 int main(void)
 {
 	printf("== httpd/page_impl.c JSON tests ==\n");
@@ -229,6 +265,8 @@ int main(void)
 	t_l2_page();
 	t_status_counters();
 	t_status_macs();
+	t_info_flash_capacity();
+	t_utf8_and_cable_json();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

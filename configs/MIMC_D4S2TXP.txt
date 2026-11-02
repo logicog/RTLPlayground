@@ -1,0 +1,6 @@
+hostname mimc-d4s2txp
+ip 192.168.10.248
+netmask 255.255.255.0
+gw 192.168.10.1
+ntp timezone +08:00
+ntp dst off

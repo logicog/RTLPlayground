@@ -199,6 +199,9 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   #ttitle{flex:1}
   #strip{order:3;flex-basis:100%}
 }
+.vlan-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}.vlan-head h2{margin:0;flex:1}.vport{display:inline-block;padding:3px 9px;border-radius:6px;margin:2px 5px 2px 0;font-size:12px;white-space:nowrap}.vport.u{background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok)}.vport.t{background:var(--sel);color:var(--ac)}.vlan-guide{padding:12px 14px;background:var(--panel2);border-radius:8px;margin-bottom:14px}.vlan-port-table .seg{display:inline-flex;gap:3px}.vlan-port-table .seg button{padding:6px 9px}.modal .small{white-space:pre-line}.cable-result{margin-top:16px}.cable-note{border-left:3px solid var(--warn);padding:10px 12px;background:var(--panel2);margin-bottom:14px}
+@media(max-width:640px){.vlan-port-table,.vlan-port-table tbody{display:block}.vlan-port-table thead{display:none}.vlan-port-table tr{display:grid;grid-template-columns:1fr auto;padding:12px 0;border-bottom:1px solid var(--bd)}.vlan-port-table td{border:0;padding:4px 0}.vlan-port-table td:nth-child(3),.vlan-port-table td:nth-child(4){grid-column:1/-1}.vlan-port-table td:nth-child(4):before{content:attr(data-label) "：";color:var(--fg2)}.vlan-port-table .seg{width:100%}.vlan-port-table .seg button{flex:1}.vlan-overview td{white-space:normal}.vlan-overview{min-width:470px}}
+@media(max-width:640px){.vlan-name-row{flex-wrap:wrap}.vlan-name-row .lb,.vlan-name-row .small{flex-basis:100%;width:100%}.vlan-name-row .in{width:100%;min-width:0}.vlan-overview,.vlan-overview tbody{display:block;min-width:0!important}.vlan-overview thead{display:none}.vlan-overview tr{display:grid;grid-template-columns:90px 1fr;padding:10px;border-bottom:1px solid var(--bd)}.vlan-overview td{border:0;padding:4px}.vlan-overview td:nth-child(n+3){grid-column:1/-1}.vlan-overview td:nth-child(4):before{content:"PVID: ";color:var(--fg2)}.vlan-overview td:nth-child(5){display:flex;gap:8px}}
 </style>
 <script>
 (function(){
@@ -302,20 +305,31 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
     </section>
 
     <section class="tab" id="tab-vlan">
-      <div class="card"><h2><span data-i18n="v_title">VLANs</span><span id="vmgmtcur"></span></h2>
-        <div class="scrollx"><table class="t" id="vtable">
-          <thead><tr><th data-i18n="v_vid">VID</th><th data-i18n="c_name">Name</th><th data-i18n="v_members">Members</th><th data-i18n="v_tagged">Tagged</th><th data-i18n="v_untagged">Untagged</th><th data-i18n="v_pvid_on">PVID on</th><th></th></tr></thead>
+      <div class="card"><div class="vlan-head"><h2 data-i18n="v_title">VLANs</h2><span class="badge" id="vmgmtcur"></span><span class="small mut" id="vcount"></span><button class="ctl" id="vrefresh" data-i18n="c_refresh">Refresh</button></div>
+        <p class="vlan-guide small" data-i18n="v_intro">Choose a VLAN below, then edit membership per port. Changes take effect when applied; save to Flash to keep them after reboot.</p>
+        <div class="scrollx"><table class="t vlan-overview" id="vtable">
+          <thead><tr><th data-i18n="v_vid">VID</th><th data-i18n="c_name">Name</th><th data-i18n="v_port_membership">Port membership</th><th data-i18n="v_pvid_on">PVID on</th><th></th></tr></thead>
           <tbody></tbody></table></div>
         <p class="small mut" id="vempty" style="display:none;margin-top:6px" data-i18n="v_empty">No VLANs configured.</p>
         <button class="ctl pri" id="vlan_add" data-i18n="v_add">Add a new VLAN</button>
       </div>
       <div class="card"><h2><span data-i18n="v_editor">VLAN editor</span> <span class="hint" id="vtitle"></span></h2>
+        <label class="row vlan-name-row"><span class="lb" data-i18n="c_name">Name</span><input class="in" id="veditname" maxlength="30" data-i18n-p="v_optional"><span class="small mut" data-i18n="v_name_hint">Chinese supported; up to 15 characters / 45 UTF-8 bytes.</span></label>
         <div><label class="row"><span class="lb" style="width:150px;" data-i18n="v_setmgmt_t"></span>
           <span class="switch"><input type="checkbox" id="vmgmtpromote"><i></i></span>
         </label></div>
-        <div class="scrollx"><table class="t" id="vedit"><tbody></tbody></table></div>
+        <div><table class="t vlan-port-table" id="vedit"><thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_link">Link</th><th data-i18n="v_port_membership">Membership</th><th data-i18n="v_pvid_preview">PVID now → after</th></tr></thead><tbody></tbody></table></div>
         <div style="margin-top:10px"><button class="ctl pri" id="vapply" data-i18n="c_apply">Apply</button></div>
         <p class="small mut" style="margin-top:6px" data-i18n="v_legend">U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-cable">
+      <div class="card"><h2 data-i18n="ct_title">Cable diagnostics</h2>
+        <p class="cable-note small" data-i18n="ct_warning">The selected copper port will briefly lose its link. Use another port for management. This does not control PoE power.</p>
+        <div class="vlan-head"><label><span data-i18n="c_port">Port</span> <select class="in" id="ct-port"></select></label><button class="ctl pri" id="ct-start" data-i18n="ct_start">Start test</button><button class="ctl" id="ct-refresh" data-i18n="c_refresh">Refresh</button><span class="badge" id="ct-state"></span></div>
+        <p class="small mut" data-i18n="ct_explain">TDR estimates distance to a reflection or fault. For approximate cable length, leave the far end disconnected. A normal terminated pair may have no distance result; this is not a cable certification test.</p>
+        <div class="cable-result"><h3 id="ct-result-title"></h3><table class="t"><thead><tr><th data-i18n="ct_pair">Pair</th><th data-i18n="c_state">State</th><th data-i18n="ct_distance">Estimated fault distance</th></tr></thead><tbody id="ct-results"></tbody></table></div>
       </div>
     </section>
 

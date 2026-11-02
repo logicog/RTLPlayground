@@ -196,6 +196,57 @@ int8_t vlan_get(uint16_t vlan) __banked
 }
 
 
+/* Names are one UTF-8 token: at most 15 characters / 45 bytes. Validate
+ * before modifying the table, including overlong, surrogate and >U+10FFFF. */
+bool vlan_name_valid(__xdata const uint8_t *name, uint8_t len) __banked
+{
+	uint8_t i = 0, chars = 0, n, c, low, high;
+	if (len > 45) return false;
+	while (i < len) {
+		if (++chars > 15) return false;
+		c = name[i++];
+		if (c < 0x80) {
+			if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+			      (chars > 1 && ((c >= '0' && c <= '9') || c == '_' || c == '-')))) return false;
+			continue;
+		}
+		low = 0x80; high = 0xbf;
+		if (c >= 0xc2 && c <= 0xdf) n = 1;
+		else if (c >= 0xe0 && c <= 0xef) {
+			n = 2;
+			if (c == 0xe0) low = 0xa0;
+			if (c == 0xed) high = 0x9f;
+		} else if (c >= 0xf0 && c <= 0xf4) {
+			n = 3;
+			if (c == 0xf0) low = 0x90;
+			if (c == 0xf4) high = 0x8f;
+		} else return false;
+		if (i + n > len || name[i] < low || name[i] > high) return false;
+		while (n--) if (name[i] < 0x80 || name[i++] > 0xbf) return false;
+	}
+	return true;
+}
+
+bool vlan_name_set(uint16_t vlan, __xdata const uint8_t *name, uint8_t len) __banked
+{
+	uint16_t old = vlan_name(vlan), removed = 0;
+	uint8_t i;
+	if (!vlan_name_valid(name, len)) return false;
+	if (old != 0xffff) {
+		removed = 4;
+		while (vlan_names[old] && vlan_names[old++] != ' ') removed++;
+	}
+	if (len && vlan_ptr - removed + len + 4 >= VLAN_NAMES_SIZE) return false;
+	vlan_name_remove(vlan);
+	if (!len) return true;
+	vlan_names[vlan_ptr++] = hex[(vlan >> 8) & 15];
+	vlan_names[vlan_ptr++] = hex[(vlan >> 4) & 15];
+	vlan_names[vlan_ptr++] = hex[vlan & 15];
+	for (i = 0; i < len; i++) vlan_names[vlan_ptr++] = name[i];
+	vlan_names[vlan_ptr++] = ' '; vlan_names[vlan_ptr] = 0;
+	return true;
+}
+
 __xdata uint16_t vlan_name(uint16_t vlan) __banked
 {
 	__xdata int16_t i = 0;
@@ -623,6 +674,8 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 	// Enable all speeds up to the specified speed
 	if (speed & EEE_100) {
 			print_string("100m\n");
+			// A previous 2.5G setting must not leave its advertisement set.
+			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 0);
 			// Enable EEE advertisement for 100BASE-T via EEE Advertisement Reg
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_100M);
 			if (!(speed & EEE_NORESET))

@@ -12,6 +12,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
+#include "phy.h"
 #include "machine.h"
 #include "support.h"
 #include "hw_mock.h"
@@ -166,6 +167,43 @@ static void t_lag(void)
 	CHECK((hw_reg_get(RTL837X_TRK_HASH_CTRL_BASE + 8) & 0xff) == 0x06, "a hash already set is kept");
 }
 
+static void t_eee_speed_downgrade(void)
+{
+	extern uint16_t mock_eee_adv[10], mock_eee_adv2[10];
+	printf("[test] EEE speed reductions remove earlier high-speed advertisements\n");
+	hw_reset();
+	port_eee_enable(1, EEE_2G5 | EEE_NORESET);
+	CHECK(mock_eee_adv2[1] == PHY_EEE_BIT_2G5, "2.5G EEE advertised initially");
+	port_eee_enable(1, EEE_100 | EEE_NORESET);
+	CHECK(mock_eee_adv2[1] == 0, "100M clears earlier 2.5G EEE advertisement");
+	CHECK(mock_eee_adv[1] == PHY_EEE_BIT_100M, "100M does not advertise 1G EEE");
+	port_eee_enable(1, EEE_2G5 | EEE_NORESET);
+	port_eee_enable(1, EEE_1000 | EEE_NORESET);
+	CHECK(mock_eee_adv2[1] == 0, "1G clears earlier 2.5G EEE advertisement");
+	CHECK(mock_eee_adv[1] == (PHY_EEE_BIT_100M | PHY_EEE_BIT_1G), "1G preserves 100M capability");
+}
+
+static void t_utf8_vlan_names(void)
+{
+	extern uint8_t vlan_names[VLAN_NAMES_SIZE];
+	extern uint16_t vlan_ptr;
+	uint8_t chinese[] = "办公网络";
+	uint8_t maxname[] = "一二三四五六七八九十一二三四五";
+	uint8_t invalid[][5] = {{0xc0,0xaf,0},{0xed,0xa0,0x80,0},{0xf4,0x90,0x80,0x80,0},{0xe4,0xb8,0}};
+	vlan_ptr=0; vlan_names[0]=0;
+	CHECK(vlan_name_set(10,chinese,sizeof(chinese)-1), "UTF-8 Chinese VLAN name accepted");
+	CHECK(!memcmp(vlan_names+vlan_name(10),chinese,sizeof(chinese)-1), "Chinese bytes stored without replacement");
+	for (unsigned n=0;n<sizeof(invalid)/sizeof(invalid[0]);n++)
+		CHECK(!vlan_name_set(10,invalid[n],strlen((char *)invalid[n])), "malformed UTF-8 rejected without mutation");
+	CHECK(!memcmp(vlan_names+vlan_name(10),chinese,sizeof(chinese)-1), "invalid rename preserves previous name");
+	CHECK(vlan_name_set(10,maxname,sizeof(maxname)-1), "15 Chinese characters fit the byte limit");
+	CHECK(!vlan_name_valid((uint8_t *)"abcdefghijklmnop",16), "16 characters rejected");
+	CHECK(vlan_name_set(10,chinese,0) && vlan_name(10)==0xffff, "explicit empty name clears existing name");
+	for (unsigned n=1;n<=20;n++) CHECK(vlan_name_set(n,maxname,sizeof(maxname)-1), "fill name table within capacity");
+	CHECK(!vlan_name_set(21,maxname,sizeof(maxname)-1), "full table rejects name without overflow");
+	CHECK(vlan_name_set(1,(uint8_t *)"a",1), "rename reclaims the old entry before checking capacity");
+}
+
 int main(void)
 {
 	printf("== rtl837x_port.c table tests ==\n");
@@ -176,6 +214,8 @@ int main(void)
 	t_static_mgmt();
 	t_flush();
 	t_lag();
+	t_eee_speed_downgrade();
+	t_utf8_vlan_names();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

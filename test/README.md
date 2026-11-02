@@ -15,6 +15,15 @@ make clean
 Exit status is non-zero if any check fails, a sanitizer trips, or the watchdog
 fires — so it drops straight into CI.
 
+`test_cabletest` exercises the asynchronous cable diagnostic, invalid/busy/off
+guards, distance arithmetic and PHY restoration after completion or timeout.
+The table/JSON tests also cover native UTF-8 VLAN names and their size limits.
+
+For the browser regressions, install Playwright and run
+`node test/test_web_ui.cjs` from the repository root. These tests use local
+network fixtures for the two six-port board profiles and do not access hardware.
+`PLAYWRIGHT_MODULE` and `BROWSER_EXE` may override the module and browser paths.
+
 ## How it works
 - **`sdcc_shim.h`** (force-included) erases SDCC 8051 keywords (`__xdata`,
   `__code`, `__banked`, …) so firmware sources compile under host gcc. It changes

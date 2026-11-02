@@ -1,6 +1,15 @@
 "use strict";
 var LANG = {
     en: {
+        sy_mask_err: "Subnet mask bits must be contiguous, for example 255.255.255.0",
+        v_duplicate: "VLAN ID already exists",
+        v_apply_mgmt: "Changing the management VLAN or its member ports may disconnect this page. Confirm the uplink VLAN and tagging first.",
+        v_read_failed: "Could not read all VLAN memberships. Refresh before applying changes.",
+        cw_read_failed: "Could not read the startup configuration or command log. Nothing was saved; retry after reconnecting.",
+        cw_log_failed: "Configuration verified, but the command log could not be cleared. Changes remain marked unsaved; reconnect and check before saving again.",
+        fw_small: "This switch has less than 1 MiB Flash. It can run this firmware, but updates require an external programmer; web upload is unavailable.",
+        fw_unknown: "Waiting for the switch Flash capacity before allowing an upload.",
+        fw_read_failed: "Could not read the firmware file. Select it again.",
         nav_dash: "Dashboard",
         nav_ports: "Ports",
         nav_stp: "Spanning tree",
@@ -208,7 +217,6 @@ var LANG = {
         v_nomember: "Select at least one member port (or delete the VLAN instead)",
         v_vid_first: "Enter a VLAN ID first",
         v_mgmt_q: "Set VLAN {n} as management VLAN?",
-        v_vid_err: "VLAN ID already exists",
         v_mgmt_d: "The switch will start tagging its own traffic with that VLAN. If the port you are connected through does not carry it, this page becomes unreachable and the setting can only be undone over the console.",
         v_mgmt_tt: "The management VLAN cannot be deleted, you need to assign management to another VLAN first.",
         l2_title: "MAC address table",
@@ -344,8 +352,8 @@ var LANG = {
         sy_bytes: "bytes",
         cw_title: "Write this startup configuration?",
         cw_save_title: "Save running configuration to flash?",
-        cw_info: "{n} / 2048 bytes, replayed line by line on every boot",
-        cw_toolarge: "Too large: the config sector accepts at most 2048 bytes. Remove lines first.",
+        cw_info: "{n} / 4095 bytes, replayed line by line on every boot",
+        cw_toolarge: "Too large: the config sector accepts at most 4095 bytes. Remove lines first.",
         cw_longline: "Line {n} is {m} bytes long: the switch can only replay lines up to 126 bytes and would skip it on boot, so the write is refused. Shorten it first.",
         cw_unknown: "Not in the known config grammar (will still be written): ",
         cw_empty: "(empty)",
@@ -648,8 +656,8 @@ var LANG = {
         sy_bytes: "バイト",
         cw_title: "この起動設定を書き込みますか?",
         cw_save_title: "実行中の設定をフラッシュに保存しますか?",
-        cw_info: "{n} / 2048 バイト、起動のたびに 1 行ずつ実行されます",
-        cw_toolarge: "サイズ超過: 設定セクタは最大 2048 バイトです。先に行を削除してください。",
+        cw_info: "{n} / 4095 バイト、起動のたびに 1 行ずつ実行されます",
+        cw_toolarge: "サイズ超過: 設定セクタは最大 4095 バイトです。先に行を削除してください。",
         cw_longline: "{n} 行目は {m} バイトです: スイッチが起動時に実行できる行は 126 バイトまでで、この行は読み飛ばされるため、書き込みを拒否します。先に短くしてください。",
         cw_unknown: "既知の設定文法に含まれない行 (そのまま書き込まれます): ",
         cw_empty: "(空)",
@@ -686,24 +694,33 @@ var LANG = {
         fw_timeout: "150 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください"
     },
     zh: {
-        nav_dash: "仪表盘",
+        sy_mask_err: "子网掩码的二进制 1 必须连续，例如 255.255.255.0",
+        v_duplicate: "此 VLAN ID 已存在",
+        v_apply_mgmt: "更改管理 VLAN 或其成员端口可能使网页失联。请先确认当前连接的端口及标签设置；若未保存，可断电重启恢复启动配置。",
+        v_read_failed: "未能完整读取 VLAN 成员关系，请刷新成功后再应用，避免覆盖未知配置。",
+        cw_read_failed: "读取启动配置或命令日志失败，已停止保存，原配置未覆盖。请恢复连接后重试。",
+        cw_log_failed: "配置已写入并校验，但命令日志未能清除，仍保留未保存标记。请重新连接并核对配置。",
+        fw_small: "本机 Flash 小于 1 MiB，可运行此固件，但不能网页升级。后续更新请断电后使用编程器。",
+        fw_unknown: "正在读取本机 Flash 容量，确认支持后才能上传。",
+        fw_read_failed: "无法读取固件文件，请重新选择。",
+        nav_dash: "概览",
         nav_ports: "端口",
         nav_stp: "生成树",
-        nav_stats: "统计",
+        nav_stats: "端口统计",
         nav_vlan: "VLAN",
         nav_l2: "MAC 表",
         nav_mirror: "端口镜像",
         nav_isolate: "端口隔离",
-        nav_lag: "LAG",
-        nav_eee: "EEE",
+        nav_lag: "链路聚合",
+        nav_eee: "节能以太网",
         nav_bw: "带宽限制",
         nav_system: "系统",
-        nav_fw: "固件",
+        nav_fw: "固件升级",
         nav_lldp: "LLDP",
         hdr_dirty: "未保存的更改",
         hdr_dirty_t: "运行配置与启动配置不同",
         hdr_save: "保存到 Flash",
-        hdr_save_t: "将运行配置写入 Flash",
+        hdr_save_t: "合并启动配置与已成功执行的配置命令，并在确认后写入 Flash",
         th_auto: "跟随系统",
         th_auto_sel: "跟随系统 (Selenized)",
         sy_display: "显示",
@@ -740,10 +757,10 @@ var LANG = {
         d_system: "系统",
         d_traffic: "流量",
         d_traffic_h: "包/秒，实时",
-        d_txpps: "TX pps",
-        d_rxpps: "RX pps",
-        d_txbad: "TX 错误",
-        d_rxbad: "RX 错误",
+        d_txpps: "发送（包/秒）",
+        d_rxpps: "接收（包/秒）",
+        d_txbad: "发送错误包",
+        d_rxbad: "接收错误包",
         i_host: "主机名",
         i_ip: "IP 地址",
         i_mask: "子网掩码",
@@ -754,7 +771,7 @@ var LANG = {
         i_hw: "硬件",
         i_temp: "温度",
         i_flash: "Flash",
-        i_syslog: "Syslog",
+        i_syslog: "系统日志（Syslog）",
         p_state: "状态",
         p_disabled: "已禁用",
         p_up: "已连接",
@@ -770,21 +787,21 @@ var LANG = {
         p_rxlos: "RX 信号丢失",
         p_adv: "通告能力",
         pt_title: "端口配置",
-        pt_conn: "已学习设备",
+        pt_conn: "已学习的 MAC 数",
         pt_speed: "速率",
         pt_mtu: "MTU",
-        pt_sfp_note: "SFP 速率按插槽设置，不会保存到启动配置。",
-        pt_name_err: "端口名称: 1-15 个字符，不能包含空格",
+        pt_sfp_note: "SFP 速率按插槽设置；修改后需保存到 Flash 才能在重启后保留。光口暂不支持通过此界面启停。",
+        pt_name_err: "端口名称最多 15 个 ASCII 字符，不能含空格、双引号或反斜杠；当前固件不支持中文端口名",
         pt_mtu_err: "MTU 范围为 64-16383",
         stp_title: "生成树",
         stp_h: "RSTP, 802.1w",
         stp_version: "版本",
         stp_v_stp: "STP 兼容",
         stp_prio: "网桥优先级",
-        stp_hello: "Hello [秒]",
-        stp_maxage: "Max age [秒]",
-        stp_fwd: "Forward delay [秒]",
-        stp_txhold: "TX hold",
+        stp_hello: "Hello 间隔（秒）",
+        stp_maxage: "最大老化时间（秒）",
+        stp_fwd: "转发延迟（秒）",
+        stp_txhold: "每个 Hello 周期的 BPDU 发送上限",
         stp_bridge_apply: "应用网桥设置",
         stp_off_msg: "生成树已禁用: 所有端口均为转发状态。",
         stp_bridge: "网桥",
@@ -821,21 +838,21 @@ var LANG = {
         stp_g_bpdu: "BPDU",
         stp_g_root: "根桥",
         stp_en_q: "启用生成树?",
-        stp_en_d: "端口将从阻塞状态开始，最多需要两倍 forward delay 的时间才能进入转发状态；边缘端口立即恢复。",
+        stp_en_d: "端口将从阻塞状态开始，最多需要两倍转发延迟才能进入转发状态；边缘端口立即恢复。操作可能暂时中断管理连接。",
         stp_dis_q: "禁用生成树?",
         stp_dis_d: "所有端口将直接进入转发状态，失去环路保护。",
         stp_cost_err: "路径开销范围为 0-200000000",
-        lldp_enabled: "LLDP 启用",
-        lldp_title: "服务状态",
+        lldp_enabled: "启用 LLDP",
+        lldp_title: "链路层发现（LLDP）",
         lldp_portname: "名称",
-        lldp_enable: "发送帧",
+        lldp_enable: "允许发送 LLDP 报文",
         stp_pcs: "路径开销",
         stp_pcs_long: "长格式 (32 bit)",
         stp_pcs_short: "短格式 (16 bit)",
         stp_bh: "STP 禁用时的 BPDU 处理方式",
         stp_bh_flood: "泛洪",
         stp_bh_filter: "过滤",
-        stp_r4: "备份",
+        stp_r4: "备份端口",
         stp_times: "最大老化时间 / 转发延迟",
         stp_proto: "协议",
         stp_nolink: "无链路",
@@ -850,10 +867,10 @@ var LANG = {
         stp_cage: "上次收到 BPDU [秒]",
         st_title: "端口统计",
         st_h: "自启动以来的累计值",
-        st_txg: "TX 正常",
-        st_txb: "TX 错误",
-        st_rxg: "RX 正常",
-        st_rxb: "RX 错误",
+        st_txg: "发送正常包",
+        st_txb: "发送错误包",
+        st_rxg: "接收正常包",
+        st_rxb: "接收错误包",
         st_details: "详情",
         st_counters: "MIB 计数器",
         st_nonzero: "仅显示非零",
@@ -862,23 +879,23 @@ var LANG = {
         st_value: "值",
         st_fail: "读取计数器失败",
         v_title: "VLAN",
-        v_vid: "VID",
+        v_vid: "VLAN ID",
         v_members: "成员",
-        v_tagged: "Tagged",
-        v_untagged: "Untagged",
+        v_tagged: "带标签（Tagged）",
+        v_untagged: "不带标签（Untagged）",
         v_pvid_on: "PVID",
         v_empty: "尚未配置 VLAN。",
         v_mgmt: "管理 VLAN",
-        v_mgmt_none: "untagged",
+        v_mgmt_none: "不带标签",
         v_editor: "VLAN 编辑器",
-        v_optional: "optional",
+        v_optional: "可选",
         v_setmgmt_q: "将 {n} 设为管理 VLAN ID？",
         v_setmgmt_t: "设为管理 VLAN",
         v_member: "成员",
         v_pvid: "PVID",
         v_add: "添加新 VLAN",
         v_mgmt_c: "警告：必须能够访问此 VLAN，才能继续管理交换机。",
-        v_legend: "U = untagged 成员，T = tagged 成员，- = 非成员。PVID 将入方向的未标记流量归入此 VLAN。",
+        v_legend: "U = 出端口去除 VLAN 标签，T = 出端口保留 VLAN 标签，- = 非成员。设为 U 会移除该端口在其他 VLAN 中的 U 成员关系，并将 PVID 改为此 VLAN。",
         v_accept: "接受",
         v_ing_all: "全部",
         v_del_t: "删除 VLAN",
@@ -887,13 +904,13 @@ var LANG = {
         v_del_q: "删除 VLAN {n}?",
         v_del_d: "端口的 PVID 在重新分配前保持不变。",
         v_vid_err: "请输入 VLAN ID (1-4094)",
-        v_name_err: "名称必须以字母开头 (字母、数字、_)",
+        v_name_err: "名称限 1–15 个 ASCII 字母、数字或下划线，必须以字母开头，且不能为 d 或 mgmt；也可留空",
         v_loaded: "已读取 VLAN {n}",
         v_notfound: "VLAN {n} 不存在 (仍可新建)",
         v_nomember: "请至少选择一个成员端口 (或改为删除该 VLAN)",
         v_vid_first: "请先输入 VLAN ID",
         v_mgmt_q: "将 VLAN {n} 设为管理 VLAN?",
-        v_mgmt_d: "交换机将开始为自身流量打上该 VLAN 标签。如果您所连接的端口不属于该 VLAN，本页面将无法访问，且只能通过控制台撤销此设置。",
+        v_mgmt_d: "交换机的管理流量将使用此 VLAN。若当前连接无法承载该管理 VLAN，网页会失联；请先确认上联、电脑和 VLAN 标签设置。",
         v_mgmt_tt: "无法删除管理 VLAN，请先将管理功能分配给另一个 VLAN。",
         l2_title: "MAC 地址表",
         l2_filter: "筛选...",
@@ -936,12 +953,12 @@ var LANG = {
         lag_clear_d: "所有成员端口恢复正常工作。",
         e_title: "节能以太网 (EEE)",
         e_adv: "本端通告",
-        e_lp: "链路伙伴",
+        e_lp: "链路对端",
         e_active: "已生效",
         e_enable: "启用",
-        e_note: "按速率显示本端/链路伙伴的通告标志: 100M、1G、2.5G。SFP 端口不支持 EEE。",
-        e_idle: "空闲",
-        e_na: "n/a",
+        e_note: "按速率显示本端及对端的 EEE 通告能力：100M、1G、2.5G。通告不等于当前已激活；SFP 端口不支持此设置。",
+        e_idle: "未激活",
+        e_na: "不适用",
         bw_title: "带宽限制",
         bw_h: "Mbit/s，0.016-10000",
         bw_in: "入方向限速",
@@ -969,12 +986,12 @@ var LANG = {
         sy_port: "端口",
         sy_sesstmo: "会话超时（秒）",
         sy_sesstmo_err: "会话超时必须为 1-65535 秒",
-        sy_services_note: "服务状态反映启动配置；运行时状态无法读取。",
+        sy_services_note: "下方开关根据启动配置显示，可能与尚未保存的运行状态不同。",
         sy_password: "管理员密码",
         sy_newpw: "新密码",
         sy_repeat: "重复输入",
         sy_pwapply: "修改密码",
-        sy_pw_note: "立即生效；如需重启后保留请保存到 Flash。",
+        sy_pw_note: "修改后需用新密码重新登录，再保存到 Flash 才能在重启后保留。",
         sy_console: "控制台",
         sy_cmd: "CLI 命令...",
         sy_send: "发送",
@@ -987,7 +1004,7 @@ var LANG = {
         sy_reboot: "重启交换机",
         sy_lang: "语言",
         sy_ip_err: "IP / 子网掩码 / 网关无效",
-        sy_host_err: "主机名: 1-23 个可打印字符，不能包含空格或引号",
+        sy_host_err: "主机名限 1–23 个 ASCII 可打印字符，不能包含空格、双引号或反斜杠",
         sy_net_q: "应用网络设置?",
         sy_net_d: "管理 IP 将变为 {ip}，需要使用新地址重新打开本页面。",
         sy_ip_changed: "IP 已更改，请访问 http://{ip}/ 重新连接",
@@ -1017,19 +1034,19 @@ var LANG = {
         sy_ntpint_err: "轮询间隔必须为 1-1440",
         sy_time_note: "交换机没有电池供电的时钟：每次重启都会丢失时间，网络连通后会从 NTP 服务器重新获取时间。保存到 Flash 以保留这些设置。",
         sy_sysport_err: "syslog 端口范围为 1-65535",
-        sy_pw_len: "密码: 1-20 个字符",
+        sy_pw_len: "密码须为 1–20 个 ASCII 可打印字符（不能含空格）",
         sy_pw_space: "密码不能包含空格",
         sy_pw_match: "两次输入的密码不一致",
         sy_pw_q: "修改管理员密码?",
-        sy_pw_d: "对新的登录立即生效。如需保留请保存到 Flash。",
+        sy_pw_d: "修改后当前登录会话将失效，需要用新密码重新登录，再保存到 Flash；否则重启后恢复旧密码。",
         sy_reboot_q: "重启交换机?",
         sy_reboot_d: "存在未保存的更改，重启后将丢失。如需保留请先保存到 Flash。",
         sy_rebooting: "正在重启，约 20 秒后重新连接",
         sy_bytes: "字节",
         cw_title: "写入此启动配置?",
         cw_save_title: "将运行配置保存到 Flash?",
-        cw_info: "{n} / 2048 字节，每次启动时逐行执行",
-        cw_toolarge: "过大: 配置扇区最多容纳 2048 字节。请先删除部分行。",
+        cw_info: "{n} / 4095 字节，每次启动时逐行执行",
+        cw_toolarge: "过大: 配置扇区最多容纳 4095 字节。请先删除部分行。",
         cw_longline: "第 {n} 行有 {m} 字节: 交换机启动时只能执行不超过 126 字节的行，该行会被跳过，因此拒绝写入。请先缩短该行。",
         cw_unknown: "不属于已知配置语法的行 (仍会写入): ",
         cw_empty: "(空)",
@@ -1043,7 +1060,7 @@ var LANG = {
         t_rejected: "命令被拒绝: {c}",
         t_failed: "失败: {c}",
         fw_title: "固件升级",
-        fw_intro: "上传 RTLPlayground 镜像 (512 KiB 的 .bin)。镜像会写入 Flash 并进行 CRC 校验；成功后交换机自动重启，再次校验并应用镜像。启动配置将被保留。",
+        fw_intro: "上传适配本主板的 RTLPlayground 镜像（512 KiB .bin）。网页升级需要至少 1 MiB Flash；先暂存并校验，再重启替换固件，保留启动配置。",
         fw_upload: "上传",
         fw_checking: "{f}: {n} 字节。正在检查...",
         fw_size_err: "大小为 {n}，应为 524288 (512 KiB)",
@@ -1056,7 +1073,7 @@ var LANG = {
         fw_finishing: "正在完成 Flash 写入... {s} 秒",
         fw_uploading: "上传中... {p}% / {s} 秒",
         fw_verified: "校验和通过，交换机正在重启...",
-        fw_rejected: "交换机拒绝了该镜像 (校验和错误)，未做任何更改",
+        fw_rejected: "升级请求被拒绝，运行中的固件未替换；请查看返回原因",
         fw_lost: "上传失败: 传输中连接断开",
         fw_noreboot: "未检测到重启: 镜像很可能被拒绝。若从旧固件升级，请重新登录后在侧边栏确认版本。",
         fw_applied: "升级已应用",
@@ -1331,8 +1348,8 @@ var LANG = {
         sy_bytes: "bytes",
         cw_title: "¿Escribir esta configuración de inicio?",
         cw_save_title: "¿Guardar la configuración en ejecución en flash?",
-        cw_info: "{n} / 2048 bytes, reaplicada línea a línea en cada arranque",
-        cw_toolarge: "Demasiado grande: el sector de configuración admite como máximo 2048 bytes. Elimina líneas primero.",
+        cw_info: "{n} / 4095 bytes, reaplicada línea a línea en cada arranque",
+        cw_toolarge: "Demasiado grande: el sector de configuración admite como máximo 4095 bytes. Elimina líneas primero.",
         cw_unknown: "No está en la gramática de configuración conocida (aun así se escribirá): ",
         cw_empty: "(vacío)",
         cw_writing: "Escribiendo configuración...",
@@ -1756,8 +1773,8 @@ var LANG = {
         sy_bytes: "bytes",
         cw_title: "Enregistrer cette configuration de démarrage?",
         cw_save_title: "Enregistrer la configuration active en mémoire flash?",
-        cw_info: "{n} / 2048 bytes, qui seront rejouées ligne par ligne à chaque redémarrage",
-        cw_toolarge: "Trop grand : La quota du secteur de démarrage ne peut excéder 2048 bytes. Supprimez des lignes.",
+        cw_info: "{n} / 4095 bytes, qui seront rejouées ligne par ligne à chaque redémarrage",
+        cw_toolarge: "Trop grand : La quota du secteur de démarrage ne peut excéder 4095 bytes. Supprimez des lignes.",
         cw_longline: "La ligne {n} est longue de {m} bytes: Le commutateur ne peut exécuter des lignes de plus de 126 bytes et les omettra donc au démarragee, l'écriture est refusé. Raccourcissez les d'abord.",
         cw_unknown: "Ne respecte pas la grammaire de configuration (sera néanmoins sauvegardé): ",
         cw_empty: "(vide)",
@@ -2139,8 +2156,8 @@ var LANG = {
         sy_bytes: "Bytes",
         cw_title: "Diese Startkonfiguration schreiben?",
         cw_save_title: "Laufende Konfiguration im Flash speichern?",
-        cw_info: "{n} / 2048 Bytes, wird bei jedem Start Zeile für Zeile ausgeführt",
-        cw_toolarge: "Zu gross: Der Konfigurationssektor fasst höchstens 2048 Bytes. Zuerst Zeilen entfernen.",
+        cw_info: "{n} / 4095 Bytes, wird bei jedem Start Zeile für Zeile ausgeführt",
+        cw_toolarge: "Zu gross: Der Konfigurationssektor fasst höchstens 4095 Bytes. Zuerst Zeilen entfernen.",
         cw_longline: "Zeile {n} ist {m} Bytes lang: Der Switch kann beim Start nur Zeilen bis 126 Bytes ausführen und würde sie überspringen, deshalb wird das Schreiben abgelehnt. Zuerst kürzen.",
         cw_unknown: "Nicht in der bekannten Konfigurationssyntax (wird trotzdem geschrieben): ",
         cw_empty: "(leer)",
@@ -2178,14 +2195,33 @@ var LANG = {
         fw_timeout: "Der Switch ist nach 150 s nicht zurück: Stromversorgung / serielle Konsole prüfen"
     }
 };
+Object.assign(LANG.en, {
+    nav_cable: "Cable diagnostics", ct_title: "Cable diagnostics (TDR)", ct_start: "Start test",
+    ct_warning: "Testing briefly disconnects the selected copper port. Keep management on another port. PoE power is not controlled by this test.",
+    ct_explain: "TDR estimates distance to a reflection or fault, not precise cable length. Leave the far end disconnected to estimate an open cable's length. A normally terminated pair may have no distance result.",
+    ct_pair: "Pair", ct_distance: "Estimated fault distance", ct_idle: "Not tested", ct_running: "Testing…", ct_done: "Complete", ct_timeout: "Timed out; PHY settings restored", ct_unavailable: "Unable to read diagnostics", ct_confirm: "Test port {n}?", ct_last: "Result: port {n}", ct_unknown: "Unknown", ct_ok: "Normal", ct_open: "Open", ct_short: "Short within pair", ct_cross: "Short to another pair", ct_mismatch: "Impedance mismatch", ct_no_distance: "Not available", ct_no_ports: "No supported copper ports",
+    v_intro: "Select a VLAN, then set membership per port. Apply changes to use them now; save to Flash to keep them after reboot.",
+    v_port_membership: "Port membership", v_exclude: "Not a member", v_access: "U · Untagged", v_trunk: "T · Tagged", v_pvid_preview: "PVID now → after", v_name_hint: "Chinese supported; up to 15 characters / 45 UTF-8 bytes.", v_no_ports: "No port members", v_review: "Review VLAN changes", v_move_note: "U moves this port's untagged membership and PVID to this VLAN. Existing U membership in other VLANs is removed. T keeps tags; other memberships stay unchanged.",
+    v_name_err: "Use up to 15 characters / 45 UTF-8 bytes, starting with a letter or non-ASCII character. No spaces; ASCII letters, digits, _ and - are allowed. Names d and mgmt are reserved."
+});
+Object.assign(LANG.zh, {
+    nav_cable: "网线诊断", ct_title: "网线诊断（TDR）", ct_start: "开始检测",
+    ct_warning: "检测会使所选电口短暂断链，请通过另一个端口保持管理连接。此功能不控制 PoE 电源。",
+    ct_explain: "TDR 估算反射点或故障位置，不能当作精确线长。需要估算整根线长时，请将网线远端悬空；正常接有设备的线对可能不提供距离。",
+    ct_pair: "线对", ct_distance: "估算故障距离", ct_idle: "尚未检测", ct_running: "正在检测…", ct_done: "检测完成", ct_timeout: "检测超时，已恢复端口设置", ct_unavailable: "无法读取诊断状态", ct_confirm: "检测电口 {n}？", ct_last: "检测结果：电口 {n}", ct_unknown: "无法判断", ct_ok: "正常", ct_open: "开路", ct_short: "线对内短路", ct_cross: "线对间短路", ct_mismatch: "阻抗异常", ct_no_distance: "不提供距离", ct_no_ports: "没有支持检测的电口",
+    v_intro: "先选择 VLAN，再按端口设置成员关系。点击“应用”立即生效；确认正常后“保存到 Flash”，重启后才会保留。",
+    v_port_membership: "端口归属", v_exclude: "不加入", v_access: "U · 无标签", v_trunk: "T · 带标签", v_pvid_preview: "PVID 当前 → 应用后", v_name_hint: "支持中文，最多 15 个字符、45 个 UTF-8 字节。", v_no_ports: "尚未加入端口", v_review: "确认 VLAN 变更", v_move_note: "无标签 U 会将该端口的 PVID 改为此 VLAN，并移除它在其他 VLAN 中的无标签成员关系。带标签 T 保留标签，其他 VLAN 成员关系不变。",
+    v_name_err: "名称最多 15 个字符、45 个 UTF-8 字节，以中文等非 ASCII 字符或字母开头；不含空格，英文部分可用字母、数字、_、-；d 和 mgmt 为保留字。",
+    v_pvid_on: "入口 PVID 所在端口"
+});
+
 var rtlLang = (function() {
     var s = null;
     try {
         s = localStorage.getItem("rtl_lang");
     } catch (e) {}
     if (s && LANG[s]) return s;
-    var b = (navigator.language || "en").slice(0, 2);
-    return LANG[b] ? b : "en";
+    return "zh";
 })();
 
 function t(k, v) {
@@ -2196,6 +2232,7 @@ function t(k, v) {
 }
 
 function i18nApply() {
+    document.documentElement.lang = rtlLang === "zh" ? "zh-CN" : rtlLang;
     document.querySelectorAll("[data-i18n]").forEach(function(el) {
         el.textContent = t(el.getAttribute("data-i18n"))
     });
@@ -2298,6 +2335,7 @@ i18nApply();
 var _q = Promise.resolve();
 
 function api(path, opts) {
+    if (fwBusy) return Promise.reject(new Error(t("fw_finishing", {s: "…"})));
     return new Promise(function(resolve, reject) {
         _q = _q.then(function() {
             opts = opts || {};
@@ -2359,11 +2397,11 @@ var CONF_CMDS = [
     /^ntp\s+dst\s+(off|eu|us)$/,
     /^passwd\s+\S+$/, /^hostname\s+\S{1,23}$/,
     /^vlan\s+\d+\s+(d|mgmt)$/m,
-    /^vlan\s+\d+(\s+[a-zA-Z]\w*)?(\s+\d+t?)*$/m,
+    /^vlan\s+\d+(?:\s+(?:-|(?:[A-Za-z]|[^\x00-\x7f])[^\s]*))?(?:\s+\d+t?)*$/u,
     /^pvid\s+\d+\s+\d+$/m,
     /^ingress(\s+\d+[tua])+$/, /^ingress\s+[tua]$/,
     /^port\s+\d+\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
-    /^port\s+\d+\s+name\s+\S+$/,
+    /^port\s+\d+\s+name(\s+\S+)?$/,
     /^port\s+\d+\s+lldp\s+(permit|block)+$/,
     /^eee\s+(on|off)(\s+\d+)?(\s+(100m|1g|2g5))?$/,
     /^mirror(\s+\d+)(\s+\d+[tr]?)+$/, /^mirror\s+off$/,
@@ -2382,7 +2420,8 @@ var CONF_CMDS = [
     /^stp\s+(port\s+\d+|lag\s+[1-4])\s+prio\s+\d+$/,
     /^stp\s+(port\s+\d+|lag\s+[1-4])\s+guard\s+(none|bpdu|root)$/,
     /^stp\s+(port\s+\d+|lag\s+[1-4])\s+filter\s+(on|off)$/,
-    /^stp\s+(port\s+\d=|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
+    /^stp\s+(port\s+\d+|lag\s+[1-4])\s+p2p\s+(auto|on|off)$/,
+    /^sfp\s+[12]\s+(auto|100m|1g|2g5|10g)$/,
     /^igmp\s+(on|off)$/,
     /^mtu\s+\d+\s+\d+$/,
     /^lldp\s+(on|off)$/,
@@ -2391,6 +2430,7 @@ var CONF_CMDS = [
 ];
 
 function isConfCmd(line) {
+    if (/[\r\n]/.test(line)) return line.split(/\r?\n/).some(isConfCmd);
     for (var i = 0; i < CONF_CMDS.length; i++)
         if (CONF_CMDS[i].test(line)) return true;
     return false;
@@ -2415,7 +2455,7 @@ function postCmd(cmd, quiet) {
             c: cmd
         }), "ok");
         return r;
-    }, function(e) {
+    }).catch(function(e) {
         toast(e.message || t("t_failed", {
             c: cmd
         }), "err");
@@ -2519,6 +2559,10 @@ var TABS = [{
         icon: "M12 3v6M12 9l-7 5M12 9l7 5M5 14v5M19 14v5M3 21h4M17 21h4"
     },
     {
+        id: "cable",
+        icon: "M4 4h6v5H4zM14 15h6v5h-6zM7 9v7h7M17 15V8h-7"
+    },
+    {
         id: "l2",
         icon: "M4 5h16M4 12h16M4 19h10"
     },
@@ -2559,6 +2603,7 @@ var curTab = "dash";
 var tabHooks = {};
 
 function showTab(id) {
+    if (fwBusy) return;
     var old = tabHooks[curTab];
     if (old && old.leave) old.leave();
     curTab = id;
@@ -2657,8 +2702,8 @@ function pollStatus() {
             if (dt > 0.2) s.forEach(function(p, i) {
                 var q = S.prev[i];
                 if (q) S.rates[p.portNum - 1] = {
-                    tx: Number(BigInt(p.txG) - BigInt(q.txG)) / dt,
-                    rx: Number(BigInt(p.rxG) - BigInt(q.rxG)) / dt,
+                    tx: Math.max(0, Number(BigInt(p.txG) - BigInt(q.txG))) / dt,
+                    rx: Math.max(0, Number(BigInt(p.rxG) - BigInt(q.rxG))) / dt,
                 };
             });
         }
@@ -2870,6 +2915,7 @@ function renderInfo() {
         } catch (e) {}
     }
     if (S.info.sw_ver) $("fver").textContent = "RTLPlayground " + S.info.sw_ver;
+    fwCapacity();
 }
 
 function pollInfo() {
@@ -2977,6 +3023,9 @@ function buildPorts() {
             id: "pen" + i
         }), h("i")]);
         sw.firstChild.checked = !!p.enabled;
+        sw.firstChild.disabled = !!p.isSFP;
+        tr.addEventListener("input", function() { tr.dataset.dirty = "1"; });
+        tr.addEventListener("change", function() { tr.dataset.dirty = "1"; });
         tr.insertCell().appendChild(sw);
         tr.insertCell().appendChild(h("input", {
             class: "in sm",
@@ -3016,7 +3065,9 @@ function portsStatus() {
         if (el) el.innerHTML = linkBadge(p);
         var sel = $("pspd" + i),
             v = p.isSFP ? 0 : ADVSEL[parseInt(p.adv, 2)];
-        if (sel && v && document.activeElement !== sel) sel.value = v;
+        var dirty = sel && sel.closest("tr").dataset.dirty;
+        if (sel && v && !dirty && document.activeElement !== sel) sel.value = v;
+        if (!dirty && $("pen" + i)) $("pen" + i).checked = !!p.enabled;
     });
 }
 
@@ -3026,19 +3077,21 @@ function applyPort(i) {
     var name = $("pname" + i).value.trim();
     var en = $("pen" + i).checked;
     var spd = $("pspd" + i).value;
-    var mtu = parseInt($("pmtu" + i).value, 10);
-    if (name && name !== (p.name || "")) {
-        if (!/^\S{1,15}$/.test(name)) {
+    var mtu = Number($("pmtu" + i).value);
+    if (!Number.isInteger(mtu) || mtu < 64 || mtu > 16383) {
+        toast(t("pt_mtu_err"), "err");
+        return;
+    }
+    if (name !== (p.name || "")) {
+        if (!/^[\x21-\x7e]{0,15}$/.test(name) || /["\\]/.test(name)) {
             toast(t("pt_name_err"), "err");
             return;
         }
         cmds.push("port " + p.portNum + " name " + name);
     }
-    if (!en) cmds.push("port " + p.portNum + " off");
-    else if (p.isSFP) {
-        if (!p.enabled) cmds.push("port " + p.portNum + " on");
-        cmds.push("sfp " + S.sfpSlot[i] + " " + spd);
-    } else cmds.push("port " + p.portNum + " " + spd);
+    if (p.isSFP) cmds.push("sfp " + S.sfpSlot[i] + " " + spd);
+    else if (!en) cmds.push("port " + p.portNum + " off");
+    else cmds.push("port " + p.portNum + " " + spd);
     if (mtu && mtu !== S.mtu[i]) {
         if (mtu < 64 || mtu > 16383) {
             toast(t("pt_mtu_err"), "err");
@@ -3046,7 +3099,10 @@ function applyPort(i) {
         }
         cmds.push("mtu " + p.portNum + " " + mtu);
     }
-    postCmds(cmds).then(loadMtu).catch(function() {});
+    postCmds(cmds).then(function() {
+        delete $("pspd" + i).closest("tr").dataset.dirty;
+        return loadMtu();
+    }).catch(function() {});
 }
 tabHooks.ports = {
     enter: function() {
@@ -3293,8 +3349,8 @@ function stpApplyPort(p) {
     (stpCur ? stpCur.ports : []).forEach(function(pt) {
         if (stpKey(pt) === p) cur = stpPortVals(pt)
     });
-    var cost = parseInt($("stco" + p).value, 10);
-    if (isNaN(cost) || cost < 0 || cost > 200000000) {
+    var cost = Number($("stco" + p).value);
+    if (!Number.isInteger(cost) || cost < 0 || cost > 200000000) {
         toast(t("stp_cost_err"), "err");
         return;
     }
@@ -3569,12 +3625,18 @@ function rangeStr(list) {
 
 function vlanRefresh() {
     var tb = $("vtable").tBodies[0];
+    tb.dataset.complete = "0";
     tb.style = "cursor:pointer;"
     return getJSON("/vlanlist").then(function(d) {
         var vl = d.vlan || [];
         $("vmgmtcur").dataset.id = d.mgmt;
+        $("vmgmtcur").textContent = t("v_mgmt") + " · VLAN " + d.mgmt;
+        $("vcount").textContent = vl.length + " VLAN";
         $("vempty").style.display = vl.length ? "none" : "";
         tb.innerHTML = "";
+        tb.dataset.complete = "0";
+        var failed = d.complete === 0;
+        if (failed) toast(t("v_read_failed"), "err");
         var p = Promise.resolve();
         vl.forEach(function(v) {
             p = p.then(function() {
@@ -3596,19 +3658,24 @@ function vlanRefresh() {
                 tr.insertCell().appendChild(l);
                 tr.insertCell().textContent = v.name || "";
                 if (!d) {
-                    for (var c = 0; c < 4; c++) tr.insertCell().textContent = "?";
+                    failed = true;
+                    for (var c = 0; c < 2; c++) tr.insertCell().textContent = "?";
                 } else {
                     var m = parseInt(d.members, 16),
                         mem = m & 0x3ff,
                         unt = ((m >> 10) & 0x3ff) & mem,
                         tag = mem & ~unt;
                     var pv = parseInt(d.pvid, 16) & 0x3ff;
-                    tr.insertCell().textContent = rangeStr(maskToPorts(mem));
-                    tr.insertCell().textContent = rangeStr(maskToPorts(tag));
-                    tr.insertCell().textContent = rangeStr(maskToPorts(unt));
+                    var members = tr.insertCell();
+                    maskToPorts(mem).forEach(function(port) {
+                        members.appendChild(h("span", {class: "vport " + (((unt >> S.physToLog[port - 1]) & 1) ? "u" : "t"),
+                            text: port + " · " + (((unt >> S.physToLog[port - 1]) & 1) ? "U" : "T")}));
+                    });
+                    if (!mem) members.textContent = t("v_no_ports");
                     tr.insertCell().textContent = rangeStr(maskToPorts(pv));
                     l.dataset.t = maskToPorts(tag);
                     l.dataset.u = maskToPorts(unt);
+                    l.dataset.p = maskToPorts(pv);
                 }
                 var act = tr.insertCell();
                 act.onclick = function(e) {
@@ -3619,6 +3686,10 @@ function vlanRefresh() {
                     text: t("v_rename"),
                     title: t("v_rename_t"),
                     onclick: function() {
+                        if (!d || tb.dataset.complete !== "1") {
+                            toast(t("v_read_failed"), "err");
+                            return;
+                        }
                         var body = h("div");
                         body.appendChild(h("p", null, [
                             h("label", {
@@ -3632,13 +3703,13 @@ function vlanRefresh() {
                                     id: "nvlrename",
                                     class: "in",
                                     size: "12",
-                                    maxlength: "15",
+                                    maxlength: "30",
                                     "data-i18n-p": "v_optional",
                                     value: (v.name || "")
                                 })
                             ])
                         ]));
-                        modal("Rename VLAN " + v.id, body, [h("button", {
+                        modal(t("v_rename_t") + " " + v.id, body, [h("button", {
                             class: "ctl pri",
                             text: t("v_rename_t"),
                             onclick: function() {
@@ -3675,28 +3746,22 @@ function vlanRefresh() {
                 }
             }).catch(function() {});
         });
-        return p;
+        return p.then(function() { tb.dataset.complete = failed ? "0" : "1"; });
     });
 }
 
 function buildVlanEdit() {
     var tb = $("vedit").tBodies[0];
     if (tb.rows.length || !S.n) return;
-    var hd = tb.insertRow();
-    hd.insertCell().className = "mut";
-    var rN = tb.insertRow();
-    rN.insertCell().textContent = t("c_name");
-    var rM = tb.insertRow();
-    rM.insertCell().textContent = t("v_member");
-    var rP = tb.insertRow();
-    rP.insertCell().textContent = t("v_pvid");
     for (var p = 1; p <= S.n; p++)(function(p) {
-        hd.insertCell().innerHTML = '<b>' + p + '</b>';
+        var row = tb.insertRow(), info = S.ports.find(function(x) { return x.portNum === p; });
+        row.insertCell().textContent = p + (info.isSFP ? " · SFP" : "") + (info.name ? " · " + info.name : "");
+        row.insertCell().innerHTML = linkBadge(info);
         var seg = h("span", {
             class: "seg",
             id: "vm" + p
         });
-        ["-", "U", "T"].forEach(function(s, ix) {
+        [t("v_exclude"), t("v_access"), t("v_trunk")].forEach(function(s, ix) {
             seg.appendChild(h("button", {
                 text: s,
                 "data-v": ix,
@@ -3705,16 +3770,34 @@ function buildVlanEdit() {
                         b.classList.remove("on")
                     });
                     this.classList.add("on");
+                    vlanPvidPreview();
                 }
             }));
         });
         seg.children[0].classList.add("on");
-        rN.insertCell().appendChild(document.createTextNode((S.ports.filter(x => x.portNum == p)[0]).name));
-        rM.insertCell().appendChild(seg);
-        rP.insertCell().appendChild(h("span", {
+        row.insertCell().appendChild(seg);
+        var preview = row.insertCell(); preview.dataset.label = t("v_pvid_preview");
+        preview.appendChild(h("span", {
             id: "vp" + p
         }));
     })(p);
+}
+
+function vlanPvidPreview() {
+    var vid = $("vtitle").dataset.id;
+    for (var p = 1; p <= S.n; p++) {
+        var current = "-", otherU = false, otherT = false;
+        Array.from($("vtable").tBodies[0].rows).forEach(function(row) {
+            var d = row.firstChild.firstChild.dataset;
+            if (mySplit(d.p).includes(String(p))) current = d.id;
+            if (d.id != vid) {
+                if (mySplit(d.u).includes(String(p))) otherU = true;
+                if (mySplit(d.t).includes(String(p))) otherT = true;
+            }
+        });
+        var after = segVal(p) === 1 ? vid : !otherU && (segVal(p) === 2 || otherT) ? "0" : current;
+        $("vp" + p).textContent = current === after ? current : current + " → " + after;
+    }
 }
 
 function segVal(p) {
@@ -3736,6 +3819,7 @@ function vlanLoad(vid) {
         $("vtitle").innerText = "VLAN " + vid + (d.name ? " (" + (d.name) + ")" : "");
         $("vtitle").dataset.id = vid;
         $("vtitle").dataset.name = d.name;
+        $("veditname").value = d.name || "";
         var m = parseInt(d.members, 16),
             mem = m & 0x3ff,
             unt = ((m >> 10) & 0x3ff) & mem;
@@ -3743,9 +3827,11 @@ function vlanLoad(vid) {
         for (var p = 1; p <= S.n; p++) {
             var bit = S.physToLog[p - 1];
             segSet(p, (mem >> bit) & 1 ? (((unt >> bit) & 1) ? 1 : 2) : 0);
-            $("vp" + p).innerText = (!!((pv >> bit) & 1)) ? "Y" : "N";
+            $("vp" + p).innerText = t(((pv >> bit) & 1) ? "c_yes" : "c_no");
         }
         $("vmgmtpromote").checked = ($("vmgmtcur").dataset.id == vid);
+        vlanPvidPreview();
+        $("vapply").disabled = false;
         toast(t("v_loaded", {
             n: vid
         }), "ok");
@@ -3760,7 +3846,7 @@ function vlanLoad(vid) {
 }
 
 function vlan2str(i, n, t, u) {
-    return ("vlan " + i + (n ? " " + n : "") + " " + t.map((x) => x + "t").concat(u).join(" ")).trim();
+    return ("vlan " + i + " " + (n || "-") + " " + t.map((x) => x + "t").concat(u).join(" ")).trim();
 }
 
 function pvidcmd(i, p) {
@@ -3768,18 +3854,23 @@ function pvidcmd(i, p) {
 }
 
 function mySplit(a) {
-    if (a.trim() == "") return [];
+    if (!a || a.trim() == "") return [];
     return a.trim().split(",");
 }
 
 function vlanApply() {
     var vid = $("vtitle").dataset.id;
-    var vname = $("vtitle").dataset.name;
+    var vname = $("veditname").value.trim();
+    if (!validVlanName(vname)) return;
+    if ($("vtable").tBodies[0].dataset.complete !== "1") {
+        toast(t("v_read_failed"), "err");
+        return;
+    }
     if (!vid || vid < 1 || vid > 4094) {
         toast(t("v_vid_err"), "err");
         return;
     }
-    var top_cmds = [],
+    var affectsMgmt = false, top_cmds = [],
         tail_cmds = [],
         vlansPerPort = [],
         thisVlanInStructure = {
@@ -3819,7 +3910,15 @@ function vlanApply() {
         for (const rt of rowTagged) {
             vlansPerPort[rt].t.push(rowData.id)
         }
-        top_cmds.push(vlan2str(rowData.id, rowData.name, rowTagged, rowUntagged));
+        if (rowUntagged.join(",") !== (rowData.u || "")) {
+            if (rowData.id == $("vmgmtcur").dataset.id) affectsMgmt = true;
+            if (!rowTagged.length && !rowUntagged.length &&
+                rowData.id == $("vmgmtcur").dataset.id && !$("vmgmtpromote").checked) {
+                toast(t("v_mgmt_d"), "err");
+                return;
+            }
+            top_cmds.push(vlan2str(rowData.id, rowData.name, rowTagged, rowUntagged));
+        }
     }
     tail_cmds.push(vlan2str(vid, vname, thisVlanInStructure.tagged, thisVlanInStructure.untagged));
 
@@ -3836,17 +3935,29 @@ function vlanApply() {
         /*must be the last command*/
         tail_cmds.push("vlan " + vid + " mgmt");
     }
-    var cmd = top_cmds.concat(tail_cmds);
-    postCmd(cmd.join("\n"), true).then(function() {
-        toast(t("t_cmds", {
-            n: cmd.length
-        }), "ok")
-    }).then(vlanRefresh).catch(function() {}).then(function() {
-        vlanLoad(vid)
-    });
+    // Install the new membership before removing ports from old VLANs.
+    // Keep all commands in one request: a PVID change can cut the current
+    // TCP connection before a separate management-VLAN request arrives.
+    var cmd = [tail_cmds.shift()].concat(top_cmds, tail_cmds);
+    function apply() {
+        postCmd(cmd.join("\n"), true).then(vlanRefresh).then(function() {
+            vlanLoad(vid);
+        }).catch(function() {});
+    }
+    var description = "VLAN " + vid + (vname ? " · " + vname : "") + "\n";
+    for (var port = 1; port <= S.n; port++)
+        description += t("c_port") + " " + port + ": " + [t("v_exclude"), t("v_access"), t("v_trunk")][segVal(port)] +
+            (segVal(port) === 1 ? " · PVID " + vid : "") + "\n";
+    description += t("v_move_note");
+    if (affectsMgmt || $("vmgmtpromote").checked || vid == $("vmgmtcur").dataset.id) description += "\n\n" + t("v_apply_mgmt");
+    confirmModal(t("v_review"), description, apply);
 }
 $("vapply").addEventListener("click", vlanApply);
 $("vlan_add").addEventListener("click", function() {
+    if ($("vtable").tBodies[0].dataset.complete !== "1") {
+        toast(t("v_read_failed"), "err");
+        return;
+    }
     var body = h("div");
     body.appendChild(h("p", null, [
         h("label", {
@@ -3882,7 +3993,7 @@ $("vlan_add").addEventListener("click", function() {
             })
         ])
     ]));
-    modal("Add VLAN", body, [h("button", {
+    modal(t("v_add"), body, [h("button", {
         class: "ctl pri",
         text: t("v_add"),
         onclick: addVlan
@@ -3890,7 +4001,9 @@ $("vlan_add").addEventListener("click", function() {
 });
 
 function validVlanName(n) {
-    if (n && (!/^[a-zA-Z]\w*$/.test(n) || n == "d" || n == "mgmt")) {
+    if (n && (Array.from(n).length > 15 || new TextEncoder().encode(n).length > 45 ||
+        !/^(?:[A-Za-z]|[^\x00-\x7f])(?:[A-Za-z0-9_-]|[^\x00-\x7f])*$/u.test(n) ||
+        /[\s\u0000-\u001f\u007f-\u009f\uD800-\uDFFF]/u.test(n) || n === "d" || n === "mgmt")) {
         toast(t("v_name_err"), "err");
         return false;
     }
@@ -3898,16 +4011,24 @@ function validVlanName(n) {
 }
 
 function addVlan() {
-    var vid = parseInt($("nvlid").value, 10);
+    if ($("vtable").tBodies[0].dataset.complete !== "1") {
+        toast(t("v_read_failed"), "err");
+        return;
+    }
+    var vid = Number($("nvlid").value);
+    if (!Number.isInteger(vid) || vid < 1 || vid > 4094) {
+        toast(t("v_vid_err"), "err");
+        return;
+    }
     for (const r of $("vtable").tBodies[0].rows) {
         if (r.firstChild.firstChild.dataset.id == vid) {
-            toast(t("v_vid_err"), "err");
+            toast(t("v_duplicate"), "err");
             return;
         }
     }
     var name = $("nvlname").value;
     if (!validVlanName(name)) return false;
-    var cmd = "vlan " + vid + (name ? " " + name : "");
+    var cmd = "vlan " + vid + " " + (name || "-");
     postCmd(cmd).then(function() {
         closeModal();
         vlanRefresh().then(function() {
@@ -3927,8 +4048,76 @@ tabHooks.vlan = {
 };
 
 function VlanInit() {
-    vlanLoad($("vtable").tBodies[0].firstChild.firstChild.firstChild.dataset.id)
+    var first = $("vtable").tBodies[0].rows[0];
+    if (first) vlanLoad(first.cells[0].firstChild.dataset.id);
+    else {
+        $("vtitle").textContent = "";
+        $("veditname").value = "";
+        $("vapply").disabled = true;
+        delete $("vtitle").dataset.id;
+        $("vmgmtpromote").checked = false;
+    }
+}
+$("vrefresh").addEventListener("click", function() { vlanRefresh().then(VlanInit).catch(function() { toast(t("v_read_failed"), "err"); }); });
+
+var cableStatus = null;
+function cableLoad() {
+    return getJSON("/cabletest.json").then(function(d) {
+        if (!d || !Array.isArray(d.supported) || !Array.isArray(d.pairs)) throw new Error("Invalid cable diagnostic response");
+        cableStatus = d;
+        var select = $("ct-port"), previous = select.value;
+        select.replaceChildren();
+        d.supported.slice().sort(function(a,b) { return a-b; }).forEach(function(n) {
+            var port = S.ports.find(function(p) { return p.portNum === n; });
+            var option = h("option", {value: n, text: t("c_port") + " " + n});
+            option.disabled = !port || !port.enabled;
+            select.appendChild(option);
+        });
+        if (Array.from(select.options).some(function(o) { return o.value === previous && !o.disabled; })) select.value = previous;
+        else {
+            var idle = d.supported.find(function(n) { return S.ports.some(function(p) { return p.portNum === n && p.enabled && !p.link; }); });
+            var available = idle || d.supported.find(function(n) { return S.ports.some(function(p) { return p.portNum === n && p.enabled; }); });
+            if (available) select.value = available;
+        }
+        var chosen = S.ports.find(function(p) { return String(p.portNum) === select.value; });
+        $("ct-start").disabled = d.state === "running" || !chosen || !chosen.enabled;
+        select.disabled = d.state === "running";
+        $("ct-state").textContent = t("ct_" + d.state);
+        $("ct-result-title").textContent = d.port ? t("ct_last", {n: d.port}) : "";
+        var rows = $("ct-results"); rows.replaceChildren();
+        d.pairs.forEach(function(pair) {
+            var keys = ["ct_unknown", "ct_ok", "ct_open", "ct_short", "ct_cross", "ct_mismatch"];
+            rows.appendChild(h("tr", null, [h("td", {text: pair.pair}), h("td", {text: t(keys[pair.status] || "ct_unknown")}),
+                h("td", {text: pair.distance_dm == null ? t("ct_no_distance") : (pair.distance_dm / 10).toFixed(1) + " m"})]));
+        });
+        if (d.state === "running" && curTab === "cable") cablePoller.start();
+        else cablePoller.stop();
+        if (!d.supported.length) $("ct-state").textContent = t("ct_no_ports");
+        return d;
+    }).catch(function(error) {
+        $("ct-state").textContent = t("ct_unavailable");
+        $("ct-start").disabled = true; cablePoller.stop(); throw error;
+    });
+}
+var cablePoller = new Poller(cableLoad, 600);
+$("ct-port").addEventListener("change", function() {
+    var chosen = S.ports.find(function(p) { return String(p.portNum) === $("ct-port").value; });
+    $("ct-start").disabled = !chosen || !chosen.enabled || (cableStatus && cableStatus.state === "running");
+});
+$("ct-refresh").addEventListener("click", function() { cableLoad().catch(function() {}); });
+$("ct-start").addEventListener("click", function() {
+    var n = Number($("ct-port").value);
+    if (!cableStatus || !cableStatus.supported.includes(n) || cableStatus.state === "running") return;
+    confirmModal(t("ct_confirm", {n: n}), t("ct_warning") + "\n\n" + t("ct_explain"), function() {
+        $("ct-start").disabled = true;
+        postCmd("port " + n + " cabletest").then(cableLoad).catch(function() { cableLoad().catch(function() {}); });
+    });
+});
+tabHooks.cable = {
+    enter: function() { needPorts(function() { cableLoad().catch(function() {}); }); },
+    leave: function() { cablePoller.stop(); }
 };
+
 var l2Rows = [],
     l2SortCol = "pport",
     l2SortDir = 1,
@@ -4494,7 +4683,7 @@ tabHooks.lldp = {
 function eeeFlags(bits) {
     var b = parseInt(bits, 2);
     return ["100M", "1G", "2.5G"].map(function(s, i) {
-        return (b & (4 >> i)) ? s : null;
+        return (b & (1 << i)) ? s : null;
     }).filter(Boolean).join(", ") || "-";
 }
 
@@ -4812,6 +5001,12 @@ $("sy-apply").addEventListener("click", function() {
         toast(t("sy_ip_err"), "err");
         return;
     }
+    var bits = mask.split(".").reduce(function(a, b) { return (a << 8) | Number(b); }, 0);
+    var inverse = (~bits) >>> 0;
+    if ((inverse & (inverse + 1)) !== 0) {
+        toast(t("sy_mask_err"), "err");
+        return;
+    }
     var d1 = $("sy-dns1").value.trim(),
         d2 = $("sy-dns2").value.trim();
     if ((d1 && !okIp(d1)) || (d2 && !okIp(d2))) {
@@ -4862,7 +5057,7 @@ $("sy-syslog").addEventListener("change", function() {
             el.checked = false;
             return;
         }
-        if (sp && !(+sp >= 1 && +sp <= 65535)) {
+        if (sp && !(Number.isInteger(+sp) && +sp >= 1 && +sp <= 65535)) {
             toast(t("sy_sysport_err"), "err");
             el.checked = false;
             return;
@@ -4875,7 +5070,7 @@ $("sy-syslog").addEventListener("change", function() {
 });
 $("sy-sesstmo").addEventListener("change", function() {
     var v = +this.value;
-    if (!(v >= 1 && v <= 65535)) {
+    if (!(Number.isInteger(v) && v >= 1 && v <= 65535)) {
         toast(t("sy_sesstmo_err"), "err");
         sysLoad();
         return;
@@ -4887,7 +5082,7 @@ $("sy-sesstmo").addEventListener("change", function() {
 $("sy-pwapply").addEventListener("click", function() {
     var a = $("sy-pw1").value,
         b = $("sy-pw2").value;
-    if (a.length < 1 || a.length > 20) {
+    if (!/^[\x21-\x7e]{1,20}$/.test(a)) {
         toast(t("sy_pw_len"), "err");
         return;
     }
@@ -4902,6 +5097,7 @@ $("sy-pwapply").addEventListener("click", function() {
     confirmModal(t("sy_pw_q"), t("sy_pw_d"), function() {
         postCmd("passwd " + a).then(function() {
             $("sy-pw1").value = $("sy-pw2").value = "";
+            location.href = "/login.html";
         }).catch(function() {});
     });
 });
@@ -4962,8 +5158,8 @@ function cfgBytes() {
     var v = $("cfgedit").value,
         n = new Blob([v]).size;
     var el = $("cfgbytes");
-    el.textContent = n + " / 2048 " + t("sy_bytes");
-    el.style.color = (n > 2048 || cfgLongLine(v)) ? "var(--bad)" : "";
+    el.textContent = n + " / 4095 " + t("sy_bytes");
+    el.style.color = (n > 4095 || cfgLongLine(v)) ? "var(--bad)" : "";
     return n;
 }
 $("cfgedit").addEventListener("input", cfgBytes);
@@ -5074,7 +5270,8 @@ var CONF_OVERWRITE = [
     /^port\s+\d{1,2}(?!\s+(name|lldp)\b)/, /^port\s+\d{1,2}\s+name\b/,
     /^mirror\b/,
     /^lag\s+\d\b/, /^laghash\s+\d\b/, /^isolate\s+\d{1,2}\b/,
-    /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
+    /^sfp\s+[12]\b/,
+    /^stp\s+(prio|hello|maxage|fwd|txhold|version|pathcost|bpdu)\b/,
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
     /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
@@ -5224,9 +5421,9 @@ function writeConfig(txt, title, fromLog) {
         info.textContent = t("cw_info", {
             n: bytes
         });
-        ok.disabled = bytes > 2048 || !!long;
+        ok.disabled = bytes > 4095 || !!long;
         warn.style.color = ok.disabled ? "var(--bad)" : "var(--warn)";
-        warn.textContent = bytes > 2048 ? t("cw_toolarge") : long ? t("cw_longline", long) : (unknown.length ? t("cw_unknown") + unknown.join(" | ") : "");
+        warn.textContent = bytes > 4095 ? t("cw_toolarge") : long ? t("cw_longline", long) : (unknown.length ? t("cw_unknown") + unknown.join(" | ") : "");
     }
     ed.addEventListener("input", refresh);
     refresh();
@@ -5243,6 +5440,10 @@ function cfgText(txt) {
 }
 
 function doWriteConfig(txt, fromLog) {
+    if (new Blob([txt]).size > 4095 || cfgLongLine(txt)) {
+        toast(t("cw_toolarge"), "err");
+        return;
+    }
     var form = new FormData();
     form.append("configuration", new Blob([txt], {
         type: "application/octet-stream"
@@ -5260,10 +5461,11 @@ function doWriteConfig(txt, fromLog) {
         back = back.replace(/\0[\s\S]*$/, "").replace(/\r\n/g, "\n").trim();
         if (back !== txt.trim()) throw new Error(t("cw_verify_fail"));
         if (!fromLog) return false;
-        return api("/cmd_log_clear").then(function() {
-            return true
+        return api("/cmd_log_clear").then(function(r) {
+            if (!r.ok) throw new Error(t("cw_log_failed"));
+            return true;
         }, function() {
-            return true
+            throw new Error(t("cw_log_failed"));
         });
     }).then(function(cleared) {
         if (cleared) setDirty(false);
@@ -5278,23 +5480,42 @@ function doWriteConfig(txt, fromLog) {
 $("saveBtn").addEventListener("click", function() {
     toast(t("cw_collect"));
     Promise.all([
-        getText("/config").catch(function() {
-            return ""
-        }),
-        getText("/cmd_log").catch(function() {
-            return ""
-        }),
+        getText("/config"),
+        getText("/cmd_log"),
     ]).then(function(r) {
         var cur = r[0].replace(/\0[\s\S]*$/, "").split(/\r?\n/).map(function(l) {
             return l.trim().replace(/\s+/g, " ")
         }).filter(Boolean);
         var merged = mergeConf(cur, [r[1].replace(/\0[\s\S]*$/, "")]);
         writeConfig(merged.join("\n"), t("cw_save_title"), true);
+    }).catch(function() {
+        toast(t("cw_read_failed"), "err");
     });
 });
 
 var fwBuf = null,
-    fwOther = false;
+    fwOther = false,
+    fwGeneration = 0,
+    fwBusy = false;
+
+function fwUnlock() {
+    fwBusy = false;
+    fwCapacity();
+    statusPoller.start();
+}
+
+function fwCanUpload() {
+    if (S.info.web_update != null) return !!S.info.web_update;
+    var m = String(S.info.flash_size || "").match(/^(\d+)\s*(K|M)/i);
+    return m ? Number(m[1]) * (m[2].toUpperCase() === "M" ? 1024 : 1) >= 1024 : false;
+}
+
+function fwCapacity() {
+    var supported = fwCanUpload();
+    $("fwfile").disabled = !supported || fwBusy;
+    $("fwup").disabled = !supported || !fwBuf || fwBusy;
+    if (!supported) $("fwinfo").textContent = t(S.info.flash_size ? "fw_small" : "fw_unknown");
+}
 // Every image carries its machine name as a NUL-terminated string, the same
 // one the running switch reports as hw_ver: an image without it was built
 // for another board (SFP, LED and button pins differ between machines).
@@ -5313,10 +5534,12 @@ function fwForThisSwitch(u) {
 }
 $("fwfile").addEventListener("change", function() {
     var f = this.files[0];
+    var generation = ++fwGeneration;
     fwBuf = null;
     fwOther = false;
     $("fwup").disabled = true;
     $("fwinfo").textContent = "";
+    if (!fwCanUpload()) { fwCapacity(); return; }
     if (!f) return;
     var info = $("fwinfo");
     info.textContent = t("fw_checking", {
@@ -5324,6 +5547,7 @@ $("fwfile").addEventListener("change", function() {
         n: f.size
     });
     f.arrayBuffer().then(function(buf) {
+        if (generation !== fwGeneration) return;
         var u = new Uint8Array(buf),
             msg = null;
         if (u.length !== 524288) msg = t("fw_size_err", {
@@ -5348,14 +5572,22 @@ $("fwfile").addEventListener("change", function() {
             (fwOther ? '<br><span style="color:var(--warn)">\u26a0 ' + esc(t("fw_other", {
                 m: S.info.hw_ver
             })) + "</span>" : "");
-        $("fwup").disabled = false;
+        fwCapacity();
+    }).catch(function() {
+        if (generation !== fwGeneration) return;
+        fwBuf = null;
+        info.textContent = t("fw_read_failed");
+        $("fwup").disabled = true;
     });
 });
 $("fwup").addEventListener("click", function() {
-    if (!fwBuf) return;
+    if (!fwBuf || !fwCanUpload()) { fwCapacity(); return; }
     confirmModal(t("fw_q"), (fwOther ? t("fw_other", {
         m: S.info.hw_ver
     }) + " " : "") + t("fw_d"), function() {
+        fwBusy = true;
+        statusPoller.stop();
+        fwCapacity();
         var form = new FormData();
         form.append("uploadedfile", fwBuf, fwBuf.name);
         var xhr = new XMLHttpRequest();
@@ -5407,7 +5639,7 @@ $("fwup").addEventListener("click", function() {
                 } else {
                     var why = (xhr.responseText || "").trim().split("\n")[0];
                     st.textContent = "\u2715 " + t("fw_rejected") + " (HTTP " + xhr.status + (why ? ": " + why : "") + ")";
-                    $("fwup").disabled = false;
+                    fwUnlock();
                 }
             })
         };
@@ -5415,14 +5647,17 @@ $("fwup").addEventListener("click", function() {
             settle(function() {
                 if (!sent) {
                     st.textContent = t("fw_lost");
-                    $("fwup").disabled = false;
+                    fwUnlock();
                     return;
                 }
                 fwSettle(st, false);
             })
         };
         xhr.open("POST", "/upload");
-        xhr.send(form);
+        xhr.timeout = 180000;
+        xhr.ontimeout = xhr.onerror;
+        // Finish all queued reads before using the firmware's shared buffers.
+        _q.then(function() { xhr.send(form); });
     });
 });
 /* knownGood: the firmware answered 200, so an early reply only means the
@@ -5441,12 +5676,13 @@ function fwSettle(st, knownGood) {
         fetch("/information.json", {
             signal: ctl ? ctl.signal : undefined,
             cache: "no-store"
-        }).then(function() {
+        }).then(function(r) {
             clearTimeout(to);
-            if (!down && waited <= 9) {
-                if (!knownGood) {
+            if (r.status !== 200 && r.status !== 401) throw new Error("unavailable");
+            if (!down && r.status !== 401) {
+                if (waited >= (knownGood ? 45 : 15)) {
                     st.textContent = "\u2715 " + t("fw_noreboot");
-                    $("fwup").disabled = false;
+                    fwUnlock();
                     return;
                 }
                 waited += 3;
@@ -5464,14 +5700,14 @@ function fwSettle(st, knownGood) {
                         location.href = "/login.html"
                     }
                 })]);
-        }, function() {
+        }).catch(function() {
             clearTimeout(to);
             down = true;
             waited += 3;
             st.textContent = t("fw_rebooting");
             if (waited > 150) {
                 st.textContent = t("fw_timeout");
-                $("fwup").disabled = false;
+                fwUnlock();
                 return;
             }
             setTimeout(probe, 3000);

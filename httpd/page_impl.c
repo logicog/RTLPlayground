@@ -17,6 +17,7 @@
 #include "rtl837x_lacp.h"
 #include "page_impl.h"
 #include "syslog.h"
+#include "rtl837x_cabletest.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -44,6 +45,7 @@ extern __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
 extern __xdata uint16_t cmd_history_ptr;
 
 extern __xdata struct flash_region_t flash_region;
+extern __xdata uint32_t flash_size;
 
 extern __xdata char sfp_module_vendor[2][17];
 extern __xdata char sfp_module_model[2][17];
@@ -53,7 +55,7 @@ extern __xdata uint8_t sfp_options[2];
 extern __xdata uint16_t lldp_logical_port_status;
 extern __xdata bool lldp_enabled;
 
-__code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+__code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n";
 __code const uint8_t * __code const HTTP_RESPONCE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
 // Convert uint8_t to ascii HEX char push on html-buffer.
@@ -88,6 +90,18 @@ void json_char_to_html(uint8_t c)
 	if (c < 0x20 || c > 0x7e || c == '"' || c == '\\')
 		c = '.';
 	outbuf[slen++] = c;
+}
+
+static void vlan_name_to_html(uint16_t pos)
+{
+	uint8_t len = 0;
+	while (len < 46 && vlan_names[pos + len] && vlan_names[pos + len] != ' ') len++;
+	bool valid = vlan_name_valid(&vlan_names[pos], len);
+	while (vlan_names[pos] && vlan_names[pos] != ' ') {
+		uint8_t c = vlan_names[pos++];
+		if (valid && c >= 0x80) char_to_html(c);
+		else json_char_to_html(c);
+	}
 }
 
 
@@ -308,16 +322,23 @@ void send_basic_info(void)
 	temp_to_html();
 	slen += strtox(outbuf + slen, "\",\"flash_size\":\"");
 	string_to_html(get_flash_size_str());
+	char_to_html('"');
+	/* The UI must not advertise in-place updates on a 512 KiB device. */
+	slen += strtox(outbuf + slen, ",\"web_update\":");
+	char_to_html(flash_size >= FIRMWARE_UPLOAD_START * 2 ? '1' : '0');
+	slen += strtox(outbuf + slen, ",\"config_max\":");
+	itoa16_html(CONFIG_LEN - 1);
 
 	if (machine.n_sfp) {
-		slen += strtox(outbuf + slen, "\",\"sfp_slot_0\":\"");
+		slen += strtox(outbuf + slen, ",\"sfp_slot_0\":\"");
 		send_sfp_info(0);
+		char_to_html('"');
 		if (machine.n_sfp == 2) {
-			slen += strtox(outbuf + slen, "\",\"sfp_slot_1\":\"");
+			slen += strtox(outbuf + slen, ",\"sfp_slot_1\":\"");
 			send_sfp_info(1);
+			char_to_html('"');
 		}
 	}
-	char_to_html('"');
 
 	char_to_html('}');
 }
@@ -336,8 +357,7 @@ void send_vlan(uint16_t vlan)
 	if (n== 0xffff) {
 		dbg_string("VLAN has no name\n");
 	} else {
-		while(vlan_names[n] && vlan_names[n] != ' ')
-			json_char_to_html(vlan_names[n++]);
+		vlan_name_to_html(n);
 	}
 	slen += strtox(outbuf + slen, "\",\"pvid\":\"0x");
 	uint16_t pvid_mask = 0;
@@ -1043,6 +1063,33 @@ void send_cmd_log(void)
 }
 
 
+void send_cabletest(void)
+{
+	uint8_t i, first = 1;
+	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	slen += strtox(outbuf + slen, "{\"state\":\"");
+	slen += strtox(outbuf + slen, ct_state ? "running" : ct_have ? (ct_valid ? "done" : "timeout") : "idle");
+	slen += strtox(outbuf + slen, "\",\"port\":");
+	itoa_html(ct_state || ct_have ? machine.log_to_phys_port[ct_port] : 0);
+	slen += strtox(outbuf + slen, ",\"supported\":[");
+	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if (!cabletest_supported(i)) continue;
+		if (!first) char_to_html(',');
+		first = 0; itoa_html(machine.log_to_phys_port[i]);
+	}
+	slen += strtox(outbuf + slen, "],\"pairs\":[");
+	if (!ct_state && ct_have && ct_valid) for (i = 0; i < 4; i++) {
+		if (i) char_to_html(',');
+		slen += strtox(outbuf + slen, "{\"pair\":\""); char_to_html('A' + i);
+		slen += strtox(outbuf + slen, "\",\"status\":"); itoa_html(ct_result[i]);
+		slen += strtox(outbuf + slen, ",\"distance_dm\":");
+		if (ct_result[i] >= CABLE_RESULT_OPEN && ct_result[i] <= CABLE_RESULT_MISMATCH) itoa16_html(ct_len[i]);
+		else slen += strtox(outbuf + slen, "null");
+		char_to_html('}');
+	}
+	slen += strtox(outbuf + slen, "]}");
+}
+
 void send_vlanlist(void)
 {
 	/* Worst case per entry: {"id":4094,"name":"<117-char name>"} = 138 bytes
@@ -1050,7 +1097,7 @@ void send_vlanlist(void)
 	 * At worst case ~18 VLANs fit; typical configs with short names fit many more. */
 	__xdata uint16_t i;
 	__xdata uint16_t n;
-	uint8_t first = 1;
+	uint8_t first = 1, complete = 1;
 
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 	slen += strtox(outbuf + slen, "{\"mgmt\":");
@@ -1062,8 +1109,10 @@ void send_vlanlist(void)
 		if (!(sfr_data[0] & 0x02)) /* bit 1: VLAN table entry valid */
 			continue;
 
-		if (slen + 141 > TCP_OUTBUF_SIZE) /* comma + 138-byte worst-case entry + closing "]}" */
+		if (slen + 160 > TCP_OUTBUF_SIZE) {
+			complete = 0;
 			break;
+		}
 
 		if (!first)
 			char_to_html(',');
@@ -1075,14 +1124,14 @@ void send_vlanlist(void)
 
 		n = vlan_name(i);
 		if (n != 0xffff) {
-			while (vlan_names[n] && vlan_names[n] != ' ')
-				json_char_to_html(vlan_names[n++]);
+			vlan_name_to_html(n);
 		}
 
 		slen += strtox(outbuf + slen, "\"}");
 
 	}
 
-	char_to_html(']');
+	slen += strtox(outbuf + slen, "],\"complete\":");
+	bool_to_html(complete);
 	char_to_html('}');
 }

@@ -17,5 +17,9 @@ bool rtl_phy_cable_test_get_status(uint8_t port) __banked;
 void cabletest_run(void) __banked;
 void cabletest_show(void) __banked;
 void cabletest_tick(void) __banked;
+bool cabletest_supported(uint8_t port) __banked;
+extern __xdata uint8_t ct_state, ct_port, ct_valid, ct_have;
+extern __xdata uint8_t ct_result[4];
+extern __xdata uint16_t ct_len[4];
 
 #endif

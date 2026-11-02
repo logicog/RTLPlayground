@@ -15,6 +15,7 @@
 #include "rtl837x_flash.h"
 #include "syslog.h"
 #include "rtl837x_phy.h"
+#include "phy.h"
 #include "support.h"
 #include "rtl837x_lacp.h"
 
@@ -60,13 +61,19 @@ uint8_t *hex = (uint8_t *)hex_chars;
 #ifndef RTLP_TEST_IS8373
 #define RTLP_TEST_IS8373 1
 #endif
+#ifndef RTLP_TEST_SFP_COUNT
+#define RTLP_TEST_SFP_COUNT 0
+#endif
 const struct machine machine = {
 	.machine_name = "HOSTTEST",
-	.n_sfp = 0,
+	.n_sfp = RTLP_TEST_SFP_COUNT,
 	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
 	.phys_to_log_port = { 0, 1, 2, 3, 4, 5, 6, 7, 8 },
 };
 struct machine_runtime machine_detected = { .isRTL8373 = RTLP_TEST_IS8373 };
+uint8_t ct_state, ct_port, ct_valid, ct_have, ct_result[4];
+uint16_t ct_len[4];
+bool cabletest_supported(uint8_t port) { return (uint8_t)(port - MACHINE_MIN_PORT) <= MACHINE_MAX_PORT - MACHINE_MIN_PORT && !machine.is_sfp[port]; }
 
 /* ---- firmware state the modules read or write ---- */
 uint8_t  outbuf[TCP_OUTBUF_SIZE];
@@ -84,6 +91,7 @@ char     sfp_module_serial[2][17];
 char     hostname[24] = "hosttest";
 char     port_names[9][PORT_NAME_SIZE];
 struct flash_region_t flash_region;
+uint32_t flash_size = 0x200000;
 struct syslog_state syslog_state;
 bool     stp_enabled;
 bool lldp_enabled;
@@ -99,7 +107,13 @@ const char *get_flash_size_str(void) { return "2M"; }
 uint8_t  sfp_read_reg(uint8_t slot, uint8_t reg) { (void)slot; (void)reg; return 0; }
 bool     gpio_pin_test(uint8_t pin) { (void)pin; return false; }
 void     phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg) { (void)phy_id; (void)dev_id; (void)reg; }
-void     phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t val) { (void)phy_id; (void)dev_id; (void)reg; (void)val; }
+uint16_t mock_eee_adv[10], mock_eee_adv2[10];
+void phy_write(uint8_t phy_id, uint8_t dev_id, uint16_t reg, uint16_t val)
+{
+	if (phy_id >= 10 || dev_id != PHY_MMD_AN) return;
+	if (reg == PHY_EEE_ADV) mock_eee_adv[phy_id] = val;
+	if (reg == PHY_EEE_ADV2) mock_eee_adv2[phy_id] = val;
+}
 void     phy_reset(uint8_t port) { (void)port; }
 uint8_t  stp_port_role(uint8_t port) { (void)port; return 0; }
 uint8_t  stp_port_state(uint8_t port) { (void)port; return 3; }
