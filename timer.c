@@ -48,6 +48,18 @@
 #include "clock.h"
 #include "timer.h"
 
+extern volatile __xdata uint32_t ticks;
+
+static clock_time_t clock_time(void)
+{
+  clock_time_t t;
+
+  do {
+    t = (clock_time_t)ticks;
+  } while ((uint8_t)t != (uint8_t)ticks);
+  return t;
+}
+
 /*---------------------------------------------------------------------------*/
 /**
  * Set a timer.

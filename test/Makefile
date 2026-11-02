@@ -29,6 +29,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_page_json \
         $(BUILDDIR)/test_httpd_tx \
         $(BUILDDIR)/test_tick_gate \
+        $(BUILDDIR)/test_timer \
         $(BUILDDIR)/test_cpu_vlan_full \
         $(BUILDDIR)/test_cpu_vlan_restricted \
         $(BUILDDIR)/test_cpu_vlan_8372 \
@@ -54,6 +55,10 @@ $(BUILDDIR)/test_port_tables: test_port_tables.c $(TABLE_ENV) hw_mock.h | $(BUIL
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 $(BUILDDIR)/test_tick_gate: test_tick_gate.c support.c $(SRCROOT)/cmd_editor.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# timer.c is compiled UNMODIFIED from the firmware tree.
+$(BUILDDIR)/test_timer: test_timer.c support.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/timer.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # Exercise the production RX ring reader; only the hardware DMA edge is mocked.
