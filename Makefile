@@ -146,11 +146,11 @@ SRCS += \
 	rtl837x_cabletest.c \
 	rtl837x_flash.c \
 	rtl837x_igmp.c \
-	rtl837x_init.c \
+	rtlos_init.c \
 	rtl837x_nic.c \
 	rtl837x_leds.c \
 	rtl837x_leds_dump.c \
-	rtl837x_phy.c \
+	rtlos_phy.c \
 	rtl837x_pins.c\
 	rtl837x_port.c \
 	rtl837x_stp.c \

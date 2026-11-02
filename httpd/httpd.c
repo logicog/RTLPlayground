@@ -2,7 +2,6 @@
 #include "httpd.h"
 #include "page_impl.h"
 #include "rtl837x_common.h"
-#include "rtl837x_regs.h"
 #include "cmd_parser.h"
 #include "rtl837x_flash.h"
 #include "uip.h"
@@ -10,6 +9,7 @@
 #include "sessions.h"
 #include "html_data.h"
 #include "rtlos_hal.h"
+#include "rtlos_regs.h"
 
 // #define DEBUG
 #include "debug.h"

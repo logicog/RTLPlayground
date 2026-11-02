@@ -1,9 +1,9 @@
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_port.h"
-#include "rtl837x_phy.h"
+#include "rtlos_phy.h"
 #include "phy.h"
 #include "machine.h"
 #include "boot.h"
@@ -15,6 +15,10 @@ extern __xdata struct machine_runtime machine_detected;
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
+
+#define PRINT_U16(v) {  print_byte(v >> 8); print_byte(v & 0xff); }
+
+#if SOC_FAMILY == RTL837X
 /*
  * Configure the PHY-Side of the SDS-SDS link between SoC and PHY
  */
@@ -277,3 +281,154 @@ void rtl8372_init(void) __banked
 	reg_write_m(0x632c);
 	print_string("\nrtl8372_init done\n");
 }
+
+#elif SOC_FAMILY == RTL836X
+void rtl8370_init(void) __banked
+{
+	uint8_t pkg, chipmode, p;
+	uint8_t mode_present;
+	uint16_t rawmode, sponsor;
+	uint16_t ident = 0;
+	/* Kept in xdata: the direct RAM below 0x80 is full on this die. */
+	__xdata uint8_t pad_fixup_130c = 0;
+
+	print_string("\nrtl8370_init called\n");
+
+	REG_SET(RTL836x_REG_MAGIC_ID, RTL836x_MAGIC_UNLOCK);
+
+	reg_read_m(RTL836x_REG_CHIP_ID);
+	print_string("RTL8370: Chip ID = ");
+	print_sfr_data();
+	write_char('\n');
+
+	reg_read_m(RTL836x_REG_CHIP_VER);
+	pkg = (sfr_data[2] >> 4) & 0x0f;	/* bits 15:12 = RLVID (SDK dispatch) */
+
+	mode_present = 0;
+	reg_read_m(0x1300);			/* real sponsor, 0x6368 */
+	sponsor = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+	reg_read_m(RTL836x_REG_CHIP_MODE);
+	rawmode = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+	if (sponsor > 7 && rawmode != sponsor) {
+		reg_read_m(0x1303);		/* second, different real sponsor */
+		sponsor = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		reg_read_m(RTL836x_REG_CHIP_MODE);
+		if (sponsor > 7 && rawmode != sponsor &&
+		    (((uint16_t)sfr_data[2] << 8) | sfr_data[3]) == rawmode)
+			mode_present = 1;
+	}
+	/* Only a verified reply may select a table set; otherwise mode 0. */
+	chipmode = mode_present ? (uint8_t)(rawmode & 0x07) : 0;
+
+	print_string("RTL8370: pkg "); print_byte(pkg);
+	if (mode_present) {
+		print_string(" chip-mode "); print_byte(chipmode);
+	} else {
+		print_string(" chip-mode 0 (0x1302 absent)");
+	}
+	write_char('\n');
+
+	if (pkg == 0) {
+		uint8_t mis0_efuse, mis1_16b;
+
+		REG_SET(0x1700, 0x135);
+
+		REG_SET(RTL836x_REG_LED_ACTIVE_LOW_CFG0, 0x6677);
+		REG_SET(RTL836x_REG_LED_ACTIVE_LOW_CFG1, 0x7406);
+
+		reg_read_m(RTL836x_REG_MISCELLANEOUS_CONFIGURE0);
+		mis0_efuse = sfr_data[3] & 0x01;	/* RTL836x_EFUSE_EN_MASK, byte3 */
+		reg_read_m(0x130d);		/* RTL836x_REG_MISCELLANEOUS_CONFIGURE1 */
+		mis1_16b = sfr_data[3] & 0x40;	/* RTL836x_EEPROM_ADDRESS_16B_MASK */
+
+		/* CFG0 bit14 <- !EFUSE (SDK PORT3_LED_ACTIVE_LOW_OFFSET+2 = 14) */
+		reg_read_m(RTL836x_REG_LED_ACTIVE_LOW_CFG0);
+		sfr_mask_data(1, 0x40, mis0_efuse ? 0x00 : 0x40);
+		reg_write_m(RTL836x_REG_LED_ACTIVE_LOW_CFG0);
+		/* CFG1 bit0 <- !EEPROM_16B (SDK PORT4_LED_ACTIVE_LOW_OFFSET = 0) */
+		reg_read_m(RTL836x_REG_LED_ACTIVE_LOW_CFG1);
+		sfr_mask_data(3, 0x01, mis1_16b ? 0x00 : 0x01);
+		reg_write_m(RTL836x_REG_LED_ACTIVE_LOW_CFG1);
+	} else if (pkg == 1) {
+		REG_SET(0x2000 + (0 << 5) + 31, 5);
+		REG_SET(0x2000 + (0 << 5) + 5, 0x3ffe);
+		reg_read_m(0x2000 + (0 << 5) + 6);
+		ident = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+		print_string("RTL836x: phy0 ident ");
+		PRINT_U16(ident);
+		write_char('\n');
+		if (ident == 0x94eb) {
+			pad_fixup_130c = 1;
+		} else if (ident == 0x2104) {
+			/* init2 table: not applied -- see the A/B note above */
+		} else {
+			print_string("RTL836x: unknown PHY ident, tables skipped\n");
+		}
+	} else {
+		print_string("RTL836x: unknown package type, tables skipped\n");
+	}
+
+	if (pad_fixup_130c)
+		REG_SET(RTL836x_REG_MISCELLANEOUS_CONFIGURE0, 0x1470);
+
+	reg_read_m(RTL836x_REG_LED_SYS_CONFIG);
+	sfr_mask_data(1, 0x08, 0);
+	reg_write_m(RTL836x_REG_LED_SYS_CONFIG);
+
+	reg_read_m(RTL836x_REG_PHY_AD);
+	print_string("RTL8370: PHYAD 0x130f byte0 ");
+	print_byte(sfr_data[3]);
+	sfr_mask_data(3, 0x20, 0x00);	/* bit5 = PHY power-down, clear it */
+	reg_write_m(RTL836x_REG_PHY_AD);
+	reg_read_m(RTL836x_REG_PHY_AD);
+	print_string(" -> ");
+	print_byte(sfr_data[3]);
+	write_char('\n');
+
+	print_string("RTL8370: unpark");
+	for (p = 0; p < 8; p++) {
+		uint16_t pre;
+		__xdata uint16_t base = RTL836x_PHY_BASE + (p << 5);
+
+		sfr_set_zero();
+		reg_write_m(base + 31);
+
+		reg_read_m(base + 0);
+		pre = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+
+		sfr_set_zero();
+		sfr_data[2] = 0x0d;
+		sfr_data[3] = 0xe1;
+		reg_write_m(base + 4);
+
+		sfr_set_zero();
+		sfr_data[2] = 0x02;
+		reg_write_m(base + 9);
+
+		sfr_set_zero();
+		sfr_data[2] = 0x13;	/* BMCR high byte: autoneg EN + restart */
+		sfr_data[3] = 0x40;	/* BMCR low byte: 100M full duplex */
+		reg_write_m(base + 0);
+		write_char(' ');
+		print_byte(p);
+		PRINT_U16(pre);
+	}
+	write_char('\n');
+
+	REG_SET(RTL836x_REG_LED_SYS_CONFIG, 0x1472);	/* LEDOP_PARALLEL */
+
+	REG_SET(RTL836x_REG_PARA_LED_IO_EN1, 0xffff);
+	reg_read_m(RTL836x_REG_PARA_LED_IO_EN2);
+	sfr_data[3] = 0xff;
+	reg_write_m(RTL836x_REG_PARA_LED_IO_EN2);
+
+	for (p = 0; p < 16; p++) {
+		sfr_set_zero();
+		sfr_data[2] = 0x20;		/* 0x2040 MSB */
+		sfr_data[3] = 0x40;		/* 0x2040 LSB (mask 0x3fff) */
+		reg_write_m(RTL836x_REG_LUT_PORT0_LEARN_LIMITNO + p);
+	}
+
+	print_string("\nrtl8370_init done\n");
+}
+#endif	/* SOC_FAMILY == RTL836X (rtl8370_init) */

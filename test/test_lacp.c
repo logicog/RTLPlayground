@@ -6,7 +6,7 @@
 #include "rtl837x_common.h"
 #include "machine.h"
 #include "uip.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_lacp.h"
 
 /* ---------- platform mocks ---------- */

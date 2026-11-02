@@ -14,7 +14,7 @@
 #include "rtl837x_pins.h"
 #include "rtl837x_leds.h"
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_common.h"
 
 #define I2CBUS_INVALID (7)

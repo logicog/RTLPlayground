@@ -95,7 +95,6 @@
 #endif /* UIP_CONF_IPV6 */
 
 #include "../rtl837x_common.h"
-#include "../rtl837x_regs.h"
 
 extern __xdata uint8_t rx_headers[16];
 extern volatile __xdata uint32_t ticks;

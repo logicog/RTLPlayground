@@ -9,7 +9,7 @@
 #define UPDATE_CODE_LOC	(UPDATE_LOC + HEADER_LENGTH)
 
 #include "../rtl837x_sfr.h"
-#include "../rtl837x_regs.h"
+#include "../rtlos_regs.h"
 
 // See setup_serial_timer1() for valid baudrate settings!
 #define SERIAL_BAUD_RATE 57600

@@ -6,10 +6,10 @@
 #include <stdbool.h>
 
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_common.h"
 #include "rtl837x_pins.h"
-#include "rtl837x_phy.h"
+#include "rtlos_phy.h"
 #include "rtl837x_port.h"
 #include "machine.h"
 #include "phy.h"
@@ -33,6 +33,7 @@ __xdata uint8_t sfp_quirks[2];
 __xdata struct timer sfp_wake[2];
 __xdata uint8_t sfp_wake_pending[2];
 
+#if (SOC_FAMILY != RTL836X)
 
 __code enum sfp_quirk {
 	SFP_QUIRK_DDM = (1 << 0),
@@ -233,3 +234,12 @@ void handle_sfp(void) __banked
 		}
 	}
 }
+#else
+void handle_sfp(void) __banked
+{
+}
+bool sfp_print_info(uint8_t sfp) __banked
+{
+	return false;
+}
+#endif

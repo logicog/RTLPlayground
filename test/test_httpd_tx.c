@@ -25,7 +25,7 @@
 #include "httpd.h"
 #include "uip.h"
 #include "rtl837x_common.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_flash.h"
 #include "page_impl.h"
 #include "html_data.h"

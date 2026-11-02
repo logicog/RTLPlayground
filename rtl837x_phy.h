@@ -1,23 +1,6 @@
 #ifndef _RTL837X_PHY_H_
 #define _RTL837X_PHY_H_
 
-#define PHY_SPEED_10M	0x2
-#define PHY_SPEED_100M	0x3
-#define PHY_SPEED_1G	0x4
-#define PHY_SPEED_2G5	0x5
-#define PHY_SPEED_5G	0x6
-#define PHY_SPEED_10G	0x7
-#define PHY_SPEED_AUTO	0x10
-#define PHY_OFF		0xff
-
-struct phy_settings {
-	uint8_t duplex;
-	uint8_t port;
-	uint8_t speed;
-	uint8_t is10g_port;
-};
-
-extern __xdata struct phy_settings phy_settings;
 
 void rtl8224_phy_enable(void) __banked;
 void phy_config(uint8_t phy) __banked;

@@ -12,8 +12,8 @@
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
-#include "rtl837x_regs.h"
-#include "rtl837x_phy.h"
+#include "rtlos_regs.h"
+#include "rtlos_phy.h"
 #include "phy.h"
 #include "machine.h"
 #include "timer.h"

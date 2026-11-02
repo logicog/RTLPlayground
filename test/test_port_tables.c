@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "rtl837x_common.h"
-#include "rtl837x_regs.h"
+#include "rtlos_regs.h"
 #include "rtl837x_port.h"
 #include "machine.h"
 #include <test/support.h>

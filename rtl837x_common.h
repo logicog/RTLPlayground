@@ -1,6 +1,7 @@
 #ifndef _RTL837X_STDIO_H_
 #define _RTL837X_STDIO_H_
 
+#include "machine.h"
 #include "clock-arch.h"
 #include "uip/uip-conf.h"
 #include <stdint.h>
@@ -8,7 +9,11 @@
 
 #define SYS_TICK_HZ CLOCK_CONF_SECOND
 
+#if SOC_FAMILY == RTL836X
+#define CPU_PORT        10
+#else
 #define CPU_PORT        9
+#endif
 #define MAC_ADDR_LEN    6
 #define PORT_BIT(p)     ((uint16_t)1 << (p))
 #define NUL			'\0'
@@ -19,6 +24,7 @@
 #define PMASK_9		0x1ff
 #define PMASK_6		0x1f8
 #define PMASK_CPU	((uint16_t)(1 << CPU_PORT))
+#define PMASK_PORT	( (1<<(MACHINE_MAX_PORT+1)) - (1 <<(MACHINE_MIN_PORT) ))
 
 // Defines a port mask for dropping all packets on Lookup-miss
 #define LOOKUP_MISS_DROP_6  0x00015540
@@ -92,6 +98,10 @@ struct vlan_tag {
 
 // This is the standard size of an Ethernet frame header
 #define ETHER_HEADER_SIZE	14
+
+/* Flags in byte 1 of the RX frame descriptor */
+#define RX_TAG_L4_CSUM_BAD		0x04
+
 
 #define DEFAULT_CONFIG_START 0x6f000
 #define CONFIG_START 0x70000
@@ -198,7 +208,11 @@ uint8_t read_flash(uint8_t bank, __code const uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(__xdata uint32_t * tmr);
 bool gpio_pin_test(uint8_t pin);
+#if (SOC_FAMILY != RTL836X )
 void set_sys_led_state(uint8_t state);
+#else
+#define set_sys_led_state(state)
+#endif
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
 void flash_default_config(void);
