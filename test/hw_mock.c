@@ -33,6 +33,12 @@
 #include "rtlos_regs.h"
 #include "hw_mock.h"
 
+/* The RTL836x TA engine below needs this die's constants; rtlos_regs.h only
+ * picks the header per SOC_FAMILY, so most host binaries build without it.
+ * It is pure declarations for this die's register map, so an unconditional
+ * include is safe. */
+#include "rtl836x_regs.h"
+
 uint8_t sfr_data[4];
 unsigned long hw_reads, hw_writes;
 
@@ -48,6 +54,7 @@ void hw_reset(void)
 	memset(l2, 0, sizeof(l2));
 	memset(counters, 0, sizeof(counters));
 	memset(sfr_data, 0, sizeof(sfr_data));
+	hw_l2_8370_reset();
 	hw_reads = hw_writes = 0;
 }
 
@@ -150,6 +157,177 @@ void hw_l2_decode(const struct hw_l2 *e, uint8_t mac[6], uint16_t *vid, uint16_t
 		*port_or_pmask = ((e->b >> 30) & 0x3) | ((e->c & 0xff) << 2);
 	else
 		*port_or_pmask = ((e->b >> 30) & 0x3) | ((e->c & 0x3) << 2);
+}
+
+/* ---- the RTL836x TA engine (see doc/l2.md) --------------------------- */
+
+/*
+ * The RTL836x die drives its L2 through the TA window (0x0500 control, words
+ * staged in WRDATA 0x0510-0x0516, answers in RDDATA 0x0520-0x0526, lookup
+ * status in 0x0502) rather than through the three-word TBL interface of the
+ * 8372/3. The engine below stores seven-word entries and behaves like the
+ * measured die:
+ *
+ *   WRITE          places the entry at the slot its key hashes to and leaves
+ *                  the stored words in the read window;
+ *   read by address (method 1) exports the entry at the addressed slot, or
+ *                  zero words for an empty slot;
+ *   read by key    (method 0) answers 0x0502 with 0x1000 (FOUND) | slot for
+ *                  an entry the walk would report (age left and live flag
+ *                  set), and leaves 0x0502 alone on a miss, as measured.
+ *
+ * The one measured quirk reproduced here is the WRITE normalization: with the
+ * live flag staged, an age field of 0 or one above 6 is stored as the
+ * fabric's fresh age (6), the spa field and word 3 verbatim. A release
+ * staging -- age and live flag cleared -- is stored as staged, so the entry
+ * stops being held and the by-key lookup misses it.
+ */
+#define HW_L2_8370_MAX 8
+struct hw_l2_8370 {
+	bool     used;
+	uint16_t idx;
+	uint16_t words[7];
+};
+
+static struct hw_l2_8370 rtl836x_l2[HW_L2_8370_MAX];
+
+static uint16_t l2_8370_hash_words(uint16_t w0, uint16_t w1, uint16_t w2, uint16_t fid)
+{
+	const uint8_t mac[6] = { (uint8_t)(w2 >> 8), (uint8_t)w2,
+				 (uint8_t)(w1 >> 8), (uint8_t)w1,
+				 (uint8_t)(w0 >> 8), (uint8_t)w0 };
+	uint16_t h = fid;
+	for (int i = 0; i < 6; i++)
+		h = (uint16_t)(h * 31 + mac[i]);
+	return h & 0xfff;
+}
+
+/* The slot the mock engine's key hash places mac/fid in. Tests seed there so
+ * a later firmware write of the same key lands on the seeded entry. */
+uint16_t hw_l2_8370_hash(const uint8_t mac[6], uint16_t fid)
+{
+	uint16_t w0 = (uint16_t)(((uint16_t)mac[4] << 8) | mac[5]);
+	uint16_t w1 = (uint16_t)(((uint16_t)mac[2] << 8) | mac[3]);
+	uint16_t w2 = (uint16_t)(((uint16_t)mac[0] << 8) | mac[1]);
+	return l2_8370_hash_words(w0, w1, w2, fid);
+}
+
+void hw_l2_8370_reset(void)
+{
+	memset(rtl836x_l2, 0, sizeof(rtl836x_l2));
+}
+
+static struct hw_l2_8370 *l2_8370_at(uint16_t idx)
+{
+	for (int i = 0; i < HW_L2_8370_MAX; i++)
+		if (rtl836x_l2[i].used && rtl836x_l2[i].idx == idx)
+			return &rtl836x_l2[i];
+	return 0;
+}
+
+static struct hw_l2_8370 *l2_8370_find_by_key(uint16_t w0, uint16_t w1, uint16_t w2,
+					      uint16_t fid, bool held_only)
+{
+	for (int i = 0; i < HW_L2_8370_MAX; i++) {
+		struct hw_l2_8370 *e = &rtl836x_l2[i];
+		if (!e->used || e->words[0] != w0 || e->words[1] != w1
+		    || e->words[2] != w2 || (e->words[3] & 0x0fff) != (fid & 0x0fff))
+			continue;
+		if (held_only && !(((e->words[4] >> RTL836x_TA_L2_W4_AGE_SHIFT) & RTL836x_TA_L2_W4_AGE_MASK)
+				   && (e->words[5] & RTL836x_TA_L2_W5_LIVE)))
+			continue;
+		return e;
+	}
+	return 0;
+}
+
+/* Seed the die with one entry at `idx`, in the shape the fabric holds after
+ * its own fix-ups (seeding is not normalized). W0-W2 carry the MAC, W3 the
+ * static flag + FID, W4 the age and spa, W5 the live flag, W6 zero. */
+void hw_l2_8370_put(uint16_t idx, const uint8_t mac[6], uint16_t fid,
+		    uint8_t age, uint8_t spa, bool live, bool is_static)
+{
+	struct hw_l2_8370 *e = l2_8370_at(idx);
+	if (!e) {
+		for (int i = 0; i < HW_L2_8370_MAX && !e; i++)
+			if (!rtl836x_l2[i].used)
+				e = &rtl836x_l2[i];
+	}
+	if (!e)
+		return;					/* all slots taken: never in these tests */
+
+	e->used    = true;
+	e->idx     = idx;
+	e->words[0] = (uint16_t)(((uint16_t)mac[4] << 8) | mac[5]);
+	e->words[1] = (uint16_t)(((uint16_t)mac[2] << 8) | mac[3]);
+	e->words[2] = (uint16_t)(((uint16_t)mac[0] << 8) | mac[1]);
+	e->words[3] = (uint16_t)((is_static ? RTL836x_TA_L2_W3_STATIC : 0) | (fid & 0x0fff));
+	e->words[4] = (uint16_t)(((uint16_t)(age & 0x1f) << RTL836x_TA_L2_W4_AGE_SHIFT)
+				  | ((uint16_t)(spa & 7) << RTL836x_TA_L2_W4_SPA_SHIFT));
+	e->words[5] = live ? RTL836x_TA_L2_W5_LIVE : 0;
+	e->words[6] = 0;
+}
+
+static uint16_t l2_8370_wrdata(uint8_t w)
+{
+	/* the firmware's WRITE stages each word into the register's high half */
+	return (uint16_t)(regfile[RTL836x_TA_WRDATA_REG(w)] >> 16);
+}
+
+static void l2_8370_store(void)
+{
+	uint16_t words[7];
+
+	for (int w = 0; w < 7; w++)
+		words[w] = l2_8370_wrdata((uint8_t)w);
+
+	/* The one measured fix-up: with the live flag staged, an age field of 0
+	 * or one above 6 comes back stored as the fabric's fresh age; the spa
+	 * field and W3 go in verbatim. */
+	if (words[5] & RTL836x_TA_L2_W5_LIVE) {
+		uint16_t age = (words[4] >> RTL836x_TA_L2_W4_AGE_SHIFT) & RTL836x_TA_L2_W4_AGE_MASK;
+		if (age == 0 || age > RTL836x_TA_L2_W4_AGE_MAX)
+			age = RTL836x_TA_L2_W4_AGE_MAX;
+		words[4] = (uint16_t)((age << RTL836x_TA_L2_W4_AGE_SHIFT) | (words[4] & 0x07ff));
+	}
+
+	uint16_t idx = l2_8370_hash_words(words[0], words[1], words[2], words[3] & 0x0fff);
+	struct hw_l2_8370 *e = l2_8370_at(idx);
+	if (!e) {
+		for (int i = 0; i < HW_L2_8370_MAX && !e; i++)
+			if (!rtl836x_l2[i].used)
+				e = &rtl836x_l2[i];
+	}
+	if (!e)
+		return;
+
+	e->used = true;
+	e->idx  = idx;
+	memcpy(e->words, words, sizeof(e->words));
+	/* like the die, which answers the next read with what it stored */
+	for (int w = 0; w < 7; w++)
+		regfile[RTL836x_TA_RDDATA_REG(w)] = words[w];
+}
+
+static void l2_8370_read_addr(void)
+{
+	uint16_t idx = (uint16_t)(regfile[RTL836x_TA_ADDR_REG] >> 16) & 0xfff;
+	struct hw_l2_8370 *e = l2_8370_at(idx);
+
+	for (int w = 0; w < 7; w++)
+		regfile[RTL836x_TA_RDDATA_REG(w)] = e ? e->words[w] : 0;
+}
+
+static void l2_8370_read_key(void)
+{
+	struct hw_l2_8370 *e = l2_8370_find_by_key(
+		l2_8370_wrdata(0),
+		l2_8370_wrdata(1),
+		l2_8370_wrdata(2),
+		l2_8370_wrdata(3) & RTL836x_TA_L2_W3_FID_MASK,
+		true);
+	if (e)
+		regfile[RTL836x_TA_LUT_REG] = (uint32_t)(RTL836x_TA_LUT_FOUND | e->idx);
 }
 
 /* ---- the engine ------------------------------------------------------ */
@@ -262,6 +440,24 @@ static void reg_store(uint16_t addr, uint32_t v)
 	hw_writes++;
 	regfile[addr] = v;
 	switch (addr) {
+	case RTL836x_TA_CTRL_REG:
+		/* the CVLAN commands share this control register with the L2 ones
+		 * but carry their words in a different layout: plain store. The RTL836x
+		 * writes its 16-bit values into the high half of the 32-bit register
+		 * (see the asymmetric access in rtl836x_l2_read), so the command is
+		 * taken from there too. */
+		switch (v >> 16 & 0x1f) {
+		case RTL836x_TA_CTRL_L2_WRITE:
+			l2_8370_store();
+			break;
+		case RTL836x_TA_CTRL_L2_READ_ADDR:
+			l2_8370_read_addr();
+			break;
+		case RTL836x_TA_CTRL_L2_READ_MAC:
+			l2_8370_read_key();
+			break;
+		}
+		break;
 	case RTL837X_TBL_CTRL:
 		if (v & TBL_EXECUTE) {
 			table_exec(v);

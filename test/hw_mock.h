@@ -56,4 +56,22 @@ void hw_l2_decode(const struct hw_l2 *e, uint8_t mac[6], uint16_t *vid, uint16_t
 /* MIB counter the next STAT_GET for (port, counter) returns */
 void hw_counter_set(uint8_t port, uint8_t counter, uint64_t value);
 
+/* ---- RTL836x (RTL8370) L2 engine: the TA window's live side ----------
+ *
+ * The RTL836x walks its L2 through WRDATA/CTRL/RDDATA (0x0510/0x0500/0x0520)
+ * and lookup status in 0x0502, not through the three-word TBL interface of
+ * the 8372/3. This engine answers those accesses like the measured die: a
+ * L2-WRITE stores the staged seven words at the slot its key hash names
+ * (applying the one measured fix-up, an out-of-window age under the live
+ * flag stored as age 6); a read by address exports the addressed slot or
+ * zeros; a read by key answers 0x0502 with 0x1000 (FOUND) | slot for an
+ * entry the walk would report. See doc/l2.md and test_l2_mgmt_8370.c. */
+void     hw_l2_8370_reset(void);                       /* also done by hw_reset */
+uint16_t hw_l2_8370_hash(const uint8_t mac[6], uint16_t fid);
+/* Seed the die with an entry in the fabric's stored shape (no staging
+ * normalization). Seeding at hw_l2_8370_hash()'s slot makes a later firmware
+ * write of the same key land on it. */
+void     hw_l2_8370_put(uint16_t idx, const uint8_t mac[6], uint16_t fid,
+			uint8_t age, uint8_t spa, bool live, bool is_static);
+
 #endif /* TEST_HW_MOCK_H */
