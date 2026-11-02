@@ -4687,36 +4687,15 @@ function scLoad() {
                 var n = p.portNum,
                     tr = tb.insertRow();
                 tr.id = "scr" + n;
-                tr.addEventListener("input", function() {
-                    tr.dataset.dirty = "1"
-                });
-                tr.addEventListener("change", function() {
-                    tr.dataset.dirty = "1"
-                });
+                tr.addEventListener("input", function() { tr.dataset.dirty = "1" });
+                tr.addEventListener("change", function() { tr.dataset.dirty = "1" });
                 tr.insertCell().textContent = n;
                 SC_TYPES.forEach(function(ty) {
-                    tr.insertCell().appendChild(h("span", {
-                        style: "display:flex;gap:4px"
-                    }, [
-                        h("input", {
-                            class: "in sm",
-                            id: "scv" + ty + n,
-                            type: "number",
-                            min: "1",
-                            step: "1"
-                        }),
-                        h("select", {
-                            class: "in",
-                            id: "scu" + ty + n
-                        }, [
-                            h("option", {
-                                value: "pps",
-                                text: "pps"
-                            }),
-                            h("option", {
-                                value: "kbps",
-                                text: "kbit/s"
-                            }),
+                    tr.insertCell().appendChild(h("span", { style: "display:flex;gap:4px" }, [
+                        h("input", { class: "in sm", id: "scv" + ty + n, type: "number", min: "1", step: "1" }),
+                        h("select", { class: "in", id: "scu" + ty + n }, [
+                            h("option", { value: "pps", text: "pps" }),
+                            h("option", { value: "kbps", text: "kbit/s" }),
                         ]),
                     ]));
                 });
@@ -4732,12 +4711,12 @@ function scLoad() {
         s.forEach(function(p) {
             var n = p.portNum;
             if ($("scr" + n).dataset.dirty) return;
-            SC_TYPES.forEach(function(ty, k) {
-                var on = p.en.charAt(k) === "1",
-                    pps = p.pps.charAt(k) === "1",
-                    raw = parseInt(p.rate.substr(k * 6, 6), 16);
-                var inp = $("scv" + ty + n),
-                    sel = $("scu" + ty + n);
+            SC_TYPES.forEach(function(v, k) {
+                var on = p[v]["en"] == 1,
+                    pps = p[v]["unit"] == "pps",
+                    raw = parseInt(p[v]["rate"]);
+                var inp = $("scv" + v + n),
+                    sel = $("scu" + v + n);
                 inp.value = on ? raw : "";
                 sel.value = on && !pps ? "kbps" : "pps";
                 inp.dataset.cur = on ? inp.value + " " + sel.value : "off";
@@ -4771,7 +4750,7 @@ function scApply(n) {
 tabHooks.bw = {
     enter: function() {
         needPorts(function() {
-            bwLoad().then(scLoad).catch(function() {})
+            bwLoad().then(scLoad).catch(function(e) {console.log(e);})
         })
     }
 };

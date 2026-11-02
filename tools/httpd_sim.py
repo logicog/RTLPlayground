@@ -380,10 +380,15 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_storm(self):
         global state
         return [
-            {"portNum":i,"en":"0000","pps":"0000","rate":"000000000000000000000000"}
+            {
+                "portNum": i,
+                "bcast":  {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000037") },
+                "mcast":  {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000047") },
+                "ucast":  {"en": int(i==3), "unit":"pps", "rate": ("0x000000" if i !=3 else "0x000057") },
+                "umcast": {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000031") }
+            }
             for i in range(1, PORTS + 1)
         ]
-
     def _api_stp(self):
         return {
             "on":0,
