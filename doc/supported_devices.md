@@ -77,3 +77,9 @@ serial consoles and use 4 independent RTL8272 SoCs. No central control is provid
 even if it has been successfully demonstrated to install RTLPlayground to individual SoCs.
 - [GigaPlus GP-S25-1602](https://www.servethehome.com/gigaplus-gp-s25-1602-review-a-cheap-16-port-2-5gbe-and-2-port-10g-switch/)
 - [Vimin VM S251602P 16 Port 2.5G PoE Switch With 2x 10G SFP+](https://www.servethehome.com/vimin-vm-s251602p-16-port-2-5g-poe-switch-review-cyperf/vimin-vm-s251602p-16-port-2-5g-poe-switch-with-2x-10g-sfp-battery-2/)
+
+## Experimental profiles
+
+| Brand | Type | Managed | PCB | Flash | Ports |
+|-------|------|---------|-----|-------|-------|
+| Sodola | SL902-SWTGW124AS | Yes | [PCB-SWTG024AS-V2.1.1_19023](devices/PCB-SWTG024AS-V2.1.1_19023.md) | 2M | 4 + 2 |
