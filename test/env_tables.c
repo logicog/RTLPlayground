@@ -15,7 +15,7 @@
 #include "rtl837x_flash.h"
 #include "syslog.h"
 #include "rtl837x_phy.h"
-#include "support.h"
+#include <test/support.h>
 #include "rtl837x_lacp.h"
 
 /* ---- console: everything lands in out_buf (support.c) ---- */

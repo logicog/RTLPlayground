@@ -1,0 +1,161 @@
+### 2M-PCB23-V3.1
+
+## Brands
+|Brand|Type|Managed|PCB|Flash|Chip RTL|
+|---|---|---|---|---|---|
+| keepLINK | KP-9000-9XHML-X | Yes|  2M-PCB23-V3.1 | 2M| 8273N + 8224N |
+
+## PCB
+
+<img src="photos/2M-PCB23-V3.1/2M-PCB23-V3.1-top.jpeg" width="300" />
+
+## Port overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                                       ┌──────────┐          │
+│     ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │ SFP (J4) │          │
+│     │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │ │  RJ45   │   │ PORT   9 │          │
+│     │  PORT 1 │ │  PORT 2 │ │  PORT 3 │ │  PORT 4 │ │  PORT 5 │ │  PORT 6 │ │  PORT 7 │ │  PORT 8 │   │ MAC    8 │ O (PWR)  │
+│  O  │  MAC  0 │ │  MAC  1 │ │  MAC  2 │ │  MAC  3 │ │  MAC  4 │ │  MAC  5 │ │  MAC  6 │ │  MAC  7 │   │ SerDes 1 │ O (SFP)  │
+│ RST └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘   └──────────┘          │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+# Connectors
+|`J4` SFP PINs | Signal | Component | GPIO | Notes |
+|---|---|---|---|---|
+|2|	TX_FAULT	        | | --- | | 
+|3|	TX_DISABLE	      | | --- | Pull down - 0R |
+|4|	MODDEF2 – SDA     |	b-r273 | GPIO39-SDA4 | |
+|5|	MODDEF1 – SCL     | b-r274 | GPIO40-SCL3 | |
+|6|	MODDEF0 – PRESENT | B-R275 | GPIO38 |  |
+|7|	RATE SEL          |	| ---    |  | 
+|8|	LOS	              | B-R276 | GPIO38 |  | 
+|9|	TO?               | | ---    |  |
+
+Note: component numbering `<L>-<REFDES>-<SIDE>`
+* L: Layer, T=Top, B=Bottom
+* REFDEES: full silkscreen like `R123`
+* SIDE: Side of the component. when the rj45 are facing towards you are you can read the silkscreen normal.
+  L = Left, R=right, B=bottom, T=top or P with a pin number.
+
+### T8, serial console
+|`T9` pin|GPIO|Signal|
+|---|---|---|
+| 1 | GPIO31 | U0TXD (Output) |
+| 2 | GND | PWR |
+| 3 | GPIO32 | U0RXD (Input) |
+| 4 | 3V3 | PWR |
+
+### T7, Slave Interface
+|`T7` pin|what|Signal|Components|
+|---|---|---|---|
+| 1 | Slave Interface | Slave SCK/SCL/MDC/EE_SCL | U7-6 |
+| 2 | GND   | | |
+| 3 | Slave Interface | Slave SDI/SDA/MDIO/EE_SDA | U7-5 |
+| 4 | 3V3   | | |
+| 5 | GPIO? | | |
+| 6 | GPIO? | | |
+
+`U7` can be a standard I2C eeprom memory, like `24LC32`.
+
+The Slave Interface allows an extenal host to controll the SOC even if the internal MCU is used.
+Depending on the `IF_SEL` bootstrap resistors, this can me `I2C`, `SPI` or `SMI`.
+On this device it is `I2C` on address `0b1011100` or `0x5c` (7-bit notation).
+
+* I2c Read:  must be a write_read opperation `<Dev-ADDR><RegAddr15:8><RegAddr7:0>` `<DevAddr><Data7:0><Data15:8><Data23:16><Data31:24>`.
+* I2c Write: `<Dev-ADDR><RegAddr15:8><RegAddr7:0><DevAddr><Data7:0><Data15:8><Data23:16><Data31:24>`.
+
+Example register `0x0004` return chip id `0x00, 0x00, 0x72, 0x83` = `0x83720000`.
+
+### T9
+|`T9` SMI | Signal | Component | GPIO | Notes |
+|---|---|---|---|---|
+|1|	MDO	| SMI-MDO | GPIO41 | | 
+|2|	GND	| PWR | | |
+|3|	MDC |	SMI-MDC | GPio40 | |
+
+### T10
+|`T10` pin|what|Signal|
+|---|---|---|
+| 1 | GPIO49 | |
+| 2 | GPIO47 | |
+| 3 | 3V3    | |
+| 4 | GPIO48 | |
+| 5 | GND    | |
+| 6 | GPIO46 | |
+
+# Reset ciruit
+
+Reset-line found at `T-D6-L`, `T-R83`, `T-R97`, `T-R94`, `T-R93` active-low.
+
+# GPIO
+
+| HEX VAL. | GPIO   | Component | What |  | GPIO | Component | What |
+| -------- | ------ |  ---- | ---- | ---- | ---- | ---- | ---- |
+| 00000001 | GPIO00 | T-R34-R, P1-LED-YL      |?      |   | GPIO32 | B-r126-r  | U0RXD |
+| 00000002 | GPIO01 | T-R99-R, P1-LED-GR      |?      |   | GPIO33 | |  |
+| 00000004 | GPIO02 |                         |?      |   | GPIO34 | B-R172, To RTL8224 | SMI-MDC0  |
+| 00000008 | GPIO03 | T-R113-R, P2-LED-GR     |?      |   | GPIO35 | B-R173, To RTL8224 | SMI-MDIO0 |
+| 00000010 | GPIO04 | T-R115-R, P3-LED-YL     |?      |   | GPIO36 | | |  |
+| 00000020 | GPIO05 | T-R117-R, P3-LED-GR     |?      |   | GPIO37 | To RTL8224 ?? | Already driver low |  |
+| 00000040 | GPIO06 |                         |?      |   | GPIO38 | sfp-6 via B-R275, sfp-8 via B-R276 | SFP-PRESENT |
+| 00000080 | GPIO07 |                         |?      |   | GPIO39 | sfp-4, b-r273, B-r143 | I2C4-SDA |
+| 00000100 | GPIO08 |                         |       |   | GPIO40 | T9-2, sfp-5 b-r274, B-r146  | I2C3-SCL |
+| 00000200 | GPIO09 |                         |LEDx[^1] | | GPIO41 | T9-1,  B-r143 | | I2C3-SDA (Unused) |
+| 00000400 | GPIO10 |                         |         | | GPIO42 | U6?8?-P6, T-R | SPI-MEMORY, CLK |
+| 00000800 | GPIO11 |                         |LEDx[^1] | | GPIO43 | U6?8?-P5, T-R | SPI-MEMORY, DI,IO0 |
+| 00001000 | GPIO12 |                         |LEDx[^1] | | GPIO44 | U6?8?-P2, T-R | SPI-MEMORY, DO,IO1 |
+| 00002000 | GPIO13 |                         |LEDx[^1] | | GPIO45 | U6?8?-P1, T-R | SPI-MEMORY, CS  |
+| 00004000 | GPIO14 |                         |LEDx[^1] | | GPIO46 | T10-6 | SPI0-SCK |
+| 00008000 | GPIO15 |                         |LEDx[^1] | | GPIO47 | T10-2 | SPI0-SDA |
+| 00010000 | GPIO16 |                         |LEDx[^1] | | GPIO48 | T10-4, J6 (BUTTON RESET) | SPI1-SCK |
+| 00020000 | GPIO17 |                         |LEDx[^1] | | GPIO49 | T10-1 | SPI1-SDA |
+| 00040000 | GPIO18 |                         |LEDx[^1] | | GPIO50 |  |  |
+| 00080000 | GPIO19 |                         |LEDx[^1] | | GPIO51 |  |  |
+| 00100000 | GPIO20 |                         |LEDx[^1] | | GPIO52 |  |  |
+| 00200000 | GPIO21 | P7-LED-GR, B-R139       |LEDx[^1] | | GPIO53 |  |  |
+| 00400000 | GPIO22 |                         |LEDx[^1] | | GPIO54 |  |  |
+| 00800000 | GPIO23 |                         |LEDx[^1] | | GPIO55 |  |  |
+| 01000000 | GPIO24 | P8-led-yellow,b-r154    |LEDx     | | GPIO56 |  |  |
+| 02000000 | GPIO25 |                         |         | | GPIO57 |  |  |
+| 04000000 | GPIO26 |                         |LEDx     | | GPIO58 |  |  |
+| 08000000 | GPIO27 |                         |?        | | GPIO59 |  |  |
+| 10000000 | GPIO28 |                         |         | | GPIO60 |  |  |
+| 20000000 | GPIO29 |                         |         | | GPIO61 |  |  |
+| 40000000 | GPIO30 | RTL8224N Reset          |RTL8224  | | GPIO62 | To RTL8224 | Already driver   |  |
+| 80000000 | GPIO31 | B-r129-r?               |U0TXD    | | GPIO63 |  |  |
+
+## GPIO Register Input value
+
+GPIO 1: 0a7ffbdd
+GPIO 0: effb6dff
+
+# LEDs
+
+| NAME | COMPONENTS | GPIO |
+| ---- | ---------- | ---- |
+| SYSTEM |  | ? | 
+| SFP |  | ? | 
+
+
+# Power supply
+
+Board has two supply rails.
+`0.95` and `3.3` volt.
+
+## `0.95` Core Voltage.
+
+Voltage is crated by a `MP2225GJ` Buck converter.
+0.95V must be within 3%.
+
+## `3.3` Voltage
+
+Voltage is crated by a `MP2225GJ` Buck converter.
+3.3V must be within 4.5%.
+Chip can deliver up to 5A and the sweetspot is at 2A.
+So higher power SFP-modules should work.
+
+
+[^1]: LEDs are found by just plugin a RJ45 connector and see with cmd `gpio` the status change. But the bit pattern for port 1,2 are diffrent from port 3,4.

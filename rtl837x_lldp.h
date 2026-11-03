@@ -8,6 +8,7 @@
 #define LLDP_ETHERTYPE_LENGTH 2
 #define LLDP_MAX_FRAME       256
 #define LLDP_TX_INTERVAL_S   30
+#define LLDP_TX_INTERVAL_TICKS (LLDP_TX_INTERVAL_S * SYS_TICK_HZ)
 #define LLDP_HOLD_MULTIPLIER 4
 
 #define LLDP_PORT_ID_TLV_TYPE 2
@@ -24,6 +25,7 @@
 #define LLDP_CHASSIS_ID_TLV_LENGTH 7
 #define LLDP_CHASSIS_ID_TLV_SUBTYPE 4
 
+#define LLDP_PORT_DESC_TLV_TYPE 4
 #define LLDP_SYSNAME_TLV_TYPE 5
 #define LLDP_SYSDESC_TLV_TYPE 6
 
@@ -47,5 +49,6 @@ void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;
 uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked;
+uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked;
 
 #endif

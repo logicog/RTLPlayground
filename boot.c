@@ -16,12 +16,17 @@
 #include "machine.h"
 #include "phy.h"
 #include "boot.h"
+#include "timer.h"
 
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t sfr_data[4];
-extern volatile __xdata uint32_t ticks;
-__xdata uint32_t rtl8224_release_tick;
+#define RTL8224_RELEASE_TICKS (SYS_TICK_HZ * 5 / 2)
+#define BOOT_HOLD_MIN_TICKS (10 * SYS_TICK_HZ)
+#define BOOT_HOLD_MAX_TICKS (30 * SYS_TICK_HZ)
+#define BOOT_BLINK_TICKS (SYS_TICK_HZ / 10)
+#define BOOT_PAUSE_TICKS (SYS_TICK_HZ / 2)
+__xdata struct timer rtl8224_release;
 extern __xdata uint8_t tx_seq;
 extern __code const uint8_t * __code const hex;
 
@@ -74,31 +79,28 @@ void early_boot_handle_button(void) __banked
 	if (gpio_pin_test(machine.reset_pin))
 		return;
 
-	const __xdata uint32_t min_hold_ticks = 10UL * SYS_TICK_HZ;
-	const __xdata uint32_t max_hold_ticks = 30UL * SYS_TICK_HZ;
-	const __xdata uint32_t blink_ticks = SYS_TICK_HZ / 10;      // 100 ms
-	const __xdata uint32_t pause_ticks = SYS_TICK_HZ / 2;       // 500 ms
-	__xdata uint32_t start_ticks = ticks;
-	__xdata uint32_t last_blink_step = start_ticks;
+	__xdata struct timer hold_max;
+	__xdata struct timer hold_min;
+	__xdata struct timer blink;
 	__xdata uint8_t blink_step = 0;
 
+	timer_set(&hold_max, BOOT_HOLD_MAX_TICKS);
+	timer_set(&hold_min, BOOT_HOLD_MIN_TICKS);
+	timer_set(&blink, BOOT_BLINK_TICKS);
 	set_sys_led_state(SYS_LED_ON);
 
 	while (!gpio_pin_test(machine.reset_pin)) {
-		__xdata uint32_t held_ticks = ticks - start_ticks;
-
-		if (held_ticks > max_hold_ticks) {
+		if (timer_expired(&hold_max)) {
 			print_string("[Button held >30s at boot; continuing normal boot]\n");
 			return;
 		}
 
 		// Double blink pattern while button is held:
 		// ON (100ms), OFF (100ms), ON (100ms), OFF (500ms)
-		__xdata uint32_t step_ticks = (blink_step == 3) ? pause_ticks : blink_ticks;
-		if ((ticks - last_blink_step) >= step_ticks) {
+		if (timer_expired(&blink)) {
 			blink_step = (blink_step + 1) & 0x3;
 			set_sys_led_state((blink_step == 0 || blink_step == 2) ? SYS_LED_ON : SYS_LED_OFF);
-			last_blink_step = ticks;
+			timer_set(&blink, blink_step == 3 ? BOOT_PAUSE_TICKS : BOOT_BLINK_TICKS);
 		}
 
 		PCON |= 1;
@@ -106,7 +108,7 @@ void early_boot_handle_button(void) __banked
 
 	set_sys_led_state(SYS_LED_ON);
 
-	if ((ticks - start_ticks) >= min_hold_ticks) {
+	if (timer_expired(&hold_min)) {
 		print_string("[Button held 10s-30s at boot; restoring default config]\n");
 		set_sys_led_state(SYS_LED_FAST);
 		flash_default_config();
@@ -247,7 +249,7 @@ void rtl8224_enable(void) __banked
 	delay(4);
 	// Set pin 4 high
 	reg_bit_set(RTL837X_REG_GPIO_32_63_OUTPUT, 4);
-	rtl8224_release_tick = ticks;
+	timer_set(&rtl8224_release, RTL8224_RELEASE_TICKS);
 }
 
 

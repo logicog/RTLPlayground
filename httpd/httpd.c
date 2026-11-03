@@ -6,13 +6,14 @@
 #include "cmd_parser.h"
 #include "rtl837x_flash.h"
 #include "uip.h"
+#include "timer.h"
 #include "sessions.h"
 #include "html_data.h"
 
 // #define DEBUG
 #include "debug.h"
 
-#define SESSION_TIMEOUT_DEFAULT 200
+#define SESSION_TIMEOUT_DEFAULT 3600
 
 /* Seconds of inactivity after which a session cookie stops validating.
  * Configurable with the "session" command, see cmd_parser.c. */
@@ -24,7 +25,6 @@ __xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 #pragma constseg BANK1
 
 extern volatile __xdata uint8_t sfr_data[4];
-extern volatile __xdata uint32_t ticks;
 extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
 extern __code const uint8_t * __code const hex;
 extern __code const struct f_data f_data[];
@@ -72,7 +72,7 @@ __xdata uint16_t short_parsed;
 #define POSTBODY_LOGIN	2
 #define POSTBODY_TIMEOUT (5 * SYS_TICK_HZ)
 __xdata uint8_t postbody_endpoint;
-__xdata uint16_t postbody_start;
+__xdata struct timer postbody_timer;
 
 __xdata char passwd[21];
 // Up to four logins at once, see sessions.c
@@ -679,7 +679,7 @@ static uint8_t post_body_take(__xdata uint8_t *p)
 	}
 	memcpy(config_buf, p, have);
 	pre_acc = have;
-	postbody_start = ticks;
+	timer_set(&postbody_timer, POSTBODY_TIMEOUT);
 	uip_conn->appstate.tstate = TSTATE_POSTBODY;
 	return 0;
 }
@@ -696,7 +696,7 @@ static void post_body_continue(void)
 	memcpy(config_buf + pre_acc, uip_appdata, take);
 	pre_acc += take;
 	if (pre_acc < content_length) {
-		postbody_start = ticks;
+		timer_set(&postbody_timer, POSTBODY_TIMEOUT);
 		return;
 	}
 	config_buf[pre_acc] = NUL;
@@ -738,7 +738,7 @@ static uint16_t request_header_take(void)
 		}
 	}
 
-	postbody_start = ticks;
+	timer_set(&postbody_timer, POSTBODY_TIMEOUT);
 	uip_conn->appstate.tstate = TSTATE_HEADER;
 	return 0;
 }
@@ -885,6 +885,8 @@ void httpd_appcall(void)
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
+		if (s->fw_reset_pending && uip_acked())
+			reset_chip();
 	} else if (uip_aborted() || uip_timedout()) {
 		dbg_string("Connection aborted\n");
 		uip_close();
@@ -896,7 +898,7 @@ void httpd_appcall(void)
 			uip_close();
 			s->tstate = TSTATE_CLOSED;
 		} else if ((s->tstate == TSTATE_POSTBODY || s->tstate == TSTATE_HEADER)
-			   && (uint16_t)ticks - postbody_start > POSTBODY_TIMEOUT) {
+			   && timer_expired(&postbody_timer)) {
 			dbg_string("HTTP request never completed\n");
 			uip_abort();
 			s->tstate = TSTATE_CLOSED;
@@ -1067,9 +1069,8 @@ void httpd_appcall(void)
 				clear_command_history();
 				send_mtu(); // dummy response
 			} else if (is_word(q, "/reset")) {
-				uip_close();
-				delay(1000); //wait for the close packet to be sent, otherwise the browser will retry
-				reset_chip();
+				slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+				s->fw_reset_pending = 1;
 			} else {
 				send_not_found();
 			}

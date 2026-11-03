@@ -10,31 +10,25 @@
 #include "uip/uip.h"
 #include "machine.h"
 #include "version.h"
+#include "timer.h"
 
 extern __xdata bool lldp_enabled;
 extern __code const struct machine machine;
 
-extern volatile __xdata uint32_t ticks;
-
-__xdata uint8_t lldp_tick_last;
-__xdata uint8_t lldp_seconds;
+static __xdata struct timer lldp_timer;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 
 void lldp_init(void) __banked
 {
-    lldp_tick_last = (uint8_t)ticks;
-    lldp_seconds = 0;
+    timer_set(&lldp_timer, LLDP_TX_INTERVAL_TICKS);
 }
 
 void lldp_tick(void) __banked
 {
-    if (!TICKS_DUE(lldp_tick_last, SYS_TICK_HZ))
+    if (!timer_expired(&lldp_timer))
         return;
-    lldp_tick_last += SYS_TICK_HZ;
 
-    if (++lldp_seconds < LLDP_TX_INTERVAL_S)
-        return;
-    lldp_seconds = 0;
+    timer_reset(&lldp_timer);
 
     if (lldp_enabled)
         lldp_send();
@@ -63,6 +57,7 @@ struct lldp_pkt {
 static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant
 {
     __xdata uint8_t *p;
+    __xdata uint8_t *tail;
     uint8_t port_position;
 
     lldp_set_addresses();
@@ -120,31 +115,36 @@ static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant
         *p++ = 0; //OID length
     }
 
-    // End of LLDPDU TLV
-    *p++ = 0x00; //padding
-    *p++ = 0x00; //padding
-
-    while (p < (LLDP_O->payload + LLDP_MIN_ETHERNET_PAYLOAD_LENGTH))
-        *p++ = 0x00;
-
-    /*
-     * uip_len is the Ethernet frame length excluding FCS.
-     *
-     * The frame consists of:
-     *
-     *     dst mac
-     *     src mac
-     *     rtl_tag  sizeof(struct rtl_tag)
-     *     EtherType (2 bytes)
-     *     payload (how far we've moved p pointer)
-     */
-    uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + (p - LLDP_O->payload);
+    tail = p;
 
     for (uint8_t port = MACHINE_MIN_PORT; port <= MACHINE_MAX_PORT; port++) {
 
         if ((1 << port) & ports) {
             LLDP_O->payload[port_position] = '0' + machine.log_to_phys_port[port];
             LLDP_O->rtl_tag.pmask = HTONS((uint16_t)1 << port);
+
+            p = tail;
+            p += lldp_portdesc(p, port);
+
+            // End of LLDPDU TLV
+            *p++ = 0x00; //padding
+            *p++ = 0x00; //padding
+
+            while (p < (LLDP_O->payload + LLDP_MIN_ETHERNET_PAYLOAD_LENGTH))
+                *p++ = 0x00;
+
+            /*
+             * uip_len is the Ethernet frame length excluding FCS.
+             *
+             * The frame consists of:
+             *
+             *     dst mac
+             *     src mac
+             *     rtl_tag  sizeof(struct rtl_tag)
+             *     EtherType (2 bytes)
+             *     payload (how far we've moved p pointer)
+             */
+            uip_len = MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(struct rtl_tag) + LLDP_ETHERTYPE_LENGTH + (p - LLDP_O->payload);
 
             tcpip_output();
         }
@@ -204,4 +204,16 @@ uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked
     *p++ = ' ';
     memcpyc(p, VERSION_SW, version_length);
     return machine_name_length + 1 + version_length + 2;
+}
+
+uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked
+{
+    uint8_t name_length = strlen_x(port_names[port]);
+
+    if (!name_length)
+        return 0;
+    *p++ = LLDP_TYPE(LLDP_PORT_DESC_TLV_TYPE);
+    *p++ = name_length;
+    memcpy(p, port_names[port], name_length);
+    return name_length + 2;
 }

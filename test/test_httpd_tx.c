@@ -31,6 +31,7 @@
 #include "html_data.h"
 
 /* Private to uip.c, and the client needs them to build segments. */
+#define TCP_FIN 0x01
 #define TCP_SYN 0x02
 #define TCP_PSH 0x08
 #define TCP_ACK 0x10
@@ -816,6 +817,34 @@ static void scenario_fragmented_missing_content_length(void)
 }
 
 
+static void scenario_reset_after_ack(void)
+{
+	static const char get[] =
+		"GET /reset HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	reset_calls = 0;
+
+	client_send(TCP_ACK | TCP_PSH, get, (int)strlen(get));
+	CHECK(reset_calls == 0 && stream_contains("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n"),
+	      "reset: the answer goes out before the switch resets");
+	client_ack(MSS_FULL);
+	CHECK(reset_calls == 1, "reset: the switch resets once the answer is acknowledged");
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	reset_calls = 0;
+	client_send(TCP_ACK | TCP_PSH, get, (int)strlen(get));
+	CHECK(reset_calls == 0 && stream_contains("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n"),
+	      "reset: the answer goes out before a closing client resets");
+	client_send(TCP_FIN | TCP_ACK, NULL, 0);
+	CHECK(reset_calls == 1, "reset: a FIN carrying the acknowledgement resets as well");
+}
+
 static void scenario_fragmented_get_cookie(void)
 {
 	static const char first[] =
@@ -1285,6 +1314,7 @@ int main(int argc, char **argv)
 	scenario_post_header_timeout();
 	scenario_oversized_post_header();
 	scenario_fragmented_missing_content_length();
+	scenario_reset_after_ack();
 	scenario_fragmented_get_cookie();
 	scenario_fragmented_get_cookie_value();
 	scenario_split_get_header_terminator();

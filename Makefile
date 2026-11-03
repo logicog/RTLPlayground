@@ -42,6 +42,9 @@ endif
 ifneq ($(HEALTH),)
 	CC_FLAGS += -DHEALTH
 endif
+ifneq ($(DEBUG),)
+	CC_FLAGS += -DDEBUG
+endif
 
 ifeq ($(CI),1)
 	CC_FLAGS += --Werror
@@ -96,6 +99,7 @@ create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)/uip"
 	mkdir -p "$(BUILDDIR)/httpd"
 	mkdir -p "$(BUILDDIR)/machine"
+	mkdir -p "$(BUILDDIR)/crypto"
 
 # Every machine is a pair machine/<MACHINE>.c + machine/<MACHINE>.h. Selecting
 # them by name means no #if/#elif chain, so an unknown or empty $MACHINE is
@@ -131,7 +135,9 @@ SRCS = \
 	ntp.c \
 	ntp_cli.c \
 	syslog.c \
-	udp_apps.c
+	timer.c \
+	udp_apps.c \
+	crypto/chacha20.c
 
 # RTL837x
 SRCS += \
@@ -155,9 +161,9 @@ SRCS += \
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c \
+	httpd/html_out.c \
 	httpd/page_stp.c
 SRCS += \
-	uip/timer.c \
 	uip/uip.c \
 	uip/uiplib.c \
 	uip/uip_arp.c \
@@ -167,7 +173,7 @@ SRCS += \
 
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
-HTML := $(shell find html -name '*.js' -or -name '*.html' -or -name '*.svg' -or -name '*.css' -or -name '*.ico')
+HTML := $(shell find html -name '*.html' -or -name '*.svg' -or -name '*.css' -or -name '*.ico')
 
 # Minified copy of the web UI sources, used as the fileadder input.
 # The raw html/ sources stay untouched for development; the minified
@@ -183,10 +189,11 @@ $(HTML_MIN_LIST): FORCE
 	@echo $(sort $(HTML)) > $@.tmp
 	@cmp -s $@.tmp $@ && rm -f $@.tmp || mv $@.tmp $@
 
-$(HTML_MIN_STAMP): $(HTML) $(HTML_MIN_LIST) tools/minify.py $(if $(wildcard $(HTML_MIN)),,FORCE)
+$(HTML_MIN_STAMP): $(HTML) html/app.js $(HTML_MIN_LIST) tools/minify.py tools/rjsmin.py $(if $(wildcard $(HTML_MIN)),,FORCE)
 	rm -rf $(HTML_MIN)
 	mkdir -p $(HTML_MIN)
 	@for f in $(HTML); do python3 tools/minify.py $$f $(HTML_MIN)/$$(basename $$f) || exit 1; done
+	python3 tools/rjsmin.py < html/app.js > $(HTML_MIN)/app.js || exit 1
 	@touch $@
 
 html_data.c html_data.h &: $(HTML_MIN_STAMP) | tools
@@ -247,7 +254,7 @@ $(BUILDDIR)/%.rel: %.asm $(CCFLAGS_STAMP) | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel
+$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel $(BUILDDIR)/crypto/chacha_8051.rel
 	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-bBANK4=0x44000 -Wl-r -o $@ $^
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx

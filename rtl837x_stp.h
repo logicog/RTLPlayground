@@ -2,6 +2,7 @@
 #define _RTL837X_STP_H_
 
 #include <stdint.h>
+#include "timer.h"
 void stp_in(void) __banked;
 void stp_setup(void) __banked;
 void stp_timers(void) __banked;
@@ -20,6 +21,8 @@ void stp_counters_clear(void) __banked __reentrant;
 
 /* Tick rate of stp_timers(), also used by the web UI. */
 #define STP_HZ 50
+#define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
+extern __xdata struct timer stp_step;
 
 #define STP_PORTS	(CPU_PORT + 1)
 #define STP_LAG_BASE	STP_PORTS
@@ -77,6 +80,7 @@ extern __xdata uint8_t  stp_root_fwd;
 extern __xdata uint16_t stp_link_prev;
 extern __xdata uint16_t stp_alt;
 extern __xdata uint16_t stp_backup;
+extern __xdata uint8_t  stp_loop_held[STP_ENTITIES];
 extern __xdata uint16_t stp_legacy;
 extern __xdata uint16_t stp_rrwhile[STP_ENTITIES];
 extern __xdata uint16_t stp_rbwhile[STP_ENTITIES];
