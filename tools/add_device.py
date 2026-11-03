@@ -12,7 +12,9 @@ Usage: add_device.py [--pcb <PCB_IDENTIFIER>] [--vendor <VENDOR>] [--model <MODE
 
 pcb/vendor/model and chipset are prompted for when not given as arguments.
 Unless -y/--yes is given, the user is asked to confirm before anything is
-written to disk.
+written to disk; unless -y or -g/--git-add is given, that confirmation
+also asks whether the files should be staged with git add (answered
+before anything is written).
 
 Run it from the repository root; run tools/add_device.md for the full
 description of the naming rules and the step-by-step behaviour.
@@ -77,12 +79,19 @@ def ask(prompt):
 
 def confirm_write():
     """Ask once before anything is written to disk, unless -y/--yes was
-    given (or the whole flow is a dry run)."""
+    given (or the whole flow is a dry run).
+
+    Unless -y or -g/--git-add was given, the same pre-write gate also asks
+    whether the files should be staged with git add at the end of the run.
+    """
     if DRY_RUN or YES:
         return
     if not confirm('Write the files to disk?'):
         sys.exit('add_device.py: confirmation declined, aborting without'
                  ' writing anything.')
+    global GIT_ADD
+    if not GIT_ADD:
+        GIT_ADD = confirm('Stage the files with git add as well?')
 
 
 def confirm(question, default=None):
@@ -192,8 +201,10 @@ def select_pcb_file(machine_pcb):
             return choice
 
 
-def create_symlink_and_header(pcb_file, vendor, model, chipset):
-    """Step 7: machine/<MACHINE>.c symlink and machine/<MACHINE>.h."""
+def create_symlink_and_header(machine_pcb, pcb_file, vendor, model, chipset):
+    """Step 7: machine/<MACHINE>.c symlink (plus the matching
+    machine/<MACHINE>_init.c symlink when a machine/pcb *_init.c exists)
+    and machine/<MACHINE>.h."""
     mdl = machine_name(vendor, model)
     created = []
     link = os.path.join(MACHINE_DIR, mdl + '.c')
@@ -209,6 +220,33 @@ def create_symlink_and_header(pcb_file, vendor, model, chipset):
             os.symlink(target, link)
             print('Added symlink: machine/%s -> %s' % (mdl + '.c', target))
         created.append(link)
+    # machine/<MACHINE>_init.c: prefer the _init.c belonging to the selected
+    # definition (<MACHINE_PCB_EXT>_init.c), fall back to the plain
+    # <MACHINE_PCB>_init.c; if neither exists, no link is added.
+    init_target = None
+    for name in (pcb_file[:-len('.c')] + '_init.c', machine_pcb + '_init.c'):
+        if os.path.lexists(os.path.join(PCB_DIR, name)):
+            init_target = os.path.join('pcb', name)
+            break
+    init_link = os.path.join(MACHINE_DIR, mdl + '_init.c')
+    if init_target is None:
+        print('No machine/pcb/%s_init.c; not adding machine/%s_init.c.'
+              % (pcb_file[:-len('.c')], mdl))
+    elif os.path.islink(init_link) and \
+            os.readlink(init_link).replace(os.sep, '/') == init_target:
+        print('Symlink machine/%s -> %s already in place.'
+              % (mdl + '_init.c', init_target))
+    elif prepare(init_link):
+        if DRY_RUN:
+            print('Would add symlink: machine/%s -> %s'
+                  % (mdl + '_init.c', init_target))
+        else:
+            if os.path.lexists(init_link):
+                os.remove(init_link)
+            os.symlink(init_target, init_link)
+            print('Added symlink: machine/%s -> %s'
+                  % (mdl + '_init.c', init_target))
+        created.append(init_link)
     header = os.path.join(MACHINE_DIR, mdl + '.h')
     if prepare(header):
         if DRY_RUN:
@@ -319,7 +357,8 @@ def create_new_device(pcb_id, vendor, model, chipset, photos):
             print('Added board definition: %s' % pcb_path)
         created.append(pcb_path)
 
-    link_files, mdl = create_symlink_and_header(pcb_file, vendor, model, chipset)
+    link_files, mdl = create_symlink_and_header(
+        machine_pcb, pcb_file, vendor, model, chipset)
     created.extend(link_files)
     return created, mdl, pcb_doc_name, photo_dir
 
@@ -459,7 +498,9 @@ def main():
                         help='run the whole flow but do not write any files')
     parser.add_argument('-g', '--git-add', action='store_true',
                         help='stage the newly added files with git add'
-                             ' (they are not committed)')
+                             ' (they are not committed); without -g and'
+                             ' without -y this is asked before the files'
+                             ' are written to disk')
     args = parser.parse_args()
 
     global DRY_RUN, GIT_ADD, YES
@@ -550,7 +591,8 @@ def run(pcb_id, vendor, model, chipset):
                      ' device is documented under doc/devices/%s - please'
                      ' file a bug report.' % (machine_pcb, doc_name))
         confirm_write()
-        created, mdl = create_symlink_and_header(pcb_file, vendor, model, chipset)
+        created, mdl = create_symlink_and_header(
+            machine_pcb, pcb_file, vendor, model, chipset)
         doc_target = key_matches[0] if key_matches else pcb_doc_name
         doc_target = doc_target[:-len('.md')]
         git_add_files(created)
