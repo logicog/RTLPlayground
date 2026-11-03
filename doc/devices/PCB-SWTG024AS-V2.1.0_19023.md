@@ -4,7 +4,7 @@
 |Brand|Type|Managed|PCB|Flash|Chip RTL|Ports|
 |---|---|---|---|---|---|---|
 | Xikestor | SKS3200-4E2X     | Yes | PCB-SWTG024AS-V2.1.0_19023 | 25Q16A         | 8372N | 4 + 2 |
-| Solola   | SL902-SWTG024AS  | Yes | PCB-SWTG024AS-V2.1.0_19023 |                | 8372N | 4 + 2 |
+| Sodola   | SL902-SWTG024AS  | Yes | PCB-SWTG024AS-V2.1.0_19023 |                | 8372N | 4 + 2 |
 | Sodola   | SL902-SWTGW215AS | Yes | PCB-SWTG024AS-V2.1.0_19023 | W25Q16JV (2MB) | 8372N | 5 + 1 |
 
 ## Variants
