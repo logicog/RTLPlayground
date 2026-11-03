@@ -197,14 +197,14 @@ port mapping, same SFP wiring, same LEDs — do not copy the file. Make the new
 apart:
 
 ```
-ln -s KP_9000_6XHML_X2.c machine/MY_BOARD_1_0.c
+ln -s KP_9000_6XHML_X2.c machine/pcb/MY_BOARD_1_0.c
 ```
 
 The new board still needs `machine/MY_BOARD_1_0.h` (pick the version number on
 the PCB) with its own `MACHINE_MODEL` and `MACHINE_CHIPSET`: `MACHINE_MODEL` is
 what distinguishes the products, and `MACHINE_CHIPSET` must match the SoC of
 the board definition being reused.
-Existing examples: `machine/PCB_K0402WS_V3.c`, `machine/KP_9000_9XHML_X_V3_2.c`
+Existing examples: `machine/pcb/PCB_K0402WS_V3.c`, `machine/KP_9000_9XHML_X_V3_2.c`
 and the six `KP_9000_*` revision variants.
 
 Two files that differ only in whitespace or comments are duplicates and should
