@@ -66,7 +66,9 @@ the managed switch assumes the base name and the unmanaged has _UNMANAGED append
 | `machine/pcb/<MACHINE_PCB>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
 | `machine/<MACHINE>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
 | `machine/<MACHINE>.c` | a symlink to the pcb/<PCBNAME>.c file
+| `machine/<MACHINE_init>.c` | (optional), see "Optional custom init hook" section
 | `doc/devices/<PCB_DOC_NAME>.md` and `doc/supported_devices.md` | user-facing documentation |
+| `doc/devices/photos/<PCB_DOC_NAME>/` | Directory for holding photos of the devices |
 
 `<MACHINE>` is the machine symbol without its `MACHINE_` prefix, so `MACHINE` is
 passed exactly as spelled on the command line: `make MACHINE=MY_BOARD_1_0`
@@ -261,6 +263,9 @@ Once the board has been tested on hardware:
    as straight as possible and croppped to show just the PCB; front of the device.
    The rear of the device is only necessary if it has a switch or power-port, other
    photos such as the label are not required.
+   The file sizes should be a maximum of 1MB, jpeg format and no larger resolution 
+   than approximately 1800 x 1800. If there is a specific detail that needs to be visible
+   it is acceptable to include another photo zoomed into the detail.
    If the device has an internal power supply, it is critical that a warning is
    added to the documentation regarding the danger such as:
    ```
