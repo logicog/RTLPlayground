@@ -650,18 +650,24 @@ void send_lacp(void)
 	bool_to_html(lacpEnabled);
 	slen += strtox(outbuf + slen, "," JSONQUOTE("lags") ":[");
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
-		slen += strtox(outbuf + slen, "{" JSONQUOTE("cfg") ":\"");
-		byte_to_html(lacp_lag_ports[l] >> 8);
-		byte_to_html(lacp_lag_ports[l]);
-		slen += strtox(outbuf + slen, "\"," JSONQUOTE("aggValid") ":");
+		slen += strtox(outbuf + slen, "{" JSONQUOTE("cfg") ":[");
+		for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+			if((lacp_lag_ports[l] >> i) & 1) {
+				json_add_array_uint_item(machine.log_to_phys_port[i]);
+			}
+		}
+		slen += strtox(outbuf + slen, "]," JSONQUOTE("aggValid") ":");
 		bool_to_html(lacp_agg_valid[l]);
 		slen += strtox(outbuf + slen, "," JSONQUOTE("agg") ":\"");
 		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
 			byte_to_html(lacp_agg_sys[l][j]);
-		slen += strtox(outbuf + slen, "\"," JSONQUOTE("members") ":\"");
-		byte_to_html(lacp_members_last[l] >> 8);
-		byte_to_html(lacp_members_last[l]);
-		slen += strtox(outbuf + slen, "\"},");
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("members") ":[");
+		for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+			if((lacp_members_last[l] >> i) & 1) {
+				json_add_array_uint_item(machine.log_to_phys_port[i]);
+			}
+		}
+		slen += strtox(outbuf + slen, "]},");
 	}
 	slen -= 1; // remove comma
 	slen += strtox(outbuf + slen, "]," JSONQUOTE("ports") ":[");
