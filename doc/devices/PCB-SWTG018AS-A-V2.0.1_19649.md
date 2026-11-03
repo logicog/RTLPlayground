@@ -10,7 +10,7 @@
 
 The following is a documentation for the board marked as `PCB-SWTG018AS-A V2.0.1_19649`.
 The board supports both managed and unmanaged switches.
-It is e.g. sold under the Ampcom brand (unmanaged), but no brand-markings are found on the device.
+It is sold under several brands, such as Ampcom and MokerLink (unmanaged) or Horaco and GoodTop (managed), see the table above.
 
 The original software runs the UART at a baud rate depending on the switch type:
 - **Unmanaged switch**: 9600 baud
@@ -62,7 +62,7 @@ Bottom
 | 3        | RX (Input) |
 | 4        | TX (Output)  |
 
-U52 and U53 resistors are typically populated for managed switch. They may not be populated for unmanaged, user need to add those resistors before using J1 header.
+R52 and R53 resistors (33 Ohm) are typically populated for managed switch. They may not be populated for unmanaged, user need to add those resistors before using J1 header.
 
 
 ## Power supply
