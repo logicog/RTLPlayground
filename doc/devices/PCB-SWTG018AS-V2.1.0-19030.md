@@ -1,4 +1,4 @@
-### PCB_SWTG018AS_V2_1_0
+### PCB-SWTG018AS-V2.1.0-19030
 
 ## Brands
 |Compatible|Brand|Type|Managed|PCB|Flash|Chip RTL|
