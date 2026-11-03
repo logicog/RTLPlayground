@@ -7,10 +7,12 @@ documented, then either reuses an existing machine/pcb definition (symlink +
 header) or creates a new board definition, device documentation and photos
 directory for you.
 
-Usage: add_device.py [--pcb <PCB_IDENTIFIER>] [--vendor <NAME>] [--model <MODEL>]
-                     [--chipset RTL8372|RTL8373] [--dry-run]
+Usage: add_device.py [--pcb <PCB_IDENTIFIER>] [--vendor <VENDOR>] [--model <MODEL>]
+                     [--chipset RTL8372|RTL8373] [--dry-run] [--yes]
 
 pcb/vendor/model and chipset are prompted for when not given as arguments.
+Unless -y/--yes is given, the user is asked to confirm before anything is
+written to disk.
 
 Run it from the repository root; run tools/add_device.md for the full
 description of the naming rules and the step-by-step behaviour.
@@ -35,6 +37,10 @@ DRY_RUN = False
 # Set by the -g/--git-add command line flag: stage the newly added files
 # with git add at the end of the run (never commits).
 GIT_ADD = False
+
+# Set by the -y/--yes command line flag: skip the confirmation before
+# writing anything to disk.
+YES = False
 
 _NAME_CHARS = re.compile(r'[^A-Za-z0-9]')
 
@@ -69,6 +75,16 @@ def ask(prompt):
         sys.exit('add_device.py: input required, aborting.')
 
 
+def confirm_write():
+    """Ask once before anything is written to disk, unless -y/--yes was
+    given (or the whole flow is a dry run)."""
+    if DRY_RUN or YES:
+        return
+    if not confirm('Write the files to disk?'):
+        sys.exit('add_device.py: confirmation declined, aborting without'
+                 ' writing anything.')
+
+
 def confirm(question, default=None):
     suffix = ' [y/n]: '
     while True:
@@ -81,29 +97,41 @@ def confirm(question, default=None):
             return default
 
 
+def normalize_ws(value):
+    """Collapse every run of white space into a single space and trim it.
+
+    Example: 'S1100W  88T-1SX_SE\tV1.05' -> 'S1100W 88T-1SX_SE V1.05'
+    """
+    return re.sub(r'\s+', ' ', value).strip()
+
+
 def collect_inputs(args):
     pcb_id = args.pcb or ask('PCB identifier (the silkscreen marking, e.g. '
                              '"S1100W-88T-1SX_SE V1.05"): ')
     vendor = args.vendor or ask('Vendor name: ')
     model = args.model or ask('Model number: ')
+    pcb_id, vendor, model = normalize_ws(pcb_id), normalize_ws(vendor),\
+        normalize_ws(model)
     while not pcb_id or not vendor or not model:
         if not pcb_id:
-            pcb_id = ask('PCB identifier: ')
+            pcb_id = normalize_ws(ask('PCB identifier: '))
         if not vendor:
-            vendor = ask('Vendor name: ')
+            vendor = normalize_ws(ask('Vendor name: '))
         if not model:
-            model = ask('Model number: ')
+            model = normalize_ws(ask('Model number: '))
     chipset = normalize_chipset(args.chipset)
     while chipset is None:
-        chipset = normalize_chipset(ask('Chipset (RTL8372 or RTL8373): '))
-    return pcb_id.strip(), vendor.strip(), model.strip(), chipset
+        chipset = normalize_chipset(ask('Chipset (RTL8372 or RTL8373, or'
+                                        ' 2/3 for short): '))
+    return pcb_id, vendor, model, chipset
 
 
 def normalize_chipset(value):
-    """Accept RTL8372/RTL8373 (optional N suffix) and return the plain symbol."""
+    """Accept RTL8372/RTL8373 and the short forms 2/3 (optional N suffix)
+    and return the plain symbol."""
     if not value:
         return None
-    m = re.fullmatch(r'(?:RTL)?837([23])N?', value.upper().replace(' ', ''))
+    m = re.fullmatch(r'(?:(?:RTL)?837)?([23])N?', value.upper().replace(' ', ''))
     return 'RTL837' + m.group(1) if m else None
 
 
@@ -205,24 +233,44 @@ def header_template(mdl, vendor, model, chipset):
     ) % (mdl, mdl, vendor, model, chipset)
 
 
+# Canonical photo file names inside doc/devices/photos/<PCB_DOC_NAME>/,
+# suggested whenever the user skips one of the prompts.
+SUGGESTED_PHOTO_NAMES = {
+    'front': 'front.jpg',
+    'top': 'pcb_top.jpg',
+    'bottom': 'pcb_bottom.jpg',
+}
+
+
 def collect_images():
-    """Steps 9+10: optional front/back PCB photos."""
-    def ask_image(kind):
+    """Steps 9+10: optional front/top/bottom PCB photos.
+
+    Returns {kind: source path} for the photos the user provided; every
+    skipped prompt reports the name the photo should use once it is added
+    later to doc/devices/photos/<PCB_DOC_NAME>/.
+    """
+    photos = {}
+    for kind, label in (('front', 'Front panel'), ('top', 'PCB top'),
+                        ('bottom', 'PCB bottom')):
         while True:
-            path = ask('%s PCB image file (enter to skip): ' % kind)
+            path = ask('%s image file (enter to skip): ' % label)
             if not path:
-                return None
+                print('  Suggested file name for the %s when added later:'
+                      ' %s' % (label.lower(), SUGGESTED_PHOTO_NAMES[kind]))
+                break
             if os.path.isfile(path):
-                return path
+                photos[kind] = path
+                break
             print('  ! %s is not a file; try again.' % path)
-    front = ask_image('Front')
-    back = ask_image('Back')
-    return front, back
+    return photos
 
 
-def create_new_device(pcb_id, vendor, model, chipset, front, back):
+def create_new_device(pcb_id, vendor, model, chipset, photos):
     """Steps 11+12 for an undocumented PCB: device doc, photos directory,
-    board definition, then the same symlink and header as step 7."""
+    board definition, then the same symlink and header as step 7.
+
+    photos is the {kind: source path} mapping returned by collect_images().
+    """
     pcb_doc_name = to_pcb_doc_name(pcb_id)
     machine_pcb = to_machine_pcb(pcb_doc_name)
     created = []
@@ -235,7 +283,8 @@ def create_new_device(pcb_id, vendor, model, chipset, front, back):
             os.makedirs(photo_dir, exist_ok=True)
         created.append(photo_dir)
     copied = {}
-    for kind, src in (('front', front), ('back', back)):
+    for kind in ('front', 'top', 'bottom'):
+        src = photos.get(kind)
         if not src:
             continue
         dst = os.path.join(photo_dir, os.path.basename(src))
@@ -288,7 +337,8 @@ def device_doc_template(pcb_id, vendor, model, chipset, pcb_doc_name, photos):
     ]
     if photos:
         lines += ['### Photos', '']
-        for kind, label in (('front', 'PCB front'), ('back', 'PCB back')):
+        for kind, label in (('front', 'Front panel'), ('top', 'PCB top'),
+                            ('bottom', 'PCB bottom')):
             if kind not in photos:
                 continue
             lines += [
@@ -395,12 +445,16 @@ def main():
         description='Interactive helper to add a new device to RTLPlayground.')
     parser.add_argument('-p', '--pcb', metavar='PCB_IDENTIFIER',
                         help='PCB silkscreen identifier (prompted if missing)')
-    parser.add_argument('-v', '--vendor', metavar='NAME',
+    parser.add_argument('-v', '--vendor', metavar='VENDOR',
                         help='vendor name (prompted if missing)')
     parser.add_argument('-m', '--model', metavar='MODEL',
                         help='model number (prompted if missing)')
     parser.add_argument('-c', '--chipset', metavar='CHIPSET',
-                        help='RTL8372 or RTL8373 (prompted if missing)')
+                        help='RTL8372 or RTL8373 (2/3 also accepted, '
+                             'prompted if missing)')
+    parser.add_argument('-y', '--yes', action='store_true',
+                        help='do not ask for confirmation before writing'
+                             ' files to disk')
     parser.add_argument('-n', '--dry-run', action='store_true',
                         help='run the whole flow but do not write any files')
     parser.add_argument('-g', '--git-add', action='store_true',
@@ -408,9 +462,10 @@ def main():
                              ' (they are not committed)')
     args = parser.parse_args()
 
-    global DRY_RUN, GIT_ADD
+    global DRY_RUN, GIT_ADD, YES
     DRY_RUN = args.dry_run
     GIT_ADD = args.git_add
+    YES = args.yes
     if DRY_RUN:
         print('DRY RUN: the flow is walked and every step reports what it'
               ' would do, but nothing is written to disk.')
@@ -433,8 +488,9 @@ def machine_already_supported(mdl):
                     os.readlink(link).replace(os.sep, '/'))
     else:
         link_desc = 'machine/%s.c (regular file)' % mdl
-    m = re.search(r'^#define MACHINE_MODEL "(.*)"\s*$', open(header).read(),
-                  re.M)
+    with open(header, 'r') as f:
+        header_text = f.read()
+    m = re.search(r'^#define MACHINE_MODEL "(.*)"\s*$', header_text, re.M)
     return [
         '  %s' % link_desc,
         '  machine/%s.h%s' % (mdl,
@@ -493,6 +549,7 @@ def run(pcb_id, vendor, model, chipset):
             sys.exit('No machine/pcb/%s*.c definition found even though the'
                      ' device is documented under doc/devices/%s - please'
                      ' file a bug report.' % (machine_pcb, doc_name))
+        confirm_write()
         created, mdl = create_symlink_and_header(pcb_file, vendor, model, chipset)
         doc_target = key_matches[0] if key_matches else pcb_doc_name
         doc_target = doc_target[:-len('.md')]
@@ -501,9 +558,10 @@ def run(pcb_id, vendor, model, chipset):
         return
 
     # Steps 9-12: undocumented PCB -> create everything.
-    front, back = collect_images()
+    photos = collect_images()
+    confirm_write()
     created, mdl, doc_target, photo_dir = create_new_device(
-        pcb_id, vendor, model, chipset, front, back)
+        pcb_id, vendor, model, chipset, photos)
     git_add_files(created)
     report(created, mdl, doc_target, doc_target, new_device=True,
            photo_dir=photo_dir)
