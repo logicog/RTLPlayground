@@ -8,15 +8,17 @@
 | MokerLink | MOKERLINK_2G08110GSN     | No    | PCB-SWTG018AS-A V2.0.1_19649 | 512KB(25Q40)    | 8273N + 8224N |
 
 
-The following is a documentation for the unmanaged switch marked as `PCB-SWTG018AS-A V2.0.1_19649`.
-It is e.g. sold under the Ampcom brand, but no branh-markings are found on the device.
+The following is a documentation for the board marked as `PCB-SWTG018AS-A V2.0.1_19649`.
+The board supports both managed and unmanaged switches.
+It is sold under several brands, such as Ampcom and MokerLink (unmanaged) or Horaco and GoodTop (managed), see the table above.
 
-The original software is running UART on 9600 baud rate. 
+The original software runs the UART at a baud rate depending on the switch type:
+- **Unmanaged switch**: 9600 baud
+- **Managed switch**: 57600 baud
 
 Using a SOIC clamp in-board is the only method for initial installation.
 
-The board has a single flash chips `BS` with 2M-byte size. The front switch, switches between the two flash chips.
-These can be programed independently by using said switch - so it is e.g. possible to run the original and new firmware in parallel.
+The board has a single flash populated at `U4` or `U2`. A 2MB flash on `U4` and a 512KB flash on `U2` have been reported.
 
 ### Label specifications
 
@@ -39,9 +41,13 @@ The device is fully supported:
 **Board markings**
 - Top silkscreen: SWTG018AS-A-V2.0.1_19649
 
-Top side
+Top side (Unmanaged)
 
 <img src="photos/PCB-SWTG018AS-A-V2.0.1_19649/pcb_top.jpg" width="300" />
+
+Top side (Managed)
+
+<img src="photos/PCB-SWTG018AS-A-V2.0.1_19649/pcb_top_managed.jpg" width="300" />
 
 Bottom
 
@@ -55,6 +61,8 @@ Bottom
 | 2        | GND         |
 | 3        | RX (Input) |
 | 4        | TX (Output)  |
+
+R52 and R53 resistors (33 Ohm) are typically populated for managed switch. They may not be populated for unmanaged, user need to add those resistors before using J1 header.
 
 
 ## Power supply
