@@ -4403,10 +4403,11 @@ function lagLoad() {
         tb.innerHTML = "";
         c.lags.forEach(function(lg, i) {
             var g = i + 1;
-            lacpCfg[g] = parseInt(lg.cfg, 16);
+            lacpCfg[g] = {cfg: lg.cfg};
+            lacpCfg[g].members = lg.members;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            $("lgm" + g).value = lacpCfg[g] ? "lacp" : "static";
-            $("lgs" + g).textContent = lacpCfg[g] ? "LACP: " + t("lacp_agg") + " " + (lg.aggValid ? lg.agg : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + maskPorts(parseInt(lg.members, 16)) : "";
+            $("lgm" + g).value = lacpCfg[g].cfg.length > 0. ? "lacp" : "static";
+            $("lgs" + g).textContent = lacpCfg[g].cfg.length > 0 ? "LACP: " + t("lacp_agg") + " " + (lg.aggValid ? lg.agg : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + lg.members.join(" ") : "";
         });
         if (c.on) c.ports.forEach(function(p) {
             if (p.lag === 255) return;
@@ -4420,7 +4421,7 @@ function lagLoad() {
         s.forEach(function(l) {
             var g = l.lagNum + 1;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            var members = lacpCfg[g] || l.members;
+            var members = lacpCfg[g].cfg.concat(l.members);
             for (var p = 1; p <= S.n; p++)
                 $("lg" + g + "p" + p).checked = members.includes(p);
             var hash = parseInt(l.hash, 16);

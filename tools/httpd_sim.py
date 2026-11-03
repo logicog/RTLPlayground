@@ -48,10 +48,10 @@ state = {
     "cmd_history": [],
     "mgmt_vlan": 1,
     "lags": [
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"}
+                {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]},
+                {"cfg":[5,6], "aggValid": 1, "agg": "ce654f01cb99", "members": [5]},
+                {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]},
+                {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]}
             ],
 }
 
