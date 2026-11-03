@@ -226,6 +226,21 @@ void sds_config(uint8_t sds, uint8_t mode) __banked
 	if (mode != SDS_QXGMII)
 		sds_write_v(sds, 0x06, 0x1f, 0x2100); // Q00061f:2100
 
+	if (machine_detected.isRTL8373 && sds == 1) {
+		sds_write_v(1, 0x21, 0x00, 0x4906);
+		sds_write_v(1, 0x36, 0x05, 0x4000);
+		sds_write_v(1, 0x1f, 0x02, 0x001f);
+		if (machine_detected.isN) {
+			if (mode == SDS_10GR) {
+				sds_read(1, 6, 2);
+				sds_write_v(1, 6, 2, SFR_DATA_U16 | 0x2000);
+			} else if (mode == SDS_1000BX_FIBER) {
+				sds_read(1, 0, 0);
+				sds_write_v(1, 0, 0, SFR_DATA_U16 | 0x200);
+			}
+		}
+	}
+
 	if (mode == SDS_1000BX_FIBER) {
 		sds_write_v(sds, 0x02, 0x04, 0x0020); 	// Q000204:0020
 		sds_write_v(sds, 0x00, 0x02, 0x73d0); 	// Q000002:73d0
