@@ -22,21 +22,21 @@ RTL8373-based 8×2.5G PoE + 1×SFP switch.
 
 Front panel:
 
-<img src="photos/S1100W-8GT-1SX_SE-V1.05/front.jpg" width="600" />
+<img src="photos/S1100W-8GT-1SX_SE_V1.05/front.jpg" width="600" />
 
 Label:
 
-<img src="photos/S1100W-8GT-1SX_SE-V1.05/label.jpg" width="600" />
+<img src="photos/S1100W-8GT-1SX_SE_V1.05/label.jpg" width="600" />
 
 ### PCB overview
 
 Top side:
 
-<img src="photos/S1100W-8GT-1SX_SE-V1.05/pcb_top.jpg" width="600" />
+<img src="photos/S1100W-8GT-1SX_SE_V1.05/pcb_top.jpg" width="600" />
 
 Bottom side:
 
-<img src="photos/S1100W-8GT-1SX_SE-V1.05/pcb_bottom.jpg" width="600" />
+<img src="photos/S1100W-8GT-1SX_SE_V1.05/pcb_bottom.jpg" width="600" />
 
 ### Port layout
 
