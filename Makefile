@@ -135,6 +135,7 @@ SRCS = \
 	ntp.c \
 	ntp_cli.c \
 	syslog.c \
+	timer.c \
 	udp_apps.c \
 	crypto/chacha20.c
 
@@ -163,7 +164,6 @@ SRCS += \
 	httpd/html_out.c \
 	httpd/page_stp.c
 SRCS += \
-	uip/timer.c \
 	uip/uip.c \
 	uip/uiplib.c \
 	uip/uip_arp.c \

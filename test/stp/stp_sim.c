@@ -15,6 +15,7 @@
 
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
+volatile uint32_t ticks;
 struct uip_eth_addr uip_ethaddr = { .addr = { 0x1c, 0x2a, 0xa3, 0x1a, 0x72, 0x4e } };
 const struct machine machine = {
 	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 10, 8, 9 }

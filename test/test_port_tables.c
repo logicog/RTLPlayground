@@ -13,8 +13,8 @@
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
 #include "machine.h"
-#include "support.h"
-#include "hw_mock.h"
+#include <test/support.h>
+#include <test/hw_mock.h>
 
 extern struct machine_runtime machine_detected;
 

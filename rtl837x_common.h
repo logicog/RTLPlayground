@@ -1,19 +1,12 @@
 #ifndef _RTL837X_STDIO_H_
 #define _RTL837X_STDIO_H_
 
+#include "clock-arch.h"
 #include "uip/uip-conf.h"
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SYS_TICK_HZ 200
-
-/* Timers of the main loop count system ticks, not loop passes: a pass is as
- * long as the packets it handles, and since #483 the loop no longer sleeps
- * while packets wait, so passes can outrun the tick as well as lag it. `last`
- * is the low byte of ticks when the timer last ran; the byte arithmetic wraps
- * every 256 ticks, so a pass longer than 1.28 s loses time rather than
- * running the timer 64 times to catch up. */
-#define TICKS_DUE(last, period)	((uint8_t)((uint8_t)ticks - (last)) >= (period))
+#define SYS_TICK_HZ CLOCK_CONF_SECOND
 
 #define CPU_PORT        9
 #define MAC_ADDR_LEN    6
@@ -189,7 +182,6 @@ void reset_chip(void);
  * argument order matches libc, so on-host callers transparently use the
  * C library. See test/. */
 #ifndef RTLP_HOST_TEST
-void sleep(uint16_t t);
 void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16_t len);
 void memset(__xdata uint8_t *dst, __xdata uint8_t v, uint8_t len);
 int memcmp(__xdata const void *a, __xdata const void *b, uint16_t len);
