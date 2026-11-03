@@ -65,8 +65,8 @@ the managed switch assumes the base name and the unmanaged has _UNMANAGED append
 | `machine/pcb/<MACHINE_PCB>.c` | the `struct machine machine` board definition |
 | `machine/pcb/<MACHINE_PCB>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
 | `machine/<MACHINE>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
-| `machine/<MACHINE>.c` | a symlink to the pcb/<PCBNAME>.c file
-| `machine/<MACHINE_init>.c` | (optional), see "Optional custom init hook" section
+| `machine/<MACHINE_PCB>.c` | a symlink to the pcb/<PCBNAME>.c file |
+| `machine/<MACHINE_init>.c` | (optional), see "Optional custom init hook" section |
 | `doc/devices/<PCB_DOC_NAME>.md` and `doc/supported_devices.md` | user-facing documentation |
 | `doc/devices/photos/<PCB_DOC_NAME>/` | Directory for holding photos of the devices |
 
@@ -106,11 +106,12 @@ The device product string is what the CLI or the Web-Interface will print to ide
 
 ## Step 2: the board definition
 
-`machine/<MACHINE>.c` starts with the shared prelude and then defines the single
-`machine` object. Copy the closest existing board and adjust it — do not start
-from a blank file, the field meanings are easier to see in a real example.
-The best choice is usually a device that has the same number and type of Ethernet
-ports and the same number of SFP+ cages.
+`machine/<MACHINE>.c` is a symlink to `machine/pcb/<MACHINE_PCB>.c` which starts
+with the shared prelude and then defines the single `machine` object. Copy the
+closest existing board and adjust it — do not start from a blank file, the field
+meanings are easier to see in a real example. The best choice is usually a device
+that has the same number and type of Ethernet ports and the same number of SFP+
+cages.
 
 The struct should contain important comments such as the LED colour and
 port-type as shown in the following example and nothing else:
@@ -287,7 +288,6 @@ regget 4
 
 | Register 0x0004 value | CPU |
 |---|---|
-| `0x83700000` | RTL8370 |
 | `0x83720000` | RTL8372 |
 | `0x83727000` | RTL8372N |
 | `0x83730000` | RTL8373 |
