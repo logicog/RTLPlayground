@@ -2215,6 +2215,7 @@ var S = {
     sfpSlot: [],
     info: {},
     detail: null,
+    tip: null,
     dirty: false,
     prev: null,
     prevT: 0,
@@ -2454,6 +2455,7 @@ function toast(msg, cls) {
 
 function modal(title, bodyEl, buttons) {
     S.detail = null;
+    portTip(); // Hide if open
     $("mtitle").textContent = title;
     var b = $("mbody");
     b.innerHTML = "";
@@ -2688,6 +2690,26 @@ function portLabel(p) {
     return p.name ? p.portNum + " " + p.name : String(p.portNum)
 }
 
+function portTip(i) {
+    S.tip = (typeof i === "number" && S.detail == null && S.ports[i]) ? i : null;
+    var tip = $("ptip");
+    tip.classList.toggle("show", S.tip != null);
+    if (S.tip == null) return;
+    tip.innerHTML = "";
+    tip.appendChild(detailTable(S.ports[S.tip]));
+    var r = $("pp" + S.tip).getBoundingClientRect();
+    var left = Math.max(8, Math.min(innerWidth - tip.offsetWidth - 8, r.left + (r.width - tip.offsetWidth) / 2));
+    tip.style.top = (r.bottom + 8) + "px";
+    tip.style.left = left + "px";
+    tip.style.setProperty("--ax", (r.left + r.width / 2 - left) + "px");
+}
+["scroll", "resize"].forEach(function(ev) {
+    addEventListener(ev, portTip, {
+        passive: true,
+        capture: true
+    })
+});
+
 function buildStrip() {
     var st = $("strip");
     st.innerHTML = "";
@@ -2698,7 +2720,12 @@ function buildStrip() {
             id: "pp" + i,
             onclick: function() {
                 portDetail(i)
-            }
+            },
+            onpointerenter: function(e) {
+                // Don't momentarily flash the modal when tapping via touchscreen
+                if (e.pointerType !== "touch") portTip(i)
+            },
+            onpointerleave: portTip
         }, [
             h("span", {
                 class: "pn",
@@ -2727,10 +2754,8 @@ function updateStrip() {
         el.classList.toggle("up", !!up);
         if (up) el.style.setProperty("--pc", "var(" + (LINKC[p.link] || "--s1000") + ")");
         lb.textContent = !p.enabled ? t("c_off") : (p.link > 0 ? LINKS[p.link] : t("c_down"));
-        el.title = portRows(p).map(function(r) {
-            return r[0] + ": " + r[1]
-        }).join("\n");
     });
+    if (S.tip != null) portTip(S.tip);
     if (S.detail != null) {
         var b = $("mbody");
         b.innerHTML = "";
