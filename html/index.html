@@ -152,8 +152,11 @@ button.ib{background:none;border:0;padding:0 0 0 4px;cursor:pointer;color:var(--
 #ptable input.mtu{width:5.5em}
 #ptable tr.chg td{background:var(--sel)}
 #ptable .chg:not(tr){outline:2px solid var(--ac);outline-offset:2px}
-#pbar{position:sticky;bottom:0;z-index:5;display:flex;gap:12px;align-items:flex-end;
-  background:var(--panel);border-top:1px solid var(--bd);padding:10px 2px 2px;margin-top:8px}
+/* Card footer: spans the card padding so it stays framed while stuck to the bottom.
+ * bottom:-40px cancels main's bottom padding, which would leave rows visible under the bar. */
+#pbar{position:sticky;bottom:-40px;z-index:5;display:flex;gap:12px;align-items:flex-end;
+  background:var(--panel);border-top:1px solid var(--bd);border-radius:0 0 9px 9px;
+  box-shadow:0 -6px 8px -6px rgba(0,0,0,.18);padding:10px 18px 14px;margin:12px -18px -16px}
 #pbar>div{flex:1;min-width:0}
 #ppending{width:100%;box-sizing:border-box;resize:none;margin-top:4px;font-size:12px}
 .seg{display:inline-flex;border:1px solid var(--bd);border-radius:7px;overflow:hidden}
@@ -285,6 +288,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <div class="scrollx"><table class="t" id="ptable">
           <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="c_enabled">Enabled</th><th data-i18n="c_name">Name</th><th data-i18n="c_link">Link</th><th data-i18n="pt_speed">Speed</th><th data-i18n="pt_mtu">MTU</th><th data-i18n="pt_fc">Flow control</th><th data-i18n="pt_eee">EEE</th></tr></thead>
           <tbody></tbody></table></div>
+        <p class="small mut" style="margin-top:8px" data-i18n="pt_sfp_note">SFP speed is set per slot and is not saved in the startup config.</p>
         <div id="pbar">
           <div>
             <div class="small mut" id="pcount" data-i18n="pt_nopending">No pending changes</div>
@@ -292,7 +296,6 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           </div>
           <button class="ctl pri" id="papply" data-i18n="c_apply" disabled>Apply</button>
         </div>
-        <p class="small mut" style="margin-top:8px" data-i18n="pt_sfp_note">SFP speed is set per slot and is not saved in the startup config.</p>
       </div>
     </section>
 
