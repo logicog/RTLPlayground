@@ -44,7 +44,10 @@ l2_entries = [
 
 state = {
     "lldp_enabled": False,
-    "vlans": {1: {"active": True, "name": "", "untagged":[1,2,3,4,5,6,7,8], "tagged":[], "pvid":[1,2,3,4,5,6,7,8]}},
+    "vlans": {
+        1: {"active": True, "name": "", "untagged":[3,4,5,6,7,8], "tagged":[], "pvid":[3,4,5,6,7,8]},
+        64: {"active": True, "name": "sixtyFour", "untagged": [1], "tagged": [2], "pvid":[1]}
+    },
     "cmd_history": [],
     "mgmt_vlan": 1,
     "lags": [
@@ -577,6 +580,9 @@ class Handler(SimpleHTTPRequestHandler):
                 "name": vlan["name"],
                 "members": self.vlanMembers(vlan),
                 "pvid": self.vlanPvid(vlan),
+                "tagged_members": vlan["tagged"],
+                "untagged_members": vlan["untagged"],
+                "pvid_array": vlan["pvid"]
             }
         return {}
 

@@ -3657,17 +3657,12 @@ function vlanRefresh() {
                 if (!d) {
                     for (var c = 0; c < 4; c++) tr.insertCell().textContent = "?";
                 } else {
-                    var m = parseInt(d.members, 16),
-                        mem = m & 0x3ff,
-                        unt = ((m >> 10) & 0x3ff) & mem,
-                        tag = mem & ~unt;
-                    var pv = parseInt(d.pvid, 16) & 0x3ff;
-                    tr.insertCell().textContent = rangeStr(maskToPorts(mem));
-                    tr.insertCell().textContent = rangeStr(maskToPorts(tag));
-                    tr.insertCell().textContent = rangeStr(maskToPorts(unt));
-                    tr.insertCell().textContent = rangeStr(maskToPorts(pv));
-                    l.dataset.t = maskToPorts(tag);
-                    l.dataset.u = maskToPorts(unt);
+                    tr.insertCell().textContent = rangeStr(d.tagged_members.concat(d.untagged_members).sort());
+                    tr.insertCell().textContent = rangeStr(d.tagged_members);
+                    tr.insertCell().textContent = rangeStr(d.untagged_members);
+                    tr.insertCell().textContent = rangeStr(d.pvid_array);
+                    l.dataset.t = d.tagged_members;
+                    l.dataset.u = d.untagged_members;
                 }
                 var act = tr.insertCell();
                 act.onclick = function(e) {
@@ -3795,14 +3790,12 @@ function vlanLoad(vid) {
         $("vtitle").innerText = "VLAN " + vid + (d.name ? " (" + (d.name) + ")" : "");
         $("vtitle").dataset.id = vid;
         $("vtitle").dataset.name = d.name;
-        var m = parseInt(d.members, 16),
-            mem = m & 0x3ff,
-            unt = ((m >> 10) & 0x3ff) & mem;
-        var pv = parseInt(d.pvid, 16) & 0x3ff;
         for (var p = 1; p <= S.n; p++) {
-            var bit = S.physToLog[p - 1];
-            segSet(p, (mem >> bit) & 1 ? (((unt >> bit) & 1) ? 1 : 2) : 0);
-            $("vp" + p).innerText = (!!((pv >> bit) & 1)) ? "Y" : "N";
+            var setVal = 0;
+            if(d.untagged_members.includes(p)){setVal = 1;}
+            if(d.tagged_members.includes(p)){setVal = 2;}
+            segSet(p, setVal);
+            $("vp" + p).innerText = d.pvid_array.includes(p) ? "Y" : "N";
         }
         $("vmgmtpromote").checked = ($("vmgmtcur").dataset.id == vid);
         toast(t("v_loaded", {
