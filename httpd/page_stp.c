@@ -109,9 +109,7 @@ void send_stp(void) __banked
 		pi_u32 = stp_pcost[i]; u32hex_html();
 		slen += strtox(outbuf + slen, "\"");
 		if (i >= STP_LAG_BASE) {
-			slen += strtox(outbuf + slen, ",\"mbr\":\"");
-			pi_u32 = stp_lag_mask[i - STP_LAG_BASE]; u32hex_html();
-			slen += strtox(outbuf + slen, "\",\"mbr_array\":[");
+			slen += strtox(outbuf + slen, ",\"mbr\":[");
 			for (uint8_t j = MACHINE_MIN_PORT; j <= MACHINE_MAX_PORT; j++) {
 				if(stp_lag_mask[i - STP_LAG_BASE] & (1<<j)) {
 					itoa_html(machine.log_to_phys_port[j]);
