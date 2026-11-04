@@ -80,7 +80,7 @@ $(BUILDDIR)/test_igmp: test_igmp.c $(SRCROOT)/rtl837x_igmp.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # rtl837x_qos.c is compiled UNMODIFIED from the firmware tree.
-$(BUILDDIR)/test_qos: test_qos.c hw_mock.c $(SRCROOT)/rtl837x_qos.c | $(BUILDDIR)
+$(BUILDDIR)/test_qos: test_qos.c support.c hw_mock.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/rtl837x_qos.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 $(BUILDDIR)/test_qos: CFLAGS += -DMACHINE_MAX_PORT=7
 

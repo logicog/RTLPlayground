@@ -13,28 +13,6 @@
 const struct machine machine = {
 				 .log_to_phys_port = {5, 1, 2, 3, 4, 6, 7, 8, 9} };
 
-char   out_buf[8192];
-size_t out_len;
-void out_reset(void) { out_len = 0; out_buf[0] = 0; }
-
-void write_char(char c)
-{
-	if (out_len + 1 < sizeof(out_buf)) {
-		out_buf[out_len++] = c;
-		out_buf[out_len] = 0;
-	}
-}
-
-void print_string(const char *p) { while (*p) write_char(*p++); }
-void itoa(uint8_t v)
-{
-	if (v >= 100)
-		write_char('0' + v / 100);
-	if (v >= 10)
-		write_char('0' + (v / 10) % 10);
-	write_char('0' + v % 10);
-}
-
 void print_phys_port(uint8_t port) { write_char('0' + machine.log_to_phys_port[port]); }
 void print_byte(uint8_t b) { (void)b; }
 void print_short(uint16_t v) { (void)v; }
