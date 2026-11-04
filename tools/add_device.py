@@ -28,6 +28,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 
 DOC_DEVICES = 'doc/devices'
@@ -541,6 +542,36 @@ def report(created, mdl, pcb_doc_name, doc_target, new_device=False, photo_dir=N
           ' commands).')
 
 
+def check_symlink_support():
+    """Abort with a helpful message if creating a symlink is not possible.
+
+    The tool builds machine/<MACHINE>.c as a symlink into machine/pcb/, which
+    fails on Windows without Developer Mode or administrator rights (winerror
+    1314). A harmless probe in a temporary directory detects this up front so
+    the tool exits before touching anything instead of failing midway.
+    """
+    try:
+        with tempfile.TemporaryDirectory(prefix='add_device_probe_') as tmp:
+            real = os.path.join(tmp, 'probe_target')
+            with open(real, 'w') as f:
+                f.write('probe')
+            link = os.path.join(tmp, 'probe_link')
+            os.symlink(real, link)
+    except (OSError, NotImplementedError) as exc:
+        print()
+        print('WARNING: this tool needs to create symlinks'
+              ' (machine/<MACHINE>.c -> machine/pcb/...), but creating a'
+              ' symlink failed on this host:')
+        print(f'  {exc}')
+        print('On Windows, symlink creation requires Developer Mode or an'
+              ' administrator shell:')
+        print('  - enable Developer Mode (Settings > Update & Security >'
+              ' For developers),')
+        print('  - or start the terminal as administrator and run the tool'
+              ' again.')
+        sys.exit('Exiting without making any changes.')
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Interactive helper to add a new device to RTLPlayground.')
@@ -572,6 +603,8 @@ def main():
     if DRY_RUN:
         print('DRY RUN: the flow is walked and every step reports what it'
               ' would do, but nothing is written to disk.')
+    else:
+        check_symlink_support()
 
     os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
