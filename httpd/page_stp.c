@@ -13,6 +13,7 @@
 #pragma codeseg BANK4
 #pragma constseg BANK4
 
+extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 
@@ -106,11 +107,23 @@ void send_stp(void) __banked
 		itoa_html(stp_pflags[i]);
 		slen += strtox(outbuf + slen, ",\"pc\":\"");
 		pi_u32 = stp_pcost[i]; u32hex_html();
+		slen += strtox(outbuf + slen, "\"");
 		if (i >= STP_LAG_BASE) {
-			slen += strtox(outbuf + slen, "\",\"mbr\":\"");
+			slen += strtox(outbuf + slen, ",\"mbr\":\"");
 			pi_u32 = stp_lag_mask[i - STP_LAG_BASE]; u32hex_html();
+			slen += strtox(outbuf + slen, "\",\"mbr_array\":[");
+			for (uint8_t j = MACHINE_MIN_PORT; j <= MACHINE_MAX_PORT; j++) {
+				if(stp_lag_mask[i - STP_LAG_BASE] & (1<<j)) {
+					itoa_html(machine.log_to_phys_port[j]);
+					slen += strtox(outbuf + slen, ",");
+				}
+			}
+			if(outbuf[slen-1] == ',')
+				slen--;
+			slen += strtox(outbuf + slen, "]");
 		}
-		slen += strtox(outbuf + slen, "\",\"prio\":");
+		
+		slen += strtox(outbuf + slen, ",\"prio\":");
 		itoa_html(stp_pprio[i]);
 		slen += strtox(outbuf + slen, ",\"p2\":");
 		itoa_html(stp_pp2p[i]);
