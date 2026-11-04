@@ -66,6 +66,7 @@ __xdata uint8_t  stp_msg_hops;
 __xdata uint8_t  stp_vofs;		/* first byte of a vector that counts: 0 for the CIST, STP_VEC_MSTI for an MSTI */
 __xdata uint16_t stp_internal;		/* bit per port: the neighbour is in our MST region */
 __xdata uint8_t  stp_mst_rx;		/* the BPDU being received is a valid MST BPDU */
+__xdata uint8_t  stp_mst_same;
 __xdata uint16_t stp_v3len;
 __xdata uint8_t  stp_maxhops;
 __xdata uint8_t  stp_rhops[STP_TREES];	/* remaining hops of the root information held */
@@ -481,7 +482,8 @@ static void stp_msg_build(void) __reentrant
 	stp_vcopy((__xdata struct stp_vec *)&stp_msg.root, (__xdata struct stp_vec *)&STP_I->root, 8);
 	stp_vcopy((__xdata struct stp_vec *)stp_msg.ext, (__xdata struct stp_vec *)&STP_I->root_path_cost, 4);
 	stp_vcopy((__xdata struct stp_vec *)&stp_msg.rroot, (__xdata struct stp_vec *)&STP_I->bridge, 8);
-	if (stp_mst_rx && stp_rstp == STP_VER_MSTP && stp_region_match()) {
+	stp_mst_same = stp_mst_rx && stp_rstp == STP_VER_MSTP && stp_region_match();
+	if (stp_mst_same) {
 		stp_vcopy((__xdata struct stp_vec *)stp_msg.icost, (__xdata struct stp_vec *)(MST_I + 53), 4);
 		stp_vcopy((__xdata struct stp_vec *)&stp_msg.dbr, (__xdata struct stp_vec *)(MST_I + 57), 8);
 		stp_msg_hops = MST_I[65];
@@ -1452,8 +1454,7 @@ void stp_in(void) __banked
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		return;
 	}
-	if (stp_mst_rx && stp_rstp == STP_VER_MSTP && cmpBytes(stp_msg.dbr.mac, uip_ethaddr.addr, 6)
-	    && stp_region_match())
+	if (stp_mst_same && cmpBytes(stp_msg.dbr.mac, uip_ethaddr.addr, 6))
 		stp_internal_update(port, 1);
 	else
 		stp_internal_update(port, 0);
