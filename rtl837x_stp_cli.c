@@ -32,22 +32,30 @@ void stp_parse(void) __banked __reentrant
 	uint8_t port;
 
 	if (cmd_compare(1, "on")) {
+		if (cmd_words_len != 2)
+			goto err;
 		print_string("STP enabled\n");
 		stp_enabled = 1;
 		stp_setup();
 		return;
 	}
 	if (cmd_compare(1, "off")) {
+		if (cmd_words_len != 2)
+			goto err;
 		print_string("STP disabled\n");
 		stp_off();
 		stp_enabled = 0;
 		return;
 	}
 	if (cmd_compare(1, "status")) {
+		if (cmd_words_len != 2)
+			goto err;
 		stp_status();
 		return;
 	}
 	if (cmd_compare(1, "clear")) {
+		if (cmd_words_len != 2)
+			goto err;
 		stp_counters_clear();
 		return;
 	}
@@ -91,17 +99,19 @@ void stp_parse(void) __banked __reentrant
 			if (stp_enabled)
 				stp_port_admin(port, 0);	/* plain forwarding */
 		} else if (cmd_compare(3, "edge")) {
+			if (cmd_compare(4, "on"))
+				stp_cli_val = STP_PF_ADMEDGE | STP_PF_OPEREDGE;
+			else if (cmd_compare(4, "auto"))
+				stp_cli_val = STP_PF_AUTOEDGE;
+			else if (cmd_compare(4, "off"))
+				stp_cli_val = 0;
+			else
+				goto err;
 			/* Also drop the *operational* edge flag: it is what exempts the
 			 * port from topology changes and lets it skip the listen period,
 			 * so leaving it set would keep the old behaviour until the next
 			 * "stp off"/"stp on". An admin edge is operational immediately. */
-			stp_pflags[port] &= ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE | STP_PF_OPEREDGE);
-			if (cmd_compare(4, "on"))
-				stp_pflags[port] |= STP_PF_ADMEDGE | STP_PF_OPEREDGE;
-			else if (cmd_compare(4, "auto"))
-				stp_pflags[port] |= STP_PF_AUTOEDGE;
-			else if (!cmd_compare(4, "off"))
-				goto err;
+			stp_pflags[port] = (stp_pflags[port] & ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE | STP_PF_OPEREDGE)) | stp_cli_val;
 		} else if (cmd_compare(3, "cost")) {
 			/* raw 802.1D value, 0..200000000; 0 = auto (speed-based) */
 			stp_cli_cost = 0;
@@ -133,13 +143,15 @@ void stp_parse(void) __banked __reentrant
 				goto err;
 			stp_pprio[port] = atoi_results_u8;
 		} else if (cmd_compare(3, "guard")) {
-			stp_pflags[port] &= ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD);
 			if (cmd_compare(4, "bpdu"))
-				stp_pflags[port] |= STP_PF_BPDUGUARD;
+				stp_cli_val = STP_PF_BPDUGUARD;
 			else if (cmd_compare(4, "root"))
-				stp_pflags[port] |= STP_PF_ROOTGUARD;
-			else if (!cmd_compare(4, "none"))
+				stp_cli_val = STP_PF_ROOTGUARD;
+			else if (cmd_compare(4, "none"))
+				stp_cli_val = 0;
+			else
 				goto err;
+			stp_pflags[port] = (stp_pflags[port] & ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD)) | stp_cli_val;
 		} else if (cmd_compare(3, "filter")) {
 			if (cmd_compare(4, "on"))
 				stp_pflags[port] |= STP_PF_FILTER;

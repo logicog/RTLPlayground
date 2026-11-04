@@ -2312,6 +2312,72 @@ static void scen_port_id_panel(void)
 	check_state(6, 1, "its BPDU coming back on another port blocks chip port 6");
 }
 
+static void scen_cli_validation(void)
+{
+	uint8_t states[sizeof(mstp_reg)], flags;
+
+	printf("67. rejected STP commands preserve global state and per-port edge settings\n");
+	reset_all();
+	sim_cmd("stp off");
+	memcpy(states, mstp_reg, sizeof(states));
+	sim_cmd("stp on 3");
+	check(err_status == ERR_INVALID_ARGUMENT && !stp_enabled
+	      && !memcmp(states, mstp_reg, sizeof(states)),
+	      "stp on with a port argument cannot enable global STP");
+
+	reset_all();
+	memcpy(states, mstp_reg, sizeof(states));
+	sim_cmd("stp off 3");
+	check(err_status == ERR_INVALID_ARGUMENT && stp_enabled
+	      && !memcmp(states, mstp_reg, sizeof(states)),
+	      "stp off with a port argument cannot disable global STP");
+	stp_cnt[STP_CNT_RX][0] = 7;
+	sim_cmd("stp clear 3");
+	check(err_status == ERR_INVALID_ARGUMENT && stp_cnt[STP_CNT_RX][0] == 7,
+	      "stp clear with an argument cannot clear counters");
+	sim_cmd("stp status 3");
+	check(err_status == ERR_INVALID_ARGUMENT && stp_enabled,
+	      "stp status rejects an extra argument");
+
+#define EDGE_BITS (STP_PF_ADMEDGE | STP_PF_AUTOEDGE | STP_PF_OPEREDGE)
+#define GUARD_BITS (STP_PF_BPDUGUARD | STP_PF_ROOTGUARD)
+	sim_cmd("stp port 1 edge on");
+	check(err_status == ERR_OK && (stp_pflags[0] & EDGE_BITS) == (STP_PF_ADMEDGE | STP_PF_OPEREDGE),
+	      "edge on sets the administrative and operational edge flags");
+	flags = stp_pflags[0];
+	sim_cmd("stp port 1 edge invalid");
+	check(err_status == ERR_INVALID_ARGUMENT && stp_pflags[0] == flags,
+	      "an invalid edge value preserves administrative and operational edge flags");
+	sim_cmd("stp port 1 edge auto");
+	check(err_status == ERR_OK && (stp_pflags[0] & EDGE_BITS) == STP_PF_AUTOEDGE,
+	      "edge auto sets only the automatic edge flag");
+	flags = stp_pflags[0];
+	sim_cmd("stp port 1 edge invalid");
+	check(err_status == ERR_INVALID_ARGUMENT && stp_pflags[0] == flags,
+	      "an invalid edge value preserves automatic edge configuration");
+	sim_cmd("stp port 1 edge off");
+	check(err_status == ERR_OK && !(stp_pflags[0] & EDGE_BITS), "edge off clears every edge flag");
+
+	sim_cmd("stp port 1 guard bpdu");
+	check(err_status == ERR_OK && (stp_pflags[0] & GUARD_BITS) == STP_PF_BPDUGUARD,
+	      "guard bpdu sets only BPDU guard");
+	flags = stp_pflags[0];
+	sim_cmd("stp port 1 guard bdpu");
+	check(err_status == ERR_INVALID_ARGUMENT && stp_pflags[0] == flags,
+	      "an invalid guard value preserves BPDU guard");
+	sim_cmd("stp port 1 guard root");
+	check(err_status == ERR_OK && (stp_pflags[0] & GUARD_BITS) == STP_PF_ROOTGUARD,
+	      "guard root sets only root guard");
+	sim_cmd("stp port 1 guard none");
+	check(err_status == ERR_OK && !(stp_pflags[0] & GUARD_BITS), "guard none clears both guards");
+
+	sim_cmd("stp off");
+	check(err_status == ERR_OK && !stp_enabled && port_state(0) == 3,
+	      "valid global off still restores forwarding");
+	sim_cmd("stp on");
+	check(err_status == ERR_OK && stp_enabled, "valid global on still enables STP");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2374,6 +2440,7 @@ int main(int argc, char **argv)
 	scen_loop_peer_autoedge_off();
 	scen_mikrotik_wire_capture();
 	scen_port_id_panel();
+	scen_cli_validation();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
