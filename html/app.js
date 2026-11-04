@@ -2235,7 +2235,6 @@ var S = {
     ports: [],
     n: 0,
     physToLog: [],
-    logToPhys: [],
     sfpSlot: [],
     info: {},
     detail: null,
@@ -2668,7 +2667,6 @@ function pollStatus() {
             var slot = 0;
             s.forEach(function(p) {
                 S.physToLog[p.portNum - 1] = p.logPort;
-                S.logToPhys[p.logPort] = p.portNum;
                 if (p.isSFP) {
                     slot++;
                     S.sfpSlot[p.portNum - 1] = slot;
@@ -3155,7 +3153,7 @@ function stpKey(pt) {
 }
 
 function stpName(pt) {
-    return pt.lag ? "LAG" + pt.lag + " (" + rangeStr(maskToPorts(parseInt(pt.mbr, 16))) + ")" : String(pt.p)
+    return pt.lag ? "LAG" + pt.lag + " (" + rangeStr(pt.mbr) + ")" : String(pt.p)
 }
 
 function stpDhms(x) {
@@ -3281,7 +3279,7 @@ function stpLoad() {
             return (a.lag - b.lag) || (a.p - b.p)
         });
         var sig = s.ports.map(function(pt) {
-            return stpKey(pt) + (pt.mbr || "")
+            return stpKey(pt) + (pt.hasOwnProperty("mbr") && pt.mbr.join(",") || "");
         }).join();
         if (sig !== stpSig) {
             stpSig = sig;
@@ -3599,13 +3597,6 @@ tabHooks.stats = {
     },
     status: statsStatus,
 };
-
-function maskToPorts(mask) {
-    var out = [];
-    for (var p = 1; p <= S.n; p++)
-        if ((mask >> S.physToLog[p - 1]) & 1) out.push(p);
-    return out;
-}
 
 function rangeStr(list) {
     if (!list.length) return "-";
@@ -4373,13 +4364,6 @@ function buildLag() {
     })(g);
 }
 var lacpCfg = [0, 0, 0, 0, 0];
-
-function maskPorts(m) {
-    var r = [];
-    for (var p = 1; p <= S.n; p++)
-        if ((m >> S.physToLog[p - 1]) & 1) r.push(p);
-    return r.length ? r.join(" ") : "-"
-}
 
 function lagLoad() {
     return getJSON("/lag.json").then(function(s) {
