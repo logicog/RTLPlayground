@@ -116,15 +116,7 @@ static void sflow_head(void) __reentrant
 
 static void sflow_flow(void) __reentrant
 {
-	uint8_t i, len = (sflow_hdr_len + 3) & ~3;
-	uint32_t pool = 0;
-
-	for (i = 2; i <= 4; i++) {
-		STAT_GET(i, sflow_hdr_port);
-		reg_read_m(RTL837X_STAT_V_LOW);
-		pool += ((uint32_t)sfr_data[0] << 24) | ((uint32_t)sfr_data[1] << 16)
-			| ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
-	}
+	uint8_t len = (sflow_hdr_len + 3) & ~3;
 
 	sflow_head();
 	sflow_put8(1);
@@ -132,7 +124,8 @@ static void sflow_flow(void) __reentrant
 	sflow_put32(++sflow_flow_seq[sflow_hdr_port]);
 	sflow_put8(machine.log_to_phys_port[sflow_hdr_port]);
 	sflow_put32(sflow_state.rate);
-	sflow_put32(pool);
+	STAT_GET(STAT_COUNTER_RX_PKTS, sflow_hdr_port);
+	sflow_put_reg(RTL837X_STAT_V_LOW);
 	sflow_put32(sflow_state.drops);
 	sflow_put8(machine.log_to_phys_port[sflow_hdr_port]);
 	sflow_put8(0);
