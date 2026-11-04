@@ -75,6 +75,19 @@ endif
 VERSION_EXTENSION = v$(VERSION)-$(GIT_VERSION)
 FILENAME_EXTENSION = $(VERSION_EXTENSION)-$(MACHINE)
 
+# Path and file name of the final image. BUILDDIR still holds the intermediate
+# objects and tools. OUTPUT_DIR changes only the destination, keeping the
+# version, git hash and machine in the file name; OUTPUT_PREFIX is prepended to
+# that automatic name. OUTPUT_NAME replaces the whole name, and OUTPUT
+# overrides both with a complete path:
+# make MACHINE=<name> OUTPUT_DIR=/path/to/firmware
+# make MACHINE=<name> OUTPUT_DIR=/path/to/firmware OUTPUT_PREFIX=my-switch-
+# make MACHINE=<name> OUTPUT=/path/to/firmware.bin
+OUTPUT_DIR ?= $(BUILDDIR)
+OUTPUT_PREFIX ?= rtlplayground-
+OUTPUT_NAME ?= $(OUTPUT_PREFIX)$(FILENAME_EXTENSION).bin
+OUTPUT ?= $(OUTPUT_DIR)/$(OUTPUT_NAME)
+
 # Deterministic build date: honor SOURCE_DATE_EPOCH, else the HEAD commit date,
 # else wall-clock (no-git fallback). Keeps same-commit builds byte-identical
 # (BUILD_DATE is baked into the image and covered by the trailing CRC).
@@ -89,7 +102,7 @@ endif
 # $(MACHINE_SRC) and $(CONFIG) are listed here so an unknown $MACHINE or a
 # missing config file fails before anything else is built, including the tools/
 # subdirectory.
-all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(CONFIG) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
+all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(CONFIG) $(SUBDIRS) $(OUTPUT)
 
 bank_size:
 	tools/bank_occupancy.sh "$(MACHINE)"
@@ -260,14 +273,16 @@ $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
-	if [ -e $@ ]; then rm $@; fi
-	tools/$(BUILDDIR)/imagebuilder -i $(BUILDDIR)/rtlplayground.img $@
-	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" $@
-	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" $@
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
-	tools/$(BUILDDIR)/crc_calculator -u $@
-	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/../rtlplayground.bin
+$(OUTPUT): $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
+	@mkdir -p "$(dir $@)"
+	if [ -e "$@" ]; then rm "$@"; fi
+	tools/$(BUILDDIR)/imagebuilder -i $(BUILDDIR)/rtlplayground.img "$@"
+	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" "$@"
+	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" "$@"
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 "$@"
+	tools/$(BUILDDIR)/crc_calculator -u "$@"
+	@mkdir -p "$(BUILDDIR)/.."
+	python3 -c 'import os,sys; src=os.path.abspath(sys.argv[1]); dst=os.path.abspath(sys.argv[2]); os.makedirs(os.path.dirname(dst),exist_ok=True); os.unlink(dst) if os.path.lexists(dst) else None; os.symlink(os.path.relpath(src,os.path.dirname(dst)),dst)' "$(OUTPUT)" "$(BUILDDIR)/../rtlplayground.bin"
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
