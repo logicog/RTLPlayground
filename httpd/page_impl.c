@@ -262,7 +262,7 @@ void send_basic_info(void)
 	itoa16_html(syslog_state.server_port);
 	str_code_to_html("\"," JSONQUOTE("session_timeout") ":");
 	itoa16_html(session_timeout);
-	slen += strtox(outbuf + slen, dhcp_state.state == DHCP_OFF ? ",\"ip_source\":\"static\"" : ",\"ip_source\":\"dhcp\"");
+	slen += strtox(outbuf + slen, dhcp_state.state == DHCP_OFF ? ("," JSONQUOTE("ip_source") ":" JSONQUOTE("static")) : ("," JSONQUOTE("ip_source") ":" JSONQUOTE("dhcp")));
 	slen += strtox(outbuf + slen, "," JSONQUOTE("mac_address") ":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
