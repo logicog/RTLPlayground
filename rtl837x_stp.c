@@ -314,6 +314,7 @@ static uint8_t stp_ent_active(uint8_t e) __reentrant;
 static void stp_msti_tx(uint8_t port) __reentrant;
 static void stp_internal_update(uint8_t port, uint8_t now) __reentrant;
 static uint8_t stp_region_match(void) __reentrant;
+static void stp_mstp_apply(void) __reentrant;
 
 static __code const uint8_t stp_tree_base[STP_TREES] = {
 	0 * STP_ENTITIES, 1 * STP_ENTITIES, 2 * STP_ENTITIES, 3 * STP_ENTITIES,
@@ -1694,6 +1695,8 @@ void stp_timers(void) __banked
 {
 	stp_flushed = 0;
 	mstp_digest_step();
+	if (mstp_dg_done)
+		stp_mstp_apply();
 	/* Refill the per-port tx budgets once per second (tx hold count) */
 	if (++stp_sec_tick >= STP_HZ) {
 		stp_sec_tick = 0;
@@ -1979,8 +1982,11 @@ void stp_setup(void) __banked
 	if (stp_rstp == STP_VER_MSTP) {
 		stp_hw_msti = 1;
 		mstp_digest_now();
+		mstp_dg_done = 0;
 	}
 	stp_fdb_update(PMASK_CPU);
+	mstp_chg_lo = 0xffff;
+	mstp_chg_hi = 0;
 
 	trap_rma_set(RTL837X_RMA0_CONF, RTL837X_RMA_ACT_TRAP);
 }
@@ -2047,14 +2053,16 @@ void stp_region_changed(void) __banked
 }
 
 
-void stp_mstp_changed(void) __banked
+static void stp_mstp_apply(void) __reentrant
 {
-	if (!stp_enabled || stp_rstp != STP_VER_MSTP)
+	if (mstp_dg_done == 2 && stp_rstp == STP_VER_MSTP) {
+		for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++)
+			stp_internal_update(stp_i, 0);
+		stp_newinfo |= stp_link_now;
+	}
+	mstp_dg_done = 0;
+	if (stp_rstp != STP_VER_MSTP)
 		return;
-	mstp_digest_now();
-	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++)
-		stp_internal_update(stp_i, 0);
-	stp_newinfo |= stp_link_now;
 	stp_rsel = stp_trees;
 	stp_trees_update();
 	stp_st = 0;

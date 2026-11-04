@@ -270,11 +270,17 @@ stp msti 1                     # the tree of instance 1
 Instances 1 to 15 are supported, as many as the switch keeps port states for.
 A VLAN not given to an instance belongs to the CIST, and an instance without
 VLANs does not run. The configuration digest, which tells one region from
-another, is worked out in full when STP starts in MSTP mode and on every
-change of the table, so a BPDU never carries a digest that describes a
-different table than the one in the switch. That takes 132 MD5 blocks, in
-the order of a third of a second on this CPU; a change made while STP is off
-is finished in the background once it runs.
+another, is worked out one MD5 block per timer tick, 132 blocks or about
+2.6 seconds, so a change of the table does not stall the main loop. The
+change takes effect when its digest is done: only then do the VLANs move to
+their instances in the VLAN table, do new instances start and, if the digest
+differs from the one announced so far, do the internal ports leave the
+region until the neighbours have seen the new digest. Until then the switch
+runs, and announces, the table it had before, so a BPDU never carries a
+digest that describes a different table than the one in use. A change that
+leaves the table as it was, like the same list of VLANs applied again,
+changes nothing. When STP starts in MSTP mode the digest is finished at
+once, in the order of a third of a second.
 
 A port whose neighbour is in the same region is internal. It carries the
 instance trees with their own roles, states, proposals, agreements and

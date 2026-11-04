@@ -283,7 +283,6 @@ void stp_parse(void) __banked __reentrant
 		mstp_msti_clear();
 		if (!cmd_compare(4, "none"))
 			stp_cli_vlans(1);
-		stp_mstp_changed();
 		return;
 	}
 

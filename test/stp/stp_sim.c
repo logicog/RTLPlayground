@@ -2503,6 +2503,12 @@ static void mst_bpdu_in(const struct sim_bpdu *b, const char *region, uint32_t i
 	stp_in();
 }
 
+static void msti_cmd(const char *line)
+{
+	sim_cmd(line);
+	tick(MSTP_DG_DONE);
+}
+
 static void mstp_setup(void)
 {
 	sim_nrec = 0;
@@ -2656,8 +2662,8 @@ static void scen_msti_runs(void)
 	printf("74. an instance with VLANs runs a tree of its own\n");
 	mstp_setup();
 	check(stp_trees == 1, "no instance runs without VLANs");
-	sim_cmd("stp msti 1 vlan 10");
-	check(stp_trees == 3, "mapping a VLAN starts the instance");
+	msti_cmd("stp msti 1 vlan 10");
+	check(stp_trees == 3, "mapping a VLAN starts the instance once the digest is done");
 	secs(4);
 	check(port_state(3) == 3 && tree_state(1, 3) == 3, "a boundary port forwards in the instance as in the CIST");
 	links_set((1 << 3) | (1 << 5) | (1 << 8));
@@ -2682,7 +2688,7 @@ static void scen_msti_runs(void)
 	mst_bpdu_in(&b, "other", 0, ROOT_MAC, 0x40, 20, NULL);
 	check(!((stp_internal >> 8) & 1) && tree_state(1, 8) == port_state(8),
 		"a port leaving the region takes the CIST state in the instance again");
-	sim_cmd("stp msti 1 vlan none");
+	msti_cmd("stp msti 1 vlan none");
 	check(stp_trees == 1, "an instance without VLANs stops");
 }
 
@@ -2754,7 +2760,7 @@ static void scen_msti_root_from_records(void)
 	printf("78. an instance takes its root from the message for it\n");
 	mstp_setup();
 	sim_cmd("stp msti 1 vlan 10");
-	sim_cmd("stp msti 2 vlan 20");
+	msti_cmd("stp msti 2 vlan 20");
 	b = root_on(8);
 	sim_rec(1, 0x3c, 0x10, PEER_MAC, 4000, 0x10, 0x80, 18);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
@@ -2802,7 +2808,7 @@ static void scen_msti_agreement(void)
 
 	printf("80. a proposal in an instance message is answered in that instance\n");
 	mstp_setup();
-	sim_cmd("stp msti 1 vlan 10");
+	msti_cmd("stp msti 1 vlan 10");
 	b = root_on(8);
 	sim_rec(1, 0x3c | 0x02, 0x10, PEER_MAC, 0, 0x10, 0x80, 20);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
@@ -2821,7 +2827,7 @@ static void scen_msti_agreement_cist(void)
 		struct sim_bpdu down;
 
 		mstp_setup();
-		sim_cmd("stp msti 1 vlan 10");
+		msti_cmd("stp msti 1 vlan 10");
 		down = root_on(8);
 		down.root_prio = 0x80;
 		memcpy(down.root_mac, uip_ethaddr.addr, 6);
@@ -2898,7 +2904,7 @@ static void scen_msti_vlan_table(void)
 	sim_vlan[10] = 0x020a0200;
 	sim_vlan[20] = 0x02000200;
 	sim_cmd("stp version mstp");
-	sim_cmd("stp msti 1 vlan 10");
+	msti_cmd("stp msti 1 vlan 10");
 	check(((sim_vlan[10] >> 20) & 15) == 1 && ((sim_vlan[20] >> 20) & 15) == 0 &&
 			(sim_vlan[10] & 0xff0fffff) == 0x020a0200,
 		"a running MSTP bridge writes the instance into the VLAN entry and nothing else");
@@ -3183,7 +3189,7 @@ static void scen_port_off_new_instance(void)
 	converge_internal_root_on_8();
 	sim_cmd("stp port 9 off");
 	check(port_state(8) == 3 && tree_state(1, 8) == 3, "a port with STP off forwards in every tree");
-	sim_cmd("stp msti 2 vlan 20");
+	msti_cmd("stp msti 2 vlan 20");
 	check(tree_state(2, 8) == 3, "and in the new instance");
 	secs(60);
 	check(tree_state(2, 8) == 3, "also a minute later");
@@ -3268,14 +3274,19 @@ static void scen_msti_tc_boundary(void)
 
 static void scen_digest_at_once(void)
 {
-	printf("94. the digest is current the moment the table changes\n");
+	printf("94. a table change takes effect once its digest is done\n");
 	mstp_setup();
 	check(mstp_dg_step == MSTP_DG_DONE && digest_is("ac36177f50283cd4b83821d8ab26de62"),
 		"the empty table's digest is known without computing it");
 	sim_cmd("stp msti 1 vlan 10-20,30");
 	sim_cmd("stp msti 2 vlan 15");
-	check(mstp_dg_step == MSTP_DG_DONE && digest_is("17cfd7ae0de29b9d28331b5b2d07b640"),
-		"a change while MSTP runs is worked out before the command returns");
+	check(mstp_dg_step < MSTP_DG_DONE && digest_is("ac36177f50283cd4b83821d8ab26de62") && stp_trees == 1,
+		"a change while MSTP runs is worked out in the background and the old table stays in force");
+	tick(MSTP_DG_DONE - 1);
+	check(mstp_dg_step < MSTP_DG_DONE && stp_trees == 1, "one block before the end nothing has changed yet");
+	tick(1);
+	check(mstp_dg_step == MSTP_DG_DONE && digest_is("17cfd7ae0de29b9d28331b5b2d07b640") && stp_trees == 7,
+		"with the last block the digest, the instances and the table change together");
 	sim_cmd("stp off");
 	sim_cmd("stp msti 1 vlan none");
 	check(mstp_dg_step < MSTP_DG_DONE, "a change while STP is off waits");
@@ -3290,7 +3301,7 @@ static void scen_region_changed(void)
 	printf("95. a new region name gives up the old boundary at once\n");
 	mstp_setup();
 	links_set((1 << 3) | (1 << 8));
-	sim_cmd("stp msti 1 vlan 10");
+	msti_cmd("stp msti 1 vlan 10");
 	b = root_on(8);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check((stp_internal >> 8) & 1, "the neighbour shares our region");
@@ -3341,7 +3352,7 @@ static void scen_mst_root_guard_internal(void)
 
 	printf("97. a root guard port facing a better root in the region is not made internal\n");
 	mstp_setup();
-	sim_cmd("stp msti 1 vlan 10");
+	msti_cmd("stp msti 1 vlan 10");
 	sim_cmd("stp port 9 guard root");
 	b = root_on(8);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
@@ -3380,13 +3391,25 @@ static void scen_mst_digest_boundary(void)
 {
 	struct sim_bpdu b;
 
-	printf("99. a new instance table gives up the old region boundary at once\n");
+	printf("99. a new instance table gives up the old region boundary once its digest is done\n");
 	mstp_setup();
 	b = root_on(8);
 	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
 	check((stp_internal >> 8) & 1, "the neighbour in the region is internal");
 	sim_cmd("stp msti 1 vlan 10");
-	check(!((stp_internal >> 8) & 1), "after the table changes it is a boundary port until it shows the new digest");
+	tick(MSTP_DG_DONE - 1);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	check((stp_internal >> 8) & 1 && digest_is("ac36177f50283cd4b83821d8ab26de62"),
+		"until the digest is done the port stays internal and the old digest is still announced");
+	memset(tx_frames, 0, sizeof(tx_frames));
+	tick(1);
+	check(!((stp_internal >> 8) & 1) && !digest_is("ac36177f50283cd4b83821d8ab26de62"),
+		"with the new digest it is a boundary port until the neighbour shows that digest too");
+	secs(1);
+	check(tx_frames[3] > 0 && !memcmp(last_mst[3] + 37, mstp_digest, 16),
+		"and the new digest goes out without waiting for a change of its own");
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	check((stp_internal >> 8) & 1, "a neighbour showing the new digest is internal again");
 }
 
 static void scen_msti_vlan_writes(void)
@@ -3394,8 +3417,9 @@ static void scen_msti_vlan_writes(void)
 	printf("100. changing the VLANs of an instance reads only those VLANs\n");
 	mstp_setup();
 	sim_vlan[105] = 0x02000200;
-	vlan_reads = 0;
 	sim_cmd("stp msti 2 vlan 100-110");
+	vlan_reads = 0;
+	tick(MSTP_DG_DONE);
 	check(vlan_reads <= 11, "eleven VLANs, at most eleven VLAN table reads");
 	check(((sim_vlan[105] >> 20) & 15) == 2, "and the VLAN that exists gets its instance");
 }
@@ -3532,6 +3556,44 @@ static void scen_region_same_value(void)
 	check(!((stp_internal >> 8) & 1), "a different name still gives up the boundary");
 }
 
+static void scen_same_table_again(void)
+{
+	struct sim_bpdu b;
+
+	printf("107. the same instance table applied again changes nothing\n");
+	mstp_setup();
+	msti_cmd("stp msti 1 vlan 10-20");
+	b = root_on(8);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	check((stp_internal >> 8) & 1 && stp_trees == 3, "the neighbour shares our region and the instance runs");
+	sim_cmd("stp msti 1 vlan 10-20");
+	check(mstp_dg_step < MSTP_DG_DONE, "the list applied again is worked out again");
+	msti_writes = 0;
+	tick(MSTP_DG_DONE);
+	check((stp_internal >> 8) & 1 && stp_trees == 3 && msti_writes == 0,
+		"the same digest keeps the port internal and the instance as it was");
+	sim_cmd("stp msti 2 vlan none");
+	check(mstp_dg_step == MSTP_DG_DONE, "clearing an instance without VLANs does not even restart the digest");
+	sim_cmd("stp region lab");
+	check((stp_internal >> 8) & 1, "nor does the same region name touch the port");
+}
+
+static void scen_vlan_range_after_start(void)
+{
+	printf("108. VLANs changed while STP was off are not read again after it starts\n");
+	mstp_setup();
+	sim_cmd("stp off");
+	sim_cmd("stp msti 1 vlan 10");
+	sim_cmd("stp msti 2 vlan 4000");
+	sim_cmd("stp on");
+	vlan_reads = 0;
+	sim_cmd("stp msti 3 vlan 50");
+	tick(MSTP_DG_DONE);
+	if (vlan_reads > 1)
+		printf("  %d VLAN table reads\n", vlan_reads);
+	check(vlan_reads <= 1, "one VLAN changed after the start, at most one VLAN table read");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3630,10 +3692,12 @@ int main(int argc, char **argv)
 	scen_msti_vlan_writes();
 	scen_msti_tc_count();
 	scen_region_name_cli();
-	scen_region_same_value();
-	scen_legacy_sees_regional_root();
-	scen_one_flush_per_change();
 	scen_msti_tc_from_discarding();
+	scen_one_flush_per_change();
+	scen_legacy_sees_regional_root();
+	scen_region_same_value();
+	scen_same_table_again();
+	scen_vlan_range_after_start();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
