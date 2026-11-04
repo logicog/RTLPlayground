@@ -76,12 +76,14 @@ VERSION_EXTENSION = v$(VERSION)-$(GIT_VERSION)
 FILENAME_EXTENSION = $(VERSION_EXTENSION)-$(MACHINE)
 
 # Path and file name of the final image. BUILDDIR still holds the intermediate
-# objects and tools. OUTPUT_DIR changes only the destination, keeping the
-# version, git hash and machine in the file name; OUTPUT_PREFIX is prepended to
-# that automatic name. OUTPUT_NAME replaces the whole name, and OUTPUT
-# overrides both with a complete path:
+# objects and tools. OUTPUT_DIR is the destination directory. OUTPUT_PREFIX is
+# prepended to the automatic file name (version, git hash and machine);
+# OUTPUT_NAME replaces that whole name and takes precedence, so use only one of
+# OUTPUT_PREFIX and OUTPUT_NAME. Both refer to OUTPUT_DIR. OUTPUT sets a
+# complete path and overrides all three:
 # make MACHINE=<name> OUTPUT_DIR=/path/to/firmware
 # make MACHINE=<name> OUTPUT_DIR=/path/to/firmware OUTPUT_PREFIX=my-switch-
+# make MACHINE=<name> OUTPUT_DIR=/path/to/firmware OUTPUT_NAME=my-switch.bin
 # make MACHINE=<name> OUTPUT=/path/to/firmware.bin
 OUTPUT_DIR ?= $(BUILDDIR)
 OUTPUT_PREFIX ?= rtlplayground-
