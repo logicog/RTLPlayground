@@ -196,7 +196,7 @@ $(HTML_MIN_STAMP): $(HTML) html/app.js $(HTML_MIN_LIST) tools/minify.py tools/rj
 	python3 tools/rjsmin.py < html/app.js > $(HTML_MIN)/app.js || exit 1
 	@touch $@
 
-html_data.c html_data.h &: $(HTML_MIN_STAMP) | tools
+html_data.c html_data.h &: $(HTML_MIN_STAMP) tools/fileadder.c | tools
 	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
 $(VERSION_HEADER): FORCE

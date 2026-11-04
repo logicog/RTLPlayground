@@ -116,7 +116,7 @@ uint8_t find_entry(__xdata uint8_t *e)
 {
 	uint8_t i, j;
 
-	for (i = 0; f_data[i].len; i++) {
+	for (i = 0; f_data[i].file; i++) {
 		j = 0;
 		while (f_data[i].file[j] && (f_data[i].file[j] == e[j])) {
 			j++;
@@ -624,13 +624,13 @@ static void run_cmd_body(__xdata uint8_t *body)
 	cmd_capture = 1;
 	execute_commands(body);
 	if (cmd_capture == 2)
-		slen += strtox(outbuf + slen, CMD_TRUNCATED);
+		string_to_html(CMD_TRUNCATED);
 	cmd_capture = 0;
 	/* Commands that configure something print nothing at all. Saying
 	 * so beats an empty body, which reads the same as "nothing ran".
 	 * Only on success: a silent failure must not answer with "OK". */
 	if (err_status == ERR_OK && slen == hdr_len)
-		slen += strtox(outbuf + slen, "OK\n");
+		string_to_html("OK\n");
 	/* On a parse error keep what the parser printed, because that text
 	 * is the explanation, and only restate the status. "400 NO" is as
 	 * long as "200 OK", so the header does not have to be rebuilt. */
@@ -652,7 +652,7 @@ static void run_login_body(__xdata uint8_t *body)
 		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 				      "Set-Cookie: session=");
 		session_new();
-		slen += strtox(outbuf + slen, "; SameSite=Strict\r\n\r\n");
+		string_to_html("; SameSite=Strict\r\n\r\n");
 	} else {
 		dbg_string("Password invalid!\n");
 		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: login.html\r\n\r\n");
@@ -1082,17 +1082,17 @@ void httpd_appcall(void)
 				goto do_send;
 			}
 			slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Type: ");
-			slen += strtox(outbuf + slen, mime_strings[f_data[entry].mime]);
+			string_to_html(mime_strings[f_data[entry].mime]);
 			/* 'unsafe-inline' is needed for the inline onclick handlers
 			 * and the inline <script> on login.html. Connection: close is
 			 * required because this httpd closes the connection after every
 			 * response; without advertising it a browser reuses the socket
 			 * from its keep-alive pool and the next request hits the already
 			 * closed connection (a POST is then dropped without a retry). */
-			slen += strtox(outbuf + slen, "; charset=UTF-8\r\n");
+			string_to_html("; charset=UTF-8\r\n");
 			if (f_data[entry].gzip)
-				slen += strtox(outbuf + slen, "Content-Encoding: gzip\r\n");
-			slen += strtox(outbuf + slen, "Cache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
+				string_to_html("Content-Encoding: gzip\r\n");
+			string_to_html("Cache-Control: max-age=60, must-revalidate\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\nContent-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'\r\n\r\n");
 
 			len_left = f_data[entry].len;
 			if (len_left > (TCP_OUTBUF_SIZE - slen)) {

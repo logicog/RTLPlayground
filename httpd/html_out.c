@@ -37,3 +37,8 @@ void itoa_html(uint8_t v)
 		outbuf[slen++] = '0' + t;
 	outbuf[slen++] = '0' + (v % 10);
 }
+
+void string_to_html(__code const char *s)
+{
+	slen += strtox(outbuf + slen, s);
+}

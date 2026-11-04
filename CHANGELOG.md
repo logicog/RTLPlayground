@@ -27,6 +27,9 @@
   - The web session expires after one hour without a request (was 200 seconds). The UI stops
     polling while its tab is hidden, so with 200 seconds switching tabs for a few minutes logged
     you out. `session <seconds>` still sets it.
+  - Reuse the JSON string appender to reduce BANK1 code usage without changing responses.
+    The appender is shared in the common area, so the STP pages in BANK4 and the HTTP
+    responses in `httpd.c` use it too.
 
 ## Fixed
 
@@ -42,6 +45,8 @@
     defaults (NTP off, no server, UTC-12:00) instead of the switch's settings.
   - Accept firmware uploads regardless of the file part's MIME type, including
     `application/macbinary` sent by Chrome on macOS for `.bin` files.
+  - Store embedded assets uncompressed when gzip would not make them smaller, with the
+    compression flag set separately for each file. Empty files no longer hide later assets.
 
 - Health
   - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which

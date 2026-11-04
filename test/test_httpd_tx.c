@@ -90,6 +90,7 @@ const char * const mime_strings[] = { "text/html", "image/svg+xml", "image/x-ico
 			 "image/png", "text/javascript", "text/css", "text/plain" };
 
 const struct f_data f_data[] = {
+	{ "/empty.txt", FILE_START + FILE_LEN, 0, mime_TXT, 0 },
 	{ FILE_NAME, FILE_START, FILE_LEN, mime_HTML, 0 },
 	{ PROTECTED_FILE_NAME, PROTECTED_FILE_START, PROTECTED_FILE_LEN, mime_HTML, 0 },
 	{ 0, 0, 0, mime_HTML, 0 },
@@ -447,6 +448,25 @@ static void scenario_steady_window(void)
 	      "control: the whole file arrives");
 	CHECK(first_body_mismatch() == -1,
 	      "control: file content without duplicates or gaps");
+}
+
+static void scenario_empty_asset(void)
+{
+	static const char get[] = "GET /empty.txt HTTP/1.1\r\nHost: sw\r\n"
+		"Cookie: session=0123456789ab\r\n\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	session_timeout = 200;
+	fake_now = last_session_use[0] = 0;
+	client_send(TCP_ACK | TCP_PSH, get, sizeof(get) - 1);
+	drain(MSS_FULL);
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n"),
+	      "empty asset: a zero-length file is found");
+	CHECK(body_offset() >= 0 && stream_len == body_offset(),
+	      "empty asset: response has no body");
+	CHECK(!stream_contains("Content-Encoding: gzip\r\n"),
+	      "empty asset: raw bytes have no gzip header");
 }
 
 /* The client stops draining, so the window in the ACK is smaller than the
@@ -1300,6 +1320,7 @@ int main(int argc, char **argv)
 		verbose = 1;
 
 	printf("== httpd: accounting for the bytes actually sent ==\n");
+	scenario_empty_asset();
 	scenario_steady_window();
 	scenario_shrinking_window();
 	scenario_growing_window();

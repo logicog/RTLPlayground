@@ -74,9 +74,9 @@ $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR
 $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c $(SRCROOT)/timer.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-# httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
+# httpd/httpd.c, httpd/html_out.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;
 # this test carries the environment below them itself.
-$(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c $(SRCROOT)/timer.c | $(BUILDDIR)
+$(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/httpd/html_out.c $(SRCROOT)/uip/uip.c $(SRCROOT)/timer.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 # the login sessions httpd.c calls into
 $(BUILDDIR)/test_httpd_tx: $(SRCROOT)/sessions.c
@@ -87,12 +87,16 @@ $(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_POR
 $(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-run: $(TESTS)
+$(BUILDDIR)/fileadder: $(SRCROOT)/tools/fileadder.c | $(BUILDDIR)
+	$(CC) -g -O1 -Wall -fsanitize=address,undefined -fno-omit-frame-pointer $< -o $@ -lz
+
+run: $(TESTS) $(BUILDDIR)/fileadder
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
 		echo; \
 	done; \
+	python3 test_fileadder.py $(BUILDDIR)/fileadder || fail=1; \
 	if [ $$fail -ne 0 ]; then echo "TESTS FAILED"; exit 1; else echo "ALL TESTS PASSED"; fi
 
 clean:
