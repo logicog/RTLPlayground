@@ -153,6 +153,11 @@ suffix, use `OUTPUT_PREFIX` (it is prepended verbatim):
 make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware OUTPUT_PREFIX=my-switch-
 ```
 This produces `/tmp/firmware/my-switch-v<version>-<git>-<machine>.bin`.
+To set the file name explicitly, use `OUTPUT_NAME` (it replaces the whole
+automatic name, so the version/git suffix is not appended):
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware OUTPUT_NAME=my-switch.bin
+```
 To set the complete path and file name at once, use `OUTPUT`:
 ```
 make MACHINE=DEFAULT_8C_1SFP OUTPUT=/tmp/firmware/my-switch.bin
