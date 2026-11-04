@@ -2364,7 +2364,7 @@ var CONF_CMDS = [
     /^pvid\s+\d+\s+\d+$/m,
     /^ingress(\s+\d+[tua])+$/, /^ingress\s+[tua]$/,
     /^port\s+\d+\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
-    /^port\s+\d+\s+name\s+\S+$/,
+    /^port\s+\d+\s+name(\s+\S+)?$/,
     /^port\s+\d+\s+lldp\s+(permit|block)+$/,
     /^eee\s+(on|off)(\s+\d+)?(\s+(100m|1g|2g5))?$/,
     /^mirror(\s+\d+)(\s+\d+[tr]?)+$/, /^mirror\s+off$/,
@@ -3052,12 +3052,13 @@ function applyPort(i) {
     var en = $("pen" + i).checked;
     var spd = $("pspd" + i).value;
     var mtu = parseInt($("pmtu" + i).value, 10);
-    if (name && name !== (p.name || "")) {
-        if (!/^\S{1,15}$/.test(name)) {
+    var oldName = p.name || "";
+    if (name !== oldName) {
+        if (name && !/^\S{1,15}$/.test(name)) {
             toast(t("pt_name_err"), "err");
             return;
         }
-        cmds.push("port " + p.portNum + " name " + name);
+        cmds.push("port " + p.portNum + " name" + (name ? " " + name : ""));
     }
     if (!en) cmds.push("port " + p.portNum + " off");
     else if (p.isSFP) {
@@ -5148,6 +5149,10 @@ function mergeConf(base, texts) {
                 return;
             }
             if (!isConfCmd(line)) return;
+            if ((m = line.match(/^port (\d{1,2}) name$/))) {
+                drop(new RegExp("^port " + m[1] + " name( |$)"));
+                return;
+            }
             if ((m = line.match(/^ingress (.+)$/))) {
                 if (/^[tua]$/.test(m[1])) {
                     drop(/^ingress /);
