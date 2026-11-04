@@ -619,25 +619,80 @@ void send_lag(void)
 	dbg_string("send_lag called\n");
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
 
-	char_to_html('[');
+	slen += strtox(outbuf + slen, "{" JSONQUOTE("lags") ":[");
 	for (uint8_t l=0; l < 4; l++) {
+		bool isLACP = lacp_lag_ports[l] > 0;
 		slen += strtox(outbuf + slen, "{" JSONQUOTE("lagNum") ":");
 		itoa_html(l);
-		slen += strtox(outbuf + slen, "," JSONQUOTE("members") ":[");
-		uint16_t ports = port_lag_members_get(l);
-		for (uint8_t i = 16; i > 0; i--) {
-			if(!!(ports & 0x8000)) {
-				json_add_array_uint_item(machine.log_to_phys_port[i-1]);
-			}
-			ports <<= 1;
+		slen += strtox(outbuf + slen, "," JSONQUOTE("type") ":");
+
+		if (isLACP) {
+			slen += strtox(outbuf + slen, JSONQUOTE("lacp"));
+		} else {
+			slen += strtox(outbuf + slen, JSONQUOTE("static"));
 		}
-		slen += strtox(outbuf + slen, "]," JSONQUOTE("hash") ":\"");
+
+		slen += strtox(outbuf + slen, "," JSONQUOTE("members") ":[");
+		if(isLACP) {
+			/* Lagg Members -- active */
+			for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+				if((lacp_members_last[l] >> i) & 1) {
+					json_add_array_uint_item(machine.log_to_phys_port[i]);
+				}
+			}
+		} else {
+			/* Static Members */
+			uint16_t ports = port_lag_members_get(l);
+			for (uint8_t i = 16; i > 0; i--) {
+				if(!!(ports & 0x8000)) {
+					json_add_array_uint_item(machine.log_to_phys_port[i-1]);
+				}
+				ports <<= 1;
+			}	
+		}
+		char_to_html(']');
+		if(isLACP) {
+			slen += strtox(outbuf + slen, "," JSONQUOTE("configured_members") ":[");
+			for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+				if((lacp_lag_ports[l] >> i) & 1) {
+					json_add_array_uint_item(machine.log_to_phys_port[i]);
+				}
+			}
+			slen += strtox(outbuf + slen, "]," JSONQUOTE("valid") ":");
+			bool_to_html(lacp_agg_valid[l]);
+			slen += strtox(outbuf + slen, "," JSONQUOTE("aggregator") ":\"");
+			for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
+				byte_to_html(lacp_agg_sys[l][j]);
+			char_to_html('"');
+		}
+		slen += strtox(outbuf + slen, "," JSONQUOTE("hash") ":\"");
 		reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (l << 2));
 		sfr_data_to_html();
 		slen += strtox(outbuf + slen, "\"},");
 	}
 	slen -=1; // remove comma
-	char_to_html(']');
+	slen += strtox(outbuf + slen, "]," JSONQUOTE("ports") ":[");
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		slen += strtox(outbuf + slen, "{" JSONQUOTE("p") ":");
+		itoa_html(machine.log_to_phys_port[i]);
+		slen += strtox(outbuf + slen, "," JSONQUOTE("lag") ":");
+		itoa_html(lacp_port_lag[i]);
+		slen += strtox(outbuf + slen, "," JSONQUOTE("a") ":\"");
+		byte_to_html(lacp_actor_state[i]);
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("pt") ":\"");
+		byte_to_html(lacp_partner_state[i]);
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("rs") ":");
+		itoa_html(lacp_rx_state[i]);
+		slen += strtox(outbuf + slen, "," JSONQUOTE("rx") ":\"");
+		byte_to_html(lacp_rx_count[i] >> 8);
+		byte_to_html(lacp_rx_count[i]);
+		slen += strtox(outbuf + slen, "\"," JSONQUOTE("psys") ":\"");
+		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
+			byte_to_html(lacp_partner_sys[i][j]);
+		slen += strtox(outbuf + slen, "\"},");
+	}
+	slen -= 1; // remove comma
+	slen += strtox(outbuf + slen, "]}");
 }
 
 
@@ -649,16 +704,19 @@ void send_lacp(void)
 	slen += strtox(outbuf + slen, "{" JSONQUOTE("on") ":");
 	bool_to_html(lacpEnabled);
 	slen += strtox(outbuf + slen, "," JSONQUOTE("lags") ":[");
+	
 	for (uint8_t l = 0; l < LACP_NUM_LAGS; l++) {
+		
 		slen += strtox(outbuf + slen, "{" JSONQUOTE("cfg") ":[");
 		for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 			if((lacp_lag_ports[l] >> i) & 1) {
 				json_add_array_uint_item(machine.log_to_phys_port[i]);
 			}
+
 		}
 		slen += strtox(outbuf + slen, "]," JSONQUOTE("aggValid") ":");
 		bool_to_html(lacp_agg_valid[l]);
-		slen += strtox(outbuf + slen, "," JSONQUOTE("agg") ":\"");
+		slen += strtox(outbuf + slen, "," JSONQUOTE("aggregator") ":\"");
 		for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
 			byte_to_html(lacp_agg_sys[l][j]);
 		slen += strtox(outbuf + slen, "\"," JSONQUOTE("members") ":[");
