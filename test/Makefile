@@ -87,7 +87,10 @@ $(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_POR
 $(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
-run: $(TESTS)
+test_mirror:
+	CC="$(CC)" python3 test_mirror.py
+
+run: $(TESTS) test_mirror
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
@@ -98,4 +101,4 @@ run: $(TESTS)
 clean:
 	rm -rf $(BUILDDIR)
 
-.PHONY: all run clean
+.PHONY: all run clean test_mirror
