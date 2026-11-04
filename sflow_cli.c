@@ -62,7 +62,10 @@ void sflow_parse(void) __banked __reentrant
 		return;
 	}
 	if (cmd_compare(1, "sampling") && cmd_words_len >= 3 && atoi_short(cmd_words_b[2])) {
-		sflow_rate(atoi_results_short);
+		if (sflow_rate(atoi_results_short))
+			return;
+		err_status = ERR_INVALID_ARGUMENT;
+		print_string("Error: the mirror session is in use, run mirror off first\n");
 		return;
 	}
 err:

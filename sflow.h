@@ -30,7 +30,7 @@ void sflow_init(void) __banked;
 void sflow_start(void) __banked;
 void sflow_stop(void) __banked;
 void sflow_interval(uint16_t seconds) __banked __reentrant;
-void sflow_rate(uint16_t rate) __banked __reentrant;
+bool sflow_rate(uint16_t rate) __banked __reentrant;
 void sflow_rx(void) __banked __reentrant;
 void sflow_callback(uint16_t lport) __banked __reentrant;
 void sflow_parse(void) __banked __reentrant;

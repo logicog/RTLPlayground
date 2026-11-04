@@ -55,8 +55,9 @@ sample that is due goes first, so sampled frames cannot hold the counters
 back.
 
 The rate is shared by all ports. Port mirroring has only one session, so the
-`mirror` command and flow sampling exclude each other: setting either one
-replaces the other.
+`mirror` command and flow sampling exclude each other: while sampling is on,
+`mirror` is refused, and `sflow sampling` is refused while a mirror session
+is set up. Turn the other one off first.
 
 The ASIC marks each mirrored copy with its own reason code, 0x3a, in the CPU
 tag. The firmware hands exactly these copies to the sampler, so broadcast and

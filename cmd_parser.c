@@ -869,7 +869,12 @@ void parse_mirror(void)
 		print_short(m);
 		write_char('\n');
 		return;
-	} else if (cmd_compare(1, "off")) {
+	}
+	if (sflow_state.rate) {
+		cmd_error("the mirror session is used by sflow sampling, set it to 0 first\n");
+		return;
+	}
+	if (cmd_compare(1, "off")) {
 		port_mirror_del();
 		return;
 	}

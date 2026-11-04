@@ -199,7 +199,7 @@ static void sflow_mirror(uint16_t rate) __reentrant
 		rate--;
 		REG_WRITE(RTL837X_MIR_SAMPLE_CTRL, 0, 0, rate >> 8, rate & 0xff);
 		REG_WRITE(RTL837x_MIRROR_CONF, pmask >> 8, pmask & 0xff, 0, 0);
-		REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (CPU_PORT << 1) | 1);
+		REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (CPU_PORT << 1) | RTL837x_MIRROR_CTRL_EN);
 	} else {
 		REG_SET(RTL837x_MIRROR_CTRL, 0);
 		REG_SET(RTL837X_MIR_SAMPLE_CTRL, 0);
@@ -207,11 +207,17 @@ static void sflow_mirror(uint16_t rate) __reentrant
 }
 
 
-void sflow_rate(uint16_t rate) __banked __reentrant
+bool sflow_rate(uint16_t rate) __banked __reentrant
 {
+	if (rate && !sflow_state.rate) {
+		reg_read_m(RTL837x_MIRROR_CTRL);
+		if (sfr_data[3] & RTL837x_MIRROR_CTRL_EN)
+			return false;
+	}
 	if (sflow_state.conn && (rate || sflow_state.rate))
 		sflow_mirror(rate);
 	sflow_state.rate = rate;
+	return true;
 }
 
 
