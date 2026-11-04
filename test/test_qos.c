@@ -92,11 +92,20 @@ static void test_queue_ctrl(void)
 	check_u32("port 3 queue 5 untouched", hw_reg_get(QUEUE_CTRL(3, 5)), 0);
 	check_u32("port 2 queue 6 untouched", hw_reg_get(QUEUE_CTRL(2, 6)), 0);
 
-	qos_queue_set(0, 0, SCHED_Q_STRICT);
+	check_u32("port 0 queue 0 strict", qos_queue_set(0, 0, SCHED_Q_STRICT), 1);
 	check_u32("port 0 queue 0 strict", hw_reg_get(QUEUE_CTRL(0, 0)), SCHED_Q_STRICT);
+	check_u32("a strict queue makes queue 7 of its port strict", hw_reg_get(QUEUE_CTRL(0, 7)), SCHED_Q_STRICT);
+	check_u32("and leaves queue 7 of another port alone", hw_reg_get(QUEUE_CTRL(1, 7)), 0);
 
-	qos_queue_set(9, 7, QOS_WEIGHT_MAX);
+	check_u32("port 9 queue 7", qos_queue_set(9, 7, QOS_WEIGHT_MAX), 1);
 	check_u32("port 9 queue 7", hw_reg_get(QUEUE_CTRL(9, 7)), QOS_WEIGHT_MAX);
+
+	check_u32("queue 7 refuses a weight next to a strict queue", qos_queue_set(0, 7, 4), 0);
+	check_u32("and stays strict", hw_reg_get(QUEUE_CTRL(0, 7)), SCHED_Q_STRICT);
+	check_u32("queue 7 strict is always taken", qos_queue_set(0, 7, SCHED_Q_STRICT), 1);
+	check_u32("the strict queue gets a weight again", qos_queue_set(0, 0, 2), 1);
+	check_u32("then queue 7 takes a weight", qos_queue_set(0, 7, 4), 1);
+	check_u32("port 0 queue 7 weight", hw_reg_get(QUEUE_CTRL(0, 7)), 4);
 }
 
 /* The identity table and equal weights have to read back as they are. */

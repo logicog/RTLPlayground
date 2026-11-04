@@ -1717,7 +1717,9 @@ void parse_qos(void)
 			if (!weight || weight > QOS_WEIGHT_MAX)
 				goto err;
 		}
-		return qos_queue_set(port, idx, weight);
+		if (!qos_queue_set(port, idx, weight))
+			cmd_error("queue 7 carries the switch's own frames and stays strict while another queue of the port is strict\n");
+		return;
 	}
 
 err:

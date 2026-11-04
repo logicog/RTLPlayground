@@ -11,6 +11,8 @@
 extern __code const struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 
+static __xdata uint8_t qos_i;
+
 void qos_dot1q_set(uint8_t on) __banked
 {
 	reg_read_m(RTL837X_PRI_WEIGHT);
@@ -29,9 +31,19 @@ void qos_pcp_set(uint8_t pcp, uint8_t priority) __banked
 }
 
 
-void qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked
+uint8_t qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked
 {
+	if (queue == QOS_CTRL_QUEUE && weight != SCHED_Q_STRICT) {
+		for (qos_i = 0; qos_i < QOS_CTRL_QUEUE; qos_i++) {
+			reg_read_m(RTL837X_SCHED_PORT_Q_CTRL + port * 1024 + (qos_i << 2));
+			if (sfr_data[3] & SCHED_Q_STRICT)
+				return 0;
+		}
+	}
 	REG_SET(RTL837X_SCHED_PORT_Q_CTRL + port * 1024 + (queue << 2), weight);
+	if (weight == SCHED_Q_STRICT && queue != QOS_CTRL_QUEUE)
+		REG_SET(RTL837X_SCHED_PORT_Q_CTRL + port * 1024 + (QOS_CTRL_QUEUE << 2), SCHED_Q_STRICT);
+	return 1;
 }
 
 

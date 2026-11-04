@@ -45,7 +45,7 @@ at `0x5178`, and the scheduler algorithm bit per port at `0x4534`.
 ```
 void qos_dot1q_set(uint8_t on) __banked;
 void qos_pcp_set(uint8_t pcp, uint8_t priority) __banked;
-void qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked;
+uint8_t qos_queue_set(uint8_t port, uint8_t queue, uint8_t weight) __banked;
 void qos_show(void) __banked;
 ```
 `qos_dot1q_set()` gives the 802.1p source a weight, or takes it away again.
@@ -53,7 +53,11 @@ void qos_show(void) __banked;
 `qos_pcp_set()` points one 802.1p priority at an internal priority.
 
 `qos_queue_set()` writes the scheduler entry of one queue of one port, either a
-weight from 1 to `QOS_WEIGHT_MAX` or `SCHED_Q_STRICT`.
+weight from 1 to `QOS_WEIGHT_MAX` or `SCHED_Q_STRICT`. Queue 7 carries the LACP, STP
+and LLDP frames the switch sends itself, at the priority forced in their CPU tag, and
+a strict queue would starve it; so making any other queue strict makes queue 7 strict
+as well, and queue 7 refuses a weight while another queue of the port is strict,
+which the function reports by returning 0.
 
 `qos_show()` prints whether the 802.1p source has a weight, the 802.1p table, and the
 weights of all queues of every port.
@@ -75,6 +79,10 @@ the others, and let the rest share the port in equal parts:
 > qos on
 > qos queue 1 5 sp
 ```
+This makes queue 7 of port 1 strict too: it carries the LACP, STP and LLDP frames of
+the switch, which a strict queue would otherwise starve until the aggregate or the
+spanning tree gives way. Of two strict queues the higher one is served first, and
+queue 7 takes no weight again until no other queue of the port is strict.
 To give queue 2 of port 1 three times the share of the other queues instead:
 ```
 > qos queue 1 2 3
