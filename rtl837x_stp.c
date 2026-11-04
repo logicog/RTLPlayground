@@ -105,6 +105,7 @@ __xdata struct stp_vec stp_rv[STP_TREES];	/* root priority vector of each tree, 
 __xdata uint8_t  stp_rport[STP_TREES];		/* 0xff = we are the root */
 #define ROOT_PORT	(stp_rport[stp_t])
 __xdata uint16_t stp_tc_count;
+__xdata uint16_t stp_flushed;
 __xdata uint16_t stp_tc_seen;
 __xdata uint32_t stp_tc_secs;		/* seconds since the topology change counter last moved */
 __xdata uint8_t  stp_pcost_short;	/* 1: automatic port costs from the 802.1D-1998 table */
@@ -657,6 +658,9 @@ uint8_t stp_port_state(uint8_t port) __banked
 
 static void stp_forget(uint8_t e) __reentrant
 {
+	if ((stp_flushed >> e) & 1)
+		return;
+	stp_flushed |= (uint16_t)1 << e;
 	stp_ss_mask = stp_members(e);
 	for (stp_ss_i = 0; stp_ss_i < STP_PORTS; stp_ss_i++)
 		if ((stp_ss_mask >> stp_ss_i) & 1)
@@ -1358,6 +1362,7 @@ void stp_in(void) __banked
 
 	stp_tree(0);
 	stp_vofs = 0;
+	stp_flushed = 0;
 	stp_rxbody = TRAP_RX_BODY();
 	if (uip_len < stp_rxbody + BPDU_LEN_MIN_BODY) {
 		uip_len = 0;
@@ -1686,6 +1691,7 @@ static void stp_trees_update(void) __reentrant
 
 void stp_timers(void) __banked
 {
+	stp_flushed = 0;
 	mstp_digest_step();
 	/* Refill the per-port tx budgets once per second (tx hold count) */
 	if (++stp_sec_tick >= STP_HZ) {

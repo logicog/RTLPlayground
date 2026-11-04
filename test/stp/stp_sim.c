@@ -3469,6 +3469,31 @@ static void scen_msti_tc_from_discarding(void)
 		"its change flag flushes nothing and starts no change on the root port");
 }
 
+static void scen_one_flush_per_change(void)
+{
+	struct sim_bpdu r = { .port = 5, .root_prio = 0x40, .root_cost = 40000, .br_prio = 0x90, .port_id = 1, .flags = 0x3d };
+
+	printf("104. a topology change flushes a port once, however many trees it is in\n");
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	sim_cmd("stp msti 2 vlan 20");
+	msti_root_on_9(40);
+	stp_pflags[5] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 3) | (1 << 5) | (1 << 8));
+	secs(40);
+	check(tree_state(0, 5) == 3 && tree_state(1, 8) == 3 && tree_state(2, 8) == 3,
+		"port 6 forwards at the boundary and the root port forwards in both instances");
+	memcpy(r.root_mac, ROOT_MAC, 6);
+	memcpy(r.br_mac, PEER_MAC, 6);
+	memset(flush_count, 0, sizeof(flush_count));
+	bpdu_in(&r);
+	check(stp_tcwhile[8] != 0 && stp_tcwhile[STP_ENTITIES + 8] != 0 && stp_tcwhile[2 * STP_ENTITIES + 8] != 0,
+		"a change heard at the boundary reaches the root port in the CIST and both instances");
+	if (flush_count[8] != 1)
+		printf("  root port flushed %d times\n", flush_count[8]);
+	check(flush_count[8] == 1, "and flushes its addresses once");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3567,6 +3592,7 @@ int main(int argc, char **argv)
 	scen_msti_vlan_writes();
 	scen_msti_tc_count();
 	scen_region_name_cli();
+	scen_one_flush_per_change();
 	scen_msti_tc_from_discarding();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
