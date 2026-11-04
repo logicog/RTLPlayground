@@ -302,6 +302,24 @@ static void t_rx_guards(void)
 	CHECK(!eapol_in(), "an IP frame is not EAPOL");
 }
 
+static void t_start_ignored(void)
+{
+	printf("[test] EAPOL-Start neither ends the quiet period nor restarts a running exchange\n");
+	setup(2);
+	eapol_tick();
+	rx_identity(2, eap_in_frame()[1], "mallory");
+	frames = 0;
+	rx(2, EAPOL_TYPE_START, 0, 0);
+	CHECK(frames == 0 && eapol_ports[2].state == EAPOL_STATE_AUTHENTICATING, "a Start during the exchange draws nothing");
+	eapol_radius_result(2, RADIUS_CODE_ACCESS_REJECT, 0, 0);
+	eapol_poll();
+	frames = 0;
+	rx(2, EAPOL_TYPE_START, 0, 0);
+	CHECK(frames == 0 && eapol_ports[2].state == EAPOL_STATE_HELD, "a Start while held draws nothing");
+	ticks(EAPOL_QUIET_S + 1);
+	CHECK(frames == 1 && eapol_ports[2].state == EAPOL_STATE_CONNECTING, "the quiet period runs its course");
+}
+
 static void t_stale_result(void)
 {
 	printf("[test] a RADIUS result for a port that was reset meanwhile is dropped\n");
@@ -363,6 +381,7 @@ int main(void)
 	t_reject_and_timeout();
 	t_mab();
 	t_rx_guards();
+	t_start_ignored();
 	t_stale_result();
 	t_reauth_and_link();
 	printf("%d checks, %d failed\n", tests_run, tests_failed);

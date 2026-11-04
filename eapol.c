@@ -182,6 +182,8 @@ bool eapol_in(void) __banked __reentrant
     p = &uip_buf[body + 2];
     switch (p[1]) {
     case EAPOL_TYPE_START:
+        if (e->state == EAPOL_STATE_HELD || e->state == EAPOL_STATE_AUTHENTICATING)
+            return true;
         memcpy(e->mac, &uip_buf[6], 6);
         e->tries = 0;
         eapol_request_identity(port);
