@@ -45,7 +45,7 @@ void send_stp(void) __banked
 	static __xdata uint8_t i, j, st, dsg;
 
 	dbg_string("send_stp called\n");
-	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 
 	slen += strtox(outbuf + slen, "{\"on\":");
 	bool_to_html(stp_enabled);
@@ -149,7 +149,7 @@ void send_stp_counters(void) __banked
 {
 	uint8_t i, j;
 
-	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
+	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	slen += strtox(outbuf + slen, "{\"on\":");
 	bool_to_html(stp_enabled);
 	slen += strtox(outbuf + slen, ",\"hz\":");

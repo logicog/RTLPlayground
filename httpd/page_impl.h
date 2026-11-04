@@ -3,8 +3,8 @@
 
 #include <stdbool.h>
 
-extern __code const uint8_t * __code const HTTP_RESPONCE_TXT;
-extern __code const uint8_t * __code const HTTP_RESPONCE_JSON;
+extern __code const uint8_t * __code const HTTP_RESPONSE_TXT;
+extern __code const uint8_t * __code const HTTP_RESPONSE_JSON;
 
 void bool_to_html(char c);
 void byte_to_html(uint8_t val);

@@ -618,7 +618,7 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 
 static void run_cmd_body(__xdata uint8_t *body)
 {
-	uint16_t hdr_len = strtox(outbuf, HTTP_RESPONCE_TXT);
+	uint16_t hdr_len = strtox(outbuf, HTTP_RESPONSE_TXT);
 
 	slen = hdr_len;
 	cmd_capture = 1;
