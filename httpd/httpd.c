@@ -1055,8 +1055,6 @@ void httpd_appcall(void)
 				send_stp();
 			} else if (is_word(q, "/lldp.json")) {
 				send_lldp();
-			} else if (is_word(q, "/lacp.json")) {
-				send_lacp();
 			} else if (is_word(q, "/stpcnt.json")) {
 				send_stp_counters();
 			} else if (is_word(q, "/vlanlist")) {
