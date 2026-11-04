@@ -49,7 +49,8 @@ static void dot1x_apply(uint8_t port) __reentrant
     uint8_t mode = dot1x_mode[port];
     bool on = dot1x_enabled && mode != DOT1X_PORT_OFF;
 
-    dot1x_reg_bit(RTL837X_DOT1X_PORT_AUTH, port, mode == DOT1X_PORT_FORCE_AUTH);
+    dot1x_reg_bit(RTL837X_DOT1X_PORT_AUTH, port, mode == DOT1X_PORT_FORCE_AUTH
+                  || (mode == DOT1X_PORT_AUTO && eapol_ports[port].state == EAPOL_STATE_AUTHENTICATED));
     dot1x_reg_bit(RTL837X_DOT1X_PORT_EN, port, on);
 }
 
