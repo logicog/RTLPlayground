@@ -56,6 +56,7 @@ bool radius_request(uint8_t port, __xdata const char *identity, __xdata const ui
                     __xdata const uint8_t *eap, uint16_t eap_len,
                     __xdata const uint8_t *state, uint8_t state_len) __banked __reentrant;
 bool radius_request_pap(uint8_t port, __xdata const char *user, __xdata const uint8_t *mac) __banked __reentrant;
+void radius_cancel(uint8_t port) __banked __reentrant;
 void radius_callback(uint16_t lport) __banked __reentrant;
 void radius_tick(void) __banked __reentrant;
 

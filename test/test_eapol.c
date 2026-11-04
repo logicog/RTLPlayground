@@ -32,7 +32,7 @@ static int frames;
 static uint8_t frame[128];
 static uint16_t frame_len;
 static int auth_calls, auth_on, auth_port;
-static int req_calls, pap_calls;
+static int req_calls, pap_calls, cancel_calls, cancel_port;
 static bool req_ok = true;
 static uint8_t req_port, req_mac[6], req_eap[64], req_eap_len, req_state[RADIUS_STATE_MAX], req_state_len;
 static char req_identity[EAPOL_IDENTITY_MAX + 1];
@@ -57,6 +57,7 @@ bool radius_request(uint8_t port, const char *identity, const uint8_t *mac, cons
 	req_state_len = state_len; memcpy(req_state, state, state_len);
 	return req_ok;
 }
+void radius_cancel(uint8_t port) { cancel_calls++; cancel_port = port; }
 bool radius_request_pap(uint8_t port, const char *user, const uint8_t *mac)
 {
 	pap_calls++; req_port = port; memcpy(pap_mac, mac, 6);
@@ -73,7 +74,7 @@ static void links(uint16_t mask)
 static void setup(uint8_t port)
 {
 	hw_reset(); out_reset();
-	frames = 0; auth_calls = 0; req_calls = 0; pap_calls = 0; req_ok = true;
+	frames = 0; auth_calls = 0; req_calls = 0; pap_calls = 0; cancel_calls = 0; req_ok = true;
 	radius_eap_len = 0;
 	memset(dot1x_mode, 0, sizeof(dot1x_mode));
 	dot1x_enabled = true;
@@ -93,7 +94,8 @@ static void rx(uint8_t port, uint8_t type, const uint8_t *body, uint16_t len)
 	*p++ = 0x88; *p++ = 0x99; *p++ = 0x04; *p++ = 0; *p++ = 0; *p++ = 0; *p++ = 0; *p++ = port;
 	*p++ = 0x88; *p++ = 0x8e;
 	*p++ = EAPOL_VERSION; *p++ = type; *p++ = len >> 8; *p++ = len;
-	memcpy(p, body, len); p += len;
+	if (len) memcpy(p, body, len);
+	p += len;
 	uip_len = p - uip_buf;
 	CHECK(eapol_in(), "the frame is taken as EAPOL");
 }
@@ -300,6 +302,29 @@ static void t_rx_guards(void)
 	CHECK(!eapol_in(), "an IP frame is not EAPOL");
 }
 
+static void t_stale_result(void)
+{
+	printf("[test] a RADIUS result for a port that was reset meanwhile is dropped\n");
+	setup(2);
+	eapol_tick();
+	rx_identity(2, eap_in_frame()[1], "alice");
+	CHECK(eapol_ports[2].state == EAPOL_STATE_AUTHENTICATING && cancel_calls == 0, "the request is in flight");
+	rx(2, EAPOL_TYPE_LOGOFF, 0, 0);
+	CHECK(cancel_calls == 1 && cancel_port == 2, "the logoff cancels the request of this port");
+	CHECK(eapol_ports[2].state == EAPOL_STATE_IDLE, "and the port is idle");
+	auth_calls = 0;
+	eapol_radius_result(2, RADIUS_CODE_ACCESS_ACCEPT, 0, 0);
+	CHECK(auth_calls == 0 && eapol_ports[2].state == EAPOL_STATE_IDLE && eapol_ports[2].ok == 0,
+		"an Accept arriving after that authorizes nothing");
+	eapol_tick();
+	rx_identity(2, eap_in_frame()[1], "alice");
+	links(0);
+	eapol_tick();
+	CHECK(cancel_calls == 2, "link loss cancels the request as well");
+	eapol_radius_result(2, RADIUS_CODE_ACCESS_REJECT, 0, 0);
+	CHECK(eapol_ports[2].fail == 0 && eapol_ports[2].state == EAPOL_STATE_IDLE, "and a late Reject counts nothing");
+}
+
 static void t_reauth_and_link(void)
 {
 	printf("[test] reauthentication and link loss\n");
@@ -338,6 +363,7 @@ int main(void)
 	t_reject_and_timeout();
 	t_mab();
 	t_rx_guards();
+	t_stale_result();
 	t_reauth_and_link();
 	printf("%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;

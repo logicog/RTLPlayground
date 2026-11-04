@@ -128,6 +128,7 @@ void eapol_port_reset(uint8_t port) __banked __reentrant
     e->mab = mab;
     e->ok = ok;
     e->fail = fail;
+    radius_cancel(port);
     dot1x_authorize(port, false);
 }
 
@@ -224,7 +225,7 @@ void eapol_radius_result(uint8_t port, uint8_t code, __xdata const uint8_t *stat
 {
     __xdata struct eapol_port *e = &eapol_ports[port];
 
-    if (!dot1x_enabled || dot1x_mode[port] != DOT1X_PORT_AUTO)
+    if (!dot1x_enabled || dot1x_mode[port] != DOT1X_PORT_AUTO || e->state != EAPOL_STATE_AUTHENTICATING)
         return;
     switch (code) {
     case RADIUS_CODE_ACCESS_CHALLENGE:
