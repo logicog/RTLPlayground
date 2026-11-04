@@ -3445,6 +3445,30 @@ static void scen_region_name_cli(void)
 	check(mstp_region[0] == 0, "a name with a quote is refused");
 }
 
+static void scen_msti_tc_from_discarding(void)
+{
+	struct sim_bpdu down = { .port = 5, .root_prio = 0x40, .root_cost = 20000, .br_prio = 0x90, .port_id = 1, .flags = 0x38 };
+
+	printf("103. a change flagged in an instance message counts only from a port forwarding there\n");
+	mstp_setup();
+	sim_cmd("stp msti 1 vlan 10");
+	msti_root_on_9(40);
+	check(tree_state(1, 8) == 3, "the internal root port forwards in the instance");
+	memcpy(down.root_mac, ROOT_MAC, 6);
+	memcpy(down.br_mac, PEER_MAC, 6);
+	stp_pflags[5] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 3) | (1 << 5) | (1 << 8));
+	tick(STP_HZ);
+	memset(flush_count, 0, sizeof(flush_count));
+	sim_nrec = 0;
+	sim_rec(1, 0x38 | 0x01, 0x10, PEER_MAC, 20000, 0x90, 0x80, 19);
+	mst_bpdu_in(&down, "lab", 20000, PEER_MAC, 0x90, 19, NULL);
+	sim_nrec = 0;
+	check((stp_internal >> 5) & 1 && tree_state(1, 5) == 1, "port 6 is internal and still discarding in the instance");
+	check(flush_count[8] == 0 && stp_tcwhile[STP_ENTITIES + 8] == 0,
+		"its change flag flushes nothing and starts no change on the root port");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3543,6 +3567,7 @@ int main(int argc, char **argv)
 	scen_msti_vlan_writes();
 	scen_msti_tc_count();
 	scen_region_name_cli();
+	scen_msti_tc_from_discarding();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;

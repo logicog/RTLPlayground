@@ -1311,7 +1311,7 @@ static void stp_msti_rx(uint8_t port) __reentrant
 		stp_reselect();
 		stp_rapid_rx(port);
 		stp_dispute_rx(port);
-		if ((stp_msg_flags & BPDU_FLAG_TC) && !((ALT >> port) & 1))
+		if ((stp_msg_flags & BPDU_FLAG_TC) && stp_state_get(port) == 0b11)
 			stp_tc_prop(port);
 	}
 	stp_tree(0);
