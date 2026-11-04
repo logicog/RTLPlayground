@@ -276,7 +276,8 @@ var LANG = {
         sc_err: "Storm limit must be 1-1048575 pps or 1-10000000 kbit/s",
         sc_note: "Frames of a type above its limit are dropped where they enter the switch.",
         sy_network: "Network",
-        sy_dhcp: "Use DHCP",
+        sy_mode: "Addressing",
+        sy_static: "Static",
         sy_dhcp_t: "Request address via DHCP",
         sy_services: "Services",
         sy_igmp: "IGMP snooping",
@@ -602,7 +603,8 @@ var LANG = {
         bw_in_err: "入力制限は 0.016〜10000 Mbit/s の範囲で指定してください",
         bw_out_err: "出力制限は 0.016〜10000 Mbit/s の範囲で指定してください",
         sy_network: "ネットワーク",
-        sy_dhcp: "DHCP を使用",
+        sy_mode: "アドレス設定",
+        sy_static: "静的",
         sy_dhcp_t: "DHCP でアドレスを取得",
         sy_services: "サービス",
         sy_igmp: "IGMP スヌーピング",
@@ -960,7 +962,8 @@ var LANG = {
         sc_err: "风暴控制阈值必须为 1-1048575 pps 或  1-10000000 kbit/s",
         sc_note: "超过对应类型限值的数据帧会在进入交换机时被丢弃。",
         sy_network: "网络",
-        sy_dhcp: "使用 DHCP",
+        sy_mode: "地址分配",
+        sy_static: "静态",
         sy_dhcp_t: "通过 DHCP 获取地址",
         sy_services: "服务",
         sy_igmp: "IGMP 侦听",
@@ -1285,7 +1288,8 @@ var LANG = {
         bw_in_err: "El límite de entrada debe estar entre 0.016 y 10000 Mbit/s",
         bw_out_err: "El límite de salida debe estar entre 0.016 y 10000 Mbit/s",
         sy_network: "Red",
-        sy_dhcp: "Usar DHCP",
+        sy_mode: "Direccionamiento",
+        sy_static: "Estática",
         sy_dhcp_t: "Solicitar dirección mediante DHCP",
         sy_services: "Servicios",
         sy_igmp: "IGMP snooping",
@@ -1688,7 +1692,8 @@ var LANG = {
         sc_err: " La limite de tempête doit être comprise entre 1 à 1048575 pps ou 1 à 10000000 kbit/s",
         sc_note: "Les trames de chacun des types ci-dessus dépassant les limites sont abandonnées lorsqu'elles arrivent sur le communtateur.",
         sy_network: "Réseau",
-        sy_dhcp: "Uiliser DHCP",
+        sy_mode: "Adressage",
+        sy_static: "Statique",
         sy_dhcp_t: "Aquérir l'adresse via le protocole DHCP",
         sy_services: "Services",
         sy_igmp: "Surveillance IGMP",
@@ -2071,7 +2076,8 @@ var LANG = {
         sc_err: "Grenzwert muss 1-1048575 pps oder 1-10000000 kbit/s betragen",
         sc_note: "Pakete einer Verkehrsart über ihrem Grenzwert werden beim Eintritt in den Switch verworfen.",
         sy_network: "Netzwerk",
-        sy_dhcp: "DHCP verwenden",
+        sy_mode: "Adressvergabe",
+        sy_static: "Statisch",
         sy_dhcp_t: "Adresse per DHCP beziehen",
         sy_services: "Dienste",
         sy_igmp: "IGMP Snooping",
@@ -4790,6 +4796,8 @@ function sysLoad() {
         $("sy-mask").value = S.info.ip_netmask || "";
         $("sy-gw").value = S.info.ip_gateway || "";
         $("sy-host").value = S.info.hostname || "";
+        $("sy-mode").value = S.info.ip_source === "dhcp" ? "dhcp" : "static";
+        syModeUi();
         var sl = (S.info.syslog_server || "").split(":");
         if (sl[0] && sl[0] !== "0.0.0.0") $("sy-sysip").value = sl[0];
         if (sl[1]) $("sy-sysport").value = sl[1];
@@ -4831,17 +4839,25 @@ function cfgParseKnown(txt) {
     $("sy-igmp").checked = igmp;
     $("sy-syslog").checked = syslog;
 }
+function syModeUi() {
+    var dhcp = $("sy-mode").value === "dhcp";
+    ["sy-ip", "sy-mask", "sy-gw", "sy-dns1", "sy-dns2"].forEach(function(id) {
+        $(id).disabled = dhcp;
+    });
+}
+$("sy-mode").addEventListener("change", syModeUi);
 $("sy-apply").addEventListener("click", function() {
-    var ip = $("sy-ip").value.trim(),
+    var dhcp = $("sy-mode").value === "dhcp",
+        ip = $("sy-ip").value.trim(),
         mask = $("sy-mask").value.trim(),
         gw = $("sy-gw").value.trim();
-    if (!okIp(ip) || !okIp(mask) || !okIp(gw)) {
+    if (!dhcp && (!okIp(ip) || !okIp(mask) || !okIp(gw))) {
         toast(t("sy_ip_err"), "err");
         return;
     }
     var d1 = $("sy-dns1").value.trim(),
         d2 = $("sy-dns2").value.trim();
-    if ((d1 && !okIp(d1)) || (d2 && !okIp(d2))) {
+    if (!dhcp && ((d1 && !okIp(d1)) || (d2 && !okIp(d2)))) {
         toast(t("sy_dns_err"), "err");
         return;
     }
@@ -4854,9 +4870,12 @@ $("sy-apply").addEventListener("click", function() {
         }
         cmds.push("hostname " + hn);
     }
-    cmds.push("ip " + ip + "\nnetmask " + mask + "\ngw " + gw + "\ndns server " + (d1 || "0.0.0.0") + (d2 ? " " + d2 : ""));
-    var changingIp = ip !== S.info.ip_address;
-    confirmModal(t("sy_net_q"), changingIp ? t("sy_net_d", {
+    var toDhcp = dhcp && S.info.ip_source !== "dhcp";
+    if (toDhcp) cmds.push("dns server 0.0.0.0\nip dhcp");
+    else if (!dhcp) cmds.push("ip " + ip + "\nnetmask " + mask + "\ngw " + gw + "\ndns server " + (d1 || "0.0.0.0") + (d2 ? " " + d2 : ""));
+    if (!cmds.length) return;
+    var changingIp = !dhcp && ip !== S.info.ip_address;
+    confirmModal(toDhcp ? t("sy_dhcp_q") : t("sy_net_q"), toDhcp ? t("sy_dhcp_d") : changingIp ? t("sy_net_d", {
         ip: ip
     }) : "", function() {
         postCmds(cmds).then(function() {
@@ -4865,11 +4884,6 @@ $("sy-apply").addEventListener("click", function() {
             }), "ok");
             else sysLoad();
         }).catch(function() {});
-    });
-});
-$("sy-dhcp").addEventListener("click", function() {
-    confirmModal(t("sy_dhcp_q"), t("sy_dhcp_d"), function() {
-        postCmd("ip dhcp").catch(function() {})
     });
 });
 $("sy-igmp").addEventListener("change", function() {
@@ -5147,6 +5161,7 @@ function mergeConf(base, texts) {
                 conf.push(line);
                 return;
             }
+            if (line === "ip dhcp") drop(/^(netmask|gw|dns server) /);
             if (!isConfCmd(line)) return;
             if ((m = line.match(/^ingress (.+)$/))) {
                 if (/^[tua]$/.test(m[1])) {

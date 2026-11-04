@@ -17,6 +17,7 @@
 #include "rtl837x_lacp.h"
 #include "page_impl.h"
 #include "syslog.h"
+#include "dhcp.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -31,6 +32,7 @@ extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 extern __xdata uint16_t management_vlan;
 extern __xdata uint16_t session_timeout;
+extern __xdata struct dhcp_state dhcp_state;
 extern __xdata uint16_t cont_len;
 extern __xdata uint32_t cont_addr;
 extern __code const uint8_t * __code const hex;
@@ -248,6 +250,7 @@ void send_basic_info(void)
 	itoa16_html(syslog_state.server_port);
 	slen += strtox(outbuf + slen, "\",\"session_timeout\":");
 	itoa16_html(session_timeout);
+	slen += strtox(outbuf + slen, dhcp_state.state == DHCP_OFF ? ",\"ip_source\":\"static\"" : ",\"ip_source\":\"dhcp\"");
 	slen += strtox(outbuf + slen, ",\"mac_address\":\"");
 	byte_to_html(uip_ethaddr.addr[0]); char_to_html(':');
 	byte_to_html(uip_ethaddr.addr[1]); char_to_html(':');
