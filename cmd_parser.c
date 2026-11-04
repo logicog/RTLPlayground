@@ -506,6 +506,8 @@ void parse_lag(void)
 	__xdata uint16_t members = 0;
 
 	if (cmd_compare(1, "show")) {
+		if (cmd_words_len != 2)
+			goto err;
 		print_string("LAG status:\n");
 		for (uint8_t i = 0; i < 4; i++) {
 			write_char(' '); write_char('1' + i);
@@ -534,7 +536,7 @@ void parse_lag(void)
 		goto err;
 
 	// Parse group, expect only one number 0-9;
-	if (atoi_byte(cmd_words_b[1]) != 1)
+	if (atoi_byte(cmd_words_b[1]) != 1 || !cmd_is_space_or_nul(cmd_words_b[1] + 1))
 		goto err;
 
 	group = atoi_results_u8 - 1;
@@ -542,6 +544,8 @@ void parse_lag(void)
 		goto err;
 
 	if (cmd_compare(2, "d")) {
+		if (cmd_words_len != 3)
+			goto err;
 		lacp_lag_set(group, 0);
 		port_lag_members_set(group, 0);
 		return;
@@ -553,6 +557,8 @@ void parse_lag(void)
 		lacp_mode = 1;
 		w = 3;
 		if (cmd_words_len > 3 && cmd_compare(3, "off")) {
+			if (cmd_words_len != 4)
+				goto err;
 			lacp_lag_set(group, 0);
 			return;
 		}
@@ -579,7 +585,8 @@ err:
 void parse_lag_hash(void)
 {
 	// Parse group, expect only one number 0-9.
-	if (cmd_words_len < 3 || atoi_byte(cmd_words_b[1]) != 1)
+	if (cmd_words_len < 3 || atoi_byte(cmd_words_b[1]) != 1
+	    || !cmd_is_space_or_nul(cmd_words_b[1] + 1))
 		goto err;
 
 	uint8_t group = atoi_results_u8 - 1;

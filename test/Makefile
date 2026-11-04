@@ -99,3 +99,9 @@ clean:
 	rm -rf $(BUILDDIR)
 
 .PHONY: all run clean
+
+.PHONY: test_lag_tokens
+test_lag_tokens:
+	CC="$(CC)" python3 test_lag_tokens.py
+
+run: test_lag_tokens
