@@ -178,6 +178,14 @@ bool radius_request_pap(uint8_t port, __xdata const char *user, __xdata const ui
     return radius_build(port, user, mac, 0, 0, 0, 0, true);
 }
 
+void radius_cancel(uint8_t port) __banked __reentrant
+{
+    if (radius_port_busy != port)
+        return;
+    radius_port_busy = RADIUS_NO_PORT;
+    radius_phase = RADIUS_PHASE_IDLE;
+}
+
 static void radius_finish(uint8_t code) __reentrant
 {
     uint8_t port = radius_port_busy;
