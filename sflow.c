@@ -285,7 +285,7 @@ void sflow_stop(void) __banked
 
 void sflow_callback(uint16_t lport) __banked __reentrant
 {
-	if (!sflow_state.conn || lport != sflow_state.conn->lport)
+	if (!sflow_state.conn || lport != sflow_state.conn->lport || uip_newdata())
 		return;
 	if (ticks - sflow_state.last >= sflow_gap) {
 		sflow_state.last = ticks;
