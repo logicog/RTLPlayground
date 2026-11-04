@@ -160,6 +160,7 @@ var LANG = {
         mst_vlans: "VLANs",
         mst_n_err: "Instance must be 1-15",
         mst_region_err: "Region name: up to 32 characters, no spaces or quotes",
+        mst_not_loaded: "The MST settings have not been read from the switch yet, apply them again in a moment",
         mst_note: "Instances run while spanning tree is on in MSTP mode. A VLAN not given to an instance belongs to the CIST. Bridges of one region need the same region name, revision and VLANs per instance.",
         stp_times: "max age / forward delay",
         stp_proto: "Protocol",
@@ -3274,10 +3275,10 @@ function stpText(cmd) {
 }
 
 function mstLoad() {
-    mstTried = 1;
     return stpText("stp mstp").then(function(tx) {
         var m = tx.match(/MSTP region "([^"]*)" revision (\d+) hops (\d+)/);
         if (!m) return;
+        mstTried = 1;
         mstCur = {
             region: m[1],
             rev: m[2],
@@ -3458,13 +3459,17 @@ $("stpbapply").addEventListener("click", function() {
         toast(t("mst_region_err"), "err");
         return;
     }
+    if (!mstTried) {
+        if (reg || $("stprev").value.trim() || $("stphops").value.trim()) toast(t("mst_not_loaded"), "err");
+        mstLoad().catch(function() {});
+    }
     [
         ["stpregion", "region", "region"],
         ["stprev", "revision", "rev"],
         ["stphops", "maxhops", "hops"]
     ].forEach(function(f) {
         var v = $(f[0]).value.trim();
-        if (mstCur[f[2]] !== undefined && v !== mstCur[f[2]]) cmds.push(("stp " + f[1] + " " + v).trim());
+        if (mstTried && v !== mstCur[f[2]]) cmds.push(("stp " + f[1] + " " + v).trim());
     });
     if (ver !== stpVer(s)) cmds.push("stp version " + ver);
     if (prio !== String(s.prio)) cmds.push("stp prio " + prio);
