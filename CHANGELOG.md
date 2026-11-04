@@ -15,6 +15,11 @@
     target selects single-IO flash reads (`flash_sio`). New machine target
     `MACHINE_2G5F4_10G2_V1_01`, see `doc/devices/2G5F4_10G2_V1.01.md`.
 
+- LLDP
+  - `port <n> lldp ignore|listen`: the receive half of the port's admin status, next to `block|permit`
+    for the transmit half; an ignored port drops its neighbours at once. `/lldp.json` reports
+    `listening` per port and the LLDP tab gets a second switch. #603
+
 - Web UI
   - Compress the embedded assets (minify + gzip) and switch to a single-page layout. #315
   - Replace the multi-page UI with a themed single-page app: light, dark and Selenized themes following the browser by default,

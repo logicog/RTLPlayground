@@ -144,6 +144,7 @@ var LANG = {
         lldp_title: "Service Status",
         lldp_portname: "Name",
         lldp_enable: "Send Frames",
+        lldp_listen: "Receive",
         stp_pcs: "Path cost",
         stp_pcs_long: "Long (32 bit)",
         stp_pcs_short: "Short (16 bit)",
@@ -163,6 +164,11 @@ var LANG = {
         stp_ctrx: "TC received",
         stp_cttx: "TC sent",
         stp_cage: "Last BPDU [s]",
+        lldp_nb_title: "Neighbours",
+        lldp_nb_chassis: "Chassis ID",
+        lldp_nb_portid: "Port ID",
+        lldp_nb_sysname: "System Name",
+        lldp_nb_ttl: "TTL",
         st_title: "Port statistics",
         st_h: "totals since boot",
         st_txg: "TX good",
@@ -2371,7 +2377,7 @@ var CONF_CMDS = [
     /^ingress(\s+\d+[tua])+$/, /^ingress\s+[tua]$/,
     /^port\s+\d+\s+(10m|100m|1g|2g5|5g|10g|auto|on|off)(\s+(half|full))?$/,
     /^port\s+\d+\s+name\s+\S+$/,
-    /^port\s+\d+\s+lldp\s+(permit|block)+$/,
+    /^port\s+\d+\s+lldp\s+(permit|block|listen|ignore)$/,
     /^eee\s+(on|off)(\s+\d+)?(\s+(100m|1g|2g5))?$/,
     /^mirror(\s+\d+)(\s+\d+[tr]?)+$/, /^mirror\s+off$/,
     /^lag\s+[1-4](\s+\d+)+$/, /^lag\s+[1-4]\s+d$/,
@@ -4510,6 +4516,33 @@ function lldpLoad() {
             ]);
             sw.firstChild.checked = p.permitted;
             tr.insertCell().appendChild(sw);
+            var rx = h("label", {
+                class: "switch"
+            }, [
+                h("input", {
+                    type: "checkbox",
+                    onchange: function() {
+                        postCmd("port " + p.portNum + " lldp " + (this.checked ? "listen" : "ignore"))
+                            .then(function() {
+                                setTimeout(lldpLoad, 300)
+                            }).catch(function() {});
+                    }
+                }), h("i")
+            ]);
+            rx.firstChild.checked = p.listening;
+            tr.insertCell().appendChild(rx);
+        });
+        var nb = $("lldp_nb_table").tBodies[0];
+        nb.innerHTML = "";
+        (s.neighbors || []).sort(function(a, b) {
+            return a.port - b.port
+        }).forEach(function(n) {
+            var tr = nb.insertRow();
+            tr.insertCell().textContent = n.port;
+            tr.insertCell().textContent = n.chassis;
+            tr.insertCell().textContent = n.portId;
+            tr.insertCell().textContent = n.sysName;
+            tr.insertCell().textContent = n.ttl;
         });
     });
 }
@@ -4520,8 +4553,14 @@ $("lldp_en").addEventListener("change", function() {
         el.checked = !el.checked
     });
 });
+var lldpPoller = new Poller(lldpLoad, 5000);
 tabHooks.lldp = {
-    enter: lldpLoad
+    enter: function() {
+        lldpPoller.start()
+    },
+    leave: function() {
+        lldpPoller.stop()
+    }
 };
 
 function eeeFlags(bits) {
@@ -5156,8 +5195,8 @@ function mergeConf(base, texts) {
                 drop(/^mirror /);
                 return;
             }
-            if ((m = line.match(/^(port \d{1,2} lldp) (permit|block)$/))) {
-                drop(new RegExp("^" + m[1] + " (permit|block)$"));
+            if ((m = line.match(/^(port \d{1,2} lldp) (permit|block|listen|ignore)$/))) {
+                drop(new RegExp("^" + m[1] + " (" + (m[2] === "listen" || m[2] === "ignore" ? "listen|ignore" : "permit|block") + ")$"));
                 conf.push(line);
                 return;
             }
