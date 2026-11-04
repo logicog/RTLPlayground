@@ -70,7 +70,7 @@ def to_machine_pcb(name):
 
 def machine_name(vendor, model):
     """<MACHINE> = <MACHINE_MODEL> in capitals with punctuation -> '_'."""
-    return to_machine_pcb(('%s %s' % (vendor, model)).upper())
+    return to_machine_pcb(f'{vendor} {model}'.upper())
 
 
 class TestConversions(unittest.TestCase):
@@ -214,7 +214,7 @@ def prepare(path):
     """Return True if it is okay to create/overwrite path."""
     if not os.path.lexists(path):
         return True
-    print('  ! %s already exists.' % path)
+    print(f'  ! {path} already exists.')
     return confirm('  Replace it?')
 
 
@@ -253,14 +253,14 @@ def select_pcb_file(machine_pcb):
     if not candidates:
         return None
     if len(candidates) == 1:
-        print('Found machine definition: machine/pcb/%s' % candidates[0])
+        print(f'Found machine definition: machine/pcb/{candidates[0]}')
         return candidates[0]
     print('Several machine definitions match this PCB; pick the one that '
           'matches your hardware:')
     for i, name in enumerate(candidates, 1):
-        print('  %d) machine/pcb/%s' % (i, name))
+        print(f'  {i}) machine/pcb/{name}')
     while True:
-        choice = ask('Selection [1-%d]: ' % len(candidates))
+        choice = ask(f'Selection [1-{len(candidates)}]: ')
         if choice.isdigit() and 1 <= int(choice) <= len(candidates):
             return candidates[int(choice) - 1]
         if choice in candidates:
@@ -276,15 +276,15 @@ def create_symlink_and_header(machine_pcb, pcb_file, vendor, model, chipset):
     link = os.path.join(MACHINE_DIR, mdl + '.c')
     target = os.path.join('pcb', pcb_file)  # relative, as in the doc
     if os.path.islink(link) and os.readlink(link).replace(os.sep, '/') == target:
-        print('Symlink machine/%s -> %s already in place.' % (mdl + '.c', target))
+        print(f'Symlink machine/{mdl}.c -> {target} already in place.')
     elif prepare(link):
         if DRY_RUN:
-            print('Would add symlink: machine/%s -> %s' % (mdl + '.c', target))
+            print(f'Would add symlink: machine/{mdl}.c -> {target}')
         else:
             if os.path.lexists(link):
                 os.remove(link)
             os.symlink(target, link)
-            print('Added symlink: machine/%s -> %s' % (mdl + '.c', target))
+            print(f'Added symlink: machine/{mdl}.c -> {target}')
         created.append(link)
     # machine/<MACHINE>_init.c: prefer the _init.c belonging to the selected
     # definition (<MACHINE_PCB_EXT>_init.c), fall back to the plain
@@ -296,45 +296,41 @@ def create_symlink_and_header(machine_pcb, pcb_file, vendor, model, chipset):
             break
     init_link = os.path.join(MACHINE_DIR, mdl + '_init.c')
     if init_target is None:
-        print('No machine/pcb/%s_init.c; not adding machine/%s_init.c.'
-              % (pcb_file[:-len('.c')], mdl))
+        print(f'No machine/pcb/{pcb_file[:-len(".c")]}_init.c;'
+              f' not adding machine/{mdl}_init.c.')
     elif os.path.islink(init_link) and \
             os.readlink(init_link).replace(os.sep, '/') == init_target:
-        print('Symlink machine/%s -> %s already in place.'
-              % (mdl + '_init.c', init_target))
+        print(f'Symlink machine/{mdl}_init.c -> {init_target} already in place.')
     elif prepare(init_link):
         if DRY_RUN:
-            print('Would add symlink: machine/%s -> %s'
-                  % (mdl + '_init.c', init_target))
+            print(f'Would add symlink: machine/{mdl}_init.c -> {init_target}')
         else:
             if os.path.lexists(init_link):
                 os.remove(init_link)
             os.symlink(init_target, init_link)
-            print('Added symlink: machine/%s -> %s'
-                  % (mdl + '_init.c', init_target))
+            print(f'Added symlink: machine/{mdl}_init.c -> {init_target}')
         created.append(init_link)
     header = os.path.join(MACHINE_DIR, mdl + '.h')
     if prepare(header):
         if DRY_RUN:
-            print('Would add header:   machine/%s' % (mdl + '.h'))
+            print(f'Would add header:   machine/{mdl}.h')
         else:
             with open(header, 'w') as f:
                 f.write(header_template(mdl, vendor, model, chipset))
-            print('Added header:   machine/%s' % (mdl + '.h'))
+            print(f'Added header:   machine/{mdl}.h')
         created.append(header)
     return created, mdl
 
 
 def header_template(mdl, vendor, model, chipset):
-    return (
-        '#ifndef _MACHINE_%s_H_\n'
-        '#define _MACHINE_%s_H_\n'
-        '\n'
-        '#define MACHINE_MODEL "%s %s"\n'
-        '#define MACHINE_CHIPSET %s\n'
-        '\n'
-        '#endif\n'
-    ) % (mdl, mdl, vendor, model, chipset)
+    return f'''#ifndef _MACHINE_{mdl}_H_
+#define _MACHINE_{mdl}_H_
+
+#define MACHINE_MODEL "{vendor} {model}"
+#define MACHINE_CHIPSET {chipset}
+
+#endif
+'''
 
 
 # Canonical photo file names inside doc/devices/photos/<PCB_DOC_NAME>/,
@@ -357,15 +353,15 @@ def collect_images():
     for kind, label in (('front', 'Front panel'), ('top', 'PCB top'),
                         ('bottom', 'PCB bottom')):
         while True:
-            path = ask('%s image file (enter to skip): ' % label)
+            path = ask(f'{label} image file (enter to skip): ')
             if not path:
-                print('  Suggested file name for the %s when added later:'
-                      ' %s' % (label.lower(), SUGGESTED_PHOTO_NAMES[kind]))
+                print(f'  Suggested file name for the {label.lower()} when'
+                      f' added later: {SUGGESTED_PHOTO_NAMES[kind]}')
                 break
             if os.path.isfile(path):
                 photos[kind] = path
                 break
-            print('  ! %s is not a file; try again.' % path)
+            print(f'  ! {path} is not a file; try again.')
     return photos
 
 
@@ -382,7 +378,7 @@ def create_new_device(pcb_id, vendor, model, chipset, photos):
     photo_dir = os.path.join(DOC_PHOTOS, pcb_doc_name)
     if prepare(photo_dir):
         if DRY_RUN:
-            print('Would create directory: %s' % photo_dir)
+            print(f'Would create directory: {photo_dir}')
         else:
             os.makedirs(photo_dir, exist_ok=True)
         created.append(photo_dir)
@@ -395,32 +391,32 @@ def create_new_device(pcb_id, vendor, model, chipset, photos):
         if not prepare(dst):
             continue
         if DRY_RUN:
-            print('Would copy %s: %s -> %s' % (kind, src, dst))
+            print(f'Would copy {kind}: {src} -> {dst}')
         else:
             shutil.copyfile(src, dst)
-            print('Copied %s: %s -> %s' % (kind, src, dst))
+            print(f'Copied {kind}: {src} -> {dst}')
         copied[kind] = os.path.basename(src)
 
     doc = os.path.join(DOC_DEVICES, pcb_doc_name + '.md')
     if prepare(doc):
         if DRY_RUN:
-            print('Would add device doc: %s' % doc)
+            print(f'Would add device doc: {doc}')
         else:
             with open(doc, 'w') as f:
                 f.write(device_doc_template(pcb_id, vendor, model, chipset,
                                             pcb_doc_name, copied))
-            print('Added device doc: %s' % doc)
+            print(f'Added device doc: {doc}')
         created.append(doc)
 
     pcb_file = machine_pcb + '.c'
     pcb_path = os.path.join(PCB_DIR, pcb_file)
     if prepare(pcb_path):
         if DRY_RUN:
-            print('Would add board definition: %s' % pcb_path)
+            print(f'Would add board definition: {pcb_path}')
         else:
             with open(pcb_path, 'w') as f:
                 f.write(pcb_template(machine_pcb))
-            print('Added board definition: %s' % pcb_path)
+            print(f'Added board definition: {pcb_path}')
         created.append(pcb_path)
 
     link_files, mdl = create_symlink_and_header(
@@ -431,13 +427,13 @@ def create_new_device(pcb_id, vendor, model, chipset, photos):
 
 def device_doc_template(pcb_id, vendor, model, chipset, pcb_doc_name, photos):
     lines = [
-        '# %s %s' % (vendor, model),
+        f'# {vendor} {model}',
         '',
-        '%s-based switch (TODO: one-line description of the board).' % chipset,
+        f'{chipset}-based switch (TODO: one-line description of the board).',
         '',
         '### PCB identifier',
         '',
-        '`%s`' % pcb_id,
+        f'`{pcb_id}`',
         '',
     ]
     if photos:
@@ -447,9 +443,9 @@ def device_doc_template(pcb_id, vendor, model, chipset, pcb_doc_name, photos):
             if kind not in photos:
                 continue
             lines += [
-                '%s:' % label,
+                f'{label}:',
                 '',
-                '<img src="photos/%s/%s" width="600" />' % (pcb_doc_name, photos[kind]),
+                f'<img src="photos/{pcb_doc_name}/{photos[kind]}" width="600" />',
                 '',
             ]
     lines += [
@@ -460,38 +456,38 @@ def device_doc_template(pcb_id, vendor, model, chipset, pcb_doc_name, photos):
         '',
         '### Machine target',
         '',
-        '\tmake MACHINE=%s' % machine_name(vendor, model),
+        f'\tmake MACHINE={machine_name(vendor, model)}',
         '',
     ]
     return '\n'.join(lines)
 
 
 def pcb_template(machine_pcb):
-    return '''#include "machine_defs.h"
+    return f'''#include "machine_defs.h"
 
-/* TODO: template for machine/pcb/%s.c - fill in the values for this board.
+/* TODO: template for machine/pcb/{machine_pcb}.c - fill in the values for this board.
  * The easiest start is the closest existing machine/pcb/*.c with the same
  * number and type of Ethernet ports and SFP+ cages; adjust it from there.
  * Field meanings are documented in doc/adding-a-device.md. */
-__code const struct machine machine = {
-	MACHINE_COMMON_SETTING,
-	.n_sfp = 0,															/* TODO: number of SFP+ cages */
-	.log_to_phys_port = {0, 0, 0, 0, 0, 0, 0, 0, 0},		/* TODO: logical port -> physical front-panel port */
-	.phys_to_log_port = {0, 0, 0, 0, 0, 0, 0, 0, 0},		/* TODO: the inverse, physical port 1 is index 0 */
-	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 0},							/* TODO: 0 copper, 1 left SFP slot, 2 right SFP slot */
+__code const struct machine machine = {{
+\tMACHINE_COMMON_SETTING,
+\t.n_sfp = 0,\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t/* TODO: number of SFP+ cages */
+\t.log_to_phys_port = {{0, 0, 0, 0, 0, 0, 0, 0, 0}},\t\t/* TODO: logical port -> physical front-panel port */
+\t.phys_to_log_port = {{0, 0, 0, 0, 0, 0, 0, 0, 0}},\t\t/* TODO: the inverse, physical port 1 is index 0 */
+\t.is_sfp = {{0, 0, 0, 0, 0, 0, 0, 0, 0}},\t\t\t\t\t\t\t/* TODO: 0 copper, 1 left SFP slot, 2 right SFP slot */
 #if 0 /* enable and adjust if the board has SFP+ cages */
-	.sfp_port[0].pin_detect = GPIO_NA,								/* TODO */
-	.sfp_port[0].pin_los = GPIO_NA,
-	.sfp_port[0].pin_tx_disable = GPIO_NA,
-	.sfp_port[0].sds = 0,
-	.sfp_port[0].i2c = I2CBUS( GPIO_NA, GPIO_NA ),
+\t.sfp_port[0].pin_detect = GPIO_NA,\t\t\t\t\t\t\t\t/* TODO */
+\t.sfp_port[0].pin_los = GPIO_NA,
+\t.sfp_port[0].pin_tx_disable = GPIO_NA,
+\t.sfp_port[0].sds = 0,
+\t.sfp_port[0].i2c = I2CBUS( GPIO_NA, GPIO_NA ),
 #endif
-	.reset_pin = GPIO_NA,												/* TODO: reset button GPIO, GPIO_NA if unpopulated */
-	.high_leds = { .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },	/* TODO */
-	.port_led_set = {0, 0, 0, 0, 0, 0, 0, 0, 0},				/* TODO: LED set 0-3 per logical port */
-	/* TODO: led_sets[4] condition groups, see doc/adding-a-device.md. */
-};
-''' % machine_pcb
+\t.reset_pin = GPIO_NA,\t\t\t\t\t\t\t\t\t\t\t\t/* TODO: reset button GPIO, GPIO_NA if unpopulated */
+\t.high_leds = {{ .mux = LED_27 | LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 }},\t/* TODO */
+\t.port_led_set = {{0, 0, 0, 0, 0, 0, 0, 0, 0}},\t\t\t\t/* TODO: LED set 0-3 per logical port */
+\t/* TODO: led_sets[4] condition groups, see doc/adding-a-device.md. */
+}};
+'''
 
 
 def git_add_files(paths):
@@ -503,43 +499,43 @@ def git_add_files(paths):
         return
     in_repo = subprocess.run(
         ['git', 'rev-parse', '--is-inside-work-tree'],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False)
     if in_repo.returncode != 0:
         print('  ! Not a git repository; skipping git add.')
         return
-    r = subprocess.run(['git', 'add', '--'] + list(paths))
+    r = subprocess.run(['git', 'add', '--'] + list(paths), check=False)
     if r.returncode == 0:
         print('Staged with git add (not committed):')
         for path in paths:
-            print('  %s' % path)
+            print(f'  {path}')
     else:
-        print('  ! git add failed (exit %d); files remain unstaged.'
-              % r.returncode)
+        print(f'  ! git add failed (exit {r.returncode});'
+              ' files remain unstaged.')
 
 
 def report(created, mdl, pcb_doc_name, doc_target, new_device=False, photo_dir=None):
     """Steps 8/12 printout and step 20: what was added and what to do next."""
     print()
-    print('=== Summary ===%s' % (' (dry run)' if DRY_RUN else ''))
+    print(f'=== Summary ==={" (dry run)" if DRY_RUN else ""}')
     if new_device:
-        print('New PCB (%s): device doc, photos directory, board definition,'
-              ' symlink and header %s.'
-              % (pcb_doc_name, 'would be added' if DRY_RUN else 'added'))
+        print(f'New PCB ({pcb_doc_name}): device doc, photos directory, board'
+              f' definition, symlink and header'
+              f' {"would be added" if DRY_RUN else "added"}.')
         if photo_dir:
-            print('  Photos directory: %s' % photo_dir)
+            print(f'  Photos directory: {photo_dir}')
     if created:
         print('Files that would be added:' if DRY_RUN else 'Added files:')
         for path in created:
-            print('  %s' % path)
+            print(f'  {path}')
     if DRY_RUN:
         print('Dry run: no files were written.')
     print()
     print('Next steps:')
     print('  1. Fill in the TODOs in the new files (port map, LEDs, SFP pins).')
     if doc_target:
-        print('  2. Update doc/devices/%s.md and doc/supported_devices.md.'
-              % doc_target)
-    print('  3. Build and test:  make MACHINE=%s CI=1' % mdl)
+        print(f'  2. Update doc/devices/{doc_target}.md and'
+              ' doc/supported_devices.md.')
+    print(f'  3. Build and test:  make MACHINE={mdl} CI=1')
     print('  4. Run the CI checks:  make machine_check && make -C test')
     print('  5. Verify behaviour on hardware (port, stat, sfp, leds console'
           ' commands).')
@@ -591,18 +587,17 @@ def machine_already_supported(mdl):
     if not (os.path.lexists(link) and os.path.lexists(header)):
         return None
     if os.path.islink(link):
-        link_desc = 'machine/%s.c -> %s (symlink)' % (mdl,
-                    os.readlink(link).replace(os.sep, '/'))
+        link_desc = (f'machine/{mdl}.c -> '
+                     f'{os.readlink(link).replace(os.sep, "/")} (symlink)')
     else:
-        link_desc = 'machine/%s.c (regular file)' % mdl
+        link_desc = f'machine/{mdl}.c (regular file)'
     with open(header, 'r') as f:
         header_text = f.read()
-    m = re.search(r'^#define MACHINE_MODEL "(.*)"\s*$', header_text, re.M)
+    m = re.search(r'^#define MACHINE_MODEL "(.*)"\s*$', header_text, re.MULTILINE)
+    model_suffix = f' (MACHINE_MODEL "{m.group(1)}")' if m else ''
     return [
-        '  %s' % link_desc,
-        '  machine/%s.h%s' % (mdl,
-                              ' (MACHINE_MODEL "%s")' % m.group(1) if m
-                              else ''),
+        f'  {link_desc}',
+        f'  machine/{mdl}.h{model_suffix}',
     ]
 
 
@@ -610,16 +605,16 @@ def run(pcb_id, vendor, model, chipset):
     pcb_doc_name = to_pcb_doc_name(pcb_id)
     machine_pcb = to_machine_pcb(pcb_doc_name)
     print()
-    print('<PCB_IDENTIFIER> : %s' % pcb_id)
-    print('<PCB_DOC_NAME>   : %s' % pcb_doc_name)
-    print('<MACHINE_PCB>    : %s' % machine_pcb)
+    print(f'<PCB_IDENTIFIER> : {pcb_id}')
+    print(f'<PCB_DOC_NAME>   : {pcb_doc_name}')
+    print(f'<MACHINE_PCB>    : {machine_pcb}')
 
     mdl = machine_name(vendor, model)
     info = machine_already_supported(mdl)
     if info:
         print()
         print('=== Device already supported ===')
-        print('machine/%s.c and machine/%s.h are both in place:' % (mdl, mdl))
+        print(f'machine/{mdl}.c and machine/{mdl}.h are both in place:')
         for line in info:
             print(line)
         print('Nothing to add. Remove these files (or adjust them by hand) to'
@@ -634,13 +629,12 @@ def run(pcb_id, vendor, model, chipset):
         print()
         print('A device doc with a matching name exists:')
         for name in key_matches:
-            print('  doc/devices/%s' % name)
-        print('Your input (%s) does not match the documented name'
-              ' verbatim.' % pcb_doc_name)
+            print(f'  doc/devices/{name}')
+        print(f'Your input ({pcb_doc_name}) does not match the documented'
+              ' name verbatim.')
         if confirm('Is your PCB identifier correct?'):
-            print('Please file a bug report so the document name is'
-                  ' corrected (it should be doc/devices/%s.md).'
-                  % pcb_doc_name)
+            print(f'Please file a bug report so the document name is'
+                  f' corrected (it should be doc/devices/{pcb_doc_name}.md).')
             print('Continuing with the existing definition.')
             doc_name = key_matches[0]
         else:
@@ -653,9 +647,9 @@ def run(pcb_id, vendor, model, chipset):
         pcb_file = select_pcb_file(machine_pcb)
         print()
         if pcb_file is None:
-            sys.exit('No machine/pcb/%s*.c definition found even though the'
-                     ' device is documented under doc/devices/%s - please'
-                     ' file a bug report.' % (machine_pcb, doc_name))
+            sys.exit(f'No machine/pcb/{machine_pcb}*.c definition found even'
+                     f' though the device is documented under'
+                     f' doc/devices/{doc_name} - please file a bug report.')
         confirm_write()
         created, mdl = create_symlink_and_header(
             machine_pcb, pcb_file, vendor, model, chipset)
