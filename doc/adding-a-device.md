@@ -270,8 +270,8 @@ Once the board has been tested on hardware:
    If the device has an internal power supply, it is critical that a warning is
    added to the documentation regarding the danger such as:
 
-   > [!CAUTION]
-   > This device contains a mains voltage power supply, which is a potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely.
+> [!CAUTION]
+> This device contains a mains voltage power supply, which is a potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely.
 
 
 3. If the board shares a PCB with other revisions, follow
