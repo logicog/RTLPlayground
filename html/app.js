@@ -4307,45 +4307,20 @@ function buildLag() {
     var w = $("lagwrap");
     if (w.children.length) return;
     for (var g = 1; g <= 4; g++)(function(g) {
-        var card = h("div", {
-            class: "card"
-        });
-        card.appendChild(h("h2", {
-            text: "LAG " + g
-        }));
-        var mr = h("div", {
-            style: "display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px",
-            class: "small"
-        });
-        mr.appendChild(h("span", {
-            class: "mut",
-            text: t("lag_mode")
-        }));
-        var ms = h("select", {
-            class: "in",
-            id: "lgm" + g
-        });
-        ms.appendChild(h("option", {
-            value: "static",
-            text: t("lag_static")
-        }));
-        ms.appendChild(h("option", {
-            value: "lacp",
-            text: "LACP"
-        }));
+        var card = h("div", { class: "card" });
+        card.appendChild(h("h2", { text: "LAG " + g }));
+        var mr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px", class: "small" });
+        mr.appendChild(h("span", { class: "mut", text: t("lag_mode") }));
+        var ms = h("select", { class: "in", id: "lgm" + g });
+        ms.appendChild(h("option", { value: "static", text: t("lag_static") }));
+        ms.appendChild(h("option", { value: "lacp", text: "LACP" }));
         ms.addEventListener("change", function() {
             $("lgs" + g).textContent = ms.value === "lacp" ? t("lacp_hint") : ""
         });
         mr.appendChild(ms);
         card.appendChild(mr);
-        card.appendChild(h("p", {
-            class: "small mono",
-            id: "lgs" + g,
-            style: "margin-bottom:10px"
-        }));
-        var pr = h("div", {
-            style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"
-        });
+        card.appendChild(h("p", { class: "small mono", id: "lgs" + g, style: "margin-bottom:10px" }));
+        var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" });
         for (var p = 1; p <= S.n; p++) pr.appendChild(h("label", null, [
             h("input", {
                 type: "checkbox",
@@ -4353,14 +4328,8 @@ function buildLag() {
             }), document.createTextNode(" " + p + " "),
         ]));
         card.appendChild(pr);
-        var hr = h("div", {
-            style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px",
-            class: "small"
-        });
-        hr.appendChild(h("span", {
-            class: "mut",
-            text: t("lag_hash")
-        }));
+        var hr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small" });
+        hr.appendChild(h("span", { class: "mut", text: t("lag_hash") }));
         HASHF.forEach(function(f) {
             hr.appendChild(h("label", null, [h("input", {
                 type: "checkbox",
@@ -4368,16 +4337,12 @@ function buildLag() {
             }), document.createTextNode(" " + f + " ")]));
         });
         card.appendChild(hr);
-        card.appendChild(h("button", {
-            class: "ctl pri",
-            text: t("c_apply"),
+        card.appendChild(h("button", { class: "ctl pri", text: t("c_apply"),
             onclick: function() {
                 lagApply(g)
             }
         }));
-        card.addEventListener("change", function() {
-            card.dataset.dirty = "1"
-        });
+        card.addEventListener("change", function() { card.dataset.dirty = "1" });
         w.appendChild(card);
     })(g);
 }
@@ -4391,35 +4356,29 @@ function maskPorts(m) {
 }
 
 function lagLoad() {
-    return getJSON("/lacp.json").then(function(c) {
+    return getJSON("/lag.json").then(function(s) {
+        console.log(s);
+
+        s.lags.forEach(function(l) {
+            var g = l.lagNum + 1;
+            if ($("lgm" + g).closest(".card").dataset.dirty) return;
+            for (var p = 1; p <= S.n; p++)
+                $("lg" + g + "p" + p).checked = l.members.includes(p);
+            $("lgm" + g).value = l.type;
+            $("lgs" + g).textContent = l.type == "lacp" ? "LACP: " + t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "";
+            var hash = parseInt(l.hash, 16);
+            HASHF.forEach(function(f, i) {
+                $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)
+            });
+        });
+
         var tb = $("lacptbl").tBodies[0];
         tb.innerHTML = "";
-        c.lags.forEach(function(lg, i) {
-            var g = i + 1;
-            lacpCfg[g] = {cfg: lg.cfg};
-            lacpCfg[g].members = lg.members;
-            if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            $("lgm" + g).value = lacpCfg[g].cfg.length > 0. ? "lacp" : "static";
-            $("lgs" + g).textContent = lacpCfg[g].cfg.length > 0 ? "LACP: " + t("lacp_agg") + " " + (lg.aggValid ? lg.agg : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + lg.members.join(" ") : "";
-        });
-        if (c.on) c.ports.forEach(function(p) {
+        s.ports.forEach(function(p) {
             if (p.lag === 255) return;
             var tr = tb.insertRow();
             [p.p, p.lag + 1, p.a, p.pt, p.rs, parseInt(p.rx, 16), p.psys].forEach(function(v) {
                 tr.insertCell().textContent = v
-            });
-        });
-        return getJSON("/lag.json");
-    }).then(function(s) {
-        s.forEach(function(l) {
-            var g = l.lagNum + 1;
-            if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            var members = lacpCfg[g].cfg.concat(l.members);
-            for (var p = 1; p <= S.n; p++)
-                $("lg" + g + "p" + p).checked = members.includes(p);
-            var hash = parseInt(l.hash, 16);
-            HASHF.forEach(function(f, i) {
-                $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)
             });
         });
     });
@@ -4442,7 +4401,7 @@ function lagApply(g) {
         confirmModal(t("lag_clear_q", {
             n: g
         }), t("lag_clear_d"), function() {
-            postCmds(pre.concat(["lag " + g + " d"])).then(lagLoad).catch(function() {});
+            postCmds(pre.concat(["lag " + g + " d"])).then(lagLoad).catch(function() {console.error("ERROR LOADING LAG")});
         });
         return;
     }
