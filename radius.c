@@ -246,10 +246,12 @@ static void radius_receive(void) __reentrant
             }
             break;
         case RADIUS_ATTR_EAP_MESSAGE:
-            if (radius_eap_len + alen <= RADIUS_EAP_MAX) {
-                memcpy(radius_eap + radius_eap_len, a + 2, alen);
-                radius_eap_len += alen;
+            if (radius_eap_len + alen > RADIUS_EAP_MAX) {
+                radius_eap_len = 0;
+                return;
             }
+            memcpy(radius_eap + radius_eap_len, a + 2, alen);
+            radius_eap_len += alen;
             break;
         }
     }

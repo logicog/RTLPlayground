@@ -53,7 +53,7 @@ static const uint8_t *attr(const uint8_t *pkt, uint16_t len, uint8_t type)
 
 static struct md5_ctx ctx;
 static uint8_t digest[16];
-static uint8_t reply[600];
+static uint8_t reply[1500];
 static uint16_t reply_len;
 
 /* Access-Challenge/Accept/Reject as a server would build it; authenticators from the request on the wire. */
@@ -103,6 +103,8 @@ static void t_request(void)
 	CHECK(a && a[5] == 4, "NAS-Port is the physical port number");
 	a = attr(sent, sent_len, RADIUS_ATTR_NAS_PORT_TYPE);
 	CHECK(a && a[5] == RADIUS_NAS_PORT_TYPE_ETHERNET, "NAS-Port-Type Ethernet");
+	a = attr(sent, sent_len, RADIUS_ATTR_FRAMED_MTU);
+	CHECK(a && ((a[4] << 8) | a[5]) == RADIUS_EAP_MAX, "Framed-MTU is the EAP packet the client can hold");
 	a = attr(sent, sent_len, RADIUS_ATTR_CALLING_STATION_ID);
 	CHECK(a && a[1] == 19 && memcmp(a + 2, "c0-74-2b-fb-16-bc", 17) == 0, "Calling-Station-Id is the supplicant MAC");
 	a = attr(sent, sent_len, RADIUS_ATTR_EAP_MESSAGE);
@@ -142,6 +144,26 @@ static void t_challenge(void)
 	build_reply(RADIUS_CODE_ACCESS_ACCEPT, "testing123", 0, 0, (const uint8_t *)"\x03\x02\x00\x04", 4);
 	deliver(reply, reply_len);
 	CHECK(results == 2 && result_code == RADIUS_CODE_ACCESS_ACCEPT, "Access-Accept reaches the authenticator");
+}
+
+static void t_oversized_eap(void)
+{
+	uint8_t mac[6] = { 1, 2, 3, 4, 5, 6 };
+	uint8_t eap[] = { 2, 1, 0, 8, 1, 'b', 'o', 'b' };
+	static uint8_t big[RADIUS_EAP_MAX + 100];
+	int i;
+
+	setup();
+	for (i = 0; i < (int)sizeof(big); i++) big[i] = i;
+	big[0] = 1; big[1] = 2; big[2] = sizeof(big) >> 8; big[3] = sizeof(big) & 0xff;
+	radius_request(2, "bob", mac, eap, sizeof(eap), 0, 0);
+	poll();
+	build_reply(RADIUS_CODE_ACCESS_CHALLENGE, "testing123", 0, 0, big, sizeof(big));
+	deliver(reply, reply_len);
+	CHECK(results == 0 && radius_eap_len == 0, "an EAP-Message beyond the buffer is dropped whole, not relayed with holes");
+	build_reply(RADIUS_CODE_ACCESS_CHALLENGE, "testing123", 0, 0, big, RADIUS_EAP_MAX);
+	deliver(reply, reply_len);
+	CHECK(results == 1 && radius_eap_len == RADIUS_EAP_MAX, "one that just fits is taken whole");
 }
 
 static void t_rejected_replies(void)
@@ -231,6 +253,7 @@ int main(void)
 	printf("== radius.c tests ==\n");
 	t_request();
 	t_challenge();
+	t_oversized_eap();
 	t_rejected_replies();
 	t_timeout();
 	t_pap();
