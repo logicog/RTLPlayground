@@ -50,7 +50,9 @@ firmware sends the first 128 bytes of each such frame as a raw packet header
 record, with the input port, the sampling rate and the number of frames
 received on that port as the sample pool. One sample waits at a time and goes
 out with the next tick, so at most 200 per second are sent; samples arriving
-before that are counted as drops and reported in every flow sample.
+before that are counted as drops and reported in every flow sample. A counter
+sample that is due goes first, so sampled frames cannot hold the counters
+back.
 
 The rate is shared by all ports. Port mirroring has only one session, so the
 `mirror` command and flow sampling exclude each other: setting either one

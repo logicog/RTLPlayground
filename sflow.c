@@ -287,15 +287,13 @@ void sflow_callback(uint16_t lport) __banked __reentrant
 {
 	if (!sflow_state.conn || lport != sflow_state.conn->lport)
 		return;
-	if (sflow_hdr_len) {
+	if (ticks - sflow_state.last >= sflow_gap) {
+		sflow_state.last = ticks;
+		sflow_port = sflow_state.next;
+		if (++sflow_state.next > MACHINE_MAX_PORT)
+			sflow_state.next = MACHINE_MIN_PORT;
+		sflow_sample();
+	} else if (sflow_hdr_len) {
 		sflow_flow();
-		return;
 	}
-	if (ticks - sflow_state.last < sflow_gap)
-		return;
-	sflow_state.last = ticks;
-	sflow_port = sflow_state.next;
-	if (++sflow_state.next > MACHINE_MAX_PORT)
-		sflow_state.next = MACHINE_MIN_PORT;
-	sflow_sample();
 }
