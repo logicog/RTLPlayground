@@ -126,14 +126,14 @@ static void temp_to_html(void)
 
 void json_add_array_string_item(__code const char *item) {
     if (slen > 0 && outbuf[slen - 1] != '[')
-        slen += strtox(outbuf + slen, ",");
+		char_to_html(',');
 
     slen += strtox(outbuf + slen, item);
 }
 
 void json_add_array_uint_item(uint8_t x) {
 	 if (slen > 0 && outbuf[slen - 1] != '[')
-        slen += strtox(outbuf + slen, ",");
+        char_to_html(',');
 
     itoa_html(x);
 }
@@ -301,7 +301,8 @@ void send_basic_info(void)
 			send_sfp_info(1);
 		}
 	}
-	slen += strtox(outbuf + slen, "\"}");
+	char_to_html('"');
+	char_to_html('}');
 }
 
 void send_vlan(uint16_t vlan)
@@ -373,7 +374,8 @@ void send_vlan(uint16_t vlan)
 			json_add_array_uint_item(machine.log_to_phys_port[i]);
 		}
 	}
-	slen += strtox(outbuf + slen, "]}");
+	char_to_html(']');
+	char_to_html('}');
 }
 
 /* Send counters
@@ -605,6 +607,8 @@ void send_mirror(void)
 		m <<= 1;
 	}
 	slen += strtox(outbuf + slen, "]}");
+	char_to_html(']');
+	char_to_html('}');
 }
 
 
@@ -663,7 +667,10 @@ void send_lag(void)
 		slen += strtox(outbuf + slen, "," JSONQUOTE("hash") ":\"");
 		reg_read_m(RTL837X_TRK_HASH_CTRL_BASE + (l << 2));
 		sfr_data_to_html();
-		slen += strtox(outbuf + slen, "\"},");
+
+		char_to_html('"');
+		char_to_html('}');
+		char_to_html(',');
 	}
 	slen -=1; // remove comma
 	slen += strtox(outbuf + slen, "]," JSONQUOTE("ports") ":[");
@@ -687,7 +694,8 @@ void send_lag(void)
 		slen += strtox(outbuf + slen, "\"},");
 	}
 	slen -= 1; // remove comma
-	slen += strtox(outbuf + slen, "]}");
+	char_to_html(']');
+	char_to_html('}');
 }
 
 void send_lldp(void)
@@ -710,7 +718,7 @@ void send_lldp(void)
 
 		slen += strtox(outbuf + slen, "\"," JSONQUOTE("permitted") ":");
 		bool_to_html(1 & (lldp_logical_port_status >> i));
-		slen += strtox(outbuf + slen, "}");
+		char_to_html('}');
 
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
@@ -906,7 +914,8 @@ void send_mtu(void)
 		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
 		byte_to_html(mtu >> 8);
 		byte_to_html(mtu & 0xff);
-		slen += strtox(outbuf + slen, "\"}");
+		char_to_html('"');
+		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
 	}
@@ -928,7 +937,7 @@ void send_status(void)
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
 			json_char_to_html(port_names[i][j]);
 		}
-		slen += strtox(outbuf + slen, "\"");
+		char_to_html('"');
 
 		if (machine.is_sfp[i]) {
 			uint8_t sfp = machine.is_sfp[i] - 1;
@@ -1014,8 +1023,7 @@ void send_status(void)
 		uint8_t b = 0;
 		// Determine link state
 		reg_read_m(RTL837X_REG_LINKS_STS);
-		if(!((sfr_data[(i / 8) + 1] >> (i % 8 ) & 1)))
-		{
+		if(!((sfr_data[(i / 8) + 1] >> (i % 8 ) & 1))) {
 			slen += strtox(outbuf + slen, "DOWN");
 		}
 		else
@@ -1071,7 +1079,8 @@ void send_status(void)
 
 		slen += strtox(outbuf + slen, "\"," JSONQUOTE("macs") ":\"0x");
 		reg_to_html(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (i << 2));
-		slen += strtox(outbuf + slen, "\"}");
+		char_to_html('"');
+		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
 	}
@@ -1177,8 +1186,10 @@ void send_vlanlist(void)
 				json_char_to_html(vlan_names[n++]);
 		}
 
-		slen += strtox(outbuf + slen, "\"}");
+		char_to_html('"');
+		char_to_html('}');
 
 	}
-	slen += strtox(outbuf + slen, "]}");
+	char_to_html(']');
+	char_to_html('}');
 }
