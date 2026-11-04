@@ -65,8 +65,8 @@ the managed switch assumes the base name and the unmanaged has _UNMANAGED append
 | `machine/pcb/<MACHINE_PCB>.c` | the `struct machine machine` board definition |
 | `machine/pcb/<MACHINE_PCB>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
 | `machine/<MACHINE>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
-| `machine/<MACHINE_PCB>.c` | a symlink to the pcb/<PCBNAME>.c file |
-| `machine/<MACHINE_init>.c` | (optional), see "Optional custom init hook" section |
+| `machine/<MACHINE>.c` | a symlink to the `pcb/<MACHINE_PCB>.c` file |
+| `machine/<MACHINE>_init.c` | (optional), see "Optional custom init hook" section |
 | `doc/devices/<PCB_DOC_NAME>.md` and `doc/supported_devices.md` | user-facing documentation |
 | `doc/devices/photos/<PCB_DOC_NAME>/` | Directory for holding photos of the devices |
 
@@ -192,21 +192,21 @@ array of size 0.
 
 ### Reusing an existing definition
 
-If the new board is electrically identical to one that already exists — same
+If the new PCB board is electrically identical to one that already exists — same
 port mapping, same SFP wiring, same LEDs — do not copy the file. Make the new
-`.c` a symlink and keep only a distinct `.h`, so the two boards cannot drift
+`.c` a symlink, so the two boards cannot drift
 apart:
 
 ```
-ln -s KP_9000_6XHML_X2.c machine/pcb/MY_BOARD_1_0.c
+ln -s EXISTING_PCB.c machine/pcb/MY_PCB_BOARD_1_0.c
 ```
-
-The new board still needs `machine/MY_BOARD_1_0.h` (pick the version number on
-the PCB) with its own `MACHINE_MODEL` and `MACHINE_CHIPSET`: `MACHINE_MODEL` is
+Then `ln -s pcb/MY_PCB_BOARD_1_0.c machine/MY_BOARD_1_0.c`.
+The new board still needs `machine/MY_BOARD_1_0.h`
+with its own `MACHINE_MODEL` and `MACHINE_CHIPSET`: `MACHINE_MODEL` is
 what distinguishes the products, and `MACHINE_CHIPSET` must match the SoC of
 the board definition being reused.
-Existing examples: `machine/pcb/PCB_K0402WS_V3.c`, `machine/KP_9000_9XHML_X_V3_2.c`
-and the six `KP_9000_*` revision variants.
+Existing examples: `machine/pcb/PCB_K0402WS_V3_0.c`, `machine/HISOURCE_HI_K0402WS_PCB_K0402W_V3_0.c`
+and the six `KEEPLINK_KP_9000_*` revision variants.
 
 Two files that differ only in whitespace or comments are duplicates and should
 be collapsed this way.
@@ -214,11 +214,11 @@ be collapsed this way.
 ### Optional custom init hook
 
 If the board needs custom initialization, add
-`machine/pcb/<PCBNAME>_init.c` defining `machine_custom_init()`. The Makefile picks the
+`machine/pcb/<MACHINE_PCB>_init.c` defining `machine_custom_init()`. The Makefile picks the
 file up by name and compiles it.
 
 Boards that need the same hook share one file: keep the code in a single
-`machine/pcb/<PCBNAME>_init.c` whose `machine/pcb/<PCBNAME>.c` is a real file (not a symlink),
+`machine/pcb/<MACHINE_PCB>_init.c`,
 and make the other boards' `_init.c` symlinks to it, for example:
 
 ```
@@ -257,22 +257,22 @@ tools for that.
 Once the board has been tested on hardware:
 
 1. Add a row to the table in [Supported devices](supported_devices.md).
-2. Add `doc/devices/<MACHINENAME>.md` describing the board, the build target
+2. Add `doc/devices/<PCB_DOC_NAME>.md` describing the board, the build target
    (`make MACHINE=MY_BOARD_1_0`), what works and what is unverified, plus
    photos and the PCB silkscreen marking.
    The photos should consist of: the front and reverse of the PCB and should be
    as straight as possible and croppped to show just the PCB; front of the device.
    The rear of the device is only necessary if it has a switch or power-port, other
    photos such as the label are not required.
-   The file sizes should be a maximum of 1MB, jpeg format and no larger resolution 
-   than approximately 1800 x 1800. If there is a specific detail that needs to be visible
+   The file sizes should be a maximum of 4MB, jpeg format.
+   If there is a specific detail that needs to be visible
    it is acceptable to include another photo zoomed into the detail.
    If the device has an internal power supply, it is critical that a warning is
    added to the documentation regarding the danger such as:
-   ```
-   [!CAUTION]
-   This device contains a mains voltage power supply, which is a potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely.
-   ```
+
+> [!CAUTION]
+> This device contains a mains voltage power supply, which is a potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely.
+
 
 3. If the board shares a PCB with other revisions, follow
    `doc/devices/KP-9000-6XH-X2.md` and document which `MACHINE` to pick for
