@@ -88,7 +88,6 @@ class Handler(SimpleHTTPRequestHandler):
             "/l2.json": lambda: self._api_l2(query),
             "/lacp.json": self._api_lacp,
             "/lag.json": self._api_lag,
-            "/lldp.json": self._api_lldp,
             "/mirror.json": self._api_mirror,
             "/mtu.json": self._api_mtu,
             "/status.json": self._api_status,
@@ -521,14 +520,48 @@ class Handler(SimpleHTTPRequestHandler):
         }
 
     def _api_lag(self):
-        return [
-            {
-                "lagNum": i,
-                "members": f"{(0x30 << (i * 2)) & 0x1f8:016b}",
-                "hash": "0x7e",
+
+        return {
+            "lags":[
+                {"lagNum":0,"type":"static","members":[],"hash":"3f"},
+                {"lagNum":1,"type":"lacp","members":[6],"configured_members":[5,6],"valid":1,"aggregator":"ce654f01cb99","hash":"7e"},
+                {"lagNum":2,"type":"static","members":[],"hash":"3f"},
+                {"lagNum":3,"type":"static","members":[],"hash":"3f"}
+            ],
+            "ports":[
+                {"p":1,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":2,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":3,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":4,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":5,"lag":1,"a":"07","pt":"40","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":6,"lag":1,"a":"3f","pt":"3f","rs":4,"rx":"000d","psys":"ce654f01cb99"},
+                {"p":7,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":8,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"},
+                {"p":9,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"}]
             }
-            for i in range(4)
-        ]
+
+        return {
+            "lags": [
+                {
+                    "lagNum": i,
+                    "members": f"{(0x30 << (i * 2)) & 0x1f8:016b}",
+                    "hash": "0x7e",
+                }
+                for i in range(4)
+            ],
+            "ports": [
+                {
+                    "p":i,
+                    "lag":255,
+                    "a":"00",
+                    "pt":"00",
+                    "rs":0,
+                    "rx":"0000",
+                    "psys":"000000000000"
+                } for i in range(1, PORTS + 1)
+            ]
+        }
+        
 
     def _api_mtu(self):
         return [
