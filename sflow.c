@@ -254,7 +254,7 @@ void sflow_start(void) __banked
 	sflow_state.enabled = true;
 	if (sflow_state.conn)
 		return;
-	if (!(sflow_state.collector[0] | sflow_state.collector[1] | sflow_state.collector[2] | sflow_state.collector[3]))
+	if (!sflow_state.collector[0])
 		return;
 	uip_ipaddr(sflow_ip, sflow_state.collector[0], sflow_state.collector[1],
 		   sflow_state.collector[2], sflow_state.collector[3]);

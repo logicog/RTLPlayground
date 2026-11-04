@@ -20,7 +20,7 @@ extern __xdata uint16_t atoi_results_short;
 void sflow_parse(void) __banked __reentrant
 {
 	if (cmd_words_len < 2) {
-		print_string(sflow_state.enabled ? "sFlow on, collector " : "sFlow off, collector ");
+		print_string(sflow_state.conn ? "sFlow on, collector " : sflow_state.enabled ? "sFlow waiting, collector " : "sFlow off, collector ");
 		print_ip(sflow_state.collector);
 		write_char(':');
 		itoa_short(sflow_state.port);
@@ -37,7 +37,7 @@ void sflow_parse(void) __banked __reentrant
 	}
 	if (cmd_compare(1, "on")) {
 		sflow_start();
-		if (!sflow_state.conn)
+		if (!sflow_state.collector[0])
 			print_string("sFlow: set a collector to start sending\n");
 		return;
 	}

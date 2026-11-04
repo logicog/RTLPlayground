@@ -12,7 +12,8 @@ sflow sampling <0|100-65535>  # sample 1 in N received frames, default 0 (off)
 sflow on                      # start sending
 sflow off
 sflow                         # show the settings, the datagrams sent and the
-                              # samples dropped
+                              # samples dropped; "waiting" means on without a
+                              # collector or without a free UDP connection
 ```
 
 The same settings are on the sFlow page of the web interface, which also shows

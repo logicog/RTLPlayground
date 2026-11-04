@@ -26,7 +26,7 @@ var LANG = {
         sf_int: "Counter interval [s]",
         sf_sending: "Sending",
         sf_sent: "Datagrams sent",
-        sf_wait: "waiting for a collector address",
+        sf_wait: "on, but no collector or no free UDP connection",
         sf_ip_err: "Enter the IPv4 address of the collector",
         sf_note: "Each datagram carries the counters of one port, and the ports take turns within the interval. Settings apply immediately; use Save to flash to keep them.",
         hdr_dirty: "unsaved changes",
@@ -5121,11 +5121,11 @@ function sfLoad() {
         method: "POST",
         body: "sflow"
     }).then(function(r) {
-        var m = (r.body || "").match(/sFlow (on|off), collector ([\d.]+):(\d+), interval (\d+) s, datagrams (\S+), sampling (\d+), drops (\S+)/);
+        var m = (r.body || "").match(/sFlow (on|off|waiting), collector ([\d.]+):(\d+), interval (\d+) s, datagrams (\S+), sampling (\d+), drops (\S+)/);
         if (!m) return;
-        var on = m[1] === "on",
+        var on = m[1] !== "off",
             conf = m[2] !== "0.0.0.0";
-        $("sfstate").innerHTML = on ? (conf ? badge(t("c_yes"), "ok") : badge(t("sf_wait"))) : badge(t("c_no"));
+        $("sfstate").innerHTML = m[1] === "on" ? badge(t("c_yes"), "ok") : on ? badge(t("sf_wait")) : badge(t("c_no"));
         $("sfsent").textContent = parseInt(m[5], 16);
         $("sfdrops").textContent = parseInt(m[7], 16);
         if (sfDirty) return;
