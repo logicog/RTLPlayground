@@ -2764,9 +2764,6 @@ function updateStrip() {
         el.classList.toggle("up", !!up);
         if (up) el.style.setProperty("--pc", "var(" + "--s" + p.link.replace(/\-[HF]D$/,"").replace("2.5G","2G5").toLowerCase() + ")");
         lb.textContent = !p.enabled ? t("c_off") : (p.link != "DOWN" ? p.link : t("c_down"));
-        el.title = portRows(p).map(function(r) {
-            return r[0] + ": " + r[1]
-        }).join("\n");
     });
     if (S.tip != null) portTip(S.tip);
     if (S.detail != null) {
