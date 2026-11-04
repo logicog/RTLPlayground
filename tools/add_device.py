@@ -10,6 +10,9 @@ directory for you.
 Usage: add_device.py [--pcb <PCB_IDENTIFIER>] [--vendor <VENDOR>] [--model <MODEL>]
                      [--chipset RTL8372|RTL8373] [--dry-run] [--yes]
 
+add_device.py [--selftest|-T] runs the embedded unittest suite for the
+pcb identifier / vendor / model naming conversions (also: -v for verbose).
+
 pcb/vendor/model and chipset are prompted for when not given as arguments.
 Unless -y/--yes is given, the user is asked to confirm before anything is
 written to disk; unless -y or -g/--git-add is given, that confirmation
@@ -25,6 +28,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unittest
 
 DOC_DEVICES = 'doc/devices'
 DOC_PHOTOS = os.path.join(DOC_DEVICES, 'photos')
@@ -67,6 +71,68 @@ def to_machine_pcb(name):
 def machine_name(vendor, model):
     """<MACHINE> = <MACHINE_MODEL> in capitals with punctuation -> '_'."""
     return to_machine_pcb(('%s %s' % (vendor, model)).upper())
+
+
+class TestConversions(unittest.TestCase):
+    """Self-test for the pcb identifier, vendor and model naming rules.
+
+    Run with:  python3 add_device.py --selftest   (also: -T)
+    or via the unittest discovery mechanism:  python3 -m unittest add_device
+    """
+
+    def test_to_pcb_doc_name_spaces_become_underscores(self):
+        self.assertEqual(to_pcb_doc_name('S1100W-88T-1SX_SE V1.05'),
+                         'S1100W-88T-1SX_SE_V1.05')
+
+    def test_to_pcb_doc_name_two_spaces(self):
+        self.assertEqual(to_pcb_doc_name('a b c'), 'a_b_c')
+
+    def test_to_pcb_doc_name_no_spaces(self):
+        self.assertEqual(to_pcb_doc_name('GT-ST018M'), 'GT-ST018M')
+
+    def test_to_machine_pcb(self):
+        self.assertEqual(to_machine_pcb('S1100W-88T-1SX_SE_V1.05'),
+                         'S1100W_88T_1SX_SE_V1_05')
+
+    def test_to_machine_pcb_only_letters_digits_and_underscores_kept(self):
+        self.assertEqual(to_machine_pcb('aAzZ09_._-'), 'aAzZ09____')
+
+    def test_to_machine_pcb_chain_of_both(self):
+        pcb_id = 'S1100W-88T-1SX_SE V1.05'
+        self.assertEqual(to_machine_pcb(to_pcb_doc_name(pcb_id)),
+                         'S1100W_88T_1SX_SE_V1_05')
+
+    def test_machine_name(self):
+        self.assertEqual(machine_name('Goodtop', 'GT-ST018M'),
+                         'GOODTOP_GT_ST018M')
+
+    def test_machine_name_spaces_in_vendor_or_model(self):
+        self.assertEqual(machine_name('Steamemo', 'IG204 V1'),
+                         'STEAMEMO_IG204_V1')
+
+    def test_machine_name_lowercase(self):
+        self.assertEqual(machine_name('vendor', 'model-1'), 'VENDOR_MODEL_1')
+
+    def test_normalize_ws(self):
+        self.assertEqual(normalize_ws('S1100W  88T-1SX_SE\tV1.05'),
+                         'S1100W 88T-1SX_SE V1.05')
+
+    def test_normalize_ws_strips(self):
+        self.assertEqual(normalize_ws('  foo  '), 'foo')
+
+    def test_normalize_chipset(self):
+        for value, expected in (
+                ('2', 'RTL8372'), ('3', 'RTL8373'),
+                ('2N', 'RTL8372'), ('3N', 'RTL8373'),
+                ('8373', 'RTL8373'), ('8 372', 'RTL8372'),
+                ('RTL8372', 'RTL8372'), ('rtl8373', 'RTL8373'),
+                ('RTL 8372', 'RTL8372')):
+            self.assertEqual(normalize_chipset(value), expected, value)
+
+    def test_normalize_chipset_invalid_returns_none(self):
+        for value in ('', None, '1', '4', '8374', '8372N1', 'RTL8372X',
+                      'abc', 'rtl 3n'):
+            self.assertIsNone(normalize_chipset(value), repr(value))
 
 
 def ask(prompt):
@@ -609,5 +675,14 @@ def run(pcb_id, vendor, model, chipset):
            photo_dir=photo_dir)
 
 
+SELFTEST_FLAGS = ('-T', '--selftest')
+
+
 if __name__ == '__main__':
-    main()
+    if any(arg in SELFTEST_FLAGS for arg in sys.argv[1:]):
+        # Embedded unittest suite: run it and exit instead of main().
+        # Remaining arguments are passed to unittest (e.g. -v).
+        unittest.main(argv=[arg for arg in sys.argv
+                            if arg not in SELFTEST_FLAGS])
+    else:
+        main()
