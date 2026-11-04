@@ -2141,7 +2141,7 @@ void cmd_parser(void) __banked
 				if (cmd_words_len >= 4 && atoi_short(cmd_words_b[3]))
 					port = atoi_results_short;
 				radius_server(ip, port);
-			} else if (cmd_compare(1, "secret") && cmd_words_len >= 3) {
+			} else if (cmd_compare(1, "secret") && cmd_words_len == 3) {
 				uint8_t i = 0;
 				while (i < RADIUS_SECRET_MAX && cmd_buffer[cmd_words_b[2] + i] > ' ') {
 					radius_cfg.secret[i] = cmd_buffer[cmd_words_b[2] + i];
