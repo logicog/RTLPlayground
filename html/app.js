@@ -154,6 +154,7 @@ var LANG = {
         x_secret_p: "shared secret",
         x_secret_set: "secret set",
         x_secret_none: "no secret",
+        x_secret_err: "The shared secret cannot contain spaces",
         x_supplicant: "Supplicant",
         x_mab: "MAC bypass",
         x_counts: "OK / fail",
@@ -4640,6 +4641,10 @@ $("x_server_apply").addEventListener("click", function() {
         port = $("x_sport").value || 1812,
         sec = $("x_secret").value;
     var cmds = [];
+    if (/\s/.test(sec)) {
+        toast(t("x_secret_err"), "err");
+        return;
+    }
     if (ip) cmds.push("dot1x server " + ip + " " + port);
     if (sec) cmds.push("dot1x secret " + sec);
     if (!cmds.length) return;
