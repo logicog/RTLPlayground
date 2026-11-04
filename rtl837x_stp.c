@@ -1048,7 +1048,7 @@ void stp_cnf_send(uint8_t port) __reentrant
 	STP_O->src_addr[5] = (uip_ethaddr.addr[5] & 0xf0) | port;
 	stp_vcopy((__xdata struct stp_vec *)&STP_O->root, (__xdata struct stp_vec *)&stp_rv[0].root, 8);
 	stp_vcopy((__xdata struct stp_vec *)&STP_O->root_path_cost, (__xdata struct stp_vec *)stp_rv[0].ext, 4);
-	if (SEND_RSTP(port)) {
+	if (SEND_RSTP(port) || stp_rstp == STP_VER_MSTP) {
 		stp_vcopy((__xdata struct stp_vec *)&STP_O->bridge, (__xdata struct stp_vec *)&stp_rv[0].rroot, 8);
 	} else {
 		STP_O->bridge.prio = stp_bprio[0];

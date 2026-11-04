@@ -3494,6 +3494,26 @@ static void scen_one_flush_per_change(void)
 	check(flush_count[8] == 1, "and flushes its addresses once");
 }
 
+static void scen_legacy_sees_regional_root(void)
+{
+	struct sim_bpdu old = { .port = 5, .root_prio = 0x40, .root_cost = 200000, .br_prio = 0x90, .port_id = 4, .legacy = 1 };
+
+	printf("105. a Config BPDU from an MSTP bridge names the regional root as its bridge\n");
+	mstp_setup();
+	msti_root_on_9(40);
+	check(!memcmp(stp_rv[0].rroot.mac, ROOT_MAC, 6), "the neighbour on port 9 is the regional root");
+	stp_pflags[5] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 3) | (1 << 5) | (1 << 8));
+	secs(2);
+	memcpy(old.root_mac, ROOT_MAC, 6);
+	memcpy(old.br_mac, PEER_MAC, 6);
+	bpdu_in(&old);
+	msti_root_on_9(3);
+	check(last_tx[5].version == 0 && last_tx[5].bpdu_type == 0, "port 6 answers an 802.1D neighbour with Config BPDUs");
+	check(!memcmp(last_tx[5].bridge.mac, ROOT_MAC, 6) && last_tx[5].bridge.prio == 0x40,
+		"whose bridge identifier is the regional root, as in the RST BPDUs of the region");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3592,6 +3612,7 @@ int main(int argc, char **argv)
 	scen_msti_vlan_writes();
 	scen_msti_tc_count();
 	scen_region_name_cli();
+	scen_legacy_sees_regional_root();
 	scen_one_flush_per_change();
 	scen_msti_tc_from_discarding();
 	if (failures) {
