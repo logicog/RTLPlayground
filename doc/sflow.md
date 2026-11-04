@@ -8,7 +8,7 @@ so that the collector can tell what the traffic is made of.
 ```
 sflow collector <ip> [port]   # where to send, default port 6343
 sflow interval <1-3600>       # seconds between two samples of one port, default 20
-sflow sampling <0-65535>      # sample 1 in N received frames, default 0 (off)
+sflow sampling <0|100-65535>  # sample 1 in N received frames, default 0 (off)
 sflow on                      # start sending
 sflow off
 sflow                         # show the settings, the datagrams sent and the
@@ -53,6 +53,14 @@ out with the next tick, so at most 200 per second are sent; samples arriving
 before that are counted as drops and reported in every flow sample. A counter
 sample that is due goes first, so sampled frames cannot hold the counters
 back.
+
+The lowest rate is 1 in 100. Every copy takes a slot of the receive ring
+the CPU shares with all frames addressed or trapped to it, and the firmware
+drains a few frames per pass of its main loop. With a lower rate one busy
+port would fill the ring with copies, management traffic and the protocol
+frames of STP and LACP would be lost with them, and a saved configuration
+would do so again at every boot. The limit does not make line rate on a port
+with small frames safe either; pick the rate for the traffic you expect.
 
 The rate is shared by all ports. Port mirroring has only one session, so the
 `mirror` command and flow sampling exclude each other: while sampling is on,

@@ -61,7 +61,8 @@ void sflow_parse(void) __banked __reentrant
 		sflow_interval(atoi_results_short);
 		return;
 	}
-	if (cmd_compare(1, "sampling") && cmd_words_len >= 3 && atoi_short(cmd_words_b[2])) {
+	if (cmd_compare(1, "sampling") && cmd_words_len >= 3 && atoi_short(cmd_words_b[2])
+	    && (!atoi_results_short || atoi_results_short >= SFLOW_RATE_MIN)) {
 		if (sflow_rate(atoi_results_short))
 			return;
 		err_status = ERR_INVALID_ARGUMENT;
@@ -70,5 +71,5 @@ void sflow_parse(void) __banked __reentrant
 	}
 err:
 	err_status = ERR_INVALID_ARGUMENT;
-	print_string("Error: sflow [on|off|collector <ip> [port]|interval <1-3600>|sampling <0-65535>]\n");
+	print_string("Error: sflow [on|off|collector <ip> [port]|interval <1-3600>|sampling <0|100-65535>]\n");
 }

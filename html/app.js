@@ -18,7 +18,8 @@ var LANG = {
         nav_sflow: "sFlow",
         sf_title: "sFlow",
         sf_h: "counter and flow samples, version 5",
-        sf_rate: "Sampling 1 in N frames, 0 off",
+        sf_rate: "Sampling 1 in N frames, 100 or more, 0 off",
+        sf_rate_err: "The sampling rate is 0 or 100 to 65535",
         sf_drops: "Samples dropped",
         sf_ip: "Collector address",
         sf_port: "Collector port",
@@ -5151,6 +5152,10 @@ $("sfapply").addEventListener("click", function() {
             return Number(x) > 255
         })) {
         toast(t("sf_ip_err"), "err");
+        return;
+    }
+    if (rate && (Number(rate) < 100 || Number(rate) > 65535)) {
+        toast(t("sf_rate_err"), "err");
         return;
     }
     var cmds = ["sflow collector " + ip + (port ? " " + port : "")];

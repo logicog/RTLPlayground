@@ -7,6 +7,7 @@
 #define SFLOW_PORT_DEFAULT	6343
 #define SFLOW_INTERVAL_DEFAULT	20
 #define SFLOW_HDR_MAX		128
+#define SFLOW_RATE_MIN		100
 #define SFLOW_PMASK		(((uint16_t)2 << MACHINE_MAX_PORT) - ((uint16_t)1 << MACHINE_MIN_PORT))
 
 struct uip_udp_conn;
