@@ -94,6 +94,7 @@ run: $(TESTS)
 		echo; \
 	done; \
 	if [ $$fail -ne 0 ]; then echo "TESTS FAILED"; exit 1; else echo "ALL TESTS PASSED"; fi
+	CC="$(CC)" python3 test_lacp_cli.py
 
 clean:
 	rm -rf $(BUILDDIR)
