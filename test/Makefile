@@ -44,6 +44,12 @@ TABLE_ENV = support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c \
 
 all: run
 
+# The MAC-table loader regression runs html/app.js under Node.js.
+run: l2-load
+.PHONY: l2-load
+l2-load:
+	node test_l2_load.cjs
+
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
 
