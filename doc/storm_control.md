@@ -41,11 +41,15 @@ interframe gap. Every meter has a bit that adds them, in `0x5f08 + 4 * (meter
 / 32)`, which storm control leaves cleared. `IGBW_INC_IFG` and `EGBW_INC_IFG`
 are the matching bits of the bandwidth control.
 
-An ingress bandwidth limit on the same port works on the same arriving frames
-as the storm limit rather than after it, and the two together pass far less
-than either one: a 1 Mbit/s `umcast` limit with a 10 Mbit/s ingress limit let
-0.12 to 0.16 Mbit/s of a 1.4 Gbit/s stream through, where each alone passed
-1.17 and 10.2 Mbit/s.
+An ingress bandwidth limit on the same port meters the same arriving frames
+as the storm limit, side by side rather than one after the other. With the
+ingress limit set to drop, a frame has to get past both, so their pass rates
+multiply: against a 1.7 Gbit/s stream of unknown multicast, a 1 Mbit/s
+`umcast` limit and a 10 Mbit/s ingress limit together let 11 frames through
+in 10 seconds, while each alone passed 1.0 and 10.0 Mbit/s. With the ingress
+limit in flow control mode the switch instead sends PAUSE frames, the sender
+slows down to the ingress limit, and the storm limit then passes its 1 Mbit/s
+as usual.
 
 The type is 0 for broadcast, 1 for multicast, 2 for unknown unicast and 3 for
 unknown multicast. The burst size of a meter (0x5df0 + 4 * meter) counts packets
