@@ -194,13 +194,13 @@ array of size 0.
 
 If the new PCB board is electrically identical to one that already exists — same
 port mapping, same SFP wiring, same LEDs — do not copy the file. Make the new
-`.c` a symlink and keep only a distinct `.h`, so the two boards cannot drift
+`.c` a symlink, so the two boards cannot drift
 apart:
 
 ```
-ln -s EXISTING_PCB.c machine/pcb/MY_BOARD_1_0.c
+ln -s EXISTING_PCB.c machine/pcb/MY_PCB_BOARD_1_0.c
 ```
-
+Then `ln -s pcb/MY_PCB_BOARD_1_0.c machine/MY_BOARD_1_0.c`.
 The new board still needs `machine/MY_BOARD_1_0.h`
 with its own `MACHINE_MODEL` and `MACHINE_CHIPSET`: `MACHINE_MODEL` is
 what distinguishes the products, and `MACHINE_CHIPSET` must match the SoC of
@@ -264,7 +264,7 @@ Once the board has been tested on hardware:
    as straight as possible and croppped to show just the PCB; front of the device.
    The rear of the device is only necessary if it has a switch or power-port, other
    photos such as the label are not required.
-   The file sizes should be a maximum of 4MB, jpeg format. 
+   The file sizes should be a maximum of 4MB, jpeg format.
    If there is a specific detail that needs to be visible
    it is acceptable to include another photo zoomed into the detail.
    If the device has an internal power supply, it is critical that a warning is
