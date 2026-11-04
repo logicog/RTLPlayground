@@ -12,6 +12,7 @@ extern __xdata char     mstp_region[MSTP_NAME_LEN + 1];
 extern __xdata uint16_t mstp_revision;
 extern __xdata uint8_t  mstp_digest[16];
 extern __xdata uint8_t  mstp_dg_step;	/* next block of the digest computation, MSTP_DG_DONE when current */
+extern __xdata uint8_t  mstp_dg_done;
 extern __xdata uint16_t mstp_lo;	/* arguments of mstp_vids_set() and mstp_msti_clear() */
 extern __xdata uint16_t mstp_hi;
 extern __xdata uint8_t  mstp_msti;

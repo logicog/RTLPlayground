@@ -15,6 +15,7 @@ __xdata char     mstp_region[MSTP_NAME_LEN + 1];
 __xdata uint16_t mstp_revision;
 __xdata uint8_t  mstp_digest[16];
 __xdata uint8_t  mstp_dg_step;
+__xdata uint8_t  mstp_dg_done;
 __xdata uint16_t mstp_lo;
 __xdata uint16_t mstp_hi;
 __xdata uint8_t  mstp_msti;
@@ -71,11 +72,11 @@ static uint8_t mstp_get(uint16_t vid) __reentrant
 }
 
 
-static void mstp_put(uint16_t vid, uint8_t msti) __reentrant
+static uint8_t mstp_put(uint16_t vid, uint8_t msti) __reentrant
 {
 	md5_s = mstp_get(vid);
 	if (md5_s == msti)
-		return;
+		return 0;
 	if (md5_s && !--mstp_count[md5_s])
 		mstp_used &= ~((uint16_t)1 << md5_s);
 	if (msti && !mstp_count[msti]++)
@@ -88,6 +89,7 @@ static void mstp_put(uint16_t vid, uint8_t msti) __reentrant
 		mstp_chg_lo = vid;
 	if (vid > mstp_chg_hi)
 		mstp_chg_hi = vid;
+	return 1;
 }
 
 
@@ -106,6 +108,7 @@ void mstp_defaults(void) __banked
 	for (md5_i = 0; md5_i < 16; md5_i++)
 		mstp_count[md5_i] = 0;
 	mstp_used = 0;
+	mstp_dg_done = 0;
 	mstp_region[0] = 0;
 	mstp_revision = 0;
 	for (md5_i = 0; md5_i < 16; md5_i++)
@@ -114,9 +117,6 @@ void mstp_defaults(void) __banked
 }
 
 
-/* Finish the digest before it goes into a BPDU or decides a region match.
- * 132 blocks at once; the incremental steps only pick up the leftovers of a
- * table change made while STP was off. */
 void mstp_digest_now(void) __banked
 {
 	while (mstp_dg_step < MSTP_DG_DONE)
@@ -126,18 +126,22 @@ void mstp_digest_now(void) __banked
 
 void mstp_vids_set(void) __banked
 {
+	md5_g = 0;
 	for (mstp_v = mstp_lo; mstp_v <= mstp_hi; mstp_v++)
-		mstp_put(mstp_v, mstp_msti);
-	mstp_dg_step = 0;
+		md5_g |= mstp_put(mstp_v, mstp_msti);
+	if (md5_g)
+		mstp_dg_step = 0;
 }
 
 
 void mstp_msti_clear(void) __banked
 {
+	md5_g = 0;
 	for (mstp_v = 1; mstp_v <= MSTP_VID_MAX; mstp_v++)
 		if (mstp_get(mstp_v) == mstp_msti)
-			mstp_put(mstp_v, 0);
-	mstp_dg_step = 0;
+			md5_g |= mstp_put(mstp_v, 0);
+	if (md5_g)
+		mstp_dg_step = 0;
 }
 
 
@@ -210,8 +214,12 @@ void mstp_digest_step(void) __banked
 		for (md5_i = 0; md5_i < 16; md5_i++)
 			mstp_inner[md5_i] = ((__xdata uint8_t *)mstp_md)[md5_i];
 	} else if (mstp_dg_step == 131) {
-		for (md5_i = 0; md5_i < 16; md5_i++)
+		mstp_dg_done = 1;
+		for (md5_i = 0; md5_i < 16; md5_i++) {
+			if (mstp_digest[md5_i] != ((__xdata uint8_t *)mstp_md)[md5_i])
+				mstp_dg_done = 2;
 			mstp_digest[md5_i] = ((__xdata uint8_t *)mstp_md)[md5_i];
+		}
 	}
 	mstp_dg_step++;
 }
