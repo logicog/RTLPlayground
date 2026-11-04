@@ -634,9 +634,9 @@ void send_lag(void)
 
 		slen += strtox(outbuf + slen, "," JSONQUOTE("members") ":[");
 		if(isLACP) {
-			/* Lagg Members -- active */
+			/* LACP configured members */
 			for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-				if((lacp_members_last[l] >> i) & 1) {
+				if((lacp_lag_ports[l] >> i) & 1) {
 					json_add_array_uint_item(machine.log_to_phys_port[i]);
 				}
 			}
@@ -652,9 +652,10 @@ void send_lag(void)
 		}
 		char_to_html(']');
 		if(isLACP) {
-			slen += strtox(outbuf + slen, "," JSONQUOTE("configured_members") ":[");
+			slen += strtox(outbuf + slen, "," JSONQUOTE("active_members") ":[");
+			/* LACP Active Members */
 			for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-				if((lacp_lag_ports[l] >> i) & 1) {
+				if((lacp_members_last[l] >> i) & 1) {
 					json_add_array_uint_item(machine.log_to_phys_port[i]);
 				}
 			}
