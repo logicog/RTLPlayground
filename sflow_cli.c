@@ -11,12 +11,6 @@
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __xdata uint8_t cmd_words_len;
-extern __xdata uint8_t cmd_words_b[15];
-extern __xdata uint8_t ip[4];
-extern __xdata uint16_t atoi_results_short;
-
-
 void sflow_parse(void) __banked __reentrant
 {
 	if (cmd_words_len < 2) {

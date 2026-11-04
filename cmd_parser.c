@@ -88,7 +88,6 @@ __xdata uint8_t  syslog_port_was_on;
 // `N_WORDS`: The total number of command arguments that can be tracked.
 // `cmd_words_len` stores the number of arguments found inside `cmd_buffer`
 // `cmd_words_b` stores the index into `cmd_buffer`, check `cmd_words_len` is index is valid.
-#define N_WORDS 15
 __xdata uint8_t cmd_words_len;
 __xdata uint8_t cmd_words_b[N_WORDS];
 
