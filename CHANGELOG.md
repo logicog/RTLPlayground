@@ -20,6 +20,17 @@
   - Replace the multi-page UI with a themed single-page app: light, dark and Selenized themes following the browser by default,
     English, Japanese and Chinese, save to flash merges the command log into the startup config and verifies the write,
     firmware images are checked in the browser before upload. #429
+  - Ports page: flow control and EEE sit next to the other port settings, each as a switch with its
+    state (TX/RX, Active, Inactive or Off); ⓘ buttons show what the port and its link partner
+    advertise, and the link speed is shown in the colour of the port strip. One Apply button sends
+    the changed ports, listing the commands first, and leaving with unapplied changes asks first.
+    Devices learned moved to the Statistics page. The separate EEE page is gone.
+    EEE details include 5G and 10G abilities for external copper PHYs; SFP ports remain n/a.
+- Commands
+  - `port <port> fc on|off` advertises 802.3x pause on a copper port, or not.
+    The choice survives later speed and duplex changes.
+  - `port <port> fc` and `eee on|off` leave the link up when the port already has that setting.
+    `eee on <port> 100m` now also stops advertising 2.5G and 5G EEE.
 
 ## Changed
 
@@ -27,6 +38,10 @@
   - The web session expires after one hour without a request (was 200 seconds). The UI stops
     polling while its tab is hidden, so with 200 seconds switching tabs for a few minutes logged
     you out. `session <seconds>` still sets it.
+- HTTP
+  - `/status.json` carries the flow control (`fc`) and EEE (`eee`) state of every port; `/eee.json` is gone.
+  - The chip port of each front-panel port moved from `logPort` in every `/status.json` entry to one
+    `logPort` array in `/information.json`.
 
 ## Fixed
 
@@ -46,6 +61,10 @@
 - Health
   - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which
     corrupted the `link` slow counter and the DHCP client state. #658
+- PHY
+  - Setting a port's duplex on an autonegotiated link now changes only the duplex bits of the
+    advertisement. It used to clear the rest of the register, selector field and pause included.
+  - Report EEE activity on logical port 8 in both the web UI and `eee status`.
 - Config
   - A startup configuration line longer than the command buffer no longer stops the replay:
     the offending line is skipped and the following lines are still applied.
@@ -69,6 +88,9 @@
   - Many commands don't accept the CPU_PORT anymore. See #334.
     When the CPU_PORT is needed, the command/service will add the CPU_PORT automaticly.
     Only `isolate` accept the CPU_PORT as destination port.
+- HTTP
+  - Scripts reading `/eee.json` or `logPort` from `/status.json` need `eee` from `/status.json`
+    and the `logPort` array of `/information.json` instead.
 
 ## [v0.1_aplha] - 2025-11-03
 
