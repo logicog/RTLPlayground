@@ -37,7 +37,6 @@ __xdata struct eapol_port eapol_ports[DOT1X_PORTS];
 static __xdata uint8_t eapol_pending_port;
 static __xdata uint8_t eapol_pending_type;
 static __xdata uint8_t eapol_small[EAP_HEADER_LENGTH + 1];
-static __xdata uint16_t eapol_links_last;
 static __code const char * __code const eapol_state_names[5] = { "idle", "connecting", "authenticating", "authenticated", "held" };
 
 static void eapol_send(uint8_t port, uint8_t type, __xdata const uint8_t *body, uint16_t len) __reentrant
@@ -97,12 +96,8 @@ static void eapol_request_identity(uint8_t port) __reentrant
 
 static void eapol_log(uint8_t port, __code const char *what) __reentrant
 {
-    uint8_t phys = machine.log_to_phys_port[port];
-
     print_string("802.1X: port ");
-    if (phys >= 10)
-        write_char('1');
-    write_char('0' + phys % 10);
+    itoa(machine.log_to_phys_port[port]);
     print_string(" ");
     print_string(what);
     print_string(" ");
@@ -114,7 +109,6 @@ void eapol_init(void) __banked __reentrant
 {
     memset(eapol_ports, 0, sizeof(eapol_ports));
     eapol_pending_port = EAPOL_NO_PORT;
-    eapol_links_last = 0;
 }
 
 void eapol_port_reset(uint8_t port) __banked __reentrant
@@ -334,7 +328,6 @@ void eapol_tick(void) __banked __reentrant
             break;
         }
     }
-    eapol_links_last = links;
 }
 
 __code const char *eapol_state_name(uint8_t port) __banked __reentrant
