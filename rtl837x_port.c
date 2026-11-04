@@ -438,6 +438,7 @@ bool port_l2_mac_on_port(uint8_t port, __xdata uint8_t *mac) __banked
 	__xdata uint16_t entry = 0;
 	__xdata uint16_t first_entry = 0xffff;
 	uint8_t entry_port;
+	uint8_t mac0, mac1;
 
 	wait_table_ready();
 	while (1) {
@@ -454,11 +455,13 @@ bool port_l2_mac_on_port(uint8_t port, __xdata uint8_t *mac) __banked
 		reg_read_m(RTL837x_L2_DATA_OUT_B);
 		if (sfr_data[0] & 0x20) {
 			entry_port = (sfr_data[0] >> 6) & 0x3;
-			mac[0] = sfr_data[2];
-			mac[1] = sfr_data[3];
+			mac0 = sfr_data[2];
+			mac1 = sfr_data[3];
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
 			entry_port |= (sfr_data[3] & 0x3) << 2;
-			if (entry_port == port && !(sfr_data[1] & 0x1) && !(mac[0] & 0x1)) {
+			if (entry_port == port && !(sfr_data[1] & 0x1) && !(mac0 & 0x1)) {
+				mac[0] = mac0;
+				mac[1] = mac1;
 				reg_read_m(RTL837x_L2_DATA_OUT_A);
 				mac[2] = sfr_data[0];
 				mac[3] = sfr_data[1];

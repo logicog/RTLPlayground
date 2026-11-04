@@ -239,7 +239,9 @@ static void t_mab(void)
 	hw_l2_put(3, mcast, 1, 1 << 2, false);
 	hw_l2_put(5, elsewhere, 1, 4, false);
 	hw_l2_put(7, pinned, 1, 2, true);
+	memset(found, 0x5a, 6);
 	CHECK(!port_l2_mac_on_port(2, found), "a multicast entry, a static entry and another port's entry are not candidates");
+	CHECK(found[0] == 0x5a && found[1] == 0x5a, "and the caller's address is left alone when nothing matches");
 	ticks(EAPOL_TX_PERIOD_S * EAPOL_MAX_REQUESTS);
 	CHECK(frames == EAPOL_MAX_REQUESTS, "three identity requests went out");
 	eapol_tick();
