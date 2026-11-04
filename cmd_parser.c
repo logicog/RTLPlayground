@@ -1723,7 +1723,7 @@ void parse_qos(void)
 	}
 
 err:
-	print_string("usage: qos [on|off|pcp <pcp> <priority>|queue <port> <queue> <weight|sp>]\n");
+	cmd_error("qos [on|off|pcp <pcp> <priority>|queue <port> <queue> <weight|sp>]\n");
 }
 
 void parse_syslog(void)
