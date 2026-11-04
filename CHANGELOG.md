@@ -37,6 +37,7 @@
     froze the clock after a sync.
 
 - Web UI
+  - Reload the L2 table when the switch rejects a deletion, instead of removing the row.
   - Firefox no longer fills a saved login into the new admin password fields. It also put the
     user name into the NTP poll interval, which marked the Time card as edited, so it kept its
     defaults (NTP off, no server, UTC-12:00) instead of the switch's settings.
