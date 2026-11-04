@@ -66,5 +66,6 @@ void sflow_parse(void) __banked __reentrant
 		return;
 	}
 err:
+	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: sflow [on|off|collector <ip> [port]|interval <1-3600>|sampling <0-65535>]\n");
 }
