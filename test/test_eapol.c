@@ -33,7 +33,7 @@ static uint8_t frame[128];
 static uint16_t frame_len;
 static int auth_calls, auth_on, auth_port;
 static int req_calls, pap_calls, cancel_calls, cancel_port;
-static bool req_ok = true;
+static bool req_ok = true, configured = true;
 static uint8_t req_port, req_mac[6], req_eap[64], req_eap_len, req_state[RADIUS_STATE_MAX], req_state_len;
 static char req_identity[EAPOL_IDENTITY_MAX + 1];
 static char pap_user[EAPOL_IDENTITY_MAX + 1];
@@ -58,6 +58,7 @@ bool radius_request(uint8_t port, const char *identity, const uint8_t *mac, cons
 	return req_ok;
 }
 void radius_cancel(uint8_t port) { cancel_calls++; cancel_port = port; }
+bool radius_configured(void) { return configured; }
 bool radius_request_pap(uint8_t port, const char *user, const uint8_t *mac)
 {
 	pap_calls++; req_port = port; memcpy(pap_mac, mac, 6);
@@ -74,7 +75,7 @@ static void links(uint16_t mask)
 static void setup(uint8_t port)
 {
 	hw_reset(); out_reset();
-	frames = 0; auth_calls = 0; req_calls = 0; pap_calls = 0; cancel_calls = 0; req_ok = true;
+	frames = 0; auth_calls = 0; req_calls = 0; pap_calls = 0; cancel_calls = 0; req_ok = true; configured = true;
 	radius_eap_len = 0;
 	memset(dot1x_mode, 0, sizeof(dot1x_mode));
 	dot1x_enabled = true;
@@ -302,6 +303,59 @@ static void t_rx_guards(void)
 	CHECK(!eapol_in(), "an IP frame is not EAPOL");
 }
 
+static void t_busy_client(void)
+{
+	uint8_t md5resp[] = { EAP_CODE_RESPONSE, 7, 0, 22, 4, 16, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9 };
+	uint8_t state[] = { 1 };
+
+	printf("[test] a response the busy RADIUS client cannot take is asked for again soon\n");
+	setup(2);
+	eapol_tick();
+	req_ok = false;
+	rx_identity(2, eap_in_frame()[1], "alice");
+	CHECK(eapol_ports[2].state == EAPOL_STATE_CONNECTING && eapol_ports[2].timer == EAPOL_BUSY_RETRY_S,
+		"the port stays connecting and waits only a moment");
+	CHECK(eapol_ports[2].tries == 0, "the answered request does not count as silence");
+	frames = 0;
+	ticks(EAPOL_BUSY_RETRY_S);
+	CHECK(frames == 1 && eap_in_frame()[0] == EAP_CODE_REQUEST, "then the identity is asked for again");
+	req_ok = true;
+	rx_identity(2, eap_in_frame()[1], "alice");
+	CHECK(eapol_ports[2].state == EAPOL_STATE_AUTHENTICATING, "and goes to the server once the client is free");
+	eapol_radius_result(2, RADIUS_CODE_ACCESS_CHALLENGE, state, sizeof(state));
+	req_ok = false;
+	rx(2, EAPOL_TYPE_EAP, md5resp, sizeof(md5resp));
+	CHECK(eapol_ports[2].state == EAPOL_STATE_CONNECTING && eapol_ports[2].timer == EAPOL_BUSY_RETRY_S,
+		"a response lost in the middle of an exchange starts the exchange over soon");
+	setup(2);
+	eapol_tick();
+	req_ok = false;
+	configured = false;
+	rx_identity(2, eap_in_frame()[1], "alice");
+	CHECK(eapol_ports[2].timer == EAPOL_TX_PERIOD_S, "without a server the port keeps its usual period");
+}
+
+static void t_busy_reauth(void)
+{
+	printf("[test] an authorized port meeting the busy client on reauthentication stays authorized until the usual silence closes it\n");
+	setup(2);
+	eapol_tick();
+	rx_identity(2, eap_in_frame()[1], "alice");
+	eapol_radius_result(2, RADIUS_CODE_ACCESS_ACCEPT, 0, 0);
+	CHECK(auth_on && eapol_ports[2].state == EAPOL_STATE_AUTHENTICATED, "the port is authorized");
+	eapol_ports[2].timer = 1;
+	eapol_tick();
+	CHECK(eapol_ports[2].state == EAPOL_STATE_AUTHENTICATED && eap_in_frame()[0] == EAP_CODE_REQUEST, "reauthentication asks for the identity");
+	req_ok = false;
+	auth_calls = 0;
+	rx_identity(2, eap_in_frame()[1], "alice");
+	CHECK(eapol_ports[2].state == EAPOL_STATE_AUTHENTICATED && eapol_ports[2].timer == EAPOL_BUSY_RETRY_S,
+		"the busy client leaves the port authenticated and asks again soon");
+	CHECK(auth_calls == 0 && auth_on, "the port stays authorized meanwhile");
+	ticks(EAPOL_BUSY_RETRY_S + EAPOL_MAX_REQUESTS * EAPOL_TX_PERIOD_S);
+	CHECK(!auth_on && auth_port == 2 && eapol_ports[2].state == EAPOL_STATE_IDLE, "a supplicant silent since then loses the port");
+}
+
 static void t_start_ignored(void)
 {
 	printf("[test] EAPOL-Start neither ends the quiet period nor restarts a running exchange\n");
@@ -381,6 +435,8 @@ int main(void)
 	t_reject_and_timeout();
 	t_mab();
 	t_rx_guards();
+	t_busy_client();
+	t_busy_reauth();
 	t_start_ignored();
 	t_stale_result();
 	t_reauth_and_link();

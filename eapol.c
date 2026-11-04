@@ -214,11 +214,16 @@ bool eapol_in(void) __banked __reentrant
         memcpy(e->mac, &uip_buf[6], 6);
         e->rstate_len = 0;
     }
+    e->tries = 0;
     if (radius_request(port, e->identity, e->mac, p, len, e->rstate, e->rstate_len)) {
         e->resp_id = p[1];
         e->via_mab = 0;
         e->state = EAPOL_STATE_AUTHENTICATING;
         e->timer = EAPOL_SERVER_TIMEOUT_S;
+    } else if (radius_configured()) {
+        if (e->state != EAPOL_STATE_AUTHENTICATED)
+            e->state = EAPOL_STATE_CONNECTING;
+        e->timer = EAPOL_BUSY_RETRY_S;
     }
     return true;
 }
