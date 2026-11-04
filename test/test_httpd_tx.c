@@ -72,7 +72,7 @@ uint8_t cmd_capture;
 uint8_t err_status;
 const uint8_t * const hex = (const uint8_t *)"0123456789abcdef";
 uint16_t crc_value;
-const uint8_t * const HTTP_RESPONCE_TXT = (const uint8_t *)"HTTP/1.1 200 OK\r\n\r\n";
+const uint8_t * const HTTP_RESPONSE_TXT = (const uint8_t *)"HTTP/1.1 200 OK\r\n\r\n";
 uint32_t flash_size = 0x80000;
 uint8_t flash_buf[FLASH_BUF_SIZE];
 uint8_t rx_headers[16];

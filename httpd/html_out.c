@@ -5,7 +5,7 @@
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 
-__code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+__code const uint8_t * __code const HTTP_RESPONSE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
 
 // Convert (uint8_t) bool to ascii '0' or '1' char push on html-buffer.
 void bool_to_html(char c)
