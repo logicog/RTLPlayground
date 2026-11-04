@@ -3514,6 +3514,24 @@ static void scen_legacy_sees_regional_root(void)
 		"whose bridge identifier is the regional root, as in the RST BPDUs of the region");
 }
 
+static void scen_region_same_value(void)
+{
+	struct sim_bpdu b;
+
+	printf("106. the region name or revision set to what it already is changes nothing\n");
+	mstp_setup();
+	sim_cmd("stp revision 5");
+	b = root_on(8);
+	mst_bpdu_in(&b, "lab", 0, ROOT_MAC, 0x40, 20, NULL);
+	check((stp_internal >> 8) & 1, "the neighbour shares our region");
+	sim_cmd("stp region lab");
+	check(err_status == ERR_OK && (stp_internal >> 8) & 1, "the same name again keeps the port internal");
+	sim_cmd("stp revision 5");
+	check(err_status == ERR_OK && (stp_internal >> 8) & 1, "the same revision again keeps the port internal");
+	sim_cmd("stp region lab2");
+	check(!((stp_internal >> 8) & 1), "a different name still gives up the boundary");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -3612,6 +3630,7 @@ int main(int argc, char **argv)
 	scen_msti_vlan_writes();
 	scen_msti_tc_count();
 	scen_region_name_cli();
+	scen_region_same_value();
 	scen_legacy_sees_regional_root();
 	scen_one_flush_per_change();
 	scen_msti_tc_from_discarding();

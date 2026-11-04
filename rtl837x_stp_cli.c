@@ -108,8 +108,10 @@ void stp_parse(void) __banked __reentrant
 		return;
 	}
 	if (cmd_compare(1, "region") && cmd_words_len == 2) {
-		mstp_region[0] = 0;
-		stp_region_changed();
+		if (mstp_region[0]) {
+			mstp_region[0] = 0;
+			stp_region_changed();
+		}
 		return;
 	}
 	if (cmd_words_len < 3)
@@ -232,18 +234,25 @@ void stp_parse(void) __banked __reentrant
 		}
 		if (stp_cli_i > MSTP_NAME_LEN || cmd_words_len != 3)
 			goto err;
-		for (stp_cli_n = 0; stp_cli_n < stp_cli_i; stp_cli_n++)
+		stp_cli_val = mstp_region[stp_cli_i] != 0;
+		for (stp_cli_n = 0; stp_cli_n < stp_cli_i; stp_cli_n++) {
+			if (mstp_region[stp_cli_n] != (char)cmd_buffer[cmd_words_b[2] + stp_cli_n])
+				stp_cli_val = 1;
 			mstp_region[stp_cli_n] = cmd_buffer[cmd_words_b[2] + stp_cli_n];
+		}
 		mstp_region[stp_cli_i] = 0;
-		stp_region_changed();
+		if (stp_cli_val)
+			stp_region_changed();
 		return;
 	}
 	if (cmd_compare(1, "revision")) {
 		stp_cli_n = atoi_short(cmd_words_b[2]);
 		if (!stp_cli_n || cmd_words_len != 3 || cmd_buffer[cmd_words_b[2] + stp_cli_n])
 			goto err;
-		mstp_revision = atoi_results_short;
-		stp_region_changed();
+		if (mstp_revision != atoi_results_short) {
+			mstp_revision = atoi_results_short;
+			stp_region_changed();
+		}
 		return;
 	}
 	if (cmd_compare(1, "msti")) {
