@@ -28,6 +28,10 @@ void sflow_parse(void) __banked __reentrant
 		itoa_short(sflow_state.interval);
 		print_string(" s, datagrams ");
 		print_long(sflow_state.seq);
+		print_string(", sampling ");
+		itoa_short(sflow_state.rate);
+		print_string(", drops ");
+		print_long(sflow_state.drops);
 		write_char('\n');
 		return;
 	}
@@ -57,6 +61,10 @@ void sflow_parse(void) __banked __reentrant
 		sflow_interval(atoi_results_short);
 		return;
 	}
+	if (cmd_compare(1, "sampling") && cmd_words_len >= 3 && atoi_short(cmd_words_b[2])) {
+		sflow_rate(atoi_results_short);
+		return;
+	}
 err:
-	print_string("Error: sflow [on|off|collector <ip> [port]|interval <1-3600>]\n");
+	print_string("Error: sflow [on|off|collector <ip> [port]|interval <1-3600>|sampling <0-65535>]\n");
 }

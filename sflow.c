@@ -1,5 +1,5 @@
 /*
- * sFlow version 5 counter samples for the RTL837x platform
+ * sFlow version 5 counter and flow samples for the RTL837x platform
  * This code is in the Public Domain
  */
 
@@ -18,6 +18,7 @@
 extern __code const struct machine machine;
 extern __xdata uint8_t sfr_data[4];
 extern volatile __xdata uint32_t ticks;
+extern __xdata uint8_t rx_headers[16];
 
 #define CNT_LOW		0	/* 32-bit counter in STAT_V_LOW */
 #define CNT_HIGH	1	/* 32-bit counter in STAT_V_HIGH */
@@ -28,6 +29,11 @@ __xdata struct sflow_state sflow_state;
 __xdata uip_ipaddr_t sflow_ip;
 __xdata uint32_t sflow_gap;
 __xdata uint32_t sflow_sample_seq[10];
+__xdata uint32_t sflow_flow_seq[10];
+__xdata uint8_t sflow_hdr[SFLOW_HDR_MAX];
+__xdata uint8_t sflow_hdr_len;
+__xdata uint8_t sflow_hdr_port;
+__xdata uint16_t sflow_frame_len;
 __xdata uint8_t * __xdata sflow_p;	/* next byte of the datagram being built */
 __xdata uint8_t  sflow_port;
 
@@ -94,6 +100,59 @@ static void sflow_put_table(__code const uint8_t *t, uint8_t n) __reentrant
 }
 
 
+static void sflow_head(void) __reentrant
+{
+	sflow_p = uip_appdata;
+	sflow_put8(5);
+	sflow_put8(1);
+	memcpy(sflow_p, uip_hostaddr, 4);
+	sflow_p += 4;
+	sflow_put8(0);
+	sflow_put32(++sflow_state.seq);
+	sflow_put32(ticks * (1000 / SYS_TICK_HZ));
+	sflow_put8(1);
+}
+
+
+static void sflow_flow(void) __reentrant
+{
+	uint8_t i, len = (sflow_hdr_len + 3) & ~3;
+	uint32_t pool = 0;
+
+	for (i = 2; i <= 4; i++) {
+		STAT_GET(i, sflow_hdr_port);
+		reg_read_m(RTL837X_STAT_V_LOW);
+		pool += ((uint32_t)sfr_data[0] << 24) | ((uint32_t)sfr_data[1] << 16)
+			| ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
+	}
+
+	sflow_head();
+	sflow_put8(1);
+	sflow_put8(56 + len);
+	sflow_put32(++sflow_flow_seq[sflow_hdr_port]);
+	sflow_put8(machine.log_to_phys_port[sflow_hdr_port]);
+	sflow_put32(sflow_state.rate);
+	sflow_put32(pool);
+	sflow_put32(sflow_state.drops);
+	sflow_put8(machine.log_to_phys_port[sflow_hdr_port]);
+	sflow_put8(0);
+	sflow_put8(1);
+
+	sflow_put8(1);
+	sflow_put8(16 + len);
+	sflow_put8(1);
+	sflow_put32(sflow_frame_len);
+	sflow_put8(4);
+	sflow_put8(sflow_hdr_len);
+	memset(sflow_p, 0, len);
+	memcpy(sflow_p, sflow_hdr, sflow_hdr_len);
+	sflow_p += len;
+
+	sflow_hdr_len = 0;
+	uip_udp_send(sflow_p - (__xdata uint8_t *)uip_appdata);
+}
+
+
 static void sflow_sample(void) __reentrant
 {
 	uint8_t speed, up;
@@ -105,16 +164,7 @@ static void sflow_sample(void) __reentrant
 	speed = (sflow_port & 1) ? speed >> 4 : speed & 0xf;
 	speed = up ? (speed & 7) << 1 : 6;
 
-	sflow_p = uip_appdata;
-	sflow_put8(5);
-	sflow_put8(1);
-	memcpy(sflow_p, uip_hostaddr, 4);
-	sflow_p += 4;
-	sflow_put8(0);
-	sflow_put32(++sflow_state.seq);
-	sflow_put32(ticks * (1000 / SYS_TICK_HZ));
-	sflow_put8(1);
-
+	sflow_head();
 	sflow_put8(2);
 	sflow_put8(168);
 	sflow_put32(++sflow_sample_seq[sflow_port]);
@@ -138,6 +188,48 @@ static void sflow_sample(void) __reentrant
 	sflow_put_table(sflow_ether, sizeof(sflow_ether) / 2);
 
 	uip_udp_send(sflow_p - (__xdata uint8_t *)uip_appdata);
+}
+
+
+static void sflow_mirror(uint16_t rate) __reentrant
+{
+	uint16_t pmask = SFLOW_PMASK;
+
+	if (rate) {
+		rate--;
+		REG_WRITE(RTL837X_MIR_SAMPLE_CTRL, 0, 0, rate >> 8, rate & 0xff);
+		REG_WRITE(RTL837x_MIRROR_CONF, pmask >> 8, pmask & 0xff, 0, 0);
+		REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (CPU_PORT << 1) | 1);
+	} else {
+		REG_SET(RTL837x_MIRROR_CTRL, 0);
+		REG_SET(RTL837X_MIR_SAMPLE_CTRL, 0);
+	}
+}
+
+
+void sflow_rate(uint16_t rate) __banked __reentrant
+{
+	if (sflow_state.conn && (rate || sflow_state.rate))
+		sflow_mirror(rate);
+	sflow_state.rate = rate;
+}
+
+
+void sflow_rx(void) __banked __reentrant
+{
+	uint8_t port = rx_headers[3] & 0xf;
+
+	if (!MACHINE_PORT_VALID(port) || uip_len < RTL_TAG_SIZE + 14)
+		return;
+	if (sflow_hdr_len) {
+		sflow_state.drops++;
+		return;
+	}
+	sflow_hdr_port = port;
+	sflow_frame_len = uip_len - RTL_TAG_SIZE + 4;
+	sflow_hdr_len = uip_len - RTL_TAG_SIZE > SFLOW_HDR_MAX ? SFLOW_HDR_MAX : uip_len - RTL_TAG_SIZE;
+	memcpy(sflow_hdr, uip_buf, 12);
+	memcpy(sflow_hdr + 12, uip_buf + 12 + RTL_TAG_SIZE, sflow_hdr_len - 12);
 }
 
 
@@ -174,6 +266,8 @@ void sflow_start(void) __banked
 	}
 	sflow_state.next = MACHINE_MIN_PORT;
 	sflow_state.last = ticks;
+	if (sflow_state.rate)
+		sflow_mirror(sflow_state.rate);
 }
 
 
@@ -182,6 +276,9 @@ void sflow_stop(void) __banked
 	if (sflow_state.conn) {
 		uip_udp_remove(sflow_state.conn);
 		sflow_state.conn = 0;
+		sflow_hdr_len = 0;
+		if (sflow_state.rate)
+			sflow_mirror(0);
 	}
 }
 
@@ -190,6 +287,10 @@ void sflow_callback(uint16_t lport) __banked __reentrant
 {
 	if (!sflow_state.conn || lport != sflow_state.conn->lport)
 		return;
+	if (sflow_hdr_len) {
+		sflow_flow();
+		return;
+	}
 	if (ticks - sflow_state.last < sflow_gap)
 		return;
 	sflow_state.last = ticks;

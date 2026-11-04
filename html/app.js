@@ -17,7 +17,9 @@ var LANG = {
         nav_lldp: "LLDP",
         nav_sflow: "sFlow",
         sf_title: "sFlow",
-        sf_h: "counter samples, version 5",
+        sf_h: "counter and flow samples, version 5",
+        sf_rate: "Sampling 1 in N frames, 0 off",
+        sf_drops: "Samples dropped",
         sf_ip: "Collector address",
         sf_port: "Collector port",
         sf_int: "Counter interval [s]",
@@ -2372,6 +2374,7 @@ var CONF_CMDS = [
     /^sflow\s+(on|off)$/,
     /^sflow\s+collector\s+(\d{1,3}\.){3}\d{1,3}(\s+\d{1,5})?$/,
     /^sflow\s+interval\s+\d{1,4}$/,
+    /^sflow\s+sampling\s+\d{1,5}$/,
     /^passwd\s+\S+$/, /^hostname\s+\S{1,23}$/,
     /^vlan\s+\d+\s+(d|mgmt)$/m,
     /^vlan\s+\d+(\s+[a-zA-Z]\w*)?(\s+\d+t?)*$/m,
@@ -5117,20 +5120,22 @@ function sfLoad() {
         method: "POST",
         body: "sflow"
     }).then(function(r) {
-        var m = (r.body || "").match(/sFlow (on|off), collector ([\d.]+):(\d+), interval (\d+) s, datagrams (\S+)/);
+        var m = (r.body || "").match(/sFlow (on|off), collector ([\d.]+):(\d+), interval (\d+) s, datagrams (\S+), sampling (\d+), drops (\S+)/);
         if (!m) return;
         var on = m[1] === "on",
             conf = m[2] !== "0.0.0.0";
         $("sfstate").innerHTML = on ? (conf ? badge(t("c_yes"), "ok") : badge(t("sf_wait"))) : badge(t("c_no"));
         $("sfsent").textContent = parseInt(m[5], 16);
+        $("sfdrops").textContent = parseInt(m[7], 16);
         if (sfDirty) return;
         $("sfen").checked = on;
         $("sfip").value = conf ? m[2] : "";
         $("sfport").value = m[3];
         $("sfint").value = m[4];
+        $("sfrate").value = m[6];
     }).catch(function() {});
 }
-["sfen", "sfip", "sfport", "sfint"].forEach(function(id) {
+["sfen", "sfip", "sfport", "sfint", "sfrate"].forEach(function(id) {
     ["input", "change"].forEach(function(ev) {
         $(id).addEventListener(ev, function() {
             sfDirty = true
@@ -5140,7 +5145,8 @@ function sfLoad() {
 $("sfapply").addEventListener("click", function() {
     var ip = $("sfip").value.trim(),
         port = $("sfport").value.trim(),
-        iv = $("sfint").value.trim();
+        iv = $("sfint").value.trim(),
+        rate = $("sfrate").value.trim();
     if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ip) || ip.split(".").some(function(x) {
             return Number(x) > 255
         })) {
@@ -5149,6 +5155,7 @@ $("sfapply").addEventListener("click", function() {
     }
     var cmds = ["sflow collector " + ip + (port ? " " + port : "")];
     if (iv) cmds.push("sflow interval " + iv);
+    if (rate) cmds.push("sflow sampling " + rate);
     cmds.push("sflow " + ($("sfen").checked ? "on" : "off"));
     sfDirty = false;
     postCmds(cmds).then(sfLoad).catch(function() {});
@@ -5166,7 +5173,7 @@ tabHooks.sflow = {
 
 var CONF_OVERWRITE = [
     /^ip\b/, /^gw\b/, /^netmask\b/, /^hostname\b/,
-    /^syslog\s+ip\b/, /^syslog\s+port\b/, /^dns\s+server\b/, /^sflow\s+collector\b/, /^sflow\s+interval\b/, /^passwd\b/, /^session\b/,
+    /^syslog\s+ip\b/, /^syslog\s+port\b/, /^dns\s+server\b/, /^sflow\s+collector\b/, /^sflow\s+interval\b/, /^sflow\s+sampling\b/, /^passwd\b/, /^session\b/,
     /^ntp\s+server\b/, /^ntp\s+interval\b/, /^ntp\s+timezone\b/, /^ntp\s+dst\b/,
     /^vlan\s+\d{1,4}\s+mgmt$/, /^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
     /^pvid\s+\d{1,2}\b/,
