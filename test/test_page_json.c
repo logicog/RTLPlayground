@@ -147,6 +147,34 @@ static void t_l2(void)
 	CHECK(count("\"mac\":") == 4 && count("44:03") == 2, "and still finds all three before repeating 0x8f0");
 }
 
+static void t_l2_delete_stale(void)
+{
+	static const uint16_t missing[] = { 0x000f, 0x0021, 0x1010, 0xffff };
+	char before[1024];
+
+	printf("[test] /l2_del.json refuses stale and out-of-range indices\n");
+	for (unsigned i = 0; i < sizeof missing / sizeof missing[0]; i++) {
+		hw_reset(); out_reset();
+		put(0x010, 0x01, 1, 2, false);
+		put(0x020, 0x02, 2, 7, true);
+		send_l2(0);
+		snprintf(before, sizeof before, "%s", body());
+		out_reset();
+		l2_delete(missing[i]);
+		CHECK(has("\"result\":0") && balanced(), "absent or out-of-range index is refused");
+		out_reset();
+		send_l2(0);
+		CHECK(!strcmp(before, body()), "both unrelated MAC entries remain unchanged");
+	}
+	hw_reset(); out_reset();
+	l2_delete(0);
+	CHECK(has("\"result\":0") && balanced(), "empty table is refused");
+	put(0x8f0, 0x03, 1, 7, false);
+	out_reset();
+	l2_delete(0x8f0);
+	CHECK(has("\"result\":1") && balanced(), "an exact high index remains accepted");
+}
+
 /* Walk the table the way the page does: ask for the index after the last
  * entry of each page until an index comes back that was seen before. */
 static void t_l2_page(void)
@@ -227,6 +255,7 @@ int main(void)
 	t_vlanlist();
 	t_l2();
 	t_l2_page();
+	t_l2_delete_stale();
 	t_status_counters();
 	t_status_macs();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
