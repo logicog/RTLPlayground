@@ -4238,24 +4238,27 @@ function isoLoad() {
     });
 }
 
-function isoMask(r) {
-    var m = 0;
+function isoArray(r) {
+    var m = [];
     for (var c = 1; c <= S.n; c++) {
         var b = isoBox(r, c);
-        if (r === c || (b && b.checked)) m |= 1 << S.physToLog[c - 1];
+        if (r === c || (b && b.checked)) { m.push(c); }
     }
     var cpu = isoBox(r, S.n + 1);
-    if (cpu && cpu.checked) m |= 0x200;
+    if (cpu && cpu.checked) { m.push(0); }
     return m;
 }
 $("isoapply").addEventListener("click", function() {
     var cmds = [];
     for (var r = 1; r <= S.n; r++) {
-        var cur = -1;
+        var cur = [];
         isoAllow.forEach(function(e) {
-            if (e.portNum === r) cur = parseInt(e.allow, 16)
+            if (e.portNum === r) cur = e.allow;
         });
-        if (isoMask(r) === cur) continue;
+
+        //if the state in the DOM is the same as the API response, move on guv'
+        if (isoArray(r).sort().join(",") === cur.sort().join(",")) continue;
+
         var cmd = "isolate " + r;
         for (var c = 1; c <= S.n; c++) {
             var b = isoBox(r, c);
