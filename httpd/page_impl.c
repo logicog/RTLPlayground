@@ -4,6 +4,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_rldp.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_pins.h"
