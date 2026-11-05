@@ -22,8 +22,6 @@
 // #define DEBUG
 #include "debug.h"
 
-#define JSONQUOTE(x) #x
-
 #define L2_MAX_TRANSFER 30
 
 #pragma codeseg BANK1
@@ -62,26 +60,16 @@ __code const uint8_t * __code const HTTP_RESPONSE_TXT = "HTTP/1.1 200 OK\r\nConn
 //TODO share with the copy in rtl837x_storm
 __code const char * __code const http_storm_names[STORM_TYPES] = { "bcast", "mcast", "ucast", "umcast" };
 
-// Convert uint8_t to ascii HEX char push on html-buffer.
-void charhex_to_html(char c)
-{
-	outbuf[slen++] = itohex(c);
-}
-
-void char_to_html(char c)
-{
-	outbuf[slen++] = c;
-}
-
 static void str_x_to_html(__xdata const char *s)
 {
 	while (*s)
 		outbuf[slen++] = *s++;
 }
 
-void str_code_to_html(__code const char *s)
+// Convert uint8_t to ascii HEX char push on html-buffer.
+void charhex_to_html(char c)
 {
-	while (*s) char_to_html(*s++);
+	outbuf[slen++] = itohex(c);
 }
 
 void json_char_to_html(uint8_t c)
@@ -121,18 +109,6 @@ static void temp_to_html(void)
 	itoa_html(((v & 0x7f) * 10) >> 7);
 	char_to_html(' ');
 	char_to_html('C');
-}
-
-void json_add_array_string_item(__code const char *item) {
-    if (slen > 0 && outbuf[slen - 1] != '[')
-		char_to_html(',');
-	str_code_to_html(item);
-}
-
-void json_add_array_uint_item(uint8_t x) {
-	 if (slen > 0 && outbuf[slen - 1] != '[')
-        char_to_html(',');
-    itoa_html(x);
 }
 
 uint16_t stat_content(void)

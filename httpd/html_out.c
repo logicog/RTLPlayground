@@ -20,6 +20,11 @@ void byte_to_html(uint8_t val)
 	outbuf[slen++] = itohex(val);
 }
 
+void char_to_html(char c)
+{
+	outbuf[slen++] = c;
+}
+
 /* Converts a uint8_t to raw string.
    Suppress leading zeros.
 */
@@ -36,4 +41,21 @@ void itoa_html(uint8_t v)
 	if (print_zeros)
 		outbuf[slen++] = '0' + t;
 	outbuf[slen++] = '0' + (v % 10);
+}
+
+void str_code_to_html(__code const char *s)
+{
+	while (*s) char_to_html(*s++);
+}
+
+void json_add_array_string_item(__code const char *item) {
+	if (slen > 0 && outbuf[slen - 1] != '[')
+		char_to_html(',');
+	str_code_to_html(item);
+}
+
+void json_add_array_uint_item(uint8_t x) {
+	 if (slen > 0 && outbuf[slen - 1] != '[')
+        char_to_html(',');
+    itoa_html(x);
 }

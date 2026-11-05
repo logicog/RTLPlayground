@@ -3,12 +3,19 @@
 
 #include <stdbool.h>
 
+#define JSONQUOTE(x) #x
+
 extern __code const uint8_t * __code const HTTP_RESPONSE_TXT;
 extern __code const uint8_t * __code const HTTP_RESPONSE_JSON;
 
 void bool_to_html(char c);
 void byte_to_html(uint8_t val);
 void itoa_html(uint8_t v);
+
+void str_code_to_html(__code const char *s);
+void json_add_array_string_item(__code const char *item);
+void json_add_array_uint_item(uint8_t x);
+void char_to_html(char c);
 
 void itoa16_html(uint16_t v);
 
