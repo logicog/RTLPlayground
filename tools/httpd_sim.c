@@ -134,9 +134,7 @@ void send_vlan(int s, int vlan)
 		       "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
 	v = json_object_new_object();
-	
-	sprintf(num_buff, "0x%08x", 0x00060011);
-	json_object_object_add(v, "members", json_object_new_string(num_buff));
+	json_object_object_add(v, "untagged_members", json_object_new_string("[1,2,3,4,5,6]"));
 
         write(s, header, strlen(header));
 
