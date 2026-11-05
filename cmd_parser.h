@@ -36,6 +36,18 @@ void health_show(void) __banked;	/* "health" CLI dump */
 #define health_stack_paint()
 #endif
 
+/* Word matching and number parsing over cmd_buffer, for command handlers
+ * outside cmd_parser.c; plain calls, so the caller has to be in BANK2. */
+uint8_t cmd_compare(uint8_t start, __code const uint8_t * cmd);
+uint8_t atoi_short(uint8_t idx);
+uint8_t parse_ip(uint8_t idx);
+
+#define N_WORDS 15
+extern __xdata uint8_t cmd_words_len;
+extern __xdata uint8_t cmd_words_b[N_WORDS];
+extern __xdata uint8_t ip[4];
+extern __xdata uint16_t atoi_results_short;
+
 void cmd_tokenize(void) __banked;
 void cmd_parser(void) __banked;
 void execute_config(void) __banked;
