@@ -26,6 +26,12 @@ the PCB inside the casing and the photo shows where this is from.
 - `<MACHINE>` is `CSCI_SW-425A`: (`<MACHINE_MODEL>`) in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
 
 ### Quick Start
+> [!TIP]
+> The interactive helper `tools/add_device.py` implements this workflow for you: it derives
+> the names from the PCB silkscreen identifier, checks whether the device is already supported,
+> then creates the needed files (symlinks, header, board definition, device doc skeleton).
+> Run it from the repository root: `python3 tools/add_device.py` (use `-n` for a dry run).
+
 1. Start from your `<PCB_IDENTIFIER>`, not from the printed vendor or model name: those are often misleading, and the same product name can correspond to several different PCBs.
 2. Check whether `doc/devices/<PCB_DOC_NAME>.md` exists. If it does, your device is most likely already supported.
    - If you find a doc file that matches your `<PCB_DOC_NAME>` except for punctuation, please file a bug report so we can investigate as this should not happen.
