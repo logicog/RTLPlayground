@@ -90,7 +90,6 @@ class Handler(SimpleHTTPRequestHandler):
             "/lacp.json": self._api_lacp,
             "/lag.json": self._api_lag,
             "/mirror.json": self._api_mirror,
-            "/mtu.json": self._api_mtu,
             "/status.json": self._api_status,
             "/storm.json": self._api_storm,
             "/stp.json": self._api_stp,
@@ -435,6 +434,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "isSFP": machine_config["is_sfp"][i],
                 "enabled": int(i % 4 != 0),
                 "link": ("10G" if i == 1 else "100M-HD") if i % 2 else "DOWN",
+                "mtu": f"0x{16383 if i % 2 else 1522:04x}",
                 "txG": f"0x{tx_g[n]:016x}",
                 "txB": f"0x{tx_b[n]:016x}",
                 "rxG": f"0x{rx_g[n]:016x}",
@@ -535,15 +535,6 @@ class Handler(SimpleHTTPRequestHandler):
                     {"p":i,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"} ) for i in range(1, PORTS + 1)
                 ]
             }
-
-    def _api_mtu(self):
-        return [
-            {
-                "port": i,
-                "mtu": f"0x{16383 if i % 2 else 1522:04x}",
-            }
-            for i in range(1, PORTS + 1)
-        ]
 
     def _api_lldp(self):
         return {

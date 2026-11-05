@@ -183,7 +183,6 @@ void send_eee(void) { }
 void send_l2(uint16_t idx) { (void)idx; }
 void l2_delete(uint16_t idx) { (void)idx; }
 void send_mirror(void) { }
-void send_mtu(void) { }
 void send_config(void) { }
 void send_cmd_log(void) { }
 void send_lag(void) { }

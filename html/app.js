@@ -3032,7 +3032,8 @@ function buildPorts() {
             id: "pmtu" + i,
             type: "number",
             min: "64",
-            max: "16383"
+            max: "16383",
+            value: parseInt(p.mtu, 16),
         }));
         tr.insertCell().appendChild(h("button", {
             class: "ctl",
@@ -3041,17 +3042,6 @@ function buildPorts() {
                 applyPort(i)
             }
         }));
-    });
-    loadMtu();
-}
-
-function loadMtu() {
-    return getJSON("/mtu.json").then(function(s) {
-        s.forEach(function(m) {
-            S.mtu[m.port - 1] = parseInt(m.mtu, 16);
-            var el = $("pmtu" + (m.port - 1));
-            if (el && document.activeElement !== el) el.value = parseInt(m.mtu, 16);
-        });
     });
 }
 
@@ -3096,7 +3086,7 @@ function applyPort(i) {
         }
         cmds.push("mtu " + p.port + " " + mtu);
     }
-    postCmds(cmds).then(loadMtu).catch(function() {});
+    postCmds(cmds).catch(function() {});
 }
 tabHooks.ports = {
     enter: function() {
