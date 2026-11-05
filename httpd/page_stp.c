@@ -48,89 +48,89 @@ void send_stp(void) __banked
 	dbg_string("send_stp called\n");
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 
-	slen += strtox(outbuf + slen, "{\"on\":");
+	str_code_to_html("{" JSONQUOTE("on") ":");
 	bool_to_html(stp_enabled);
-	slen += strtox(outbuf + slen, ",\"rstp\":");
+	str_code_to_html(","  JSONQUOTE("rstp") ":");
 	bool_to_html(stp_rstp);
-	slen += strtox(outbuf + slen, ",\"prio\":");
+	str_code_to_html("," JSONQUOTE("prio") ":");
 	itoa_html(stp_prio >> 4);
-	slen += strtox(outbuf + slen, ",\"hello\":");
+	str_code_to_html("," JSONQUOTE("hello") ":");
 	itoa_html(stp_hello_s);
-	slen += strtox(outbuf + slen, ",\"maxage\":");
+	str_code_to_html("," JSONQUOTE("maxage") ":");
 	itoa_html(stp_maxage_s);
-	slen += strtox(outbuf + slen, ",\"fwd\":");
+	str_code_to_html("," JSONQUOTE("fwd")":");
 	itoa_html(stp_fwddelay_s);
-	slen += strtox(outbuf + slen, ",\"txhold\":");
+	str_code_to_html("," JSONQUOTE("txhold") ":");
 	itoa_html(stp_txhold);
-	slen += strtox(outbuf + slen, ",\"pcs\":");
+	str_code_to_html("," JSONQUOTE("pcs") ":");
 	itoa_html(stp_pcost_short);
-	slen += strtox(outbuf + slen, ",\"bh\":");
+	str_code_to_html("," JSONQUOTE("bh") ":");
 	itoa_html(stp_bpdu_filter);
-	slen += strtox(outbuf + slen, ",\"tcs\":\"");
+	str_code_to_html("," JSONQUOTE("tcs") ":\"");
 	pi_u32 = stp_tc_secs; u32hex_html();
-	slen += strtox(outbuf + slen, "\",\"rMaxage\":");
+	str_code_to_html("\"," JSONQUOTE("rMaxage") ":");
 	itoa_html(stp_root_port == 0xff ? stp_maxage_s : stp_root_maxage);
-	slen += strtox(outbuf + slen, ",\"rFwd\":");
+	str_code_to_html("," JSONQUOTE("rFwd") ":");
 	itoa_html(stp_root_port == 0xff ? stp_fwddelay_s : stp_root_fwd);
-	slen += strtox(outbuf + slen, ",\"rootPrio\":\"");
+	str_code_to_html("," JSONQUOTE("rootPrio") ":\"");
 	byte_to_html(root_bridge.prio);
 	byte_to_html(root_bridge.ext);
-	slen += strtox(outbuf + slen, "\",\"rootMac\":\"");
+	str_code_to_html("\"," JSONQUOTE("rootMac") ":\"");
 	for (j = 0; j < 6; j++)
 		byte_to_html(root_bridge.mac[j]);
-	slen += strtox(outbuf + slen, "\",\"myMac\":\"");
+	str_code_to_html("\"," JSONQUOTE("myMac") ":\"");
 	for (j = 0; j < 6; j++)
 		byte_to_html(uip_ethaddr.addr[j]);
-	slen += strtox(outbuf + slen, "\",\"cost\":\"");
+	str_code_to_html("\"," JSONQUOTE("cost") ":\"");
 	byte_to_html(root_bridge_cost >> 24);
 	byte_to_html(root_bridge_cost >> 16);
 	byte_to_html(root_bridge_cost >> 8);
 	byte_to_html(root_bridge_cost);
-	slen += strtox(outbuf + slen, "\",\"weRoot\":");
+	str_code_to_html("\"," JSONQUOTE("weRoot") ":");
 	bool_to_html(stp_root_port == 0xff ? 1 : 0);
-	slen += strtox(outbuf + slen, ",\"tc\":\"");
+	str_code_to_html("," JSONQUOTE("tc") ":\"");
 	byte_to_html(stp_tc_count >> 8);
 	byte_to_html(stp_tc_count);
-	slen += strtox(outbuf + slen, "\",\"ports\":[");
+	str_code_to_html("\"," JSONQUOTE("ports") ":[");
 	for (i = 0; i < STP_ENTITIES; i++) {
 		j = stp_ent_id(i);
 		if (!j)
 			continue;
-		slen += strtox(outbuf + slen, "{\"p\":");
+		str_code_to_html("{" JSONQUOTE("p") ":");
 		itoa_html(j);
-		slen += strtox(outbuf + slen, ",\"st\":");
+		str_code_to_html("," JSONQUOTE("st") ":");
 		st = stp_port_state(i);
 		itoa_html(st);
-		slen += strtox(outbuf + slen, ",\"role\":");
+		str_code_to_html("," JSONQUOTE("role") ":");
 		itoa_html(stp_port_role(i));
-		slen += strtox(outbuf + slen, ",\"f\":");
+		str_code_to_html("," JSONQUOTE("f") ":");
 		itoa_html(stp_pflags[i]);
-		slen += strtox(outbuf + slen, ",\"pc\":\"");
+		str_code_to_html("," JSONQUOTE("pc") ":\"");
 		pi_u32 = stp_pcost[i]; u32hex_html();
-		slen += strtox(outbuf + slen, "\"");
+		str_code_to_html("\"");
 		if (i >= STP_LAG_BASE) {
-			slen += strtox(outbuf + slen, ",\"mbr\":[");
+			str_code_to_html("," JSONQUOTE("mbr") ":[");
 			for (uint8_t j = MACHINE_MIN_PORT; j <= MACHINE_MAX_PORT; j++) {
 				if(stp_lag_mask[i - STP_LAG_BASE] & (1<<j)) {
 					itoa_html(machine.log_to_phys_port[j]);
-					slen += strtox(outbuf + slen, ",");
+					str_code_to_html(",");
 				}
 			}
 			if(outbuf[slen-1] == ',')
 				slen--;
-			slen += strtox(outbuf + slen, "]");
+			str_code_to_html("]");
 		}
 		
-		slen += strtox(outbuf + slen, ",\"prio\":");
+		str_code_to_html("," JSONQUOTE("prio") ":");
 		itoa_html(stp_pprio[i]);
-		slen += strtox(outbuf + slen, ",\"p2\":");
+		str_code_to_html("," JSONQUOTE("p2") ":");
 		itoa_html(stp_pp2p[i]);
-		slen += strtox(outbuf + slen, ",\"lk\":");
+		str_code_to_html("," JSONQUOTE("lk") ":");
 		itoa_html((stp_link_prev >> i) & 1);
-		slen += strtox(outbuf + slen, ",\"lg\":");
+		str_code_to_html("," JSONQUOTE("lg") ":");
 		itoa_html((stp_legacy >> i) & 1);
 		dsg = stp_dpid[i] && stp_info_while[i];
-		slen += strtox(outbuf + slen, ",\"db\":\"");
+		str_code_to_html("," JSONQUOTE("db") ":\"");
 		if (dsg) {
 			pi_prio = stp_dbridge[i].prio; pi_ext = stp_dbridge[i].ext;
 			pi_mac = stp_dbridge[i].mac;
@@ -139,7 +139,7 @@ void send_stp(void) __banked
 			pi_mac = uip_ethaddr.addr;
 		}
 		bridge_to_html();
-		slen += strtox(outbuf + slen, "\",\"dp\":\"");
+		str_code_to_html("\"," JSONQUOTE("dp") ":\"");
 		st = i;
 		if (!dsg && ((stp_backup >> i) & 1) && stp_loop_held[i]) {
 			st = stp_loop_held[i] - 1;
@@ -147,12 +147,13 @@ void send_stp(void) __banked
 		}
 		byte_to_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[st]);
 		byte_to_html(dsg ? stp_dpid[i] : j);
-		slen += strtox(outbuf + slen, "\",\"dc\":\"");
+		str_code_to_html("\"," JSONQUOTE("dc") ":\"");
 		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
-		slen += strtox(outbuf + slen, "\"},");
+		str_code_to_html("\"},");
 	}
 	slen -= 1; // remove comma
-	slen += strtox(outbuf + slen, "]}");
+	char_to_html(']');
+	char_to_html('}');
 }
 
 
@@ -161,28 +162,29 @@ void send_stp_counters(void) __banked
 	uint8_t i, j;
 
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
-	slen += strtox(outbuf + slen, "{\"on\":");
+	str_code_to_html("{" JSONQUOTE("on") ":");
 	bool_to_html(stp_enabled);
-	slen += strtox(outbuf + slen, ",\"hz\":");
+	str_code_to_html("," JSONQUOTE("hz") ":");
 	itoa_html(STP_HZ);
-	slen += strtox(outbuf + slen, ",\"tc\":\"");
+	str_code_to_html("," JSONQUOTE("tc") ":\"");
 	byte_to_html(stp_tc_count >> 8);
 	byte_to_html(stp_tc_count);
-	slen += strtox(outbuf + slen, "\",\"ports\":[");
+	str_code_to_html("\"," JSONQUOTE("ports") ":[");
 	for (i = 0; i < STP_ENTITIES; i++) {
 		j = stp_ent_id(i);
 		if (!j)
 			continue;
-		slen += strtox(outbuf + slen, "{\"p\":");
+		str_code_to_html("{" JSONQUOTE("p") ":");
 		itoa_html(j);
-		slen += strtox(outbuf + slen, ",\"c\":\"");
+		str_code_to_html("," JSONQUOTE("c") ":\"");
 		for (j = 0; j < STP_CNT_N; j++) {
 			pi_u32 = stp_cnt[j][i]; u32hex_html();
 		}
 		byte_to_html(stp_bpdu_age[i] >> 8);
 		byte_to_html(stp_bpdu_age[i]);
-		slen += strtox(outbuf + slen, "\"},");
+		str_code_to_html("\"},");
 	}
 	slen -= 1;
-	slen += strtox(outbuf + slen, "]}");
+	char_to_html(']');
+	char_to_html('}');
 }
