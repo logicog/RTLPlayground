@@ -1,0 +1,6 @@
+#ifndef _MACHINE_GOALAKE_IG204_V1_H_
+#define _MACHINE_GOALAKE_IG204_V1_H_
+
+#define MACHINE_MODEL "Goalake IG204 V1"
+
+#endif

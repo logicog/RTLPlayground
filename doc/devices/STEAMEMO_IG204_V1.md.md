@@ -1,4 +1,4 @@
-# PB-2131
+# Steamemo/Goalake IG204-V1
 
 Following is documentation for unmanaged switch marked as `IG204-V1`.
 
