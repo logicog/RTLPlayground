@@ -332,7 +332,44 @@ Object representing static and LACP lags
     ]
 }
 ```
-TODO
+| Property | Description
+|----------|------------
+| `on` | Physical port number
+| `rstp` | 
+| `prio` | 
+| `hello` | 
+| `maxage` | 
+| `fwd` | 
+| `txhold` | 
+| `pcs` | 
+| `bh` | 
+| `tcs` | 
+| `rMaxage` | 
+| `rFwd` | 
+| `rootPrio` | 
+| `rootMac` | 
+| `myMac` | 
+| `cost` | 
+| `weRoot` | 
+| `tc` | 
+| `ports` | Array of STP Port Status
+
+### STP Port Status
+| Property | Description
+|----------|------------
+| `p` | Physical port number, if > 100 it is LAG number + 100
+| `st` | 
+| `role` | STP Port role
+| `f` | 
+| `pc` | 
+| `mbr` | List of port members (for LAGs)
+| `prio` | Link Priority
+| `p2` | 
+| `lk` | 
+| `lg` | 
+| `db` | 
+| `dp` | 
+| `dc` | 
 
 ## vlan
 ```json
