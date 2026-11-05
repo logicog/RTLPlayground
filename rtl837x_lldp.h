@@ -100,7 +100,6 @@ extern __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
 
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
-void lldp_send(void) __banked;
 void lldp_shutdown(uint16_t ports) __banked;
 bool lldp_in(void) __banked;
 void lldp_neighbors_to_html(void) __banked;
