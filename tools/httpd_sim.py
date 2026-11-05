@@ -635,12 +635,16 @@ class Handler(SimpleHTTPRequestHandler):
             text += "\n"
         return text.encode("utf-8"), "text/plain"
 
+
     def _api_isolation(self):
         global state
         return [
                 {
                     "portNum": i,
-                    "allow": [x for x in range(1, PORTS + 1)]
+                    "allow": (
+                                [ 5, 0 ] if i == 4 else
+                                [ x for x in range(1, PORTS + 1) ]
+                            )
                 }
                 for i in range(1, PORTS + 1)
             ]
