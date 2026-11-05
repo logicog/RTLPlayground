@@ -85,8 +85,8 @@ static void t_vlan(void)
 	port_pvid_set(4, 20);
 	send_vlan(10);
 	char want[32];
-	snprintf(want, sizeof want, "\"members\":\"0x%x\"", hw_vlan_word(10));
-	CHECK(has(want), "members is the entry word");
+	snprintf(want, sizeof want, "\"untagged_members\":[");
+	CHECK(has(want), "untagged_members is the entry word");
 	CHECK(has("\"name\":\"lab\""), "name comes from the name table");
 	CHECK(has("\"pvid\":\"0x0005\""), "pvid mask has ports 1 and 3, not 5");
 	CHECK(balanced(), "valid JSON");

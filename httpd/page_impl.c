@@ -305,11 +305,8 @@ void send_vlan(uint16_t vlan)
 {
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	dbg_string("sending VLAN\n");
-
-	str_code_to_html("{" JSONQUOTE("members") ":\"0x");
 	vlan_get(vlan);
-	sfr_data_to_html();
-	str_code_to_html("\"," JSONQUOTE("untagged_members") ":[");
+	str_code_to_html("{" JSONQUOTE("untagged_members") ":[");
 
 	uint32_t m = ((uint32_t)sfr_data[0] << 24) |
 				((uint32_t)sfr_data[1] << 16) |
