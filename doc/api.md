@@ -180,8 +180,6 @@ Object representing static and LACP lags
 
 ### Current port status objects
 
-{"p":6,"lag":1,"a":"3f","pt":"3f","rs":4,"rx":"0053","psys":"ce11a001a010"},
-
 | Property | Description
 |----------|------------
 | `p` | Physical port number
@@ -218,6 +216,7 @@ Object representing static and LACP lags
 | `valid` | Whether the LACP LAG is currently valid
 | `aggregator` | MAC Address of the aggregating device
 | `hash` | Load balancing methods to use
+
 ## mirror
 ```json
 {
@@ -244,7 +243,20 @@ Object representing static and LACP lags
     {"port":9,"name":"","isSFP":1,"enabled":1,"sfp_options":"0x68","sfp_temp":"0x2640","sfp_vcc":"0x83bd","sfp_txbias":"0x0bb8","sfp_txpower":"0x1390","sfp_rxpower":"0x09c0","sfp_state":"0x02","sfp_vendor":"OEM","sfp_model":"SOD-10GT-I","sfp_serial":"A1A1A1A1A1A1","sfp_los":1,"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"}
 ]
 ```
-TODO
+| Property | Description
+|----------|------------
+| `port` | Physical port number
+| `name` | User entered name
+| `isSFP` | 0/1 is SFP port
+| `enabled` | Is port enabled/disabled in the firmware
+| `adv` | List of advertised link modes
+| `link` | Current link mode
+| `mtu` | Maximum Transmission Unit
+| `txG` | Number of transmitted good frames
+| `txB` | Number of transmitted bad frames
+| `rxG` | Number of received good frames
+| `rxB` | Number of received bad frames
+| `macs` | Number of MAC addresses learned from this port
 
 ## stp
 ```json
