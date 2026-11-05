@@ -55,9 +55,7 @@ extern __xdata uint8_t sfp_options[2];
 extern __xdata uint16_t lldp_logical_port_status;
 extern __xdata bool lldp_enabled;
 
-__code const uint8_t * __code const HTTP_RESPONSE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
-//TODO share with the copy in rtl837x_storm
 __code const char * __code const http_storm_names[STORM_TYPES] = { "bcast", "mcast", "ucast", "umcast" };
 
 static void str_x_to_html(__xdata const char *s)
@@ -964,7 +962,7 @@ void send_status(void)
 		}
 		else
 		{
-			//Determine link speed	//TODO: harmonize code with phy_show()
+			//Determine link speed
 			if (i < 8)
 				reg_read_m(RTL837X_REG_LINKS);
 			else
