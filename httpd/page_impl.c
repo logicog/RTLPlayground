@@ -895,28 +895,6 @@ void send_isolation(void)
 	char_to_html(']');
 }
 
-
-void send_mtu(void)
-{
-	dbg_string("send_mtu called\n");
-	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
-	char_to_html('[');
-	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("port") ":");
-		itoa_html(machine.log_to_phys_port[i]);
-		str_code_to_html("," JSONQUOTE("mtu") ":\"0x");
-		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
-		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
-		byte_to_html(mtu >> 8);
-		byte_to_html(mtu & 0xff);
-		char_to_html('"');
-		char_to_html('}');
-		if (i < MACHINE_MAX_PORT)
-			char_to_html(',');
-	}
-	char_to_html(']');
-}
-
 void send_status(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
@@ -1053,6 +1031,39 @@ void send_status(void)
 				break;
 			}
 		}
+
+/*
+
+dbg_string("send_mtu called\n");
+	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
+	char_to_html('[');
+
+
+	// for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+
+
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		str_code_to_html("{" JSONQUOTE("port") ":");
+		itoa_html(machine.log_to_phys_port[i]);
+		str_code_to_html("," JSONQUOTE("mtu") ":\"0x");
+		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
+		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
+		byte_to_html(mtu >> 8);
+		byte_to_html(mtu & 0xff);
+		char_to_html('"');
+		char_to_html('}');
+		if (i < MACHINE_MAX_PORT)
+			char_to_html(',');
+	}
+	char_to_html(']');
+
+*/
+
+		str_code_to_html("\"," JSONQUOTE("mtu") ":\"0x");
+		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
+		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
+		byte_to_html(mtu >> 8);
+		byte_to_html(mtu & 0xff);
 
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		str_code_to_html("\"," JSONQUOTE("txG") ":\"0x");

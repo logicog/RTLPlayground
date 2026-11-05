@@ -1047,8 +1047,6 @@ void httpd_appcall(void)
 				send_mirror();
 			} else if (is_word(q, "/isolation.json")) {
 				send_isolation();
-			} else if (is_word(q, "/mtu.json")) {
-				send_mtu();
 			} else if (is_word(q, "/lag.json")) {
 				send_lag();
 			} else if (is_word(q, "/stp.json")) {
@@ -1065,7 +1063,7 @@ void httpd_appcall(void)
 				send_cmd_log();
 			} else if (is_word(q, "/cmd_log_clear")) {
 				clear_command_history();
-				send_mtu(); // dummy response
+				send_status(); // dummy response
 			} else if (is_word(q, "/reset")) {
 				slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
 				s->fw_reset_pending = 1;
