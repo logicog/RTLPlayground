@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include "httpd_sim.h"
-#include <json.h>
+#include <json-c/json.h>
 #include <signal.h>
 #include "../version.h"
 
