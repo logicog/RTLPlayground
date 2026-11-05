@@ -604,7 +604,6 @@ void send_mirror(void)
 		}
 		m <<= 1;
 	}
-	str_code_to_html("]}");
 	char_to_html(']');
 	char_to_html('}');
 }
