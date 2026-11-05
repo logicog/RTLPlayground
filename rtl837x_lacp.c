@@ -192,7 +192,7 @@ void lacp_send(uint8_t port) __banked
 	LACP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	LACP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	LACP_O->rtl_tag.reason = 0x00;
-	LACP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS | RTL_TAG_KEEP);
+	LACP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS | RTL_TAG_KEEP | RTL_TAG_PRI_CTRL);
 	LACP_O->rtl_tag.pmask = HTONS(PORT_BIT(port));
 
 	LACP_O->ethertype = HTONS(SLOW_PROTO_ETHERTYPE);
