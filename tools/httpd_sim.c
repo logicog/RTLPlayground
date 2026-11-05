@@ -162,7 +162,6 @@ void send_status(int s)
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
 		json_object_object_add(v, "portNum", json_object_new_int(i));
-		json_object_object_add(v, "logPort", json_object_new_int(physToLogPort[i-1]));
 		json_object_object_add(v, "isSFP", json_object_new_int(i <= PORTS - NSFP ? 0 : 1));
 		json_object_object_add(v, "enabled", json_object_new_int((i % 4) ? 1 : 0));
 		json_object_object_add(v, "link", json_object_new_int(i % 2 ? ((i == 1)? 5 : 2) : 0));
@@ -475,7 +474,6 @@ void send_lldp(int s)
 	for (int i = 1; i <= PORTS; i++) {
 		p = json_object_new_object();
 		json_object_object_add(p, "portNum", json_object_new_int(i));
-		json_object_object_add(p, "logPort", json_object_new_int(i-1));
 		json_object_object_add(p, "name", json_object_new_string(""));
 		json_object_object_add(p, "permitted", json_object_new_int(1));
 		json_object_array_add(portStatuses, p);

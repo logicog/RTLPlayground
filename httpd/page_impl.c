@@ -927,8 +927,6 @@ void send_status(void)
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		str_code_to_html("{" JSONQUOTE("portNum") ":");
 		itoa_html(machine.log_to_phys_port[i]);
-		str_code_to_html("," JSONQUOTE("logPort") ":");
-		itoa_html(i);
 		str_code_to_html("," JSONQUOTE("name") ":\"");
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {
 			json_char_to_html(port_names[i][j]);
