@@ -461,6 +461,43 @@ void send_mtu(int s)
 	json_object_put(mtus);
 }
 
+void send_dot1x(int s)
+{
+	struct json_object *c, *ports, *p;
+	const char *jstring;
+	char *header = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
+
+	c = json_object_new_object();
+	json_object_object_add(c, "on", json_object_new_int(1));
+	json_object_object_add(c, "guest", json_object_new_int(99));
+	ports = json_object_new_array_ext(PORTS);
+	for (int i = 1; i <= PORTS; i++) {
+		p = json_object_new_object();
+		json_object_object_add(p, "portNum", json_object_new_int(i));
+		json_object_object_add(p, "mode", json_object_new_string(i == 2 ? "auto" : i == 3 ? "force-unauth" : "off"));
+		json_object_object_add(p, "action", json_object_new_string(i == 3 ? "guest" : "drop"));
+		json_object_object_add(p, "authorized", json_object_new_int(i == 2 ? 1 : 0));
+		if (i == 2) {
+			json_object_object_add(p, "state", json_object_new_string("authenticated"));
+			json_object_object_add(p, "identity", json_object_new_string("alice"));
+			json_object_object_add(p, "mab", json_object_new_int(1));
+			json_object_object_add(p, "viaMab", json_object_new_int(0));
+			json_object_object_add(p, "ok", json_object_new_int(3));
+			json_object_object_add(p, "fail", json_object_new_int(1));
+		}
+		json_object_array_add(ports, p);
+	}
+	json_object_object_add(c, "ports", ports);
+	json_object_object_add(c, "server", json_object_new_string("10.0.2.220"));
+	json_object_object_add(c, "serverPort", json_object_new_int(1812));
+	json_object_object_add(c, "secretSet", json_object_new_int(1));
+	jstring = json_object_to_json_string_ext(c, JSON_C_TO_STRING_PLAIN);
+	send(s, header, strlen(header), 0);
+	send(s, jstring, strlen(jstring), 0);
+	json_object_put(c);
+}
+
 void send_lldp(int s)
 {
 	struct json_object *c, *portStatuses, *p;
@@ -734,6 +771,12 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_vlan(new_socket, vlan);
+					goto done;
+				} else if (!strncmp(&buffer[4], "/dot1x.json", 11)) {
+					if (!authenticated)
+						send_unauthorized(new_socket);
+					else
+						send_dot1x(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/lldp.json", 10)) {
 					printf("LLDP request");
