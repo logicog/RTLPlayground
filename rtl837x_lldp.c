@@ -26,50 +26,43 @@ static __code const uint8_t lldp_oui_8021[3] = {0x00, 0x80, 0xc2};
 static __code const uint8_t lldp_oui_8023[3] = {0x00, 0x12, 0x0f};
 extern __xdata uint8_t outbuf[];
 extern __xdata uint16_t slen;
-extern __xdata uint8_t sfr_data[4];
 
 static __xdata struct timer lldp_timer;
-__xdata uint8_t lldp_seconds;
-__xdata uint8_t lldp_fast;
-__xdata bool lldp_was_enabled;
-__xdata uint16_t lldp_links_last;
+static __xdata uint8_t lldp_ttr[MACHINE_MAX_PORT + 1];
+static __xdata uint8_t lldp_fast[MACHINE_MAX_PORT + 1];
+static __xdata uint16_t lldp_new;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 __xdata struct lldp_neighbor lldp_nb[LLDP_NB_MAX];
 static __xdata struct lldp_neighbor lldp_tmp;
+
+static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant;
 
 void lldp_init(void) __banked
 {
     uint8_t i;
 
     timer_set(&lldp_timer, SYS_TICK_HZ);
-    lldp_seconds = 0;
-    lldp_fast = 0;
-    lldp_was_enabled = false;
-    lldp_links_last = 0;
+    for (i = 0; i <= MACHINE_MAX_PORT; i++)
+        lldp_ttr[i] = lldp_fast[i] = 0;
+    lldp_new = 0;
     for (i = 0; i < LLDP_NB_MAX; i++)
         lldp_nb[i].ttl = 0;
-}
-
-static uint16_t lldp_links(void) __reentrant
-{
-    reg_read_m(RTL837X_REG_LINKS_STS);
-    return ((uint16_t)sfr_data[2] << 8) | sfr_data[1];
 }
 
 void lldp_tick(void) __banked
 {
     uint16_t links;
+    uint16_t ports;
     uint8_t i;
 
     if (!timer_expired(&lldp_timer))
         return;
     timer_reset(&lldp_timer);
-    if (!lldp_enabled) {
-        lldp_was_enabled = false;
+    if (!lldp_enabled)
         return;
-    }
 
-    links = lldp_links();
+    reg_read_m(RTL837X_REG_LINKS_STS);
+    links = ((uint16_t)sfr_data[2] << 8) | sfr_data[1];
     for (i = 0; i < LLDP_NB_MAX; i++) {
         if (!lldp_nb[i].ttl)
             continue;
@@ -79,22 +72,29 @@ void lldp_tick(void) __banked
             lldp_nb[i].ttl = 0;
     }
 
-    if (!lldp_was_enabled || (links & ~lldp_links_last & lldp_logical_port_status))
-        lldp_fast = LLDP_FAST_TX_COUNT;
-    lldp_links_last = links;
-    lldp_was_enabled = true;
-
-    if (lldp_fast) {
-        lldp_fast--;
-        lldp_seconds = 0;
-        lldp_send();
-        return;
+    links &= lldp_logical_port_status;
+    ports = 0;
+    for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+        if (!((links >> i) & 1)) {
+            lldp_ttr[i] = lldp_fast[i] = 0;
+            continue;
+        }
+        if ((lldp_new >> i) & 1) {
+            if (!lldp_fast[i])
+                lldp_fast[i] = LLDP_FAST_TX_COUNT;
+            lldp_ttr[i] = 0;
+        }
+        if (lldp_ttr[i] && --lldp_ttr[i])
+            continue;
+        if (lldp_fast[i])
+            lldp_fast[i]--;
+        lldp_ttr[i] = lldp_fast[i] ? 1 : LLDP_TX_INTERVAL_S;
+        ports |= (uint16_t)1 << i;
     }
+    lldp_new = 0;
 
-    if (++lldp_seconds < LLDP_TX_INTERVAL_S)
-        return;
-    lldp_seconds = 0;
-    lldp_send();
+    if (ports)
+        lldp_send_ports(LLDP_TTL_TTL_SECONDS, ports);
 }
 
 //Outgoing LLDP packet.
@@ -215,13 +215,13 @@ static void lldp_send_ports(uint16_t ttl, uint16_t ports) __reentrant
     }
 }
 
-void lldp_send(void) __banked __reentrant
-{
-    lldp_send_ports(LLDP_TTL_TTL_SECONDS, lldp_logical_port_status);
-}
-
 void lldp_shutdown(uint16_t ports) __banked __reentrant
 {
+    uint8_t i;
+
+    for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++)
+        if ((ports >> i) & 1)
+            lldp_ttr[i] = lldp_fast[i] = 0;
     lldp_send_ports(0, ports);
 }
 
@@ -504,8 +504,11 @@ bool lldp_in(void) __banked __reentrant
             nb->ttl = 0;
         return true;
     }
-    if (!nb)
+    if (!nb) {
         nb = lldp_slot();
+        if (!nb->ttl)
+            lldp_new |= (uint16_t)1 << lldp_tmp.port;
+    }
     memcpy(nb, &lldp_tmp, sizeof(lldp_tmp));
     return true;
 }

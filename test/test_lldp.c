@@ -24,11 +24,20 @@ bool lldp_enabled;
 uint8_t sfr_data[4];
 
 static uint32_t links_sts;
-static int reg_reads, tx_frames;
+static int reg_reads, tx_frames, tx_port[16];
 
 void print_string(const char *s) { (void)s; }
 void write_char(char c) { (void)c; }
-void tcpip_output(void) { tx_frames++; }
+void tcpip_output(void)
+{
+	uint16_t m = HTONS(((struct rtl_tag *)&uip_buf[RTL_FRAME_DESC_SIZE + 2 * MAC_ADDR_LEN])->pmask);
+	uint8_t i;
+
+	tx_frames++;
+	for (i = 0; i < 16; i++)
+		if ((m >> i) & 1)
+			tx_port[i]++;
+}
 
 void reg_read_m(uint16_t reg_addr)
 {
@@ -107,6 +116,7 @@ static void reset(bool enabled, uint16_t links)
 	lldp_enabled = enabled;
 	links_sts = links;
 	reg_reads = tx_frames = 0;
+	memset(tx_port, 0, sizeof(tx_port));
 }
 
 int main(void)
@@ -144,12 +154,13 @@ int main(void)
 	      "L5 LLDP off: no link read, no ageing, nothing sent");
 
 	lldp_enabled = true;
-	step(LLDP_FAST_TX_COUNT);
-	sent = tx_frames;
-	step(LLDP_TX_INTERVAL_S - 1);
-	CHECK(sent > 0 && tx_frames == sent, "L6 after lldp on, the fast frames go out and then nothing until the interval");
 	step(1);
-	CHECK(tx_frames > sent, "L7 the next transmission comes one interval after the last fast frame");
+	sent = tx_frames;
+	CHECK(sent == MACHINE_MAX_PORT - MACHINE_MIN_PORT + 1 && tx_port[MACHINE_MIN_PORT] == 1 && tx_port[MACHINE_MAX_PORT] == 1, "L6 after lldp on, one frame at once on every port with a link");
+	step(LLDP_TX_INTERVAL_S - 1);
+	CHECK(tx_frames == sent, "L7 then nothing until the interval");
+	step(1);
+	CHECK(tx_frames == 2 * sent, "L7b one frame per port after the interval");
 
 	for (i = 0; i < LLDP_NB_MAX; i++)
 		put(i, 3, 120);
@@ -171,6 +182,41 @@ int main(void)
 	CHECK(frame(6, LLDP_PORT_ID_TLV_SUBTYPE, "\x94*o\xd2%n", MAC_ADDR_LEN)
 	      && !strcmp(lldp_nb[2].port_id, ".*o.%n"),
 	      "L11 six bytes with another subtype stay text with dots for the unprintable");
+
+	reset(true, 0x0108);
+	step(6);
+	memset(tx_port, 0, sizeof(tx_port));
+	frame(3, LLDP_PORT_ID_TLV_SUBTYPE, "eth0", 4);
+	step(LLDP_FAST_TX_COUNT);
+	CHECK(tx_port[3] == LLDP_FAST_TX_COUNT && tx_port[8] == 0,
+	      "L12 a new neighbour gets the fast frames one second apart on its port alone");
+	step(LLDP_TX_INTERVAL_S - 1);
+	sent = tx_port[3];
+	step(1);
+	CHECK(sent == LLDP_FAST_TX_COUNT && tx_port[3] == sent + 1,
+	      "L12b after the fast frames the port is back to the interval");
+	frame(3, LLDP_PORT_ID_TLV_SUBTYPE, "eth0", 4);
+	step(LLDP_FAST_TX_COUNT);
+	CHECK(tx_port[3] == sent + 1, "L13 a neighbour heard again is not new");
+
+	links_sts = 0x0128;
+	step(LLDP_FAST_TX_COUNT);
+	CHECK(tx_port[5] == 1, "L14 a port whose link comes up gets one frame at once, not the fast frames");
+
+	sent = tx_port[8];
+	lldp_logical_port_status = 0xfeff;
+	frame(8, LLDP_PORT_ID_TLV_SUBTYPE, "eth1", 4);
+	step(LLDP_FAST_TX_COUNT);
+	CHECK(lldp_nb[1].port == 8 && tx_port[8] == sent, "L15 nothing is sent on a blocked port, a new neighbour there included");
+	lldp_logical_port_status = 0xffff;
+
+	reset(true, 0x0108);
+	for (i = 0; i < LLDP_NB_MAX; i++)
+		put(i, 8, 100);
+	frame(3, LLDP_PORT_ID_TLV_SUBTYPE, "eth0", 4);
+	step(LLDP_FAST_TX_COUNT);
+	CHECK(lldp_nb[0].port == 3 && tx_port[3] == 1,
+	      "L16 a neighbour that pushes the oldest out of a full table gets no fast frames");
 
 	printf("\n%s (%d failure%s)\n", failures ? "SANDBOX: FAILURES" : "SANDBOX: ALL PASS",
 	       failures, failures == 1 ? "" : "s");
