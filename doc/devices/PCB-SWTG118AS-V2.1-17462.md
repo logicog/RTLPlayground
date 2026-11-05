@@ -36,13 +36,25 @@ make MACHINE=XIKESTOR_SKS3200M_8GPY1XF
 - Build verified for `XIKESTOR_SKS3200M_8GPY1XF` with `make ... CI=1`.
 - SFP detection with the GPIO38 detect pin was confirmed for the SKS3200-8E1X
   in #781.
-- Port mapping, SFP, and LEDs still need to be confirmed on hardware for the
-  SKS3200M-8GPY1XF.
 
 ## PCB
 
 PCB silkscreen: `SWTG118AS-V2.1-17462`.
 
-Photos are not yet available in this repository. See
-[PCB-SWTG118AS-V2.0-16029](PCB-SWTG118AS-V2.0-16029.md) for photos of the base
-board family.
+## Photos
+
+PCB (front):
+
+<img src="photos/PCB-SWTG118AS-V2.1-17462/pcb_top.jpg" width="800" />
+
+PCB silkscreen marking:
+
+<img src="photos/PCB-SWTG118AS-V2.1-17462/pcb_label.jpg" width="600" />
+
+Winbond `25Q16JVSIQ` flash chip:
+
+<img src="photos/PCB-SWTG118AS-V2.1-17462/pcb_flash.jpg" width="600" />
+
+Device label:
+
+<img src="photos/PCB-SWTG118AS-V2.1-17462/case_bottom.jpg" width="800" />
