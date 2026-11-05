@@ -1,0 +1,7 @@
+#ifndef _MACHINE_GOALAKE_IG204_H_
+#define _MACHINE_GOALAKE_IG204_H_
+
+#define MACHINE_MODEL "Goalake IG204"
+#define MACHINE_CHIPSET RTL8372
+
+#endif
