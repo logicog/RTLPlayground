@@ -9,6 +9,7 @@ void nic_setup(void) __banked;
 void rtl8373_revision(void) __banked;
 void init_smi(void) __banked;
 void setup_i2c(void) __banked;
+void setup_i2c_bus(uint8_t i2c) __banked;
 void set_hostname_default(void) __banked;
 
 #endif
