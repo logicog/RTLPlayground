@@ -193,7 +193,7 @@ static void t_status_macs(void)
 	hw_reset(); out_reset();
 	hw_reg_set(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (1 << 2), 0x21);
 	send_status();
-	p1 = strstr(body(), "\"logPort\":1,");
+	p1 = strstr(body(), "\"port\":2,");
 	end = p1 ? strchr(p1, '}') : NULL;
 	mac = p1 ? strstr(p1, "\"macs\":\"0x21\"") : NULL;
 	CHECK(mac && mac < end, "port 1 shows its learned count");

@@ -705,7 +705,7 @@ void send_lldp(void)
 	str_code_to_html("," JSONQUOTE("portStatus") ":[");
 
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("portNum") ":");
+		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 
 		str_code_to_html("," JSONQUOTE("name") ":\"");
@@ -735,7 +735,7 @@ void send_eee(void)
 
 	char_to_html('[');
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("portNum") ":");
+		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 
 		if (machine.is_sfp[i]) {
@@ -786,7 +786,7 @@ void send_bandwidth(void)
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	char_to_html('[');
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("portNum") ":");
+		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 		str_code_to_html("," JSONQUOTE("iLimited") ":");
 		reg_read_m(RTL837X_IGBW_PORT_CTRL + i * 4);
@@ -830,7 +830,7 @@ void send_storm(void)
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	char_to_html('[');
 	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("portNum") ":");
+		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 		char_to_html(',');
 
@@ -878,7 +878,7 @@ void send_isolation(void)
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	char_to_html('[');
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("portNum") ":");
+		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 		str_code_to_html("," JSONQUOTE("allow") ":[");
 		allow = port_isolation_get(i);
@@ -904,7 +904,7 @@ void send_mtu(void)
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	char_to_html('[');
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("portNum") ":");
+		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 		str_code_to_html("," JSONQUOTE("mtu") ":\"0x");
 		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
@@ -926,7 +926,7 @@ void send_status(void)
 	char_to_html('[');
 
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("portNum") ":");
+		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 		str_code_to_html("," JSONQUOTE("name") ":\"");
 		for (uint8_t j = 0; j < PORT_NAME_SIZE && port_names[i][j]; j++) {

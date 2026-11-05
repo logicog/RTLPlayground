@@ -2652,7 +2652,7 @@ Poller.prototype.tick = function() {
 
 function byPort(a) {
     return a.sort(function(x, y) {
-        return x.portNum - y.portNum
+        return x.port - y.port
     })
 }
 
@@ -2667,7 +2667,7 @@ function pollStatus() {
             s.forEach(function(p) {
                 if (p.isSFP) {
                     slot++;
-                    S.sfpSlot[p.portNum - 1] = slot;
+                    S.sfpSlot[p.port - 1] = slot;
                 }
             });
             buildStrip();
@@ -2676,7 +2676,7 @@ function pollStatus() {
             var dt = (now - S.prevT) / 1000;
             if (dt > 0.2) s.forEach(function(p, i) {
                 var q = S.prev[i];
-                if (q) S.rates[p.portNum - 1] = {
+                if (q) S.rates[p.port - 1] = {
                     tx: Number(BigInt(p.txG) - BigInt(q.txG)) / dt,
                     rx: Number(BigInt(p.rxG) - BigInt(q.rxG)) / dt,
                 };
@@ -2705,7 +2705,7 @@ function fmtPps(v) {
 }
 
 function portLabel(p) {
-    return p.name ? p.portNum + " " + p.name : String(p.portNum)
+    return p.name ? p.port + " " + p.name : String(p.port)
 }
 
 function portTip(i) {
@@ -2763,7 +2763,7 @@ function buildStrip() {
 
 function updateStrip() {
     S.ports.forEach(function(p) {
-        var i = p.portNum - 1,
+        var i = p.port - 1,
             el = $("pp" + i),
             lb = $("ppl" + i);
         if (!el) return;
@@ -2816,7 +2816,7 @@ function dBm(mw) {
 
 function portRows(p) {
     var rows = [
-        [t("c_port"), String(p.portNum)],
+        [t("c_port"), String(p.port)],
         [t("c_type"), p.isSFP ? "SFP" : "RJ45"]
     ];
     if (p.name) rows.push([t("c_name"), p.name]);
@@ -2938,9 +2938,9 @@ function dashStatus() {
         }
     }
     S.ports.forEach(function(p) {
-        var r = tb.rows[p.portNum - 1];
+        var r = tb.rows[p.port - 1];
         if (!r) return;
-        var rt = S.rates[p.portNum - 1];
+        var rt = S.rates[p.port - 1];
         r.cells[0].textContent = portLabel(p);
         r.cells[1].innerHTML = linkBadge(p);
         r.cells[2].textContent = rt ? fmtPps(rt.tx) : "-";
@@ -2992,7 +2992,7 @@ function buildPorts() {
     var tb = $("ptable").tBodies[0];
     if (tb.rows.length || !S.n) return;
     S.ports.forEach(function(p) {
-        var i = p.portNum - 1;
+        var i = p.port - 1;
         var spd = h("select", {
             class: "in",
             id: "pspd" + i
@@ -3004,7 +3004,7 @@ function buildPorts() {
             }));
         });
         var tr = tb.insertRow();
-        tr.insertCell().textContent = p.portNum + (p.isSFP ? " (SFP)" : "");
+        tr.insertCell().textContent = p.port + (p.isSFP ? " (SFP)" : "");
         tr.insertCell().appendChild(h("input", {
             class: "in",
             id: "pname" + i,
@@ -3048,8 +3048,8 @@ function buildPorts() {
 function loadMtu() {
     return getJSON("/mtu.json").then(function(s) {
         s.forEach(function(m) {
-            S.mtu[m.portNum - 1] = parseInt(m.mtu, 16);
-            var el = $("pmtu" + (m.portNum - 1));
+            S.mtu[m.port - 1] = parseInt(m.mtu, 16);
+            var el = $("pmtu" + (m.port - 1));
             if (el && document.activeElement !== el) el.value = parseInt(m.mtu, 16);
         });
     });
@@ -3058,7 +3058,7 @@ function loadMtu() {
 function portsStatus() {
     buildPorts();
     S.ports.forEach(function(p) {
-        var i = p.portNum - 1,
+        var i = p.port - 1,
             el = $("plink" + i);
         var mc = $("pmac" + i);
         if (mc) mc.textContent = parseInt(p.macs, 16) & 0x1fff;
@@ -3082,19 +3082,19 @@ function applyPort(i) {
             toast(t("pt_name_err"), "err");
             return;
         }
-        cmds.push("port " + p.portNum + " name" + (name ? " " + name : ""));
+        cmds.push("port " + p.port + " name" + (name ? " " + name : ""));
     }
-    if (!en) cmds.push("port " + p.portNum + " off");
+    if (!en) cmds.push("port " + p.port + " off");
     else if (p.isSFP) {
-        if (!p.enabled) cmds.push("port " + p.portNum + " on");
+        if (!p.enabled) cmds.push("port " + p.port + " on");
         cmds.push("sfp " + S.sfpSlot[i] + " " + spd);
-    } else cmds.push("port " + p.portNum + " " + spd);
+    } else cmds.push("port " + p.port + " " + spd);
     if (mtu && mtu !== S.mtu[i]) {
         if (mtu < 64 || mtu > 16383) {
             toast(t("pt_mtu_err"), "err");
             return;
         }
-        cmds.push("mtu " + p.portNum + " " + mtu);
+        cmds.push("mtu " + p.port + " " + mtu);
     }
     postCmds(cmds).then(loadMtu).catch(function() {});
 }
@@ -3578,9 +3578,9 @@ function statsStatus() {
         })(i);
     }
     S.ports.forEach(function(p) {
-        var r = tb.rows[p.portNum - 1];
+        var r = tb.rows[p.port - 1];
         if (!r) return;
-        r.cells[0].textContent = p.portNum;
+        r.cells[0].textContent = p.port;
         r.cells[1].textContent = p.name || "";
         r.cells[2].innerHTML = linkBadge(p);
         r.cells[3].textContent = BigInt(p.txG).toString();
@@ -3749,7 +3749,7 @@ function buildVlanEdit() {
             }));
         });
         seg.children[0].classList.add("on");
-        rN.insertCell().appendChild(document.createTextNode((S.ports.filter(x => x.portNum == p)[0]).name));
+        rN.insertCell().appendChild(document.createTextNode((S.ports.filter(x => x.port == p)[0]).name));
         rM.insertCell().appendChild(seg);
         rP.insertCell().appendChild(h("span", {
             id: "vp" + p
@@ -4255,10 +4255,10 @@ function isoLoad() {
         if ($("isotbl").dataset.dirty) return;
         s.forEach(function(e) {
             for (var c = 1; c <= S.n; c++) {
-                var b = isoBox(e.portNum, c);
+                var b = isoBox(e.port, c);
                 if (b) b.checked = e.allow.includes(c);
             }
-            var cpu = isoBox(e.portNum, S.n + 1);
+            var cpu = isoBox(e.port, S.n + 1);
             if (cpu) cpu.checked = e.allow.includes(0);
         });
         isoMark();
@@ -4280,7 +4280,7 @@ $("isoapply").addEventListener("click", function() {
     for (var r = 1; r <= S.n; r++) {
         var cur = [];
         isoAllow.forEach(function(e) {
-            if (e.portNum === r) cur = e.allow;
+            if (e.port === r) cur = e.allow;
         });
 
         //if the state in the DOM is the same as the API response, move on guv'
@@ -4368,8 +4368,6 @@ var lacpCfg = [0, 0, 0, 0, 0];
 
 function lagLoad() {
     return getJSON("/lag.json").then(function(s) {
-        console.log(s);
-
         s.lags.forEach(function(l) {
             var g = l.lagNum + 1;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
@@ -4450,7 +4448,7 @@ function lldpLoad() {
         tb.innerHTML = "";
         byPort(s.portStatus).forEach(function(p) {
             var tr = tb.insertRow();
-            tr.insertCell().textContent = p.portNum;
+            tr.insertCell().textContent = p.port;
             tr.insertCell().textContent = p.name;
             var sw = h("label", {
                 class: "switch"
@@ -4458,7 +4456,7 @@ function lldpLoad() {
                 h("input", {
                     type: "checkbox",
                     onchange: function() {
-                        postCmd("port " + p.portNum + " lldp " + (this.checked ? "permit" : "block"))
+                        postCmd("port " + p.port + " lldp " + (this.checked ? "permit" : "block"))
                             .then(function() {
                                 setTimeout(lldpLoad, 300)
                             }).catch(function() {});
@@ -4487,7 +4485,7 @@ function eeeLoad() {
         tb.innerHTML = "";
         byPort(s).forEach(function(p) {
             var tr = tb.insertRow();
-            tr.insertCell().textContent = p.portNum + (p.isSFP ? " (SFP)" : "");
+            tr.insertCell().textContent = p.port + (p.isSFP ? " (SFP)" : "");
             if (p.isSFP) {
                 for (var c = 0; c < 3; c++) tr.insertCell().textContent = "-";
                 tr.insertCell().textContent = t("e_na");
@@ -4501,7 +4499,7 @@ function eeeLoad() {
                 h("input", {
                     type: "checkbox",
                     onchange: function() {
-                        postCmd("eee " + (this.checked ? "on" : "off") + " " + p.portNum)
+                        postCmd("eee " + (this.checked ? "on" : "off") + " " + p.port)
                             .then(function() {
                                 setTimeout(eeeLoad, 300)
                             }).catch(function() {});
@@ -4530,7 +4528,7 @@ function bwLoad() {
         var tb = $("btable").tBodies[0];
         tb.innerHTML = "";
         byPort(s).forEach(function(p) {
-            var n = p.portNum;
+            var n = p.port;
             var iOn = p.iLimited == 1, eOn = p.eLimited == 1;
             var iM = (parseInt(p.iBW) * 16 / 1000),
                 eM = (parseInt(p.eBW) * 16 / 1000);
@@ -4613,13 +4611,13 @@ function scLoad() {
         var tb = $("sctable").tBodies[0];
         byPort(s);
         var sig = s.map(function(p) {
-            return p.portNum
+            return p.port
         }).join();
         if (sig !== scSig) {
             scSig = sig;
             tb.innerHTML = "";
             s.forEach(function(p) {
-                var n = p.portNum,
+                var n = p.port,
                     tr = tb.insertRow();
                 tr.id = "scr" + n;
                 tr.addEventListener("input", function() { tr.dataset.dirty = "1" });
@@ -4644,7 +4642,7 @@ function scLoad() {
             });
         }
         s.forEach(function(p) {
-            var n = p.portNum;
+            var n = p.port;
             if ($("scr" + n).dataset.dirty) return;
             SC_TYPES.forEach(function(v, k) {
                 var on = p[v]["en"] == 1,
