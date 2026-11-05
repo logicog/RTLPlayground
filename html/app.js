@@ -2234,7 +2234,6 @@ function i18nApply() {
 var S = {
     ports: [],
     n: 0,
-    physToLog: [],
     sfpSlot: [],
     info: {},
     detail: null,
@@ -2666,7 +2665,6 @@ function pollStatus() {
             S.n = s.length;
             var slot = 0;
             s.forEach(function(p) {
-                S.physToLog[p.portNum - 1] = p.logPort;
                 if (p.isSFP) {
                     slot++;
                     S.sfpSlot[p.portNum - 1] = slot;

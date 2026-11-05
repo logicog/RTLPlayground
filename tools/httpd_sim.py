@@ -431,7 +431,6 @@ class Handler(SimpleHTTPRequestHandler):
                 rx_b[n] += rate * elapsed // 10_000_000
             item = {
                 "portNum": i,
-                "logPort": machine_config["phys_to_log_port"][n],
                 "name": "",
                 "isSFP": machine_config["is_sfp"][i],
                 "enabled": int(i % 4 != 0),
@@ -552,7 +551,6 @@ class Handler(SimpleHTTPRequestHandler):
             "portStatus": [
                 {
                     "portNum": i,
-                    "logPort": i - 1,
                     "name": "",
                     "permitted": 1,
                 }
