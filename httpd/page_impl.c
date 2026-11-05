@@ -350,16 +350,6 @@ void send_vlan(uint16_t vlan)
 			json_char_to_html(vlan_names[n++]);
 	}
 
-	uint16_t pvid_mask = 0;
-	str_code_to_html("\"," JSONQUOTE("pvid") ":\"0x");
-	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		if (port_pvid_get(i) == vlan)
-			pvid_mask |= (1 << i);
-	}
-
-	byte_to_html(pvid_mask >> 8);
-	byte_to_html(pvid_mask);
-
 	str_code_to_html("\"," JSONQUOTE("pvid_array") ":[");
 
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
