@@ -161,7 +161,7 @@ void send_status(int s)
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "port", json_object_new_int(i));
 		json_object_object_add(v, "isSFP", json_object_new_int(i <= PORTS - NSFP ? 0 : 1));
 		json_object_object_add(v, "enabled", json_object_new_int((i % 4) ? 1 : 0));
 		json_object_object_add(v, "link", json_object_new_int(i % 2 ? ((i == 1)? 5 : 2) : 0));
@@ -265,7 +265,7 @@ void send_eee(int s)
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "port", json_object_new_int(i));
 		json_object_object_add(v, "isSFP", json_object_new_int(i < 5 ? 0 : 1));
 		uint8_t eee = 0;
 		eee |= 0x02;
@@ -300,7 +300,7 @@ void send_bandwidth(int s)
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "port", json_object_new_int(i));
 		if (i % 2) {
 			limited = 1;
 			fcEnabled = i % 4 ? 1 : 0;
@@ -448,7 +448,7 @@ void send_mtu(int s)
 	char mtu[8];
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "port", json_object_new_int(i));
 		sprintf(mtu, "0x%04x", i % 2 ? 16383 : 1522);
 		json_object_object_add(v, "mtu", json_object_new_string(mtu));
 		json_object_array_add(mtus, v);
@@ -473,7 +473,7 @@ void send_lldp(int s)
 
 	for (int i = 1; i <= PORTS; i++) {
 		p = json_object_new_object();
-		json_object_object_add(p, "portNum", json_object_new_int(i));
+		json_object_object_add(p, "port", json_object_new_int(i));
 		json_object_object_add(p, "name", json_object_new_string(""));
 		json_object_object_add(p, "permitted", json_object_new_int(1));
 		json_object_array_add(portStatuses, p);

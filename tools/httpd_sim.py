@@ -382,7 +382,7 @@ class Handler(SimpleHTTPRequestHandler):
         global state
         return [
             {
-                "portNum": i,
+                "port": i,
                 "bcast":  {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000037") },
                 "mcast":  {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000047") },
                 "ucast":  {"en": int(i==3), "unit":"pps", "rate": ("0x000000" if i !=3 else "0x000057") },
@@ -429,7 +429,7 @@ class Handler(SimpleHTTPRequestHandler):
                 tx_b[n] += rate * elapsed // 10_000_000
                 rx_b[n] += rate * elapsed // 10_000_000
             item = {
-                "portNum": i,
+                "port": i,
                 "name": "",
                 "isSFP": machine_config["is_sfp"][i],
                 "enabled": int(i % 4 != 0),
@@ -470,7 +470,7 @@ class Handler(SimpleHTTPRequestHandler):
         global state, machine_config
         return [
             {
-                "portNum": i,
+                "port": i,
                 "isSFP": machine_config["is_sfp"][i],
                 "eee": "00000010",
                 "eee_lp": "00000100",
@@ -485,7 +485,7 @@ class Handler(SimpleHTTPRequestHandler):
             ingress_limited = i % 2 == 1
             egress_limited = i % 4 != 0
             ports.append({
-                "portNum": i,
+                "port": i,
                 "iLimited": int(ingress_limited),
                 "iFC": int(i % 4 != 0) if ingress_limited else 0,
                 "iBW": f"{0x100 if ingress_limited else 0xfffff:08x}",
@@ -538,7 +538,7 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_mtu(self):
         return [
             {
-                "portNum": i,
+                "port": i,
                 "mtu": f"0x{16383 if i % 2 else 1522:04x}",
             }
             for i in range(1, PORTS + 1)
@@ -549,7 +549,7 @@ class Handler(SimpleHTTPRequestHandler):
             "on": 1,
             "portStatus": [
                 {
-                    "portNum": i,
+                    "port": i,
                     "name": "",
                     "permitted": 1,
                 }
@@ -637,7 +637,7 @@ class Handler(SimpleHTTPRequestHandler):
         global state
         return [
                 {
-                    "portNum": i,
+                    "port": i,
                     "allow": (
                                 [ 5, 0 ] if i == 4 else
                                 [ x for x in range(1, PORTS + 1) ]
