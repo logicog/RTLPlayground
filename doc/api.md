@@ -45,9 +45,71 @@ Array of port properties
 GET parameter `port=<PORTNUM>`
 Array of counters for the specified port
 ```json
-["0x22cc9","0x51b02","0x2d4","0x1f","0x164","0x262","0x17b","0x0","0x6","0x0","0x0","0x0","0x0","0x0","0x17b","0x0","0x0","0x0","0x0","0x0","0x2b1","0x1f40000002a","0x7800000008","0x1620000004e","0x8400000008","0x5000000a4","0x0","0x0","0x0","0x3dd","0x45700000000","0x3dd","0x45700000000","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x3dd","0x3dd","0x457","0x0","0x0","0x0","0x0","0x0","0x0","0x0"]
+    ["0x22cc9","0x51b02","0x2d4","0x1f","0x164","0x262","0x17b","0x0","0x6","0x0","0x0","0x0","0x0","0x0","0x17b","0x0","0x0","0x0","0x0","0x0","0x2b1","0x1f40000002a","0x7800000008","0x1620000004e","0x8400000008","0x5000000a4","0x0","0x0","0x0","0x3dd","0x45700000000","0x3dd","0x45700000000","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x0","0x3dd","0x3dd","0x457","0x0","0x0","0x0","0x0","0x0","0x0","0x0"]
 ```
-//TODO this is a mess
+| Index Description
+| ----|--------------------
+| 0 | Interface-in Octets (64-bit)
+| 1 | Interface-out Octets (64-bit)
+| 2 | Interface-in Unicast Pkts (64-bit)
+| 3 | Interface-in Multicast Pkts (64-bit)
+| 4 | Interface-in Broadcast Pkts (64-bit)
+| 5 | Interface-out Unicast Pkts (64-bit)
+| 6 | Interface-out Multicast Pkts (64-bit)
+| 7 | Interface-out Broadcast Pkts (64-bit)
+| 8 | Upper 32-bits: Interface out discards; lower 32-bits: 802.1d Tp Port in discards
+| 9 | Upper 32-bits: 802.3 Single collision frames; lower 32-bits: 802.3 Multi collision frames
+| 10 | Upper 32-bits: 802.3 Deferred transmissions; lower 32-bits: 802.3 Late collisions
+| 11 | Upper 32-bits: 802.3 Excessive collisions; lower 32-bits: 802.3 Symbol errors
+| 12 | Upper 32-bits: 802.3 Control in unknown opcodes; lower 32-bits: 802.3 In Pause frames
+| 13 | Upper 32-bits: 802.3 Out Pause frames; lower 32-bits: Ether drop events
+| 14 | Upper 32-bits: TX Ether Broadcast Pkts; lower 32-bits: TX Ether Multicast Pkts
+| 15 | Upper 32-bits: TX Ether CRC Align errors; lower 32-bits: RX Ether CRC Align errors
+| 16 | Upper 32-bits: TX Ether Undersized Pkts; lower 32-bits: RX Ether Undersized Pkts
+| 17 | Upper 32-bits: TX Ether Oversized Pkts; lower 32-bits: RX Ether Oversized Pkts
+| 18 | Upper 32-bits: TX Ether Fragments; lower 32-bits: RX Ether fragments
+| 19 | Upper 32-bits: TX Ether Jabbers; lower 32-bits: RX Ether Jabbers
+| 20 | Upper 32-bits: TX Ether Collisions; lower 32-bits: TX Ether Pkts 64 Octets
+| 21 | Upper 32-bits: RX Ether Pkts 64 Octets; lower 32-bits: TX Ether 65-127 Octets
+| 22 | Upper 32-bits: RX Ether 65-127 Octets; lower 32-bits: TX Ether Pkts 128-255 Octets
+| 23 | Upper 32-bits: RX Ether Pkts 128-255 Octets; lower 32-bits: TX Ether Pkts 256-511 Octets
+| 24 | Upper 32-bits: RX Ether Pkts 256-511 Octets; lower 32-bits: TX Ether Pkts 512-1023 Octets
+| 25 | Upper 32-bits: RX Ether Pkts 512-1023 Octets; lower 32-bits: TX Ether Pkts 1024-1518 Octets
+| 26 | Upper 32-bits: RX Ether Pkts 1024-1518 Octets; lower 32-bits: unlabeled counter
+| 27 | Upper 32-bits: RX Ether Undersized Drop Pkts; lower 32-bits: TX Ether Pkts >1518 Octets
+| 28 | Upper 32-bits: RX Ether Pkts >1518 Octets; lower 32-bits: TX Ether Pkts too large
+| 29 | Upper 32-bits: RX Ether Pkts too large; lower 32-bits: TX Ether Flexible Octets Set 1
+| 30 | Upper 32-bits: RX Ether Flexible Octets Set 1; lower 32-bits: TX Ether Flexible Octets CRC Set 1
+| 31 | Upper 32-bits: RX Ether Flexible Octets CRC Set 1; lower 32-bits: TX Ether Flexible Octets Set 0
+| 32 | Upper 32-bits: RX Ether Flexible Octets Set 0; lower 32-bits: TX Ether Flexible Octets CRC Set 0
+| 33 | Upper 32-bits: RX Ether Flexible Octets CRC Set 0; lower 32-bits: Length Field Errors
+| 34 | Upper 32-bits: False Carriers; lower 32-bits: Undersized Octets
+| 35 | Upper 32-bits: Framing Errors; lower 32-bits: unlabeled counter
+| 36 | Upper 32-bits: RX MAC Discards; lower 32-bits: RX MAC IPG Short Drop
+| 37 | Upper 32-bits: unlabeled counter; lower 32-bits: 802.1d TP Learned Entry Discards
+| 38 | Egress Queue 7 Dropped Pkts
+| 39 | Egress Queue 6 Dropped Pkts
+| 40 | Egress Queue 5 Dropped Pkts
+| 41 | Egress Queue 4 Dropped Pkts
+| 42 | Egress Queue 3 Dropped Pkts
+| 43 | Egress Queue 2 Dropped Pkts
+| 44 | Egress Queue 1 Dropped Pkts
+| 45 | Egress Queue 0 Dropped Pkts
+| 46 | Egress Queue 7 Out Pkts
+| 47 | Egress Queue 6 Out Pkts
+| 48 | Egress Queue 5 Out Pkts
+| 49 | Egress Queue 4 Out Pkts
+| 50 | Egress Queue 3 Out Pkts
+| 51 | Egress Queue 2 Out Pkts
+| 52 | Egress Queue 1 Out Pkts
+| 52 | Egress Queue 1 Out Pkts
+| 53 | Egress Queue 0 Out Pkts
+| 54 | TX Good Counter (64-bit)
+| 55 | RX Good Counter (64-bit)
+| 56 | Upper 32-bits: RX Error Counter; lower 32-bits: TX Error Counter
+| 57 | TX Good Counter PHY (64-bit)
+| 58 | RX Good Counter PHY (64-bit)
+| 59 | Upper 32-bits: RX Error Counter PHY; lower 32-bits: TX Error Counter PHY
 
 ## eee
 ```json
