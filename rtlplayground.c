@@ -92,7 +92,7 @@ __code const uint8_t netmask[] = { 255, 255, 255, 0};
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
-volatile __xdata uint8_t sec_counter;
+volatile __xdata uint8_t tick_counter;
 volatile __xdata uint8_t sec_pending;
 volatile __xdata uint32_t time_sec;
 
@@ -213,10 +213,11 @@ void isr_timer0(void) __interrupt(1)
 void isr_timer2(void) __interrupt(5)
 {
 	ticks++;
+	tick_counter ++;
 	tick_pending = 1;
 
-	if ( sec_counter >= SYS_TICK_HZ ){
-		sec_counter -= SYS_TICK_HZ;
+	if ( tick_counter >= SYS_TICK_HZ ){
+		tick_counter -= SYS_TICK_HZ;
 		time_sec ++;
 		sec_pending = 1;
 	}
@@ -1537,6 +1538,7 @@ unsigned char __sdcc_external_startup(void)
 void main(void)
 {
 	ticks = 0;
+	tick_counter = 0;
 	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
 
