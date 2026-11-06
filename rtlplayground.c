@@ -35,6 +35,7 @@
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
+#include "rtlos_hal.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -1585,6 +1586,7 @@ void main(void)
 	setup_timer2();
 	setup_serial_timer1();
 	setup_external_irqs();
+	set_gpio_pull_mode(machine.reset_pin, GPIO_PULL_UP);
 
 	EA = 1; // Enable global interrupt
 
