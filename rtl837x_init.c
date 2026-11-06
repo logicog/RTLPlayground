@@ -206,7 +206,7 @@ void rtl8372_init(void) __banked
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();
-	if (machine.n_10g != 2)
+	if (machine.n_10g != 2 && machine.log_to_phys_port[8])
 		phy_config(8);	// PHY configuration: External 8221B?
 	if (machine.n_10g)
 		phy_config_8261(3, 0);
