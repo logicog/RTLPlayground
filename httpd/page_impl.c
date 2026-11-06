@@ -326,8 +326,7 @@ void send_vlan(uint16_t vlan)
 			json_char_to_html(vlan_names[n++]);
 	}
 
-	str_code_to_html("\"," JSONQUOTE("pvid_array") ":[");
-
+	str_code_to_html("\"," JSONQUOTE("pvid") ":[");
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		if (port_pvid_get(i) == vlan) { // i is _logical port_
 			json_add_array_uint_item(machine.log_to_phys_port[i]);

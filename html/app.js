@@ -3636,7 +3636,7 @@ function vlanRefresh() {
                     tr.insertCell().textContent = rangeStr(d.tagged_members.concat(d.untagged_members).sort());
                     tr.insertCell().textContent = rangeStr(d.tagged_members);
                     tr.insertCell().textContent = rangeStr(d.untagged_members);
-                    tr.insertCell().textContent = rangeStr(d.pvid_array);
+                    tr.insertCell().textContent = rangeStr(d.pvid);
                     l.dataset.t = d.tagged_members;
                     l.dataset.u = d.untagged_members;
                 }
@@ -3771,7 +3771,7 @@ function vlanLoad(vid) {
             if(d.untagged_members.includes(p)){setVal = 1;}
             if(d.tagged_members.includes(p)){setVal = 2;}
             segSet(p, setVal);
-            $("vp" + p).innerText = d.pvid_array.includes(p) ? "Y" : "N";
+            $("vp" + p).innerText = d.pvid.includes(p) ? "Y" : "N";
         }
         $("vmgmtpromote").checked = ($("vmgmtcur").dataset.id == vid);
         toast(t("v_loaded", {
