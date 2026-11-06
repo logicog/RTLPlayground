@@ -1855,6 +1855,61 @@ void print_sw_version(void) __banked {
 	write_char('\n');
 }
 
+// Display system uptime
+static void print_uptime(void)
+{
+    uint8_t interrupts_enabled;
+    __xdata uint32_t uptime_ticks;
+    __xdata uint32_t uptime_seconds;
+    __xdata uint32_t uptime_days;
+
+    uint8_t hours;
+    uint8_t minutes;
+    uint8_t seconds;
+
+    // Take an atomic snapshot of the 32-bit tick counter.
+    // The Timer2 interrupt can otherwise interrupt a multi-byte read.
+    interrupts_enabled = EA;
+    EA = 0;
+    uptime_ticks = ticks;
+    EA = interrupts_enabled;
+
+    // Convert ticks to seconds (200 ticks per second).
+    uptime_seconds = uptime_ticks / SYS_TICK_HZ;
+
+    // Calculate days, hours, minutes and seconds.
+    uptime_days = uptime_seconds / 86400UL;
+    uptime_seconds %= 86400UL;
+
+    hours = uptime_seconds / 3600UL;
+    uptime_seconds %= 3600UL;
+
+    minutes = uptime_seconds / 60UL;
+    seconds = uptime_seconds % 60UL;
+
+    // Display uptime
+    print_string("Uptime: ");
+    itoa((uint8_t)uptime_days);
+    print_string(" days, ");
+
+    if (hours < 10)
+        write_char('0');
+    itoa(hours);
+
+    write_char(':');
+
+    if (minutes < 10)
+        write_char('0');
+    itoa(minutes);
+
+    write_char(':');
+
+    if (seconds < 10)
+        write_char('0');
+    itoa(seconds);
+
+    write_char('\n');
+}
 
 // Identify command
 void cmd_parser(void) __banked
@@ -1885,7 +1940,9 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "sfp")) {
 			parse_sfp();
 		} else if (cmd_compare(0, "stat")) {
-			port_stats_print();
+    		port_stats_print();
+		} else if (cmd_compare(0, "uptime") && cmd_words_len == 1) {
+    		print_uptime();
 		} else if (cmd_compare(0, "flash") && cmd_words_len == 2) {
 			uint8_t c = cmd_buffer[cmd_words_b[1]];
 			if (c == 's') {
