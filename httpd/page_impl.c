@@ -614,7 +614,7 @@ void send_lag(void)
 				}
 			}
 			str_code_to_html("]," JSONQUOTE("valid") ":");
-			bool_to_html(lacp_agg_valid[l]);
+			bool_to_json(lacp_agg_valid[l]);
 			str_code_to_html("," JSONQUOTE("aggregator") ":\"");
 			for (uint8_t j = 0; j < MAC_ADDR_LEN; j++)
 				byte_to_html(lacp_agg_sys[l][j]);
@@ -660,7 +660,7 @@ void send_lldp(void)
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 
 	str_code_to_html("{" JSONQUOTE("on") ":");
-	bool_to_html(lldp_enabled);
+	bool_to_json(lldp_enabled);
 	str_code_to_html("," JSONQUOTE("portStatus") ":[");
 
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
@@ -673,7 +673,7 @@ void send_lldp(void)
 		}
 
 		str_code_to_html("\"," JSONQUOTE("permitted") ":");
-		bool_to_html(1 & (lldp_logical_port_status >> i));
+		bool_to_json(1 & (lldp_logical_port_status >> i));
 		char_to_html('}');
 
 		if (i < MACHINE_MAX_PORT)
@@ -698,9 +698,9 @@ void send_eee(void)
 		itoa_html(machine.log_to_phys_port[i]);
 
 		if (machine.is_sfp[i]) {
-			str_code_to_html("," JSONQUOTE("isSFP") ":1");
+			str_code_to_html("," JSONQUOTE("isSFP") ":true");
 		} else {
-			str_code_to_html("," JSONQUOTE("isSFP") ":0," JSONQUOTE("advertised") ":[");
+			str_code_to_html("," JSONQUOTE("isSFP") ":false," JSONQUOTE("advertised") ":[");
 			uint16_t v;
 			phy_read(i, PHY_MMD_AN, PHY_EEE_ADV2);
 			v = SFR_DATA_U16;
@@ -729,7 +729,7 @@ void send_eee(void)
 				json_add_array_string_item(JSONQUOTE("100M"));
 
 			str_code_to_html("]," JSONQUOTE("active") ":");
-			bool_to_html(eee_ablty & (1 << i));
+			bool_to_json(eee_ablty & (1 << i));
 		}
 		char_to_html('}');
 		if (i < MACHINE_MAX_PORT)
@@ -875,7 +875,7 @@ void send_status(void)
 			uint8_t sfp = machine.is_sfp[i] - 1;
 			str_code_to_html("," JSONQUOTE("isSFP") ":1," JSONQUOTE("enabled") ":");
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
-				bool_to_html(1);
+				bool_to_json(1);
 				str_code_to_html("," JSONQUOTE("sfp_options") ":\"0x");
 				byte_to_html(sfp_options[sfp]);
 				if (sfp_options[sfp] & 0x40) {
@@ -915,15 +915,15 @@ void send_status(void)
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					str_code_to_html("null");
 				} else {
-					bool_to_html(sfp_pins_last & (0x2 << (sfp << 2)));
+					bool_to_json(sfp_pins_last & (0x2 << (sfp << 2)));
 				}
 			} else {
-				bool_to_html(0);
+				bool_to_json(0);
 			}
 		} else {
 			str_code_to_html("," JSONQUOTE("isSFP") ":0," JSONQUOTE("enabled") ":");
 			phy_read(i, PHY_MMD31, 0xa610);
-			bool_to_html(SFR_DATA_8 == 0x20);
+			bool_to_json(SFR_DATA_8 == 0x20);
 			str_code_to_html("," JSONQUOTE("adv") ":[");
 
 			phy_read(i, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL);
