@@ -1070,10 +1070,10 @@ void handle_button(void)
 	if (button_last != button_pressed)
 	{
 		print_string(button_pressed ? "Button pressed\n" : "Button released\n");
-		get_time_sec();
-		uint8_t diff_sec_counter = sfr_data[3] - button_sec_counter_last;
+		uint8_t time_byte = get_time_sec() & 0xff;
+		uint8_t diff_sec_counter = time_byte - button_sec_counter_last;
 		button_last = button_pressed;
-		button_sec_counter_last = sfr_data[3];
+		button_sec_counter_last = time_byte;
 
 		if (!button_pressed)
 		{
@@ -1145,9 +1145,9 @@ void check_links(void)
 //
 static void handle_tick(void)
 {
-	uint32_t time_now;
-	uint8_t *time_ptr = &time_now;
 	if ( sec_pending ) {
+		uint32_t time_now;
+		uint8_t *time_ptr = &time_now;
 		sec_pending = 0;
 #ifdef DEBUG
 		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
