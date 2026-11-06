@@ -3246,7 +3246,7 @@ function stpLoad() {
         }
         stpCur = s;
         var en = $("stpen");
-        if (document.activeElement !== en) en.checked = !!s.on;
+        if (document.activeElement !== en) en.checked = s.on;
         var msg;
         if (!s.on) msg = t("stp_off_msg");
         else {

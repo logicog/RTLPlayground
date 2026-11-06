@@ -13,6 +13,7 @@ void byte_to_html(uint8_t val);
 void itoa_html(uint8_t v);
 
 void str_code_to_html(__code const char *s);
+void bool_to_json(char c);
 void json_add_array_string_item(__code const char *item);
 void json_add_array_uint_item(uint8_t x);
 void char_to_html(char c);
