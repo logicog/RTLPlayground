@@ -538,9 +538,9 @@ void send_mirror(void)
 	reg_read_m(RTL837x_MIRROR_CTRL);
 	uint8_t mPort = sfr_data[3];
 	if (mPort & 1) {
-		str_code_to_html("{" JSONQUOTE("enabled") ":1," JSONQUOTE("mirrorPort") ":");
+		str_code_to_html("{" JSONQUOTE("enabled") ":true," JSONQUOTE("mirrorPort") ":");
 	} else {
-		str_code_to_html("{" JSONQUOTE("enabled") ":0," JSONQUOTE("mirrorPort") ":");
+		str_code_to_html("{" JSONQUOTE("enabled") ":false," JSONQUOTE("mirrorPort") ":");
 	}
 	itoa_html(machine.log_to_phys_port[mPort >> 1]);
 
@@ -872,7 +872,7 @@ void send_status(void)
 
 		if (machine.is_sfp[i]) {
 			uint8_t sfp = machine.is_sfp[i] - 1;
-			str_code_to_html("," JSONQUOTE("isSFP") ":1," JSONQUOTE("enabled") ":");
+			str_code_to_html("," JSONQUOTE("isSFP") ":true," JSONQUOTE("enabled") ":");
 			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
 				bool_to_json(1);
 				str_code_to_html("," JSONQUOTE("sfp_options") ":\"0x");
@@ -920,7 +920,7 @@ void send_status(void)
 				bool_to_json(0);
 			}
 		} else {
-			str_code_to_html("," JSONQUOTE("isSFP") ":0," JSONQUOTE("enabled") ":");
+			str_code_to_html("," JSONQUOTE("isSFP") ":false," JSONQUOTE("enabled") ":");
 			phy_read(i, PHY_MMD31, 0xa610);
 			bool_to_json(SFR_DATA_8 == 0x20);
 			str_code_to_html("," JSONQUOTE("adv") ":[");
@@ -991,33 +991,6 @@ void send_status(void)
 				break;
 			}
 		}
-
-/*
-
-dbg_string("send_mtu called\n");
-	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
-	char_to_html('[');
-
-
-	// for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-
-
-	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		str_code_to_html("{" JSONQUOTE("port") ":");
-		itoa_html(machine.log_to_phys_port[i]);
-		str_code_to_html("," JSONQUOTE("mtu") ":\"0x");
-		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
-		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
-		byte_to_html(mtu >> 8);
-		byte_to_html(mtu & 0xff);
-		char_to_html('"');
-		char_to_html('}');
-		if (i < MACHINE_MAX_PORT)
-			char_to_html(',');
-	}
-	char_to_html(']');
-
-*/
 
 		str_code_to_html("\"," JSONQUOTE("mtu") ":\"0x");
 		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
