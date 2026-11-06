@@ -16,10 +16,6 @@ The PCB is populated in two variants:
 | 2xSFP | 4 × RJ45 + 2 × SFP+ | `make MACHINE=PCB_SWTG024AS_V2_1_0` |
 | 1xSFP+1xRJ45 | 5 × RJ45 + 1 × SFP+ | `make MACHINE=SODOLA_SL902_SWTGW215AS` |
 
-## V2.1.1 compatibility
-
-The V2.1.1 revision has been tested on hardware and works with `MACHINE=PCB_SWTG024AS_V2_1_0`.
-
 ### Label specifications
 
 - **Ports** (2xSFP):
