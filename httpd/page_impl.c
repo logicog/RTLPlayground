@@ -944,9 +944,9 @@ void send_status(void)
 			if(!!(w & 0x80))
 				json_add_array_string_item(JSONQUOTE("100M-HD"));
 			if(!!(w & 0x40))
-				json_add_array_string_item(JSONQUOTE("10M-HD"));
+				json_add_array_string_item(JSONQUOTE("10M-FD"));
 			if(!!(w & 0x20))
-				json_add_array_string_item(JSONQUOTE("100M-FD"));
+				json_add_array_string_item(JSONQUOTE("10M-HD"));
 
 			char_to_html(']');
 		}

@@ -298,8 +298,8 @@ Object representing static and LACP lags
 ## status
 ```json
 [
-    {"port":1,"name":"","isSFP":false,"enabled":true,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","100M-FD"],"link":"1000M","mtu":"0x3fff","txG":"0x146","txB":"0x0","rxG":"0x17d","rxB":"0x0","macs":"0x1"},
-    {"port":2,"name":"","isSFP":false,"enabled":true,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","100M-FD"],"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"},
+    {"port":1,"name":"","isSFP":false,"enabled":true,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","10M-FD"],"link":"1000M","mtu":"0x3fff","txG":"0x146","txB":"0x0","rxG":"0x17d","rxB":"0x0","macs":"0x1"},
+    {"port":2,"name":"","isSFP":false,"enabled":true,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","10M-FD"],"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"},
     ...
     {"port":9,"name":"","isSFP":true,"enabled":true,"sfp_options":"0x68","sfp_temp":"0x2640","sfp_vcc":"0x83bd","sfp_txbias":"0x0bb8","sfp_txpower":"0x1390","sfp_rxpower":"0x09c0","sfp_state":"0x02","sfp_vendor":"OEM","sfp_model":"SOD-10GT-I","sfp_serial":"A1A1A1A1A1A1","sfp_los":1,"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"}
 ]
