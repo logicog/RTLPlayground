@@ -374,7 +374,7 @@ Object representing static and LACP lags
     "untagged_members":[1,2,3,4,5,8,9],
     "tagged_members":[],
     "name":"",
-    "pvid_array":[1,2,3,4,5,8,9]
+    "pvid":[1,2,3,4,5,8,9]
 }
 ```
 | Property | Description
@@ -382,7 +382,7 @@ Object representing static and LACP lags
 | `untagged_members` | Ports that will send participate in this VLAN by transmitting untagged frames
 | `tagged_members` | Ports that will send participate in this VLAN by transmitting and receiving tagged frames
 | `name` | The name of the VLAN
-| `pvid_array` | List of physical ports that have their Port VLAN ID set to this VLAN
+| `pvid` | List of physical ports that have their Port VLAN ID set to this VLAN
 
 ## vlanlist
 ```json

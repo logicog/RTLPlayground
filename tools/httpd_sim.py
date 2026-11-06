@@ -573,10 +573,9 @@ class Handler(SimpleHTTPRequestHandler):
             return {
                 "name": vlan["name"],
                 "members": self.vlanMembers(vlan),
-                "pvid": self.vlanPvid(vlan),
                 "tagged_members": vlan["tagged"],
                 "untagged_members": vlan["untagged"],
-                "pvid_array": vlan["pvid"]
+                "pvid": vlan["pvid"]
             }
         return {}
 
@@ -591,12 +590,6 @@ class Handler(SimpleHTTPRequestHandler):
 
         members = member_mask | (untagged_mask << 10)
         return f"0x{members:08x}"
-
-    def vlanPvid(self, vlan):
-        pvid_mask = 0
-        for port in vlan["pvid"]:
-            pvid_mask |= 1 << port
-        return f"0x{pvid_mask:04x}"
 
     def _api_l2(self,query):
         idx = self._int_param(query, "idx")
