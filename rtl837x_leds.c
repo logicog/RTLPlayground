@@ -40,8 +40,7 @@ void leds_setup(void) __banked
 	for (uint8_t i = MACHINE_MIN_PORT; i <= (MACHINE_MAX_PORT > 7 ? 7 : MACHINE_MAX_PORT); i++)
 		sfr_data[3 - (i >> 2)] |= i & 1 ? 0xf0 : 0x0f;
 	reg_write_m(RTL837X_REG_LED_RLDP_2);
-	if (MACHINE_MAX_PORT == 8)
-		REG_SET(RTL837X_REG_LED_RLDP_3, 0x0000000f);	// Port 8
+	REG_SET(RTL837X_REG_LED_RLDP_3, MACHINE_PORT_VALID(8) ? 0x0f : 0);	// Port 8
 
 	// Configure high LEDs 27-29: mux and LED enable
 	if (machine.high_leds.mux & LED_27)
