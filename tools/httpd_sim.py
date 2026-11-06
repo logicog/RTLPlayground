@@ -87,7 +87,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/information.json": self._api_information,
             "/isolation.json": self._api_isolation,
             "/l2.json": lambda: self._api_l2(query),
-            "/lacp.json": self._api_lacp,
+            "/lldp.json": self._api_lldp,
             "/lag.json": self._api_lag,
             "/mirror.json": self._api_mirror,
             "/status.json": self._api_status,
@@ -455,11 +455,11 @@ class Handler(SimpleHTTPRequestHandler):
                     "sfp_laser": "0x0000",
                 })
             else:
-                if i == 1: #"100000" if i == 1
+                if i == 1:
                     item["adv"] = [ "2.5G" ]
-                elif i == 2: #else "000011" if i == 2
+                elif i == 2:
                     item["adv"] = [ "10M-HD", "10M-FD" ]
-                else: #else "000100"
+                else:
                     item["adv"] = [ "100M-HD" ]
 
             ports.append(item)
@@ -473,8 +473,8 @@ class Handler(SimpleHTTPRequestHandler):
             {
                 "port": i,
                 "isSFP": machine_config["is_sfp"][i] == 1,
-                "eee": "00000010",
-                "eee_lp": "00000100",
+                "advertised": ["2.5G", "1G", "100M"],
+                "linkPartner": ["2.5G", "1G", "100M"],
                 "active": int(i % 2 == 1),
             }
             for i in range(1, PORTS + 1)
@@ -489,9 +489,9 @@ class Handler(SimpleHTTPRequestHandler):
                 "port": i,
                 "iLimited": int(ingress_limited),
                 "iFC": int(i % 4 != 0) if ingress_limited else 0,
-                "iBW": f"{0x100 if ingress_limited else 0xfffff:08x}",
+                "iBW": f"0x{0x100 if ingress_limited else 0xfffff:08x}",
                 "eLimited": int(egress_limited),
-                "eBW": f"{0x1000 if egress_limited else 0xfffff:08x}",
+                "eBW": f"0x{0x1000 if egress_limited else 0xfffff:08x}",
             })
         return ports
 
