@@ -323,7 +323,7 @@ Object representing static and LACP lags
 ## stp
 ```json
 {
-    "on":1,"rstp":1,"prio":8,"hello":2,"maxage":20,"fwd":15,"txhold":6,"pcs":0,"bh":0,"tcs":"000002a8","rMaxage":20,"rFwd":15,"rootPrio":"8000","rootMac":"010203040506","myMac":"010203040506","cost":"00000000","weRoot":1,"tc":"0000",
+    "on":true,"rstp":true,"prio":8,"hello":2,"maxage":20,"fwd":15,"txhold":6,"pcs":0,"bh":0,"tcs":"000002a8","rMaxage":20,"rFwd":15,"rootPrio":"8000","rootMac":"010203040506","myMac":"010203040506","cost":"00000000","weRoot":true,"tc":"0000",
     "ports":[
         {"p":1,"st":3,"role":2,"f":69,"pc":"00000000","prio":128,"p2":0,"lk":1,"lg":0,"db":"8000010203040506","dp":"8001","dc":"00000000"},
         {"p":2,"st":3,"role":0,"f":69,"pc":"00000000","prio":128,"p2":0,"lk":0,"lg":0,"db":"8000010203040506","dp":"8002","dc":"00000000"},
@@ -335,41 +335,41 @@ Object representing static and LACP lags
 | Property | Description
 |----------|------------
 | `on` | Physical port number
-| `rstp` | 
-| `prio` | 
-| `hello` | 
-| `maxage` | 
-| `fwd` | 
-| `txhold` | 
-| `pcs` | 
-| `bh` | 
-| `tcs` | 
-| `rMaxage` | 
-| `rFwd` | 
-| `rootPrio` | 
-| `rootMac` | 
-| `myMac` | 
-| `cost` | 
-| `weRoot` | 
-| `tc` | 
+| `rstp` | If enabled uses Rapid Spanning Tree, otherwise uses STP
+| `prio` | Bridge Priority
+| `hello` | Hello time (s)
+| `maxage` | Max Age (s)
+| `fwd` | This device's configured foward delay (s)
+| `txhold` | Transmit Hold
+| `pcs` | Path Cost, 0: long, 1: short
+| `bh` | BPDU behaviour while disabled, 0: flood, 1: filter
+| `tcs` | Seconds since last topology change
+| `rMaxage` | Root bridge max age (s)
+| `rFwd` |  Root bridge forward delay (s)
+| `rootPrio` | Root bridge priority
+| `rootMac` | Root bridge MAC address
+| `myMac` | This device MAC address
+| `cost` | Cost to reach the root bridge
+| `weRoot` | true if we are the root bridge
+| `tc` | Number of topology changes
 | `ports` | Array of STP Port Status
 
 ### STP Port Status
 | Property | Description
 |----------|------------
 | `p` | Physical port number, if > 100 it is LAG number + 100
-| `st` | 
-| `role` | STP Port role
-| `f` | 
-| `pc` | 
+| `st` | Port state 
+| `role` | STP port role
+| `f` | Port flags (such as edge, root, BPDUGuard etc)
+| `pc` | Path cost
 | `mbr` | List of port members (for LAGs)
-| `prio` | Link Priority
-| `p2` | 
-| `lk` | 
-| `lg` | 
-| `db` | 
-| `dp` | 
-| `dc` | 
+| `prio` | Port Priority
+| `p2` | Point-to-point 
+| `lk` | Previous link state
+| `lg` | Protocol used 1: STP, 0: RSTP 
+| `db` | Designated bridge
+| `dp` | Designated port
+| `dc` | Designated cost
 
 ## vlan
 ```json
