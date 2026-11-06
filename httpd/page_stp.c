@@ -49,9 +49,9 @@ void send_stp(void) __banked
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 
 	str_code_to_html("{" JSONQUOTE("on") ":");
-	bool_to_html(stp_enabled);
+	bool_to_json(stp_enabled);
 	str_code_to_html(","  JSONQUOTE("rstp") ":");
-	bool_to_html(stp_rstp);
+	bool_to_json(stp_rstp);
 	str_code_to_html("," JSONQUOTE("prio") ":");
 	itoa_html(stp_prio >> 4);
 	str_code_to_html("," JSONQUOTE("hello") ":");
@@ -87,7 +87,7 @@ void send_stp(void) __banked
 	byte_to_html(root_bridge_cost >> 8);
 	byte_to_html(root_bridge_cost);
 	str_code_to_html("\"," JSONQUOTE("weRoot") ":");
-	bool_to_html(stp_root_port == 0xff ? 1 : 0);
+	bool_to_json(stp_root_port == 0xff ? 1 : 0);
 	str_code_to_html("," JSONQUOTE("tc") ":\"");
 	byte_to_html(stp_tc_count >> 8);
 	byte_to_html(stp_tc_count);
@@ -163,7 +163,7 @@ void send_stp_counters(void) __banked
 
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	str_code_to_html("{" JSONQUOTE("on") ":");
-	bool_to_html(stp_enabled);
+	bool_to_json(stp_enabled);
 	str_code_to_html("," JSONQUOTE("hz") ":");
 	itoa_html(STP_HZ);
 	str_code_to_html("," JSONQUOTE("tc") ":\"");

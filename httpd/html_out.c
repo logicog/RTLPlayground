@@ -14,6 +14,11 @@ void bool_to_html(char c)
 	outbuf[slen++] = c ? '1' : '0';
 }
 
+void bool_to_json(char c)
+{
+	str_code_to_html(c ? "true" : "false");
+}
+
 //  Convert uint8_t to ascii HEX char.
 void byte_to_html(uint8_t val)
 {
