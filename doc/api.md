@@ -124,7 +124,7 @@ Array of ports EEE configuration and status
 | Property | Description
 |----------|------------
 | `port` | The physical port number
-| `isSFP` | 0/1 whether the port is SFP
+| `isSFP` | Whether the port is SFP
 | `advertised` | Links advertised by the port (only for non-SPF links)
 | `linkPartner` | Links advertised by the remote-device (only for non-SPF links)
 | `active` | Whether EEE is enabled on the port (only for non-SPF links)
@@ -289,7 +289,7 @@ Object representing static and LACP lags
 ```
 | Property | Description
 |----------|------------
-| `enabled` | 0/1: Whether port mirroring is enabled or not
+| `enabled` | Whether port mirroring is enabled or not
 | `mirrorPort` | The port that will receive the mirrored data
 | `mirror_rx` | List of physical port numbers that the mirror will receive a copy of received packets for
 | `mirror_tx` | List of physical port numbers that the mirror will receive a copy of transmitted packets for
