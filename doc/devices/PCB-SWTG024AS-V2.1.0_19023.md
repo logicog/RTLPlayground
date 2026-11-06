@@ -18,10 +18,7 @@ The PCB is populated in two variants:
 
 ## V2.1.1 compatibility
 
-The Sodola SL902-SWTGW124AS marked `PCB-SWTG024AS-V2.1.1_19023` also works
-with the existing `PCB_SWTG024AS_V2_1_0` 2xSFP target. The owner confirmed
-compatibility on hardware with upstream firmware at `1a97904`, without the
-changes from [PR #505](https://github.com/logicog/RTLPlayground/pull/505).
+The V2.1.1 revision has been tested on hardware and works with `MACHINE=PCB_SWTG024AS_V2_1_0`.
 
 ### Label specifications
 
