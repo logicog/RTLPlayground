@@ -431,7 +431,7 @@ class Handler(SimpleHTTPRequestHandler):
             item = {
                 "port": i,
                 "name": "",
-                "isSFP": machine_config["is_sfp"][i],
+                "isSFP": machine_config["is_sfp"][i] == 1,
                 "enabled": int(i % 4 != 0),
                 "link": ("10G" if i == 1 else "100M-HD") if i % 2 else "DOWN",
                 "mtu": f"0x{16383 if i % 2 else 1522:04x}",
@@ -472,7 +472,7 @@ class Handler(SimpleHTTPRequestHandler):
         return [
             {
                 "port": i,
-                "isSFP": machine_config["is_sfp"][i],
+                "isSFP": machine_config["is_sfp"][i] == 1,
                 "eee": "00000010",
                 "eee_lp": "00000100",
                 "active": int(i % 2 == 1),
@@ -498,7 +498,7 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_mirror(self):
         return {
             "mirrorPort": 2,
-            "enabled": 1,
+            "enabled": True,
             "mirror_rx": [6,5],
             "mirror_tx": [6,4]
         }
@@ -506,7 +506,7 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_lacp(self):
         global state
         return {
-            "on": 0,
+            "on": False,
             "lags": state["lags"],
             "ports": [
                 {
@@ -538,12 +538,12 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _api_lldp(self):
         return {
-            "on": 1,
+            "on": True,
             "portStatus": [
                 {
                     "port": i,
                     "name": "",
-                    "permitted": 1,
+                    "permitted": True,
                 }
                 for i in range(1, PORTS + 1)
             ],

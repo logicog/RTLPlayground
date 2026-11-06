@@ -114,10 +114,10 @@ Array of counters for the specified port
 ## eee
 ```json
 [
-    {"port":1,"isSFP":0,"advertised":["2.5G","1G","100M"],"linkPartner":["1G","100M"],"active":1},
-    {"port":2,"isSFP":0,"advertised":["2.5G","1G","100M"],"linkPartner":[],"active":0},
+    {"port":1,"isSFP":false,"advertised":["2.5G","1G","100M"],"linkPartner":["1G","100M"],"active":true},
+    {"port":2,"isSFP":false,"advertised":["2.5G","1G","100M"],"linkPartner":[],"active":false},
     ...
-    {"port":9,"isSFP":1}]
+    {"port":9,"isSFP":true}]
 ```
 Array of ports EEE configuration and status
 
@@ -127,7 +127,7 @@ Array of ports EEE configuration and status
 | `isSFP` | 0/1 whether the port is SFP
 | `advertised` | Links advertised by the port (only for non-SPF links)
 | `linkPartner` | Links advertised by the remote-device (only for non-SPF links)
-| `active` | 0/1 whether EEE is enabled on the port (only for non-SPF links)
+| `active` | Whether EEE is enabled on the port (only for non-SPF links)
 
 ## information
 ```json
@@ -208,7 +208,7 @@ List of MAC addresses
 {
     "lags":[
         {"lagNum":0,"type":"static","members":[],"hash":"3f"},
-        {"lagNum":1,"type":"lacp","members":[6,7],"active_members":[6],"valid":1,"aggregator":"ce11a001a010","hash":"7e"},
+        {"lagNum":1,"type":"lacp","members":[6,7],"active_members":[6],"valid":true,"aggregator":"ce11a001a010","hash":"7e"},
         ...
     ],
     "ports":[
@@ -257,7 +257,7 @@ Object representing static and LACP lags
 {
     "on":1,
     "portStatus":[
-        {"port":1,"name":"","permitted":1},
+        {"port":1,"name":"","permitted":true},
         ...
     ]
 }
@@ -273,11 +273,8 @@ Object representing static and LACP lags
 |----------|------------
 | `port` | Physical port number
 | `name` | The name of the port
-| `permitted` | 0: The switch does not transmit LLDPBUs on this port, 1 it does
-| `active_members` | For LACP LAGs, the members that currently participating
-| `valid` | Whether the LACP LAG is currently valid
-| `aggregator` | MAC Address of the aggregating device
-| `hash` | Load balancing methods to use
+| `permitted` | if true, the switch transmits LLDPBUs on this port, if false it does not
+
 
 ## mirror
 ```json
@@ -299,10 +296,10 @@ Object representing static and LACP lags
 ## status
 ```json
 [
-    {"port":1,"name":"","isSFP":0,"enabled":1,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","100M-FD"],"link":"1000M","mtu":"0x3fff","txG":"0x146","txB":"0x0","rxG":"0x17d","rxB":"0x0","macs":"0x1"},
-    {"port":2,"name":"","isSFP":0,"enabled":1,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","100M-FD"],"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"},
+    {"port":1,"name":"","isSFP":false,"enabled":true,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","100M-FD"],"link":"1000M","mtu":"0x3fff","txG":"0x146","txB":"0x0","rxG":"0x17d","rxB":"0x0","macs":"0x1"},
+    {"port":2,"name":"","isSFP":false,"enabled":true,"adv":["2.5G","1G","100M-FD","100M-HD","10M-HD","100M-FD"],"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"},
     ...
-    {"port":9,"name":"","isSFP":1,"enabled":1,"sfp_options":"0x68","sfp_temp":"0x2640","sfp_vcc":"0x83bd","sfp_txbias":"0x0bb8","sfp_txpower":"0x1390","sfp_rxpower":"0x09c0","sfp_state":"0x02","sfp_vendor":"OEM","sfp_model":"SOD-10GT-I","sfp_serial":"A1A1A1A1A1A1","sfp_los":1,"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"}
+    {"port":9,"name":"","isSFP":true,"enabled":true,"sfp_options":"0x68","sfp_temp":"0x2640","sfp_vcc":"0x83bd","sfp_txbias":"0x0bb8","sfp_txpower":"0x1390","sfp_rxpower":"0x09c0","sfp_state":"0x02","sfp_vendor":"OEM","sfp_model":"SOD-10GT-I","sfp_serial":"A1A1A1A1A1A1","sfp_los":1,"link":"DOWN","mtu":"0x3fff","txG":"0x0","txB":"0x0","rxG":"0x0","rxB":"0x0","macs":"0x0"}
 ]
 ```
 | Property | Description
@@ -334,7 +331,7 @@ Object representing static and LACP lags
 ```
 | Property | Description
 |----------|------------
-| `on` | Physical port number
+| `on` | Enabled/Disabled globally
 | `rstp` | If enabled uses Rapid Spanning Tree, otherwise uses STP
 | `prio` | Bridge Priority
 | `hello` | Hello time (s)
