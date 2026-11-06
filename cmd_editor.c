@@ -27,7 +27,7 @@ void cmd_editor_init(void) __banked
 
 /*
  * Allows editing the current command line held in cmd_buffer[CMD_BUF_SIZE] by
- * identifying new characters typed or up to 4-byte escape sequences in the
+ * identifying new characters typed or escape sequences in the
  * serial buffer ring sbuf[SBUF_SIZE].
  * Upon detecting new characters or escape sequences, the cmd_buffer and the
  * representation of the command line in the terminal are updated.
@@ -59,11 +59,30 @@ void cmd_edit(void) __banked
 					write_char('\010'); // BS works like cursor-left
 			}
 		} else if (sbuf[l] == '\033') { // ESC-Sequence
-			// Wait until we have at least 3 characters including the ESC character in the serial buffer
-			if (((sbuf_ptr + SBUF_SIZE - l) & SBUF_MASK) < 3)
-				continue;
-			if (((sbuf_ptr > l ? sbuf_ptr - l : SBUF_SIZE + sbuf_ptr - l) >= 4)
-				   && sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == '3' && sbuf[(l + 3) & SBUF_MASK] == '~') { // DEL
+			// Consume exactly one sequence: ESC [ <params> <final 0x40-0x7e>, ESC O <x> or a
+			// lone ESC (Alt-key). Only ESC[A-D and ESC[3~ act, the rest is dropped. An
+			// incomplete sequence returns and is resumed by the next call.
+			uint8_t s = (sbuf_ptr - l) & SBUF_MASK; // Bytes buffered, from the ESC
+			uint8_t f = 0; // Final byte of a CSI sequence
+			if (s < 2)
+				return;
+			if (sbuf[(l + 1) & SBUF_MASK] == 'O') {
+				if (s < 3)
+					return;
+				s = 3;
+			} else if (sbuf[(l + 1) & SBUF_MASK] == '[') {
+				uint8_t j = 2;
+				while (j < s && ((f = sbuf[(l + j) & SBUF_MASK]) < 0x40 || f > 0x7e))
+					j++;
+				if (j < s)
+					s = j + 1;
+				else if (s < SBUF_SIZE - 1) // Incomplete, wait for more
+					return;
+				// else: ring full without a final byte, discard it all
+			} else {
+				s = 1;
+			}
+			if (s == 4 && f == '~' && sbuf[(l + 2) & SBUF_MASK] == '3') { // DEL
 				if (cursor < cmd_line_len) {
 					write_char('\033'); write_char('['); write_char('1'); write_char('P'); // Delete to end of line
 					cmd_line_len--;
@@ -77,7 +96,7 @@ void cmd_edit(void) __banked
 				l += 4;
 				l &= SBUF_MASK;
 				continue;
-			} else if (sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == 'D') { // <CURSOR-LEFT>
+			} else if (s == 3 && f == 'D') { // <CURSOR-LEFT>
 				if (cursor) {
 					write_char('\010'); // BS works like cursor-left
 					cursor--;
@@ -85,7 +104,7 @@ void cmd_edit(void) __banked
 				l += 3;
 				l &= SBUF_MASK;
 				continue;
-			} else if (sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == 'C') { // <CURSOR-RIGHT>
+			} else if (s == 3 && f == 'C') { // <CURSOR-RIGHT>
 				if (cursor < cmd_line_len) {
 					write_char('\033'); write_char('['); write_char('C');
 					cursor++;
@@ -93,7 +112,7 @@ void cmd_edit(void) __banked
 				l += 3;
 				l &= SBUF_MASK;
 				continue;
-			} else if (sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == 'A') { // <CURSOR-UP>
+			} else if (s == 3 && f == 'A') { // <CURSOR-UP>
 				for (uint8_t i = 0; i < cmd_line_len; i++)
 					current_cmdline[i] = cmd_buffer[i];
 				current_cmdline[cmd_line_len] = 0;
@@ -126,7 +145,7 @@ void cmd_edit(void) __banked
 				l += 3;
 				l &= SBUF_MASK;
 				continue;
-			} else if (sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == 'B') { // <CURSOR-DOWN>
+			} else if (s == 3 && f == 'B') { // <CURSOR-DOWN>
 				if (history_editptr != 0xffff) {
 					__xdata uint16_t p = (history_editptr + 2) & CMD_HISTORY_MASK;
 					// Move cursor to beginning of line
@@ -169,7 +188,9 @@ void cmd_edit(void) __banked
 				l += 3;
 				l &= SBUF_MASK;
 				continue;
-			} else { // An unknown or not yet complete Escape sequence: wait
+			} else { // Anything else: consume it
+				l += s;
+				l &= SBUF_MASK;
 				continue;
 			}
 		} else if (sbuf[l] == 127 || sbuf[l] == 8) {  // Backspace DEL or BS/^H
