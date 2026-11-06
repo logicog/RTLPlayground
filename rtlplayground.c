@@ -1145,12 +1145,18 @@ void check_links(void)
 //
 static void handle_tick(void)
 {
+	uint32_t time_now;
+	uint8_t *time_ptr = &time_now;
 	if ( sec_pending ) {
 		sec_pending = 0;
 #ifdef DEBUG
 		print_string("  Tick counter: "); print_long(ticks); write_char('\n');
 #endif
-		get_time_sec();
+		time_now = get_time_sec();
+		sfr_data[0] = *(time_ptr + 3);
+		sfr_data[1] = *(time_ptr + 2);
+		sfr_data[2] = *(time_ptr + 1);
+		sfr_data[3] = *(time_ptr + 0);
 		reg_write_m(RTL837X_REG_SEC_COUNTER);
 
 		// Check for button presses once a second

@@ -2331,9 +2331,7 @@ void health_show(void) __banked
 	__xdata uint8_t i;
 
 	print_string("up ");
-	get_time_sec();
-	print_byte(sfr_data[0]); print_byte(sfr_data[1]);
-	print_byte(sfr_data[2]); print_byte(sfr_data[3]);
+	print_long(get_time_sec());
 	print_string(" ticks ");
 	print_long(ticks);
 	print_string(" loops ");

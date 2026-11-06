@@ -5,6 +5,7 @@
 extern volatile __xdata uint32_t time_sec;
 extern volatile __xdata uint16_t sleep_ticks;
 
+/*
 void get_time_sec(void)
 {
 	__bit	save_ea;
@@ -26,6 +27,18 @@ void read_reg_timer(__xdata uint32_t * tmr)
 	EA = 0;
 	*tmr = time_sec;
 	EA = save_ea;	// restore global IRQ
+}
+*/
+
+uint32_t get_time_sec(void)
+{
+	uint32_t ret_time;
+	__bit	save_ea;
+	save_ea = EA;	// save global IRQ
+	EA = 0;
+	ret_time = time_sec;
+	EA = save_ea;	// restore global IRQ
+	return ret_time;
 }
 
 /*

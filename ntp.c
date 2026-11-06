@@ -28,7 +28,6 @@
 
 __xdata struct ntp_state ntp_state;
 __xdata uip_ipaddr_t ntp_ip;
-__xdata uint32_t ntp_now;
 __xdata uint32_t ntp_t;
 __xdata uint16_t ntp_year;
 __xdata uint8_t  ntp_mon, ntp_mday, ntp_hour, ntp_min, ntp_sec, ntp_wday, ntp_mlen;
@@ -39,12 +38,7 @@ static __code const uint8_t ntp_mdays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30
 static __code const char ntp_default_server[] = "pool.ntp.org";
 
 
-static uint32_t ntp_uptime(void) __reentrant
-{
-	read_reg_timer(&ntp_now);
-	return ntp_now;
-}
-
+#define ntp_uptime()	get_time_sec()
 
 static uint8_t ntp_divmod(uint8_t d) __reentrant
 {

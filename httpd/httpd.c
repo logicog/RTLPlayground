@@ -341,7 +341,7 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 		boundary[i + 4] = 0;
 	}
 
-	read_reg_timer(&now);
+	now = get_time_sec();
 
 	if (session)
 		session_check();
@@ -648,7 +648,7 @@ static void run_login_body(__xdata uint8_t *body)
 {
 	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
 		dbg_string("Password accepted!\n");
-		read_reg_timer(&now);
+		now = get_time_sec();
 		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
 				      "Set-Cookie: session=");
 		session_new();
