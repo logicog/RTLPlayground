@@ -143,6 +143,7 @@ Array of ports EEE configuration and status
     "sw_ver":"v0.1.0-af3957e",
     "build_date":"2026-11-05 13:29:46",
     "hw_ver":"Hi-Source HI-k0801WS",
+    "pcb_ver": "PCB_K0801W_V2_0",
     "chip_temp":"47.3 C",
     "flash_size":"2 MB",
     "sfp_slot_0":"SOD-10GT-I"
@@ -161,6 +162,7 @@ Array of ports EEE configuration and status
 | `sw_ver` | Firmware build version
 | `build_date` | Firmware build date
 | `hw_ver` | Hardware description
+| `pcb_ver` | The PCB configuration used to build the firmware
 | `chip_temp` | Temperature of the chipset
 | `flash_size` | Size of the firmware flash
 | `sfp_slot_0` | Descriptor of the module in the first SFP slot
