@@ -71,7 +71,7 @@ select.ctl,button.ctl{
 }
 button.pri{background:var(--ac);color:var(--acfg);border-color:transparent;font-weight:600}
 button.pri:hover,button.ctl:hover{filter:brightness(1.07)}
-button:disabled{opacity:.45;cursor:default;filter:none}
+button:disabled,.in:disabled{opacity:.45;cursor:default;filter:none}
 main{padding:18px 20px 40px;width:100%;overflow-y:auto;}
 section.tab{display:none;max-width:1400px;}
 section.tab.act{display:block}
@@ -411,6 +411,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       <div class="grid2">
         <div class="card"><h2 data-i18n="sy_network">Network</h2>
           <label class="row"><span class="lb" data-i18n="i_host">Hostname</span><input class="in" id="sy-host" maxlength="23"></label>
+          <label class="row"><span class="lb" data-i18n="sy_mode">Addressing</span><select class="in" id="sy-mode" data-i18n-t="sy_dhcp_t"><option value="static" data-i18n="sy_static">Static</option><option value="dhcp">DHCP</option></select></label>
           <label class="row"><span class="lb" data-i18n="i_ip">IP address</span><input class="in" id="sy-ip" size="15"></label>
           <label class="row"><span class="lb" data-i18n="i_mask">Netmask</span><input class="in" id="sy-mask" size="15"></label>
           <label class="row"><span class="lb" data-i18n="i_gw">Gateway</span><input class="in" id="sy-gw" size="15"></label>
@@ -419,7 +420,6 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <p class="small mut" id="sy-dnsdhcp"></p>
           <div style="display:flex;gap:10px;margin-top:12px">
             <button class="ctl pri" id="sy-apply" data-i18n="c_apply">Apply</button>
-            <button class="ctl" id="sy-dhcp" data-i18n="sy_dhcp" data-i18n-t="sy_dhcp_t">Use DHCP</button>
           </div>
         </div>
         <div class="card"><h2 data-i18n="sy_services">Services</h2>

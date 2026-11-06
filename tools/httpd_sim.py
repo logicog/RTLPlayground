@@ -631,9 +631,11 @@ class Handler(SimpleHTTPRequestHandler):
             "ip_address":"192.168.10.247",
             "ip_gateway":"192.168.2.22",
             "ip_netmask":"255.255.255.0",
+            "ip_source":"static",
             "mac_address":"1c:2a:a3:23:00:02",
             "sw_ver":"0.1-sim",
-            "hw_ver":"SWGT024-V2.0"
+            "hw_ver":"SWGT024-V2.0",
+            "pcb_ver":"PCB_SWTG024AS_A_V2_0_1_19650"
         }
 
     def _api_debug(self):

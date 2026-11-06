@@ -3,9 +3,10 @@ The following devices have been tested and are fully working:
 
 | Brand    | Type            | Managed | PCB                                                                                   | Flash | Ports |
 |----------|-----------------|---------|---------------------------------------------------------------------------------------|-------|-------|
-| Ampcom   | WAM902-SWTG018AS| No      | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               |       | 8 + 1 |
+| Ampcom   | WAM902-SWTG018AS| No      | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 0.5M  | 8 + 1 |
 | Binardat | 2G06-04210GSM   | No      | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
 | Davuaz   | Da-K6501W       | No      | [PCB-K0501W-V2.0](devices/PCB-K0501W-V2.0.md)                                         |       | 5 + 1 |
+| DOTX     | DX-1009N        | No      | [PCB-SWTG118AS-V1.0-11430](devices/PCB-SWTG118AS-V1.0-11430.md)                       | 0.5M  | 8 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/PCB-K0402W-U13-V2.0.md)                                 | 2M    | 4 + 2 |
 | Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
 | GoodTop  | GT-ST018M       | Yes     | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 2M    | 8 + 1 |
@@ -49,10 +50,13 @@ The following devices have been tested and are fully working:
 | Sodola   | SL-SWTG124AS-D  | Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 2M    | 4 + 2 |
 | Sodola   | SL-SWTGW215AS-D | Yes     | [SWTG115AS-V2.1-17443](devices/PCB-SWTG115AS-V2.1-17443.md)                           | 2M    | 5 + 1 |
 | Sodola   | SL902-SWTG024AS | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
+| Sodola   | SL902-SWTGW124AS| Yes     | [PCB-SWTG024AS-V2.1.1_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md#v211-compatibility) | 2M    | 4 + 2 |
+| Sodola   | SL902-SWTGW215AS| Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 5 + 1 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                                         |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1_REV.A1](devices/270-NB1-MS206B004A1_REV.A1.md)                   | 2M    | 4 + 2 |
 | XikeStor | SKS3200M-4GPY2XF| Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
-| XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.0-16029.md)                           | 2M    | 8 + 1 |
+| XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                           | 2M    | 8 + 1 |
+| XikeStor | SKS3200M-8GPY1XF| Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                           | 2M    | 8 + 1 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402W-V1.0](devices/PCB-K0402W-V1.0.md)                                         | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         | 2M    | 4 + 2 |
@@ -77,9 +81,3 @@ serial consoles and use 4 independent RTL8272 SoCs. No central control is provid
 even if it has been successfully demonstrated to install RTLPlayground to individual SoCs.
 - [GigaPlus GP-S25-1602](https://www.servethehome.com/gigaplus-gp-s25-1602-review-a-cheap-16-port-2-5gbe-and-2-port-10g-switch/)
 - [Vimin VM S251602P 16 Port 2.5G PoE Switch With 2x 10G SFP+](https://www.servethehome.com/vimin-vm-s251602p-16-port-2-5g-poe-switch-review-cyperf/vimin-vm-s251602p-16-port-2-5g-poe-switch-with-2x-10g-sfp-battery-2/)
-
-## Experimental profiles
-
-| Brand | Type | Managed | PCB | Flash | Ports |
-|-------|------|---------|-----|-------|-------|
-| Sodola | SL902-SWTGW124AS | Yes | [PCB-SWTG024AS-V2.1.1_19023](devices/PCB-SWTG024AS-V2.1.1_19023.md) | 2M | 4 + 2 |

@@ -14,6 +14,7 @@
 #include "uip.h"
 #include "rtl837x_flash.h"
 #include "syslog.h"
+#include "dhcp.h"
 #include "rtl837x_phy.h"
 #include <test/support.h>
 #include "rtl837x_lacp.h"
@@ -85,6 +86,7 @@ char     hostname[24] = "hosttest";
 char     port_names[9][PORT_NAME_SIZE];
 struct flash_region_t flash_region;
 struct syslog_state syslog_state;
+struct dhcp_state dhcp_state;
 bool     stp_enabled;
 bool lldp_enabled;
 uint16_t lldp_logical_port_status;

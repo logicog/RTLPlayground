@@ -38,6 +38,12 @@ SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 ifneq ($(MACHINE),)
 	CC_FLAGS += -DMACHINE_NAME=$(MACHINE)
 endif
+
+# PCB information
+MACHINE_LINK_TARGET := $(shell readlink machine/$(MACHINE).c 2>/dev/null)
+ifneq ($(MACHINE_LINK_TARGET),)
+	CC_FLAGS += -DMACHINE_PCB_NAME=$(basename $(notdir $(MACHINE_LINK_TARGET)))
+endif
 # Health instrumentation and the "health" console command: HEALTH=1 gmake ...
 ifneq ($(HEALTH),)
 	CC_FLAGS += -DHEALTH
