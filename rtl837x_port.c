@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "rtl837x_common.h"
+#include "timer.h"
 #include "rtlos_hal.h"
 #include "rtl837x_sfr.h"
 #include "rtlos_regs.h"

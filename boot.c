@@ -16,6 +16,7 @@
 #include "machine.h"
 #include "phy.h"
 #include "boot.h"
+#include "timer.h"
 #include "rtlos_hal.h"
 
 extern __code const struct machine machine;

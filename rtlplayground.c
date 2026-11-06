@@ -102,6 +102,7 @@ __code const uint8_t ownMac[] = { 0x06, 0x00, 0x10, 0x83, 0x70, 0x01};
 
 __xdata struct uip_eth_addr uip_ethaddr;
 
+volatile __xdata uint32_t ticks;
 volatile __xdata uint8_t sec_counter;
 volatile __xdata uint16_t sleep_ticks;
 volatile __xdata uint8_t sec_pending;
@@ -112,6 +113,7 @@ extern __xdata struct dhcp_state dhcp_state;
 #define STP_CATCH_UP 8
 #define SFP_TICK_STEP 10
 static __xdata struct timer sfp_poll;
+static __xdata struct timer delay_timer;
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -884,6 +886,14 @@ void cpy_4(__xdata uint8_t dest[], __xdata uint8_t source[])
 }
 
 
+// Delay for given number of ticks without doing housekeeping
+void delay(uint16_t t)
+{
+	timer_set(&delay_timer, t);
+	while (!timer_expired(&delay_timer))
+		PCON |= 1;
+}
+
 
 /*
  * Adds TX Header to uip_buf and calls nic_tx_packet to send the packet
@@ -1272,6 +1282,20 @@ void idle(void)
 		print_cmd_prompt();
 	}
 	health_phase(HEALTH_PH_CMD);
+}
+
+
+
+// Sleep the given number of ticks and perform idle tasks if initialized
+void sleep(uint16_t t)
+{
+	sleep_ticks = t;
+	while (sleep_ticks > 0) {
+		if (idle_ready)
+			idle();
+		else
+			PCON |= 1;
+	}
 }
 
 

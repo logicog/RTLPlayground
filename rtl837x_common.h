@@ -175,6 +175,7 @@ void reg_write(uint16_t reg_addr);
 void reg_write_m(uint16_t reg_addr);
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
 void sds_write_v(uint8_t sds_id, uint8_t page, uint8_t reg, uint16_t v);
+void delay(uint16_t t);
 void write_char_no_syslog(char c);
 void write_char(char c);
 void print_reg(uint16_t reg);
@@ -191,6 +192,7 @@ void reset_chip(void);
  * argument order matches libc, so on-host callers transparently use the
  * C library. See test/. */
 #ifndef RTLP_HOST_TEST
+void sleep(uint16_t t);
 void memcpy(__xdata void * __xdata dst, __xdata const void * __xdata src, uint16_t len);
 void memset(__xdata uint8_t *dst, __xdata uint8_t v, uint8_t len);
 int memcmp(__xdata const void *a, __xdata const void *b, uint16_t len);
