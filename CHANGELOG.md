@@ -30,6 +30,11 @@
 
 ## Fixed
 
+- Commands
+  - Reject extra arguments to global `stp on`, `stp off`, `stp status` and
+    `stp clear` before changing state. Rejecting an invalid per-port `edge`
+    or `guard` value now preserves the existing configuration.
+
 - Time
   - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
     boards without 10G ports both SerDes stayed off, and with SDS 0 off `RTL837X_REG_SEC_COUNTER`
