@@ -4366,6 +4366,7 @@ function lagLoad() {
                 $("lg" + g + "p" + p).checked = l.members.includes(p);
             $("lgm" + g).value = l.type;
             $("lgs" + g).textContent = l.type == "lacp" ? "LACP: " + t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "";
+            lacpCfg[g] = l.type=="lacp";
             var hash = parseInt(l.hash, 16);
             HASHF.forEach(function(f, i) {
                 $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)
