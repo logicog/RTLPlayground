@@ -487,10 +487,10 @@ class Handler(SimpleHTTPRequestHandler):
             egress_limited = i % 4 != 0
             ports.append({
                 "port": i,
-                "iLimited": int(ingress_limited),
-                "iFC": int(i % 4 != 0) if ingress_limited else 0,
+                "iLimited": (ingress_limited),
+                "iAction": "fc" if ingress_limited else "drop",
                 "iBW": f"0x{0x100 if ingress_limited else 0xfffff:08x}",
-                "eLimited": int(egress_limited),
+                "eLimited": (egress_limited),
                 "eBW": f"0x{0x1000 if egress_limited else 0xfffff:08x}",
             })
         return ports
