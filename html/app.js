@@ -3266,9 +3266,9 @@ function stpLoad() {
         $("stpids").textContent = msg;
         var bc = $("stpbridge");
         if (!bc.dataset.dirty) {
-            $("stpver").value = s.rstp ? "rstp" : "stp";
+            $("stpver").value = s.type;
             $("stppcs").value = s.pcs ? "short" : "long";
-            $("stpbh").value = s.bh ? "filter" : "flood";
+            $("stpbh").value = s.bh;
             $("stpprio").value = String(s.prio);
             $("stphello").value = s.hello;
             $("stpmaxage").value = s.maxage;
@@ -3285,8 +3285,8 @@ function stpLoad() {
             $("stdc" + p).textContent = s.on ? parseInt(pt.dc, 16) : "-";
             $("stoe" + p).textContent = s.on ? t((pt.f & STP_PF.OPEREDGE) ? "c_yes" : "c_no") : "-";
             $("stop" + p).textContent = s.on ? t(pt.p2 === 2 ? "c_no" : "c_yes") : "-";
-            $("stpv" + p).textContent = s.on && pt.role ? (s.rstp && !pt.lg ? "RSTP" : "STP") : "-";
-            $("stmc" + p).disabled = !(s.on && pt.role && s.rstp);
+            $("stpv" + p).textContent = s.on && pt.role ? (s.type == "rstp" && !pt.lg ? "RSTP" : "STP") : "-";
+            $("stmc" + p).disabled = !(s.on && pt.role && s.type == "rstp");
             var row = $("sten" + p).closest("tr");
             if (row.dataset.dirty) return;
             var v = stpPortVals(pt);

@@ -393,7 +393,7 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_stp(self):
         return {
             "on":True,
-            "rstp":True,
+            "type":"rstp",
             "prio":8,
             "hello":2,
             "maxage":20,
