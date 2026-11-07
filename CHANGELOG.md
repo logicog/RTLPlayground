@@ -30,6 +30,10 @@
 
 ## Fixed
 
+- Commands
+  - Reject extra arguments to `lacp off` and `lacp show`. A malformed
+    `lacp off 1` no longer silently disables every LACP group.
+
 - Time
   - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
     boards without 10G ports both SerDes stayed off, and with SDS 0 off `RTL837X_REG_SEC_COUNTER`
