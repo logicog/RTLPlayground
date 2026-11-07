@@ -547,20 +547,24 @@ void send_mirror(void)
 	reg_read_m(RTL837x_MIRROR_CONF);
 	uint16_t m = (sfr_data[0] << 8) | sfr_data[1];
 	str_code_to_html("," JSONQUOTE("mirror_rx") ":[");
-	for (uint8_t i = 16; i > 0 ; i--) {
-		if(!!(m & 0x8000)) {
-			json_add_array_uint_item(machine.log_to_phys_port[i-1]);
+	if ((m >> CPU_LOGICAL_PORT) & 1)
+		json_add_array_uint_item(CPU_PHYSICAL_PORT);
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if(m & 0x0001) {
+			json_add_array_uint_item(machine.log_to_phys_port[i]);
 		}
-		m <<= 1;
+		m >>= 1;
 	}
 
-	m = (sfr_data[2] << 8) | sfr_data[3];
 	str_code_to_html("]," JSONQUOTE("mirror_tx") ":[");
-	for (uint8_t i = 16; i > 0; i--) {
-		if(!!(m & 0x8000)) {
-			json_add_array_uint_item(machine.log_to_phys_port[i-1]);
+	m = (sfr_data[2] << 8) | sfr_data[3];
+	if ((m >> CPU_LOGICAL_PORT) & 1)
+		json_add_array_uint_item(CPU_PHYSICAL_PORT);
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if(m & 0x0001) {
+			json_add_array_uint_item(machine.log_to_phys_port[i]);
 		}
-		m <<= 1;
+		m >>= 1;
 	}
 	char_to_html(']');
 	char_to_html('}');
