@@ -283,7 +283,7 @@ Object representing static and LACP lags
 ## mirror
 ```json
 {
-    "enabled":0,
+    "enabled":false,
     "mirrorPort":1,
     "mirror_rx":[],
     "mirror_tx":[]
