@@ -92,6 +92,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/status.json": self._api_status,
             "/storm.json": self._api_storm,
             "/stp.json": self._api_stp,
+            "/stpcnt.json": self._api_stpcnt,
             "/vlan.json": lambda: self._api_vlan(query),
             "/vlanlist": self._api_vlanlist,
         }
@@ -412,6 +413,19 @@ class Handler(SimpleHTTPRequestHandler):
                 {"p":102,"st":3,"role":2,"f":69,"pc":"00000000","mbr":[6],"prio":128,"p2":0,"lk":1,"lg":0,"db":"8000060f00124737","dp":"8066","dc":"00000000"}
             ]
         }
+
+    def _api_stpcnt(self):
+        return {
+                "on":True,
+                "hz":50,
+                "tc":"0002",
+                "ports":[(
+                    {"p":i,"c":"000000000000927000000000000000004903"} if i == 1 else
+                    {"p":i,"c":"000091c60000000300000002000000000008"} if i == 2 else
+                    {"p":i,"c":"000091c80000000300000002000000030009"} if i == 3 else
+                    {"p":i,"c":"00000000000000000000000000000000ffff"} ) for i in range(1, PORTS + 1)
+                ]
+            }
 
     def _api_status(self):
         global last_called, machine_config
