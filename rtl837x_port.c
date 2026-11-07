@@ -57,7 +57,7 @@ void port_mirror_del(void) __banked
 
 bool port_ingress_filter(__xdata uint8_t port, __xdata vlan_ingress_mode_t type) __banked
 {
-	if (port > CPU_PORT || type >= VLAN_INVALID) {
+	if (port > CPU_LOGICAL_PORT || type >= VLAN_INVALID) {
 		print_string("Invalid port or ingress filter type\n");
 		return false;
 	}
@@ -271,7 +271,7 @@ void vlan_setup(void) __banked
 	wait_table_ready();
 
 	// Set PVID 1 for every port. TODO: Skip unused ports!
-	for (uint8_t i = MACHINE_MIN_PORT; i <= CPU_PORT; i++) { // CPU MAC is independent of the last user port
+	for (uint8_t i = MACHINE_MIN_PORT; i <= CPU_LOGICAL_PORT; i++) { // CPU MAC is independent of the last user port
 		uint16_t reg = RTL837x_PVID_BASE_REG + ((i >> 1) << 2);
 #ifdef DEBUG
 		print_byte(i); write_char(':'); write_char(' '); print_short(reg); write_char('=');
@@ -923,7 +923,7 @@ void vlan_dump(void) __banked
 /** Set the ingress VLAN filtering */
 bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
 {
-	if (!MACHINE_PORT_VALID(port) && port != CPU_PORT) {
+	if (!MACHINE_PORT_VALID(port) && port != CPU_LOGICAL_PORT) {
 		return false;
 	}
 	if (enabled)
@@ -937,7 +937,7 @@ bool port_ingress_vlan_filter_set(uint8_t port, __xdata bool enabled) __banked
 /** Get the ingress VLAN filtering status */
 bool port_ingress_vlan_filter_get(uint8_t port) __banked
 {
-	if (!MACHINE_PORT_VALID(port) && port != CPU_PORT) {
+	if (!MACHINE_PORT_VALID(port) && port != CPU_LOGICAL_PORT) {
 		return false;
 	}
 
@@ -949,9 +949,9 @@ bool port_ingress_vlan_filter_get(uint8_t port) __banked
 static void l2_mgmt_entry_fill(__xdata uint8_t *mac, __xdata uint16_t vlan)
 {
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, mac[2], mac[3], mac[4], mac[5]);
-	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | ((CPU_PORT & 0x3) << 6) | (vlan >> 8),
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | ((CPU_LOGICAL_PORT & 0x3) << 6) | (vlan >> 8),
 		  vlan & 0xff, mac[0], mac[1]);
-	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0x00, 0x01, 0x00, (7 << 2) | (CPU_PORT >> 2));
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0x00, 0x01, 0x00, (7 << 2) | (CPU_LOGICAL_PORT >> 2));
 }
 
 static void l2_mgmt_tbl_prepare(void)

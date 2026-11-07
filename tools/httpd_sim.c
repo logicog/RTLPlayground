@@ -134,9 +134,7 @@ void send_vlan(int s, int vlan)
 		       "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 
 	v = json_object_new_object();
-	
-	sprintf(num_buff, "0x%08x", 0x00060011);
-	json_object_object_add(v, "members", json_object_new_string(num_buff));
+	json_object_object_add(v, "untagged_members", json_object_new_string("[1,2,3,4,5,6]"));
 
         write(s, header, strlen(header));
 
@@ -161,8 +159,7 @@ void send_status(int s)
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
-		json_object_object_add(v, "logPort", json_object_new_int(physToLogPort[i-1]));
+		json_object_object_add(v, "port", json_object_new_int(i));
 		json_object_object_add(v, "isSFP", json_object_new_int(i <= PORTS - NSFP ? 0 : 1));
 		json_object_object_add(v, "enabled", json_object_new_int((i % 4) ? 1 : 0));
 		json_object_object_add(v, "link", json_object_new_int(i % 2 ? ((i == 1)? 5 : 2) : 0));
@@ -266,7 +263,7 @@ void send_eee(int s)
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "port", json_object_new_int(i));
 		json_object_object_add(v, "isSFP", json_object_new_int(i < 5 ? 0 : 1));
 		uint8_t eee = 0;
 		eee |= 0x02;
@@ -301,7 +298,7 @@ void send_bandwidth(int s)
 	ports = json_object_new_array_ext(PORTS);
 	for (int i = 1; i <= PORTS; i++) {
 		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
+		json_object_object_add(v, "port", json_object_new_int(i));
 		if (i % 2) {
 			limited = 1;
 			fcEnabled = i % 4 ? 1 : 0;
@@ -438,29 +435,6 @@ void send_lag(int s)
 }
 
 
-void send_mtu(int s)
-{
-	struct json_object *mtus, *v;
-	const char *jstring;
-        char *header = "HTTP/1.1 200 OK\r\n"
-                         "Content-Type: application/json; charset=UTF-8\r\n\r\n";
-
-	mtus = json_object_new_array_ext(PORTS);
-	char mtu[8];
-	for (int i = 1; i <= PORTS; i++) {
-		v = json_object_new_object();
-		json_object_object_add(v, "portNum", json_object_new_int(i));
-		sprintf(mtu, "0x%04x", i % 2 ? 16383 : 1522);
-		json_object_object_add(v, "mtu", json_object_new_string(mtu));
-		json_object_array_add(mtus, v);
-	}
-	write(s, header, strlen(header));
-
-	jstring = json_object_to_json_string_ext(mtus, JSON_C_TO_STRING_PLAIN);
-        write(s, jstring, strlen(jstring));
-	json_object_put(mtus);
-}
-
 void send_lldp(int s)
 {
 	struct json_object *c, *portStatuses, *p;
@@ -474,8 +448,7 @@ void send_lldp(int s)
 
 	for (int i = 1; i <= PORTS; i++) {
 		p = json_object_new_object();
-		json_object_object_add(p, "portNum", json_object_new_int(i));
-		json_object_object_add(p, "logPort", json_object_new_int(i-1));
+		json_object_object_add(p, "port", json_object_new_int(i));
 		json_object_object_add(p, "name", json_object_new_string(""));
 		json_object_object_add(p, "permitted", json_object_new_int(1));
 		json_object_array_add(portStatuses, p);
@@ -719,13 +692,6 @@ void launch(struct Server *server)
 						send_unauthorized(new_socket);
 					else
 						send_l2(new_socket, idx);
-					goto done;
-				} else if (!strncmp(&buffer[4], "/mtu.json", 9)) {
-					printf("MTU request\n");
-					if (!authenticated)
-						send_unauthorized(new_socket);
-					else
-						send_mtu(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/vlan.json?vid=", 15)) {
 					int vlan = atoi(&buffer[19]);
