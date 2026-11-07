@@ -16,8 +16,9 @@ The following endpoints are supported:
  * /mirror.json
  * /status.json
  * /stp.json
+ * /storm.json
  * /vlan.json?vid=<VLANID>
- * /vlanlist.json
+ * /vlanlist
 
 
 
@@ -385,6 +386,34 @@ Object representing static and LACP lags
 | `tagged_members` | Ports that will send participate in this VLAN by transmitting and receiving tagged frames
 | `name` | The name of the VLAN
 | `pvid` | List of physical ports that have their Port VLAN ID set to this VLAN
+
+## storm
+```
+[
+    {
+        "port":1,
+        "bcast":{"enabled":true,"unit":"kbit/s","rate":"0x000037"},
+        "mcast":{"enabled":false,"unit":"pps","rate":"0x000000"},
+        "ucast":{"enabled":false,"unit":"pps","rate":"0x000000"},
+        "umcast":{"enabled":false,"unit":"pps","rate":"0x000000"}
+    }
+]
+```
+Array of port settings
+| Property | Description
+|----------|------------
+| `port` | Physical port number
+| `bcast` | Broadcast traffic settings
+| `mcast` | Multicast traffic settings
+| `ucast` | Unknown unicast traffic settings
+| `umcast` | Unknown multicast traffic settings
+
+* Setting
+| Property | Description
+|----------|------------
+| `enabled` | Storm control on or off
+| `unit` | The unit of the rate "pps" or "kbit/s"
+| `rate` | The value of the limit
 
 ## vlanlist
 ```json

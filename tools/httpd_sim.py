@@ -383,10 +383,10 @@ class Handler(SimpleHTTPRequestHandler):
         return [
             {
                 "port": i,
-                "bcast":  {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000037") },
-                "mcast":  {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000047") },
-                "ucast":  {"en": int(i==3), "unit":"pps", "rate": ("0x000000" if i !=3 else "0x000057") },
-                "umcast": {"en": int(i==3), "unit":("kbit/s" if i != 3 else "pps/s"), "rate": ("0x000000" if i !=3 else "0x000031") }
+                "bcast":  {"enabled": (i==3), "unit":("kbit/s" if i != 3 else "pps"), "rate": ("0x000000" if i !=3 else "0x000037") },
+                "mcast":  {"enabled": (i==3), "unit":("kbit/s" if i != 3 else "pps"), "rate": ("0x000000" if i !=3 else "0x000047") },
+                "ucast":  {"enabled": (i==3), "unit":"pps", "rate": ("0x000000" if i !=3 else "0x000057") },
+                "umcast": {"enabled": (i==3), "unit":("kbit/s" if i != 3 else "pps"), "rate": ("0x000000" if i !=3 else "0x000031") }
             }
             for i in range(1, PORTS + 1)
         ]

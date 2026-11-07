@@ -4635,7 +4635,7 @@ function scLoad() {
             var n = p.port;
             if ($("scr" + n).dataset.dirty) return;
             SC_TYPES.forEach(function(v, k) {
-                var on = p[v]["en"] == 1,
+                var on = p[v]["enabled"],
                     pps = p[v]["unit"] == "pps",
                     raw = parseInt(p[v]["rate"]);
                 var inp = $("scv" + v + n),
