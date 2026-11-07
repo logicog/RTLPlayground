@@ -16,6 +16,7 @@ The following endpoints are supported:
  * /mirror.json
  * /status.json
  * /stp.json
+ * /stpcnt.json
  * /storm.json
  * /vlan.json?vid=<VLANID>
  * /vlanlist
@@ -370,6 +371,36 @@ Object representing static and LACP lags
 | `db` | Designated bridge
 | `dp` | Designated port
 | `dc` | Designated cost
+
+## stpcnt
+```json
+{
+    "on":true,
+    "hz":50,
+    "tc":"0002",
+    "ports":[
+        {"p":1,"c":"0000000000009220000000000000000029fc"},
+        {"p":2,"c":"00000000000000000000000000000000ffff"},
+        {"p":3,"c":"000091790000000300000002000000030005"},
+        {"p":4,"c":"000091770000000300000002000000000005"}
+        ...
+    ]
+}
+```
+| Property | Description
+|----------|------------
+| `on` | STP enabled
+| `hz` | STP timer frequency
+| `tc` | Number of topology changes
+| `port` | Array of STP port counters
+
+
+### STP Port Counters
+| Property | Description
+|----------|------------
+| `p` | Physical port number
+| `counter` | Hex string of 4x32 bit counters (Number of BPDU RX, Number of BPDU RX, No of TC BPDU's received, No of TC BPDU's sent)
+
 
 ## vlan
 ```json
