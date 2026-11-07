@@ -48,6 +48,7 @@ extern __xdata struct vlan_settings vlan_settings;
 
 uint8_t port_l2_forget(void) __banked;
 void port_l2_learned(void) __banked;
+uint16_t port_link_mask(void) __banked;
 void port_stats_print(void) __banked;
 void port_media_show(uint8_t port) __banked;
 int8_t vlan_get(uint16_t vlan) __banked;

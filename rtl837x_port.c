@@ -508,6 +508,12 @@ void port_media_show(uint8_t port) __banked
 }
 
 
+uint16_t port_link_mask(void) __banked
+{
+	reg_read_m(RTL837X_REG_LINKS_STS);
+	return ((uint16_t)sfr_data[2] << 8) | sfr_data[1];
+}
+
 void port_stats_print(void) __banked
 {
 	print_string("\nPort\tState\tLink\tTxGood\t\tTxBad\t\tRxGood\t\tRxBad\t\tMACs\n");
