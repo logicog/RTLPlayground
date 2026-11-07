@@ -78,7 +78,7 @@ void send_stp(void) __banked
 	} else {
 		str_code_to_html(JSONQUOTE("flood"));
 	}
-	str_code_to_html("," JSONQUOTE("tcs") ":\"");
+	str_code_to_html("," JSONQUOTE("tcs") ":\"0x");
 	pi_u32 = stp_tc_secs; u32hex_html();
 	str_code_to_html("\"," JSONQUOTE("rMaxage") ":");
 	itoa_html(stp_root_port == 0xff ? stp_maxage_s : stp_root_maxage);
@@ -93,14 +93,14 @@ void send_stp(void) __banked
 	str_code_to_html("\"," JSONQUOTE("myMac") ":\"");
 	for (j = 0; j < 6; j++)
 		byte_to_html(uip_ethaddr.addr[j]);
-	str_code_to_html("\"," JSONQUOTE("cost") ":\"");
+	str_code_to_html("\"," JSONQUOTE("cost") ":\"0x");
 	byte_to_html(root_bridge_cost >> 24);
 	byte_to_html(root_bridge_cost >> 16);
 	byte_to_html(root_bridge_cost >> 8);
 	byte_to_html(root_bridge_cost);
 	str_code_to_html("\"," JSONQUOTE("weRoot") ":");
 	bool_to_json(stp_root_port == 0xff ? 1 : 0);
-	str_code_to_html("," JSONQUOTE("tc") ":\"");
+	str_code_to_html("," JSONQUOTE("tc") ":\"0x");
 	byte_to_html(stp_tc_count >> 8);
 	byte_to_html(stp_tc_count);
 	str_code_to_html("\"," JSONQUOTE("ports") ":[");
@@ -117,7 +117,7 @@ void send_stp(void) __banked
 		itoa_html(stp_port_role(i));
 		str_code_to_html("," JSONQUOTE("f") ":");
 		itoa_html(stp_pflags[i]);
-		str_code_to_html("," JSONQUOTE("pc") ":\"");
+		str_code_to_html("," JSONQUOTE("pc") ":\"0x");
 		pi_u32 = stp_pcost[i]; u32hex_html();
 		str_code_to_html("\"");
 		if (i >= STP_LAG_BASE) {
@@ -159,7 +159,7 @@ void send_stp(void) __banked
 		}
 		byte_to_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[st]);
 		byte_to_html(dsg ? stp_dpid[i] : j);
-		str_code_to_html("\"," JSONQUOTE("dc") ":\"");
+		str_code_to_html("\"," JSONQUOTE("dc") ":\"0x");
 		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
 		str_code_to_html("\"},");
 	}

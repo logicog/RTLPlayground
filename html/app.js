@@ -3208,7 +3208,7 @@ function stpPortVals(pt) {
     return {
         en: !!(f & STP_PF.EN),
         edge: (f & STP_PF.ADMEDGE) ? "on" : ((f & STP_PF.AUTOEDGE) ? "auto" : "off"),
-        cost: parseInt(pt.pc, 16),
+        cost: parseInt(pt.pc),
         prio: String(pt.prio),
         guard: (f & STP_PF.BPDUG) ? "bpdu" : ((f & STP_PF.ROOTG) ? "root" : "none"),
         filter: (f & STP_PF.FILTER) ? "on" : "off",
@@ -3252,15 +3252,15 @@ function stpLoad() {
         if (!s.on) msg = t("stp_off_msg");
         else {
             var me = (s.prio * 4096).toString(16).padStart(4, "0") + s.myMac,
-                tc = parseInt(s.tc, 16),
+                tc = parseInt(s.tc),
                 rp = "-";
             s.ports.forEach(function(pt) {
                 if (pt.role === 1) rp = stpName(pt)
             });
             msg = t("stp_bridge") + " " + fmtBridge(me) + (s.weRoot ?
                     " (" + t("stp_root_self") + ")" :
-                    "; " + t("stp_root") + " " + fmtBridge(s.rootPrio + s.rootMac) + " " + t("stp_via") + " " + rp + ", " + t("stp_cost") + " " + parseInt(s.cost, 16)) +
-                "; " + t("stp_tc") + ": " + tc + (tc ? " (" + t("stp_lasttc") + " " + stpDhms(parseInt(s.tcs, 16)) + ")" : "") +
+                    "; " + t("stp_root") + " " + fmtBridge(s.rootPrio + s.rootMac) + " " + t("stp_via") + " " + rp + ", " + t("stp_cost") + " " + parseInt(s.cost)) +
+                "; " + t("stp_tc") + ": " + tc + (tc ? " (" + t("stp_lasttc") + " " + stpDhms(parseInt(s.tcs)) + ")" : "") +
                 "; " + t("stp_times") + " " + s.rMaxage + " / " + s.rFwd + " s";
         }
         $("stpids").textContent = msg;
@@ -3282,7 +3282,7 @@ function stpLoad() {
             $("stst" + p).innerHTML = s.on ? (pt.lk ? badge(t("stp_s" + pt.st), pt.st === 3 ? "ok" : "") : badge(t("stp_nolink"))) + trip : "-";
             $("stdb" + p).textContent = s.on ? fmtBridge(pt.db) : "-";
             $("stdp" + p).textContent = s.on ? parseInt(pt.dp.slice(0, 2), 16) + "." + parseInt(pt.dp.slice(2), 16) : "-";
-            $("stdc" + p).textContent = s.on ? parseInt(pt.dc, 16) : "-";
+            $("stdc" + p).textContent = s.on ? parseInt(pt.dc) : "-";
             $("stoe" + p).textContent = s.on ? t((pt.f & STP_PF.OPEREDGE) ? "c_yes" : "c_no") : "-";
             $("stop" + p).textContent = s.on ? t(pt.p2 === 2 ? "c_no" : "c_yes") : "-";
             $("stpv" + p).textContent = s.on && pt.role ? (s.type == "rstp" && !pt.lg ? "RSTP" : "STP") : "-";
