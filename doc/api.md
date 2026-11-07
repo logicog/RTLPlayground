@@ -342,7 +342,7 @@ Object representing static and LACP lags
 | `maxage` | Max Age (s)
 | `fwd` | This device's configured foward delay (s)
 | `txhold` | Transmit Hold
-| `pcs` | Path Cost, 0: long, 1: short
+| `pcs` | Path cost ("short" or "long")
 | `bh` | BPDU behaviour while disabled, "flood" or "filter"
 | `tcs` | Seconds since last topology change
 | `rMaxage` | Root bridge max age (s)
