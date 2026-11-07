@@ -748,25 +748,20 @@ void send_bandwidth(void)
 		itoa_html(machine.log_to_phys_port[i]);
 		str_code_to_html("," JSONQUOTE("iLimited") ":");
 		reg_read_m(RTL837X_IGBW_PORT_CTRL + i * 4);
-		if (sfr_data[1] & 0x10)
-			char_to_html('1');
-		else
-			char_to_html('0');
+		bool_to_json(sfr_data[1] & 0x10);
 		str_code_to_html("," JSONQUOTE("iBW") ":\"0x");
 		byte_to_html(sfr_data[1] & 0x0f);
 		byte_to_html(sfr_data[2]);
 		byte_to_html(sfr_data[3]);
-		str_code_to_html("\"," JSONQUOTE("iFC") ":");
-		if (reg_bit_test(RTL837X_IGBW_PORT_FC_CTRL, i))
-			char_to_html('1');
-		else
-			char_to_html('0');
+		str_code_to_html("\"," JSONQUOTE("iAction") ":");
+		if(reg_bit_test(RTL837X_IGBW_PORT_FC_CTRL, i)){
+			str_code_to_html(JSONQUOTE("fc"));
+		} else {
+			str_code_to_html(JSONQUOTE("drop"));
+		}
 		reg_read_m(RTL837X_EGBW_PORT_CTRL + i * 1024);
 		str_code_to_html("," JSONQUOTE("eLimited") ":");
-		if (sfr_data[1] & 0x10)
-			char_to_html('1');
-		else
-			char_to_html('0');
+		bool_to_json(sfr_data[1] & 0x10);
 		str_code_to_html("," JSONQUOTE("eBW") ":\"0x");
 		byte_to_html(sfr_data[1] & 0x0f);
 		byte_to_html(sfr_data[2]);

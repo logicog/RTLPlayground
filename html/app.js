@@ -4492,7 +4492,7 @@ function bwLoad() {
         tb.innerHTML = "";
         byPort(s).forEach(function(p) {
             var n = p.port;
-            var iOn = p.iLimited == 1, eOn = p.eLimited == 1;
+            var iOn = p.iLimited, eOn = p.eLimited;
             var iM = (parseInt(p.iBW) * 16 / 1000),
                 eM = (parseInt(p.eBW) * 16 / 1000);
             var tr = tb.insertRow();
@@ -4514,7 +4514,7 @@ function bwLoad() {
                 h("option", { value: "fc", text: t("bw_fc") }),
                 h("option", { value: "drop", text: t("bw_drop") }),
             ]);
-            msel.value = Number(p.iFC) === 1 ? "fc" : "drop";
+            msel.value = p.iAction;
             tr.insertCell().appendChild(msel);
             var ecb = h("input", { type: "checkbox", id: "bwe" + n });
             ecb.checked = eOn;

@@ -25,8 +25,8 @@ The following endpoints are supported:
 ## bandwidth
 ```json
 [
-    {"port":1,"iLimited":0,"iBW":"0x0fffff","iFC":0,"eLimited":0,"eBW":"0x0fffff"},
-    {"port":2,"iLimited":0,"iBW":"0x0fffff","iFC":0,"eLimited":0,"eBW":"0x0fffff"},
+    {"port":1,"iLimited":false,"iBW":"0x0fffff","iAction":"drop","eLimited":false,"eBW":"0x0fffff"},
+    {"port":2,"iLimited":false,"iBW":"0x0fffff","iAction":"fc","eLimited":false,"eBW":"0x0fffff"},
     ...
 ]
 ```
@@ -36,10 +36,10 @@ Array of port properties
 | Property | Description
 |----------|------------
 | `port` | The physical port number
-| `iLimited` | 0/1 whether ingress (inbound) limit is applied
+| `iLimited` | Apply ingress (inbound) limit
 | `iBW` | The ingress rate limit applied
-| `iFC` | 0/1, 0: packets are dropped, 1: TCP flow-control is used
-| `eLimited` | 0/1 whether egress (outbound) limit is applied
+| `iAction` | Action to preform on limit exceedence, "drop" - drop frame "fc" - use TCP flow control
+| `eLimited` | Apply egress (outbound) limit
 | `eBW` | The egress rate limit applied
 
 ## counters
