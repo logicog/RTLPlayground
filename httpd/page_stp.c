@@ -67,7 +67,11 @@ void send_stp(void) __banked
 	str_code_to_html("," JSONQUOTE("txhold") ":");
 	itoa_html(stp_txhold);
 	str_code_to_html("," JSONQUOTE("pcs") ":");
-	itoa_html(stp_pcost_short);
+	if(stp_pcost_short) {
+		str_code_to_html(JSONQUOTE("short"));
+	} else {
+		str_code_to_html(JSONQUOTE("long"));
+	}
 	str_code_to_html("," JSONQUOTE("bh") ":");
 	if(stp_bpdu_filter) {
 		str_code_to_html(JSONQUOTE("filter"));

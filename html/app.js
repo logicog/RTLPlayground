@@ -3267,7 +3267,7 @@ function stpLoad() {
         var bc = $("stpbridge");
         if (!bc.dataset.dirty) {
             $("stpver").value = s.type;
-            $("stppcs").value = s.pcs ? "short" : "long";
+            $("stppcs").value = s.pcs;
             $("stpbh").value = s.bh;
             $("stpprio").value = String(s.prio);
             $("stphello").value = s.hello;
@@ -3344,8 +3344,8 @@ $("stpbapply").addEventListener("click", function() {
         prio = $("stpprio").value;
     if (ver !== (s.rstp ? "rstp" : "stp")) cmds.push("stp version " + ver);
     if (prio !== String(s.prio)) cmds.push("stp prio " + prio);
-    if ($("stppcs").value !== (s.pcs ? "short" : "long")) cmds.push("stp pathcost " + $("stppcs").value);
-    if ($("stpbh").value !== (s.bh ? "filter" : "flood")) cmds.push("stp bpdu " + $("stpbh").value);
+    if ($("stppcs").value !== s.pcs) cmds.push("stp pathcost " + $("stppcs").value);
+    if ($("stpbh").value !== s.bh) cmds.push("stp bpdu " + $("stpbh").value);
     [
         ["stphello", "hello"],
         ["stpmaxage", "maxage"],
