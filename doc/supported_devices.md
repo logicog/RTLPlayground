@@ -33,6 +33,7 @@ The following devices have been tested and are fully working:
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3.1.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.2](devices/2M-PCB23-V3.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHP-X  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 4M    | 8 + 1 |
+| keepLINK | KP-9000-9XHPML-X | Yes    | [2M-PCB51-ML-V1.2](devices/2M-PCB51-ML-V1.2.md)                                       | 2M    | 8 + 1 |
 | LIANGUO  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/2G5F_20G_V1.01.md)                                           | 0.5M  | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 0.5M  | 4 + 2 |
 | LIANGUO  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0 / PCB-SWTG115AS-V2.1](devices/PCB-SWTG115AS-V2.0-16030.md)        | 2M    | 5 + 1 |
