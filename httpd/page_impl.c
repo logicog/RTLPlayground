@@ -1015,6 +1015,13 @@ void send_status(void)
 		reg_to_html(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (i << 2));
 		char_to_html('"');
 		char_to_html('}');
+
+		//298 chars worst case for a copper port, SPF is larger but this
+		if(slen > TCP_OUTBUF_SIZE - 400) {
+			dbg_string("send_status truncated");
+			break;
+		}
+
 		if (i < MACHINE_MAX_PORT)
 			char_to_html(',');
 	}
