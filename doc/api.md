@@ -324,7 +324,7 @@ Object representing static and LACP lags
 ## stp
 ```json
 {
-    "on":true,"rstp":true,"prio":8,"hello":2,"maxage":20,"fwd":15,"txhold":6,"pcs":0,"bh":0,"tcs":"000002a8","rMaxage":20,"rFwd":15,"rootPrio":"8000","rootMac":"010203040506","myMac":"010203040506","cost":"00000000","weRoot":true,"tc":"0000",
+    "on":true,"type":"rstp","prio":8,"hello":2,"maxage":20,"fwd":15,"txhold":6,"pcs":0,"bh":0,"tcs":"000002a8","rMaxage":20,"rFwd":15,"rootPrio":"8000","rootMac":"010203040506","myMac":"010203040506","cost":"00000000","weRoot":true,"tc":"0000",
     "ports":[
         {"p":1,"st":3,"role":2,"f":69,"pc":"00000000","prio":128,"p2":0,"lk":1,"lg":0,"db":"8000010203040506","dp":"8001","dc":"00000000"},
         {"p":2,"st":3,"role":0,"f":69,"pc":"00000000","prio":128,"p2":0,"lk":0,"lg":0,"db":"8000010203040506","dp":"8002","dc":"00000000"},
@@ -336,7 +336,7 @@ Object representing static and LACP lags
 | Property | Description
 |----------|------------
 | `on` | Enabled/Disabled globally
-| `rstp` | If enabled uses Rapid Spanning Tree, otherwise uses STP
+| `type` | "rstp" (rapid) or "stp" (legacy)
 | `prio` | Bridge Priority
 | `hello` | Hello time (s)
 | `maxage` | Max Age (s)
@@ -366,8 +366,8 @@ Object representing static and LACP lags
 | `mbr` | List of port members (for LAGs)
 | `prio` | Port Priority
 | `p2` | Point-to-point 
-| `lk` | Previous link state
-| `lg` | Protocol used 1: STP, 0: RSTP 
+| `lk` | Previous link state that STP saw
+| `lg` | Link partner is using legacy STP (not RSTP/MSTP etc)
 | `db` | Designated bridge
 | `dp` | Designated port
 | `dc` | Designated cost

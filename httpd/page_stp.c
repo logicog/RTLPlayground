@@ -50,8 +50,12 @@ void send_stp(void) __banked
 
 	str_code_to_html("{" JSONQUOTE("on") ":");
 	bool_to_json(stp_enabled);
-	str_code_to_html(","  JSONQUOTE("rstp") ":");
-	bool_to_json(stp_rstp);
+	str_code_to_html(","  JSONQUOTE("type") ":");
+	if(stp_rstp) {
+		str_code_to_html(JSONQUOTE("rstp"));
+	} else {
+		str_code_to_html(JSONQUOTE("stp"));
+	}
 	str_code_to_html("," JSONQUOTE("prio") ":");
 	itoa_html(stp_prio >> 4);
 	str_code_to_html("," JSONQUOTE("hello") ":");
