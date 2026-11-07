@@ -3025,7 +3025,7 @@ function buildPorts() {
             type: "checkbox",
             id: "pen" + i
         }), h("i")]);
-        sw.firstChild.checked = !!p.enabled;
+        sw.firstChild.checked = p.enabled;
         tr.insertCell().appendChild(sw);
         tr.insertCell().appendChild(h("input", {
             class: "in sm",
@@ -3042,6 +3042,7 @@ function buildPorts() {
                 applyPort(i)
             }
         }));
+        S.mtu[i] = parseInt(p.mtu, 16);
     });
 }
 
