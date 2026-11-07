@@ -10,6 +10,7 @@
 #include "uip/uip.h"
 #include "dns.h"
 #include "ntp.h"
+#include "rtlos_hal.h"
 
 #pragma codeseg BANK3
 #pragma constseg BANK3
@@ -25,11 +26,8 @@
 #define NTP_SEND	2
 #define NTP_WAIT	3
 
-extern __xdata uint8_t sfr_data[4];
-
 __xdata struct ntp_state ntp_state;
 __xdata uip_ipaddr_t ntp_ip;
-__xdata uint32_t ntp_now;
 __xdata uint32_t ntp_t;
 __xdata uint16_t ntp_year;
 __xdata uint8_t  ntp_mon, ntp_mday, ntp_hour, ntp_min, ntp_sec, ntp_wday, ntp_mlen;
@@ -40,16 +38,7 @@ static __code const uint8_t ntp_mdays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30
 static __code const char ntp_default_server[] = "pool.ntp.org";
 
 
-static uint32_t ntp_uptime(void) __reentrant
-{
-	reg_read_m(RTL837X_REG_SEC_COUNTER);
-	((__xdata uint8_t *)&ntp_now)[0] = sfr_data[3];
-	((__xdata uint8_t *)&ntp_now)[1] = sfr_data[2];
-	((__xdata uint8_t *)&ntp_now)[2] = sfr_data[1];
-	((__xdata uint8_t *)&ntp_now)[3] = sfr_data[0];
-	return ntp_now;
-}
-
+#define ntp_uptime()	get_time_sec()
 
 static uint8_t ntp_divmod(uint8_t d) __reentrant
 {

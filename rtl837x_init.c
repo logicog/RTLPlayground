@@ -7,8 +7,8 @@
 #include "phy.h"
 #include "machine.h"
 #include "boot.h"
+#include "rtlos_hal.h"
 
-extern __xdata uint8_t sfr_data[4];
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 
