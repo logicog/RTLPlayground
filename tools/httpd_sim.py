@@ -400,6 +400,7 @@ class Handler(SimpleHTTPRequestHandler):
             "maxage":20,
             "fwd":15,
             "txhold":6,
+            "bh": "flood",
             "rootPrio":"8000",
             "rootMac":"060f00124737",
             "myMac":"060f00124737",

@@ -69,7 +69,11 @@ void send_stp(void) __banked
 	str_code_to_html("," JSONQUOTE("pcs") ":");
 	itoa_html(stp_pcost_short);
 	str_code_to_html("," JSONQUOTE("bh") ":");
-	itoa_html(stp_bpdu_filter);
+	if(stp_bpdu_filter) {
+		str_code_to_html(JSONQUOTE("filter"));
+	} else {
+		str_code_to_html(JSONQUOTE("flood"));
+	}
 	str_code_to_html("," JSONQUOTE("tcs") ":\"");
 	pi_u32 = stp_tc_secs; u32hex_html();
 	str_code_to_html("\"," JSONQUOTE("rMaxage") ":");
