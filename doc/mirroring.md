@@ -29,11 +29,16 @@ void port_mirror_del(void)
 ```
 
 # Mirroring on the Serial Console
-For testing the following commands are provided on the serial console:
+The serial console uses front-panel port numbers:
 ```
-mirror <mirroring port> <P1>[r|t] [P2][r|t] ...
-  mirror to port <mirroring port>, source ports are P1 with the givent packet types, P2 and so on
+mirror <monitor port> [<source port>[r|t]]...
+  Mirror received (r), transmitted (t), or both (no suffix) packet types.
 
-mirror d
-  Deletes mirroring configuration
+mirror status
+  Show the mirroring configuration.
+
+mirror off
+  Disable mirroring.
 ```
+Port tokens must contain only a valid front-panel port number and, for source
+ports, at most one `r` or `t` suffix. `status` and `off` take no extra arguments.

@@ -848,6 +848,8 @@ void parse_mirror(void)
 	__xdata uint16_t tx_pmask = 0;
 
 	if (cmd_compare(1, "status")) {
+		if (cmd_words_len != 2)
+			goto err;
 		reg_read_m(RTL837x_MIRROR_CTRL);
 		uint8_t mPort = sfr_data[3];
 		if (mPort & 1) {
@@ -869,6 +871,8 @@ void parse_mirror(void)
 		write_char('\n');
 		return;
 	} else if (cmd_compare(1, "off")) {
+		if (cmd_words_len != 2)
+			goto err;
 		port_mirror_del();
 		return;
 	}
@@ -877,7 +881,7 @@ void parse_mirror(void)
 		goto err;
 
 	// The first argument is the mirroring (monitor) port
-	uint8_t ret = cmd_parse_port(cmd_words_b[1]);
+	uint8_t ret = cmd_parse_port_separator(cmd_words_b[1]);
 	if (ret == 0)
 		goto err;
 	mirroring_port = atoi_results_u8;
@@ -894,6 +898,10 @@ void parse_mirror(void)
 		port = atoi_results_u8;
 
 		ret = cmd_buffer[idx];
+		if (ret == 'r' || ret == 't')
+			idx++;
+		if (!cmd_is_space_or_nul(idx))
+			goto err;
 		uint16_t pmask = ((uint16_t)1) << port;
 		if (ret != 't')
 			rx_pmask |= pmask;
@@ -904,7 +912,7 @@ void parse_mirror(void)
 	return;
 
 err:
-	cmd_error("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
+	cmd_error("mirror (status | off | <monitor port> [<port>[r|t]]...)\n");
 	return;
 }
 
