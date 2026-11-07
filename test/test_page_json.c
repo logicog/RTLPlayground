@@ -192,7 +192,7 @@ static void t_status_macs(void)
 	printf("[test] /status.json reports the MAC addresses learned on each port\n");
 	hw_reset(); out_reset();
 	hw_reg_set(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (1 << 2), 0x21);
-	send_ports();
+	send_traffic();
 	p1 = strstr(body(), "\"port\":2,");
 	end = p1 ? strchr(p1, '}') : NULL;
 	mac = p1 ? strstr(p1, "\"macs\":\"0x21\"") : NULL;
