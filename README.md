@@ -164,6 +164,8 @@ To set the complete path and file name at once, use `OUTPUT`:
 ```
 make MACHINE=DEFAULT_8C_1SFP OUTPUT=/tmp/firmware/my-switch.bin
 ```
+When `OUTPUT` is a custom path, `output/rtlplayground.bin` is left untouched:
+only the default build updates that symlink (and the installer uses it).
 Without overrides the image is `output/<machine>/rtlplayground-v<version>-<git>-<machine>.bin`.
 `BUILDDIR` still selects where intermediate objects and tools are written.
 
