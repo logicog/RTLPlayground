@@ -94,7 +94,7 @@ static void t_vlan(void)
 
 static void t_vlanlist(void)
 {
-	printf("[test] /vlanlist lists the VLANs that exist\n");
+	printf("[test] /vlanlist.json lists the VLANs that exist\n");
 	hw_reset(); out_reset(); vlan_ptr = 0; vlan_names[0] = 0;
 	make_vlan(10, 0x0015, 0x0004);
 	make_vlan(20, 0x00f0, 0x0000);

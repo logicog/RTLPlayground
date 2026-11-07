@@ -94,7 +94,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/stp.json": self._api_stp,
             "/stpcnt.json": self._api_stpcnt,
             "/vlan.json": lambda: self._api_vlan(query),
-            "/vlanlist": self._api_vlanlist,
+            "/vlanlist.json": self._api_vlanlist,
         }
 
     def _send(self, status, body=b"", content_type="text/plain",

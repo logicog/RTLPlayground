@@ -3577,7 +3577,7 @@ function rangeStr(list) {
 function vlanRefresh() {
     var tb = $("vtable").tBodies[0];
     tb.style = "cursor:pointer;"
-    return getJSON("/vlanlist").then(function(d) {
+    return getJSON("/vlanlist.json").then(function(d) {
         var vl = d.vlan || [];
         $("vmgmtcur").dataset.id = d.mgmt;
         $("vempty").style.display = vl.length ? "none" : "";
