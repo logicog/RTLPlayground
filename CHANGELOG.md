@@ -42,6 +42,8 @@
     defaults (NTP off, no server, UTC-12:00) instead of the switch's settings.
   - Accept firmware uploads regardless of the file part's MIME type, including
     `application/macbinary` sent by Chrome on macOS for `.bin` files.
+  - Refuse MAC-table deletion when the requested index has aged out or is out of
+    range, instead of using the next entry's data for a write.
 
 - Health
   - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which

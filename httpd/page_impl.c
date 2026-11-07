@@ -471,6 +471,12 @@ void l2_delete(uint16_t idx)
 	do {
 		reg_read(RTL837X_TBL_CTRL);
 	} while (SFR_DATA_0 & 0x1);
+	reg_read_m(RTL837x_TBL_DATA_0);
+	/* An aged-out entry must not turn deletion into a next-entry write. */
+	if (idx != ((((uint16_t)sfr_data[2] & 0x0f) << 8) | sfr_data[3])) {
+		slen += strtox(outbuf + slen, "0}");
+		return;
+	}
 	reg_read_m(RTL837x_L2_DATA_OUT_B);
 	if (!(SFR_DATA_24 & 0x20)) {
 		char_to_html('0');
