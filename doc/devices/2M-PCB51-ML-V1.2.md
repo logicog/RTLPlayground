@@ -14,11 +14,23 @@ Not to be confused with the KP-9000-9XHPML-X V3.1 (two RTL8238B, discussed in #2
 > [!CAUTION]
 > This device contains a mains voltage power supply, which is a potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely.
 
+## Hardware overview
+
+Front:
+
+<img src="photos/2M-PCB51-ML-V1.2/front.jpg" width="600" />
+
 ## PCB
 
 Top silkscreen `2M-PCB51-ML-V1.2`. Flash is a Winbond W25Q16JV (U8, top edge). PoE comes from the daughterboard `StandardPOE8-SKY-V1.3` with an RTL8238C and a P24C256 EEPROM.
 
-<img src="photos/2M-PCB51-ML-V1.2/pcb-top.jpg" width="300" />
+PCB top:
+
+<img src="photos/2M-PCB51-ML-V1.2/pcb-top.jpg" width="600" />
+
+PCB bottom:
+
+<img src="photos/2M-PCB51-ML-V1.2/pcb-bottom.jpg" width="600" />
 
 Silkscreen and the headers at the right edge:
 
@@ -27,8 +39,6 @@ Silkscreen and the headers at the right edge:
 PoE daughterboard:
 
 <img src="photos/2M-PCB51-ML-V1.2/poe-board.jpg" width="400" />
-
-Photos of the PCB bottom and the front of the device are still missing.
 
 ### Headers
 
