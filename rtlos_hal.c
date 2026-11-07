@@ -5,13 +5,15 @@
 /* The GPIO registers come in a block for pins 0-31 and one for pins 32-63 */
 #define gpio_pull_reg(reg_00_31, reg_32_63, pin) (pin < 32 ? reg_00_31 : reg_32_63)
 
+#pragma codeseg BANK2
+#pragma constseg BANK2
 
 /*
  * Configure the internal pull resistor of a GPIO pin
  * pin: GPIO pin number 0-63
  * mode: GPIO_PULL_NONE, GPIO_PULL_UP or GPIO_PULL_DOWN
  */
-void set_gpio_pull_mode(uint8_t pin, uint8_t mode)
+void set_gpio_pull_mode(uint8_t pin, uint8_t mode) __banked
 {
 	uint8_t bit;
 	uint16_t pull_en;
