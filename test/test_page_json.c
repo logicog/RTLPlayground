@@ -192,7 +192,7 @@ static void t_status_macs(void)
 	printf("[test] /status.json reports the MAC addresses learned on each port\n");
 	hw_reset(); out_reset();
 	hw_reg_set(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (1 << 2), 0x21);
-	send_status();
+	send_ports();
 	p1 = strstr(body(), "\"port\":2,");
 	end = p1 ? strchr(p1, '}') : NULL;
 	mac = p1 ? strstr(p1, "\"macs\":\"0x21\"") : NULL;
@@ -209,7 +209,7 @@ static void t_status_counters(void)
 	hw_counter_set(0, STAT_COUNTER_TX_PKTS, 0x100000005ULL);
 	hw_counter_set(0, STAT_COUNTER_RX_PKTS, 0x00000000000000ffULL);
 	hw_counter_set(1, STAT_COUNTER_TX_PKTS, 0x00000001ffffffffULL);
-	send_status();
+	send_traffic();
 	CHECK(has("\"txG\":\"0x100000005\""), "a counter past 2^32 keeps the zeros of its low word");
 	CHECK(has("\"rxG\":\"0xff\""), "a small counter stays short");
 	CHECK(has("\"txG\":\"0x1ffffffff\""), "a low word of all ones");

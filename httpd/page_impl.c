@@ -855,10 +855,54 @@ void send_isolation(void)
 	char_to_html(']');
 }
 
-void send_status(void)
+void linkspeed_to_json(uint8_t i)
+{
+	uint8_t b = 0;
+	// Determine link state
+	reg_read_m(RTL837X_REG_LINKS_STS);
+	if(!((sfr_data[(i / 8) + 1] >> (i % 8 ) & 1))) {
+		str_code_to_html("DOWN");
+	}
+	else
+	{
+		//Determine link speed
+		if (i < 8)
+			reg_read_m(RTL837X_REG_LINKS);
+		else
+			reg_read_m(RTL837X_REG_LINKS_89);
+
+		b = sfr_data[3 - ((i & 7) >> 1)];
+		b = ((i & 1) ? b >> 4 : b & 0xf);
+		switch(b){
+			case 0:
+				str_code_to_html("10M");
+			break;
+			case 1:
+				str_code_to_html("100M");
+			break;
+			case 2:
+				str_code_to_html("1000M");
+			break;
+			case 3:
+				str_code_to_html("500M");
+			break;
+			case 4:
+				str_code_to_html("10G");
+			break;
+			case 5:
+				str_code_to_html("2.5G");
+			break;
+			case 6:
+				str_code_to_html("5G");
+			break;
+		}
+	}
+}
+
+void send_ports(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
-	dbg_string("sending status\n");
+	dbg_string("sending ports\n");
 	char_to_html('[');
 
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
@@ -948,55 +992,40 @@ void send_status(void)
 
 			char_to_html(']');
 		}
-
-		str_code_to_html("," JSONQUOTE("link") ":\"");
-		
-		uint8_t b = 0;
-		// Determine link state
-		reg_read_m(RTL837X_REG_LINKS_STS);
-		if(!((sfr_data[(i / 8) + 1] >> (i % 8 ) & 1))) {
-			str_code_to_html("DOWN");
-		}
-		else
-		{
-			//Determine link speed
-			if (i < 8)
-				reg_read_m(RTL837X_REG_LINKS);
-			else
-				reg_read_m(RTL837X_REG_LINKS_89);
-			
-			b = sfr_data[3 - ((i & 7) >> 1)];
-			b = ((i & 1) ? b >> 4 : b & 0xf);
-			switch(b){
-				case 0:
-					str_code_to_html("10M");
-				break;
-				case 1:
-					str_code_to_html("100M");
-				break;
-				case 2:
-					str_code_to_html("1000M");
-				break;
-				case 3:
-					str_code_to_html("500M");
-				break;
-				case 4:
-					str_code_to_html("10G");
-				break;
-				case 5:
-					str_code_to_html("2.5G");
-				break;
-				case 6:
-					str_code_to_html("5G");
-				break;
-			}
-		}
-
-		str_code_to_html("\"," JSONQUOTE("mtu") ":\"0x");
+		str_code_to_html("," JSONQUOTE("mtu") ":\"0x");
 		reg_read_m(RTL8373_REG_MAC_L2_PORT_MAX_LEN + ((uint16_t) i << 8));
 		uint16_t mtu = SFR_DATA_U16 & 0x3fff;
 		byte_to_html(mtu >> 8);
 		byte_to_html(mtu & 0xff);
+		char_to_html('"');
+		char_to_html('}');
+
+		//298 chars worst case for a copper port, SPF is about 650 -- shrink
+		if(slen > TCP_OUTBUF_SIZE - 650) {
+			dbg_string("send_ports truncated");
+			break;
+		}
+
+		if (i < MACHINE_MAX_PORT)
+			char_to_html(',');
+	}
+	char_to_html(']');
+}
+
+
+void send_traffic(void)
+{
+	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
+	dbg_string("sending port counters\n");
+	char_to_html('[');
+
+	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		str_code_to_html("{" JSONQUOTE("port") ":");
+		itoa_html(machine.log_to_phys_port[i]);
+
+		str_code_to_html("," JSONQUOTE("link") ":\"");
+
+		linkspeed_to_json(i);
 
 		STAT_GET(STAT_COUNTER_TX_PKTS, i);
 		str_code_to_html("\"," JSONQUOTE("txG") ":\"0x");
@@ -1019,9 +1048,8 @@ void send_status(void)
 		char_to_html('"');
 		char_to_html('}');
 
-		//298 chars worst case for a copper port, SPF is about 650
-		if(slen > TCP_OUTBUF_SIZE - 650) {
-			dbg_string("send_status truncated");
+		if(slen > TCP_OUTBUF_SIZE - 200) {	//arbitrary TODO workout good number
+			dbg_string("send_traffic truncated");
 			break;
 		}
 
@@ -1030,7 +1058,6 @@ void send_status(void)
 	}
 	char_to_html(']');
 }
-
 
 void send_config(void)
 {

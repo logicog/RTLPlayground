@@ -2657,8 +2657,13 @@ function byPort(a) {
 }
 
 function pollStatus() {
-    return getJSON("/status.json").then(function(s) {
+    return Promise.all([
+        getJSON("/ports.json"),
+        getJSON("/traffic.json")
+    ]).then(function([s,t]) {
         byPort(s);
+        byPort(t);
+        s = s.map((item,i) => ({ ...item, ...t[i]}));
         S.ports = s;
         var now = Date.now();
         if (!S.n) {

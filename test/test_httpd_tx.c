@@ -173,7 +173,8 @@ bool strstart(const uint8_t *a, const uint8_t *b)
 bool strstart_x(const uint8_t *a, const uint8_t *b) { return strstart(a, b); }
 
 bool send_counters(uint8_t phys_port) { (void)phys_port; return false; }
-void send_status(void) { }
+void send_ports(void) { }
+void send_traffic(void) { }
 void send_vlan(uint16_t vlan) { (void)vlan; }
 void send_basic_info(void) { }
 void send_bandwidth(void) { }

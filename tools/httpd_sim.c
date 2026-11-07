@@ -144,7 +144,7 @@ void send_vlan(int s, int vlan)
 }
 
 
-void send_status(int s)
+void send_ports(int s)
 {
 	struct json_object *ports, *v;
 	const char *jstring;
@@ -648,7 +648,7 @@ void launch(struct Server *server)
 					if (!authenticated)
 						send_unauthorized(new_socket);
 					else
-						send_status(new_socket);
+						send_ports(new_socket);
 					goto done;
 				} else if (!strncmp(&buffer[4], "/eee.json", 9)) {
 					printf("EEE request\n");

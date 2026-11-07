@@ -90,7 +90,8 @@ class Handler(SimpleHTTPRequestHandler):
             "/lldp.json": self._api_lldp,
             "/lag.json": self._api_lag,
             "/mirror.json": self._api_mirror,
-            "/status.json": self._api_status,
+            "/ports.json": self._api_ports,
+            "/traffic.json": self._api_traffic,
             "/storm.json": self._api_storm,
             "/stp.json": self._api_stp,
             "/stpcnt.json": self._api_stpcnt,
@@ -430,7 +431,7 @@ class Handler(SimpleHTTPRequestHandler):
                 ]
             }
 
-    def _api_status(self):
+    def _api_ports(self):
         global last_called, machine_config
         now = max(int(time.time()), last_called + 1)
         elapsed = now - last_called
@@ -438,23 +439,12 @@ class Handler(SimpleHTTPRequestHandler):
 
         for i in range(1, PORTS + 1):
             n = i - 1
-            if i % 2:
-                rate = 2_400_000_000 if i == 1 else 950_000_000
-                tx_g[n] += rate * elapsed
-                rx_g[n] += rate * elapsed
-                tx_b[n] += rate * elapsed // 10_000_000
-                rx_b[n] += rate * elapsed // 10_000_000
             item = {
                 "port": i,
                 "name": "",
                 "isSFP": machine_config["is_sfp"][i] == 1,
                 "enabled": int(i % 4 != 0),
-                "link": ("10G" if i == 1 else "100M-HD") if i % 2 else "DOWN",
                 "mtu": f"0x{16383 if i % 2 else 1522:04x}",
-                "txG": f"0x{tx_g[n]:016x}",
-                "txB": f"0x{tx_b[n]:016x}",
-                "rxG": f"0x{rx_g[n]:016x}",
-                "rxB": f"0x{rx_b[n]:016x}",
             }
 
             if machine_config["is_sfp"][i]:
@@ -478,6 +468,35 @@ class Handler(SimpleHTTPRequestHandler):
                 else:
                     item["adv"] = [ "100M-HD" ]
 
+            ports.append(item)
+
+        last_called = now
+        return ports
+
+    def _api_traffic(self):
+        global last_called, machine_config
+        now = max(int(time.time()), last_called + 1)
+        elapsed = now - last_called
+        ports = []
+
+        for i in range(1, PORTS + 1):
+            n = i - 1
+            if i % 2:
+                rate = 2_400_000_000 if i == 1 else 950_000_000
+                tx_g[n] += rate * elapsed
+                rx_g[n] += rate * elapsed
+                tx_b[n] += rate * elapsed // 10_000_000
+                rx_b[n] += rate * elapsed // 10_000_000
+            item = {
+                "port": i,
+                "name": "",
+                "link": ("10G" if i == 1 else "100M-HD") if i % 2 else "DOWN",
+                "macs": "0x01",
+                "txG": f"0x{tx_g[n]:016x}",
+                "txB": f"0x{tx_b[n]:016x}",
+                "rxG": f"0x{rx_g[n]:016x}",
+                "rxB": f"0x{rx_b[n]:016x}",
+            }
             ports.append(item)
 
         last_called = now

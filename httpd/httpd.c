@@ -1020,8 +1020,10 @@ void httpd_appcall(void)
 				goto do_send;
 			}
 			dbg_string("Not file entry\n");
-			if (!strcmp(q, "/status.json")) {
-				send_status();
+			if (!strcmp(q, "/ports.json")) {
+				send_ports();
+			} else if (!strcmp(q, "/traffic.json")) {
+				send_traffic();
 			} else if (!strcmp(q, "/information.json")) {
 				send_basic_info();
 			} else if (!strcmp(q, "/vlan.json")) {
