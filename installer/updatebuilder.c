@@ -214,7 +214,7 @@ int main(int argc, char **argv)
 //	for (int i = HEADER_LENGTH; i < filesize; i++)
 //		sum += buffer[i];
 
-	for (int i = HEADER_LENGTH; i < SEG_01002_LENGTH; i++)
+	for (int i = HEADER_LENGTH; i < HEADER_LENGTH + SEG_01002_LENGTH; i++)
 		sum += buffer[i];
 	printf("Payload sum 1 is: 0x%x\n", sum);
 
