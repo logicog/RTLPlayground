@@ -388,7 +388,7 @@ Object representing static and LACP lags
 | `pvid` | List of physical ports that have their Port VLAN ID set to this VLAN
 
 ## storm
-```
+```json
 [
     {
         "port":1,
