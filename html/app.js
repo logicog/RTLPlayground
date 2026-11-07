@@ -4279,7 +4279,6 @@ $("isoapply").addEventListener("click", function() {
             if (e.port === r) cur = e.allow;
         });
 
-        //if the state in the DOM is the same as the API response, move on guv'
         if (isoArray(r).sort().join(",") === cur.sort().join(",")) continue;
 
         var cmd = "isolate " + r;
@@ -4598,7 +4597,7 @@ function bwApply(n) {
         }
         cmds.push("bw out " + n + " " + eh);
     } else cmds.push("bw out " + n + " off");
-    postCmds(cmds).then(bwLoad).catch(function() {});
+    postCmds(cmds).then(bwLoad).catch(function(){});
 }
 var SC_TYPES = ["bcast", "mcast", "ucast", "umcast"],
     scSig = "";
@@ -4680,7 +4679,7 @@ function scApply(n) {
 tabHooks.bw = {
     enter: function() {
         needPorts(function() {
-            bwLoad().then(scLoad).catch(function(e) {console.log(e);})
+            bwLoad().then(scLoad).catch(function() {})
         })
     }
 };
