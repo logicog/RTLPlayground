@@ -30,6 +30,10 @@
 
 ## Fixed
 
+- Commands
+  - Reject incomplete LAG group numbers and extra arguments after `lag show`,
+    `lag <group> d` or `lag <group> lacp off` without changing configuration.
+
 - Time
   - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
     boards without 10G ports both SerDes stayed off, and with SDS 0 off `RTL837X_REG_SEC_COUNTER`

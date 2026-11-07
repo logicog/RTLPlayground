@@ -57,10 +57,13 @@ For testing the following commands are provided on the serial console:
 > lag show
   Shows information on all 4 lags
 
-> laghash 0 [hash1] [hash2]...
+> laghash <LAG-ID> [hash1] [hash2]...
   Uses the given packet properties when hashing the packet to select the link
   Names for the hashes are spa, smac, dmac, sip, dip, sport, dport
 ```
+Group numbers must be complete tokens. `lag show`, `lag <LAG-ID> d` and
+`lag <LAG-ID> lacp off` do not accept trailing arguments.
+
 When a lag is creates, by default the hash is based on smac, dmac, sip, dip, sport, dport. When you
 use your own hash settings, make sure that the hash always uses both the source and destination
 property of the packet, as otherwise pakets will not be routed symmetrically.
