@@ -19,7 +19,7 @@ The following endpoints are supported:
  * /stpcnt.json
  * /storm.json
  * /vlan.json?vid=<VLANID>
- * /vlanlist
+ * /vlanlist.json
 
 
 
