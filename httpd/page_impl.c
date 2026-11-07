@@ -1017,8 +1017,8 @@ void send_status(void)
 		char_to_html('"');
 		char_to_html('}');
 
-		//298 chars worst case for a copper port, SPF is larger but this
-		if(slen > TCP_OUTBUF_SIZE - 400) {
+		//298 chars worst case for a copper port, SPF is about 650
+		if(slen > TCP_OUTBUF_SIZE - 650) {
 			dbg_string("send_status truncated");
 			break;
 		}
