@@ -795,8 +795,8 @@ void send_storm(void)
 		for (t = 0; t < STORM_TYPES; t++) {
 			char_to_html('"');
 			str_code_to_html(http_storm_names[t]);
-			str_code_to_html("\":{" JSONQUOTE("en") ":");
-			char_to_html(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i) ? '1' : '0');
+			str_code_to_html("\":{" JSONQUOTE("enabled") ":");
+			bool_to_json(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i));
 
 			str_code_to_html("," JSONQUOTE("unit") ":");
 			idx = STORM_METER(i, t);
