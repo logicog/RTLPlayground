@@ -2887,10 +2887,9 @@ function portDetail(i) {
 /* "0x00015180" seconds -> "1 d 00:00:00" in the page language */
 function fmtUptime(hex) {
     var s = parseInt(hex, 16);
-    if (isNaN(s)) return "";
 
     function p(n) {
-        return (n < 10 ? "0" : "") + n
+        return String(n).padStart(2, "0");
     }
     var t3 = p(Math.floor(s / 3600) % 24) + ":" + p(Math.floor(s / 60) % 60) + ":" + p(s % 60),
         d = Math.floor(s / 86400);
@@ -2920,7 +2919,7 @@ function renderInfo() {
     tb.innerHTML = "";
     m.forEach(function(r) {
         var v = S.info[r[1]];
-        if (r[1] === "uptime" && v != null) v = fmtUptime(v);
+        if (r[1] === "uptime") v = fmtUptime(v);
         if (v == null || v === "") return;
         tb.appendChild(h("tr", null, [h("td", {
             class: "mut",
