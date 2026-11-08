@@ -10,6 +10,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
+#include "boot.h"
 #include "rtl837x_phy.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_sfr.h"
@@ -2151,6 +2152,11 @@ void execute_config(void) __banked
 {
 	__xdata uint32_t pos = CONFIG_START;
 	__xdata uint8_t pages_left = CONFIG_LEN / FLASH_READ_BURST_SIZE;
+
+	if (loader_recovery()) {
+		print_string("Recovery boot: using the default configuration\n");
+		pos = DEFAULT_CONFIG_START;
+	}
 
 	// Set default password, it can be overwritten in the configuration file
 	strtox(passwd, PASSWORD);

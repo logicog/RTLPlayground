@@ -15,6 +15,9 @@ typedef struct httpd_state {
    uint8_t fw_reset_pending;
 } uip_tcp_appstate_t;
 
+#define FW_RESET_PENDING 1
+#define FW_UPDATE_PENDING 2
+
 /* Finally we define the application function to be called by uIP. */
 void httpd_appcall(void);
 #ifndef UIP_APPCALL
