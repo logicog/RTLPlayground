@@ -35,7 +35,7 @@
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
-#include "rtlos_hal.h"
+#include "rtlos_gpio.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;

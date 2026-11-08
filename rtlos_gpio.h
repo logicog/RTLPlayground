@@ -1,5 +1,5 @@
-#ifndef _RTLOS_HAL_H_
-#define _RTLOS_HAL_H_
+#ifndef _RTLOS_GPIO_H_
+#define _RTLOS_GPIO_H_
 
 #include <stdint.h>
 
