@@ -116,7 +116,7 @@ The device product string is what the CLI or the Web-Interface will print to ide
 `machine/<MACHINE>.c` is a symlink to `machine/pcb/<MACHINE_PCB>.c`. This is
 the definition of this unique machine's PCB, even when that PCB file is itself
 a symlink to a shared definition. If you are unable to find an exact match, copy
-the closest existing board and adjust it — do not start from a blank file, the field
+the closest existing board and adjust it; do not start from a blank file, the field
 meanings are easier to see in a real example. The best choice is usually a device
 that has the same number and type of Ethernet ports and the same number of SFP+
 cages.
@@ -208,7 +208,7 @@ apart:
 ```
 ln -s EXISTING_PCB.c machine/pcb/MY_PCB_BOARD_1_0.c
 ```
-Then `ln -s pcb/MY_PCB_BOARD_1_0.c machine/MY_BOARD_1_0.c` — note the second
+Then `ln -s pcb/MY_PCB_BOARD_1_0.c machine/MY_BOARD_1_0.c`; note the second
 link names the new PCB, not `EXISTING_PCB.c`, so the chain is two steps, never
 a direct link to the shared definition.[^2]
 
@@ -225,7 +225,7 @@ be collapsed this way.
 [^2]: Always link `machine/<MACHINE>.c` to `machine/pcb/<MACHINE_PCB>.c`, the
     PCB name belonging to this device, never past it to the file that PCB
     currently resolves to, even though both links build the same firmware. First,
-    the Makefile runs `readlink machine/$(MACHINE).c` — one non-recursive step —
+    the Makefile runs `readlink machine/$(MACHINE).c` (one non-recursive step)
     and the Web interface shows that link text as `pcb_ver`, so the GUI must name
     this machine's PCB, not the resolved target. Second, if `pcb/<MACHINE_PCB>.c`
     later turns out to be misconfigured, it can be replaced by a regular file and
