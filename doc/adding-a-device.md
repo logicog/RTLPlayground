@@ -38,7 +38,7 @@ the PCB inside the casing and the photo shows where this is from.
 3. If your device's PCB is already covered then reuse the existing definition:
    - run `ls machine/pcb/<MACHINE_PCB>*.c | grep -v "_init.c"` to list the supported variants and pick the one matching your PCB
    - create the symlink `ln -s pcb/<MACHINE_PCB>.c machine/<MACHINE>.c` or `ln -s pcb/<MACHINE_PCB_EXT>.c machine/<MACHINE>.c`
-     (always this machine's own PCB name, even when that PCB file is itself a symlink)
+     (always this device's own PCB name, even when that PCB file is itself a symlink)
    - write `machine/<MACHINE>.h`, and symlink `_init.c` as needed (details below)
    - build with `make MACHINE=<MACHINE> CI=1` and verify on your hardware
    - when everything works, update the documentation and open a pull request.
@@ -72,7 +72,7 @@ the managed switch assumes the base name and the unmanaged has _UNMANAGED append
 | `machine/pcb/<MACHINE_PCB>.c` | the `struct machine machine` board definition |
 | `machine/pcb/<MACHINE_PCB>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
 | `machine/<MACHINE>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
-| `machine/<MACHINE>.c` | a symlink to the `pcb/<MACHINE_PCB>.c` file; its link text is the PCB shown in the GUI, so it must name this machine's own PCB |
+| `machine/<MACHINE>.c` | a symlink to the `pcb/<MACHINE_PCB>.c` file; `MACHINE_PCB` is the PCB shown in the GUI, so it must match this device's PCB |
 | `machine/<MACHINE>_init.c` | (optional), see "Optional custom init hook" section |
 | `doc/devices/<PCB_DOC_NAME>.md` and `doc/supported_devices.md` | user-facing documentation |
 | `doc/devices/photos/<PCB_DOC_NAME>/` | Directory for holding photos of the devices |
@@ -113,9 +113,10 @@ The device product string is what the CLI or the Web-Interface will print to ide
 
 ## Step 2: the board definition
 
-`machine/<MACHINE>.c` is a symlink to `machine/pcb/<MACHINE_PCB>.c`, this
-machine's own PCB file, even when that PCB file is itself a symlink to a shared
-definition. Copy the closest existing board and adjust it — do not start from a blank file, the field
+`machine/<MACHINE>.c` is a symlink to `machine/pcb/<MACHINE_PCB>.c`. This is
+the definition of this unique machine's PCB, even when that PCB file is itself
+a symlink to a shared definition. If you are unable to find an exact match, copy
+the closest existing board and adjust it — do not start from a blank file, the field
 meanings are easier to see in a real example. The best choice is usually a device
 that has the same number and type of Ethernet ports and the same number of SFP+
 cages.
