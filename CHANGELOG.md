@@ -42,8 +42,9 @@
     defaults (NTP off, no server, UTC-12:00) instead of the switch's settings.
   - Accept firmware uploads regardless of the file part's MIME type, including
     `application/macbinary` sent by Chrome on macOS for `.bin` files.
-  - Load the complete MAC table even when responses contain fewer than 30 rows.
-    Stop at an empty page or a repeated entry, not an assumed page count.
+  - Load MAC table entries as the table is scrolled, with a Load more button for
+    keyboard access. Stop at an empty page or a repeated entry, not an assumed
+    page count. Sorting and filtering apply to loaded entries only.
 
 - Health
   - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which

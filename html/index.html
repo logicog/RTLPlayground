@@ -330,11 +330,13 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <div style="display:flex;gap:10px;margin-bottom:10px">
           <button class="ctl" id="l2refresh" data-i18n="c_refresh">Refresh</button>
           <button class="ctl" id="l2flush" data-i18n="l2_flush">Flush learned entries</button>
-          <span class="small mut" id="l2count" style="align-self:center"></span>
+          <span class="small mut" id="l2count" role="status" style="align-self:center"></span>
         </div>
         <div class="scrollx"><table class="t" id="l2table">
           <thead><tr><th data-sort="pport"><span data-i18n="c_port">Port</span><span class="arrow"></span></th><th data-sort="mac">MAC<span class="arrow"></span></th><th data-sort="vlan">VLAN<span class="arrow"></span></th><th data-sort="stat"><span data-i18n="c_type">Type</span><span class="arrow"></span></th><th></th></tr></thead>
           <tbody></tbody></table></div>
+        <p class="small mut" id="l2partial" data-i18n="l2_partial" hidden>Sorting and filtering apply to loaded entries only.</p>
+        <button class="ctl" id="l2more" data-i18n="l2_more" hidden>Load more</button>
       </div>
     </section>
 
