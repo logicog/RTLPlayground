@@ -15,6 +15,6 @@
  *       GPIO_PULL_UP to enable the pull up,
  *       GPIO_PULL_DOWN to enable the pull down
  */
-void set_gpio_pull_mode(uint8_t pin, uint8_t mode) __banked;
+void gpio_set_pull_mode(uint8_t pin, uint8_t mode) __banked;
 
 #endif

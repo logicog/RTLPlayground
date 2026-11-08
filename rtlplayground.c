@@ -1586,7 +1586,7 @@ void main(void)
 	setup_timer2();
 	setup_serial_timer1();
 	setup_external_irqs();
-	set_gpio_pull_mode(machine.reset_pin, GPIO_PULL_UP);
+	gpio_set_pull_mode(machine.reset_pin, GPIO_PULL_UP);
 
 	EA = 1; // Enable global interrupt
 
