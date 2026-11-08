@@ -8,7 +8,7 @@ Original software is running UART on 57600 baud rate.
 
 | Brand | Type | Managed | PCB | Flash | Chip RTL |
 |---|---|---|---|---|---|
-| XikeStor | SKS3200-8E1X | Yes | SWTG118AS-V2.1-17462 | 2MB (25Q16JVSIQ) | RTL8373N + RTL8224N|
+| XikeStor | SKS3200-8E1X | Yes | PCB-SWTG018AS-V2.1.0\_19030 | 2MB (25Q16JVSIQ) | RTL8373N + RTL8224N|
 
 
 ### Machine target
