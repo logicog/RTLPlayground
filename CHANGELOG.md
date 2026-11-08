@@ -45,6 +45,7 @@
   - Load MAC table entries as the table is scrolled, with a Load more button for
     keyboard access. Stop at an empty page or a repeated entry, not an assumed
     page count. Sorting and filtering apply to loaded entries only.
+    Counts distinguish loaded entries from a completed table.
 
 - Health
   - `HEALTH=1` builds no longer write past the phase timing arrays at the LLDP checkpoint, which

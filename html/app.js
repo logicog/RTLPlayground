@@ -220,6 +220,8 @@ var LANG = {
         l2_loading: "loading...",
         l2_failed: "load failed",
         l2_entries: "entries",
+        l2_loaded: "entries loaded",
+        l2_scroll_more: "scroll for more",
         l2_more: "Load more",
         l2_partial: "Sorting and filtering apply to loaded entries only.",
         l2_del_t: "Delete entry",
@@ -576,6 +578,8 @@ var LANG = {
         l2_loading: "読み込み中...",
         l2_failed: "読み込み失敗",
         l2_entries: "エントリ",
+        l2_loaded: "件読み込み済み",
+        l2_scroll_more: "スクロールしてさらに読み込む",
         l2_more: "さらに読み込む",
         l2_partial: "並べ替えと絞り込みは読み込み済みのエントリにのみ適用されます。",
         l2_del_t: "エントリを削除",
@@ -912,6 +916,8 @@ var LANG = {
         l2_loading: "加载中...",
         l2_failed: "加载失败",
         l2_entries: "条",
+        l2_loaded: "条已加载",
+        l2_scroll_more: "向下滚动加载更多",
         l2_more: "加载更多",
         l2_partial: "排序和筛选仅适用于已加载的条目。",
         l2_del_t: "删除条目",
@@ -1267,6 +1273,8 @@ var LANG = {
         l2_loading: "cargando...",
         l2_failed: "error de carga",
         l2_entries: "entradas",
+        l2_loaded: "entradas cargadas",
+        l2_scroll_more: "desplázate para cargar más",
         l2_more: "Cargar más",
         l2_partial: "La ordenación y el filtro solo se aplican a las entradas cargadas.",
         l2_del_t: "Eliminar entrada",
@@ -1660,6 +1668,8 @@ var LANG = {
         l2_loading: "chargement...",
         l2_failed: "chargement non réussi",
         l2_entries: "entrées",
+        l2_loaded: "entrées chargées",
+        l2_scroll_more: "faites défiler pour en charger plus",
         l2_more: "Charger plus",
         l2_partial: "Le tri et le filtrage s'appliquent uniquement aux entrées chargées.",
         l2_del_t: "Supprimer l'entrée",
@@ -2035,6 +2045,8 @@ var LANG = {
         l2_loading: "lädt...",
         l2_failed: "Laden fehlgeschlagen",
         l2_entries: "Einträge",
+        l2_loaded: "Einträge geladen",
+        l2_scroll_more: "für weitere Einträge scrollen",
         l2_more: "Mehr laden",
         l2_partial: "Sortierung und Filter gelten nur für geladene Einträge.",
         l2_del_t: "Eintrag löschen",
@@ -4087,7 +4099,10 @@ function l2Render() {
             }
         }));
     });
-    $("l2count").textContent = shown + " / " + l2Rows.length + " " + t("l2_entries");
+    var partial = l2Walk && !l2Walk.done;
+    $("l2count").textContent = (shown === l2Rows.length ? shown : shown + " / " + l2Rows.length) +
+        " " + t(partial ? "l2_loaded" : "l2_entries") +
+        (partial ? " \u00b7 " + t("l2_scroll_more") : "");
     $("l2more").hidden = !l2Walk || l2Walk.done;
     $("l2more").disabled = !!l2Walk && l2Walk.loading;
     $("l2partial").hidden = !l2Walk || l2Walk.done;
