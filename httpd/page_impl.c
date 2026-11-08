@@ -268,6 +268,8 @@ void send_basic_info(void)
 	slen += strtox(outbuf + slen, VERSION_SW);
 	slen += strtox(outbuf + slen, "\",\"build_date\":\"");
 	slen += strtox(outbuf + slen, BUILD_DATE);
+	slen += strtox(outbuf + slen, "\",\"uptime\":\"0x");
+	reg_to_html_long(RTL837X_REG_SEC_COUNTER);
 	slen += strtox(outbuf + slen, "\",\"hw_ver\":\"");
 	slen += strtox(outbuf + slen, machine.machine_name);
 	slen += strtox(outbuf + slen, "\",\"pcb_ver\":\"");

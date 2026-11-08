@@ -34,6 +34,7 @@ The following devices have been tested and are fully working:
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3.1.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.2](devices/2M-PCB23-V3.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHP-X  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 4M    | 8 + 1 |
+| keepLINK | KP-9000-9XHPML-X | Yes    | [2M-PCB51-ML-V1.2](devices/2M-PCB51-ML-V1.2.md)                                       | 2M    | 8 + 1 |
 | LIANGUO  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/2G5F_20G_V1.01.md)                                           | 0.5M  | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 0.5M  | 4 + 2 |
 | LIANGUO  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0 / PCB-SWTG115AS-V2.1](devices/PCB-SWTG115AS-V2.0-16030.md)        | 2M    | 5 + 1 |
@@ -68,16 +69,16 @@ For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label
 alone does not identify the wiring.
 
-Other device based on RTL8272/3 that may work are described here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide](https://github.com/up-n-atom/SWTG118AS)
+Other device based on RTL8372/3 that may work are described here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide](https://github.com/up-n-atom/SWTG118AS)
 
-Many of the RTL8272/3 devices come in versions with PoE support. The RTLPlayground usually also
+Many of the RTL8372/3 devices come in versions with PoE support. The RTLPlayground usually also
 works on these, however, no support for configuring PoE is provided, simply because these
 devices usually just provide PoE on all ports without further configuration possibilitites.
 
 The following forum also discusses this type of switches: [ServeTheHome](https://forums.servethehome.com/index.php?threads/horaco-2-5gbe-managed-switch-8-x-2-5gbe-1-10gb-sfp.41571/)
 
-There are also 16-port unmanaged devices with RTL8272 SoCs, however these devices do not have
-serial consoles and use 4 independent RTL8272 SoCs. No central control is provided by RTLPlayground,
+There are also 16-port unmanaged devices with RTL8372 SoCs, however these devices do not have
+serial consoles and use 4 independent RTL8372 SoCs. No central control is provided by RTLPlayground,
 even if it has been successfully demonstrated to install RTLPlayground to individual SoCs.
 - [GigaPlus GP-S25-1602](https://www.servethehome.com/gigaplus-gp-s25-1602-review-a-cheap-16-port-2-5gbe-and-2-port-10g-switch/)
 - [Vimin VM S251602P 16 Port 2.5G PoE Switch With 2x 10G SFP+](https://www.servethehome.com/vimin-vm-s251602p-16-port-2-5g-poe-switch-review-cyperf/vimin-vm-s251602p-16-port-2-5g-poe-switch-with-2x-10g-sfp-battery-2/)

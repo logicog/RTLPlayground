@@ -61,6 +61,7 @@ rx_g = [0] * PORTS
 tx_b = [0] * PORTS
 rx_b = [0] * PORTS
 last_called = int(time.time())
+started = int(time.time())
 
 sessions = set()
 uploaded_config = None
@@ -634,6 +635,7 @@ class Handler(SimpleHTTPRequestHandler):
             "ip_source":"static",
             "mac_address":"1c:2a:a3:23:00:02",
             "sw_ver":"0.1-sim",
+            "uptime":f"0x{int(time.time()) - started:08x}",
             "hw_ver":"SWGT024-V2.0",
             "pcb_ver":"PCB_SWTG024AS_A_V2_0_1_19650"
         }
