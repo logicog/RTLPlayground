@@ -1,4 +1,4 @@
-#RTL8272/3 features
+#RTL8372/3 features
 
 The following hardware features of the RTL8372/3 is supported:
 - Clock generation, including different divider settings
