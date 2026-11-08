@@ -11,7 +11,7 @@ properties of a packet such as  IEEE 802.1P priority, DSCP value, physical port
 number, destination or source MAC, Ether-Type-based, CVID, SVID, IPv4 source or
 destination IP, IPv4/IPv6 TOS field, IPv6 Flow Label and even TCP/UDP
 source/destination port. Once in a queue, packets are scheduled for egress
-based on differnent configurable algorithms.
+based on different configurable algorithms.
 
 RTLPlayground currently allows only to control the bandwidth at ingress at a port
 or just before packets leave a port. There is no control of the priority assignment
@@ -21,7 +21,7 @@ from 16Kbit/s to 10Gbp/s.
 The bandwidth control as currently implemented allows e.g. to assign a certain
 share of bandwidth to an attached device (e.g. to share an uplink), or simulate
 connections with low bandwidth and even bad connectivity with packet drops when
-ingress is not controlled by Flow Control but by simply droping packets.
+ingress is not controlled by Flow Control but by simply dropping packets.
 
 ## Ingress/Egress control
 The relevant registers for controlling Ingress and Egress at a port are:
@@ -101,7 +101,7 @@ do:
 > bw in 2 0100 
 ```
 
-To drop packets when the bandwidth is exceeeded at port 2 do:
+To drop packets when the bandwidth is exceeded at port 2 do:
 ```
 > bw in 2 drop 
 ```
@@ -115,11 +115,11 @@ To disable bandwidth control for incoming packets on port 2 do:
 Not implemented, yet!
 
 ## A Test using iperf3
-The following is and example how to test bandwidth control with a signle Linux device using
+The following is and example how to test bandwidth control with a single Linux device using
 network namespaces to route packets between a client and a server on the same Linux device
 through an external switch.
 
-You will need 2 network intefaces on the linux device, say, 2 USB-Ethernet controllers called
+You will need 2 network interfaces on the linux device, say, 2 USB-Ethernet controllers called
 eth0 and eth1: 
 ```
 $ sudo ip netns add client
