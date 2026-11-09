@@ -210,6 +210,125 @@ array of size 0.
 > settings. See `tools/led_gpio_utils/README.md` for the options (`-p` port,
 > `--gpio`, ...).
 
+> [!TIP]
+> If the board has no usable UART connection, an Ethernet console can provide
+> access to registers and flash during bring-up. The example below was used on
+> a TP-Link TL-SG108PE v5.
+
+If the board has no accessible UART, but its stock firmware contains UART code,
+you can modify the firmware to communicate over Ethernet instead. This requires:
+
+* a firmware dump or factory upgrade image for analysis; dumping the board's
+  flash is strongly recommended
+* locating the hardware initialization code in the firmware
+* replacing the code it jumps to after initialization with an Ethernet console,
+  while preserving the initialization sequence
+* a NIC connected directly to a switch port, with access to send custom Ethernet
+  frames; this may require superuser permissions
+
+Check the addresses and initialization sequence for your board before
+attempting this. The addresses below are for the TL-SG108PE v5.
+
+On this board, the stock boot code starts at CODE `0x0000` and loads the
+program at CODE `0x1000`. The first console replaces that program while
+preserving the boot code.
+
+The switch program, the host program and the two build scripts used on the
+TL-SG108PE v5 are in [`tools/eth_console/`](../tools/eth_console/).
+
+From that directory, extract the PHY patch from the flash dump:
+
+```bash
+mkdir -p build
+./gen_phy.py flash_dump.bin > build/phy_patch.h
+```
+
+To generate an image suitable for use with a flash programmer, starting CODE
+at `0x1000`:
+
+```bash
+sdcc -mmcs51 --code-loc 0x1000 -Ibuild -o build/console.ihx console.c
+./mkimage.py build/console.ihx build/console_up.bin flash_dump.bin build/console_flash.bin
+```
+
+The resulting `console_flash.bin` is `flash_dump.bin` with the program section
+replaced with the Ethernet console and its boot section preserved.
+
+To generate an image suitable for a stock web interface upgrade, assuming CODE
+starts at `0x1000`:
+
+```bash
+sdcc -mmcs51 --code-loc 0x1000 -Ibuild -o build/console.ihx console.c
+./mkimage.py build/console.ihx build/console_web.bin
+```
+
+The resulting `console_web.bin` can then be given as the upgrade image via the
+switch's web interface. This installation method has not been tested with the
+console.
+
+Once the port has its own boot sequence, an image starting at CODE `0x0000` can
+be generated for use with a flash programmer:
+
+```bash
+sdcc -mmcs51 -Ibuild -o build/console.ihx console.c
+./mkimage.py build/console.ihx build/console_boot.bin
+```
+
+Write `console_boot.bin` at flash offset `0`. It replaces the boot region, so
+retain a flash backup and check the programmer's erase settings before writing.
+
+Run `console.py` on the machine connected to the switch, replacing `en7` with
+the NIC's interface name. On macOS it uses BPF and needs `sudo`:
+
+```bash
+sudo ./console.py en7 info
+```
+
+The structure of each frame is `DST SRC ETHTYPE OP SEQ ARG [ARGS...]`, where:
+
+* `DST` is the destination physical address. Both sides send to `ff:ff:ff:ff:ff:ff`
+* `SRC` is the source physical address
+* `ETHTYPE` is the EtherType, in this case always `0x88B5`
+* `OP` is the operation. The reply sets bit 7
+* `SEQ` is a number chosen by the host. The reply copies it
+* `ARG [ARGS...]` are the arguments. A reply puts a status byte first, followed by the result
+
+The status values are:
+
+* `0` success
+* `1` unknown operation
+* `2` bad argument
+* `3` denied
+* `4` timeout
+
+| Command | What you get |
+| --- | --- |
+| `info` | Version, chip ID, uptime, and link on ports 0–7. |
+| `listen` | Continuously send info every 2 seconds. |
+| `reg ADDR` | The 16-bit switch register at `ADDR`. |
+| `reg ADDR VALUE` | Writes `VALUE`, then prints the register read back. |
+| `phy PORT ADDR` | The PHY OCP register. `PORT` is the chip port. |
+| `phy PORT ADDR VALUE` | Writes it, then prints the value read back. |
+| `xdata ADDR N` | `N` bytes of 8051 XDATA at `ADDR`. |
+| `flash ADDR N` | `N` bytes of SPI flash. `-o FILE` saves them. |
+| `flash-write ADDR FILE` | Erases the covered 4 KiB sectors, programs the file, reads it back, and prints `verify ok`. `ADDR` must be 4 KiB aligned. The erased range must end at or before `0x1fc000`. |
+| `log` | The console's boot log. |
+| `reboot` | Resets the chip after the reply is sent. |
+
+For example:
+
+```bash
+sudo ./console.py en7 listen
+sudo ./console.py en7 reg 0x1b03
+sudo ./console.py en7 reg 0x1b03 0x0960
+sudo ./console.py en7 phy 0 0xa402
+sudo ./console.py en7 flash 0x0 256 -o boot.bin
+sudo ./console.py en7 flash-write 0x0 image.bin
+```
+
+The console accepts register and flash writes from Ethernet frames without
+authentication. Use it only on an isolated connection.
+
 ### Reusing an existing definition
 
 If the new PCB board is electrically identical to one that already exists — same
