@@ -8,6 +8,7 @@
 #include "uip.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_igmp.h"
+#include "rtl837x_port.h"
 
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
@@ -38,6 +39,20 @@ void reg_bit_clear(uint16_t reg, char bit) { (void)reg; (void)bit; }
 
 static uint16_t pvid[16];
 uint16_t port_pvid_get(uint8_t port) { return pvid[port]; }
+
+bool stp_enabled;
+static uint8_t stp_state[16];
+uint8_t stp_port_state(uint8_t port) { return stp_state[port]; }
+
+static uint16_t lag_members[4];
+uint16_t port_lag_members_get(uint8_t lag) { return lag_members[lag]; }
+uint8_t port_lag_of(uint8_t port)
+{
+	for (uint8_t lag = 0; lag < 4; lag++)
+		if ((lag_members[lag] >> port) & 1)
+			return lag;
+	return PORT_LAG_NONE;
+}
 
 static int fails;
 #define CHECK(c, msg) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, msg); fails++; } } while (0)
@@ -159,6 +174,23 @@ int main(int argc, char **argv)
 	build(8, all_hosts, 0x11, none);
 	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE;
 	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "oversize frame: nothing sent");
+
+	stp_enabled = true;
+	memset(stp_state, 3, sizeof(stp_state));
+	stp_state[2] = 1;
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "STP: nothing sent from a blocked port");
+	build(8, all_hosts, 0x11, none);
+	CHECK(igmp_packet_handler() == 1, "STP: query on a forwarding port handled");
+	check_forwarded(8, 1, "query on a forwarding port");
+	stp_enabled = false;
+
+	lag_members[1] = PORT_BIT(2) | PORT_BIT(3);
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1, "LAG: report handled");
+	CHECK(((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~(PORT_BIT(2) | PORT_BIT(3)))), "LAG: not sent back into the ingress LAG");
+	lag_members[1] = 0;
 
 	build(8, all_hosts, 0x11, none);
 	uip_buf[offsetof(struct wire_in, ip) + 9] = 17;
