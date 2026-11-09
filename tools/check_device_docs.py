@@ -6,15 +6,13 @@ the tool with --list-rules to print them all with their default severity.
 
 Violations of these rules are errors. The remaining rules in the document are
 not yet followed everywhere in this repository (init hooks borrowed from
-another PCB, PCB-named machine targets, ...). Those are reported as warnings
-and the exit status stays 0, so the check can run in CI today; pass --strict to
-fail on them as well.
+another PCB, PCB-named machine targets, ...). Those are reported as warnings.
 
 Some findings are only informational: they point at something worth knowing
 (a doc that shows no build target at all, a doc that does not record the CPU
 variant) rather than at a rule from doc/adding-a-device.md that a device must
 meet to build. Those are reported as info, are listed only with --verbose, and
-never fail the check, not even with --strict.
+never fail the check.
 
 Every finding belongs to the machine target, the PCB definition or the device
 doc it is about. --machine restricts the report to one device: its machine/<M>
@@ -22,11 +20,11 @@ files, its PCB and its doc. Findings about the repository as a whole (e.g. chip
 names in doc/supported_devices.md) are only printed without --machine.
 
 Usage:
-  python3 tools/check_device_docs.py [--strict] [--verbose] [--root DIR]
+  python3 tools/check_device_docs.py [--verbose] [--root DIR]
   python3 tools/check_device_docs.py --list-rules
   python3 tools/check_device_docs.py --machine <MACHINE> [--machine <MACHINE>]
 
-Exit status is 1 when an error was found (or any warning with --strict).
+Exit status is 1 when an error or a warning was found.
 Run it from the repository root.
 """
 import argparse
@@ -617,7 +615,7 @@ class Checker:
             return self.findings
         return [f for f in self.findings if set(f[3]) & self.scope]
 
-    def report(self, verbose, limit=5):
+    def report(self, verbose):
         findings = self.visible()
         for severity in (ERROR, WARNING, INFO):
             if severity == INFO and not verbose:
@@ -629,12 +627,8 @@ class Checker:
             for check in sorted(grouped):
                 messages = grouped[check]
                 print('%s [%s] %d' % (severity, check, len(messages)))
-                shown = messages if verbose else messages[:limit]
-                for message in shown:
+                for message in messages:
                     print('  ' + message)
-                if len(messages) > len(shown):
-                    print('  ... %d more (use --verbose)'
-                          % (len(messages) - len(shown)))
         errors = sum(1 for f in findings if f[0] == ERROR)
         warnings = sum(1 for f in findings if f[0] == WARNING)
         infos = sum(1 for f in findings if f[0] == INFO)
@@ -659,7 +653,7 @@ def list_rules():
         for check, (sev, description) in RULES.items():
             if sev == severity:
                 print('  %-24s %s' % (check, description))
-    print('\n--strict fails on warnings too; info never fails.')
+    print('\nerrors and warnings fail the check; info never fails.')
     print('--machine <MACHINE> reports only the rules about one device.')
 
 
@@ -669,10 +663,8 @@ def main(argv=None):
                     'doc/adding-a-device.md.')
     parser.add_argument('--root', default='.',
                         help='repository root (default: the current directory)')
-    parser.add_argument('--strict', action='store_true',
-                        help='also fail on warnings')
     parser.add_argument('--verbose', action='store_true',
-                        help='list every finding, and the info findings')
+                        help='also list the info findings')
     parser.add_argument('--machine', action='append', metavar='MACHINE',
                         help='only report findings about this machine target '
                              '(repeatable)')
@@ -695,7 +687,7 @@ def main(argv=None):
         print('error: %s' % exc, file=sys.stderr)
         return 2
     errors, warnings = checker.report(args.verbose)
-    if errors or (args.strict and warnings):
+    if errors or warnings:
         return 1
     return 0
 
