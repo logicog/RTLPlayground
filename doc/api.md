@@ -319,7 +319,7 @@ Object representing static and LACP lags
 ## stp
 ```json
 {
-    "on":true,"type":"rstp","prio":8,"hello":2,"maxage":20,"fwd":15,"txhold":6,"pcs":0,"bh":"flood","tcs":"0x000002a8","rMaxage":20,"rFwd":15,"rootPrio":"8000","rootMac":"010203040506","myMac":"010203040506","cost":"0x00000000","weRoot":true,"tc":"0x0000",
+    "on":true,"type":"rstp","prio":8,"hello":2,"maxage":20,"fwd":15,"txhold":6,"pcs":"long","bh":"flood","tcs":"0x000002a8","rMaxage":20,"rFwd":15,"rootPrio":"8000","rootMac":"010203040506","myMac":"010203040506","cost":"0x00000000","weRoot":true,"tc":"0x0000",
     "ports":[
         {"p":1,"st":3,"role":2,"f":69,"pc":"0x00000000","prio":128,"p2":0,"lk":1,"lg":0,"db":"8000010203040506","dp":"8001","dc":"0x00000000"},
         {"p":2,"st":3,"role":0,"f":69,"pc":"0x00000000","prio":128,"p2":0,"lk":0,"lg":0,"db":"8000010203040506","dp":"8002","dc":"0x00000000"},
