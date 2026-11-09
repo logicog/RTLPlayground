@@ -132,9 +132,7 @@ stock firmware.
 
   - Reads the LED registers with `regget` and prints `.led_mux`, the four LED
     sets and the LED set each port uses
-  - Always prints the pin mux as well: the function every pin 0..63 is set to
-    (`LED0`..`LED27`/`SYS_LED`, `GPIO`, UART, I2C, SPI flash, ACL, PTP, ...),
-    decoded from `PIN_MUX_0/1/2` and `LED_GLB_IO_EN`
+  - Prints the decoded GPIO settings (LED or GPIO or special function pins)
   - Takes the port range from the chip model in register 0x0004: ports 0..8 on
     an RTL8373 (upper 16 bits `0x8373`), ports 3..8 on the RTL8372 boards;
     `--ports` overrides it

@@ -199,14 +199,16 @@ pair is caught at compile time: SDCC reports
 array of size 0.
 
 > [!TIP]
-> The LED wiring is usually the hard part of a new definition. Instead of
-> guessing `led_sets` and `led_mux`, run
-> `tools/led_gpio_utils/dec_leds_from_rtl837x_uart.py` against the switch: it
-> reads the LED registers over the console, and prints `.led_mux`, `.led_sets`
-> and the set each port uses, formatted to paste into the board definition. See
-> `tools/led_gpio_utils/README.md` for the options (`-p` port, `--gpio`, ...).
-> Run it on the **stock** firmware: RTLPlayground overwrites these registers at
-> boot with the values from the build that is flashed.
+> Instead of guessing the `led_sets` and `led_mux` of a new definition, extract
+> them from the **stock** firmware *before* you flash: run
+> `tools/led_gpio_utils/dec_leds_from_rtl837x_uart.py` against the switch while
+> it still has its original firmware. It reads the LED registers over the
+> console and prints `.led_mux`, `.led_sets` and the set each port uses,
+> formatted to paste into the board definition. This has to happen first because
+> RTLPlayground overwrites these registers at boot with the values from the
+> build that is flashed, so once it is running they no longer show the vendor
+> settings. See `tools/led_gpio_utils/README.md` for the options (`-p` port,
+> `--gpio`, ...).
 
 ### Reusing an existing definition
 
