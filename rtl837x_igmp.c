@@ -14,6 +14,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_igmp.h"
+#include "rtl837x_port.h"
 #include "machine.h"
 
 extern __code const struct machine machine;
@@ -89,6 +90,16 @@ struct igmp_pkt {
 	uint8_t mc_ip[4];
 };
 #define IGMP_I ((__xdata struct igmp_pkt *)&uip_buf[0])
+#define IGMP_ETH_HDR offsetof(struct igmp_pkt, ipv4_tag)
+
+struct igmp_out {
+	uint8_t dst[6];
+	uint8_t src[6];
+	struct rtl_tag rtl_tag;
+	struct vlan_tag vlan_tag;
+};
+
+#define IGMP_O ((__xdata struct igmp_out *)&uip_buf[RTL_FRAME_DESC_SIZE])
 
 
 void igmp_setup(void) __banked
@@ -208,12 +219,8 @@ void entry_to_l2mc(void)
 #endif
 
 
-uint8_t igmp_packet_handler(void) __banked
+static void igmp_snoop(void)
 {
-	if (IGMP_I->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_I->protocol != IGMP_PROTO)
-		return 0;
-	// By default we do not send anything out
-	uip_len = 0;
 
 #ifdef DEBUG
 	print_string("\nIPv4 MC packet:\n");
@@ -242,17 +249,17 @@ uint8_t igmp_packet_handler(void) __banked
 		else if (uip_buf[igmp_grp] == IGMP_V3_TO_INCLUDE)
 			igmp_join = 0;
 		else
-			return 1;
+			return;
 		break;
 	default:
-		return 1;
+		return;
 	}
 	igmp_grp += IGMP_GROUP_OFS;
 #ifdef DEBUG
 	print_string("IGMP join "); print_byte(igmp_join); write_char('\n');
 #endif
 	if (uip_buf[igmp_grp] == IGMP_LOCAL_NET_0 && !uip_buf[igmp_grp + 1] && !uip_buf[igmp_grp + 2])
-		return 1;
+		return;
 
 #ifdef IPMC_USES_L3MC
 	memset((__xdata uint8_t *)&entry, 0, sizeof(struct ipmc_table_entry));
@@ -346,7 +353,7 @@ uint8_t igmp_packet_handler(void) __banked
 //			print_string("\nPort-Mask: "); print_short(entry.pmask); write_char('\n');
 		} else {
 			print_string("IGMP Entry already deleted\n");
-			return 1;
+			return;
 		}
 		if (!entry.pmask && idx) { // No more ports in that group and an actual entry?
 			// Delete Entry
@@ -358,12 +365,12 @@ uint8_t igmp_packet_handler(void) __banked
 				reg_read_m(RTL837X_TBL_CTRL);
 			} while (sfr_data[3] & 0x1);
 			print_string("IGMP Entry deleted\n");
-			return 1;
+			return;
 		}
 	}
 
 	if (!entry.pmask)
-		return 1;
+		return;
 	print_string("Updating IGMP entry\n");
 	// Write the updated entry
 #ifdef IPMC_USES_L3MC
@@ -400,5 +407,41 @@ uint8_t igmp_packet_handler(void) __banked
 	reg_read_m(RTL837x_TBL_DATA_0);
 	print_sfr_data();
 #endif
+	return;
+}
+
+static void igmp_forward(void)
+{
+	__xdata uint16_t i;
+	__xdata uint8_t port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
+	__xdata uint16_t pmask = machine_detected.isRTL8373 ? PMASK_9 : PMASK_6;
+
+	if (!MACHINE_PORT_VALID(port) || uip_len < IGMP_ETH_HDR
+	    || uip_len + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE > UIP_CONF_BUFFER_ALLOC_SIZE) {
+		uip_len = 0;
+		return;
+	}
+	for (i = uip_len; i-- > IGMP_ETH_HDR;)
+		uip_buf[i + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE] = uip_buf[i];
+	for (i = IGMP_ETH_HDR; i--;)
+		uip_buf[i + RTL_FRAME_DESC_SIZE] = uip_buf[i];
+
+	IGMP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
+	IGMP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
+	IGMP_O->rtl_tag.reason = 0x00;
+	IGMP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
+	IGMP_O->rtl_tag.pmask = HTONS(RTL_TAG_ALLOW | (pmask & ~PORT_BIT(port)));
+	IGMP_O->vlan_tag.svlan = HTONS(0x8100);
+	IGMP_O->vlan_tag.vlan = HTONS(port_pvid_get(port));
+	uip_len += VLAN_TAG_SIZE;
+}
+
+
+uint8_t igmp_packet_handler(void) __banked
+{
+	if (IGMP_I->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_I->protocol != IGMP_PROTO)
+		return 0;
+	igmp_snoop();
+	igmp_forward();
 	return 1;
 }

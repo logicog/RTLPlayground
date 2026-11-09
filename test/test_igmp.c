@@ -1,0 +1,173 @@
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "rtl837x_common.h"
+#include "machine.h"
+#include "uip.h"
+#include "rtl837x_regs.h"
+#include "rtl837x_igmp.h"
+
+uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
+uint16_t uip_len;
+const struct machine machine = { .log_to_phys_port = {5, 1, 2, 3, 4, 6, 7, 8, 9} };
+struct machine_runtime machine_detected = { .isRTL8373 = 1 };
+uint8_t igmpEnabled = 1;
+uint8_t cpuPort = CPU_LOGICAL_PORT;
+uint8_t sfr_data[4];
+volatile uint8_t SFR_DATA_24, SFR_DATA_16, SFR_DATA_8, SFR_DATA_0;
+
+static int verbose = 0;
+void print_string(const char *s) { if (verbose) fputs(s, stdout); }
+void print_byte(uint8_t b) { if (verbose) printf("%02x", b); }
+void print_short(uint16_t v) { if (verbose) printf("%04x", v); }
+void write_char(char c) { if (verbose) putchar(c); }
+void print_sfr_data(void) { }
+
+static int tbl_writes;
+void reg_read_m(uint16_t reg) { (void)reg; memset(sfr_data, 0, sizeof(sfr_data)); }
+void reg_write_m(uint16_t reg) { (void)reg; }
+void reg_write(uint16_t reg)
+{
+	if (reg == RTL837X_TBL_CTRL)
+		tbl_writes++;
+}
+void reg_bit_set(uint16_t reg, char bit) { (void)reg; (void)bit; }
+void reg_bit_clear(uint16_t reg, char bit) { (void)reg; (void)bit; }
+
+static uint16_t pvid[16];
+uint16_t port_pvid_get(uint8_t port) { return pvid[port]; }
+
+static int fails;
+#define CHECK(c, msg) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, msg); fails++; } } while (0)
+
+struct wire_in {
+	uint8_t dst[6];
+	uint8_t src[6];
+	struct rtl_tag rtl_tag;
+	uint16_t ethertype;
+	uint8_t ip[24];
+	uint8_t igmp[16];
+};
+
+struct wire_out {
+	uint8_t dst[6];
+	uint8_t src[6];
+	struct rtl_tag rtl_tag;
+	struct vlan_tag vlan_tag;
+	uint16_t ethertype;
+	uint8_t ip[24];
+	uint8_t igmp[16];
+};
+
+static struct wire_in in;
+
+static void build(uint8_t port, const uint8_t dip[4], uint8_t type, const uint8_t grp[4])
+{
+	memset(&in, 0, sizeof(in));
+	in.dst[0] = 0x01; in.dst[1] = 0x00; in.dst[2] = 0x5e;
+	in.dst[3] = dip[1] & 0x7f; in.dst[4] = dip[2]; in.dst[5] = dip[3];
+	memcpy(in.src, "\x02\xaa\xbb\xcc\xdd\xee", 6);
+	in.rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
+	in.rtl_tag.version = RTL_FRAME_TAG_VERSION;
+	in.rtl_tag.pmask = HTONS(port);
+	in.ethertype = HTONS(0x0800);
+	in.ip[0] = 0x46;
+	in.ip[9] = IGMP_PROTO;
+	memcpy(&in.ip[16], dip, 4);
+	in.ip[20] = 0x94; in.ip[21] = 0x04;
+	in.igmp[0] = type;
+	if (type == IGMP_V3_REPORT) {
+		in.igmp[7] = 1;
+		in.igmp[8] = IGMP_V3_TO_EXCLUDE;
+		memcpy(&in.igmp[12], grp, 4);
+	} else {
+		memcpy(&in.igmp[4], grp, 4);
+	}
+	memset(uip_buf, 0xa5, sizeof(uip_buf));
+	memcpy(uip_buf, &in, sizeof(in));
+	uip_len = sizeof(in);
+}
+
+static void check_forwarded(uint8_t port, uint16_t vid, const char *what)
+{
+	struct wire_out *o = (struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE];
+	char msg[96];
+
+	snprintf(msg, sizeof(msg), "%s: length grows by the VLAN tag", what);
+	CHECK(uip_len == sizeof(in) + VLAN_TAG_SIZE, msg);
+	snprintf(msg, sizeof(msg), "%s: addresses kept", what);
+	CHECK(!memcmp(o->dst, in.dst, 6) && !memcmp(o->src, in.src, 6), msg);
+	snprintf(msg, sizeof(msg), "%s: CPU tag for TX", what);
+	CHECK(o->rtl_tag.tag == HTONS(RTL_FRAME_TAG_ID) && o->rtl_tag.version == RTL_FRAME_TAG_VERSION
+	      && o->rtl_tag.reason == 0 && o->rtl_tag.flags == HTONS(RTL_TAG_LEARN_DIS), msg);
+	snprintf(msg, sizeof(msg), "%s: lookup limited to all ports but ingress", what);
+	CHECK(o->rtl_tag.pmask == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~PORT_BIT(port))), msg);
+	snprintf(msg, sizeof(msg), "%s: tagged with ingress PVID", what);
+	CHECK(o->vlan_tag.svlan == HTONS(0x8100) && o->vlan_tag.vlan == HTONS(vid), msg);
+	snprintf(msg, sizeof(msg), "%s: IP and IGMP unchanged", what);
+	CHECK(o->ethertype == in.ethertype && !memcmp(o->ip, in.ip, sizeof(in.ip))
+	      && !memcmp(o->igmp, in.igmp, sizeof(in.igmp)), msg);
+}
+
+static const uint8_t all_hosts[4] = {224, 0, 0, 1};
+static const uint8_t v3_reports[4] = {224, 0, 0, 22};
+static const uint8_t grp[4] = {239, 1, 2, 4};
+static const uint8_t none[4] = {0, 0, 0, 0};
+
+int main(int argc, char **argv)
+{
+	if (argc > 1 && !strcmp(argv[1], "-v"))
+		verbose = 1;
+	pvid[2] = 1;
+	pvid[4] = 20;
+	pvid[8] = 1;
+
+	build(8, all_hosts, 0x11, none);
+	CHECK(igmp_packet_handler() == 1, "query: handled");
+	check_forwarded(8, 1, "general query");
+
+	build(4, v3_reports, IGMP_V3_REPORT, grp);
+	tbl_writes = 0;
+	CHECK(igmp_packet_handler() == 1, "v3 report: handled");
+	CHECK(tbl_writes > 0, "v3 report: table updated");
+	check_forwarded(4, 20, "v3 report");
+
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1, "v2 report: handled");
+	check_forwarded(2, 1, "v2 report");
+
+	build(2, all_hosts, IGMP_V2_LEAVE, grp);
+	CHECK(igmp_packet_handler() == 1, "v2 leave: handled");
+	check_forwarded(2, 1, "v2 leave without entry");
+
+	build(2, all_hosts, IGMP_V2_REPORT, all_hosts);
+	CHECK(igmp_packet_handler() == 1, "local group: handled");
+	check_forwarded(2, 1, "report for 224.0.0.x");
+
+	machine_detected.isRTL8373 = 0;
+	build(4, all_hosts, 0x11, none);
+	CHECK(igmp_packet_handler() == 1, "8372 query: handled");
+	CHECK(((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | (PMASK_6 & ~PORT_BIT(4))), "8372: only its ports");
+	machine_detected.isRTL8373 = 1;
+
+	build(15, all_hosts, 0x11, none);
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "invalid ingress port: nothing sent");
+
+	build(8, all_hosts, 0x11, none);
+	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE;
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "oversize frame: nothing sent");
+
+	build(8, all_hosts, 0x11, none);
+	uip_buf[offsetof(struct wire_in, ip) + 9] = 17;
+	CHECK(igmp_packet_handler() == 0 && uip_len == sizeof(in), "not IGMP: left to the caller");
+
+	if (fails) {
+		printf("test_igmp: %d FAILED\n", fails);
+		return 1;
+	}
+	printf("test_igmp: ALL PASSED\n");
+	return 0;
+}
