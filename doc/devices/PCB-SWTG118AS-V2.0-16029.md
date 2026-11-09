@@ -5,7 +5,7 @@
 |---|---|---|---|---|---|
 | Mokerlink | ZX-MOKERLINK_ZX_SWTGW218AS | Yes|  PCB-SWTG118AS-V2.0-16029 | 2MB (FM25Q16A)| 8373N + 8224N |
 | Sodola | | | | | |
-| Horaco | HC-SWTGW218AS | Yes | PCB-SWTG118AS-V2.0-16029 | 2MB | 8373 (non-N) |
+| Horaco | HC-SWTGW218AS | Yes | PCB-SWTG118AS-V2.0-16029 | 2MB | 8373 |
 
 
 The Horaco HC-SWTGW218AS is also sold with the
