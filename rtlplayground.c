@@ -20,6 +20,8 @@
 #include "rtl837x_init.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_cabletest.h"
+#include "rtl837x_dot1x.h"
+#include "eapol.h"
 #include "dhcp.h"
 #include "cmd_parser.h"
 #include "cmd_editor.h"
@@ -972,7 +974,7 @@ void handle_rx(void)
 		print_byte(uip_buf[3]); print_byte(uip_buf[4]); print_byte(uip_buf[5]); write_char('\n');
 		print_string(" MGMT-VLAN: "); print_short(management_vlan); write_char('\n');
 #endif
-		if ((stp_enabled || lacpEnabled) && uip_buf[0] == 0x01 && uip_buf[1] == 0x80
+		if ((stp_enabled || lacpEnabled || dot1x_enabled) && uip_buf[0] == 0x01 && uip_buf[1] == 0x80
 			&& uip_buf[2] == 0xc2 && uip_buf[3] == 0x00 && uip_buf[4] == 0x00) {
 			if (stp_enabled && uip_buf[5] == 0x00) {
 				stp_in();
@@ -982,6 +984,8 @@ void handle_rx(void)
 				}
 			} else if (lacpEnabled && uip_buf[5] == 0x02) {
 				lacp_in();
+			} else if (dot1x_enabled && uip_buf[5] == 0x03) {
+				eapol_in();
 			}
 		} else if (igmpEnabled && uip_buf[0] == 0x01 && uip_buf[1] == 0x00 && uip_buf[2] == 0x5e // IPv4-MC packet?
 			&& igmp_packet_handler()) {
@@ -1211,6 +1215,7 @@ static void handle_tick(void)
 		lacp_timers();
 	health_phase(HEALTH_PH_STP);
 	lldp_tick();
+	dot1x_tick();
 	health_phase(HEALTH_PH_LLDP);
 	cabletest_tick();
 }
@@ -1721,6 +1726,7 @@ void main(void)
 	uip_arp_init();
 	httpd_init();
 	lldp_init();
+	dot1x_init();
 
 	management_vlan = 1; // Default management VLAN is 1
 
