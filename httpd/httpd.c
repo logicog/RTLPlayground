@@ -963,7 +963,7 @@ void httpd_appcall(void)
 		} else if (s->fw_reset_pending) {
 			// The upload verdict has been fully ACKed by the client;
 			// now it is safe to reset and apply the staged image
-			if (s->fw_reset_pending != FW_UPDATE_PENDING || loader_update(upload_loader)) {
+			if (s->fw_reset_pending != FW_UPDATE_PENDING || !upload_loader || loader_update()) {
 				print_string("Resetting to apply update\n");
 				reset_chip();
 			}

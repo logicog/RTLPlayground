@@ -567,15 +567,13 @@ bool loader_present(void) __banked
 	return loader_meta(LDR_META);
 }
 
-bool loader_update(bool staged) __banked
+bool loader_update(void) __banked
 {
 	uint8_t tries;
 	uint16_t a;
-	uint32_t src = staged ? LDR_STAGE : FIRMWARE_UPLOAD_START;
+	uint32_t src = LDR_STAGE;
 
-	if (!loader_meta(LDR_META))
-		return true;
-	if (staged ? !loader_staged_ok() : !loader_meta(src + LDR_META))
+	if (!loader_meta(LDR_META) || !loader_staged_ok())
 		return true;
 	flash_region.addr = src;
 	flash_region.len = 2;
@@ -599,11 +597,9 @@ bool loader_update(bool staged) __banked
 		}
 		if (loader_same(src)) {
 			print_string("Loader updated\n");
-			if (staged) {
-				for (a = 0; a < LDR_LOADER_LEN; a += 0x1000) {
-					flash_region.addr = LDR_STAGE + a;
-					flash_sector_erase();
-				}
+			for (a = 0; a < LDR_LOADER_LEN; a += 0x1000) {
+				flash_region.addr = LDR_STAGE + a;
+				flash_sector_erase();
 			}
 			return true;
 		}

@@ -132,9 +132,8 @@ void crc16_bank1(uint8_t *v) { (void)v; }
 static unsigned reset_calls;
 void reset_chip(void) { reset_calls++; }
 static bool loader_update_ok = true;
-static bool loader_update_staged;
 static int loader_update_calls;
-bool loader_update(bool staged) { loader_update_calls++; loader_update_staged = staged; return loader_update_ok; }
+bool loader_update(void) { loader_update_calls++; return loader_update_ok; }
 static bool loader_present_ok = true;
 bool loader_present(void) { return loader_present_ok; }
 void delay(uint16_t t) { (void)t; }
@@ -617,7 +616,22 @@ static void scenario_upload_reset_owner(void)
 	      "final verdict ACK resets after all response bytes are acknowledged");
 
 	reset_calls = 0;
+	loader_update_calls = 0;
 	loader_update_ok = false;
+	uip_conn->appstate.tstate = TSTATE_TX;
+	uip_conn->appstate.fw_reset_pending = FW_UPDATE_PENDING;
+	slen = 10;
+	sent_len = 5;
+	cont_len = 0;
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 1 && loader_update_calls == 0,
+	      "a firmware upload does not rewrite the loader");
+
+	reset_calls = 0;
+	upload_loader = 1;
 	uip_conn->appstate.tstate = TSTATE_TX;
 	uip_conn->appstate.fw_reset_pending = FW_UPDATE_PENDING;
 	slen = 10;
@@ -629,6 +643,7 @@ static void scenario_upload_reset_owner(void)
 	httpd_appcall();
 	CHECK(reset_calls == 0 && !uip_conn->appstate.fw_reset_pending,
 	      "a failed loader update keeps the switch running");
+	upload_loader = 0;
 	loader_update_calls = 0;
 	uip_conn->appstate.tstate = TSTATE_TX;
 	uip_conn->appstate.fw_reset_pending = FW_RESET_PENDING;
@@ -671,7 +686,7 @@ static void scenario_upload_reset_owner(void)
 	CHECK(uip_conn->appstate.fw_reset_pending == FW_UPDATE_PENDING,
 	      "a loader image of the right length records reset intent");
 	reset_calls = 0;
-	loader_update_staged = false;
+	loader_update_calls = 0;
 	uip_conn->appstate.tstate = TSTATE_TX;
 	slen = 10;
 	sent_len = 5;
@@ -680,7 +695,7 @@ static void scenario_upload_reset_owner(void)
 	httpd_appcall();
 	uip_flags = UIP_ACKDATA;
 	httpd_appcall();
-	CHECK(reset_calls == 1 && loader_update_staged,
+	CHECK(reset_calls == 1 && loader_update_calls == 1,
 	      "a loader image is installed from the staging area before the reset");
 	upload_loader = 0;
 
