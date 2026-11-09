@@ -3,7 +3,7 @@
 | Brand   | Type             |Managed| PCB              | Flash           | Chip RTL      |
 |---------|------------------|-------|------------------|-----------------|---------------|
 | Ampcom  | PCB-SWTG018AS-A V2.0.1_19649 | No    | PCB-SWTG018AS-A V2.0.1_19649 | 512KB            | 8373N + 8224N |
-| Horaco  | HC-SWTGW218AS-A  | Yes   | PCB-SWTG018AS-A V2.0.1_19649 | 2MB(25Q16JVSIQ) | 8373N + 8224N |
+| Horaco  | HC-SWTGW218AS  | Yes   | PCB-SWTG018AS-A V2.0.1_19649 | 2MB(25Q16JVSIQ) | 8373N + 8224N |
 | Horaco  | HC-SWTG218AS  | Yes   | PCB-SWTG018AS-A V2.0.1_19649 | 2MB  | 8373N + 8224N |
 | GoodTop | GT-ST018M        | Yes   | PCB-SWTG018AS-A V2.0.1_19649 | 2MB             | 8373N + 8224N |
 | MokerLink | MOKERLINK_2G08110GSN     | No    | PCB-SWTG018AS-A V2.0.1_19649 | 512KB(25Q40)    | 8373N + 8224N |
