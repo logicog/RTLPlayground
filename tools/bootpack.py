@@ -13,6 +13,7 @@ SLOT = 0x3c000
 HOME_LEN = 0x3ffe
 APP = ((0x04000, 0x3a000), (0x40000, 0x70000))
 IMAGE_LEN = 0x80000
+LAYOUT = 1
 
 
 def crc16(data, crc=0):
@@ -91,7 +92,7 @@ def main():
     for lo, hi in APP:
         crc = crc16(img[lo:hi], crc)
     img[META:META + 0x1000] = b'\xff' * 0x1000
-    img[META:META + 6] = b'RTLB' + bytes((crc & 0xff, crc >> 8))
+    img[META:META + 7] = b'RTLB' + bytes((crc & 0xff, crc >> 8, LAYOUT))
 
     c = crc16(img[:-2]) ^ 0xffff
     img[-2] = c & 0xff

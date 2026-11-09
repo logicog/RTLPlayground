@@ -24,6 +24,8 @@
 #define LDR_LOADER_LEN		0x4000
 #define LDR_IMAGE_LEN		0x80000UL
 
+#define LDR_LAYOUT		1
+
 #define LDR_RECOVERY_BOOTS	3
 #define LDR_CONFIRM_S		15
 
