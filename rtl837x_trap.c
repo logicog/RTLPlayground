@@ -11,6 +11,9 @@ extern __xdata uint8_t sfr_data[4];
 void trap_init(void) __banked
 {
 	REG_SET(RTL837X_EXT_CPU_CTRL, CPU_PORT);
+	reg_read_m(RTL837X_RMA_PTP_TRAP_CTRL);
+	sfr_mask_data(1, 0x03, 0x01);
+	reg_write_m(RTL837X_RMA_PTP_TRAP_CTRL);
 }
 
 void trap_rma_set(uint16_t reg, uint8_t act) __banked
