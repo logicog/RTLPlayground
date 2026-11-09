@@ -306,13 +306,14 @@ static void lacp_step(void)
 		if (lacp_port_lag[i] == LACP_LAG_NONE)
 			continue;
 
-		if (lacp_rx_state[i] == LACP_RX_PORT_DISABLED) {
-		} else if (lacp_periodic[i]) {
-			lacp_periodic[i]--;
-		} else {
-			lacp_periodic[i] = (lacp_partner_state[i] & LACP_STATE_TIMEOUT) ?
-				LACP_FAST_PERIODIC : LACP_SLOW_PERIODIC;
-			lacp_ntt[i] = 1;
+		if (lacp_rx_state[i] != LACP_RX_PORT_DISABLED) {
+			if (lacp_periodic[i]) {
+				lacp_periodic[i]--;
+			} else {
+				lacp_periodic[i] = (lacp_partner_state[i] & LACP_STATE_TIMEOUT) ?
+					LACP_FAST_PERIODIC : LACP_SLOW_PERIODIC;
+				lacp_ntt[i] = 1;
+			}
 		}
 
 		if (lacp_timeout[i]) {
