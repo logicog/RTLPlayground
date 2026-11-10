@@ -350,7 +350,7 @@ def ask_initial(level):
 
 def ask_choice(gpio, level):
     """Ask which LED changed when this GPIO is driven to ``level``."""
-    prompt = f"GPIO{gpio} -> {level}, which LED changed (space = no change): "
+    prompt = f"GPIO{gpio} -> {level}, Color of changed LED (space = no change): "
     while True:
         try:
             answer = read_key(prompt)
