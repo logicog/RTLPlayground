@@ -1255,6 +1255,7 @@ void idle(void)
 		print_cmd_prompt();
 	}
 	health_phase(HEALTH_PH_CMD);
+	sfp_task();
 }
 
 
@@ -1593,8 +1594,8 @@ void main(void)
 	print_string("\nInitializing Flash controller\n");
 	flash_init(machine.flash_sio ? 0 : 1);
 
-	// Set default for SFP pins so we can start up a module already inserted
-	sfp_pins_last = 0x33; // signal LOS and no module inserted (for both slots, even if only 1 present)
+	// Set default for SFP pins
+	sfp_pins_last = 0x22; // signal LOS (for both slots, even if only 1 present)
 	// We have not detected any link
 	linkbits_last[0] = linkbits_last[1] = linkbits_last[2] = linkbits_last[3] = linkbits_last_p89 = 0;
 
