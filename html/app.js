@@ -385,7 +385,7 @@ var LANG = {
         fw_login: "Go to login",
         fw_rebooting: "switch is rebooting...",
         fw_timeout: "switch has not come back after 150 s: check power / serial console",
-        fw_toosmall: "Updates via HTTP are not supported on flash sizes < 2MB"
+        fw_toosmall: "Updates via HTTP are not supported on flash sizes < 1MB"
     },
     ja: {
         nav_dash: "ダッシュボード",
@@ -693,7 +693,7 @@ var LANG = {
         fw_login: "ログインへ",
         fw_rebooting: "スイッチを再起動中...",
         fw_timeout: "150 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください",
-        fw_toosmall: "フラッシュサイズが2MB未満の場合、HTTP経由の更新はサポートされていません"
+        fw_toosmall: "フラッシュサイズが1MB未満の場合、HTTP経由の更新はサポートされていません"
     },
     zh: {
         nav_dash: "仪表盘",
@@ -1079,7 +1079,7 @@ var LANG = {
         fw_login: "前往登录",
         fw_rebooting: "交换机正在重启...",
         fw_timeout: "150 秒后交换机仍未恢复: 请检查电源 / 串口控制台",
-        fw_toosmall: "闪存容量小于 2MB 时，不支持通过 HTTP 更新"
+        fw_toosmall: "闪存容量小于 1MB 时，不支持通过 HTTP 更新"
     },
     es: {
         nav_dash: "Panel",
@@ -1467,7 +1467,7 @@ var LANG = {
         sy_time_note: "El switch no tiene reloj con batería: la hora se pierde en cada arranque y se vuelve a fijar desde el servidor NTP cuando la red está lista. Guarda en flash para conservar los ajustes.",
         cw_longline: "La línea {n} mide {m} bytes: el switch solo puede ejecutar líneas de hasta 126 bytes y la saltaría al arrancar, así que se rechaza la escritura. Acórtala primero.",
         fw_other: "Esta imagen no se compiló para este switch ({m}): los pines de SFP, LEDs y botones pueden no coincidir. Súbela solo si estás seguro.",
-        fw_toosmall: "Las actualizaciones a través de HTTP no son compatibles con tamaños de memoria flash inferiores a 2 MB"
+        fw_toosmall: "Las actualizaciones a través de HTTP no son compatibles con tamaños de memoria flash inferiores a 1 MB"
     },
     fr: {
         nav_dash: "Tableau de bord",
@@ -2205,7 +2205,7 @@ var LANG = {
         fw_login: "Zur Anmeldung",
         fw_rebooting: "Switch startet neu...",
         fw_timeout: "Der Switch ist nach 150 s nicht zurück: Stromversorgung / serielle Konsole prüfen",
-        fw_toosmall: "Updates über HTTP werden bei Flash-Speichergrößen unter 2 MB nicht unterstützt"
+        fw_toosmall: "Updates über HTTP werden bei Flash-Speichergrößen unter 1 MB nicht unterstützt"
     }
 };
 var rtlLang = (function() {
@@ -5435,8 +5435,7 @@ function fwSettle(st, knownGood) {
     setTimeout(probe, 3000);
 }
 function fwCheck() {
-    var m = S.info.flash_size.trim().match(/^([\d+])\s*MB$/i);
-    if(!m || m[1]*1 < 2) {
+    if(!S.info.flash_size.trim().match(/^([\d+])\s*MB$/i)) {
         $("fwinfo").innerHTML = '<span style="color:var(--bad)">\u2715 ' + "</span>";
         $("fwfile").disabled = true;
     }
