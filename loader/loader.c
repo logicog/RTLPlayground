@@ -7,6 +7,7 @@
 #include "../rtl837x_common.h"
 #include "../rtl837x_flash.h"
 #include "layout.h"
+#include "loader.h"
 
 #define XM_SOH	0x01
 #define XM_STX	0x02
@@ -14,8 +15,6 @@
 #define XM_ACK	0x06
 #define XM_NAK	0x15
 #define XM_CAN	0x18
-
-#define TICKS_1S	159
 
 extern __xdata struct flash_region_t flash_region;
 extern __xdata uint32_t flash_size;
@@ -34,7 +33,7 @@ __xdata uint8_t slotbuf[LDR_SLOT_BUF];
 static bool small;
 static bool cli_req;
 static bool bad;
-static uint8_t lp;
+uint8_t lp;
 __xdata char line[40];
 static bool direct_boot;
 static bool direct_nonzero;
@@ -53,7 +52,7 @@ unsigned char __sdcc_external_startup(void)
 	return 0;
 }
 
-static void put(uint8_t c)
+void put(uint8_t c)
 {
 	while (!TI);
 	TI = 0;
@@ -79,14 +78,14 @@ void print_byte(uint8_t a)
 	write_char(hexd[a & 0xf]);
 }
 
-static void reg_rd(uint16_t a)
+void reg_rd(uint16_t a)
 {
 	SFR_REG_ADDR_U16 = a;
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	while (SFR_EXEC_STATUS != 0);
 }
 
-static void reg_wr(uint16_t a)
+void reg_wr(uint16_t a)
 {
 	SFR_REG_ADDR_U16 = a;
 	SFR_EXEC_GO = SFR_EXEC_WRITE_REG;
@@ -127,9 +126,9 @@ static void serial_init(void)
 	TI = 1;
 }
 
-static __data uint8_t th0_last;
+static __xdata uint8_t th0_last;
 
-static void timer0_start(void)
+void timer0_start(void)
 {
 	TMOD = (TMOD & 0xf0) | 0x01;
 	TH0 = 0;
@@ -138,7 +137,7 @@ static void timer0_start(void)
 	TR0 = 1;
 }
 
-static bool tick(void)
+bool tick(void)
 {
 	uint8_t h = TH0;
 	bool t = h < th0_last;
@@ -784,7 +783,7 @@ static void console(void)
 		print_string("> ");
 		if (readline() == 0xff) {
 			print_string("\nConsole idle, leaving\n");
-			return;
+			break;
 		}
 		if (!line[0])
 			continue;
@@ -794,6 +793,7 @@ static void console(void)
 				"dump ADDR [LEN]   show flash bytes\n"
 				"crc ADDR LEN      CRC16 of a flash range\n"
 				"xmodem            receive a firmware image\n"
+				"net [IP]          ports 4-7 up, answer ARP and ping\n"
 				"boot              leave the console\n"
 				"reset             restart the switch\n"
 				"Numbers are hex\n");
@@ -816,8 +816,10 @@ static void console(void)
 		} else if (cmd("xmodem")) {
 			recover();
 			cli_req = false;
+		} else if (cmd("net")) {
+			net();
 		} else if (cmd("boot")) {
-			return;
+			break;
 		} else if (cmd("reset")) {
 			reset();
 		} else {
@@ -826,6 +828,8 @@ static void console(void)
 		if (bad)
 			print_string("?\n");
 	}
+	if (net_used)
+		reset();
 }
 
 void main(void)

@@ -75,7 +75,7 @@ $(BUILDDIR)/test_page_json: test_page_json.c $(TABLE_ENV) hw_mock.h | $(BUILDDIR
 $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c $(SRCROOT)/timer.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(BUILDDIR)/test_loader: test_loader.c $(SRCROOT)/loader/loader.c $(SRCROOT)/loader/layout.h | $(BUILDDIR)
+$(BUILDDIR)/test_loader: test_loader.c $(SRCROOT)/loader/loader.c $(SRCROOT)/loader/net.c $(SRCROOT)/loader/loader.h $(SRCROOT)/loader/layout.h | $(BUILDDIR)
 	$(CC) $(CFLAGS) test_loader.c -o $@ $(LDFLAGS)
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;

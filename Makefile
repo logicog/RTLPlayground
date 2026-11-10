@@ -297,9 +297,9 @@ ifdef LOADER
 all: $(BUILDDIR)/rtlplayground-boot-$(FILENAME_EXTENSION).bin
 endif
 
-LOADER_OBJS = $(BUILDDIR)/loader/loader.rel $(BUILDDIR)/loader/loader_alias.rel $(BUILDDIR)/loader/rtl837x_flash.rel
+LOADER_OBJS = $(BUILDDIR)/loader/loader.rel $(BUILDDIR)/loader/net.rel $(BUILDDIR)/loader/loader_alias.rel $(BUILDDIR)/loader/rtl837x_flash.rel
 
-LOADER_HDRS = loader/layout.h rtl837x_sfr.h rtl837x_regs.h rtl837x_common.h rtl837x_flash.h
+LOADER_HDRS = loader/layout.h loader/loader.h rtl837x_sfr.h rtl837x_regs.h rtl837x_common.h rtl837x_flash.h
 
 $(BUILDDIR)/loader/%.rel: loader/%.c $(LOADER_HDRS) $(CCFLAGS_STAMP) | create_build_dir
 	mkdir -p "$(BUILDDIR)/loader"
