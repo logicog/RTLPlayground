@@ -5436,7 +5436,7 @@ function fwSettle(st, knownGood) {
 }
 function fwCheck() {
     if(!S.info.flash_size.trim().match(/^([\d+])\s*MB$/i)) {
-        $("fwinfo").innerHTML = '<span style="color:var(--bad)">\u2715 ' + "</span>";
+        $("fwinfo").innerHTML = '<span style="color:var(--bad)">\u2715 ' + t("fw_toosmall") + "</span>";
         $("fwfile").disabled = true;
     }
 }
