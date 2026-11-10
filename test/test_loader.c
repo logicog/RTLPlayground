@@ -24,9 +24,11 @@
 #define __sbit  extern bool
 
 volatile bool TR0, EA;
-volatile uint8_t TMOD, PCON, SCON, TH1, TCON, TH0, TL0, IE;
+volatile uint8_t TMOD, PCON, SCON, TH1, TCON, TL0, IE;
 
-static bool ti_reg = true, ri_reg, tf0_reg;
+static bool ti_reg = true, ri_reg, tf0_reg, tf0_stuck;
+static uint8_t th0_reg;
+static long t0_wraps, rx_after;
 static uint8_t tx_reg, rx_reg;
 static bool tx_pending;
 static uint8_t rxq[1 << 20];
@@ -36,7 +38,19 @@ static void uart_step(void);
 static void uart_rx(void);
 static bool *ti_lval(void) { uart_step(); return &ti_reg; }
 static bool *ri_lval(void) { uart_step(); return &ri_reg; }
-static bool *tf0_lval(void) { uart_rx(); tf0_reg = true; return &tf0_reg; }
+static void t0_step(void)
+{
+	uart_rx();
+	if (TR0) {
+		th0_reg += 0x40;
+		if (!th0_reg) {
+			t0_wraps++;
+			tf0_stuck = true;
+		}
+	}
+}
+static __attribute__((unused)) bool *tf0_lval(void) { t0_step(); if (tf0_stuck) tf0_reg = true; return &tf0_reg; }
+static uint8_t *th0_lval(void) { t0_step(); return &th0_reg; }
 static uint8_t *sbuf_lval(void)
 {
 	if (!ti_reg) {
@@ -49,6 +63,7 @@ static uint8_t *sbuf_lval(void)
 #define TI   (*ti_lval())
 #define RI   (*ri_lval())
 #define TF0  (*tf0_lval())
+#define TH0  (*th0_lval())
 #define SBUF (*sbuf_lval())
 
 #include "rtl837x_common.h"
@@ -269,7 +284,7 @@ static void uart_step(void)
 static void uart_rx(void)
 {
 	uart_step();
-	if (!ri_reg && rx_head < rx_tail) {
+	if (!ri_reg && rx_head < rx_tail && t0_wraps >= rx_after) {
 		rx_reg = rxq[rx_head++];
 		ri_reg = true;
 	}
@@ -347,6 +362,10 @@ static int boot(void)
 		coderam[LDR_ALIAS_RAM + 0x100] ^= 0x01;
 	started = 0;
 	out_len = 0;
+	th0_reg = 0;
+	tf0_reg = false;
+	tf0_stuck = false;
+	t0_wraps = 0;
 	reads_left = 20000;
 	int r = setjmp(escape);
 	if (!r)
@@ -520,6 +539,15 @@ int main(void)
 	for (int i = 0; i < 20000; i++)
 		rxq[rx_tail++] = 'q';
 	check(boot() == 1 && app_is(a1) && strstr(out, "Recovery boot") && rx_head < rx_tail, "endless noise in the recovery window does not hold the boot");
+	confirm();
+
+	for (int i = 0; i < 3; i++)
+		boot();
+	xm_arm(a1, 0, 0);
+	rx_after = 2 * TICKS_1S;
+	rxq[rx_tail++] = 'x';
+	check(boot() == 1 && xm_done && app_is(a1), "x two seconds into the recovery window starts XMODEM although TF0 stays set after an overflow");
+	rx_after = 0;
 	confirm();
 
 	boot();
