@@ -3,7 +3,6 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "machine.h"
-#include "rtlos_gpio.h"
 
 extern __code const struct machine machine;
 extern __xdata uint8_t sfr_data[4];
