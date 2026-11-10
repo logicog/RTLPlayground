@@ -381,24 +381,39 @@ static void beacon(void)
  * Erase and program cannot reach the identity block and the settings.
  */
 static __bit flash_armed;
+static __bit spi_failed;	/* Keep the NIC available to report a failed SPI controller. */
+
+static __bit wait_spi(void)
+{
+	uint16_t t = 1;
+
+	if (spi_failed)
+		return 1;
+	while (SFR_FLASH_EXEC_BUSY && ++t);
+	if (!t)
+		spi_failed = 1;
+	return spi_failed;
+}
 
 static uint8_t rdsr(void)
 {
-	uint16_t t;
-
-	for (t = 1; SFR_FLASH_EXEC_BUSY && t; t++);
+	if (wait_spi())
+		return 0xff;
 	SFR_FLASH_TCONF = 0x11;
 	SFR_FLASH_CMD_R = 0x05;
 	SFR_FLASH_EXEC_GO = 1;
-	for (t = 1; SFR_FLASH_EXEC_BUSY && t; t++);
-	return t ? SFR_FLASH_DATA0 : 0xff;	/* 0xff reads as busy */
+	if (wait_spi())
+		return 0xff;
+	return SFR_FLASH_DATA0;
 }
 
 /* Erase takes up to ~300 ms: allow 16 rounds of ~65k status reads */
 static __bit wait_wip(void)
 {
 	for (uint8_t i = 0; i < 16; i++) {
-		WAIT_WHILE(rdsr() & 0x01);
+		WAIT_WHILE((rdsr() & 0x01) && !spi_failed);
+		if (spi_failed)
+			return 1;
 		if (!timed_out)
 			return 0;
 	}
@@ -412,12 +427,14 @@ static __bit wren(void)
 	SFR_FLASH_TCONF = 0x18;
 	SFR_FLASH_CMD = 0x06;
 	SFR_FLASH_EXEC_GO = 1;
-	WAIT_WHILE(!(rdsr() & 0x02));
-	return timed_out;
+	WAIT_WHILE(!(rdsr() & 0x02) && !spi_failed);
+	return timed_out || spi_failed;
 }
 
 static void flash_single_io(void)
 {
+	if (spi_failed)
+		return;
 	SFR_FLASH_DUMMYCYCLES = 0;
 	SFR_FLASH_MODEB = 0;
 }
@@ -425,6 +442,8 @@ static void flash_single_io(void)
 /* Back to the dual-I/O 0xbb read the CODE fetches use */
 static void flash_read_mode(void)
 {
+	if (spi_failed)
+		return;
 	SFR_FLASH_MODEB = 0x18;
 	SFR_FLASH_CMD_R = 0xbb;
 	SFR_FLASH_DUMMYCYCLES = 4;
@@ -437,16 +456,20 @@ static void flash_addr(uint32_t a)
 	SFR_FLASH_ADDR0 = a;
 }
 
-static void flash_read(uint32_t addr, __xdata uint8_t *buf, uint8_t n)
+static uint8_t flash_read(uint32_t addr, __xdata uint8_t *buf, uint8_t n)
 {
 	flash_single_io();
-	wait_wip();
+	if (wait_wip()) {
+		flash_read_mode();
+		return ST_TIMEOUT;
+	}
 	flash_read_mode();
 	SFR_FLASH_TCONF = 0x04;
 	while (n) {
 		flash_addr(addr);
 		SFR_FLASH_EXEC_GO = 1;
-		WAIT_WHILE(SFR_FLASH_EXEC_BUSY);
+		if (wait_spi())
+			return ST_TIMEOUT;
 		*buf++ = SFR_FLASH_DATA0;
 		if (!--n)
 			break;
@@ -460,6 +483,7 @@ static void flash_read(uint32_t addr, __xdata uint8_t *buf, uint8_t n)
 		--n;
 		addr += 4;
 	}
+	return ST_OK;
 }
 
 /* Everything below the identity block and settings: [0, 0x1fc000). No addition, so nothing can wrap. */
@@ -576,13 +600,18 @@ static void handle(uint16_t len)
 			status = ST_BAD_ARG;
 			break;
 		}
-		flash_read(fa, txb + F_DATA, a[3]);
-		n = a[3];
+		status = flash_read(fa, txb + F_DATA, a[3]);
+		n = status == ST_OK ? a[3] : 0;
 		break;
 	case OP_FLASH_ARM:
 		flash_armed = r == 0x5afe;
 		flash_single_io();
 		n = put16(0, rdsr());	/* status register: BP bits block erase/program */
+		if (spi_failed) {
+			flash_armed = 0;
+			status = ST_TIMEOUT;
+			n = 0;
+		}
 		flash_read_mode();
 		break;
 	case OP_FLASH_ERASE:
@@ -598,9 +627,7 @@ static void handle(uint16_t len)
 	case OP_LOG:	/* reply: length, then that many log bytes from offset r */
 		if (r > log_len)
 			r = log_len;
-		n = log_len - r;
-		if (n > (uint16_t)(DATA_MAX - 2))
-			n = DATA_MAX - 2;
+		n = (uint8_t)((log_len - r > DATA_MAX - 2) ? DATA_MAX - 2 : log_len - r);
 		memcpy(txb + F_DATA + 2, log_buf + r, n);
 		n = put16(0, n) + n;
 		break;

@@ -100,6 +100,17 @@ def log_chunk(c, at):
     return d[2:2 + struct.unpack_from(">H", d)[0]]
 
 
+def read_flash(c, addr, size):
+    out = bytearray()
+    while len(out) < size:
+        n = min(CHUNK, size - len(out))
+        data = c.call("flash_read", (addr + len(out)).to_bytes(3, "big") + bytes([n]))
+        if len(data) < n:
+            sys.exit("short flash read")
+        out += data[:n]
+    return out
+
+
 def num(s):
     return int(s, 0)
 
@@ -137,12 +148,15 @@ def main():
         print(c.call("xdata_read", struct.pack(">HB", v[0], v[1]))[:v[1]].hex(" "))
     elif a.cmd in ("flash", "flash-write"):
         if a.cmd == "flash-write":
-            data = open(a.args[1], "rb").read()
+            with open(a.args[1], "rb") as source:
+                data = source.read()
             addr = v[0]
             end = addr + (len(data) + 0xFFF) // 0x1000 * 0x1000   # erase covers whole sectors
             if addr % 0x1000 or not data or not any(lo <= addr and end <= hi for lo, hi in FLASH_WRITABLE):
                 sys.exit(f"refusing: {addr:#x}..{end:#x} must be 4 KiB aligned and inside one of "
                          + ", ".join(f"{lo:#x}..{hi:#x}" for lo, hi in FLASH_WRITABLE))
+            # Save the last sector's untouched bytes before any erase.
+            data += read_flash(c, addr + len(data), end - addr - len(data))
             try:
                 sr = struct.unpack(">H", c.call("flash_arm", struct.pack(">H", 0x5AFE))[:2])[0]
                 if sr & 0x3C:
@@ -155,10 +169,7 @@ def main():
             finally:
                 c.call("flash_arm", struct.pack(">H", 0))
             v = [addr, len(data)]
-        out = bytearray()
-        while len(out) < v[1]:
-            n = min(CHUNK, v[1] - len(out))
-            out += c.call("flash_read", (v[0] + len(out)).to_bytes(3, "big") + bytes([n]))[:n]
+        out = read_flash(c, v[0], v[1])
         if a.cmd == "flash-write":
             if out != data:
                 sys.exit("verify FAILED")

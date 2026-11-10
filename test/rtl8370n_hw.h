@@ -6,6 +6,7 @@
 
 static uint8_t mock_status(void);
 static void mock_settle(void);
+static uint8_t mock_flash_busy(void);
 #define __asm__(text) mock_settle()
 
 static uint8_t SFR_EXEC_GO, SFR_REG_ADDRH, SFR_REG_ADDRL;
@@ -17,7 +18,8 @@ static uint8_t SFR_NIC_DATA_L, SFR_NIC_DATA_H, SFR_NIC_RING_L, SFR_NIC_RING_H, S
 static uint8_t SFR_FLASH_TCONF, SFR_FLASH_CMD_R, SFR_FLASH_CMD, SFR_FLASH_EXEC_GO;
 static uint8_t SFR_FLASH_DUMMYCYCLES, SFR_FLASH_MODEB, SFR_FLASH_ADDR16, SFR_FLASH_ADDR8, SFR_FLASH_ADDR0;
 static uint8_t SFR_FLASH_DATA0, SFR_FLASH_DATA8, SFR_FLASH_DATA16, SFR_FLASH_DATA24;
-static uint8_t SFR_FLASH_EXEC_BUSY, IE, CKCON, T2CON, MAP_FLASH_PAGE_TO_XDATA;
+static uint8_t IE, CKCON, T2CON, MAP_FLASH_PAGE_TO_XDATA;
+#define SFR_FLASH_EXEC_BUSY mock_flash_busy()
 static uint8_t SFR_FLASH_CONFIG, SFR_FLASH_CONF_RCMD, SFR_FLASH_CONF_DIV;
 static uint16_t RCAP2_U16, T2_U16;
 

@@ -311,7 +311,7 @@ The status values are:
 | `phy PORT ADDR VALUE` | Writes it, then prints the value read back. |
 | `xdata ADDR N` | `N` bytes of 8051 XDATA at `ADDR`. |
 | `flash ADDR N` | `N` bytes of SPI flash. `-o FILE` saves them. |
-| `flash-write ADDR FILE` | Erases the covered 4 KiB sectors, programs the file, reads it back, and prints `verify ok`. `ADDR` must be 4 KiB aligned. The erased range must end at or before `0x1fc000`. |
+| `flash-write ADDR FILE` | Erases the covered 4 KiB sectors, programs the file, restores any bytes after the file in the last sector, and verifies the entire written range. Prints `verify ok` on success. `ADDR` must be 4 KiB aligned. The erased range must end at or before `0x1fc000`. |
 | `log` | The console's boot log. |
 | `reboot` | Resets the chip after the reply is sent. |
 
@@ -328,6 +328,10 @@ sudo ./console.py en7 flash-write 0x0 image.bin
 
 The console accepts register and flash writes from Ethernet frames without
 authentication. Use it only on an isolated connection.
+
+After a flash-controller timeout, reset the switch before attempting further
+flash access. Register access remains available unless the register controller
+has also failed.
 
 ### Reusing an existing definition
 
