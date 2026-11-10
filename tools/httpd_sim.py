@@ -676,6 +676,7 @@ class Handler(SimpleHTTPRequestHandler):
             "sw_ver":"0.1-sim",
             "uptime":f"0x{int(time.time()) - started:08x}",
             "hw_ver":"SWGT024-V2.0",
+            "flash_size":"2 MB",
             "pcb_ver":"PCB_SWTG024AS_A_V2_0_1_19650"
         }
 

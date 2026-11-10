@@ -384,7 +384,8 @@ var LANG = {
         fw_done: "The switch verified the image and rebooted into it. The session was reset, so you will be asked to log in again.",
         fw_login: "Go to login",
         fw_rebooting: "switch is rebooting...",
-        fw_timeout: "switch has not come back after 150 s: check power / serial console"
+        fw_timeout: "switch has not come back after 150 s: check power / serial console",
+        fw_toosmall: "Updates via HTTP are not supported on flash sizes < 2MB"
     },
     ja: {
         nav_dash: "ダッシュボード",
@@ -691,7 +692,8 @@ var LANG = {
         fw_done: "スイッチはイメージを検証し、新しいイメージで再起動しました。セッションがリセットされたため、再度ログインが必要です。",
         fw_login: "ログインへ",
         fw_rebooting: "スイッチを再起動中...",
-        fw_timeout: "150 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください"
+        fw_timeout: "150 秒経ってもスイッチが復帰しません。電源 / シリアルコンソールを確認してください",
+        fw_toosmall: "フラッシュサイズが2MB未満の場合、HTTP経由の更新はサポートされていません"
     },
     zh: {
         nav_dash: "仪表盘",
@@ -1076,7 +1078,8 @@ var LANG = {
         fw_done: "交换机已校验镜像并以新镜像重启。会话已重置，需要重新登录。",
         fw_login: "前往登录",
         fw_rebooting: "交换机正在重启...",
-        fw_timeout: "150 秒后交换机仍未恢复: 请检查电源 / 串口控制台"
+        fw_timeout: "150 秒后交换机仍未恢复: 请检查电源 / 串口控制台",
+        fw_toosmall: "闪存容量小于 2MB 时，不支持通过 HTTP 更新"
     },
     es: {
         nav_dash: "Panel",
@@ -1463,7 +1466,8 @@ var LANG = {
         sy_ntpint_err: "El intervalo de consulta debe ser 1-1440",
         sy_time_note: "El switch no tiene reloj con batería: la hora se pierde en cada arranque y se vuelve a fijar desde el servidor NTP cuando la red está lista. Guarda en flash para conservar los ajustes.",
         cw_longline: "La línea {n} mide {m} bytes: el switch solo puede ejecutar líneas de hasta 126 bytes y la saltaría al arrancar, así que se rechaza la escritura. Acórtala primero.",
-        fw_other: "Esta imagen no se compiló para este switch ({m}): los pines de SFP, LEDs y botones pueden no coincidir. Súbela solo si estás seguro."
+        fw_other: "Esta imagen no se compiló para este switch ({m}): los pines de SFP, LEDs y botones pueden no coincidir. Súbela solo si estás seguro.",
+        fw_toosmall: "Las actualizaciones a través de HTTP no son compatibles con tamaños de memoria flash inferiores a 2 MB"
     },
     fr: {
         nav_dash: "Tableau de bord",
@@ -1812,7 +1816,8 @@ var LANG = {
         fw_done: "Le commutateur a vérifié l'image et vient de redémarrer. La session a été remise à zero, vous devez vous reconnecter.",
         fw_login: "Vers l'écran de connection",
         fw_rebooting: "Le commutateur redémarre...",
-        fw_timeout: "Le commutateur n'est plus joignable depuis 150 s: verifiez l'alimentation ou utilisez la console série"
+        fw_timeout: "Le commutateur n'est plus joignable depuis 150 s: verifiez l'alimentation ou utilisez la console série",
+        fw_toosmall: "Les mises à jour via HTTP ne sont pas prises en charge pour les mémoires flash de moins de 2 Mo"
     },
     de: {
         nav_dash: "Übersicht",
@@ -2199,7 +2204,8 @@ var LANG = {
         fw_done: "Der Switch hat das Image geprüft und damit neu gestartet. Die Sitzung wurde zurückgesetzt, du wirst erneut zur Anmeldung aufgefordert.",
         fw_login: "Zur Anmeldung",
         fw_rebooting: "Switch startet neu...",
-        fw_timeout: "Der Switch ist nach 150 s nicht zurück: Stromversorgung / serielle Konsole prüfen"
+        fw_timeout: "Der Switch ist nach 150 s nicht zurück: Stromversorgung / serielle Konsole prüfen",
+        fw_toosmall: "Updates über HTTP werden bei Flash-Speichergrößen unter 2 MB nicht unterstützt"
     }
 };
 var rtlLang = (function() {
@@ -5428,7 +5434,18 @@ function fwSettle(st, knownGood) {
     }
     setTimeout(probe, 3000);
 }
-tabHooks.fw = {};
+function fwCheck() {
+    var m = S.info.flash_size.trim().match(/^([\d+])\s*MB$/i);
+    if(!m || m[1]*1 < 2) {
+        $("fwinfo").innerHTML = '<span style="color:var(--bad)">\u2715 ' + "</span>";
+        $("fwfile").disabled = true;
+    }
+}
+tabHooks.fw = {
+    enter: function() {
+        fwCheck();
+    },
+};
 
 window.addEventListener("hashchange", function() {
     var id = location.hash.slice(1);
