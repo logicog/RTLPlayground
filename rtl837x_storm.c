@@ -20,8 +20,7 @@ static const __code uint8_t storm_midx[8][4] = {
 	{ 0x2b, 0x9e, 0x37, 0xdb }, { 0x3f, 0xef, 0x7c, 0xef },
 };
 
-static __code const char * __code const storm_names[STORM_TYPES] = { " bcast ", " mcast ", " ucast ", " umcast " };
-
+__code const char * __code const storm_names[STORM_TYPES] = { " bcast ", " mcast ", " ucast ", " umcast " };
 
 void storm_set(uint8_t port, __xdata uint8_t type, __xdata uint32_t rate, __xdata uint8_t pps) __banked
 {

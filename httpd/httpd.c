@@ -618,7 +618,7 @@ static void handle_firmware_fragment(__xdata uint8_t *p)
 
 static void run_cmd_body(__xdata uint8_t *body)
 {
-	uint16_t hdr_len = strtox(outbuf, HTTP_RESPONCE_TXT);
+	uint16_t hdr_len = strtox(outbuf, HTTP_RESPONSE_TXT);
 
 	slen = hdr_len;
 	cmd_capture = 1;
@@ -1020,8 +1020,10 @@ void httpd_appcall(void)
 				goto do_send;
 			}
 			dbg_string("Not file entry\n");
-			if (!strcmp(q, "/status.json")) {
-				send_status();
+			if (!strcmp(q, "/ports.json")) {
+				send_ports();
+			} else if (!strcmp(q, "/traffic.json")) {
+				send_traffic();
 			} else if (!strcmp(q, "/information.json")) {
 				send_basic_info();
 			} else if (!strcmp(q, "/vlan.json")) {
@@ -1047,19 +1049,15 @@ void httpd_appcall(void)
 				send_mirror();
 			} else if (is_word(q, "/isolation.json")) {
 				send_isolation();
-			} else if (is_word(q, "/mtu.json")) {
-				send_mtu();
 			} else if (is_word(q, "/lag.json")) {
 				send_lag();
 			} else if (is_word(q, "/stp.json")) {
 				send_stp();
 			} else if (is_word(q, "/lldp.json")) {
 				send_lldp();
-			} else if (is_word(q, "/lacp.json")) {
-				send_lacp();
 			} else if (is_word(q, "/stpcnt.json")) {
 				send_stp_counters();
-			} else if (is_word(q, "/vlanlist")) {
+			} else if (is_word(q, "/vlanlist.json")) {
 				send_vlanlist();
 			} else if (is_word(q, "/config")) {
 				send_config();
@@ -1067,7 +1065,7 @@ void httpd_appcall(void)
 				send_cmd_log();
 			} else if (is_word(q, "/cmd_log_clear")) {
 				clear_command_history();
-				send_mtu(); // dummy response
+				slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
 			} else if (is_word(q, "/reset")) {
 				slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
 				s->fw_reset_pending = 1;
