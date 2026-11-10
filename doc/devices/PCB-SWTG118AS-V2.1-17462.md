@@ -20,8 +20,7 @@ not use the V2.0-16029 definition, which expects GPIO30.
 | --- | --- |
 | XikeStor SKS3200M-8GPY1XF | `MACHINE=XIKESTOR_SKS3200M_8GPY1XF` |
 
-Both targets reuse `pcb/PCB_SWTG018AS_V2_1_0.c` and
-`pcb/PCB_SWTG018AS_V2_1_0_init.c`.
+The target use `pcb/PCB_SWTG118AS_V2_1_17462.c`.
 
 Build example:
 
@@ -35,7 +34,7 @@ make MACHINE=XIKESTOR_SKS3200M_8GPY1XF
 
 ## PCB
 
-PCB silkscreen: `SWTG118AS-V2.1-17462`.
+PCB silkscreen: `PCB-SWTG118AS-V2.1-17462`.
 
 ## Photos
 

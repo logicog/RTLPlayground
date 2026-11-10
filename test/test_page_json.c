@@ -85,16 +85,16 @@ static void t_vlan(void)
 	port_pvid_set(4, 20);
 	send_vlan(10);
 	char want[32];
-	snprintf(want, sizeof want, "\"members\":\"0x%x\"", hw_vlan_word(10));
-	CHECK(has(want), "members is the entry word");
+	snprintf(want, sizeof want, "\"untagged_members\":[");
+	CHECK(has(want), "untagged_members is the entry word");
 	CHECK(has("\"name\":\"lab\""), "name comes from the name table");
-	CHECK(has("\"pvid\":\"0x0005\""), "pvid mask has ports 1 and 3, not 5");
+	CHECK(has("\"pvid\":[1,3]"), "pvid array has ports 1 and 3, not 5");
 	CHECK(balanced(), "valid JSON");
 }
 
 static void t_vlanlist(void)
 {
-	printf("[test] /vlanlist lists the VLANs that exist\n");
+	printf("[test] /vlanlist.json lists the VLANs that exist\n");
 	hw_reset(); out_reset(); vlan_ptr = 0; vlan_names[0] = 0;
 	make_vlan(10, 0x0015, 0x0004);
 	make_vlan(20, 0x00f0, 0x0000);
@@ -117,12 +117,12 @@ static void t_vlanlist(void)
 
 static const uint8_t base_mac[6] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x00 };
 
-static void put(uint16_t idx, uint8_t last, uint16_t vid, uint8_t port, bool st)
+static void put(uint16_t idx, uint8_t last, uint16_t vid, uint8_t logicalport, bool st)
 {
 	uint8_t m[6];
 	memcpy(m, base_mac, 6);
 	m[5] = last;
-	hw_l2_put(idx, m, vid, port, st);
+	hw_l2_put(idx, m, vid, logicalport, st);
 }
 
 static void t_l2(void)
@@ -130,13 +130,13 @@ static void t_l2(void)
 	printf("[test] /l2.json walks the table\n");
 	hw_reset(); out_reset();
 	put(0x010, 0x01, 1, 4, false);
-	put(0x020, 0x02, 2, CPU_PORT, true);
+	put(0x020, 0x02, 2, CPU_LOGICAL_PORT, true);
 	put(0x8f0, 0x03, 1, 7, false);
 	send_l2(0);
 	CHECK(count("\"mac\":") == 4, "three entries, and the first one again: that repeat is how the page sees the wrap");
 	CHECK(count("\"idx\":\"0010\"") == 2 && strstr(body(), "\"idx\":\"0010\"}]"), "the repeat closes the list");
-	CHECK(has("{\"vlan\":\"001\",\"mac\":\"00:11:22:33:44:01\",\"type\":\"l\",\"port\":4,\"lag\":0,\"idx\":\"0010\"}"), "learned entry, VLAN, port and index");
-	CHECK(has("\"mac\":\"00:11:22:33:44:02\",\"type\":\"s\",\"port\":9"), "static entry on the CPU port");
+	CHECK(has("{\"vlan\":\"001\",\"mac\":\"00:11:22:33:44:01\",\"type\":\"l\",\"port\":5,\"lag\":0,\"idx\":\"0010\"}"), "learned entry, VLAN, port and index");
+	CHECK(has("\"mac\":\"00:11:22:33:44:02\",\"type\":\"s\",\"port\":0"), "static entry on the CPU port");
 	CHECK(has("\"idx\":\"08f0\""), "an index above 0x800 keeps its high bit");
 	CHECK(balanced(), "valid JSON");
 
@@ -192,8 +192,8 @@ static void t_status_macs(void)
 	printf("[test] /status.json reports the MAC addresses learned on each port\n");
 	hw_reset(); out_reset();
 	hw_reg_set(RTL837X_L2_LRN_PORT_CONSTRT_CNT + (1 << 2), 0x21);
-	send_status();
-	p1 = strstr(body(), "\"logPort\":1,");
+	send_traffic();
+	p1 = strstr(body(), "\"port\":2,");
 	end = p1 ? strchr(p1, '}') : NULL;
 	mac = p1 ? strstr(p1, "\"macs\":\"0x21\"") : NULL;
 	CHECK(mac && mac < end, "port 1 shows its learned count");
@@ -209,7 +209,7 @@ static void t_status_counters(void)
 	hw_counter_set(0, STAT_COUNTER_TX_PKTS, 0x100000005ULL);
 	hw_counter_set(0, STAT_COUNTER_RX_PKTS, 0x00000000000000ffULL);
 	hw_counter_set(1, STAT_COUNTER_TX_PKTS, 0x00000001ffffffffULL);
-	send_status();
+	send_traffic();
 	CHECK(has("\"txG\":\"0x100000005\""), "a counter past 2^32 keeps the zeros of its low word");
 	CHECK(has("\"rxG\":\"0xff\""), "a small counter stays short");
 	CHECK(has("\"txG\":\"0x1ffffffff\""), "a low word of all ones");

@@ -141,6 +141,7 @@ __code const uint16_t bit_mask[16] = {
 
 
 __xdata uint8_t linkbits_last[4];
+__xdata uint16_t link_changed;
 __xdata uint8_t linkbits_last_p89;
 __data __at(0x20) volatile uint8_t evflags;
 volatile __bit __at(0x00) link_irq;
@@ -809,9 +810,9 @@ void print_reg(uint16_t reg)
 // Print the physical port of a logical port number.
 void print_phys_port(uint8_t port)
 {
-	if (port < CPU_PORT)
+	if (port < CPU_LOGICAL_PORT)
 		write_char(machine.log_to_phys_port[port] + '0');
-	else if (port == CPU_PORT)
+	else if (port == CPU_LOGICAL_PORT)
 		print_string("CPU");
 	else {
 		print_string("UNKNOWN ");
@@ -1226,9 +1227,13 @@ void idle(void)
 	}
 	if (link_irq) {
 		link_irq = 0;
+		reg_read_m(RTL837X_ISR_INT_PORT_LINK_CHG);
+		link_changed = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
 		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
 		EX0 = 1;
 		check_links();
+		if (lacpEnabled)
+			lacp_link_change(link_changed);
 	}
 	health_phase(HEALTH_PH_LINK);
 	if (rx_irq) {

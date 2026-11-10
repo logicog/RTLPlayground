@@ -5,7 +5,8 @@
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];
 extern __xdata uint16_t slen;
 
-__code const uint8_t * __code const HTTP_RESPONCE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+__code const uint8_t * __code const HTTP_RESPONSE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+__code const uint8_t * __code const HTTP_RESPONSE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
 // Convert (uint8_t) bool to ascii '0' or '1' char push on html-buffer.
 void bool_to_html(char c)
@@ -13,11 +14,21 @@ void bool_to_html(char c)
 	outbuf[slen++] = c ? '1' : '0';
 }
 
+void bool_to_json(char c)
+{
+	str_code_to_html(c ? "true" : "false");
+}
+
 //  Convert uint8_t to ascii HEX char.
 void byte_to_html(uint8_t val)
 {
 	outbuf[slen++] = itohex(val >> 4);
 	outbuf[slen++] = itohex(val);
+}
+
+void char_to_html(char c)
+{
+	outbuf[slen++] = c;
 }
 
 /* Converts a uint8_t to raw string.
@@ -36,4 +47,21 @@ void itoa_html(uint8_t v)
 	if (print_zeros)
 		outbuf[slen++] = '0' + t;
 	outbuf[slen++] = '0' + (v % 10);
+}
+
+void str_code_to_html(__code const char *s)
+{
+	while (*s) char_to_html(*s++);
+}
+
+void json_add_array_string_item(__code const char *item) {
+	if (slen > 0 && outbuf[slen - 1] != '[')
+		char_to_html(',');
+	str_code_to_html(item);
+}
+
+void json_add_array_uint_item(uint8_t x) {
+	 if (slen > 0 && outbuf[slen - 1] != '[')
+        char_to_html(',');
+    itoa_html(x);
 }

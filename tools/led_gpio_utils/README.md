@@ -110,11 +110,12 @@ python3 dec_leds_from_dump.py
 
 ### 4. `dec_leds_from_rtl837x_uart.py`
 
-This script decodes the LED configuration from a live switch over its serial
+This script decodes the LED configuration of a live switch over its serial
 console, using the firmware's own `regget` command - no I2C dongle and no
-register dump file. It prints the same report as `dec_leds_from_dump.py`, so it
-is the quick way to read the wiring of a device that still runs its stock
-firmware.
+register dump file. It prints the same report as `dec_leds_from_dump.py` (the
+LED pad mux, the LED sets and the set used by each port), followed by the pin
+mux, so it is the quick way to read the wiring of a device that still runs its
+stock firmware.
 
 **Prerequisites:**
 
@@ -131,15 +132,19 @@ firmware.
 
   - Reads the LED registers with `regget` and prints `.led_mux`, the four LED
     sets and the LED set each port uses
+  - Prints the decoded GPIO settings (LED or GPIO or special function pins)
   - Takes the port range from the chip model in register 0x0004: ports 0..8 on
     an RTL8373 (upper 16 bits `0x8373`), ports 3..8 on the RTL8372 boards;
     `--ports` overrides it
-  - `--gpio` also dumps the GPIO output/input/direction registers
+  - `--gpio` also dumps the GPIO output/input/direction registers, plus the
+    list of pins set in each
   - Sends the address as `regget 0x65e0` (falling back to the plain form for
     firmwares whose parser rejects the `0x`) and only accepts an answer that
-    names the register it asked for
-  - Paces the characters of a command and resends it when the console drops
-    one, because the stock console loses input that arrives as one burst
+    names the register it asked for; the form that answered is used for the
+    remaining reads
+  - Paces the characters of a command and resends it when the console drops or
+    mangles one, because the stock console loses input that arrives as one
+    burst. Between attempts the console is resynchronised by draining it
 
 **Usage:**
 ```bash
@@ -151,31 +156,54 @@ python3 dec_leds_from_rtl837x_uart.py -p /dev/ttyUSB1 --gpio
 
 # A console that copes with fast input, with a log of every exchange
 python3 dec_leds_from_rtl837x_uart.py --char-delay 0 -v
+
+# Decode only ports 0..5 instead of the range the chip model implies
+python3 dec_leds_from_rtl837x_uart.py --ports 0 5
 ```
 
 **Options:**
 
   - `-p` / `--port`: serial port (default: `/dev/ttyUSB0`)
   - `-b` / `--baudrate`: console baudrate (default: 57600)
-  - `--cmd TEMPLATE`: register read command, repeatable and tried in order
-    (default: `regget 0x{addr:04x}`, then `regget {addr:04x}`)
-  - `--char-delay`: seconds between the characters of a command (default: 0.05,
-    which measured clean on the stock console while 0.03 lost one command in
-    eight)
-  - `--ports MIN MAX`: port range resolved to LED sets (default: from the chip
-    model, see above)
-  - `--gpio`: also dump the GPIO registers
-  - `--timeout`, `--settle`, `--retries`: console timing, see `--help`
+  - `--cmd TEMPLATE`: register read command, `{addr}` is replaced by the hex
+    address; repeatable and tried in order (default: `regget 0x{addr:04x}`,
+    then `regget {addr:04x}`); a template without `{addr}` is rejected
+  - `--char-delay`: seconds between the characters of a command, 0 to 1
+    (default: 0.05, which measured clean on the stock console while 0.03 lost
+    one command in eight)
+  - `--ports MIN MAX`: port range resolved to LED sets, 0 to 63 (default: from
+    the chip model, see above)
+  - `--gpio`: also dump the GPIO registers and the pins set in them
+  - `--timeout`: seconds to wait for an answer to a command (default: 5)
+  - `--settle`: quiet seconds that end an answer without a prompt (default:
+    0.4, must not exceed `--timeout`)
+  - `--retries`: attempts per register (default: 4)
   - `--lenient`: also accept a bare hex value, for firmware that does not name
     the register in its answer (a mangled answer can then be misread)
-  - `-v` / `--verbose`: print every console exchange, `-q` / `--quiet`: no progress
+  - `-v` / `--verbose`: print every console exchange, `-q` / `--quiet`: no
+    progress output (this also suppresses the port-range line below)
+
+> [!TIP]
+> Unmanaged switches often run their console at 9600 baud and may use a
+> different command and answer format, so for those try:
+> ```bash
+> python3 dec_leds_from_rtl837x_uart.py -b 9600 --cmd "rd 0x{addr:04x}" --lenient
+> ```
 
 **Output Format:**
 
-  - Same report as `dec_leds_from_dump.py`, ready to paste into a machine
-    definition, plus the GPIO registers with `--gpio`
-  - The port range that was used is reported on stderr, e.g.
-    `Decoding ports 0..8 (from model 0x83737000)`
+  - Same report as `dec_leds_from_dump.py`: the LED pad table, the `.led_mux`
+    line and the `.led_sets` initialiser, ready to paste into a machine
+    definition, then one `Port <n>: SET <s>` line per decoded port
+  - The pin mux table that follows it: `PIN_MUX_0/1/2` and `LED_GLB_IO_EN`, then
+    one row per pin 0..63 with its field, field value and function. This is
+    printed on every run, not only with `--gpio`
+  - With `--gpio`, the six GPIO registers and the pins set in `GPIO_OUT`,
+    `GPIO_IN` and `GPIO_OE`
+  - The number of registers to read and an estimate of the time it takes are
+    reported on stderr before the read (skipped with `-q`), then per-register
+    progress, and the port range that was used, e.g.
+    `Decoding ports 0..8 (from model 0x83737000)` or `(from --ports)`
 
 ## Requirements
 
