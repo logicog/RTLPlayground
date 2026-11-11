@@ -148,6 +148,7 @@ SRCS = \
 	dhcp.c \
 	html_data.c \
 	rtlplayground.c \
+	update_apply.c \
 	boot.c \
 	sfp.c \
 	dns.c \
