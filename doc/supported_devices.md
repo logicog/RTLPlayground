@@ -28,6 +28,7 @@ The following devices have been tested and are fully working:
 | Horaco   | ZX310S-4T2XT    | Yes     | [PCB-310S-4T2XT-V1.0.0_22273](devices/PCB-310S-4T2XT-V1.0.0_22273.md)                 | 2M    | 6     |
 | Horaco   | ZX-SG4T2        | No      | [SWTG024AS-A-V2.0.1_19650_4C_2SFP](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)           | 0.5M  | 4 + 2 |
 | Horaco   | ZX-SWTG124AS    | Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
+| Horaco   | ZX-SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                       | 2M    | 8 + 1 |
 | keepLINK | KP-9000-6XH-X2  | No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
 | keepLINK | KP-9000-6XHML-X2| No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](devices/2M-PCB23-V2.2.md)                                             | 2M    | 8 + 1 |
