@@ -4,7 +4,7 @@ ifndef BUILDDIR
 	BUILDDIR = output
 endif
 
-all: create_build_dir $(BUILDDIR)/injector $(BUILDDIR)/fileadder $(BUILDDIR)/httpd_sim\
+all: create_build_dir $(BUILDDIR)/injector $(BUILDDIR)/fileadder \
 	$(BUILDDIR)/crc_calculator $(BUILDDIR)/imagebuilder
 
 create_build_dir:
@@ -21,9 +21,6 @@ $(BUILDDIR)/fileadder: fileadder.c
 
 $(BUILDDIR)/crc_calculator: crc_calculator.c
 	gcc $^ $(CCFLAGS) $@
-
-$(BUILDDIR)/httpd_sim: httpd_sim.c httpd_sim.h
-	gcc $< $(CCFLAGS) $@ $(shell pkg-config --cflags --libs json-c)
 
 $(BUILDDIR)/imagebuilder: imagebuilder.c
 	gcc $^ $(CCFLAGS) $@
