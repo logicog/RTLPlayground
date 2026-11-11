@@ -9,6 +9,7 @@ board with a different SFP detect pin.
 | Brand | Type | Managed | PCB | Flash | Chip RTL |
 |---|---|---|---|---|---|
 | XikeStor | SKS3200M-8GPY1XF | Yes | SWTG118AS-V2.1-17462 | 2MB (25Q16JVSIQ) | RTL8373 |
+| Horaco | ZX-SWTGW218AS | Yes | SWTG118AS-V2.1-17462 | 2MB (25Q16JVSIQ) | RTL8373N + RTL8224N |
 
 ## Machine target
 
@@ -53,3 +54,14 @@ Winbond `25Q16JVSIQ` flash chip:
 Device label:
 
 <img src="photos/PCB-SWTG118AS-V2.1-17462/case_bottom.jpg" width="800" />
+
+## T5, serial console
+
+| `T5` pin | Signal      |
+| -------- | ----------- |
+| 1        | TX (Output) |
+| 2        | GND         |
+| 3        | RX (Input)  |
+| 4        | 3V3         |
+
+
