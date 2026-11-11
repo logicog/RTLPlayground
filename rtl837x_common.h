@@ -132,6 +132,8 @@ extern __xdata char port_names[9][PORT_NAME_SIZE];
 extern __xdata uint16_t lldp_logical_port_status;
 
 extern __xdata bool stp_enabled;
+extern __xdata uint16_t reboot_sec;
+extern __bit reboot_pending;
 
 /* System hostname (device identity). Set via `hostname <text>` and the System
  * Settings page, reported in /information.json. Other modules (e.g. LLDP, which
