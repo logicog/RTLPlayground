@@ -513,8 +513,7 @@ void parse_wol(void)
 {
 	__xdata uint8_t *p;
 	__xdata uint16_t vlan;
-	__xdata uint16_t saved_vlan;
-	uint8_t i, n;
+	uint8_t n;
 
 	if (cmd_words_len < 2 || cmd_words_len > 3) {
 		cmd_error("wol <aa:bb:cc:dd:ee:ff> [vlan]\n");
@@ -553,25 +552,18 @@ void parse_wol(void)
 	}
 	write_char('\n');
 
-	for (i = 0; i < 3; i++) {
-		p = &uip_buf[RTL_FRAME_DESC_SIZE];
-		memset(p, 0xff, 6);			/* broadcast destination */
-		memcpy(p + 6, uip_ethaddr.addr, 6);
-		p[12] = WOL_ETHERTYPE >> 8;
-		p[13] = WOL_ETHERTYPE & 0xff;
-		p += ETHER_HEADER_SIZE;
-		memset(p, 0xff, 6);
-		for (n = 0; n < 16; n++)
-			memcpy(p + 6 + n * 6, mac_parse_result, 6);
+	p = &uip_buf[RTL_FRAME_DESC_SIZE];
+	memset(p, 0xff, 6);			/* broadcast destination */
+	memcpy(p + 6, uip_ethaddr.addr, 6);
+	p[12] = WOL_ETHERTYPE >> 8;
+	p[13] = WOL_ETHERTYPE & 0xff;
+	p += ETHER_HEADER_SIZE;
+	memset(p, 0xff, 6);
+	for (n = 0; n < 16; n++)
+		memcpy(p + 6 + n * 6, mac_parse_result, 6);
 
-		uip_len = ETHER_HEADER_SIZE + WOL_MAGIC_LEN;
-		saved_vlan = management_vlan;
-		management_vlan = vlan;
-		tcpip_output();
-		management_vlan = saved_vlan;
-		if (i < 2)
-			delay(10);
-	}
+	uip_len = ETHER_HEADER_SIZE + WOL_MAGIC_LEN;
+	tcpip_output_vlan(vlan);
 	print_string("Magic packet sent\n");
 }
 
