@@ -14,6 +14,13 @@ variant) rather than at a rule from doc/adding-a-device.md that a device must
 meet to build. Those are reported as info, are listed only with --verbose, and
 never fail the check.
 
+A waiver file lists the findings that are known and accepted: it holds the
+error and warning lines exactly as the report prints them, one per line. A
+listed finding is not reported and does not fail the check; info findings are
+never waived. See check_device_docs.waiver in the repository root for an
+example, and pass it with --waiver. A line that matches no finding is simply
+never used.
+
 Every finding belongs to the machine target, the PCB definition or the device
 doc it is about. --machine restricts the report to one device: its machine/<M>
 files, its PCB and its doc. Findings about the repository as a whole (e.g. chip
@@ -21,10 +28,12 @@ names in doc/supported_devices.md) are only printed without --machine.
 
 Usage:
   python3 tools/check_device_docs.py [--verbose] [--root DIR]
+  python3 tools/check_device_docs.py --waiver check_device_docs.waiver
   python3 tools/check_device_docs.py --list-rules
   python3 tools/check_device_docs.py --machine <MACHINE> [--machine <MACHINE>]
 
-Exit status is 1 when an error or a warning was found.
+Exit status is 1 when an error or a warning was found, not counting the ones
+the waiver file lists.
 Run it from the repository root.
 """
 import argparse
@@ -91,7 +100,8 @@ RULES = {
     'machine-model-length': (
         WARNING, 'MACHINE_MODEL is at most 29 characters'),
     'machine-model-name': (
-        WARNING, 'MACHINE_MODEL in capitals gives the machine target name'),
+        WARNING, 'MACHINE_MODEL in capitals, optionally followed by the PCB '
+                 'name, gives the machine target name'),
     'machine-init-form': (
         ERROR, 'machine/<MACHINE>_init.c is a symlink when present'),
     'machine-init-dangling': (
@@ -170,6 +180,27 @@ class UnknownMachine(Exception):
     pass
 
 
+def load_waiver(path):
+    """Read a waiver file into the set of report lines it waives.
+
+    One finding per line, exactly as report() prints the message (the leading
+    indent is stripped, so pasting the report works). Blank lines are skipped.
+    """
+    waived = set()
+    with open(path, encoding='utf-8') as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                waived.add(line)
+    return waived
+
+
+def waiver_matches(waived, finding):
+    """Is this finding's message one of the lines the waiver file lists?"""
+    severity, _check, message, _scope = finding
+    return severity != INFO and message.strip() in waived
+
+
 class Checker:
     def __init__(self, root, only=None):
         self.root = root
@@ -179,6 +210,8 @@ class Checker:
         self.machines = {}
         self.only = list(only or [])
         self.scope = None
+        self.waived = []
+        self.waiver_file = None
 
     # -- helpers ---------------------------------------------------------
     def path(self, *parts):
@@ -303,11 +336,11 @@ class Checker:
                 self.add('machine-pcb-named',
                          '%s: machine target carries the PCB name %s, expected '
                          'vendor + model' % (rel, pcb), scope)
-            self.check_machine_header(rel, machine, scope)
+            self.check_machine_header(rel, machine, pcb, scope)
             self.check_machine_doc(rel, pcb, scope)
             self.check_machine_init(rel, machine, pcb, scope)
 
-    def check_machine_header(self, rel, machine, scope):
+    def check_machine_header(self, rel, machine, pcb, scope):
         header = self.machine_header(machine)
         header_rel = 'machine/%s.h' % machine
         if not os.path.exists(header):
@@ -325,11 +358,17 @@ class Checker:
                 self.add('machine-model-length',
                          '%s: MACHINE_MODEL is %d characters, the limit is %d'
                          % (header_rel, len(model.group(1)), MODEL_MAX_LEN), scope)
-            name = machine_name(model.group(1))
-            if name != machine:
+            # <MACHINE> is <MACHINE_MODEL> in capitals, or that name with this
+            # PCB's name appended when the model string alone identifies more
+            # than one board (e.g. HISOURCE_HI_K0402WS_PCB_K0402W_V2_0).
+            names = [machine_name(model.group(1)),
+                     machine_name('%s %s' % (model.group(1), pcb))]
+            if machine not in names:
                 self.add('machine-model-name',
-                         '%s: MACHINE_MODEL %r gives the target name %s, not %s'
-                         % (header_rel, model.group(1), name, machine), scope)
+                         '%s: MACHINE_MODEL %r gives the target name %s (or %s),'
+                         ' not %s'
+                         % (header_rel, model.group(1), names[0], names[1],
+                            machine), scope)
         if not chip:
             self.add('machine-header-chipset',
                      '%s: does not define MACHINE_CHIPSET' % header_rel, scope)
@@ -610,6 +649,17 @@ class Checker:
         self.check_machines()
         self.check_orphan_pcbs()
 
+    def apply_waivers(self, waived, path):
+        """Drop the errors and warnings whose message line is waived."""
+        self.waiver_file = path
+        kept = []
+        for finding in self.findings:
+            if waiver_matches(waived, finding):
+                self.waived.append(finding)
+            else:
+                kept.append(finding)
+        self.findings = kept
+
     def visible(self):
         if self.scope is None:
             return self.findings
@@ -640,9 +690,17 @@ class Checker:
             docs = sum(1 for d in self.docs if 'doc:' + d in self.scope)
             pcbs = sum(1 for p in self.pcbs if 'pcb:' + p in self.scope)
             machines = sum(1 for m in self.machines if 'machine:' + m in self.scope)
-        print('%d docs, %d pcb definitions, %d machine targets: %d errors, '
-              '%d warnings, %d info'
-              % (docs, pcbs, machines, errors, warnings, infos))
+        stat = ('%d docs, %d pcb definitions, %d machine targets: %d errors, '
+                '%d warnings, %d info'
+                % (docs, pcbs, machines, errors, warnings, infos))
+        waived = [f for f in self.waived
+                  if self.scope is None or set(f[3]) & self.scope]
+        if self.waiver_file is not None:
+            stat += ', %d waived by "%s"' % (len(waived), self.waiver_file)
+        print(stat)
+        if verbose:
+            for severity, check, message, _scope in waived:
+                print('  waived %s [%s] %s' % (severity, check, message))
         return errors, warnings
 
 
@@ -655,6 +713,7 @@ def list_rules():
                 print('  %-24s %s' % (check, description))
     print('\nerrors and warnings fail the check; info never fails.')
     print('--machine <MACHINE> reports only the rules about one device.')
+    print('--waiver FILE ignores the error and warning lines that FILE lists.')
 
 
 def main(argv=None):
@@ -668,6 +727,9 @@ def main(argv=None):
     parser.add_argument('--machine', action='append', metavar='MACHINE',
                         help='only report findings about this machine target '
                              '(repeatable)')
+    parser.add_argument('--waiver', metavar='FILE',
+                        help='ignore the errors and warnings listed in FILE, '
+                             'one report line each (see check_device_docs.waiver)')
     parser.add_argument('--list-rules', action='store_true',
                         help='list every rule and its severity, then exit')
     args = parser.parse_args(argv)
@@ -686,6 +748,14 @@ def main(argv=None):
     except UnknownMachine as exc:
         print('error: %s' % exc, file=sys.stderr)
         return 2
+    if args.waiver:
+        try:
+            waived = load_waiver(args.waiver)
+        except OSError as exc:
+            print('error: cannot read waiver file %s: %s'
+                  % (args.waiver, exc.strerror or exc), file=sys.stderr)
+            return 2
+        checker.apply_waivers(waived, args.waiver)
     errors, warnings = checker.report(args.verbose)
     if errors or warnings:
         return 1
