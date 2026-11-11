@@ -20,6 +20,7 @@ not use the V2.0-16029 definition, which expects GPIO30.
 | Device | Machine target |
 | --- | --- |
 | XikeStor SKS3200M-8GPY1XF | `MACHINE=XIKESTOR_SKS3200M_8GPY1XF` |
+| Horaco ZX-SWTGW218AS | MACHINE=`HORACO_ZX_SWTGW218AS` |
 
 The target use `pcb/PCB_SWTG118AS_V2_1_17462.c`.
 
