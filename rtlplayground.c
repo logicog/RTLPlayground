@@ -1750,7 +1750,8 @@ void main(void)
 	idle_ready = 1;
 
 	set_sys_led_state(SYS_LED_ON);
-
+	for (uint8_t i = 0; i < machine.n_ptp; i++)
+		machine.ptp[i].init(&machine.ptp[i]);
 	cmd_editor_init();
 
 	health_stack_paint();

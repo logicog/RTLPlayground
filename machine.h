@@ -2,6 +2,7 @@
 #define _MACHINE_H_
 
 #include <stdint.h>
+#include "rtl837x_ptp.h"
 
 #define MACHINE_STR_HELPER(x)  #x
 #define MACHINE_STR(x) MACHINE_STR_HELPER(x)
@@ -114,6 +115,8 @@ struct machine {
 	// random resets. Costs management-plane speed only, the ASIC keeps
 	// forwarding in hardware.
 	uint8_t flash_sio;
+	uint8_t n_ptp;
+	struct ptp_module ptp[2];
 };
 
 struct machine_runtime
