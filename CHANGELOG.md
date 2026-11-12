@@ -23,6 +23,11 @@
 
 ## Changed
 
+- Web UI
+  - The web session expires after one hour without a request (was 200 seconds). The UI stops
+    polling while its tab is hidden, so with 200 seconds switching tabs for a few minutes logged
+    you out. `session <seconds>` still sets it.
+
 ## Fixed
 
 - Time
@@ -46,6 +51,12 @@
     the offending line is skipped and the following lines are still applied.
   - The web UI and the configuration upload now refuse a line the replay cannot take,
     instead of writing it to flash.
+
+- Startup
+  - Initialised and zero-initialised globals above xdata 0x4000 now get their values at boot.
+    Hardware reset leaves SFR 0x97 at 1, which maps xdata 0x4000-0xbfff to the flash image,
+    and it was cleared only in `main()`, after the C startup code had copied and cleared them.
+    This showed as a random web session timeout and LLDP blocked on some ports without config.
 
 ## Breaking changes
 

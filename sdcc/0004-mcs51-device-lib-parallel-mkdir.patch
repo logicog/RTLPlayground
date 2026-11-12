@@ -1,0 +1,23 @@
+Parallel builds race: the library target writes into ../build/$(PORT) but does
+not depend on it, so with -j the archiver can run before the directory exists:
+
+  sdar: ../build/small/mcs51.lib: No such file or directory
+
+Give the target an order-only dependency on its output directory.
+
+Index: device/lib/mcs51/Makefile.in
+===================================================================
+--- device/lib/mcs51/Makefile.in	(revision 17011)
++++ device/lib/mcs51/Makefile.in	(working copy)
+@@ -30,7 +30,10 @@
+ 
+ all: $(PORTDIR)/$(LIB)
+ 
+-$(PORTDIR)/$(LIB): $(OBJ) Makefile
++$(PORTDIR):
++	mkdir -p $@
++
++$(PORTDIR)/$(LIB): $(OBJ) Makefile | $(PORTDIR)
+ ifeq ($(LIB_TYPE), SDCCLIB)
+ 	rm -f $@; \
+ 	$(top_builddir)/bin/sdcclib -a $@ $(OBJ)

@@ -55,7 +55,7 @@ __sfr __at(0xbb) SFR_BANK_RET;
 
 __sfr __at(0x8e) CKCON;
 
-__sfr __at(0x97) SFR_97;	// HADDR?
+__sfr __at(0x97) MAP_FLASH_PAGE_TO_XDATA;	// 1 (hardware reset default): xdata 0x4000-0xbfff reads the flash image; 0: RAM
 __sfr __at(0xb9) SFR_b9;
 __sfr __at(0xba) SFR_ba;
 

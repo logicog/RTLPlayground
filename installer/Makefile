@@ -1,9 +1,14 @@
 CODE_LOCATION=0x1000
 INSTALLER_ADDRESS=0x1100
 
-CC = sdcc
+SDCC_PREFIX = ../toolchain/sdcc-$(shell cat ../sdcc/* | cksum | cut -d' ' -f1)
+ifeq ($(origin CC),default)
+SDCC = $(SDCC_PREFIX)/bin/sdcc
+CC = $(SDCC)
+ASM = $(SDCC_PREFIX)/bin/sdas8051
+endif
 CC_FLAGS = -mmcs51
-ASM = sdas8051
+ASM ?= sdas8051
 AFLAGS= -plosgff
 
 BUILDDIR = output
@@ -13,8 +18,13 @@ OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 
 all: create_build_dir $(BUILDDIR)/updatebuilder $(BUILDDIR)/rtlplayground_oem_upgrade.bin
 
-create_build_dir:
+create_build_dir: $(SDCC)
 	mkdir -p $(BUILDDIR)
+
+ifneq ($(SDCC),)
+$(SDCC):
+	sh ../sdcc/build.sh $(abspath $(SDCC_PREFIX))
+endif
 
 $(BUILDDIR)/updatebuilder: updatebuilder.c
 	gcc $^ -o $@

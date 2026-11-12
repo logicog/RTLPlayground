@@ -299,7 +299,7 @@ uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
 
 	if (ret == 0 && cmd_buffer[idx] == '0') {
 		ret = 1;
-		atoi_results_u8 = CPU_PORT;
+		atoi_results_u8 = CPU_LOGICAL_PORT;
 	}
 
 	if (ret != 0) {
@@ -461,8 +461,8 @@ static uint8_t name_char(uint8_t c)
 
 
 // Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
-// the current one with a bare "mac"). Refuses blank/multicast/locally
-// administered/all-zero-OUI addresses so the running MAC stays reachable, and
+// the current one with a bare "mac"). Refuses blank/multicast/all-zero-OUI
+// addresses so the running MAC stays reachable, and
 // re-registers the static L2 management entry so the change applies without a
 // reboot. As a regular command a "mac ..." line in the startup config applies
 // on every boot (execute_config runs before the final static L2 entry).
@@ -478,8 +478,8 @@ void parse_mac_cmd(void)
 		cmd_error("mac [<aa:bb:cc:dd:ee:ff>]\n");
 		return;
 	}
-	if ((mac_parse_result[0] & 0x03) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
-		cmd_error("the MAC must be unicast and globally administered\n");
+	if ((mac_parse_result[0] & 0x01) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
+		cmd_error("the MAC must be unicast with a non-zero first three bytes\n");
 		return;
 	}
 	if (memcmp(mac_parse_result, uip_ethaddr.addr, 6) == 0) {
@@ -634,9 +634,15 @@ void parse_vlan(void)
 		vlan_settings.vlan = atoi_results_short;
 
 		if (cmd_compare(2, "mgmt")) {
+			if (management_vlan == vlan_settings.vlan) {
+				print_string("Management VLAN unchanged\n");
+				return;
+			}
 			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, true);
 			management_vlan = vlan_settings.vlan;
 			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
+			if (dhcp_state.state != DHCP_OFF)
+				dhcp_start();
 			if (!vlan_settings.vlan)
 				print_string("Management VLAN disabled\n");
 			else
@@ -945,6 +951,8 @@ void parse_port(void)
 		print_string("\"\n");
 	} else if (cmd_compare(2, "lldp")) {
 		if (cmd_compare(3, "block")){
+			if (lldp_enabled)
+				lldp_shutdown((uint16_t)1 << phy_settings.port);
 			lldp_logical_port_status &= ~((uint16_t)1 << phy_settings.port);
 		} else if (cmd_compare(3, "permit")) {
 			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
@@ -1840,6 +1848,8 @@ void print_gpio_status(void) {
 void print_sw_version(void) __banked {
 	print_string("Software version: " VERSION_SW);
 	print_string("\nBuild date: " BUILD_DATE);
+	print_string("\nCompiler: SDCC " STR(__SDCC_VERSION_MAJOR) "." STR(__SDCC_VERSION_MINOR) "." STR(__SDCC_VERSION_PATCH) " #" STR(__SDCC_REVISION));
+	print_string("\nToolchain: " SDCC_TOOLCHAIN);
 	print_string("\nHardware: ");
 	print_string(machine.machine_name);
 	write_char('\n');
@@ -1867,6 +1877,10 @@ void cmd_parser(void) __banked
 	if (cmd_words_len >= 1) {
 		if (cmd_compare(0, "reset")) {
 			print_string("\nRESET\n\n");
+			reset_chip();
+		} else if (cmd_compare(0, "factory-reset")) {
+			print_string("\nFACTORY RESET\n\n");
+			flash_default_config();
 			reset_chip();
 		} else if (cmd_compare(0, "sfp")) {
 			parse_sfp();
@@ -2015,10 +2029,10 @@ void cmd_parser(void) __banked
 				cmd_error("lacp (show | off); a group starts LACP with: lag <1-4> lacp <port>...\n");
 		} else if (cmd_compare(0, "pvid")) {
 			if (cmd_words_len == 3 && cmd_parse_port_separator(cmd_words_b[1]) != 0
-			    && atoi_short(cmd_words_b[2]) && atoi_results_short && atoi_results_short <= 4094)
+			    && atoi_short(cmd_words_b[2]) && atoi_results_short <= 4094)
 				port_pvid_set(atoi_results_u8, atoi_results_short);
 			else {
-				cmd_error("pvid <port> <1-4094>\n");
+				cmd_error("pvid <port> <0-4094>\n");
 			}
 		} else if (cmd_compare(0, "vlan")) {
 			parse_vlan();
@@ -2087,6 +2101,8 @@ void cmd_parser(void) __banked
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
 			} else {
 				print_string("LLDP disabled\n");
+				if (lldp_enabled)
+					lldp_shutdown(lldp_logical_port_status);
 				lldp_enabled = 0;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
 			}

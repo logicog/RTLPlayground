@@ -1,0 +1,7 @@
+#ifndef _MACHINE_DAVUAZ_DA_K6501W_H_
+#define _MACHINE_DAVUAZ_DA_K6501W_H_
+
+#define MACHINE_MODEL "Davuaz Da-K6501W"
+#define MACHINE_CHIPSET RTL8372
+
+#endif

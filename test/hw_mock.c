@@ -31,7 +31,7 @@
 
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
-#include "hw_mock.h"
+#include <test/hw_mock.h>
 
 uint8_t sfr_data[4];
 unsigned long hw_reads, hw_writes;

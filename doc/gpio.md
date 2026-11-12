@@ -86,7 +86,7 @@ These functions should bevalid for `RTL8372`, `RTL8372N`, `RTL8373`, and `RTL837
 | GPIO50 | SCL2 | I/OPU |  | C1 | ??? |
 | GPIO40? | SCL3 | OPU |  | J20 |  |
 
-# Other funcitons
+# Other functions
 
 | Function | Type | (RTL8372) PIN# | (RTL8372N) PIN# |
 |  ---- | ---- | ---- | ---- | 

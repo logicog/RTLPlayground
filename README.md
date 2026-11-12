@@ -97,17 +97,25 @@ docker run --rm -v $(pwd):/workspace rtlplayground-dev make MACHINE=DEFAULT_8C_1
 
 The resulting `.bin` file appears in `output/` on your host.
 
+Build the OEM web upgrade bin (after building the firmware bin)
+
+```
+docker run --rm -v $(pwd):/workspace rtlplayground-dev make -C installer
+```
+
+The resulting `rtlplayground_oem_upgrade.bin` file appears in `installer/output/` on your host.
+
 Build host tools only:
 
 ```
 docker run --rm -v $(pwd):/workspace rtlplayground-dev make -C tools
 ```
 
-Run the web-interface simulator locally:
+Run the web-interface simulator through docker:
 
 ```
-docker run --rm -p 8080:8080 -v $(pwd):/workspace rtlplayground-dev \
-  tools/output/httpd_sim /workspace/html
+docker run --rm -p 8081:8081 -v $(pwd):/workspace rtlplayground-dev \
+  tools/output/httpd_sim.py /workspace/html
 ```
 
 Edit `config.txt` on your host, then re-run `make` — the
@@ -126,6 +134,40 @@ make MACHINE=DEFAULT_8C_1SFP
 The name selects the board definition `machine/<name>.c`; `make` without a
 `MACHINE` value stops with an error listing what is expected. If your board is
 not in the list yet, see [Adding a new device](doc/adding-a-device.md).
+
+To embed a machine-specific startup configuration, pass `CONFIG`:
+```
+make MACHINE=DEFAULT_8C_1SFP CONFIG=configs/DEFAULT_8C_1SFP.txt
+```
+`CONFIG` defaults to `config.txt`; the selected file is embedded in the image
+and changing it triggers a rebuild.
+
+To choose the output directory while keeping the automatic file name (with
+version, git hash and machine), pass `OUTPUT_DIR`:
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware
+```
+To also change the leading part of the name while keeping that automatic
+suffix, use `OUTPUT_PREFIX` (it is prepended verbatim):
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware OUTPUT_PREFIX=my-switch-
+```
+This produces `/tmp/firmware/my-switch-v<version>-<git>-<machine>.bin`.
+To set the complete file name inside `OUTPUT_DIR`, use `OUTPUT_NAME` (it replaces
+the automatic name, so the version/git suffix is not appended):
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware OUTPUT_NAME=my-switch.bin
+```
+`OUTPUT_PREFIX` and `OUTPUT_NAME` are alternatives: use only one of them. If
+`OUTPUT_NAME` is set, `OUTPUT_PREFIX` is ignored.
+To set the complete path and file name at once, use `OUTPUT`:
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT=/tmp/firmware/my-switch.bin
+```
+When `OUTPUT` is a custom path, `output/rtlplayground.bin` is left untouched:
+only the default build updates that symlink (and the installer uses it).
+Without overrides the image is `output/<machine>/rtlplayground-v<version>-<git>-<machine>.bin`.
+`BUILDDIR` still selects where intermediate objects and tools are written.
 
 > [!TIP]
 > You can write configuration parameters in config.txt (see below) in order your switch to get
@@ -170,9 +212,9 @@ example of compilation console output
 RTLPlayground/installer$ make
 mkdir -p output
 gcc updatebuilder.c -o output/updatebuilder
-sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
-sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
-sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
+../toolchain/sdcc-3390765201/bin/sdas8051 -plosgff -o output/crtstart.rel crtstart.asm
+../toolchain/sdcc-3390765201/bin/sdcc -mmcs51 --code-loc 0x1000 -o output/installer.rel -c installer.c
+../toolchain/sdcc-3390765201/bin/sdcc -mmcs51 -Wl-bHOME=0x1100 -Wl-r -o output/rtlinstaller.ihx output/crtstart.rel output/installer.rel
 ./output/updatebuilder -i output/rtlinstaller.ihx -o output/rtlplayground_oem_upgrade.bin ../output/rtlplayground.bin
 Input file size: 524288
 Bytes read: 524288
@@ -356,13 +398,37 @@ netmask zzz.zzz.zzz.zzz = Network mask of the switch
 port x name xxx         = Name xxx the port number x
 port z 1g               = Set 1g speed for port z
 igmp on/off             = Turn IGMP on or off
-session xxxx            = Web session timeout in seconds (default 200)
+session xxxx            = Web session timeout in seconds (default 3600)
 ```
 [To be continue]
 
 Enjoy playing!
 
-## (11) Other documents
+## (13) HTTP Simulator for front-end development
+
+The simulator is available in tools as `./httpd_sim.py`
+By default it will serve the content in the current working directory so the easiest way to run this is to:
+```
+cd ./html
+../tools/httpd_sim.py
+```
+And the simulator will be available on http://127.0.0.1:8081
+
+There are commandline options available:
+```
+usage: httpd_sim.py [-h] [--machine MACHINE] [--port PORT] [--bindaddr BINDADDR] [--verbose]
+
+options:
+  -h, --help           show this help message and exit
+  --machine MACHINE    path to machine.c or .h file to parse (optional)
+  --port PORT          port to bind to (default 8081)
+  --bindaddr BINDADDR  address to bind (default 127.0.0.1)
+  --verbose            enable verbose output
+```
+
+The machine parsing is somewhat experimental.
+
+## (12) Other documents
 
 The following documents give further documentation on specific features of the RTL837x SoCs:
 - [Adding a new device](doc/adding-a-device.md)

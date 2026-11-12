@@ -31,6 +31,7 @@
 #include "syslog.h"
 #include "dns.h"
 #include "ntp.h"
+#include "timer.h"
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
@@ -75,8 +76,6 @@ void crc16_bank1(__xdata uint8_t *v) __naked;
    - T_TIMER_DIV12_OVERFLOW = F_SYS / DIV12 / 1..65536 = 125MHz / 12 / 1..65536 = 10.42 MHz .. 158.9 Hz
    Selecting dividor 12 settings to get lowest timer tick posiable which is already high.
 */
-#define SYS_TICK_HZ 200
-
 #define TIMER2_DIV (CLOCK_HZ / 12 / SYS_TICK_HZ)
 #if TIMER2_DIV > 0xFFFF
 #error "SYS_TICK_HZ to low, must be >= 159"
@@ -92,16 +91,14 @@ __code const uint8_t netmask[] = { 255, 255, 255, 0};
 __xdata struct uip_eth_addr uip_ethaddr;
 
 volatile __xdata uint32_t ticks;
-volatile __xdata uint8_t sec_counter;
-volatile __xdata uint16_t sleep_ticks;
-__xdata uint8_t stp_tick_last;
 __xdata uint8_t arp_age_secs;
 extern __xdata struct dhcp_state dhcp_state;
 
-#define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
 #define STP_CATCH_UP 8
 #define SFP_TICK_STEP 10
-__xdata uint8_t sfp_tick_last;
+static __xdata struct timer second;
+static __xdata struct timer sfp_poll;
+static __xdata struct timer delay_timer;
 
 /* Buffer for serial input, SBUF_SIZE must be power of 2 < 256
  * Writing to this buffer is under the sole control of the serial ISR
@@ -144,6 +141,7 @@ __code const uint16_t bit_mask[16] = {
 
 
 __xdata uint8_t linkbits_last[4];
+__xdata uint16_t link_changed;
 __xdata uint8_t linkbits_last_p89;
 __data __at(0x20) volatile uint8_t evflags;
 volatile __bit __at(0x00) link_irq;
@@ -212,9 +210,6 @@ void isr_timer2(void) __interrupt(5)
 {
 	ticks++;
 	tick_pending = 1;
-	if (sleep_ticks > 0)
-		sleep_ticks--;
-	sec_counter++;
 
 	// Clear TF2 & EXF2 by software
 	T2CON &= ~0xC0;
@@ -815,9 +810,9 @@ void print_reg(uint16_t reg)
 // Print the physical port of a logical port number.
 void print_phys_port(uint8_t port)
 {
-	if (port < CPU_PORT)
+	if (port < CPU_LOGICAL_PORT)
 		write_char(machine.log_to_phys_port[port] + '0');
-	else if (port == CPU_PORT)
+	else if (port == CPU_LOGICAL_PORT)
 		print_string("CPU");
 	else {
 		print_string("UNKNOWN ");
@@ -872,8 +867,8 @@ void read_reg_timer(__xdata uint32_t * tmr)
 // Delay for given number of ticks without doing housekeeping
 void delay(uint16_t t)
 {
-	sleep_ticks = t;
-	while (sleep_ticks > 0)
+	timer_set(&delay_timer, t);
+	while (!timer_expired(&delay_timer))
 		PCON |= 1;
 }
 
@@ -1155,8 +1150,8 @@ void check_links(void)
 //
 static void handle_tick(void)
 {
-	if (sec_counter >= SYS_TICK_HZ) {
-		sec_counter -= SYS_TICK_HZ;
+	if (timer_expired(&second)) {
+		timer_reset(&second);
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
 		uint8_t v = sfr_data[3];
 #ifdef DEBUG
@@ -1198,8 +1193,8 @@ static void handle_tick(void)
 	}
 
 	health_phase(HEALTH_PH_LINK);
-	if (TICKS_DUE(sfp_tick_last, SFP_TICK_STEP)) {
-		sfp_tick_last += SFP_TICK_STEP;
+	if (timer_expired(&sfp_poll)) {
+		timer_reset(&sfp_poll);
 		handle_sfp();
 	}
 	health_phase(HEALTH_PH_SFP);
@@ -1207,8 +1202,8 @@ static void handle_tick(void)
 	health_phase(HEALTH_PH_TX);
 	if (stp_enabled) {
 		uint8_t n = STP_CATCH_UP;
-		while (n-- && TICKS_DUE(stp_tick_last, STP_TICK_STEP)) {
-			stp_tick_last += STP_TICK_STEP;
+		while (n-- && timer_expired(&stp_step)) {
+			timer_reset(&stp_step);
 			stp_timers();
 		}
 	}
@@ -1232,9 +1227,13 @@ void idle(void)
 	}
 	if (link_irq) {
 		link_irq = 0;
+		reg_read_m(RTL837X_ISR_INT_PORT_LINK_CHG);
+		link_changed = ((uint16_t)sfr_data[2] << 8) | sfr_data[3];
 		REG_SET(RTL837X_ISR_INT_PORT_LINK_CHG, 0x3ff);
 		EX0 = 1;
 		check_links();
+		if (lacpEnabled)
+			lacp_link_change(link_changed);
 	}
 	health_phase(HEALTH_PH_LINK);
 	if (rx_irq) {
@@ -1256,19 +1255,6 @@ void idle(void)
 		print_cmd_prompt();
 	}
 	health_phase(HEALTH_PH_CMD);
-}
-
-
-// Sleep the given number of ticks and perform idle tasks if initialized
-void sleep(uint16_t t)
-{
-	sleep_ticks = t;
-	while (sleep_ticks > 0) {
-		if (idle_ready)
-			idle();
-		else
-			PCON |= 1;
-	}
 }
 
 
@@ -1567,17 +1553,23 @@ void check_and_flash_update_image(void)
 }
 
 
+/* Called by the SDCC startup code before it copies XINIT to XISEG and clears XSEG.
+ * Hardware reset starts us with MAP_FLASH_PAGE_TO_XDATA = 1, which maps xdata
+ * 0x4000-0xbfff to the flash image (reads return flash, writes are lost), so it
+ * must be 0 by then. */
+unsigned char __sdcc_external_startup(void)
+{
+	MAP_FLASH_PAGE_TO_XDATA = 0;
+	return 0;
+}
 
 void main(void)
 {
 	ticks = 0;
-	stp_tick_last = (uint8_t)ticks;
-	sfp_tick_last = (uint8_t)ticks;
 	dhcp_state.state = DHCP_OFF;
 	sbuf_ptr = 0;
 
 	CKCON = 0;	// Initial Clock configuration
-	SFR_97 = 0;	// HADDR?
 
 	// Set in managed mode:
 	SFR_b9 = 0x00;
@@ -1753,6 +1745,8 @@ void main(void)
 	/* After the config: a name from it wins, otherwise derive one. */
 	set_hostname_default();
 	print_cmd_prompt();
+	timer_set(&second, SYS_TICK_HZ);
+	timer_set(&sfp_poll, SFP_TICK_STEP);
 	idle_ready = 1;
 
 	set_sys_led_state(SYS_LED_ON);

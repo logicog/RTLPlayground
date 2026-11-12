@@ -14,7 +14,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "rtl837x_common.h"     /* CMD_BUF_SIZE */
-#include "support.h"
+#include <test/support.h>
 
 /* editor state (globals in cmd_editor.c, external linkage) */
 extern __xdata uint8_t cmd_line_len;

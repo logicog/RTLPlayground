@@ -9,25 +9,25 @@
   --bg:#f4f6f8;--panel:#ffffff;--panel2:#eaeef2;--bd:#d7dde4;--fg:#1a222c;--fg2:#5c6773;
   --ac:#0969da;--acfg:#ffffff;--ok:#158744;--bad:#cf222e;--warn:#9a6700;--cy:#1b7c83;
   --sel:rgba(9,105,218,.10);--shadow:0 2px 10px rgba(20,30,40,.07);
-  --s10:#b58900;--s100:#b58900;--s1000:#159744;--s2g5:#0d9488;--s5g:#0d9488;--s10g:#2563eb;
+  --s10m:#b58900;--s100m:#b58900;--s500m:#b58900;--s1000m:#159744;--s2g5:#0d9488;--s5g:#0d9488;--s10g:#2563eb;
 }
 :root[data-theme="dark"]{
   --bg:#0e1116;--panel:#161b22;--panel2:#1f262e;--bd:#2c333c;--fg:#e6edf3;--fg2:#8d96a0;
   --ac:#4c8ef7;--acfg:#ffffff;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--cy:#39c5cf;
   --sel:rgba(76,142,247,.16);--shadow:0 2px 10px rgba(0,0,0,.35);
-  --s10:#d29922;--s100:#d29922;--s1000:#3fb950;--s2g5:#2dd4bf;--s5g:#2dd4bf;--s10g:#58a6ff;
+  --s10m:#d29922;--s100m:#d29922;--s500m:#d29922;--s1000m:#3fb950;--s2g5:#2dd4bf;--s5g:#2dd4bf;--s10g:#58a6ff;
 }
 :root[data-theme="sel-dark"]{
   --bg:#103c48;--panel:#184956;--panel2:#2d5b69;--bd:#2d5b69;--fg:#adbcbc;--fg2:#72898f;
   --ac:#4695f7;--acfg:#ffffff;--ok:#75b938;--bad:#fa5750;--warn:#dbb32d;--cy:#41c7b9;
   --sel:rgba(70,149,247,.18);--shadow:0 2px 10px rgba(0,20,26,.35);
-  --s10:#dbb32d;--s100:#dbb32d;--s1000:#75b938;--s2g5:#41c7b9;--s5g:#41c7b9;--s10g:#4695f7;
+  --s10m:#dbb32d;--s100m:#dbb32d;--s500m:#dbb32d;--s1000m:#75b938;--s2g5:#41c7b9;--s5g:#41c7b9;--s10g:#4695f7;
 }
 :root[data-theme="sel-light"]{
   --bg:#fbf3db;--panel:#ece3cc;--panel2:#d5cdb6;--bd:#d5cdb6;--fg:#53676d;--fg2:#909995;
   --ac:#0072d4;--acfg:#ffffff;--ok:#489100;--bad:#d2212d;--warn:#ad8900;--cy:#009c8f;
   --sel:rgba(0,114,212,.12);--shadow:0 2px 10px rgba(80,70,40,.12);
-  --s10:#ad8900;--s100:#ad8900;--s1000:#489100;--s2g5:#009c8f;--s5g:#009c8f;--s10g:#0072d4;
+  --s10m:#ad8900;--s100m:#ad8900;--s500m:#ad8900;--s1000m:#489100;--s2g5:#009c8f;--s5g:#009c8f;--s10g:#0072d4;
 }
 *{box-sizing:border-box;margin:0}
 html,body{height:100%}
@@ -71,7 +71,7 @@ select.ctl,button.ctl{
 }
 button.pri{background:var(--ac);color:var(--acfg);border-color:transparent;font-weight:600}
 button.pri:hover,button.ctl:hover{filter:brightness(1.07)}
-button:disabled{opacity:.45;cursor:default;filter:none}
+button:disabled,.in:disabled{opacity:.45;cursor:default;filter:none}
 main{padding:18px 20px 40px;width:100%;overflow-y:auto;}
 section.tab{display:none;max-width:1400px;}
 section.tab.act{display:block}
@@ -93,6 +93,7 @@ table.t th.num{text-align:right}
 table.t td{padding:6px 8px;border-bottom:1px solid var(--bd);vertical-align:middle}
 table.t tr:last-child td{border-bottom:0}
 table.t tr:hover td{background:var(--sel)}
+table.t tr.sel{background:var(--panel2); font-weight: bold;}
 .num{font-variant-numeric:tabular-nums;text-align:right}
 .scrollx{overflow-x:auto}
 input.in,select.in,textarea.in{
@@ -124,12 +125,20 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 .port .pn{font-weight:650;font-size:12px}
 .port .ps{font-size:9px;color:var(--fg2);display:block;line-height:1.2}
 .port .jack{
-  display:block;width:16px;height:10px;margin:2px auto 1px;border-radius:2px;
-  border:2px solid var(--fg2);border-top-width:4px;opacity:.55;
+  display:block;width:21px;height:12px;margin:4px auto 2px;border-radius:2px;
+  border:2px solid var(--fg2);border-top-width:8px;opacity:.55;position:relative;
 }
-.port.sfp .jack{width:24px;height:9px;border-top-width:3px}
+.port .jack:before{content:"";
+  position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  width:7px;height:5px;margin-bottom:7px;border-radius: 1px 1px 0 0;
+  background-color:var(--fg2);
+}
+.port.sfp .jack{width:24px;height:16px;margin:0 auto 2px;border-top-width:5px}
+.port.sfp .jack:before{width:10px;margin-bottom:2px;border-radius:0 0 1px 1px;background-color:var(--panel2)}
 .port.up{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 10%,var(--panel2))}
 .port.up .jack{border-color:var(--pc);opacity:1}
+.port.up .jack:before{background-color:var(--pc)}
+.port.up.sfp .jack:before{background-color:color-mix(in srgb,var(--pc) 10%,var(--panel2))}
 .port.up .ps{color:var(--pc);font-weight:600}
 .port.dis{opacity:.45;border-style:dashed}
 .badge{font-size:11px;font-weight:600;border-radius:10px;padding:1px 8px;background:var(--panel2);color:var(--fg2)}
@@ -164,6 +173,11 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 #mbody{padding:14px 18px;overflow:auto}
 #mfoot{padding:12px 18px;border-top:1px solid var(--bd);display:flex;gap:10px;justify-content:flex-end}
 #mfoot:empty{display:none}
+#ptip{position:fixed;display:none;z-index:35;pointer-events:none;white-space:nowrap;background:var(--panel);border:1px solid var(--bd);border-radius:6px;box-shadow:var(--shadow);padding:4px 8px}
+#ptip.show{display:block}
+#ptip::before{content:"";position:absolute;top:-6px;left:var(--ax,50%);width:9px;height:9px;background:var(--panel);border-top:1px solid var(--bd);border-left:1px solid var(--bd);transform:translateX(-50%) rotate(45deg)}
+#ptip td{padding:1px 0;border:0;font-size:11px}
+#ptip td.mut{padding-right:8px}
 pre.cfg{
   background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;
   font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;
@@ -255,6 +269,8 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <p class="small mono" id="stpids">-</p>
         <div id="stpbridge" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
           <label><span class="small mut" data-i18n="stp_version">Version</span><br><select class="in" id="stpver"><option value="rstp">RSTP</option><option value="stp" data-i18n="stp_v_stp">STP compatible</option></select></label>
+          <label><span class="small mut" data-i18n="stp_pcs">Path cost</span><br><select class="in" id="stppcs"><option value="long" data-i18n="stp_pcs_long">Long (32 bit)</option><option value="short" data-i18n="stp_pcs_short">Short (16 bit)</option></select></label>
+          <label><span class="small mut" data-i18n="stp_bh">BPDUs while disabled</span><br><select class="in" id="stpbh"><option value="flood" data-i18n="stp_bh_flood">Flood</option><option value="filter" data-i18n="stp_bh_filter">Filter</option></select></label>
           <label><span class="small mut" data-i18n="stp_prio">Bridge priority</span><br><select class="in" id="stpprio"></select></label>
           <label><span class="small mut" data-i18n="stp_hello">Hello [s]</span><br><input class="in sm" id="stphello" type="number" min="1" max="10"></label>
           <label><span class="small mut" data-i18n="stp_maxage">Max age [s]</span><br><input class="in sm" id="stpmaxage" type="number" min="6" max="40"></label>
@@ -272,8 +288,13 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       </div>
       <div class="card"><h2 data-i18n="stp_status">Port status</h2>
         <div class="scrollx"><table class="t" id="stpstat">
-          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_role">Role</th><th data-i18n="c_state">State</th><th data-i18n="stp_db">Designated bridge</th><th data-i18n="stp_dp">Designated port</th><th data-i18n="stp_dc">Designated cost</th><th data-i18n="stp_oedge">Oper. edge</th><th data-i18n="stp_op2p">Oper. P2P</th></tr></thead>
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_role">Role</th><th data-i18n="c_state">State</th><th data-i18n="stp_db">Designated bridge</th><th data-i18n="stp_dp">Designated port</th><th data-i18n="stp_dc">Designated cost</th><th data-i18n="stp_oedge">Oper. edge</th><th data-i18n="stp_op2p">Oper. P2P</th><th data-i18n="stp_proto">Protocol</th><th></th></tr></thead>
           <tbody></tbody></table></div>
+      </div>
+      <div class="card"><details id="stpcntd"><summary><h2 style="display:inline" data-i18n="stp_cnt">Counters</h2></summary>
+        <div class="scrollx"><table class="t" id="stpcnt">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="stp_crx">BPDUs received</th><th data-i18n="stp_ctx">BPDUs sent</th><th data-i18n="stp_ctrx">TC received</th><th data-i18n="stp_cttx">TC sent</th><th data-i18n="stp_cage">Last BPDU [s]</th></tr></thead>
+          <tbody></tbody></table></div></details>
       </div>
     </section>
 
@@ -286,26 +307,20 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
     </section>
 
     <section class="tab" id="tab-vlan">
-      <div class="card"><h2><span data-i18n="v_title">VLANs</span> <span class="hint"><span data-i18n="v_mgmt">Management VLAN</span>: <span id="vmgmtcur">-</span></span></h2>
+      <div class="card"><h2><span data-i18n="v_title">VLANs</span><span id="vmgmtcur"></span></h2>
         <div class="scrollx"><table class="t" id="vtable">
           <thead><tr><th data-i18n="v_vid">VID</th><th data-i18n="c_name">Name</th><th data-i18n="v_members">Members</th><th data-i18n="v_tagged">Tagged</th><th data-i18n="v_untagged">Untagged</th><th data-i18n="v_pvid_on">PVID on</th><th></th></tr></thead>
           <tbody></tbody></table></div>
         <p class="small mut" id="vempty" style="display:none;margin-top:6px" data-i18n="v_empty">No VLANs configured.</p>
+        <button class="ctl pri" id="vlan_add" data-i18n="v_add">Add a new VLAN</button>
       </div>
-      <div class="card"><h2 data-i18n="v_editor">VLAN editor</h2>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-          <label><span data-i18n="v_vid">VID</span> <input class="in sm" id="vvid" type="number" min="1" max="4094"></label>
-          <label><span data-i18n="c_name">Name</span> <input class="in" id="vname" size="12" maxlength="15" data-i18n-p="v_optional"></label>
-          <button class="ctl" id="vload" data-i18n="c_load">Load</button>
-          <button class="ctl pri" id="vapply" data-i18n="c_apply">Apply</button>
-          <button class="ctl" id="vmgmt" data-i18n="v_setmgmt" data-i18n-t="v_setmgmt_t">Set as mgmt VLAN</button>
-        </div>
+      <div class="card"><h2><span data-i18n="v_editor">VLAN editor</span> <span class="hint" id="vtitle"></span></h2>
+        <div><label class="row"><span class="lb" style="width:150px;" data-i18n="v_setmgmt_t"></span>
+          <span class="switch"><input type="checkbox" id="vmgmtpromote"><i></i></span>
+        </label></div>
         <div class="scrollx"><table class="t" id="vedit"><tbody></tbody></table></div>
+        <div style="margin-top:10px"><button class="ctl pri" id="vapply" data-i18n="c_apply">Apply</button></div>
         <p class="small mut" style="margin-top:6px" data-i18n="v_legend">U = untagged member, T = tagged member, - = not a member. PVID assigns this VLAN to untagged ingress traffic.</p>
-      </div>
-      <div class="card"><h2><span data-i18n="v_ingress">Ingress filtering</span> <span class="hint" data-i18n="v_ingress_h">write-only: the state is not readable from the switch</span></h2>
-        <div class="scrollx"><table class="t" id="ingress"><tbody></tbody></table></div>
-        <div style="margin-top:10px"><button class="ctl pri" id="ingapply" data-i18n="v_ing_apply">Apply ingress modes</button></div>
       </div>
     </section>
 
@@ -396,6 +411,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
       <div class="grid2">
         <div class="card"><h2 data-i18n="sy_network">Network</h2>
           <label class="row"><span class="lb" data-i18n="i_host">Hostname</span><input class="in" id="sy-host" maxlength="23"></label>
+          <label class="row"><span class="lb" data-i18n="sy_mode">Addressing</span><select class="in" id="sy-mode" data-i18n-t="sy_dhcp_t"><option value="static" data-i18n="sy_static">Static</option><option value="dhcp">DHCP</option></select></label>
           <label class="row"><span class="lb" data-i18n="i_ip">IP address</span><input class="in" id="sy-ip" size="15"></label>
           <label class="row"><span class="lb" data-i18n="i_mask">Netmask</span><input class="in" id="sy-mask" size="15"></label>
           <label class="row"><span class="lb" data-i18n="i_gw">Gateway</span><input class="in" id="sy-gw" size="15"></label>
@@ -404,7 +420,6 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <p class="small mut" id="sy-dnsdhcp"></p>
           <div style="display:flex;gap:10px;margin-top:12px">
             <button class="ctl pri" id="sy-apply" data-i18n="c_apply">Apply</button>
-            <button class="ctl" id="sy-dhcp" data-i18n="sy_dhcp" data-i18n-t="sy_dhcp_t">Use DHCP</button>
           </div>
         </div>
         <div class="card"><h2 data-i18n="sy_services">Services</h2>
@@ -507,6 +522,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   <div id="mhead"><span id="mtitle"></span><button id="mx">&#x2715;</button></div>
   <div id="mbody"></div><div id="mfoot"></div>
 </div></div>
+<div id="ptip"></div>
 
 <script src="/app.js"></script>
 </body>

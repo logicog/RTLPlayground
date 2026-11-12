@@ -1,0 +1,7 @@
+#ifndef _MACHINE_RUIYING_RY_4GT_2SX_H_
+#define _MACHINE_RUIYING_RY_4GT_2SX_H_
+
+#define MACHINE_MODEL "Ruiying RY-4GT-2SX"
+#define MACHINE_CHIPSET RTL8372
+
+#endif

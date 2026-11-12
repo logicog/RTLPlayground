@@ -15,17 +15,17 @@ and sold by Mokerlink.
 The device is fully supported:
 - All 4 2.5GBASE-T RJ45 ports work at 10/100/1000/2500 Mbps
 - The SFP+ port supports 1G, 2.5G and 10G modules 
-- LEDs work with the same indiciations as the OEM firmware (build with `make MACHINE=KP_9000_6XHML_X2_V1_1` if building yourself, or use the corresponding pre-compiled binary)
+- LEDs work with the same indiciations as the OEM firmware (build with `make MACHINE=MOKERLINK_2G040210GSM` if building yourself, or use the corresponding pre-compiled binary)
 - untested due to missing Hardware: SFP+ ports equipped with 1G or 2.5G SFPs.
 
 ### Hardware overview
 Front
 
-<img src="photos/2M-PCB43-V1.1-managed/2M-PCB43-V1.1-front.jpeg" width="300" />
+<img src="photos/2M-PCB43-V1.1/2M-PCB43-V1.1-front.jpeg" width="300" />
 
 Label
 
-<img src="photos/2M-PCB43-V1.1-managed/2M-PCB43-V1.1-label.jpeg" width="300" />
+<img src="photos/2M-PCB43-V1.1/2M-PCB43-V1.1-label.jpeg" width="300" />
 
 ### PCB overview
 
@@ -34,11 +34,11 @@ Label
 
 Top side
 
-<img src="photos/2M-PCB43-V1.1-managed/2M-PCB43-V1.1-top.jpeg" width="300" />
+<img src="photos/2M-PCB43-V1.1/2M-PCB43-V1.1-top.jpeg" width="300" />
 
 Bottom
 
-<img src="photos/2M-PCB43-V1.1-managed/2M-PCB43-V1.1-bottom.jpeg" width="300" />
+<img src="photos/2M-PCB43-V1.1/2M-PCB43-V1.1-bottom.jpeg" width="300" />
 
 ### J1, serial console
 

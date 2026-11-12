@@ -11,8 +11,10 @@
 #include "dhcp.h"
 #include "uip.h"
 #include "uip/uip.h"
+#include "timer.h"
 
 __xdata struct dhcp_state dhcp_state;
+static __xdata struct timer dhcp_second;
 __xdata uip_ipaddr_t server;
 
 #define DHCP_HW_TYPE_ETH	1
@@ -183,7 +185,7 @@ void dhcp_send_discover(void)
 
 	uip_udp_send(sizeof(struct dhcp_pkt) + dhcp_state.opt_ptr);
 	dhcp_state.state = DHCP_DISCOVER_SENT;
-	dhcp_state.ticks = SYS_TICK_HZ;
+	timer_set(&dhcp_second, SYS_TICK_HZ);
 	dhcp_state.dhcp_timer = 30; // Timeout for discover
 }
 
@@ -219,7 +221,7 @@ void dhcp_send_request(void)
 
 	uip_udp_send(sizeof(struct dhcp_pkt) + dhcp_state.opt_ptr);
 	dhcp_state.state = DHCP_REQUEST_SENT;
-	dhcp_state.ticks = SYS_TICK_HZ;
+	timer_set(&dhcp_second, SYS_TICK_HZ);
 	dhcp_state.dhcp_timer = 30; // Timeout for request
 }
 
@@ -345,7 +347,7 @@ void parse_dhcp(void)
 		if (!dhcp_state.renewal)
 			dhcp_state.renewal = 60;
 		dhcp_state.state = DHCP_LEASING;
-		dhcp_state.ticks = SYS_TICK_HZ;
+		timer_set(&dhcp_second, SYS_TICK_HZ);
 		dhcp_state.dhcp_timer = dhcp_state.renewal > 0xffff ? 0xffff : dhcp_state.renewal;
 	}
 }
@@ -400,10 +402,9 @@ void dhcp_callback(uint16_t lport) __banked
 	} else {
 		if (dhcp_state.state == DHCP_START) {
 			dhcp_send_discover();
-		} else if (!--dhcp_state.ticks) {
-//			print_string("Timer: "); print_short(dhcp_state.ticks); write_char(' '); print_short(dhcp_state.dhcp_timer);
+		} else if (timer_expired(&dhcp_second)) {
+			timer_reset(&dhcp_second);
 			dhcp_state.dhcp_timer--;
-			dhcp_state.ticks = SYS_TICK_HZ;
 		}
 		if (!dhcp_state.dhcp_timer) {
 			switch (dhcp_state.state) {
