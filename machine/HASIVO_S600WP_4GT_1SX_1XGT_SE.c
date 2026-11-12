@@ -10,8 +10,8 @@ __code const struct machine machine = {
      * Logical port 3 / SDS0 is the RTL8261BE 10GBASE-T port.
      * Logical port 8 / SDS1 is the SFP+ cage.
      */
-    .log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
-    .phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
+    .log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
+    .phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
     .is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
 
     /* SFP+ wiring recovered from the Hasivo stock firmware. */
@@ -49,11 +49,18 @@ __code const struct machine machine = {
 
     .led_mux_custom = 1,
     .led_mux = {
-        0x3f, 0x3f, 0x3f, 0x3f, 0x3f,
-        0x3f, 0x3f, 0x3f, 0x0f, 0x20,
-        0x21, 0x22, 0x10, 0x11, 0x12,
-        0x14, 0x15, 0x16, 0x18, 0x19,
-        0x1a, 0x1c, 0x1d, 0x1e, 0x0c,
-        0x0d, 0x0e, 0x23
+        0x3f, 0x3f, 0x3f, 0x3f,
+        0x3f, 0x3f, 0x3f, 0x3f,
+
+        // Swapped port 3 / port 8 LED sources
+        0x23, 0x0c, 0x0d, 0x0e,
+
+        // Ports 1-4 unchanged
+        0x10, 0x11, 0x12, 0x14,
+        0x15, 0x16, 0x18, 0x19,
+        0x1a, 0x1c, 0x1d, 0x1e,
+
+        // Swapped port 3 / port 8 LED sources
+        0x20, 0x21, 0x22, 0x0f
     },
 };
