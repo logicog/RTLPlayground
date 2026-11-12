@@ -3709,7 +3709,12 @@ function vlanRefresh() {
                         }
                     }));
                 }
-            }).catch(function() {});
+                return d;
+            }).then(function(d){
+                if(tb.rows.length == 1){
+                    handleVlanJson(d, v.id);
+                }
+            }).catch(function(e) {console.error(e)});
         });
         return p;
     });
@@ -3763,30 +3768,32 @@ function segSet(p, v) {
     });
 }
 
+function handleVlanJson(d,vid) {
+    $("vtitle").innerText = "VLAN " + vid + (d.name ? " (" + (d.name) + ")" : "");
+    $("vtitle").dataset.id = vid;
+    $("vtitle").dataset.name = d.name;
+    for (var p = 1; p <= S.n; p++) {
+        var setVal = 0;
+        if(d.untagged_members.includes(p)){setVal = 1;}
+        if(d.tagged_members.includes(p)){setVal = 2;}
+        segSet(p, setVal);
+        $("vp" + p).innerText = d.pvid.includes(p) ? "Y" : "N";
+    }
+    $("vmgmtpromote").checked = ($("vmgmtcur").dataset.id == vid);
+    toast(t("v_loaded", {
+        n: vid
+    }), "ok");
+    for (const vlanRow of $("vtable").tBodies[0].rows) {
+        vlanRow.className = vlanRow.firstChild.firstChild.dataset.id == vid ? "sel" : "";
+    }
+}
+
 function vlanLoad(vid) {
     if (!vid || vid < 1 || vid > 4094) {
         toast(t("v_vid_err"), "err");
         return;
     }
-    getJSON("/vlan.json?vid=" + vid).then(function(d) {
-        $("vtitle").innerText = "VLAN " + vid + (d.name ? " (" + (d.name) + ")" : "");
-        $("vtitle").dataset.id = vid;
-        $("vtitle").dataset.name = d.name;
-        for (var p = 1; p <= S.n; p++) {
-            var setVal = 0;
-            if(d.untagged_members.includes(p)){setVal = 1;}
-            if(d.tagged_members.includes(p)){setVal = 2;}
-            segSet(p, setVal);
-            $("vp" + p).innerText = d.pvid.includes(p) ? "Y" : "N";
-        }
-        $("vmgmtpromote").checked = ($("vmgmtcur").dataset.id == vid);
-        toast(t("v_loaded", {
-            n: vid
-        }), "ok");
-        for (const vlanRow of $("vtable").tBodies[0].rows) {
-            vlanRow.className = vlanRow.firstChild.firstChild.dataset.id == vid ? "sel" : "";
-        }
-    }).catch(function() {
+    getJSON("/vlan.json?vid=" + vid).then(function(d){handleVlanJson(d,vid);}).catch(function() {
         toast(t("v_notfound", {
             n: vid
         }), "err")
@@ -3953,16 +3960,11 @@ tabHooks.vlan = {
     enter: function() {
         needPorts(function() {
             buildVlanEdit();
-            vlanRefresh().catch(function() {}).then(function() {
-                VlanInit();
-            })
+            vlanRefresh().catch(function() {});
         })
     },
 };
 
-function VlanInit() {
-    vlanLoad($("vtable").tBodies[0].firstChild.firstChild.firstChild.dataset.id)
-};
 var l2Rows = [],
     l2SortCol = "pport",
     l2SortDir = 1,
