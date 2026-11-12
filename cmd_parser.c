@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_ptp.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
@@ -39,7 +40,6 @@
 
 extern __code const struct machine machine;
 extern __xdata bool stp_enabled;
-extern __code const uint8_t log_to_phys_port[9];
 extern __xdata bool lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
@@ -2075,6 +2075,20 @@ void cmd_parser(void) __banked
 			parse_temp();
 		} else if (cmd_compare(0, "storm")) {
 			parse_storm();
+		} else if (cmd_compare(0, "ptp")) {
+			if (cmd_compare(1, "show"))
+				ptp_get_time();
+			else if (cmd_compare(1, "set"))
+				ptp_set_time();
+			else
+				ptp_init();
+		} else if (cmd_compare(0, "ptpphy")) {
+			if (cmd_compare(1, "show"))
+				ptp_rtl8221_get_time(3);
+			else if (cmd_compare(1, "set"))
+				ptp_rtl8221_set_time(3);
+			else
+				ptp_rtl8221_init(3);
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "history")) {
