@@ -9,7 +9,7 @@ It is highly similar to PCB-SWTG024AS-V2.0_16895, with the only difference being
 | Horaco  | ZX-SG4T2     | No    | 4C_2SFP | PCB-SWTG024AS-A-V2.0.1_19650 | 512K (P25D40SH)| 8372N  |
 | Horaco  | HC-SWTG124AS | Yes   | 4C_2SFP | PCB-SWTG024AS-A-V2.0.1_19650 | 2M   (W25Q16JV)| 8372N  |
 | GoodTop | GT-ST024M    | Yes   | 4C_2SFP | PCB-SWTG024AS-A-V2.0.1_19650 | 2M             | 8372N  |
-| Horaco  | HC-SWTGW215AS| Yes   | 5C_1SFP | PCB-SWTG024AS-A-V2.0.1_19650 | 2M   (W25Q16JV)| 8272N  |
+| Horaco  | HC-SWTGW215AS| Yes   | 5C_1SFP | PCB-SWTG024AS-A-V2.0.1_19650 | 2M   (W25Q16JV)| 8372N  |
 
 ## SWTG024AS-A-V2.0.1_4C_2SFP
 

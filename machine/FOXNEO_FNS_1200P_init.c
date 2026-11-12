@@ -1,1 +1,1 @@
-pcb/2M_PCB43_V2_1_init.c
+pcb/PCB_K0402W_U13_V2_0_init.c

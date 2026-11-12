@@ -17,7 +17,7 @@ __code const struct machine machine = {
     .port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
 	/* Ports 1-5 RJ45 use set 0, port 9 SFP uses set 1 
 	 * Ports 1-5: Green: 2.5GBit, Amber: 10/100/1000MBit
-	 * SFP-port: Blue: 10GBit, Amber: 100MBit-2.5GBit
+	 * SFP-port: Blue: 10GBit, Amber(PCB_SWTG024AS_V2_0_16895), Green(PCB_SWTG024AS_A_V2_0_1_19650__1S1C): 100MBit-2.5GBit
 	 */
     .led_sets = {
                     {
