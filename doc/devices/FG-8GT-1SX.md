@@ -68,7 +68,7 @@ Be sure not to bring R1242 SoC side to the connection as that would wire Rx to 3
 
 A complete working serial header should look like following on this PCB:
 
-<img src="photos/FG-8GT-1SX/Serial.png" width="600" />
+<img src="photos/FG-8GT-1SX/Serial.jpg" width="600" />
 
 - **Settings**: 115200 baud / 8N1 / 3.3V TTL
 - Connect a USB-TTL adapter: adapter GND → pin 1, RX → pin 2, TX → pin 3
