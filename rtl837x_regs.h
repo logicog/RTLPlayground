@@ -89,6 +89,8 @@
 
 #define RTL837X_REG_LINKS	0x63f0
 #define RTL837X_REG_LINKS_89	0x63f4
+/* Eight link-status nibbles per register, including CPU port 9. */
+#define RTL837X_REG_LINK_STATUS(port) (RTL837X_REG_LINKS + (((port) >> 3) << 2))
 #define RTL837X_REG_LINKS_STS	0x63E8
 /* Per-port status bits: bit N is chip port N */
 #define RTL837X_MAC_TX_PAUSE_STS	0x63FC

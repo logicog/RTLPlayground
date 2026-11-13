@@ -1,0 +1,10 @@
+#ifndef MACHINE_MERCUSYS_MS105GS_M2_V2_H
+#define MACHINE_MERCUSYS_MS105GS_M2_V2_H
+
+#define MACHINE_MODEL "Mercusys MS105GS-M2 V2.0"
+#define MACHINE_CHIPSET RTL8372
+/* Four internal PHYs (4..7), one external RTL8221D (3), no SFP. */
+#define MACHINE_MIN_PORT 3
+#define MACHINE_MAX_PORT 7
+
+#endif

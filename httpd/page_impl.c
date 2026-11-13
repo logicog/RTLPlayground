@@ -866,10 +866,7 @@ void linkspeed_to_json(uint8_t i)
 	else
 	{
 		//Determine link speed
-		if (i < 8)
-			reg_read_m(RTL837X_REG_LINKS);
-		else
-			reg_read_m(RTL837X_REG_LINKS_89);
+		reg_read_m(RTL837X_REG_LINK_STATUS(i));
 
 		b = sfr_data[3 - ((i & 7) >> 1)];
 		b = ((i & 1) ? b >> 4 : b & 0xf);
