@@ -5,7 +5,7 @@ ifndef BUILDDIR
 endif
 
 all: create_build_dir $(BUILDDIR)/injector $(BUILDDIR)/fileadder $(BUILDDIR)/httpd_sim\
-	$(BUILDDIR)/crc_calculator $(BUILDDIR)/imagebuilder
+	$(BUILDDIR)/crc_calculator $(BUILDDIR)/imagebuilder $(BUILDDIR)/poe_extract
 
 create_build_dir:
 	mkdir -p $(BUILDDIR)
@@ -27,3 +27,7 @@ $(BUILDDIR)/httpd_sim: httpd_sim.c httpd_sim.h
 
 $(BUILDDIR)/imagebuilder: imagebuilder.c
 	gcc $^ $(CCFLAGS) $@
+
+$(BUILDDIR)/poe_extract: poe_extract.c
+	gcc $^ $(CCFLAGS) $@
+
