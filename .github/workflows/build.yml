@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install make gcc g++ bison flex libboost-dev patch bzip2 curl ca-certificates xxd python-is-python3 libjson-c-dev zlib1g-dev -y
+          apt install make gcc g++ pkg-config bison flex libboost-dev patch bzip2 curl ca-certificates xxd python-is-python3 libjson-c-dev zlib1g-dev -y
       - name: Cache the patched SDCC
         uses: actions/cache@v4
         with:
