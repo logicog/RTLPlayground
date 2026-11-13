@@ -58,7 +58,7 @@ device simulator is provided, which runs entirely under Linux as a local webserv
 
 Install the following particular build requisites (Debian 12/13):
 ```
-sudo apt install make gcc g++ bison flex libboost-dev patch bzip2 curl xxd python-is-python3 libjson-c-dev zlib1g-dev
+sudo apt install make gcc g++ pkg-config bison flex libboost-dev patch bzip2 curl xxd python-is-python3 libjson-c-dev zlib1g-dev
 ```
 
 The first `make` downloads SDCC 4.6.0, applies the fixes in `sdcc/` and builds it into

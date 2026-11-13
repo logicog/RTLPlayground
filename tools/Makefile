@@ -17,13 +17,13 @@ $(BUILDDIR)/injector: injector.c
 	gcc $^ $(CCFLAGS) $@
 
 $(BUILDDIR)/fileadder: fileadder.c
-	gcc $^ $(CCFLAGS) $@ -lz
+	gcc $^ $(CCFLAGS) $@ $(shell pkg-config --cflags --libs zlib)
 
 $(BUILDDIR)/crc_calculator: crc_calculator.c
 	gcc $^ $(CCFLAGS) $@
 
 $(BUILDDIR)/httpd_sim: httpd_sim.c httpd_sim.h
-	gcc $< $(CCFLAGS) $@ -I/usr/include/json-c -ljson-c
+	gcc $< $(CCFLAGS) $@ $(shell pkg-config --cflags --libs json-c)
 
 $(BUILDDIR)/imagebuilder: imagebuilder.c
 	gcc $^ $(CCFLAGS) $@
