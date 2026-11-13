@@ -504,7 +504,7 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
 
     <section class="tab" id="tab-fw">
       <div class="card"><h2 data-i18n="fw_title">Firmware update</h2>
-        <p class="small mut" style="margin-bottom:12px" data-i18n="fw_intro">Upload an RTLPlayground image (512 KiB .bin). The image is staged to flash and CRC-checked; on success the switch reboots itself, re-verifies the image and applies it. The startup configuration is preserved.</p>
+        <p class="small mut" style="margin-bottom:12px" data-i18n="fw_intro">Upload an RTLPlayground image (512 KiB .bin). The image is staged to flash and CRC-checked; on success the switch reboots itself, re-verifies the image and applies it. The startup configuration is preserved. A 16 KiB loader image is written by the running firmware before it reboots.</p>
         <input type="file" id="fwfile" accept=".bin">
         <div id="fwinfo" class="small" style="margin:10px 0"></div>
         <div style="display:flex;gap:10px;align-items:center">

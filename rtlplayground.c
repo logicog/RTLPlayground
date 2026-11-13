@@ -34,6 +34,7 @@
 #include "timer.h"
 #include "httpd/page_impl.h"
 #include "boot.h"
+#include "loader/layout.h"
 #include "sfp.h"
 
 extern __code const struct machine machine;
@@ -97,6 +98,7 @@ extern __xdata struct dhcp_state dhcp_state;
 #define STP_CATCH_UP 8
 #define SFP_TICK_STEP 10
 static __xdata struct timer second;
+static __xdata bool loader_confirmed;
 static __xdata struct timer sfp_poll;
 static __xdata struct timer delay_timer;
 
@@ -1152,6 +1154,10 @@ static void handle_tick(void)
 {
 	if (timer_expired(&second)) {
 		timer_reset(&second);
+		if (!loader_confirmed && ticks > (uint32_t)LDR_CONFIRM_S * SYS_TICK_HZ) {
+			loader_confirmed = true;
+			loader_confirm();
+		}
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
 		uint8_t v = sfr_data[3];
 #ifdef DEBUG
@@ -1474,6 +1480,14 @@ void check_and_flash_update_image(void)
 	print_string(get_flash_size_str()); print_string(" flash size detected. (1 MB is needed for image updating)\n");
 	if (flash_size < FIRMWARE_UPLOAD_START*2) {
 		print_string("Flash too small for updating; skipping update check\n");
+		return;
+	}
+
+	flash_region.addr = LDR_META;
+	flash_region.len = 4;
+	flash_read_bulk(flash_buf);
+	if (flash_buf[0] == 'R' && flash_buf[1] == 'T' && flash_buf[2] == 'L' && flash_buf[3] == 'B') {
+		print_string("Updates are installed by the loader\n");
 		return;
 	}
 

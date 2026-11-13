@@ -29,6 +29,7 @@
 #include "rtl837x_flash.h"
 #include "page_impl.h"
 #include "html_data.h"
+#include "../loader/layout.h"
 
 /* Private to uip.c, and the client needs them to build segments. */
 #define TCP_FIN 0x01
@@ -130,6 +131,11 @@ const char *get_flash_size_str(void) { return "512 kB"; }
 void crc16_bank1(uint8_t *v) { (void)v; }
 static unsigned reset_calls;
 void reset_chip(void) { reset_calls++; }
+static bool loader_update_ok = true;
+static int loader_update_calls;
+bool loader_update(void) { loader_update_calls++; return loader_update_ok; }
+static bool loader_present_ok = true;
+bool loader_present(void) { return loader_present_ok; }
 void delay(uint16_t t) { (void)t; }
 void write_char(char c) { (void)c; }
 void write_char_no_syslog(char c) { (void)c; }
@@ -557,6 +563,8 @@ extern uint16_t slen, cont_len, sent_len, bindex, crc_final, write_len;
 extern uint8_t boundary[], verify_crc, outbuf[];
 extern struct { uint8_t *p; uint16_t bptr, plen; } upload_settings;
 extern uint8_t stream_upload(void);
+extern uint8_t upload_loader;
+extern uint32_t uptr;
 
 static void scenario_upload_reset_owner(void)
 {
@@ -589,7 +597,7 @@ static void scenario_upload_reset_owner(void)
 	upload_settings.bptr = 0;
 	upload_settings.plen = 1;
 	stream_upload();
-	CHECK(uip_conn->appstate.fw_reset_pending == 1,
+	CHECK(uip_conn->appstate.fw_reset_pending == FW_UPDATE_PENDING,
 	      "verified upload records reset intent in its slot");
 
 	uip_conn->appstate.tstate = TSTATE_TX;
@@ -605,6 +613,90 @@ static void scenario_upload_reset_owner(void)
 	httpd_appcall();
 	CHECK(reset_calls == 1 && slen == 0,
 	      "final verdict ACK resets after all response bytes are acknowledged");
+
+	reset_calls = 0;
+	loader_update_calls = 0;
+	loader_update_ok = false;
+	uip_conn->appstate.tstate = TSTATE_TX;
+	uip_conn->appstate.fw_reset_pending = FW_UPDATE_PENDING;
+	slen = 10;
+	sent_len = 5;
+	cont_len = 0;
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 1 && loader_update_calls == 0,
+	      "a firmware upload does not rewrite the loader");
+
+	reset_calls = 0;
+	upload_loader = 1;
+	uip_conn->appstate.tstate = TSTATE_TX;
+	uip_conn->appstate.fw_reset_pending = FW_UPDATE_PENDING;
+	slen = 10;
+	sent_len = 5;
+	cont_len = 0;
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 0 && !uip_conn->appstate.fw_reset_pending,
+	      "a failed loader update keeps the switch running");
+	upload_loader = 0;
+	loader_update_calls = 0;
+	uip_conn->appstate.tstate = TSTATE_TX;
+	uip_conn->appstate.fw_reset_pending = FW_RESET_PENDING;
+	slen = 10;
+	sent_len = 5;
+	cont_len = 0;
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 1 && loader_update_calls == 0,
+	      "a plain reset does not touch the loader");
+	loader_update_ok = true;
+
+	upload_loader = 1;
+	boundary[0] = 0;
+	bindex = 0;
+	crc_final = 0xb001;
+	write_len = 0;
+	upload_settings.p = &byte;
+	upload_settings.bptr = 0;
+	upload_settings.plen = 1;
+	uptr = LDR_STAGE + 0x100;
+	uip_conn->appstate.fw_reset_pending = 0;
+	stream_upload();
+	CHECK(!uip_conn->appstate.fw_reset_pending,
+	      "a loader image of the wrong length is refused");
+	bindex = 0;
+	upload_settings.bptr = 0;
+	uptr = LDR_STAGE + LDR_LOADER_LEN;
+	loader_present_ok = false;
+	stream_upload();
+	CHECK(!uip_conn->appstate.fw_reset_pending && strstr((char *)outbuf, "no loader"),
+	      "a loader image is refused on a switch without a loader");
+	loader_present_ok = true;
+	bindex = 0;
+	upload_settings.bptr = 0;
+	uptr = LDR_STAGE + LDR_LOADER_LEN;
+	stream_upload();
+	CHECK(uip_conn->appstate.fw_reset_pending == FW_UPDATE_PENDING,
+	      "a loader image of the right length records reset intent");
+	reset_calls = 0;
+	loader_update_calls = 0;
+	uip_conn->appstate.tstate = TSTATE_TX;
+	slen = 10;
+	sent_len = 5;
+	cont_len = 0;
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	uip_flags = UIP_ACKDATA;
+	httpd_appcall();
+	CHECK(reset_calls == 1 && loader_update_calls == 1,
+	      "a loader image is installed from the staging area before the reset");
+	upload_loader = 0;
 
 	/* No verdict ACK: a later connection reuses the same slot. */
 	reset_calls = 0;
@@ -1184,7 +1276,6 @@ static void scenario_upload(const char *name, const char *part_type, int split)
 	flash_size = saved_flash_size;
 }
 
-extern uint32_t uptr;
 
 #define UPLOAD_LEN	600
 #define UPLOAD_BOUNDARY	"\r\n--XyZ"

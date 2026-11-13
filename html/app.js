@@ -363,13 +363,16 @@ var LANG = {
         t_rejected: "command rejected: {c}",
         t_failed: "failed: {c}",
         fw_title: "Firmware update",
-        fw_intro: "Upload an RTLPlayground image (512 KiB .bin). The image is staged to flash and CRC-checked; on success the switch reboots itself, re-verifies the image and applies it. The startup configuration is preserved.",
+        fw_intro: "Upload an RTLPlayground image (512 KiB .bin). The image is staged to flash and CRC-checked; on success the switch reboots itself, re-verifies the image and applies it. The startup configuration is preserved. A 16 KiB loader image is written by the running firmware before it reboots.",
         fw_upload: "Upload",
         fw_checking: "{f}: {n} bytes. Checking...",
-        fw_size_err: "size is {n}, expected 524288 (512 KiB)",
+        fw_size_err: "size is {n}, expected 524288 (512 KiB) or 16384 (16 KiB loader)",
         fw_magic_err: "missing bank header / LJMP magic: not a firmware image",
         fw_crc_err: "CRC16 check failed: corrupt image",
         fw_valid: "valid RTLPlayground image (size, magic and CRC16 OK)",
+        fw_ldr_valid: "valid loader image (size, magic and CRC16 OK)",
+        fw_ldr_d: "The running firmware rewrites the loader and then resets the switch. Do not power it off until it comes back: a loader cut off mid-write needs a flash programmer.",
+        fw_ldr_failed: "no reboot detected: writing the loader failed. Do not power off the switch, upload the loader again or check the serial console.",
         fw_q: "Upload firmware?",
         fw_other: "This image was not built for this switch ({m}): its SFP, LED and button pins may differ. Upload it only if you are sure.",
         fw_d: "On a good checksum the switch resets itself and applies the image during boot (the startup config is preserved). Do not power it off until it comes back.",
@@ -671,13 +674,16 @@ var LANG = {
         t_rejected: "コマンドが拒否されました: {c}",
         t_failed: "失敗: {c}",
         fw_title: "ファームウェア更新",
-        fw_intro: "RTLPlayground イメージ (512 KiB の .bin) をアップロードします。イメージはフラッシュに書き込まれ CRC を検証され、成功するとスイッチが自動的に再起動して再検証のうえ適用します。起動設定は保持されます。",
+        fw_intro: "RTLPlayground イメージ (512 KiB の .bin) をアップロードします。イメージはフラッシュに書き込まれ CRC を検証され、成功するとスイッチが自動的に再起動して再検証のうえ適用します。起動設定は保持されます。16 KiB のローダーイメージは、動作中のファームウェアが再起動前に書き込みます。",
         fw_upload: "アップロード",
         fw_checking: "{f}: {n} バイト。確認中...",
-        fw_size_err: "サイズが {n} です。524288 (512 KiB) が必要です",
+        fw_size_err: "サイズが {n} です。524288 (512 KiB) または 16384 (16 KiB のローダー) が必要です",
         fw_magic_err: "バンクヘッダ / LJMP マジックがありません: ファームウェアイメージではありません",
         fw_crc_err: "CRC16 検証に失敗しました: イメージが破損しています",
         fw_valid: "有効な RTLPlayground イメージです (サイズ、マジック、CRC16 OK)",
+        fw_ldr_valid: "有効なローダーイメージです (サイズ、マジック、CRC16 OK)",
+        fw_ldr_d: "動作中のファームウェアがローダーを書き換え、その後スイッチをリセットします。復帰するまで電源を切らないでください。書き込み途中で止まったローダーはフラッシュライターが必要になります。",
+        fw_ldr_failed: "再起動が検出されませんでした: ローダーの書き込みに失敗しました。電源を切らずに、ローダーを再度アップロードするかシリアルコンソールを確認してください。",
         fw_q: "ファームウェアをアップロードしますか?",
         fw_d: "チェックサムが正しければスイッチは自動的にリセットし、起動時にイメージを適用します (起動設定は保持されます)。復帰するまで電源を切らないでください。",
         fw_finishing: "フラッシュ書き込みを完了中... {s} 秒",
@@ -1055,13 +1061,16 @@ var LANG = {
         t_rejected: "命令被拒绝: {c}",
         t_failed: "失败: {c}",
         fw_title: "固件升级",
-        fw_intro: "上传 RTLPlayground 镜像 (512 KiB 的 .bin)。镜像会写入 Flash 并进行 CRC 校验；成功后交换机自动重启，再次校验并应用镜像。启动配置将被保留。",
+        fw_intro: "上传 RTLPlayground 镜像 (512 KiB 的 .bin)。镜像会写入 Flash 并进行 CRC 校验；成功后交换机自动重启，再次校验并应用镜像。启动配置将被保留。16 KiB 的加载程序镜像由正在运行的固件在重启前写入。",
         fw_upload: "上传",
         fw_checking: "{f}: {n} 字节。正在检查...",
-        fw_size_err: "大小为 {n}，应为 524288 (512 KiB)",
+        fw_size_err: "大小为 {n}，应为 524288 (512 KiB) 或 16384 (16 KiB 加载程序)",
         fw_magic_err: "缺少 bank 头 / LJMP 魔数: 不是固件镜像",
         fw_crc_err: "CRC16 校验失败: 镜像已损坏",
         fw_valid: "有效的 RTLPlayground 镜像 (大小、魔数和 CRC16 正确)",
+        fw_ldr_valid: "有效的加载程序镜像 (大小、魔数和 CRC16 正确)",
+        fw_ldr_d: "正在运行的固件会重写加载程序，然后复位交换机。在其恢复前请勿断电：写入中断的加载程序需要用编程器修复。",
+        fw_ldr_failed: "未检测到重启: 加载程序写入失败。请勿断电，重新上传加载程序或检查串口控制台。",
         fw_q: "上传固件?",
         fw_other: "此镜像并非为这台交换机（{m}）构建：其 SFP、LED 和按键引脚可能不同。只有在确认兼容的情况下才上传。",
         fw_d: "校验和正确时交换机会自动复位并在启动时应用镜像 (启动配置保留)。在其恢复前请勿断电。",
@@ -1361,13 +1370,16 @@ var LANG = {
         t_rejected: "comando rechazado: {c}",
         t_failed: "fallo: {c}",
         fw_title: "Actualización de firmware",
-        fw_intro: "Sube una imagen de RTLPlayground (512 KiB .bin). La imagen se almacena provisionalmente en flash y se comprueba con CRC; si es correcta, el switch se reinicia, vuelve a verificar la imagen y la aplica. La configuración de inicio se conserva.",
+        fw_intro: "Sube una imagen de RTLPlayground (512 KiB .bin). La imagen se almacena provisionalmente en flash y se comprueba con CRC; si es correcta, el switch se reinicia, vuelve a verificar la imagen y la aplica. La configuración de inicio se conserva. Una imagen de cargador de 16 KiB la escribe el firmware en ejecución antes de reiniciar.",
         fw_upload: "Subir",
         fw_checking: "{f}: {n} bytes. Comprobando...",
-        fw_size_err: "el tamaño es {n}, se esperaban 524288 (512 KiB)",
+        fw_size_err: "el tamaño es {n}, se esperaban 524288 (512 KiB) o 16384 (cargador de 16 KiB)",
         fw_magic_err: "falta la cabecera de banco / magia LJMP: no es una imagen de firmware",
         fw_crc_err: "comprobación CRC16 fallida: imagen corrupta",
         fw_valid: "imagen de RTLPlayground válida (tamaño, magia y CRC16 correctos)",
+        fw_ldr_valid: "imagen de cargador válida (tamaño, magia y CRC16 correctos)",
+        fw_ldr_d: "El firmware en ejecución reescribe el cargador y luego reinicia el switch. No lo apagues hasta que vuelva: un cargador interrumpido a mitad de escritura necesita un programador de flash.",
+        fw_ldr_failed: "no se detectó reinicio: falló la escritura del cargador. No apagues el switch, vuelve a subir el cargador o revisa la consola serie.",
         fw_q: "¿Subir firmware?",
         fw_d: "Si la suma de comprobación es correcta, el switch se reinicia y aplica la imagen durante el arranque (la configuración de inicio se conserva). No lo apagues hasta que vuelva.",
         fw_finishing: "terminando escritura en flash... {s} s",
@@ -1791,13 +1803,16 @@ var LANG = {
         t_rejected: "commandes rejetées: {c}",
         t_failed: "échecs: {c}",
         fw_title: "Mise à jour du micro-logiciel",
-        fw_intro: "Charge une image RTLPlayground (512 KiB .bin). L'image est envoée en mémoire flash, analysée et sa somme de contrôle est vérifiée; en cas de succès le commutateur va redémarrer, re-verifiez l'image et appliquez-là. LA configuration de démarrage est conservée.",
+        fw_intro: "Charge une image RTLPlayground (512 KiB .bin). L'image est envoée en mémoire flash, analysée et sa somme de contrôle est vérifiée; en cas de succès le commutateur va redémarrer, re-verifiez l'image et appliquez-là. LA configuration de démarrage est conservée. Une image de chargeur de 16 KiB est écrite par le firmware en cours avant le redémarrage.",
         fw_upload: "Charger",
         fw_checking: "{f}: {n} bytes. Vérification...",
-        fw_size_err: "la taille est {n} alors que nous attendons 524288 (512 KiB)",
+        fw_size_err: "la taille est {n} alors que nous attendons 524288 (512 KiB) ou 16384 (chargeur de 16 KiB)",
         fw_magic_err: "Entête de banque de donnée manquant / contrôle LJMP: ce n'est pas une image de firmware",
         fw_crc_err: "Somme de contrôle erronée: image corrompue",
         fw_valid: "Image RTLPlayground valide (taille, LJMP et somme de contrôle OK)",
+        fw_ldr_valid: "image de chargeur valide (taille, LJMP et somme de contrôle OK)",
+        fw_ldr_d: "Le firmware en cours réécrit le chargeur puis redémarre le commutateur. Ne coupez pas l'alimentation avant son retour : un chargeur interrompu pendant l'écriture nécessite un programmateur de flash.",
+        fw_ldr_failed: "Pas de redémarrage détecté : l'écriture du chargeur a échoué. Ne coupez pas l'alimentation, chargez à nouveau le chargeur ou vérifiez la console série.",
         fw_q: "Chargement du firmware?",
         fw_other: "Cette image n'a pas été prévue pour ce commutateur({m}): La puce, les LED et les boouton peuvent être différents. Poursuivez seulement si vous êtes sûrs de vous.",
         fw_d: "Si la somme de contrôle est correcte, le commutateur va redémarrer tout seul et charger la nouvelle image lors du démarrage (la configuration est préservée). Ne pas éteindre l'appareil avant que les voyants ne s'éteignent.",
@@ -2178,13 +2193,16 @@ var LANG = {
         t_rejected: "Befehl abgelehnt: {c}",
         t_failed: "fehlgeschlagen: {c}",
         fw_title: "Firmware-Update",
-        fw_intro: "Ein RTLPlayground-Image hochladen (.bin, 512 KiB). Das Image wird im Flash abgelegt und per CRC geprüft; ist es in Ordnung, startet der Switch neu, prüft das Image erneut und übernimmt es. Die Startkonfiguration bleibt erhalten.",
+        fw_intro: "Ein RTLPlayground-Image hochladen (.bin, 512 KiB). Das Image wird im Flash abgelegt und per CRC geprüft; ist es in Ordnung, startet der Switch neu, prüft das Image erneut und übernimmt es. Die Startkonfiguration bleibt erhalten. Ein 16-KiB-Loader-Image schreibt die laufende Firmware vor dem Neustart.",
         fw_upload: "Hochladen",
         fw_checking: "{f}: {n} Bytes. Wird geprüft...",
-        fw_size_err: "Grösse ist {n}, erwartet 524288 (512 KiB)",
+        fw_size_err: "Grösse ist {n}, erwartet 524288 (512 KiB) oder 16384 (16-KiB-Loader)",
         fw_magic_err: "Bank-Header / LJMP-Kennung fehlt: kein Firmware-Image",
         fw_crc_err: "CRC16-Prüfung fehlgeschlagen: Image beschädigt",
         fw_valid: "gültiges RTLPlayground-Image (Grösse, Kennung und CRC16 in Ordnung)",
+        fw_ldr_valid: "gültiges Loader-Image (Grösse, Kennung und CRC16 in Ordnung)",
+        fw_ldr_d: "Die laufende Firmware schreibt den Loader neu und startet den Switch danach neu. Nicht ausschalten, bis er zurück ist: ein beim Schreiben unterbrochener Loader braucht einen Flash-Programmer.",
+        fw_ldr_failed: "kein Neustart erkannt: Das Schreiben des Loaders ist fehlgeschlagen. Den Switch nicht ausschalten, den Loader erneut hochladen oder die serielle Konsole prüfen.",
         fw_q: "Firmware hochladen?",
         fw_other: "Dieses Image wurde nicht für diesen Switch ({m}) gebaut: SFP-, LED- und Tasten-Pins können abweichen. Nur hochladen, wenn du sicher bist.",
         fw_d: "Ist die Prüfsumme korrekt, startet der Switch neu und übernimmt das Image beim Hochfahren (die Startkonfiguration bleibt erhalten). Nicht vom Strom trennen, bis er wieder erreichbar ist.",
@@ -5243,7 +5261,8 @@ $("saveBtn").addEventListener("click", function() {
 });
 
 var fwBuf = null,
-    fwOther = false;
+    fwOther = false,
+    fwLoader = false;
 // Every image carries its machine name as a NUL-terminated string, the same
 // one the running switch reports as hw_ver: an image without it was built
 // for another board (SFP, LED and button pins differ between machines).
@@ -5264,6 +5283,7 @@ $("fwfile").addEventListener("change", function() {
     var f = this.files[0];
     fwBuf = null;
     fwOther = false;
+    fwLoader = false;
     $("fwup").disabled = true;
     $("fwinfo").textContent = "";
     if (!f) return;
@@ -5275,7 +5295,7 @@ $("fwfile").addEventListener("change", function() {
     f.arrayBuffer().then(function(buf) {
         var u = new Uint8Array(buf),
             msg = null;
-        if (u.length !== 524288) msg = t("fw_size_err", {
+        if (u.length !== 524288 && u.length !== 16384) msg = t("fw_size_err", {
             n: u.length
         });
         else if (u[0] !== 0x00 || u[1] !== 0x40 || u[2] !== 0x02) msg = t("fw_magic_err");
@@ -5292,8 +5312,9 @@ $("fwfile").addEventListener("change", function() {
             return;
         }
         fwBuf = f;
-        fwOther = !fwForThisSwitch(u);
-        info.innerHTML = '<span style="color:var(--ok)">\u2713 ' + esc(t("fw_valid")) + "</span>" +
+        fwLoader = u.length === 16384;
+        fwOther = !fwLoader && !fwForThisSwitch(u);
+        info.innerHTML = '<span style="color:var(--ok)">\u2713 ' + esc(t(fwLoader ? "fw_ldr_valid" : "fw_valid")) + "</span>" +
             (fwOther ? '<br><span style="color:var(--warn)">\u26a0 ' + esc(t("fw_other", {
                 m: S.info.hw_ver
             })) + "</span>" : "");
@@ -5304,7 +5325,7 @@ $("fwup").addEventListener("click", function() {
     if (!fwBuf) return;
     confirmModal(t("fw_q"), (fwOther ? t("fw_other", {
         m: S.info.hw_ver
-    }) + " " : "") + t("fw_d"), function() {
+    }) + " " : "") + t(fwLoader ? "fw_ldr_d" : "fw_d"), function() {
         var form = new FormData();
         form.append("uploadedfile", fwBuf, fwBuf.name);
         var xhr = new XMLHttpRequest();
@@ -5352,7 +5373,7 @@ $("fwup").addEventListener("click", function() {
             settle(function() {
                 if (xhr.status === 200) {
                     st.textContent = t("fw_verified");
-                    fwSettle(st, true);
+                    fwSettle(st, true, fwLoader);
                 } else {
                     var why = (xhr.responseText || "").trim().split("\n")[0];
                     st.textContent = "\u2715 " + t("fw_rejected") + " (HTTP " + xhr.status + (why ? ": " + why : "") + ")";
@@ -5370,7 +5391,7 @@ $("fwup").addEventListener("click", function() {
                 fwSettle(st, false);
             })
         };
-        xhr.open("POST", "/upload");
+        xhr.open("POST", fwLoader ? "/loader" : "/upload");
         xhr.send(form);
     });
 });
@@ -5378,7 +5399,7 @@ $("fwup").addEventListener("click", function() {
  * reset is still pending. Without a verdict an early reply means no reboot
  * happened, i.e. the image was rejected. Raw fetch: a 401 from the fresh
  * boot still counts as "the switch is back". */
-function fwSettle(st, knownGood) {
+function fwSettle(st, knownGood, loader) {
     var waited = 3,
         down = false;
 
@@ -5392,9 +5413,9 @@ function fwSettle(st, knownGood) {
             cache: "no-store"
         }).then(function() {
             clearTimeout(to);
-            if (!down && waited <= 9) {
-                if (!knownGood) {
-                    st.textContent = "\u2715 " + t("fw_noreboot");
+            if (!down && (loader || waited <= 9)) {
+                if (!knownGood || waited > 30) {
+                    st.textContent = "\u2715 " + t(loader ? "fw_ldr_failed" : "fw_noreboot");
                     $("fwup").disabled = false;
                     return;
                 }

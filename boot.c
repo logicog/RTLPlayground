@@ -17,10 +17,13 @@
 #include "phy.h"
 #include "boot.h"
 #include "timer.h"
+#include "loader/layout.h"
 
 extern __code const struct machine machine;
 extern __xdata struct machine_runtime machine_detected;
 extern __xdata uint8_t sfr_data[4];
+extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
+extern __xdata struct flash_region_t flash_region;
 #define RTL8224_RELEASE_TICKS (SYS_TICK_HZ * 5 / 2)
 #define BOOT_HOLD_MIN_TICKS (10 * SYS_TICK_HZ)
 #define BOOT_HOLD_MAX_TICKS (30 * SYS_TICK_HZ)
@@ -483,4 +486,126 @@ void set_hostname_default(void) __banked
 	hostname[18] = hex[uip_ethaddr.addr[5] >> 4];
 	hostname[19] = hex[uip_ethaddr.addr[5] & 0xf];
 	hostname[20] = NUL;
+}
+
+
+static __xdata uint8_t loader_boots;
+
+static bool loader_read_bootcnt(void)
+{
+	flash_region.addr = LDR_BOOTCNT;
+	flash_region.len = 64;
+	flash_read_bulk(flash_buf);
+	return flash_buf[0] == 'B' && flash_buf[1] == 'C';
+}
+
+bool loader_recovery(void) __banked
+{
+	if (!loader_read_bootcnt())
+		return false;
+	for (loader_boots = 2; loader_boots < 64 && !flash_buf[loader_boots]; loader_boots++);
+	return loader_boots - 2 > LDR_RECOVERY_BOOTS;
+}
+
+void loader_confirm(void) __banked
+{
+	if (!loader_read_bootcnt())
+		return;
+	flash_region.addr = LDR_BOOTCNT;
+	flash_sector_erase();
+}
+
+static bool loader_meta(uint32_t a)
+{
+	flash_region.addr = a;
+	flash_region.len = 4;
+	flash_read_bulk(flash_buf);
+	return flash_buf[0] == 'R' && flash_buf[1] == 'T' && flash_buf[2] == 'L' && flash_buf[3] == 'B';
+}
+
+static bool loader_staged_ok(void)
+{
+	uint16_t a;
+	uint16_t i;
+	uint16_t c = 0;
+	uint8_t k;
+
+	for (a = 0; a < LDR_LOADER_LEN; a += FLASH_BUF_SIZE) {
+		flash_region.addr = LDR_STAGE + a;
+		flash_region.len = FLASH_BUF_SIZE;
+		flash_read_bulk(flash_buf);
+		for (i = 0; i < FLASH_BUF_SIZE; i++) {
+			c ^= flash_buf[i];
+			for (k = 0; k < 8; k++)
+				c = c & 1 ? (c >> 1) ^ 0xa001 : c >> 1;
+		}
+	}
+	return c == 0xb001;
+}
+
+static bool loader_same(uint32_t src)
+{
+	uint16_t a;
+	uint16_t i;
+
+	for (a = 0; a < LDR_LOADER_LEN; a += FLASH_BUF_SIZE / 2) {
+		flash_region.addr = a;
+		flash_region.len = FLASH_BUF_SIZE / 2;
+		flash_read_bulk(flash_buf);
+		flash_region.addr = src + a;
+		flash_region.len = FLASH_BUF_SIZE / 2;
+		flash_read_bulk(flash_buf + FLASH_BUF_SIZE / 2);
+		for (i = 0; i < FLASH_BUF_SIZE / 2; i++) {
+			if (flash_buf[i] != flash_buf[FLASH_BUF_SIZE / 2 + i])
+				return false;
+		}
+	}
+	return true;
+}
+
+bool loader_present(void) __banked
+{
+	return loader_meta(LDR_META);
+}
+
+bool loader_update(void) __banked
+{
+	uint8_t tries;
+	uint16_t a;
+	uint32_t src = LDR_STAGE;
+
+	if (!loader_meta(LDR_META) || !loader_staged_ok())
+		return true;
+	flash_region.addr = src;
+	flash_region.len = 2;
+	flash_read_bulk(flash_buf);
+	if (flash_buf[0] != 0x00 || flash_buf[1] != 0x40 || loader_same(src))
+		return true;
+
+	print_string("Updating the loader\n");
+	flash_init(0);
+	for (tries = 0; tries < 3; tries++) {
+		for (a = 0; a < LDR_LOADER_LEN; a += FLASH_BUF_SIZE) {
+			flash_region.addr = src + a;
+			flash_region.len = FLASH_BUF_SIZE;
+			flash_read_bulk(flash_buf);
+			flash_region.addr = a;
+			if (!(a & 0xfff))
+				flash_sector_erase();
+			flash_region.addr = a;
+			flash_region.len = FLASH_BUF_SIZE;
+			flash_write_bytes(flash_buf);
+		}
+		if (loader_same(src)) {
+			print_string("Loader updated\n");
+			for (a = 0; a < LDR_LOADER_LEN; a += 0x1000) {
+				flash_region.addr = LDR_STAGE + a;
+				flash_sector_erase();
+			}
+			return true;
+		}
+	}
+	flash_init(machine.flash_sio ? 0 : 1);
+	print_string("Loader update failed, upload the image again before a reset\n");
+	return false;
 }

@@ -1,0 +1,32 @@
+#ifndef LOADER_LAYOUT_H
+#define LOADER_LAYOUT_H
+
+#define LDR_DATA		0x3a000UL
+#define LDR_DATA_END		0x40000UL
+
+#define LDR_BOOTCNT		0x3a000UL
+#define LDR_META		0x3b000UL
+#define LDR_SLOT		0x3c000UL
+#define LDR_HOME_LEN		0x3ffe
+
+#define LDR_ALIAS_FLASH		0x3800
+#define LDR_ALIAS_LEN		0x800
+#define LDR_ALIAS_RAM		(LDR_ALIAS_FLASH - 2)
+#define LDR_SLOT_BUF		0x4000
+
+#define LDR_APP_A		0x04000UL
+#define LDR_APP_A_END		0x3a000UL
+#define LDR_APP_B		0x40000UL
+#define LDR_APP_B_END		0x70000UL
+
+#define LDR_UPLOAD		0x80000UL
+#define LDR_STAGE		0x71000UL
+#define LDR_LOADER_LEN		0x4000
+#define LDR_IMAGE_LEN		0x80000UL
+
+#define LDR_LAYOUT		1
+
+#define LDR_RECOVERY_BOOTS	3
+#define LDR_CONFIRM_S		15
+
+#endif

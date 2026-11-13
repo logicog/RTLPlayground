@@ -258,6 +258,7 @@ void flash_read_bulk(__xdata uint8_t *dst)
 }
 
 
+#ifndef LDR_BUILD
 void flash_read_security(void)
 {
 	if (!flash_region.len)
@@ -298,6 +299,7 @@ void flash_read_security(void)
 
 	flash_configure_mmio();
 }
+#endif
 
 
 void flash_sector_erase(void)

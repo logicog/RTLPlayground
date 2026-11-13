@@ -9,6 +9,8 @@
 #include "timer.h"
 #include "sessions.h"
 #include "html_data.h"
+#include "boot.h"
+#include "loader/layout.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -66,6 +68,8 @@ __xdata uint16_t content_length;
 __xdata uint16_t bindex; // Current index into the boundary
 __xdata uint8_t verify_crc;
 __xdata uint32_t max_upload;
+__xdata uint32_t upload_end;
+__xdata uint8_t upload_loader;
 __xdata uint16_t short_parsed;
 
 #define POSTBODY_CMD	1
@@ -470,13 +474,18 @@ uint8_t stream_upload(void)
 				// Both bodies are 33 bytes; Content-Length lets the
 				// browser complete the response without waiting for
 				// the connection close (which a reset would swallow)
-				if (crc_final == 0xb001) {
+				if (crc_final == 0xb001 && upload_loader && uptr == LDR_STAGE + LDR_LOADER_LEN && !loader_present()) {
+					print_string("No loader to update\n");
+					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 29\r\n"
+						"Content-Type: text/plain\r\n\r\n"
+						"NO: no loader on this switch\n");
+				} else if (crc_final == 0xb001 && (!upload_loader || uptr == LDR_STAGE + LDR_LOADER_LEN)) {
 					print_string("Checksum OK.\nUpload to flash done, will reset!\n");
 					slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 33\r\n"
 						"Content-Type: text/plain\r\n\r\n"
 						"OK: checksum verified, rebooting\n");
 					// Reset once the response is fully ACKed
-					s->fw_reset_pending = 1;
+					s->fw_reset_pending = FW_UPDATE_PENDING;
 				} else {
 					print_string("Checksum incorrect! Aborting.\n");
 					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 33\r\n"
@@ -514,7 +523,7 @@ uint8_t stream_upload(void)
 				 * else bounds uptr: a body whose closing boundary never arrives
 				 * keeps writing, and on a flash exactly this size the address
 				 * wraps onto the running image at zero. */
-				if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+				if (uptr >= upload_end) {
 					print_string("Upload runs past the image area! Aborting.\n");
 					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
 						"Content-Type: text/plain\r\n\r\n"
@@ -791,9 +800,24 @@ void handle_post(uint16_t body_off)
 			}
 			print_string("Firmware upload started.");
 			config_upload = 0;
+			upload_loader = 0;
 			uptr = FIRMWARE_UPLOAD_START;
+			upload_end = (uint32_t)FIRMWARE_UPLOAD_START * 2;
 			verify_crc = 1;
 			max_upload = 1024576;
+			pre_acc = 0;
+		} else if (is_word(request_path, "loader")) {
+			if (!authenticated) {
+				send_unauthorized();
+				return;
+			}
+			print_string("Loader upload started.");
+			config_upload = 0;
+			upload_loader = 1;
+			uptr = LDR_STAGE;
+			upload_end = LDR_STAGE + LDR_LOADER_LEN;
+			verify_crc = 1;
+			max_upload = LDR_LOADER_LEN + 0x1000;
 			pre_acc = 0;
 		} else if (is_word(request_path, "config")) {
 			if (!authenticated) {
@@ -813,7 +837,8 @@ void handle_post(uint16_t body_off)
 		dbg_string("Multipart request\n");
 	}
 
-	if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "config")) {
+	if (s->tstate == TSTATE_MULTIPART || is_word(request_path, "upload") || is_word(request_path, "loader")
+	    || is_word(request_path, "config")) {
 		dbg_string("POST upload/config request\n");
 		if (!authenticated) {
 			send_unauthorized();
@@ -938,8 +963,11 @@ void httpd_appcall(void)
 		} else if (s->fw_reset_pending) {
 			// The upload verdict has been fully ACKed by the client;
 			// now it is safe to reset and apply the staged image
-			print_string("Resetting to apply update\n");
-			reset_chip();
+			if (s->fw_reset_pending != FW_UPDATE_PENDING || !upload_loader || loader_update()) {
+				print_string("Resetting to apply update\n");
+				reset_chip();
+			}
+			s->fw_reset_pending = 0;
 		}
 	} else if (uip_newdata() && s->tstate == TSTATE_POST) {
 		if (config_upload || uip_len <= max_upload) {
@@ -1068,7 +1096,7 @@ void httpd_appcall(void)
 				slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
 			} else if (is_word(q, "/reset")) {
 				slen = strtox(outbuf, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
-				s->fw_reset_pending = 1;
+				s->fw_reset_pending = FW_RESET_PENDING;
 			} else {
 				send_not_found();
 			}
