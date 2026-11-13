@@ -1817,7 +1817,7 @@ var LANG = {
         fw_login: "Vers l'écran de connection",
         fw_rebooting: "Le commutateur redémarre...",
         fw_timeout: "Le commutateur n'est plus joignable depuis 150 s: verifiez l'alimentation ou utilisez la console série",
-        fw_toosmall: "Les mises à jour via HTTP ne sont pas prises en charge pour les mémoires flash de moins de 2 Mo"
+        fw_toosmall: "Les mises à jour via HTTP ne sont pas prises en charge pour les mémoires flash de moins de 1 Mo"
     },
     de: {
         nav_dash: "Übersicht",
