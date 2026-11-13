@@ -49,7 +49,7 @@ jobs:
         run: |
           ln -s ../branch/toolchain main/toolchain
           PATH="$(echo "$PWD"/branch/toolchain/sdcc-*/bin):$PATH"
-          cd main && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" && cp -r output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2/html_min /tmp/main/
+          cd main && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1" && cp -r output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/html_min /tmp/main/
       - name: Calculate bank growth
         run: |
           bash branch/tools/bank_occupancy.sh KP_9000_6XHML_X2 /tmp/main /tmp/branch >> "$GITHUB_STEP_SUMMARY"
