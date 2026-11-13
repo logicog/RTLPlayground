@@ -93,7 +93,7 @@ RULES = {
         WARNING, 'a machine target is named after vendor + model, not the PCB'),
     'machine-header-missing': (
         ERROR, 'machine/<MACHINE>.h exists'),
-    'machine-header-guard': (
+    'machine-header-macro': (
         ERROR, 'the include guard of machine/<MACHINE>.h is '
                  '_MACHINE_<MACHINE>_H_'),
     'machine-header-model': (
@@ -359,7 +359,7 @@ class Checker:
                      '%s: %s is missing' % (rel, header_rel), scope)
             return
         text = self.read(header_rel)
-        self.check_machine_header_guard(header_rel, machine, text, scope)
+        self.check_machine_header_macro(header_rel, machine, text, scope)
         model = re.search(r'#define\s+MACHINE_MODEL\s+"([^"]*)"', text)
         chip = re.search(r'#define\s+MACHINE_CHIPSET\s+(\w+)', text)
         if not model:
@@ -390,7 +390,7 @@ class Checker:
                      % (header_rel, chip.group(1), ', '.join(sorted(CHIPSETS))),
                      scope)
 
-    def check_machine_header_guard(self, rel, machine, text, scope):
+    def check_machine_header_macro(self, rel, machine, text, scope):
         """The include guard of machine/<MACHINE>.h names that same file.
 
         A board header is copied from the closest existing board, so a guard
@@ -401,7 +401,7 @@ class Checker:
         guard = re.search(r'^\s*#\s*ifndef\s+(\w+)', text, re.M)
         define = re.search(r'^\s*#\s*define\s+(\w+)', text, re.M)
         if not guard:
-            self.add('machine-header-guard',
+            self.add('machine-header-macro',
                      '%s: has no #ifndef include guard, expected %s'
                      % (rel, expected), scope)
             return
@@ -411,7 +411,7 @@ class Checker:
         for found in named:
             if found == expected:
                 continue
-            self.add('machine-header-guard',
+            self.add('machine-header-macro',
                      '%s: include guard %s does not match the file name, '
                      'expected %s' % (rel, found, expected), scope)
             return
