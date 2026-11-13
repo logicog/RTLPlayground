@@ -166,6 +166,13 @@ var LANG = {
         stp_ctrx: "TC received",
         stp_cttx: "TC sent",
         stp_cage: "Last BPDU [s]",
+        rl_title: "Loop detection",
+        rl_h: "RLDP",
+        rl_check: "Check",
+        rl_ok: "no loop",
+        rl_loop: "loop",
+        rl_blocked: "blocked, {n} s",
+        rl_note: "Checked ports send test frames. A port whose frames come back is blocked for 60 s and then checked again; of two looped ports only the higher numbered one is blocked.",
         st_title: "Port statistics",
         st_h: "totals since boot",
         st_txg: "TX good",
@@ -2409,6 +2416,8 @@ var CONF_CMDS = [
     /^lldp\s+(on|off)$/,
     /^bw\s+(in|out)\s+\d+\s+\S+$/,
     /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
+    /^rldp\s+(on|off)$/,
+    /^rldp\s+\d{1,2}\s+(on|off)$/,
 ];
 
 function isConfCmd(line) {
@@ -3412,13 +3421,58 @@ $("stpen").addEventListener("change", function() {
 $("stpcntd").addEventListener("toggle", function() {
     if (this.open) stpLoad()
 });
-var stpPoller = new Poller(stpLoad, 3000);
+function rlLoad() {
+    return getJSON("/rldp.json").then(function(s) {
+        var en = $("rlen");
+        if (document.activeElement !== en) en.checked = !!s.on;
+        var ports = byPort(s.ports),
+            tb = $("rltable").tBodies[0];
+        var sig = ports.map(function(p) {
+            return p.portNum
+        }).join();
+        if (tb.dataset.sig !== sig) {
+            tb.dataset.sig = sig;
+            tb.innerHTML = "";
+            ports.forEach(function(p) {
+                var n = p.portNum,
+                    tr = tb.insertRow();
+                tr.insertCell().textContent = n;
+                tr.insertCell().appendChild(h("label", {
+                    class: "switch"
+                }, [
+                    h("input", {
+                        type: "checkbox",
+                        id: "rlc" + n,
+                        onchange: function() {
+                            postCmd("rldp " + n + " " + (this.checked ? "on" : "off")).then(rlLoad).catch(function() {});
+                        }
+                    }), h("i")
+                ]));
+                tr.insertCell().id = "rls" + n;
+            });
+        }
+        ports.forEach(function(p) {
+            var n = p.portNum;
+            $("rlc" + n).checked = !!p.en;
+            $("rls" + n).innerHTML = !s.on || !p.en ? "-" : p.blk ? badge(t("rl_blocked", {
+                n: p.blk
+            }), "bad") : p.loop ? badge(t("rl_loop")) : badge(t("rl_ok"), "ok");
+        });
+    }).catch(function() {});
+}
+$("rlen").addEventListener("change", function() {
+    postCmd("rldp " + (this.checked ? "on" : "off")).then(rlLoad).catch(function() {});
+});
+var stpPoller = new Poller(stpLoad, 3000),
+    rlPoller = new Poller(rlLoad, 3000);
 tabHooks.stp = {
     enter: function() {
-        stpPoller.start()
+        stpPoller.start();
+        rlPoller.start()
     },
     leave: function() {
-        stpPoller.stop()
+        stpPoller.stop();
+        rlPoller.stop()
     }
 };
 
@@ -5022,7 +5076,7 @@ var CONF_OVERWRITE = [
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
     /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(rldp)\s+(on|off)$/, /^(rldp\s+\d{1,2})\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
 function mergeConf(base, texts) {
     var conf = base.slice();
