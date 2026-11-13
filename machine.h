@@ -84,6 +84,10 @@ struct sfp_port
 	uint8_t pin_tx_disable; // gpio number 0-63, 0xFF = not present
 	uint8_t sds;
 	uint8_t i2c;
+	// 0: normal SFP cage, the SerDes is configured from the module EEPROM on insertion.
+	// Otherwise an SDS_* mode (e.g. SDS_10GR): the slot is hardwired to a device with
+	// no EEPROM. The SerDes is set to this mode at boot and module detection is skipped.
+	uint8_t fixed_mode;
 };
 
 struct machine {

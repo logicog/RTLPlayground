@@ -148,6 +148,8 @@ void sfp_apply_quirks(uint8_t sfp) __banked __reentrant
 void setup_sfp_gpio(void) __banked
 {
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		if (machine.sfp_port[sfp].fixed_mode)
+			continue;
 		gpio_input_setup(machine.sfp_port[sfp].pin_detect);
 		gpio_input_setup(machine.sfp_port[sfp].pin_los);
 		gpio_output_setup(machine.sfp_port[sfp].pin_tx_disable, 0);
@@ -196,9 +198,48 @@ static bool sfp_module_read(uint8_t sfp)
 
 
 
+/* Configure the SerDes of a hardwired (fixed_mode) slot. A speed set with the
+ * "sfp <slot> <speed>" command overrides the board's default mode. */
+void sfp_fixed_apply(uint8_t sfp) __banked
+{
+	uint8_t mode = machine.sfp_port[sfp].fixed_mode;
+
+	if (sfp_speed[sfp] == SFP_SPEED_100M)
+		mode = SDS_100FX;
+	else if (sfp_speed[sfp] == SFP_SPEED_1G)
+		mode = SDS_1000BX_FIBER;
+	else if (sfp_speed[sfp] == SFP_SPEED_2G5)
+		mode = SDS_HSG;
+	else if (sfp_speed[sfp] == SFP_SPEED_10G)
+		mode = SDS_10GR;
+	sds_config(machine.sfp_port[sfp].sds, mode);
+}
+
+
+/* Bring up hardwired slots: there is no module to detect, so mark them present
+ * and configure the SerDes once. Must run after the switch core is initialized. */
+void sfp_fixed_init(void) __banked
+{
+	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		if (!machine.sfp_port[sfp].fixed_mode)
+			continue;
+		print_string("\nSFP slot "); write_char('1' + sfp); print_string(": fixed link\n");
+		sfp_pins_last &= ~(0x03 << (sfp << 2));	// Present, no LOS
+		sfp_wake_pending[sfp] = 0;
+		sfp_options[sfp] = 0;			// No EEPROM, no DDM
+		sfp_module_vendor[sfp][0] = NUL;
+		sfp_module_model[sfp][0] = NUL;
+		sfp_module_serial[sfp][0] = NUL;
+		sfp_fixed_apply(sfp);
+	}
+}
+
+
 void handle_sfp(void) __banked
 {
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
+		if (machine.sfp_port[sfp].fixed_mode)
+			continue;
 		if (!gpio_pin_test(machine.sfp_port[sfp].pin_detect)) {
 			if (sfp_pins_last & (0x1 << (sfp << 2))) {
 				sfp_pins_last &= ~(0x01 << (sfp << 2));

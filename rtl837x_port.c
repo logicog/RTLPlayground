@@ -527,7 +527,9 @@ void port_stats_print(void) __banked
 			else
 				print_string("Off\t");
 		} else {  // An SFP Module
-			if (!gpio_pin_test(machine.sfp_port[machine.is_sfp[i]-1].pin_detect)) {
+			if (machine.sfp_port[machine.is_sfp[i]-1].fixed_mode) {
+				print_string("FIXED\t");
+			} else if (!gpio_pin_test(machine.sfp_port[machine.is_sfp[i]-1].pin_detect)) {
 				print_string("SFP IN\t");
 			} else {
 				print_string("NO SFP\t");
