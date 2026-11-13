@@ -129,6 +129,19 @@
 #define RTL837X_REG_GPIO_00_31_DIRECTION 0x4c
 #define RTL837X_REG_GPIO_32_63_DIRECTION 0x50
 
+// Pull-Up / Pull-Down Force Enable Registers
+#define RTL837X_REG_GPIO_00_31_PULL_EN 0x7f9c
+#define RTL837X_REG_GPIO_32_63_PULL_EN 0x7fa0
+
+// Pull-Up Registers
+#define RTL837X_REG_GPIO_00_31_PULL_UP 0x7fa4
+#define RTL837X_REG_GPIO_32_63_PULL_UP 0x7fa8
+
+// Pull-Down Registers
+#define RTL837X_REG_GPIO_00_31_PULL_DOWN 0x7fac
+#define RTL837X_REG_GPIO_32_63_PULL_DOWN 0x7fb0
+
+
 /*
  * I2C controller
  */

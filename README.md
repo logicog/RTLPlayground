@@ -58,7 +58,7 @@ device simulator is provided, which runs entirely under Linux as a local webserv
 
 Install the following particular build requisites (Debian 12/13):
 ```
-sudo apt install make gcc g++ bison flex libboost-dev patch bzip2 curl xxd python-is-python3 libjson-c-dev zlib1g-dev
+sudo apt install make gcc g++ pkg-config bison flex libboost-dev patch bzip2 curl xxd python-is-python3 libjson-c-dev zlib1g-dev
 ```
 
 The first `make` downloads SDCC 4.6.0, applies the fixes in `sdcc/` and builds it into
@@ -141,6 +141,33 @@ make MACHINE=DEFAULT_8C_1SFP CONFIG=configs/DEFAULT_8C_1SFP.txt
 ```
 `CONFIG` defaults to `config.txt`; the selected file is embedded in the image
 and changing it triggers a rebuild.
+
+To choose the output directory while keeping the automatic file name (with
+version, git hash and machine), pass `OUTPUT_DIR`:
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware
+```
+To also change the leading part of the name while keeping that automatic
+suffix, use `OUTPUT_PREFIX` (it is prepended verbatim):
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware OUTPUT_PREFIX=my-switch-
+```
+This produces `/tmp/firmware/my-switch-v<version>-<git>-<machine>.bin`.
+To set the complete file name inside `OUTPUT_DIR`, use `OUTPUT_NAME` (it replaces
+the automatic name, so the version/git suffix is not appended):
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT_DIR=/tmp/firmware OUTPUT_NAME=my-switch.bin
+```
+`OUTPUT_PREFIX` and `OUTPUT_NAME` are alternatives: use only one of them. If
+`OUTPUT_NAME` is set, `OUTPUT_PREFIX` is ignored.
+To set the complete path and file name at once, use `OUTPUT`:
+```
+make MACHINE=DEFAULT_8C_1SFP OUTPUT=/tmp/firmware/my-switch.bin
+```
+When `OUTPUT` is a custom path, `output/rtlplayground.bin` is left untouched:
+only the default build updates that symlink (and the installer uses it).
+Without overrides the image is `output/<machine>/rtlplayground-v<version>-<git>-<machine>.bin`.
+`BUILDDIR` still selects where intermediate objects and tools are written.
 
 > [!TIP]
 > You can write configuration parameters in config.txt (see below) in order your switch to get

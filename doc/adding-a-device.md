@@ -38,6 +38,7 @@ the PCB inside the casing and the photo shows where this is from.
 3. If your device's PCB is already covered then reuse the existing definition:
    - run `ls machine/pcb/<MACHINE_PCB>*.c | grep -v "_init.c"` to list the supported variants and pick the one matching your PCB
    - create the symlink `ln -s pcb/<MACHINE_PCB>.c machine/<MACHINE>.c` or `ln -s pcb/<MACHINE_PCB_EXT>.c machine/<MACHINE>.c`
+     (always this device's own PCB name, even when that PCB file is itself a symlink)
    - write `machine/<MACHINE>.h`, and symlink `_init.c` as needed (details below)
    - build with `make MACHINE=<MACHINE> CI=1` and verify on your hardware
    - when everything works, update the documentation and open a pull request.
@@ -71,7 +72,7 @@ the managed switch assumes the base name and the unmanaged has _UNMANAGED append
 | `machine/pcb/<MACHINE_PCB>.c` | the `struct machine machine` board definition |
 | `machine/pcb/<MACHINE_PCB>_init.c` | optional `machine_custom_init()` boot hook, for registers the machine definition cannot express |
 | `machine/<MACHINE>.h` | `MACHINE_MODEL` (the model string shown in the UI and the CLI) and `MACHINE_CHIPSET` (`RTL8372` or `RTL8373`, note: in the case of RTL837xN the N is omitted) |
-| `machine/<MACHINE>.c` | a symlink to the `pcb/<MACHINE_PCB>.c` file |
+| `machine/<MACHINE>.c` | a symlink to the `pcb/<MACHINE_PCB>.c` file; `MACHINE_PCB` is the PCB shown in the GUI, so it must match this device's PCB |
 | `machine/<MACHINE>_init.c` | (optional), see "Optional custom init hook" section |
 | `doc/devices/<PCB_DOC_NAME>.md` and `doc/supported_devices.md` | user-facing documentation |
 | `doc/devices/photos/<PCB_DOC_NAME>/` | Directory for holding photos of the devices |
@@ -112,9 +113,10 @@ The device product string is what the CLI or the Web-Interface will print to ide
 
 ## Step 2: the board definition
 
-`machine/<MACHINE>.c` is a symlink to `machine/pcb/<MACHINE_PCB>.c` which starts
-with the shared prelude and then defines the single `machine` object. Copy the
-closest existing board and adjust it — do not start from a blank file, the field
+`machine/<MACHINE>.c` is a symlink to `machine/pcb/<MACHINE_PCB>.c`. This is
+the definition of this unique machine's PCB, even when that PCB file is itself
+a symlink to a shared definition. If you are unable to find an exact match, copy
+the closest existing board and adjust it; do not start from a blank file, the field
 meanings are easier to see in a real example. The best choice is usually a device
 that has the same number and type of Ethernet ports and the same number of SFP+
 cages.
@@ -196,6 +198,18 @@ pair is caught at compile time: SDCC reports
 `.i2c` line, because the macro deliberately turns an invalid bus number into an
 array of size 0.
 
+> [!TIP]
+> Instead of guessing the `led_sets` and `led_mux` of a new definition, extract
+> them from the **stock** firmware *before* you flash: run
+> `tools/led_gpio_utils/dec_leds_from_rtl837x_uart.py` against the switch while
+> it still has its original firmware. It reads the LED registers over the
+> console and prints `.led_mux`, `.led_sets` and the set each port uses,
+> formatted to paste into the board definition. This has to happen first because
+> RTLPlayground overwrites these registers at boot with the values from the
+> build that is flashed, so once it is running they no longer show the vendor
+> settings. See `tools/led_gpio_utils/README.md` for the options (`-p` port,
+> `--gpio`, ...).
+
 ### Reusing an existing definition
 
 If the new PCB board is electrically identical to one that already exists — same
@@ -206,7 +220,10 @@ apart:
 ```
 ln -s EXISTING_PCB.c machine/pcb/MY_PCB_BOARD_1_0.c
 ```
-Then `ln -s pcb/MY_PCB_BOARD_1_0.c machine/MY_BOARD_1_0.c`.
+Then `ln -s pcb/MY_PCB_BOARD_1_0.c machine/MY_BOARD_1_0.c`; note the second
+link names the new PCB, not `EXISTING_PCB.c`, so the chain is two steps, never
+a direct link to the shared definition.[^2]
+
 The new board still needs `machine/MY_BOARD_1_0.h`
 with its own `MACHINE_MODEL` and `MACHINE_CHIPSET`: `MACHINE_MODEL` is
 what distinguishes the products, and `MACHINE_CHIPSET` must match the SoC of
@@ -216,6 +233,16 @@ and the six `KEEPLINK_KP_9000_*` revision variants.
 
 Two files that differ only in whitespace or comments are duplicates and should
 be collapsed this way.
+
+[^2]: Always link `machine/<MACHINE>.c` to `machine/pcb/<MACHINE_PCB>.c`, the
+    PCB name belonging to this device, never past it to the file that PCB
+    currently resolves to, even though both links build the same firmware. First,
+    the Makefile runs `readlink machine/$(MACHINE).c` (one non-recursive step)
+    and the Web interface shows that link text as `pcb_ver`, so the GUI must name
+    this machine's PCB, not the resolved target. Second, if `pcb/<MACHINE_PCB>.c`
+    later turns out to be misconfigured, it can be replaced by a regular file and
+    fixed once for every machine linked to it; a machine linked straight past it
+    would keep the wrong configuration.
 
 ### Optional custom init hook
 
@@ -263,6 +290,7 @@ tools for that.
 Once the board has been tested on hardware:
 
 1. Add a row to the table in [Supported devices](supported_devices.md).
+   Keep the table sorted by brand and then type, both case insensitive.
 2. Add `doc/devices/<PCB_DOC_NAME>.md` describing the board, the build target
    (`make MACHINE=MY_BOARD_1_0`), what works and what is unverified, plus
    photos and the PCB silkscreen marking.

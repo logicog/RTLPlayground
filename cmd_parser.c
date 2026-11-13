@@ -299,7 +299,7 @@ uint8_t cmd_parse_port_cpu_separator(uint8_t idx) {
 
 	if (ret == 0 && cmd_buffer[idx] == '0') {
 		ret = 1;
-		atoi_results_u8 = CPU_PORT;
+		atoi_results_u8 = CPU_LOGICAL_PORT;
 	}
 
 	if (ret != 0) {
@@ -461,8 +461,8 @@ static uint8_t name_char(uint8_t c)
 
 
 // Sets the management MAC from a "mac <aa:bb:cc:dd:ee:ff>" command (or prints
-// the current one with a bare "mac"). Refuses blank/multicast/locally
-// administered/all-zero-OUI addresses so the running MAC stays reachable, and
+// the current one with a bare "mac"). Refuses blank/multicast/all-zero-OUI
+// addresses so the running MAC stays reachable, and
 // re-registers the static L2 management entry so the change applies without a
 // reboot. As a regular command a "mac ..." line in the startup config applies
 // on every boot (execute_config runs before the final static L2 entry).
@@ -478,8 +478,8 @@ void parse_mac_cmd(void)
 		cmd_error("mac [<aa:bb:cc:dd:ee:ff>]\n");
 		return;
 	}
-	if ((mac_parse_result[0] & 0x03) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
-		cmd_error("the MAC must be unicast and globally administered\n");
+	if ((mac_parse_result[0] & 0x01) || ((mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]) == 0)) {
+		cmd_error("the MAC must be unicast with a non-zero first three bytes\n");
 		return;
 	}
 	if (memcmp(mac_parse_result, uip_ethaddr.addr, 6) == 0) {

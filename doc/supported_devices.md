@@ -9,6 +9,7 @@ The following devices have been tested and are fully working:
 | DOTX     | DX-1009N        | No      | [PCB-SWTG118AS-V1.0-11430](devices/PCB-SWTG118AS-V1.0-11430.md)                       | 0.5M  | 8 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/PCB-K0402W-U13-V2.0.md)                                 | 2M    | 4 + 2 |
 | Goalake  | IG108           | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
+| Goalake  | IG204           | No      | [PB-2131](devices/PB-2131.md)                                               | 4M    | 4 + 2 |
 | GoodTop  | GT-ST018M       | Yes     | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 2M    | 8 + 1 |
 | GoodTop  | GT-ST024M       | Yes     | [PCB-SWTG024AS-A V2.0.1_19650](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)               | 2M    | 4 + 2 |
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5GPOE-V1.2.md)                                   | 8M    | 8 + 1 |
@@ -20,27 +21,32 @@ The following devices have been tested and are fully working:
 | hongyavision | HYWS-SGT0204S | No    | [2G5F4_10G2_V1.01](devices/2G5F4_10G2_V1.01.md)                                       | 0.5M  | 4 + 2 |
 | hongyavision | LG-SG5T1    | No      | [PCB-SWTG024AS-V2.0_16895](devices/PCB-SWTG024AS-V2.0_16895.md)                       | 0.5M  | 5 + 1 |
 | Horaco   | HC-SWTG124AS    | Yes     | [PCB-SWTG024AS-A-V2.0.1_19650](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)               | 2M    | 4 + 2 |
+| Horaco   | HC-SWTG218AS    | Yes     | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 2M    | 8 + 1 |
 | Horaco   | HC-SWTGW215AS   | Yes     | [SWTG024AS-A-V2.0.1_19650_5C_1SFP](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)           | 2M    | 5 + 1 |
 | Horaco   | HC-SWTGW218AS   | Yes     | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               |       | 8 + 1 |
 | Horaco   | HC-SWTGW218AS   | Yes     | [SWTG118AS-V2.1](devices/PCB-SWTG118AS-V2.0-16029.md)                                 | 2M    | 8 + 1 |
-| Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](devices/PCB-SL310S-4T1T1X-V1.0.1-24107.md)           | 2M    | 5 + 1 |
-| Horaco   | ZX310S-4T2XT    | Yes     | [PCB-310S-4T2XT-V1.0.0_22273](devices/PCB-310S-4T2XT-V1.0.0_22273.md)                 | 2M    | 6     |
 | Horaco   | ZX-SG4T2        | No      | [SWTG024AS-A-V2.0.1_19650_4C_2SFP](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)           | 0.5M  | 4 + 2 |
 | Horaco   | ZX-SWTG124AS    | Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
-| keepLINK | KP-9000-6XH-X2  | No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
-| keepLINK | KP-9000-6XHML-X2| No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
+| Horaco   | ZX-SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                       | 2M    | 8 + 1 |
+| Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](devices/PCB-SL310S-4T1T1X-V1.0.1-24107.md)           | 2M    | 5 + 1 |
+| Horaco   | ZX310S-4T2XT    | Yes     | [PCB-310S-4T2XT-V1.0.0_22273](devices/PCB-310S-4T2XT-V1.0.0_22273.md)                 | 2M    | 6     |
+| keepLINK | KP-9000-6XH-X2  | No      | [2M-PCB43-V1.2](devices/2M-PCB43-V1.2.md)                                             |       | 4 + 2 |
+| keepLINK | KP-9000-6XH-X2  | No      | [2M-PCB43-V2.1](devices/2M-PCB43-V2.1.md)                                             |       | 4 + 2 |
+| keepLINK | KP-9000-6XHML-X2| Yes     | [2M-PCB43-V1.2](devices/2M-PCB43-V1.2.md)                                             |       | 4 + 2 |
+| keepLINK | KP-9000-6XHML-X2| Yes     | [2M-PCB43-V2.1](devices/2M-PCB43-V2.1.md)                                             |       | 4 + 2 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](devices/2M-PCB23-V2.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3.1.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.2](devices/2M-PCB23-V3.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHP-X  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 4M    | 8 + 1 |
+| keepLINK | KP-9000-9XHPML-X | Yes    | [2M-PCB51-ML-V1.2](devices/2M-PCB51-ML-V1.2.md)                                       | 2M    | 8 + 1 |
 | LIANGUO  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/2G5F_20G_V1.01.md)                                           | 0.5M  | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 0.5M  | 4 + 2 |
 | LIANGUO  | ZX-SWTGW215AS   | Yes     | [PCB-SWTG115AS-V2.0 / PCB-SWTG115AS-V2.1](devices/PCB-SWTG115AS-V2.0-16030.md)        | 2M    | 5 + 1 |
 | Mercusys | MS105GS-M2 V2.0 | No      | [2000000842](devices/2000000842.md)                                                     | 2M    | 5     |
 | MokerLink| 2G040210GSM     | Yes     | [2M-PCB43-V1.1](devices/2M-PCB43-V1.1.md)                                             |       | 4 + 2 |
+| MokerLink| 2G08110GSN      | No      | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 0.5M  | 8 + 1 |
 | MokerLink| POE-2G080110GS  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 4M    | 8 + 1 |
 | MokerLink| ZX_SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.0-16029](devices/PCB-SWTG118AS-V2.0-16029.md)                       | 2M    | 8 + 1 |
-| MokerLink| 2G08110GSN      | No      | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 0.5M  | 8 + 1 |
 | Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
 | RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)             | 2M    | 8 + 1 |
@@ -51,33 +57,34 @@ The following devices have been tested and are fully working:
 | Sodola   | SL-SWTG124AS-D  | Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 2M    | 4 + 2 |
 | Sodola   | SL-SWTGW215AS-D | Yes     | [SWTG115AS-V2.1-17443](devices/PCB-SWTG115AS-V2.1-17443.md)                           | 2M    | 5 + 1 |
 | Sodola   | SL902-SWTG024AS | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
+| Sodola   | SL902-SWTGW124AS| Yes     | [PCB-SWTG024AS-V2.1.1_19023](devices/PCB-SWTG024AS-V2.1.1_19023.md) | 2M    | 4 + 2 |
 | Sodola   | SL902-SWTGW215AS| Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 5 + 1 |
-| Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                                         |       | 4 + 2 |
+| Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                               |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1_REV.A1](devices/270-NB1-MS206B004A1_REV.A1.md)                   | 2M    | 4 + 2 |
-| XikeStor | SKS3200M-4GPY2XF| Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
-| XikeStor | SKS3200-8E1X    | Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                           | 2M    | 8 + 1 |
-| XikeStor | SKS3200M-8GPY1XF| Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                           | 2M    | 8 + 1 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
+| XikeStor | SKS3200-8E1X    | Yes     | [PCB-SWTG018AS-V2.1.0_19030](devices/PCB-SWTG018AS-V2.1.0_19030.md)                   | 2M    | 8 + 1 |
+| XikeStor | SKS3200M-4GPY2XF| Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
+| XikeStor | SKS3200M-8GPY1XF| Yes     | [SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                           | 2M    | 8 + 1 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402W-V1.0](devices/PCB-K0402W-V1.0.md)                                         | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         | 2M    | 4 + 2 |
 | YuanLey  | YS25-0402M      | Yes     | [SIRIVISION_S25G2206FP_V1_1](devices/S25G2206FP_V1.1.md)                              | 2M    | 4 + 2 |
-| Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | ZoeRax   | HG0402XG        | No      | [HG0402XG_V1.1](devices/HG0402XG_V1.1.md)                                             | 1M    | 4 + 2 |
+| Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 
 For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label
 alone does not identify the wiring.
 
-Other device based on RTL8272/3 that may work are described here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide](https://github.com/up-n-atom/SWTG118AS)
+Other device based on RTL8372/3 that may work are described here: [Up-N-Atoms 2.5 GBit RTL Switch hacking guide](https://github.com/up-n-atom/SWTG118AS)
 
-Many of the RTL8272/3 devices come in versions with PoE support. The RTLPlayground usually also
+Many of the RTL8372/3 devices come in versions with PoE support. The RTLPlayground usually also
 works on these, however, no support for configuring PoE is provided, simply because these
 devices usually just provide PoE on all ports without further configuration possibilitites.
 
 The following forum also discusses this type of switches: [ServeTheHome](https://forums.servethehome.com/index.php?threads/horaco-2-5gbe-managed-switch-8-x-2-5gbe-1-10gb-sfp.41571/)
 
-There are also 16-port unmanaged devices with RTL8272 SoCs, however these devices do not have
-serial consoles and use 4 independent RTL8272 SoCs. No central control is provided by RTLPlayground,
+There are also 16-port unmanaged devices with RTL8372 SoCs, however these devices do not have
+serial consoles and use 4 independent RTL8372 SoCs. No central control is provided by RTLPlayground,
 even if it has been successfully demonstrated to install RTLPlayground to individual SoCs.
 - [GigaPlus GP-S25-1602](https://www.servethehome.com/gigaplus-gp-s25-1602-review-a-cheap-16-port-2-5gbe-and-2-port-10g-switch/)
 - [Vimin VM S251602P 16 Port 2.5G PoE Switch With 2x 10G SFP+](https://www.servethehome.com/vimin-vm-s251602p-16-port-2-5g-poe-switch-review-cyperf/vimin-vm-s251602p-16-port-2-5g-poe-switch-with-2x-10g-sfp-battery-2/)

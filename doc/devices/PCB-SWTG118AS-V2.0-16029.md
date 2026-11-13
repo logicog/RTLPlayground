@@ -1,15 +1,14 @@
-### ZX-MOKERLINK_ZX_SWTGW218AS
+### PCB-SWTG118AS-V2.0-16029
 
 ## Brands
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
-| Mokerlink | ZX-MOKERLINK_ZX_SWTGW218AS | Yes|  PCB-SWTG118AS-V2.0-16029 | 2MB (FM25Q16A)| 8273N + 8224N |
+| Mokerlink | ZX-SWTGW218AS | Yes|  PCB-SWTG118AS-V2.0-16029 | 2MB (FM25Q16A)| 8373N + 8224N |
 | Sodola | | | | | |
-| Horaco | HC-MOKERLINK_ZX_SWTGW218AS | Yes | SWTG118AS-V2.1 | 2MB | 8373 (non-N) |
+| Horaco | HC-SWTGW218AS | Yes | PCB-SWTG118AS-V2.0-16029 | 2MB | 8373 |
 
-The PCB-SWTG118AS-V2.0-16029 boards use `MACHINE=MOKERLINK_ZX_SWTGW218AS`.
 
-The Horaco HC-MOKERLINK_ZX_SWTGW218AS is also sold with the
+The Horaco HC-SWTGW218AS is also sold with the
 [PCB-SWTG018AS-A V2.0.1_19649](PCB-SWTG018AS-A-V2.0.1_19649.md) board, which needs a different firmware. Check the marking
 on the PCB before flashing.
 

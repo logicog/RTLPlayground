@@ -44,14 +44,17 @@ l2_entries = [
 
 state = {
     "lldp_enabled": False,
-    "vlans": {1: {"active": True, "name": "", "untagged":[1,2,3,4,5,6,7,8], "tagged":[], "pvid":[1,2,3,4,5,6,7,8]}},
+    "vlans": {
+        1: {"active": True, "name": "", "untagged":[3,4,5,6,7,8], "tagged":[], "pvid":[3,4,5,6,7,8]},
+        64: {"active": True, "name": "sixtyFour", "untagged": [1], "tagged": [2], "pvid":[1]}
+    },
     "cmd_history": [],
     "mgmt_vlan": 1,
     "lags": [
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"},
-                {"cfg":"0000","aggValid":0,"agg":"000000000000","members":"0000"}
+                {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]},
+                {"cfg":[5,6], "aggValid": 1, "agg": "ce654f01cb99", "members": [5]},
+                {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]},
+                {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]}
             ],
 }
 
@@ -61,6 +64,7 @@ rx_g = [0] * PORTS
 tx_b = [0] * PORTS
 rx_b = [0] * PORTS
 last_called = int(time.time())
+started = int(time.time())
 
 sessions = set()
 uploaded_config = None
@@ -83,16 +87,16 @@ class Handler(SimpleHTTPRequestHandler):
             "/information.json": self._api_information,
             "/isolation.json": self._api_isolation,
             "/l2.json": lambda: self._api_l2(query),
-            "/lacp.json": self._api_lacp,
-            "/lag.json": self._api_lag,
             "/lldp.json": self._api_lldp,
+            "/lag.json": self._api_lag,
             "/mirror.json": self._api_mirror,
-            "/mtu.json": self._api_mtu,
-            "/status.json": self._api_status,
+            "/ports.json": self._api_ports,
+            "/traffic.json": self._api_traffic,
             "/storm.json": self._api_storm,
             "/stp.json": self._api_stp,
+            "/stpcnt.json": self._api_stpcnt,
             "/vlan.json": lambda: self._api_vlan(query),
-            "/vlanlist": self._api_vlanlist,
+            "/vlanlist.json": self._api_vlanlist,
         }
 
     def _send(self, status, body=b"", content_type="text/plain",
@@ -379,33 +383,55 @@ class Handler(SimpleHTTPRequestHandler):
     def _api_storm(self):
         global state
         return [
-            {"portNum":i,"en":"0000","pps":"0000","rate":"000000000000000000000000"}
+            {
+                "port": i,
+                "bcast":  {"enabled": (i==3), "unit":("kbit/s" if i != 3 else "pps"), "rate": ("0x000000" if i !=3 else "0x000037") },
+                "mcast":  {"enabled": (i==3), "unit":("kbit/s" if i != 3 else "pps"), "rate": ("0x000000" if i !=3 else "0x000047") },
+                "ucast":  {"enabled": (i==3), "unit":"pps", "rate": ("0x000000" if i !=3 else "0x000057") },
+                "umcast": {"enabled": (i==3), "unit":("kbit/s" if i != 3 else "pps"), "rate": ("0x000000" if i !=3 else "0x000031") }
+            }
             for i in range(1, PORTS + 1)
         ]
-
     def _api_stp(self):
         return {
-            "on":0,
-            "rstp":1,
+            "on":True,
+            "type":"rstp",
             "prio":8,
             "hello":2,
             "maxage":20,
             "fwd":15,
             "txhold":6,
+            "bh": "flood",
+            "pcs": "short",
             "rootPrio":"8000",
             "rootMac":"060f00124737",
             "myMac":"060f00124737",
             "cost":"00000000",
-            "weRoot":1,
-            "rootPort":0,
+            "weRoot":True,
+            "rootPort":False,
             "tc":"0000",
             "ports":[
-                {"p":i,"lag":0,"mbr":0,"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8009","dc":"00000000"}
+                ({"p":i,"lag":0,"mbr":[],"st":3,"role":2,"f":5,"pc":"00000000","prio":128,"p2":0,"db":"8000060f00124737","dp":"8009","dc":"00000000"})
                 for i in range(1, PORTS + 1)
+            ] + [
+                {"p":102,"st":3,"role":2,"f":69,"pc":"00000000","mbr":[6],"prio":128,"p2":0,"lk":1,"lg":0,"db":"8000060f00124737","dp":"8066","dc":"00000000"}
             ]
         }
 
-    def _api_status(self):
+    def _api_stpcnt(self):
+        return {
+                "on":True,
+                "hz":50,
+                "tc":"0002",
+                "ports":[(
+                    {"p":i,"c":"000000000000927000000000000000004903"} if i == 1 else
+                    {"p":i,"c":"000091c60000000300000002000000000008"} if i == 2 else
+                    {"p":i,"c":"000091c80000000300000002000000030009"} if i == 3 else
+                    {"p":i,"c":"00000000000000000000000000000000ffff"} ) for i in range(1, PORTS + 1)
+                ]
+            }
+
+    def _api_ports(self):
         global last_called, machine_config
         now = max(int(time.time()), last_called + 1)
         elapsed = now - last_called
@@ -413,23 +439,12 @@ class Handler(SimpleHTTPRequestHandler):
 
         for i in range(1, PORTS + 1):
             n = i - 1
-            if i % 2:
-                rate = 2_400_000_000 if i == 1 else 950_000_000
-                tx_g[n] += rate * elapsed
-                rx_g[n] += rate * elapsed
-                tx_b[n] += rate * elapsed // 10_000_000
-                rx_b[n] += rate * elapsed // 10_000_000
             item = {
-                "portNum": i,
-                "logPort": machine_config["phys_to_log_port"][n],
+                "port": i,
                 "name": "",
-                "isSFP": machine_config["is_sfp"][i],
+                "isSFP": machine_config["is_sfp"][i] == 1,
                 "enabled": int(i % 4 != 0),
-                "link": (5 if i == 1 else 2) if i % 2 else 0,
-                "txG": f"0x{tx_g[n]:016x}",
-                "txB": f"0x{tx_b[n]:016x}",
-                "rxG": f"0x{rx_g[n]:016x}",
-                "rxB": f"0x{rx_b[n]:016x}",
+                "mtu": f"0x{16383 if i % 2 else 1522:04x}",
             }
 
             if machine_config["is_sfp"][i]:
@@ -446,12 +461,42 @@ class Handler(SimpleHTTPRequestHandler):
                     "sfp_laser": "0x0000",
                 })
             else:
-                item["adv"] = (
-                    "100000" if i == 1
-                    else "000011" if i == 2
-                    else "000100"
-                )
+                if i == 1:
+                    item["adv"] = [ "2.5G" ]
+                elif i == 2:
+                    item["adv"] = [ "10M-HD", "10M-FD" ]
+                else:
+                    item["adv"] = [ "100M-HD" ]
 
+            ports.append(item)
+
+        last_called = now
+        return ports
+
+    def _api_traffic(self):
+        global last_called, machine_config
+        now = max(int(time.time()), last_called + 1)
+        elapsed = now - last_called
+        ports = []
+
+        for i in range(1, PORTS + 1):
+            n = i - 1
+            if i % 2:
+                rate = 2_400_000_000 if i == 1 else 950_000_000
+                tx_g[n] += rate * elapsed
+                rx_g[n] += rate * elapsed
+                tx_b[n] += rate * elapsed // 10_000_000
+                rx_b[n] += rate * elapsed // 10_000_000
+            item = {
+                "port": i,
+                "name": "",
+                "link": ("10G" if i == 1 else "100M-HD") if i % 2 else "DOWN",
+                "macs": "0x01",
+                "txG": f"0x{tx_g[n]:016x}",
+                "txB": f"0x{tx_b[n]:016x}",
+                "rxG": f"0x{rx_g[n]:016x}",
+                "rxB": f"0x{rx_b[n]:016x}",
+            }
             ports.append(item)
 
         last_called = now
@@ -461,10 +506,10 @@ class Handler(SimpleHTTPRequestHandler):
         global state, machine_config
         return [
             {
-                "portNum": i,
-                "isSFP": machine_config["is_sfp"][i],
-                "eee": "00000010",
-                "eee_lp": "00000100",
+                "port": i,
+                "isSFP": machine_config["is_sfp"][i] == 1,
+                "advertised": ["2.5G", "1G", "100M"],
+                "linkPartner": ["2.5G", "1G", "100M"],
                 "active": int(i % 2 == 1),
             }
             for i in range(1, PORTS + 1)
@@ -476,27 +521,27 @@ class Handler(SimpleHTTPRequestHandler):
             ingress_limited = i % 2 == 1
             egress_limited = i % 4 != 0
             ports.append({
-                "portNum": i,
-                "iLimited": int(ingress_limited),
-                "iFC": int(i % 4 != 0) if ingress_limited else 0,
-                "iBW": f"{0x100 if ingress_limited else 0xfffff:08x}",
-                "eLimited": int(egress_limited),
-                "eBW": f"{0x1000 if egress_limited else 0xfffff:08x}",
+                "port": i,
+                "iLimited": (ingress_limited),
+                "iAction": "fc" if ingress_limited else "drop",
+                "iBW": f"0x{0x100 if ingress_limited else 0xfffff:08x}",
+                "eLimited": (egress_limited),
+                "eBW": f"0x{0x1000 if egress_limited else 0xfffff:08x}",
             })
         return ports
 
     def _api_mirror(self):
         return {
-            "mPort": 1,
-            "enabled": 1,
-            "mirror_tx": f"{0b000110:016b}",
-            "mirror_rx": f"{0b000010:016b}",
+            "mirrorPort": 2,
+            "enabled": True,
+            "mirror_rx": [6,5],
+            "mirror_tx": [6,4]
         }
 
     def _api_lacp(self):
         global state
         return {
-            "on": 0,
+            "on": False,
             "lags": state["lags"],
             "ports": [
                 {
@@ -512,33 +557,28 @@ class Handler(SimpleHTTPRequestHandler):
         }
 
     def _api_lag(self):
-        return [
-            {
-                "lagNum": i,
-                "members": f"{(0x30 << (i * 2)) & 0x1f8:016b}",
-                "hash": "0x7e",
+        return {
+            "lags":[
+                {"lagNum":0,"type":"static","members":[],"hash":"3f"},
+                {"lagNum":1,"type":"lacp","members":[5,6],"active_members":[6],"valid":1,"aggregator":"ce654f01cb99","hash":"7e"},
+                {"lagNum":2,"type":"static","members":[],"hash":"3f"},
+                {"lagNum":3,"type":"static","members":[],"hash":"3f"}
+            ],
+            "ports":[(
+                    {"p":5,"lag":1,"a":"07","pt":"40","rs":0,"rx":"0000","psys":"000000000000"} if i == 5 else 
+                    {"p":6,"lag":1,"a":"3f","pt":"3f","rs":4,"rx":"000d","psys":"ce654f01cb99"} if i == 6 else
+                    {"p":i,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"} ) for i in range(1, PORTS + 1)
+                ]
             }
-            for i in range(4)
-        ]
-
-    def _api_mtu(self):
-        return [
-            {
-                "portNum": i,
-                "mtu": f"0x{16383 if i % 2 else 1522:04x}",
-            }
-            for i in range(1, PORTS + 1)
-        ]
 
     def _api_lldp(self):
         return {
-            "on": 1,
+            "on": True,
             "portStatus": [
                 {
-                    "portNum": i,
-                    "logPort": i - 1,
+                    "port": i,
                     "name": "",
-                    "permitted": 1,
+                    "permitted": True,
                 }
                 for i in range(1, PORTS + 1)
             ],
@@ -569,7 +609,9 @@ class Handler(SimpleHTTPRequestHandler):
             return {
                 "name": vlan["name"],
                 "members": self.vlanMembers(vlan),
-                "pvid": self.vlanPvid(vlan),
+                "tagged_members": vlan["tagged"],
+                "untagged_members": vlan["untagged"],
+                "pvid": vlan["pvid"]
             }
         return {}
 
@@ -584,12 +626,6 @@ class Handler(SimpleHTTPRequestHandler):
 
         members = member_mask | (untagged_mask << 10)
         return f"0x{members:08x}"
-
-    def vlanPvid(self, vlan):
-        pvid_mask = 0
-        for port in vlan["pvid"]:
-            pvid_mask |= 1 << port
-        return f"0x{pvid_mask:04x}"
 
     def _api_l2(self,query):
         idx = self._int_param(query, "idx")
@@ -616,12 +652,16 @@ class Handler(SimpleHTTPRequestHandler):
             text += "\n"
         return text.encode("utf-8"), "text/plain"
 
+
     def _api_isolation(self):
         global state
         return [
                 {
-                    "portNum": i,
-                    "allow": "03ff"
+                    "port": i,
+                    "allow": (
+                                [ 5, 0 ] if i == 4 else
+                                [ x for x in range(1, PORTS + 1) ]
+                            )
                 }
                 for i in range(1, PORTS + 1)
             ]
@@ -634,6 +674,7 @@ class Handler(SimpleHTTPRequestHandler):
             "ip_source":"static",
             "mac_address":"1c:2a:a3:23:00:02",
             "sw_ver":"0.1-sim",
+            "uptime":f"0x{int(time.time()) - started:08x}",
             "hw_ver":"SWGT024-V2.0",
             "pcb_ver":"PCB_SWTG024AS_A_V2_0_1_19650"
         }
