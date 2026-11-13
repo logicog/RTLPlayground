@@ -93,6 +93,9 @@ RULES = {
         WARNING, 'a machine target is named after vendor + model, not the PCB'),
     'machine-header-missing': (
         ERROR, 'machine/<MACHINE>.h exists'),
+    'machine-header-guard': (
+        ERROR, 'the include guard of machine/<MACHINE>.h is '
+                 '_MACHINE_<MACHINE>_H_'),
     'machine-header-model': (
         ERROR, 'machine/<MACHINE>.h defines MACHINE_MODEL'),
     'machine-header-chipset': (
@@ -356,6 +359,7 @@ class Checker:
                      '%s: %s is missing' % (rel, header_rel), scope)
             return
         text = self.read(header_rel)
+        self.check_machine_header_guard(header_rel, machine, text, scope)
         model = re.search(r'#define\s+MACHINE_MODEL\s+"([^"]*)"', text)
         chip = re.search(r'#define\s+MACHINE_CHIPSET\s+(\w+)', text)
         if not model:
@@ -385,6 +389,32 @@ class Checker:
                      '%s: MACHINE_CHIPSET is %s, expected one of %s'
                      % (header_rel, chip.group(1), ', '.join(sorted(CHIPSETS))),
                      scope)
+
+    def check_machine_header_guard(self, rel, machine, text, scope):
+        """The include guard of machine/<MACHINE>.h names that same file.
+
+        A board header is copied from the closest existing board, so a guard
+        left behind by the copy names another file and hides which board the
+        header really belongs to.
+        """
+        expected = '_MACHINE_%s_H_' % machine
+        guard = re.search(r'^\s*#\s*ifndef\s+(\w+)', text, re.M)
+        define = re.search(r'^\s*#\s*define\s+(\w+)', text, re.M)
+        if not guard:
+            self.add('machine-header-guard',
+                     '%s: has no #ifndef include guard, expected %s'
+                     % (rel, expected), scope)
+            return
+        named = [guard.group(1)]
+        if define:
+            named.append(define.group(1))
+        for found in named:
+            if found == expected:
+                continue
+            self.add('machine-header-guard',
+                     '%s: include guard %s does not match the file name, '
+                     'expected %s' % (rel, found, expected), scope)
+            return
 
     def docs_for_pcb(self, pcb):
         base = pcb.split('__', 1)[0]
