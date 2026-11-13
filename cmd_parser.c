@@ -2076,19 +2076,11 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "storm")) {
 			parse_storm();
 		} else if (cmd_compare(0, "ptp")) {
-			if (cmd_compare(1, "show"))
-				ptp_get_time();
-			else if (cmd_compare(1, "set"))
-				ptp_set_time();
-			else
-				ptp_init();
+			ptp_parse(false);
+			return;
 		} else if (cmd_compare(0, "ptpphy")) {
-			if (cmd_compare(1, "show"))
-				ptp_rtl8221_get_time(3);
-			else if (cmd_compare(1, "set"))
-				ptp_rtl8221_set_time(3);
-			else
-				ptp_rtl8221_init(3);
+			ptp_parse(true);
+			return;
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "history")) {
