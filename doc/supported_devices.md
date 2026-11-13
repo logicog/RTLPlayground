@@ -30,8 +30,10 @@ The following devices have been tested and are fully working:
 | Horaco   | ZX-SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                       | 2M    | 8 + 1 |
 | Horaco   | ZX310S-4T2XH    | Yes     | [PCB-SL310S-4T1T1X-V1.0.1-24107](devices/PCB-SL310S-4T1T1X-V1.0.1-24107.md)           | 2M    | 5 + 1 |
 | Horaco   | ZX310S-4T2XT    | Yes     | [PCB-310S-4T2XT-V1.0.0_22273](devices/PCB-310S-4T2XT-V1.0.0_22273.md)                 | 2M    | 6     |
-| keepLINK | KP-9000-6XH-X2  | No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
-| keepLINK | KP-9000-6XHML-X2| No/Yes  | [2M-PCB43-V1.2 / V2.1](devices/2M-PCB43-V2.1.md)                                      |       | 4 + 2 |
+| keepLINK | KP-9000-6XH-X2  | No      | [2M-PCB43-V1.2](devices/2M-PCB43-V1.2.md)                                             |       | 4 + 2 |
+| keepLINK | KP-9000-6XH-X2  | No      | [2M-PCB43-V2.1](devices/2M-PCB43-V2.1.md)                                             |       | 4 + 2 |
+| keepLINK | KP-9000-6XHML-X2| Yes     | [2M-PCB43-V1.2](devices/2M-PCB43-V1.2.md)                                             |       | 4 + 2 |
+| keepLINK | KP-9000-6XHML-X2| Yes     | [2M-PCB43-V2.1](devices/2M-PCB43-V2.1.md)                                             |       | 4 + 2 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V2.2](devices/2M-PCB23-V2.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3.1.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.2](devices/2M-PCB23-V3.2.md)                                             | 2M    | 8 + 1 |
