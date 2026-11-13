@@ -1,14 +1,8 @@
 doc/devices/photos/PCB-SWTG024AS-V2.0-17452/SWTG024AS-v2.0-bot-uman.png: is 8204684 bytes, more than the 4MB limit
 doc/devices/photos/PCB-SWTG024AS-V2.0-17452/SWTG024AS-v2.0-top-uman.png: is 9276049 bytes, more than the 4MB limit
-machine/SWTG018AS_A_V2_0.h: include guard _MACHINE_SWTG018AS_A_V_2_0_H_ does not match the file name, expected _MACHINE_SWTG018AS_A_V2_0_H_
 machine/DEFAULT_8C_1SFP.c: no doc/devices/*.md documents PCB NONAME_KP_9000_9XH_X_EU
 machine/HASIVO_S600W_4GT_2XGT_SE.c: no doc/devices/*.md documents PCB NONAME_S600W_4GT_2XGT_SE
-machine/KEEPLINK_KP_9000_6XHML_V1_2.c: no doc/devices/*.md documents PCB 2M_PCB43_V1_2
-machine/KEEPLINK_KP_9000_6XH_V1_2.c: no doc/devices/*.md documents PCB 2M_PCB43_V1_2
 machine/KEEPLINK_KP_9000_6XH_X.c: no doc/devices/*.md documents PCB NONAME_KP_9000_6XH_X
 machine/KEEPLINK_KP_9000_9XH_X_EU.c: no doc/devices/*.md documents PCB NONAME_KP_9000_9XH_X_EU
-machine/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_2.c: no doc/devices/*.md documents PCB 2M_PCB43_V1_2
-machine/KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V1_2.c: no doc/devices/*.md documents PCB 2M_PCB43_V1_2
 machine/DEFAULT_8C_1SFP.h: MACHINE_MODEL '8+1 SFP Port Switch' gives the target name 8_1_SFP_PORT_SWITCH (or 8_1_SFP_PORT_SWITCH_NONAME_KP_9000_9XH_X_EU), not DEFAULT_8C_1SFP
 machine/PCB_SWTG024AS_V2_1_0.h: MACHINE_MODEL 'SWTG024AS-V2.1.0' gives the target name SWTG024AS_V2_1_0 (or SWTG024AS_V2_1_0_PCB_SWTG024AS_V2_1_0_19023), not PCB_SWTG024AS_V2_1_0
-machine/SWTG018AS_A_V_2_0.h: MACHINE_MODEL 'SWTG018AS-A V2.0' gives the target name SWTG018AS_A_V2_0 (or SWTG018AS_A_V2_0_PCB_SWTG018AS_A_V2_0_1_19649), not SWTG018AS_A_V_2_0
