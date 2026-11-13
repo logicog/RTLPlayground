@@ -286,11 +286,9 @@ class Checker:
                          'pcb:' + base)
 
     def code_signature(self, rel):
-        """The code with comments and whitespace removed, so that two files
+        """The code with whitespace removed, so that two files
         differing only in formatting compare equal."""
-        text = re.sub(r'/\*.*?\*/', '', self.read(rel), flags=re.S)
-        text = re.sub(r'//[^\n]*', '', text)
-        return re.sub(r'\s+', '', text)
+        return re.sub(r'\s+', '', self.read(rel))
 
     def check_pcb_duplicates(self):
         groups = {}
