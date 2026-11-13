@@ -90,6 +90,16 @@
 #define RTL837X_REG_LINKS	0x63f0
 #define RTL837X_REG_LINKS_89	0x63f4
 #define RTL837X_REG_LINKS_STS	0x63E8
+
+// MACsec wrapper of ports 4-7, one block per port at 0x800 steps
+#define RTL837X_MACSEC_GLB_SET1		0xc0f0
+#define RTL837X_MACSEC_PM_CTRL		0xc100
+#define RTL837X_MACSEC_GLB_MASK		0xc104
+#define RTL837X_MACSEC_RWDH_AE		0xc130
+#define RTL837X_MACSEC_ADDR_AE		0xc134
+#define RTL837X_MACSEC_CMD_AE		0xc138
+#define RTL837X_MACSEC_RWDL_AI		0xc13c
+#define RTL837X_MACSEC_ADDR_AI		0xc140
 /* Per-port status bits: bit N is chip port N */
 #define RTL837X_MAC_TX_PAUSE_STS	0x63FC
 #define RTL837X_MAC_RX_PAUSE_STS	0x6400

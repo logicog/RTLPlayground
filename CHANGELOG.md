@@ -21,6 +21,10 @@
     English, Japanese and Chinese, save to flash merges the command log into the startup config and verifies the write,
     firmware images are checked in the browser before upload. #429
 
+- MACsec
+  - `macsec <port> key <key> peer <sci>` protects a port with a static GCM-AES-128 key in the
+    MACsec engine of the switch, on the ports with internal PHYs. See `doc/macsec.md`.
+
 ## Changed
 
 - Web UI
