@@ -3376,7 +3376,7 @@ $("stpbapply").addEventListener("click", function() {
         cmds = [];
     var ver = $("stpver").value,
         prio = $("stpprio").value;
-    if (ver !== (s.rstp ? "rstp" : "stp")) cmds.push("stp version " + ver);
+    if (ver !== s.type) cmds.push("stp version " + ver);
     if (prio !== String(s.prio)) cmds.push("stp prio " + prio);
     if ($("stppcs").value !== s.pcs) cmds.push("stp pathcost " + $("stppcs").value);
     if ($("stpbh").value !== s.bh) cmds.push("stp bpdu " + $("stpbh").value);
