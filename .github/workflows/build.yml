@@ -38,18 +38,18 @@ jobs:
       - name: Check that every machine definition can be compiled
         run: cd branch && make machine_check
       - name: Make project (4x2/RTL8372)
-        run: mkdir -p /tmp/branch /tmp/main && cd branch && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" && cp -r output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2/html_min /tmp/branch/
+        run: mkdir -p /tmp/branch /tmp/main && cd branch && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1" && cp -r output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/html_min /tmp/branch/
       - name: Make project (8x1/RTL8373)
-        run: cd branch && make CI=1 MACHINE="KEEPLINK_KP_9000_9XHML_X_V3_1"
+        run: cd branch && make CI=1 MACHINE="KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V3_1"
       - name: Make project with the health instrumentation
-        run: cd branch && make clean && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" HEALTH=1
+        run: cd branch && make clean && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1" HEALTH=1
       - name: Make project with the debug output
-        run: cd branch && make clean && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" DEBUG=1
+        run: cd branch && make clean && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1" DEBUG=1
       - name: Make main
         run: |
           ln -s ../branch/toolchain main/toolchain
           PATH="$(echo "$PWD"/branch/toolchain/sdcc-*/bin):$PATH"
-          cd main && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2" && cp -r output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2/html_min /tmp/main/
+          cd main && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1" && cp -r output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/html_min /tmp/main/
       - name: Calculate bank growth
         run: |
           bash branch/tools/bank_occupancy.sh KP_9000_6XHML_X2 /tmp/main /tmp/branch >> "$GITHUB_STEP_SUMMARY"
