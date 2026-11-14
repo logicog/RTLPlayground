@@ -34,6 +34,7 @@ __xdata uint8_t slotbuf[LDR_SLOT_BUF];
 static bool small;
 static bool direct_boot;
 static bool direct_nonzero;
+static bool direct_other;
 static uint16_t direct_want;
 __xdata uint16_t xcrc;
 __xdata uint16_t scrc;
@@ -243,7 +244,7 @@ static void copy(uint32_t src, uint32_t dst, uint32_t len)
 
 static bool has_meta(uint32_t a)
 {
-	readb(a, 6);
+	readb(a, 7);
 	return buf[0] == 'R' && buf[1] == 'T' && buf[2] == 'L' && buf[3] == 'B';
 }
 
@@ -295,7 +296,8 @@ static void install(uint32_t home)
 	buf[3] = 'B';
 	buf[4] = want;
 	buf[5] = want >> 8;
-	program(LDR_META, 6);
+	buf[6] = LDR_LAYOUT;
+	program(LDR_META, 7);
 	erase(LDR_BOOTCNT);
 	drop_upload();
 	print_string("Installed\n");
@@ -319,6 +321,11 @@ static void handle_upload(void)
 		return;
 	}
 	if (has_meta(LDR_UPLOAD + LDR_META)) {
+		if (buf[6] != LDR_LAYOUT) {
+			print_string("Image needs another loader, dropped\n");
+			drop_upload();
+			return;
+		}
 		install(LDR_UPLOAD + LDR_SLOT);
 	} else if (is_all(LDR_UPLOAD + LDR_DATA, LDR_UPLOAD + LDR_DATA_END, 0)) {
 		install(LDR_UPLOAD + 2);
@@ -363,6 +370,7 @@ static void store(uint32_t off)
 			erase(LDR_META);
 			direct_boot = false;
 			direct_nonzero = false;
+			direct_other = false;
 		}
 		for (i = 0; i < 128; i++) {
 			slotbuf[(uint16_t)off + i] = buf[i];
@@ -372,7 +380,8 @@ static void store(uint32_t off)
 		return;
 	} else if (off >= LDR_DATA && off < LDR_DATA_END) {
 		if (off == LDR_META && buf[0] == 'R' && buf[1] == 'T' && buf[2] == 'L' && buf[3] == 'B') {
-			direct_boot = true;
+			direct_other = buf[6] != LDR_LAYOUT;
+			direct_boot = !direct_other;
 			direct_want = buf[4] | ((uint16_t)buf[5] << 8);
 		}
 		for (i = 0; i < 128; i++) {
@@ -402,6 +411,10 @@ static void direct_finish(void)
 		print_string("Bad checksum, image dropped\n");
 		return;
 	}
+	if (direct_other) {
+		print_string("Image needs another loader, dropped\n");
+		return;
+	}
 	if (!direct_boot) {
 		if (direct_nonzero) {
 			print_string("Image uses the loader data area, dropped\n");
@@ -427,7 +440,8 @@ static void direct_finish(void)
 	buf[3] = 'B';
 	buf[4] = want;
 	buf[5] = want >> 8;
-	program(LDR_META, 6);
+	buf[6] = LDR_LAYOUT;
+	program(LDR_META, 7);
 	erase(LDR_BOOTCNT);
 	print_string("Installed\n");
 }

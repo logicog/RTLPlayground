@@ -439,11 +439,24 @@ int main(void)
 	memcpy(inst + LDR_SLOT, a2 + 2, LDR_HOME_LEN);
 	memset(inst + 2, 0x77, 0x3ffe);
 	memcpy(inst + LDR_META, "RTLB", 4);
+	inst[LDR_META + 6] = LDR_LAYOUT;
 	uint16_t c = crc_of(inst, LDR_IMAGE_LEN - 2, 0) ^ 0xffff;
 	inst[LDR_IMAGE_LEN - 2] = c;
 	inst[LDR_IMAGE_LEN - 1] = c >> 8;
 	memcpy(flash + LDR_UPLOAD, inst, LDR_IMAGE_LEN);
 	check(boot() == 1 && app_is(a2) && loader_intact() && flash[LDR_UPLOAD + 0x3800] == 0xff, "an install image updates only the application and its loader copy is erased");
+	check(flash[LDR_META + 6] == LDR_LAYOUT, "the install records the layout version in the metadata");
+	confirm();
+
+	memcpy(inst, a1, LDR_IMAGE_LEN);
+	memcpy(inst + LDR_SLOT, a1 + 2, LDR_HOME_LEN);
+	memcpy(inst + LDR_META, "RTLB", 4);
+	inst[LDR_META + 6] = LDR_LAYOUT + 1;
+	c = crc_of(inst, LDR_IMAGE_LEN - 2, 0) ^ 0xffff;
+	inst[LDR_IMAGE_LEN - 2] = c;
+	inst[LDR_IMAGE_LEN - 1] = c >> 8;
+	memcpy(flash + LDR_UPLOAD, inst, LDR_IMAGE_LEN);
+	check(boot() == 1 && app_is(a2) && flash[LDR_UPLOAD] == 0xff && strstr(out, "another loader"), "an image for another layout is dropped and the old application starts");
 	confirm();
 
 	memcpy(inst, a1, LDR_IMAGE_LEN);
@@ -590,6 +603,7 @@ int main(void)
 	memcpy(inst + LDR_META, "RTLB", 4);
 	inst[LDR_META + 4] = c;
 	inst[LDR_META + 5] = c >> 8;
+	inst[LDR_META + 6] = LDR_LAYOUT + 1;
 	c = crc_of(inst, LDR_IMAGE_LEN - 2, 0) ^ 0xffff;
 	inst[LDR_IMAGE_LEN - 2] = c;
 	inst[LDR_IMAGE_LEN - 1] = c >> 8;
@@ -597,7 +611,14 @@ int main(void)
 		boot();
 	xm_arm(inst, 0, 0);
 	rxq[rx_tail++] = 'x';
+	check(boot() == 2 && !started && strstr(out, "another loader"), "a small flash refuses an image for another layout over XMODEM");
+	inst[LDR_META + 6] = LDR_LAYOUT;
+	c = crc_of(inst, LDR_IMAGE_LEN - 2, 0) ^ 0xffff;
+	inst[LDR_IMAGE_LEN - 2] = c;
+	inst[LDR_IMAGE_LEN - 1] = c >> 8;
+	xm_arm(inst, 0, 0);
 	check(boot() == 1 && app_is(a1) && loader_intact(), "a small flash installs an install image over XMODEM and keeps its own loader");
+	check(flash[LDR_META + 6] == LDR_LAYOUT, "the direct install records the layout version in the metadata");
 	confirm();
 
 	memcpy(inst, a2, LDR_IMAGE_LEN);
