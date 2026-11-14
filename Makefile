@@ -24,7 +24,7 @@ SDCC_BANNER = $(if $(SDCC_REV),sdcc/ at $(SDCC_REV),$(SDCC_TOOLCHAIN)) ($(words 
 else
 SDCC_BANNER = system
 endif
-CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
+CC_FLAGS = -mmcs51 -I. -Imachine -Imachine/pcb -Ihttpd -Iuip
 ASM ?= sdas8051
 AFLAGS= -plosgff
 

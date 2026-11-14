@@ -4,4 +4,6 @@
 #define MACHINE_MODEL "Steamemo IG204 V1"
 #define MACHINE_CHIPSET RTL8372
 
+#define MACHINE_ENABLE_VLANSW
+
 #endif
