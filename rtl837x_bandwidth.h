@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 void bandwidth_setup(void) __banked;
+void bandwidth_rate_set(uint16_t reg, __xdata uint32_t bw) __banked;
+void bandwidth_rate_off(uint16_t reg) __banked;
 void bandwidth_ingress_set(uint8_t port, __xdata uint32_t bw) __banked;
 void bandwidth_ingress_disable(uint8_t port) __banked;
 void bandwidth_ingress_drop(uint8_t port) __banked;
