@@ -141,6 +141,12 @@ extern __xdata char hostname[24];
 extern __xdata uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 extern __xdata struct uip_eth_addr uip_ethaddr;
 
+/* Front "VLAN" switch, only implemented by boards that define
+ * MACHINE_ENABLE_VLANSW. The pin is set by the board file, the mode sampled at
+ * boot is stored here so that idle() can detect a flip of the switch. */
+extern __code const uint8_t vlansw_gpio;
+extern __xdata uint8_t vlansw_managed_last;
+
 // Headers for calls in the common code area (HOME/BANK0)
 void print_string_no_syslog(__code const char *p);
 void print_string_newline_no_syslog(__code const char *p);

@@ -8,6 +8,7 @@
 #include <8051.h>
 #include "cmd_parser.h"
 #include "rtl837x_common.h"
+#include "rtl837x_pins.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_phy.h"
@@ -99,6 +100,11 @@ __xdata uint8_t err_status;
 
 __xdata uint16_t atoi_results_short;
 __xdata uint8_t atoi_results_u8;
+
+
+#ifdef MACHINE_ENABLE_VLANSW
+__xdata uint8_t vlansw_managed_last;
+#endif
 
 inline uint8_t isletter(uint8_t l)
 {
@@ -2151,6 +2157,16 @@ void execute_config(void) __banked
 {
 	__xdata uint32_t pos = CONFIG_START;
 	__xdata uint8_t pages_left = CONFIG_LEN / FLASH_READ_BURST_SIZE;
+
+#ifdef MACHINE_ENABLE_VLANSW
+	gpio_input_setup(vlansw_gpio);
+	/* Sample the switch once: the mode is fixed until the next reboot */
+	vlansw_managed_last = gpio_pin_test(vlansw_gpio);
+	if (!vlansw_managed_last) {
+		print_string("VLAN switch off: using default configuration\n");
+		pos = DEFAULT_CONFIG_START;
+	}
+#endif
 
 	// Set default password, it can be overwritten in the configuration file
 	strtox(passwd, PASSWORD);

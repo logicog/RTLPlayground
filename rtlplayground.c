@@ -1218,6 +1218,13 @@ static void handle_tick(void)
 
 void idle(void)
 {
+#ifdef MACHINE_ENABLE_VLANSW
+	/* A change of the front "VLAN" switch causes reboot */
+	if (gpio_pin_test(vlansw_gpio) != vlansw_managed_last) {
+		print_string("VLAN switch changed; resetting...\n");
+		reset_chip();
+	}
+#endif
 	if (!evflags)
 		PCON |= 1;
 	health_loop_start();
