@@ -30,6 +30,9 @@
 
 ## Fixed
 
+- SFP ports report `enabled: true` with a separate `module` flag instead of
+  using `enabled` for "module inserted". An empty cage is now shown as *down*
+  rather than *disabled*, and the port details say "No module".
 - Time
   - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
     boards without 10G ports both SerDes stayed off, and with SDS 0 off `RTL837X_REG_SEC_COUNTER`

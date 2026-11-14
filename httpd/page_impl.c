@@ -916,9 +916,14 @@ void send_ports(void)
 
 		if (machine.is_sfp[i]) {
 			uint8_t sfp = machine.is_sfp[i] - 1;
+			/* An SFP port is administratively enabled all the time; an empty
+			 * cage is a missing module (link down), not a disabled port. */
+			bool present = !(sfp_pins_last & (0x1 << (sfp << 2)));
 			str_code_to_html("," JSONQUOTE("isSFP") ":true," JSONQUOTE("enabled") ":");
-			if (!(sfp_pins_last & (0x1 << (sfp << 2)))) {
-				bool_to_json(1);
+			bool_to_json(1);
+			str_code_to_html("," JSONQUOTE("module") ":");
+			bool_to_json(present);
+			if (present) {
 				str_code_to_html("," JSONQUOTE("sfp_options") ":\"0x");
 				byte_to_html(sfp_options[sfp]);
 				if (sfp_options[sfp] & 0x40) {
@@ -960,8 +965,6 @@ void send_ports(void)
 				} else {
 					bool_to_json(sfp_pins_last & (0x2 << (sfp << 2)));
 				}
-			} else {
-				bool_to_json(0);
 			}
 		} else {
 			str_code_to_html("," JSONQUOTE("isSFP") ":false," JSONQUOTE("enabled") ":");
