@@ -550,6 +550,38 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+#define TCP_URG 0x20
+
+/* A segment with URG set and an urgent pointer past the payload. Advancing
+ * uip_appdata by the urgent pointer ran httpd off the end of uip_buf
+ * (CVE-2020-17437, ASan SEGVs without the fix); delivered inline, the byte is
+ * just data and the connection carries on. */
+static void scenario_urg_inline(void)
+{
+	session_start(MSS_FULL);
+
+	memset(uip_buf, 0, UIP_LLH_LEN + 41);
+	TCPH->vhl = 0x45;
+	TCPH->len[0] = 0; TCPH->len[1] = 41;	/* 20 IP + 20 TCP + 1 data */
+	TCPH->ttl = 64;
+	TCPH->proto = UIP_PROTO_TCP;
+	TCPH->srcipaddr[0] = hton16(0x0a00); TCPH->srcipaddr[1] = hton16(0x0002);
+	TCPH->destipaddr[0] = hton16(0x0a00); TCPH->destipaddr[1] = hton16(0x0001);
+	TCPH->srcport = hton16(40000);
+	TCPH->destport = hton16(80);
+	wr32(TCPH->seqno, cli_seq);
+	wr32(TCPH->ackno, cli_rcv_nxt);
+	TCPH->tcpoffset = 5 << 4;
+	TCPH->flags = TCP_ACK | TCP_URG;
+	TCPH->wnd[0] = MSS_FULL >> 8; TCPH->wnd[1] = MSS_FULL & 0xff;
+	TCPH->urgp[0] = 0; TCPH->urgp[1] = 2;	/* urgent pointer one past the byte */
+	uip_buf[UIP_LLH_LEN + 40] = 'x';
+	uip_len = 41;
+	uip_input();
+	CHECK(uip_conn_active(0),
+	      "URG segment: delivered inline, no out-of-bounds, connection survives");
+}
+
 
 /* Private HTTP lifecycle values; drive the real callback, not a model. */
 enum { TSTATE_NONE = 0, TSTATE_TX = 1, TSTATE_POST = 4 };
@@ -1304,6 +1336,7 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_urg_inline();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();
