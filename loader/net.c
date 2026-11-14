@@ -4,69 +4,156 @@
 
 #include "../rtl837x_sfr.h"
 #include "../rtl837x_regs.h"
+#include "../rtl837x_common.h"
+#include "../phy.h"
 #include "loader.h"
 
 #define NET_MTU		1536
 #define TFTP_PORT	49152
 
+// The loader only uses the built-in PHYs of ports 4-7
+#define BUILTIN_PORT_FIRST	4
+#define BUILTIN_PORT_LAST	7
+#define BUILTIN_PHY_MASK	0xf0
 
-__xdata uint8_t rb[4];
-__xdata uint8_t rxh[8];
-__xdata uint8_t rxb[NET_MTU + 8];
-__xdata uint8_t txb[NET_MTU + 8];
+// PHY_POWER value the application writes, without PHY_POWER_OFF
+#define PHY_POWER_ON		0x2058
+
+// RTL837X_REG_PORT_CTRL value the application writes for the built-in ports
+#define PORT_CTRL_BUILTIN	0x0f77
+
+// First byte of the MAC address: locally administered, unicast
+#define MAC_LOCAL		0x06
+
+// Header the NIC expects in front of a frame to send
+#define NIC_TX_HDR		8
+#define NIC_TX_SEQ		0
+#define NIC_TX_CSUM		1
+#define NIC_TX_LEN		4
+#define NIC_TX_CSUM_ALL		0x07
+
+// Ethernet
+#define ETH_DST			0
+#define ETH_SRC			6
+#define ETH_TYPE		12
+#define ETH_HDR			14
+#define ETH_TYPE_IPV4		0x0800
+#define ETH_TYPE_ARP		0x0806
+#define ETH_TYPE_VLAN		0x8100
+
+// ARP for IPv4 over Ethernet
+#define ARP_OPER		7
+#define ARP_SHA			8
+#define ARP_SPA			14
+#define ARP_THA			18
+#define ARP_TPA			24
+#define ARP_LEN			28
+#define ARP_REQUEST		1
+#define ARP_REPLY		2
+
+// IPv4, the loader only sends headers without options
+#define IP_VER_IHL		0
+#define IP_TOTAL_LEN		2
+#define IP_FLAGS		6
+#define IP_TTL			8
+#define IP_PROTO		9
+#define IP_CSUM			10
+#define IP_SRC			12
+#define IP_DST			16
+#define IP_HDR			20
+#define IP_VER_IHL_PLAIN	0x45
+#define IP_DONT_FRAGMENT	0x40
+#define IP_TTL_DEFAULT		64
+#define IP_PROTO_ICMP		1
+#define IP_PROTO_UDP		17
+
+// ICMP
+#define ICMP_CSUM		2
+#define ICMP_HDR		8
+#define ICMP_ECHO_REPLY		0
+#define ICMP_ECHO_REQUEST	8
+
+// UDP
+#define UDP_SRC_PORT		0
+#define UDP_DST_PORT		2
+#define UDP_LEN			4
+#define UDP_CSUM		6
+#define UDP_HDR			8
+
+// TFTP, RFC 1350
+#define TFTP_SERVER_PORT	69
+#define TFTP_OPCODE		0
+#define TFTP_BLOCK		2
+#define TFTP_HDR		4
+#define TFTP_BLOCK_SIZE		512
+#define TFTP_RRQ		1
+#define TFTP_DATA_PKT		3
+#define TFTP_ACK		4
+#define TFTP_ERROR		5
+
+// Data bytes of the last register access, reg_buf[0] holds bits 0-7
+__xdata uint8_t reg_buf[4];
+__xdata uint8_t rx_hdr[8];
+__xdata uint8_t rx_buf[NET_MTU + 8];
+__xdata uint8_t tx_buf[NET_MTU + 8];
 __xdata uint8_t mac[6];
 __xdata uint8_t ip[4] = { 192, 168, 2, 2 };
-__xdata uint8_t srv[4];
-__xdata uint8_t srv_mac[6];
-__xdata uint16_t srv_port;
-__xdata uint16_t tf_blk;
-__xdata uint8_t tf_tries;
-__xdata uint8_t seq;
-__xdata uint16_t rlen;
-__xdata uint8_t links;
+__xdata uint8_t server_ip[4];
+__xdata uint8_t server_mac[6];
+__xdata uint16_t server_port;
+__xdata uint16_t tftp_block;
+__xdata uint8_t tftp_tries;
+__xdata uint8_t tx_seq;
+__xdata uint16_t rx_len;
+__xdata uint8_t link_state;
 __xdata bool net_used;
 
-static void rd(uint16_t a)
+static void reg_read_buf(uint16_t a)
 {
 	reg_read(a);
-	rb[0] = SFR_DATA_0;
-	rb[1] = SFR_DATA_8;
-	rb[2] = SFR_DATA_16;
-	rb[3] = SFR_DATA_24;
+	reg_buf[0] = SFR_DATA_0;
+	reg_buf[1] = SFR_DATA_8;
+	reg_buf[2] = SFR_DATA_16;
+	reg_buf[3] = SFR_DATA_24;
 }
 
-static void wr(uint16_t a)
+static void reg_write_buf(uint16_t a)
 {
-	SFR_DATA_0 = rb[0];
-	SFR_DATA_8 = rb[1];
-	SFR_DATA_16 = rb[2];
-	SFR_DATA_24 = rb[3];
+	SFR_DATA_0 = reg_buf[0];
+	SFR_DATA_8 = reg_buf[1];
+	SFR_DATA_16 = reg_buf[2];
+	SFR_DATA_24 = reg_buf[3];
 	reg_write(a);
 }
 
-static void reg16(uint16_t a, uint16_t v)
+static void reg_write16(uint16_t a, uint16_t v)
 {
-	rb[0] = v;
-	rb[1] = v >> 8;
-	rb[2] = 0;
-	rb[3] = 0;
-	wr(a);
+	reg_buf[0] = v;
+	reg_buf[1] = v >> 8;
+	reg_buf[2] = 0;
+	reg_buf[3] = 0;
+	reg_write_buf(a);
 }
 
-static void reg_bits(uint16_t a, uint8_t n, uint8_t clr, uint8_t set)
+static void reg_modify_byte(uint16_t a, uint8_t n, uint8_t clr, uint8_t set)
 {
-	rd(a);
-	rb[n] = (rb[n] & ~clr) | set;
-	wr(a);
+	reg_read_buf(a);
+	reg_buf[n] = (reg_buf[n] & ~clr) | set;
+	reg_write_buf(a);
 }
 
-static void phy_wr(uint16_t v)
+// Clear and set bits of register a. clr and set are 32 bit masks whose bits
+// all lie in byte n of the register, so only that byte is changed.
+#define REG_MODIFY(a, n, clr, set) \
+	reg_modify_byte(a, n, (uint8_t)((clr) >> (8 * (n))), (uint8_t)((set) >> (8 * (n))))
+
+static void builtin_phys_power(uint16_t v)
 {
 	SFR_DATA_8 = v >> 8;
 	SFR_DATA_0 = v;
-	SFR_SMI_PHYMASK = 0xf0;
-	SFR_SMI_REG_U16 = 0xa610;
-	SFR_SMI_DEV = 0xfa;
+	SFR_SMI_PHYMASK = BUILTIN_PHY_MASK;
+	SFR_SMI_REG_U16 = PHY_POWER;
+	SFR_SMI_DEV = (uint8_t)(PHY_MMD31 << 3 | 2);
 	SFR_EXEC_GO = SFR_EXEC_WRITE_SMI;
 	while (SFR_EXEC_STATUS != 0);
 }
@@ -88,69 +175,81 @@ static bool nic_go(__xdata uint8_t *b, uint16_t ring, uint8_t words)
 }
 #endif
 
+// Bring up the built-in ports and the NIC for the CPU only. The sequence
+// follows rtl8372_init and nic_setup of the application, limited to ports
+// 4-7. Where the application has no name for a bit, the same number is used.
 static void net_up(void)
 {
 	uint8_t p;
 
-	reg_bits(RTL837X_REG_RESET, 0, 0, 1 << RESET_NIC_BIT);
+	REG_MODIFY(RTL837X_REG_RESET, 0, 0, 1 << RESET_NIC_BIT);
 	do {
 		reg_read(RTL837X_REG_RESET);
 	} while (SFR_DATA_0 & (1 << RESET_NIC_BIT));
 
-	reg_bits(RTL837X_REG_SMI_CTRL, 1, 0, 0x70);
+	REG_MODIFY(RTL837X_REG_SMI_CTRL, 1, 0, SMI_CTRL_MDC_ENABLE);
 	timer0_start();
 	for (p = 8; p; ) {
 		if (tick())
 			p--;
 	}
-	reg_bits(RTL837X_CFG_PHY_MDI_REVERSE, 0, 0x0f, 0x0c);
-	rd(RTL837X_REG_CHIP_ID);
-	if (rb[1] == 0x70) {
-		rd(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
-		rb[1] = 0x59;
-		rb[0] = 0x6a;
-		wr(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
+
+	// Same MDI setting as rtl8372_init
+	REG_MODIFY(RTL837X_CFG_PHY_MDI_REVERSE, 0, 0x0f, 0x0c);
+	reg_read_buf(RTL837X_REG_CHIP_ID);
+	if (reg_buf[1] == CHIP_ID_N_VERSION) {
+		reg_read_buf(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
+		reg_buf[1] = PHY_TX_POLARITY_SWAP_N >> 8;
+		reg_buf[0] = PHY_TX_POLARITY_SWAP_N & 0xff;
+		reg_write_buf(RTL837X_CFG_PHY_TX_POLARITY_SWAP);
 	}
-	phy_wr(0x2858);
-	reg_bits(0x5fd4, 2, 0, 0x18);
-	for (p = 4; p < 8; p++)
-		reg16(0x1238 + ((uint16_t)p << 8), 0xf77);
-	reg_bits(0xb7c, 0, 0, 0x20);
-	reg_bits(RTL837X_REG_HW_CONF, 0, 0, 0x01);
-	phy_wr(0x2058);
-	reg_bits(0x632c, 2, 0, 0x0f);
+
+	// Configure the ports with their PHYs powered down, as rtl8372_init does
+	builtin_phys_power(PHY_POWER_ON | PHY_POWER_OFF);
+	REG_MODIFY(0x5fd4, 2, 0, 0x00180000);
+	for (p = BUILTIN_PORT_FIRST; p <= BUILTIN_PORT_LAST; p++)
+		reg_write16(RTL837X_REG_PORT_CTRL(p), PORT_CTRL_BUILTIN);
+	REG_MODIFY(0xb7c, 0, 0, 0x00000020);
+	REG_MODIFY(RTL837X_REG_HW_CONF, 0, 0, 0x00000001);
+	builtin_phys_power(PHY_POWER_ON);
+	REG_MODIFY(RTL837X_REG_MAC_ENABLE, 2, 0,
+		MAC_ENABLE_PORT(4) | MAC_ENABLE_PORT(5) | MAC_ENABLE_PORT(6) | MAC_ENABLE_PORT(7));
+
+	// Every port only forwards to the CPU
 	for (p = 0; p < 9; p++)
-		reg16(RTL837X_PORT_ISOLATION_BASE + (p << 2), 0x200);
+		reg_write16(RTL837X_PORT_ISOLATION_BASE + (p << 2), PMASK_CPU);
 
-	reg_bits(RTL837X_REG_HW_CONF, 1, 0, 0x10);
-	reg16(RTL837X_REG_NIC_RXBUFF_RX, RTL837X_NIC_RX_LAST_SLOT);
-	reg16(RTL837X_REG_NIC_BUFFSIZE_TX, 0x7fe);
-	reg_bits(RTL837X_REG_RX_CTRL, 3, 0xff, 0x04);
-	reg_bits(RTL837X_REG_RX_CTRL, 2, 0x03, 0);
-	reg_bits(RTL837X_REG_TX_CTRL, 0, 0, 0x01);
-	reg_bits(RTL837X_REG_RX_CTRL, 0, 0x04, 0x01);
-	reg16(RTL837X_REG_CPU_TAG_AWARE_PMASK, 0x200);
-	reg_bits(RTL837X_REG_CPU_TAG, 0, 0, 0x01);
-	reg_bits(RTL837X_REG_CPU_TAG, 1, 0x03, 0);
-	reg_bits(RTL837X_REG_MAC_FORCE_MODE + 9 * 4, 0, 0, 0x03);
+	// NIC, as nic_setup does it
+	REG_MODIFY(RTL837X_REG_HW_CONF, 1, 0, HW_CONF_NIC_ENABLE);
+	reg_write16(RTL837X_REG_NIC_RXBUFF_RX, RTL837X_NIC_RX_LAST_SLOT);
+	reg_write16(RTL837X_REG_NIC_BUFFSIZE_TX, RTL837X_NIC_TX_BUFF_SIZE);
+	REG_MODIFY(RTL837X_REG_RX_CTRL, 3, NIC_RX_TYPES_MASK, NIC_RX_TYPES);
+	REG_MODIFY(RTL837X_REG_RX_CTRL, 2, 0x00030000, 0);
+	REG_MODIFY(RTL837X_REG_TX_CTRL, 0, 0, NIC_TX_ENABLE);
+	REG_MODIFY(RTL837X_REG_RX_CTRL, 0, NIC_RX_KEEP_BAD_CRC, NIC_RX_ENABLE);
+	reg_write16(RTL837X_REG_CPU_TAG_AWARE_PMASK, PMASK_CPU);
+	REG_MODIFY(RTL837X_REG_CPU_TAG, 0, 0, CPU_TAG_INSERT);
+	REG_MODIFY(RTL837X_REG_CPU_TAG, 1, CPU_TAG_MODE_MASK, 0);
+	REG_MODIFY(RTL837X_REG_MAC_FORCE_MODE + CPU_LOGICAL_PORT * 4, 0, 0, MAC_FORCE_LINK);
 
-	rd(RTL837X_REG_CHIP_UUID);
-	mac[0] = 0x06;
-	mac[3] = rb[3] ^ rb[0];
-	mac[4] = rb[2] ^ rb[0];
-	mac[5] = rb[1] ^ rb[0];
-	rd(RTL837X_REG_CHIP_LOT_NO);
-	mac[1] = rb[3] ^ rb[1];
-	mac[2] = rb[2] ^ rb[0];
+	// The MAC address is made from the unique ID and the lot number of the chip
+	reg_read_buf(RTL837X_REG_CHIP_UUID);
+	mac[0] = MAC_LOCAL;
+	mac[3] = reg_buf[3] ^ reg_buf[0];
+	mac[4] = reg_buf[2] ^ reg_buf[0];
+	mac[5] = reg_buf[1] ^ reg_buf[0];
+	reg_read_buf(RTL837X_REG_CHIP_LOT_NO);
+	mac[1] = reg_buf[3] ^ reg_buf[1];
+	mac[2] = reg_buf[2] ^ reg_buf[0];
 }
 
-static void cp(__xdata uint8_t *d, __xdata const uint8_t *s, uint16_t n)
+static void copy_bytes(__xdata uint8_t *d, __xdata const uint8_t *s, uint16_t n)
 {
 	while (n--)
 		*d++ = *s++;
 }
 
-static bool same(__xdata const uint8_t *a, __xdata const uint8_t *b, uint8_t n)
+static bool bytes_equal(__xdata const uint8_t *a, __xdata const uint8_t *b, uint8_t n)
 {
 	while (n--) {
 		if (*a++ != *b++)
@@ -159,12 +258,12 @@ static bool same(__xdata const uint8_t *a, __xdata const uint8_t *b, uint8_t n)
 	return true;
 }
 
-static uint16_t be16(__xdata const uint8_t *p)
+static uint16_t get_be16(__xdata const uint8_t *p)
 {
 	return ((uint16_t)p[0] << 8) | p[1];
 }
 
-static uint16_t csum(__xdata const uint8_t *p, uint16_t n)
+static uint16_t inet_checksum(__xdata const uint8_t *p, uint16_t n)
 {
 	uint16_t s = 0;
 	uint16_t w;
@@ -214,7 +313,7 @@ static uint8_t ip_arg(__xdata uint8_t *dst)
 		lp++;
 		n[i] = v;
 	}
-	cp(dst, n, 4);
+	copy_bytes(dst, n, 4);
 	return 2;
 }
 
@@ -243,211 +342,213 @@ void ipaddr(void)
 
 void serverip(void)
 {
-	set_ip(srv);
+	set_ip(server_ip);
 }
 
-static __xdata uint8_t *eth(__xdata const uint8_t *dst, uint8_t type)
+// Both frame types the loader sends, IPv4 and ARP, have 0x08 as high byte
+static __xdata uint8_t *eth_header(__xdata const uint8_t *dst, uint8_t type_low)
 {
-	cp(txb + 8, dst, 6);
-	cp(txb + 14, mac, 6);
-	txb[20] = 0x08;
-	txb[21] = type;
-	return txb + 22;
+	copy_bytes(tx_buf + NIC_TX_HDR + ETH_DST, dst, 6);
+	copy_bytes(tx_buf + NIC_TX_HDR + ETH_SRC, mac, 6);
+	tx_buf[NIC_TX_HDR + ETH_TYPE] = ETH_TYPE_IPV4 >> 8;
+	tx_buf[NIC_TX_HDR + ETH_TYPE + 1] = type_low;
+	return tx_buf + NIC_TX_HDR + ETH_HDR;
 }
 
-static void send(uint16_t len)
+static void nic_send(uint16_t len)
 {
 	uint16_t r;
 
-	txb[0] = seq++;
-	txb[1] = 0x07;
-	txb[2] = 0;
-	txb[3] = 0;
-	txb[4] = len;
-	txb[5] = len >> 8;
-	txb[6] = 0;
-	txb[7] = 0;
-	rd(RTL837X_REG_CPU_TX_CURR_PKT);
-	r = (((uint16_t)rb[1] << 8 | rb[0]) << 3) | 0x8000;
-	NIC_GO(txb, r, (len + 0xf) >> 3);
-	rd(RTL837X_REG_NIC_TX_CURR_PKT);
-	reg16(RTL837X_REG_NIC_TXCMD, 1);
+	tx_buf[NIC_TX_SEQ] = tx_seq++;
+	tx_buf[NIC_TX_CSUM] = NIC_TX_CSUM_ALL;
+	tx_buf[2] = 0;
+	tx_buf[3] = 0;
+	tx_buf[NIC_TX_LEN] = len;
+	tx_buf[NIC_TX_LEN + 1] = len >> 8;
+	tx_buf[6] = 0;
+	tx_buf[7] = 0;
+	reg_read_buf(RTL837X_REG_CPU_TX_CURR_PKT);
+	r = (((uint16_t)reg_buf[1] << 8 | reg_buf[0]) << 3) | 0x8000;
+	NIC_GO(tx_buf, r, (len + 0xf) >> 3);
+	reg_read_buf(RTL837X_REG_NIC_TX_CURR_PKT);
+	reg_write16(RTL837X_REG_NIC_TXCMD, 1);
 }
 
-static void arp(__xdata uint8_t *f, uint16_t n)
+static void arp_reply(__xdata uint8_t *f, uint16_t n)
 {
 	__xdata uint8_t *t;
 
-	if (n < 28 || f[7] != 1 || !same(f + 24, ip, 4))
+	if (n < ARP_LEN || f[ARP_OPER] != ARP_REQUEST || !bytes_equal(f + ARP_TPA, ip, 4))
 		return;
-	t = eth(rxb + 6, 0x06);
+	t = eth_header(rx_buf + ETH_SRC, ETH_TYPE_ARP & 0xff);
 	t[0] = 0x00;
 	t[1] = 0x01;
-	t[2] = 0x08;
-	t[3] = 0x00;
+	t[2] = ETH_TYPE_IPV4 >> 8;
+	t[3] = ETH_TYPE_IPV4 & 0xff;
 	t[4] = 6;
 	t[5] = 4;
 	t[6] = 0;
-	t[7] = 2;
-	cp(t + 8, mac, 6);
-	cp(t + 14, ip, 4);
-	cp(t + 18, f + 8, 10);
-	send(42);
+	t[ARP_OPER] = ARP_REPLY;
+	copy_bytes(t + ARP_SHA, mac, 6);
+	copy_bytes(t + ARP_SPA, ip, 4);
+	copy_bytes(t + ARP_THA, f + ARP_SHA, 10);
+	nic_send(ETH_HDR + ARP_LEN);
 }
 
-static void icmp(__xdata uint8_t *f, uint16_t n)
+static void icmp_echo_reply(__xdata uint8_t *f, uint16_t n)
 {
 	__xdata uint8_t *t;
-	uint8_t hl = (f[0] & 0x0f) << 2;
+	uint8_t hl = (f[IP_VER_IHL] & 0x0f) << 2;
 	uint16_t tl;
 	uint16_t c;
 
-	if (n < 28 || (f[0] >> 4) != 4 || f[9] != 1 || !same(f + 16, ip, 4))
+	if (n < IP_HDR + ICMP_HDR || (f[IP_VER_IHL] >> 4) != 4 || f[IP_PROTO] != IP_PROTO_ICMP || !bytes_equal(f + IP_DST, ip, 4))
 		return;
-	tl = be16(f + 2);
-	if (hl < 20 || tl > n || tl < hl + 8 || f[hl] != 8)
+	tl = get_be16(f + IP_TOTAL_LEN);
+	if (hl < IP_HDR || tl > n || tl < hl + ICMP_HDR || f[hl] != ICMP_ECHO_REQUEST)
 		return;
-	t = eth(rxb + 6, 0x00);
-	cp(t, f, tl);
-	t[8] = 64;
-	cp(t + 12, f + 16, 4);
-	cp(t + 16, f + 12, 4);
-	t[10] = 0;
-	t[11] = 0;
-	c = csum(t, hl);
-	t[10] = c >> 8;
-	t[11] = c;
-	t[hl] = 0;
-	t[hl + 2] = 0;
-	t[hl + 3] = 0;
-	c = csum(t + hl, tl - hl);
-	t[hl + 2] = c >> 8;
-	t[hl + 3] = c;
-	send(14 + tl);
+	t = eth_header(rx_buf + ETH_SRC, ETH_TYPE_IPV4 & 0xff);
+	copy_bytes(t, f, tl);
+	t[IP_TTL] = IP_TTL_DEFAULT;
+	copy_bytes(t + IP_SRC, f + IP_DST, 4);
+	copy_bytes(t + IP_DST, f + IP_SRC, 4);
+	t[IP_CSUM] = 0;
+	t[IP_CSUM + 1] = 0;
+	c = inet_checksum(t, hl);
+	t[IP_CSUM] = c >> 8;
+	t[IP_CSUM + 1] = c;
+	t[hl] = ICMP_ECHO_REPLY;
+	t[hl + ICMP_CSUM] = 0;
+	t[hl + ICMP_CSUM + 1] = 0;
+	c = inet_checksum(t + hl, tl - hl);
+	t[hl + ICMP_CSUM] = c >> 8;
+	t[hl + ICMP_CSUM + 1] = c;
+	nic_send(ETH_HDR + tl);
 }
 
-static bool rx(void)
+static bool nic_receive(void)
 {
 	uint16_t r;
 	bool ok;
 
-	rd(RTL837X_REG_NIC_RX_BUFF_DATA);
-	if (!(rb[0] | rb[1]))
+	reg_read_buf(RTL837X_REG_NIC_RX_BUFF_DATA);
+	if (!(reg_buf[0] | reg_buf[1]))
 		return false;
-	rd(RTL837X_REG_CPU_RX_CURR_PKT);
-	r = ((uint16_t)rb[1] << 8 | rb[0]) << 3;
-	ok = r < RTL837X_NIC_RX_RING_BYTES && NIC_GO(rxh, r, 1);
+	reg_read_buf(RTL837X_REG_CPU_RX_CURR_PKT);
+	r = ((uint16_t)reg_buf[1] << 8 | reg_buf[0]) << 3;
+	ok = r < RTL837X_NIC_RX_RING_BYTES && NIC_GO(rx_hdr, r, 1);
 	if (ok) {
-		rlen = rxh[4] | ((uint16_t)rxh[5] << 8);
+		rx_len = rx_hdr[4] | ((uint16_t)rx_hdr[5] << 8);
 		r += 8;
 		if (r == RTL837X_NIC_RX_RING_BYTES)
 			r = 0;
-		ok = rlen >= 14 && rlen <= NET_MTU && NIC_GO(rxb, r, (rlen + 7) >> 3);
+		ok = rx_len >= ETH_HDR && rx_len <= NET_MTU && NIC_GO(rx_buf, r, (rx_len + 7) >> 3);
 	}
-	reg16(RTL837X_REG_NIC_RXCMD, 1);
+	reg_write16(RTL837X_REG_NIC_RXCMD, 1);
 	if (!ok)
 		print_string("rx error\n");
 	return ok;
 }
 
-static void handle(void)
+static void handle_frame(void)
 {
-	uint8_t o = 12;
-	uint16_t t = be16(rxb + 12);
+	uint8_t o = ETH_TYPE;
+	uint16_t t = get_be16(rx_buf + ETH_TYPE);
 
-	if (t == 0x8899) {
-		o += 8;
-		t = be16(rxb + o);
+	if (t == RTL_FRAME_TAG_ID) {
+		o += (uint8_t)RTL_TAG_SIZE;
+		t = get_be16(rx_buf + o);
 	}
-	if (t == 0x8100) {
-		o += 4;
-		t = be16(rxb + o);
+	if (t == ETH_TYPE_VLAN) {
+		o += (uint8_t)VLAN_TAG_SIZE;
+		t = get_be16(rx_buf + o);
 	}
 	print_string("rx port ");
-	print_byte(rxh[3] & 0x0f);
+	print_byte(rx_hdr[3] & 0x0f);
 	print_string(" type ");
 	print_byte(t >> 8);
 	print_byte(t);
 	write_char('\n');
 	o += 2;
-	if (rlen < o)
+	if (rx_len < o)
 		return;
-	if (t == 0x0806)
-		arp(rxb + o, rlen - o);
-	else if (t == 0x0800)
-		icmp(rxb + o, rlen - o);
+	if (t == ETH_TYPE_ARP)
+		arp_reply(rx_buf + o, rx_len - o);
+	else if (t == ETH_TYPE_IPV4)
+		icmp_echo_reply(rx_buf + o, rx_len - o);
 }
 
-static void arp_ask(void)
+static void arp_request(void)
 {
 	__xdata uint8_t *t;
 	uint8_t i;
 
 	for (i = 0; i < 6; i++)
-		srv_mac[i] = 0xff;
-	t = eth(srv_mac, 0x06);
+		server_mac[i] = 0xff;
+	t = eth_header(server_mac, ETH_TYPE_ARP & 0xff);
 	t[0] = 0x00;
 	t[1] = 0x01;
-	t[2] = 0x08;
-	t[3] = 0x00;
+	t[2] = ETH_TYPE_IPV4 >> 8;
+	t[3] = ETH_TYPE_IPV4 & 0xff;
 	t[4] = 6;
 	t[5] = 4;
 	t[6] = 0;
-	t[7] = 1;
-	cp(t + 8, mac, 6);
-	cp(t + 14, ip, 4);
-	for (i = 18; i < 24; i++)
+	t[ARP_OPER] = ARP_REQUEST;
+	copy_bytes(t + ARP_SHA, mac, 6);
+	copy_bytes(t + ARP_SPA, ip, 4);
+	for (i = ARP_THA; i < ARP_TPA; i++)
 		t[i] = 0;
-	cp(t + 24, srv, 4);
-	send(42);
+	copy_bytes(t + ARP_TPA, server_ip, 4);
+	nic_send(ETH_HDR + ARP_LEN);
 }
 
 static void udp_send(uint16_t port, uint16_t n)
 {
-	__xdata uint8_t *t = txb + 22;
+	__xdata uint8_t *t = tx_buf + NIC_TX_HDR + ETH_HDR;
+	__xdata uint8_t *u = t + IP_HDR;
 	uint16_t c;
 
-	eth(srv_mac, 0x00);
-	t[0] = 0x45;
+	eth_header(server_mac, ETH_TYPE_IPV4 & 0xff);
+	t[IP_VER_IHL] = IP_VER_IHL_PLAIN;
 	t[1] = 0;
-	t[2] = (28 + n) >> 8;
-	t[3] = 28 + n;
+	t[IP_TOTAL_LEN] = (IP_HDR + UDP_HDR + n) >> 8;
+	t[IP_TOTAL_LEN + 1] = IP_HDR + UDP_HDR + n;
 	t[4] = 0;
 	t[5] = 0;
-	t[6] = 0x40;
-	t[7] = 0;
-	t[8] = 64;
-	t[9] = 17;
-	t[10] = 0;
-	t[11] = 0;
-	cp(t + 12, ip, 4);
-	cp(t + 16, srv, 4);
-	c = csum(t, 20);
-	t[10] = c >> 8;
-	t[11] = c;
-	t[20] = TFTP_PORT >> 8;
-	t[21] = TFTP_PORT & 0xff;
-	t[22] = port >> 8;
-	t[23] = port;
-	t[24] = (8 + n) >> 8;
-	t[25] = 8 + n;
-	t[26] = 0;
-	t[27] = 0;
-	send(42 + n);
+	t[IP_FLAGS] = IP_DONT_FRAGMENT;
+	t[IP_FLAGS + 1] = 0;
+	t[IP_TTL] = IP_TTL_DEFAULT;
+	t[IP_PROTO] = IP_PROTO_UDP;
+	t[IP_CSUM] = 0;
+	t[IP_CSUM + 1] = 0;
+	copy_bytes(t + IP_SRC, ip, 4);
+	copy_bytes(t + IP_DST, server_ip, 4);
+	c = inet_checksum(t, IP_HDR);
+	t[IP_CSUM] = c >> 8;
+	t[IP_CSUM + 1] = c;
+	u[UDP_SRC_PORT] = TFTP_PORT >> 8;
+	u[UDP_SRC_PORT + 1] = TFTP_PORT & 0xff;
+	u[UDP_DST_PORT] = port >> 8;
+	u[UDP_DST_PORT + 1] = port;
+	u[UDP_LEN] = (UDP_HDR + n) >> 8;
+	u[UDP_LEN + 1] = UDP_HDR + n;
+	u[UDP_CSUM] = 0;
+	u[UDP_CSUM + 1] = 0;
+	nic_send(ETH_HDR + IP_HDR + UDP_HDR + n);
 }
 
 static void tftp_send(void)
 {
-	__xdata uint8_t *t = txb + 50;
+	__xdata uint8_t *t = tx_buf + NIC_TX_HDR + ETH_HDR + IP_HDR + UDP_HDR;
 	uint8_t i;
 
-	if (srv_mac[0] == 0xff && srv_mac[1] == 0xff) {
-		arp_ask();
+	if (server_mac[0] == 0xff && server_mac[1] == 0xff) {
+		arp_request();
 		return;
 	}
-	t[0] = 0;
-	if (!tf_blk) {
-		t[1] = 1;
+	t[TFTP_OPCODE] = 0;
+	if (!tftp_block) {
+		t[TFTP_OPCODE + 1] = TFTP_RRQ;
 		for (i = 0; line[lp + i]; i++)
 			t[2 + i] = line[lp + i];
 		t[2 + i] = 0;
@@ -457,78 +558,81 @@ static void tftp_send(void)
 		t[6 + i] = 'e';
 		t[7 + i] = 't';
 		t[8 + i] = 0;
-		udp_send(69, 9 + i);
+		udp_send(TFTP_SERVER_PORT, 9 + i);
 		return;
 	}
-	t[1] = 4;
-	t[2] = tf_blk >> 8;
-	t[3] = tf_blk;
-	udp_send(srv_port, 4);
+	t[TFTP_OPCODE + 1] = TFTP_ACK;
+	t[TFTP_BLOCK] = tftp_block >> 8;
+	t[TFTP_BLOCK + 1] = tftp_block;
+	udp_send(server_port, TFTP_HDR);
 }
 
 static uint8_t tftp_frame(void)
 {
-	uint8_t o = 12;
-	uint16_t t = be16(rxb + 12);
+	uint8_t o = ETH_TYPE;
+	uint16_t t = get_be16(rx_buf + ETH_TYPE);
 	__xdata uint8_t *f;
 	__xdata uint8_t *u;
 	uint16_t n;
 
-	if (t == 0x8899) {
-		o += 8;
-		t = be16(rxb + o);
+	if (t == RTL_FRAME_TAG_ID) {
+		o += (uint8_t)RTL_TAG_SIZE;
+		t = get_be16(rx_buf + o);
 	}
-	if (t == 0x8100) {
-		o += 4;
-		t = be16(rxb + o);
+	if (t == ETH_TYPE_VLAN) {
+		o += (uint8_t)VLAN_TAG_SIZE;
+		t = get_be16(rx_buf + o);
 	}
 	o += 2;
-	if (rlen < o)
+	if (rx_len < o)
 		return 0;
-	f = rxb + o;
-	n = rlen - o;
-	if (t == 0x0806) {
-		if (n >= 28 && f[7] == 2 && same(f + 14, srv, 4) && srv_mac[0] == 0xff && srv_mac[1] == 0xff) {
-			cp(srv_mac, f + 8, 6);
+	f = rx_buf + o;
+	n = rx_len - o;
+	if (t == ETH_TYPE_ARP) {
+		if (n >= ARP_LEN && f[ARP_OPER] == ARP_REPLY && bytes_equal(f + ARP_SPA, server_ip, 4)
+		    && server_mac[0] == 0xff && server_mac[1] == 0xff) {
+			copy_bytes(server_mac, f + ARP_SHA, 6);
 			tftp_send();
 			return 1;
 		}
-		arp(f, n);
+		arp_reply(f, n);
 		return 0;
 	}
-	if (t != 0x0800)
+	if (t != ETH_TYPE_IPV4)
 		return 0;
-	if (n < 32 || f[9] != 17 || (f[0] & 0x0f) != 5 || !same(f + 12, srv, 4) || !same(f + 16, ip, 4)) {
-		icmp(f, n);
+	if (n < IP_HDR + UDP_HDR + TFTP_HDR || f[IP_PROTO] != IP_PROTO_UDP || (f[IP_VER_IHL] & 0x0f) != 5
+	    || !bytes_equal(f + IP_SRC, server_ip, 4) || !bytes_equal(f + IP_DST, ip, 4)) {
+		icmp_echo_reply(f, n);
 		return 0;
 	}
-	u = f + 20;
-	if (be16(u + 2) != TFTP_PORT || be16(u + 4) < 12 || be16(u + 4) > n - 20)
+	u = f + IP_HDR;
+	if (get_be16(u + UDP_DST_PORT) != TFTP_PORT || get_be16(u + UDP_LEN) < UDP_HDR + TFTP_HDR
+	    || get_be16(u + UDP_LEN) > n - IP_HDR)
 		return 0;
-	n = be16(u + 4) - 12;
-	if (tf_blk && be16(u) != srv_port)
+	n = get_be16(u + UDP_LEN) - UDP_HDR - TFTP_HDR;
+	if (tftp_block && get_be16(u + UDP_SRC_PORT) != server_port)
 		return 0;
-	if (u[9] == 5) {
+	if (u[UDP_HDR + TFTP_OPCODE + 1] == TFTP_ERROR) {
 		print_string("\nTFTP error: ");
-		for (u += 12; n-- && *u; u++)
+		for (u += UDP_HDR + TFTP_HDR; n-- && *u; u++)
 			write_char(*u >= 0x20 && *u < 0x7f ? *u : '?');
 		write_char('\n');
 		return 3;
 	}
-	if (u[9] != 3)
+	if (u[UDP_HDR + TFTP_OPCODE + 1] != TFTP_DATA_PKT)
 		return 0;
-	if (be16(u + 10) != tf_blk + 1)
+	if (get_be16(u + UDP_HDR + TFTP_BLOCK) != tftp_block + 1)
 		return 0;
-	srv_port = be16(u);
-	if (!up_add(u + 12, n)) {
+	server_port = get_be16(u + UDP_SRC_PORT);
+	if (!up_add(u + UDP_HDR + TFTP_HDR, n)) {
 		print_string("\nImage too large or not in 128 byte steps\n");
 		return 3;
 	}
-	tf_blk++;
+	tftp_block++;
 	tftp_send();
-	if (!(tf_blk & 63))
+	if (!(tftp_block & 63))
 		write_char('#');
-	return n < 512 ? 2 : 1;
+	return n < TFTP_BLOCK_SIZE ? 2 : 1;
 }
 
 void tftp(void)
@@ -544,13 +648,13 @@ void tftp(void)
 	}
 	net_used = true;
 	net_up();
-	tf_blk = 0;
-	tf_tries = 0;
-	srv_mac[0] = 0xff;
-	srv_mac[1] = 0xff;
+	tftp_block = 0;
+	tftp_tries = 0;
+	server_mac[0] = 0xff;
+	server_mac[1] = 0xff;
 	up_begin();
 	print_string("TFTP from ");
-	print_ip(srv);
+	print_ip(server_ip);
 	tftp_send();
 	timer0_start();
 	while (1) {
@@ -559,12 +663,12 @@ void tftp(void)
 			print_string("\nStopped\n");
 			return;
 		}
-		if (rx()) {
+		if (nic_receive()) {
 			r = tftp_frame();
 			if (r == 3)
 				return;
 			if (r) {
-				tf_tries = 0;
+				tftp_tries = 0;
 				n = 0;
 			}
 			if (r == 2) {
@@ -575,7 +679,7 @@ void tftp(void)
 		}
 		if (tick() && ++n == TICKS_1S) {
 			n = 0;
-			if (++tf_tries > 10) {
+			if (++tftp_tries > 10) {
 				print_string("\nTFTP timeout\n");
 				return;
 			}
@@ -603,11 +707,11 @@ void net(void)
 	print_string("IP ");
 	print_ip(ip);
 	print_string("Built-in ports 4-7 up, any key stops\n");
-	links = 0xff;
+	link_state = 0xff;
 	timer0_start();
 	while (1) {
-		while (!RI && rx())
-			handle();
+		while (!RI && nic_receive())
+			handle_frame();
 		if (RI) {
 			RI = 0;
 			return;
@@ -615,11 +719,11 @@ void net(void)
 		if (tick()) {
 			if (!n--) {
 				n = TICKS_1S;
-				rd(RTL837X_REG_LINKS_STS);
-				if ((rb[2] & 0xf0) != links) {
-					links = rb[2] & 0xf0;
+				reg_read_buf(RTL837X_REG_LINKS_STS);
+				if ((reg_buf[2] & 0xf0) != link_state) {
+					link_state = reg_buf[2] & 0xf0;
 					print_string("links ");
-					print_byte(links);
+					print_byte(link_state);
 					write_char('\n');
 				}
 			}

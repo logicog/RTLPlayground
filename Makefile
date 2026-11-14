@@ -301,7 +301,7 @@ LOADER_OBJS = $(BUILDDIR)/loader/loader.rel $(BUILDDIR)/loader/net.rel $(BUILDDI
 
 LDR_ALIAS_CODE := $(shell python3 tools/bootpack.py --get LDR_ALIAS_CODE)
 
-LOADER_HDRS = loader/layout.h loader/loader.h rtl837x_sfr.h rtl837x_regs.h rtl837x_common.h rtl837x_flash.h
+LOADER_HDRS = loader/layout.h loader/loader.h rtl837x_sfr.h rtl837x_regs.h rtl837x_common.h rtl837x_flash.h phy.h
 
 $(BUILDDIR)/loader/%.rel: loader/%.c $(LOADER_HDRS) $(CCFLAGS_STAMP) | create_build_dir
 	mkdir -p "$(BUILDDIR)/loader"

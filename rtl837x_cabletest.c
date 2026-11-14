@@ -30,9 +30,6 @@
 #define RTCT_LEN_ZERO		150
 #define RTCT_LEN_PER_50CM	43
 
-#define PHY_POWER		0xa610
-#define PHY_POWER_OFF		0x0800
-
 #define BMCR_PDOWN_1G_FULL	0x0940
 #define BMCR_1G_FULL		0x0140
 #define BMCR_ANRESTART		0x0200

@@ -2,6 +2,8 @@
 #define _RTL837X_REGS_H_
 
 #define RTL837X_REG_CHIP_ID		0x0004
+// Bits 8-15 of the chip ID read 0x70 on the N version of the chip
+#define CHIP_ID_N_VERSION		0x70
 #define RTL837X_REG_CHIP_INFO		0x000c
 #define RTL837X_REG_CHIP_UUID		0x0010
 #define RTL837X_REG_CHIP_LOT_NO		0x0014
@@ -17,6 +19,7 @@
 // bits 2:0 in bits 18:16. Bit 18 signed, bits 17:10 degrees C, bits 9:0 fraction.
 
 #define RTL837X_REG_HW_CONF		0x6040
+#define HW_CONF_NIC_ENABLE		0x00001000
 // Bits 4 & 5: CLOCK DIVIDER from 125MHz for Timer
 // Bit 1 opens code RAM for writes, bits 2-3 select the 4 KiB page to write
 #define HW_CONF_CODE_RAM_WRITE		0x02
@@ -63,6 +66,8 @@
 #define RTL837X_REG_SMI_PORT0_5_ADDR	0x644C
 #define RTL837X_REG_SMI_PORT6_9_ADDR	0x6450
 #define RTL837X_REG_SMI_CTRL		0x6454
+// Bits 12-14 enable the MDC clock of SMI0-SMI2
+#define SMI_CTRL_MDC_ENABLE		0x00007000
 #define RTL837X_REG_SMI_MAC_TYPE	0x6330
 #define RTL837X_REG_SMI_PORT_POLLING	0x6334
 
@@ -82,6 +87,8 @@
  * PHY
  */
  #define RTL837X_CFG_PHY_TX_POLARITY_SWAP	0xA94
+ // TX polarity swap the N version of the chip needs
+ #define PHY_TX_POLARITY_SWAP_N	0x596a
  #define RTL837X_CFG_PHY_MDI_REVERSE		0xA90
 
 /*
@@ -169,6 +176,7 @@
  * NIC Related registers
  */
 #define RTL837X_REG_NIC_BUFFSIZE_TX	0x7844
+#define RTL837X_NIC_TX_BUFF_SIZE	0x07fe
 #define RTL837X_REG_NIC_RXBUFF_RX	0x7848
 /* RX ring: inclusive final eight-byte slot, as programmed by nic_setup(). */
 #define RTL837X_NIC_RX_LAST_SLOT	0x04ff
@@ -176,7 +184,14 @@
 #define RTL837X_REG_NIC_RXCMD		0x784c
 #define RTL837X_REG_NIC_TXCMD		0x7850
 #define RTL837X_REG_RX_CTRL		0x785c
+#define NIC_RX_ENABLE			0x00000001
+// Cleared, the NIC drops frames with a bad CRC
+#define NIC_RX_KEEP_BAD_CRC		0x00000004
+// Bits 24-31 select the kinds of frames the NIC receives
+#define NIC_RX_TYPES_MASK		0xff000000
+#define NIC_RX_TYPES			0x04000000
 #define RTL837X_REG_TX_CTRL		0x7860
+#define NIC_TX_ENABLE			0x00000001
 #define RTL837X_REG_NIC_RX_BUFF_DATA	0x7874
 #define RTL837X_NIC_INT_STS		0x7854
 #define RTL837X_NIC_INT_MSK		0x7858
@@ -186,8 +201,21 @@
 #define RTL837X_REG_NIC_TX_CURR_PKT	0x7884
 #define RTL837X_REG_CPU_TX_CURR_PKT	0x7890
 #define RTL837X_REG_CPU_TAG		0x6720
+// Bit 0 inserts a CPU tag into frames for the CPU, bits 8-9 select
+// which frames get it, 0 is all of them
+#define CPU_TAG_INSERT			0x00000001
+#define CPU_TAG_MODE_MASK		0x00000300
 #define RTL837X_REG_CPU_TAG_AWARE_PMASK	0x603C
 #define RTL837X_REG_MAC_FORCE_MODE	0x6344
+// One register per port, 4 bytes apart. Bits 0-1 force the link up.
+#define MAC_FORCE_LINK			0x00000003
+
+// Bit 12 + port enables the MAC of that port
+#define RTL837X_REG_MAC_ENABLE		0x632c
+#define MAC_ENABLE_PORT(p)		(1UL << (12 + (p)))
+
+// One register per port, 0x100 bytes apart
+#define RTL837X_REG_PORT_CTRL(p)	(0x1238 + ((uint16_t)(p) << 8))
 
 /* Flags in byte 1 of the RX frame descriptor */
 #define RX_TAG_L4_CSUM_BAD		0x04
