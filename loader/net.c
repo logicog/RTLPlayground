@@ -42,12 +42,17 @@
 #define ETH_TYPE_VLAN		0x8100
 
 // ARP for IPv4 over Ethernet
+#define ARP_HTYPE		0
+#define ARP_PTYPE		2
+#define ARP_HLEN		4
+#define ARP_PLEN		5
 #define ARP_OPER		7
 #define ARP_SHA			8
 #define ARP_SPA			14
 #define ARP_THA			18
 #define ARP_TPA			24
 #define ARP_LEN			28
+#define ARP_HTYPE_ETH		1
 #define ARP_REQUEST		1
 #define ARP_REPLY		2
 
@@ -105,6 +110,7 @@ __xdata uint16_t tftp_block;
 __xdata uint8_t tftp_tries;
 __xdata uint8_t tx_seq;
 __xdata uint16_t rx_len;
+__xdata uint16_t rx_type;
 __xdata uint8_t link_state;
 __xdata bool net_used;
 
@@ -374,23 +380,31 @@ static void nic_send(uint16_t len)
 	reg_write16(RTL837X_REG_NIC_TXCMD, 1);
 }
 
+// Ethernet and ARP header of a frame to dst, with our own addresses as sender
+static __xdata uint8_t *arp_header(__xdata const uint8_t *dst, uint8_t oper)
+{
+	__xdata uint8_t *t = eth_header(dst, ETH_TYPE_ARP & 0xff);
+
+	t[ARP_HTYPE] = 0;
+	t[ARP_HTYPE + 1] = ARP_HTYPE_ETH;
+	t[ARP_PTYPE] = ETH_TYPE_IPV4 >> 8;
+	t[ARP_PTYPE + 1] = ETH_TYPE_IPV4 & 0xff;
+	t[ARP_HLEN] = 6;
+	t[ARP_PLEN] = 4;
+	t[ARP_OPER - 1] = 0;
+	t[ARP_OPER] = oper;
+	copy_bytes(t + ARP_SHA, mac, 6);
+	copy_bytes(t + ARP_SPA, ip, 4);
+	return t;
+}
+
 static void arp_reply(__xdata uint8_t *f, uint16_t n)
 {
 	__xdata uint8_t *t;
 
 	if (n < ARP_LEN || f[ARP_OPER] != ARP_REQUEST || !bytes_equal(f + ARP_TPA, ip, 4))
 		return;
-	t = eth_header(rx_buf + ETH_SRC, ETH_TYPE_ARP & 0xff);
-	t[0] = 0x00;
-	t[1] = 0x01;
-	t[2] = ETH_TYPE_IPV4 >> 8;
-	t[3] = ETH_TYPE_IPV4 & 0xff;
-	t[4] = 6;
-	t[5] = 4;
-	t[6] = 0;
-	t[ARP_OPER] = ARP_REPLY;
-	copy_bytes(t + ARP_SHA, mac, 6);
-	copy_bytes(t + ARP_SPA, ip, 4);
+	t = arp_header(rx_buf + ETH_SRC, ARP_REPLY);
 	copy_bytes(t + ARP_THA, f + ARP_SHA, 10);
 	nic_send(ETH_HDR + ARP_LEN);
 }
@@ -450,7 +464,9 @@ static bool nic_receive(void)
 	return ok;
 }
 
-static void handle_frame(void)
+// Skip the CPU tag and a VLAN tag of the received frame. Sets rx_type and
+// returns the offset of the payload, 0 if the frame is too short for it.
+static uint8_t rx_payload(void)
 {
 	uint8_t o = ETH_TYPE;
 	uint16_t t = get_be16(rx_buf + ETH_TYPE);
@@ -463,18 +479,26 @@ static void handle_frame(void)
 		o += (uint8_t)VLAN_TAG_SIZE;
 		t = get_be16(rx_buf + o);
 	}
+	rx_type = t;
+	o += 2;
+	return rx_len < o ? 0 : o;
+}
+
+static void handle_frame(void)
+{
+	uint8_t o = rx_payload();
+
 	print_string("rx port ");
 	print_byte(rx_hdr[3] & 0x0f);
 	print_string(" type ");
-	print_byte(t >> 8);
-	print_byte(t);
+	print_byte(rx_type >> 8);
+	print_byte(rx_type);
 	write_char('\n');
-	o += 2;
-	if (rx_len < o)
+	if (!o)
 		return;
-	if (t == ETH_TYPE_ARP)
+	if (rx_type == ETH_TYPE_ARP)
 		arp_reply(rx_buf + o, rx_len - o);
-	else if (t == ETH_TYPE_IPV4)
+	else if (rx_type == ETH_TYPE_IPV4)
 		icmp_echo_reply(rx_buf + o, rx_len - o);
 }
 
@@ -485,17 +509,7 @@ static void arp_request(void)
 
 	for (i = 0; i < 6; i++)
 		server_mac[i] = 0xff;
-	t = eth_header(server_mac, ETH_TYPE_ARP & 0xff);
-	t[0] = 0x00;
-	t[1] = 0x01;
-	t[2] = ETH_TYPE_IPV4 >> 8;
-	t[3] = ETH_TYPE_IPV4 & 0xff;
-	t[4] = 6;
-	t[5] = 4;
-	t[6] = 0;
-	t[ARP_OPER] = ARP_REQUEST;
-	copy_bytes(t + ARP_SHA, mac, 6);
-	copy_bytes(t + ARP_SPA, ip, 4);
+	t = arp_header(server_mac, ARP_REQUEST);
 	for (i = ARP_THA; i < ARP_TPA; i++)
 		t[i] = 0;
 	copy_bytes(t + ARP_TPA, server_ip, 4);
@@ -569,26 +583,16 @@ static void tftp_send(void)
 
 static uint8_t tftp_frame(void)
 {
-	uint8_t o = ETH_TYPE;
-	uint16_t t = get_be16(rx_buf + ETH_TYPE);
+	uint8_t o = rx_payload();
 	__xdata uint8_t *f;
 	__xdata uint8_t *u;
 	uint16_t n;
 
-	if (t == RTL_FRAME_TAG_ID) {
-		o += (uint8_t)RTL_TAG_SIZE;
-		t = get_be16(rx_buf + o);
-	}
-	if (t == ETH_TYPE_VLAN) {
-		o += (uint8_t)VLAN_TAG_SIZE;
-		t = get_be16(rx_buf + o);
-	}
-	o += 2;
-	if (rx_len < o)
+	if (!o)
 		return 0;
 	f = rx_buf + o;
 	n = rx_len - o;
-	if (t == ETH_TYPE_ARP) {
+	if (rx_type == ETH_TYPE_ARP) {
 		if (n >= ARP_LEN && f[ARP_OPER] == ARP_REPLY && bytes_equal(f + ARP_SPA, server_ip, 4)
 		    && server_mac[0] == 0xff && server_mac[1] == 0xff) {
 			copy_bytes(server_mac, f + ARP_SHA, 6);
@@ -598,7 +602,7 @@ static uint8_t tftp_frame(void)
 		arp_reply(f, n);
 		return 0;
 	}
-	if (t != ETH_TYPE_IPV4)
+	if (rx_type != ETH_TYPE_IPV4)
 		return 0;
 	if (n < IP_HDR + UDP_HDR + TFTP_HDR || f[IP_PROTO] != IP_PROTO_UDP || (f[IP_VER_IHL] & 0x0f) != 5
 	    || !bytes_equal(f + IP_SRC, server_ip, 4) || !bytes_equal(f + IP_DST, ip, 4)) {

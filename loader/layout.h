@@ -41,6 +41,12 @@
 // Stored in the metadata, a boot image for another layout is refused
 #define LDR_LAYOUT		1
 
+// Metadata at LDR_META: "RTLB", the application CRC (low byte first)
+// and LDR_LAYOUT
+#define LDR_META_CRC		4
+#define LDR_META_LAYOUT		6
+#define LDR_META_LEN		7
+
 #define LDR_RECOVERY_BOOTS	3
 #define LDR_CONFIRM_S		15
 

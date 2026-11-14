@@ -29,6 +29,7 @@ HOME_LEN = L['LDR_HOME_LEN']
 APP = ((L['LDR_APP_A'], L['LDR_APP_A_END']), (L['LDR_APP_B'], L['LDR_APP_B_END']))
 IMAGE_LEN = L['LDR_IMAGE_LEN']
 LAYOUT = L['LDR_LAYOUT']
+META_LEN = L['LDR_META_LEN']
 
 def crc16(data, crc=0):
     for b in data:
@@ -109,7 +110,7 @@ def main():
     for lo, hi in APP:
         crc = crc16(img[lo:hi], crc)
     img[META:META + 0x1000] = b'\xff' * 0x1000
-    img[META:META + 7] = b'RTLB' + bytes((crc & 0xff, crc >> 8, LAYOUT))
+    img[META:META + META_LEN] = b'RTLB' + bytes((crc & 0xff, crc >> 8, LAYOUT))
 
     c = crc16(img[:-2]) ^ 0xffff
     img[-2] = c & 0xff

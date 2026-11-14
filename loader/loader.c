@@ -256,10 +256,34 @@ static void copy(uint32_t src, uint32_t dst, uint32_t len)
 	}
 }
 
+static bool meta_magic(void)
+{
+	return buf[0] == 'R' && buf[1] == 'T' && buf[2] == 'L' && buf[3] == 'B';
+}
+
+static uint16_t meta_crc(void)
+{
+	return buf[LDR_META_CRC] | ((uint16_t)buf[LDR_META_CRC + 1] << 8);
+}
+
 static bool has_meta(uint32_t a)
 {
-	readb(a, 7);
-	return buf[0] == 'R' && buf[1] == 'T' && buf[2] == 'L' && buf[3] == 'B';
+	readb(a, LDR_META_LEN);
+	return meta_magic();
+}
+
+// Mark the installed application as valid and start counting its boots anew
+static void store_meta(uint16_t want)
+{
+	buf[0] = 'R';
+	buf[1] = 'T';
+	buf[2] = 'L';
+	buf[3] = 'B';
+	buf[LDR_META_CRC] = want;
+	buf[LDR_META_CRC + 1] = want >> 8;
+	buf[LDR_META_LAYOUT] = LDR_LAYOUT;
+	program(LDR_META, LDR_META_LEN);
+	erase(LDR_BOOTCNT);
 }
 
 static uint16_t app_crc(uint32_t base, uint32_t home)
@@ -277,7 +301,7 @@ static bool app_valid(void)
 
 	if (!has_meta(LDR_META))
 		return false;
-	want = buf[4] | ((uint16_t)buf[5] << 8);
+	want = meta_crc();
 	return app_crc(0, LDR_SLOT) == want;
 }
 
@@ -304,15 +328,7 @@ static void install(uint32_t home)
 		print_string("Verify failed, image kept\n");
 		return;
 	}
-	buf[0] = 'R';
-	buf[1] = 'T';
-	buf[2] = 'L';
-	buf[3] = 'B';
-	buf[4] = want;
-	buf[5] = want >> 8;
-	buf[6] = LDR_LAYOUT;
-	program(LDR_META, 7);
-	erase(LDR_BOOTCNT);
+	store_meta(want);
 	drop_upload();
 	print_string("Installed\n");
 }
@@ -335,7 +351,7 @@ static void handle_upload(void)
 		return;
 	}
 	if (has_meta(LDR_UPLOAD + LDR_META)) {
-		if (buf[6] != LDR_LAYOUT) {
+		if (buf[LDR_META_LAYOUT] != LDR_LAYOUT) {
 			print_string("Image needs another loader, dropped\n");
 			drop_upload();
 			return;
@@ -400,10 +416,10 @@ static void store(uint32_t off)
 		}
 		return;
 	} else if (off >= LDR_DATA && off < LDR_DATA_END) {
-		if (off == LDR_META && buf[0] == 'R' && buf[1] == 'T' && buf[2] == 'L' && buf[3] == 'B') {
-			direct_other = buf[6] != LDR_LAYOUT;
+		if (off == LDR_META && meta_magic()) {
+			direct_other = buf[LDR_META_LAYOUT] != LDR_LAYOUT;
 			direct_boot = !direct_other;
-			direct_want = buf[4] | ((uint16_t)buf[5] << 8);
+			direct_want = meta_crc();
 		}
 		for (i = 0; i < 128; i++) {
 			if (buf[i])
@@ -455,15 +471,7 @@ static void direct_finish(void)
 		print_string("Verify failed\n");
 		return;
 	}
-	buf[0] = 'R';
-	buf[1] = 'T';
-	buf[2] = 'L';
-	buf[3] = 'B';
-	buf[4] = want;
-	buf[5] = want >> 8;
-	buf[6] = LDR_LAYOUT;
-	program(LDR_META, 7);
-	erase(LDR_BOOTCNT);
+	store_meta(want);
 	print_string("Installed\n");
 }
 
@@ -779,7 +787,7 @@ static void info(void)
 	print_string(crc == 0xb001 ? "ok\n" : "bad\n");
 	print_string("Application: ");
 	if (has_meta(LDR_META)) {
-		want = buf[4] | ((uint16_t)buf[5] << 8);
+		want = meta_crc();
 		print_hex16(want);
 		print_string(app_crc(0, LDR_SLOT) == want ? " ok\n" : " bad\n");
 	} else {
