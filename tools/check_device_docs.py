@@ -93,6 +93,9 @@ RULES = {
         WARNING, 'a machine target is named after vendor + model, not the PCB'),
     'machine-header-missing': (
         ERROR, 'machine/<MACHINE>.h exists'),
+    'machine-header-macro': (
+        ERROR, 'the include guard of machine/<MACHINE>.h is '
+                 '_MACHINE_<MACHINE>_H_'),
     'machine-header-model': (
         ERROR, 'machine/<MACHINE>.h defines MACHINE_MODEL'),
     'machine-header-chipset': (
@@ -117,6 +120,14 @@ RULES = {
         ERROR, 'every link in doc/supported_devices.md resolves'),
     'supported-doc-unlisted': (
         ERROR, 'every doc/devices/<PCB_DOC_NAME>.md is listed in supported_devices.md'),
+    'supported-duplicate': (
+        WARNING, 'no two rows in doc/supported_devices.md repeat the same '
+                 'brand, type and PCB (case insensitive)'),
+    'supported-repeat': (
+        INFO, 'a brand and type used by several rows is listed, so that the '
+              'PCB of each row can be checked'),
+    'supported-order': (
+        WARNING, 'the rows are sorted by brand, then type, ignoring case'),
     'doc-target-missing': (
         ERROR, 'a doc only names MACHINE= targets that exist'),
     'doc-target-pcb': (
@@ -348,6 +359,7 @@ class Checker:
                      '%s: %s is missing' % (rel, header_rel), scope)
             return
         text = self.read(header_rel)
+        self.check_machine_header_macro(header_rel, machine, text, scope)
         model = re.search(r'#define\s+MACHINE_MODEL\s+"([^"]*)"', text)
         chip = re.search(r'#define\s+MACHINE_CHIPSET\s+(\w+)', text)
         if not model:
@@ -377,6 +389,32 @@ class Checker:
                      '%s: MACHINE_CHIPSET is %s, expected one of %s'
                      % (header_rel, chip.group(1), ', '.join(sorted(CHIPSETS))),
                      scope)
+
+    def check_machine_header_macro(self, rel, machine, text, scope):
+        """The include guard of machine/<MACHINE>.h names that same file.
+
+        A board header is copied from the closest existing board, so a guard
+        left behind by the copy names another file and hides which board the
+        header really belongs to.
+        """
+        expected = '_MACHINE_%s_H_' % machine
+        guard = re.search(r'^\s*#\s*ifndef\s+(\w+)', text, re.M)
+        define = re.search(r'^\s*#\s*define\s+(\w+)', text, re.M)
+        if not guard:
+            self.add('machine-header-macro',
+                     '%s: has no #ifndef include guard, expected %s'
+                     % (rel, expected), scope)
+            return
+        named = [guard.group(1)]
+        if define:
+            named.append(define.group(1))
+        for found in named:
+            if found == expected:
+                continue
+            self.add('machine-header-macro',
+                     '%s: include guard %s does not match the file name, '
+                     'expected %s' % (rel, found, expected), scope)
+            return
 
     def docs_for_pcb(self, pcb):
         base = pcb.split('__', 1)[0]
@@ -592,6 +630,107 @@ class Checker:
                          % (rel, line_no, match.group(0)), scope)
 
     # -- supported_devices.md ---------------------------------------------
+    def supported_rows(self, text):
+        """The data rows of the table in doc/supported_devices.md, as
+        (line number, brand, type, pcb) tuples.
+
+        The PCB is the target of the devices/ link in the fourth cell, so that
+        two rows linking the same doc compare equal; a row without a link uses
+        its fourth cell as it is written.
+        """
+        rows = []
+        body = False
+        for line_no, line in enumerate(text.splitlines(), 1):
+            line = line.strip()
+            if not line.startswith('|') or not line.endswith('|'):
+                body = False
+                continue
+            cells = [cell.strip() for cell in line[1:-1].split('|')]
+            if len(cells) < 4:
+                continue
+            if all(not cell or re.fullmatch(r'[-: ]+', cell) for cell in cells):
+                # The header separator: the rows below it are the devices.
+                body = True
+                continue
+            if not body:
+                continue
+            link = re.search(r'\]\((devices/[^)]+)\)', cells[3])
+            rows.append((line_no, cells[0], cells[1],
+                         link.group(1) if link else cells[3]))
+        return rows
+
+    def check_supported_duplicates(self, rel, text):
+        """Compare the table rows by brand and type, ignoring case.
+
+        The same brand and type may document several PCB revisions, so only the
+        rows that repeat the brand, type and PCB are an error. The rows that
+        repeat just the brand and type are reported as info: they are expected,
+        but the PCB of each row is worth a second look.
+        """
+        groups = {}
+        for row in self.supported_rows(text):
+            groups.setdefault((row[1].lower(), row[2].lower()), []).append(row)
+        for rows in groups.values():
+            if len(rows) < 2:
+                continue
+            by_pcb = {}
+            for line_no, _brand, _type, pcb in rows:
+                by_pcb.setdefault(pcb, []).append(line_no)
+            _line, brand, model, _pcb = rows[0]
+            scope = ['doc:' + os.path.basename(pcb)[:-3]
+                     for pcb in by_pcb if pcb.startswith('devices/')]
+            duplicate = False
+            for pcb, lines in sorted(by_pcb.items()):
+                if len(lines) < 2:
+                    continue
+                duplicate = True
+                self.add('supported-duplicate',
+                         '%s: lines %s list %s %s with %s; keep one row'
+                         % (rel, ', '.join(str(n) for n in lines), brand,
+                            model,
+                            os.path.basename(pcb) if pcb
+                            else 'no PCB'), scope)
+            if duplicate:
+                continue
+            self.add('supported-repeat',
+                     '%s: lines %s repeat %s %s for different PCBs (%s)'
+                     % (rel, ', '.join(str(n) for n, _b, _t, _p in rows),
+                        brand, model,
+                        ', '.join(sorted(os.path.basename(pcb) or 'no PCB'
+                                         for pcb in by_pcb))),
+                     scope)
+
+    def supported_key(self, row):
+        """The sort key of a table row: brand, then type, ignoring case."""
+        return (row[1].lower(), row[2].lower())
+
+    def supported_scope(self, rows):
+        """The device docs a set of table rows points at, for --machine."""
+        scope = []
+        for _line, _brand, _type, pcb in rows:
+            if pcb.startswith('devices/'):
+                doc = 'doc:' + os.path.basename(pcb)[:-3]
+                if doc not in scope:
+                    scope.append(doc)
+        return scope
+
+    def check_supported_order(self, rel, text):
+        """The table rows are sorted by brand and then type, ignoring case.
+
+        A row is reported when it sorts before the one above it, so that the
+        report names the two rows that are the wrong way round.
+        """
+        rows = self.supported_rows(text)
+        for previous, row in zip(rows, rows[1:]):
+            if self.supported_key(row) >= self.supported_key(previous):
+                continue
+            self.add('supported-order',
+                     '%s: line %d (%s %s) comes after line %d (%s %s) but '
+                     'sorts first; sort by brand, then type, ignoring case'
+                     % (rel, row[0], row[1], row[2], previous[0],
+                        previous[1], previous[2]),
+                     self.supported_scope([previous, row]))
+
     def check_supported_devices(self):
         rel = 'doc/supported_devices.md'
         text = self.read(rel)
@@ -606,6 +745,8 @@ class Checker:
             if doc + '.md' not in linked:
                 self.add('supported-doc-unlisted',
                          '%s: %s is not listed' % (rel, doc_rel), 'doc:' + doc)
+        self.check_supported_duplicates(rel, text)
+        self.check_supported_order(rel, text)
         self.check_chip_names(rel, text)
 
     # -- --machine --------------------------------------------------------
