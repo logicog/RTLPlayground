@@ -5244,11 +5244,16 @@ $("saveBtn").addEventListener("click", function() {
 
 var fwBuf = null,
     fwOther = false;
-// Every image carries its machine name as a NUL-terminated string, the same
-// one the running switch reports as hw_ver: an image without it was built
-// for another board (SFP, LED and button pins differ between machines).
+// Every image carries its PCB configuration name as a NUL-terminated string,
+// the same one the running switch reports as pcb_ver: an image without it was
+// built for another board (SFP, LED and button pins differ between PCBs).
+// Firmware older than pcb_ver reports only the machine name as hw_ver; check
+// against that instead of skipping the test.
+function fwBoardName() {
+    return S.info.pcb_ver || S.info.hw_ver;
+}
 function fwForThisSwitch(u) {
-    var name = S.info.hw_ver;
+    var name = fwBoardName();
     if (!name) return true;
     var n = [];
     for (var i = 0; i < name.length; i++) n.push(name.charCodeAt(i) & 0xff);
@@ -5295,7 +5300,7 @@ $("fwfile").addEventListener("change", function() {
         fwOther = !fwForThisSwitch(u);
         info.innerHTML = '<span style="color:var(--ok)">\u2713 ' + esc(t("fw_valid")) + "</span>" +
             (fwOther ? '<br><span style="color:var(--warn)">\u26a0 ' + esc(t("fw_other", {
-                m: S.info.hw_ver
+                m: fwBoardName()
             })) + "</span>" : "");
         $("fwup").disabled = false;
     });
@@ -5303,7 +5308,7 @@ $("fwfile").addEventListener("change", function() {
 $("fwup").addEventListener("click", function() {
     if (!fwBuf) return;
     confirmModal(t("fw_q"), (fwOther ? t("fw_other", {
-        m: S.info.hw_ver
+        m: fwBoardName()
     }) + " " : "") + t("fw_d"), function() {
         var form = new FormData();
         form.append("uploadedfile", fwBuf, fwBuf.name);

@@ -264,11 +264,15 @@ def print_health(host, port, timeout, password, cookie,
     return True
 
 
-def image_matches_hardware(image, hardware):
-    """True if the image carries the switch's NUL-terminated machine name."""
-    if not hardware:
+def image_matches_pcb(image, pcb):
+    """True if the image carries the switch's NUL-terminated PCB name.
+
+    Firmware older than pcb_ver reports only its machine name as hw_ver, so
+    the caller passes that instead and the check still runs.
+    """
+    if not pcb:
         return True
-    return hardware.encode("ascii", "replace") + b"\0" in image
+    return pcb.encode("ascii", "replace") + b"\0" in image
 
 
 def build_multipart(image, path):
@@ -448,7 +452,7 @@ def parse_args(argv):
                              f"(default: {DEFAULT_HOST})")
     parser.add_argument("--force", action="store_true",
                         help="upload even if the image does not name the "
-                             "switch's hardware")
+                             "switch's PCB")
     return parser.parse_args(argv)
 
 
@@ -512,14 +516,17 @@ def run(args):
     before = fetch_info(host, port, args.timeout, cookie)
     if before:
         print(f"Currently running {describe(before)}", file=sys.stderr)
-        if not args.force and not image_matches_hardware(
-                image, before.get("hw_ver")):
+        # Prefer the PCB name; firmware older than pcb_ver reports only
+        # hw_ver, and the check then runs against that rather than being
+        # skipped.
+        board = before.get("pcb_ver") or before.get("hw_ver")
+        if not args.force and not image_matches_pcb(image, board):
             raise Failure(
-                f"the image does not contain the switch's hardware name "
-                f"({before.get('hw_ver')}); it was probably built for another "
+                f"the image does not contain the switch's board name "
+                f"({board}); it was probably built for another "
                 "board. Use --force to upload it anyway.", 1)
     else:
-        print("Could not read /information.json; skipping the hardware check",
+        print("Could not read /information.json; skipping the PCB check",
               file=sys.stderr)
 
     accepted, verdict = upload(
