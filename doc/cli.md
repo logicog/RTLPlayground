@@ -2,8 +2,8 @@
 
 | Old Command | New Command |
 | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `sfp` | Unsure; `show sfp`? Maybe covered by port? |
-| `sfp <sfp_number> [10g\|2g5\|1g\|100m\|auto]` | Unsure; this is the only place that “sfp_number” exists. Move to port? |
+| `sfp` | `show port X` |
+| `sfp <sfp_number> [10g\|2g5\|1g\|100m\|auto]` | `port X speed 10g` same as copper |
 | `port 1 show` | `show port 1` |
 | `port 1 name <name>` | `port 1 name <name>` |
 | `port 1 lldp [block\|permit]` | `port 1 lldp [block\|permit]` |
@@ -17,7 +17,7 @@
 | `port 1 auto` | `port 1 speed 10g` |
 | `port 1 off` | `port 1 down` |
 | `port 1 on` | `port 1 up` |
-| `port 1 duplex [full\|_else_]` | ?? Why have this separate from the speed? |
+| `port 1 duplex [full\|_else_]` | ?? Why have this separate from the speed? I think remove this |
 | `mtu show` | I think should be on `show port` |
 | `mtu 1 1500` | `port 1 mtu 1500` |
 | `syslog` | `show system syslog` |
@@ -42,9 +42,9 @@
 | `netmask 123.45.67.89` | --removed and moved into ip command |
 | `l2` | `show system mac-table` |
 | `l2 forget` | `system clear-mac-table` |
-| `igmp on` | `system igmp on` |
-| `igmp off` | `system igmp off` |
-| `igmp show` | `show system igmp` |
+| `igmp on` | `feature igmp on` |
+| `igmp off` | `feature igmp off` |
+| `igmp show` | `show feature igmp` |
 | `mac` | `show system mac` |
 | `mac <aa:bb:cc:dd:ee:ff>` | `system mac <aa:bb...>` |
 | `hostname` | `show system hostname` |
