@@ -137,15 +137,73 @@ static bool sd_t[4];
 static volatile uint16_t addr_v;
 static volatile uint8_t exec_v, status_v;
 
+static uint32_t regmem[0x10000 / 4];
+
 static uint32_t *reg_of(uint16_t a)
 {
-	static uint32_t other;
 	if (a == RTL837X_REG_HW_CONF)
 		return &reg_hw_conf;
 	if (a == RTL837X_PIN_MUX_1)
 		return &reg_pin_mux_1;
-	return &other;
+	return &regmem[a >> 2];
 }
+
+#define RING RTL837X_NIC_RX_RING_BYTES
+static uint8_t asic[RING];
+static uint16_t rx_slot[16];
+static int rx_count, rx_cur, nic_resets, tx_count;
+static uint8_t txlog[8][1600];
+static struct { uint8_t mask, dev; uint16_t reg, val; } smi[8];
+static int smi_count;
+
+static void rx_regs(void)
+{
+	regmem[RTL837X_REG_NIC_RX_BUFF_DATA >> 2] = rx_count - rx_cur;
+	regmem[RTL837X_REG_CPU_RX_CURR_PKT >> 2] = rx_cur < rx_count ? rx_slot[rx_cur] : 0;
+}
+
+static void reg_written(uint16_t a, uint32_t v)
+{
+	if (a == RTL837X_REG_RESET) {
+		if (v & 1) {
+			regmem[a >> 2] = 0;
+			longjmp(escape, 4);
+		}
+		if (v & (1 << RESET_NIC_BIT))
+			nic_resets++;
+		regmem[a >> 2] = v & ~(1u << RESET_NIC_BIT);
+	} else if (a == RTL837X_REG_NIC_RXCMD) {
+		rx_cur++;
+		rx_regs();
+	}
+}
+
+static bool sim_nic(uint8_t *b, uint16_t ring, uint8_t words)
+{
+	if (ring & 0x8000) {
+		if (tx_count < 8)
+			memcpy(txlog[tx_count], b, (size_t)words * 8);
+		tx_count++;
+		return true;
+	}
+	for (size_t i = 0; i < (size_t)words * 8; i++)
+		b[i] = ring < RING ? asic[(ring + i) % RING] : 0xd7;
+	return true;
+}
+
+static void rx_frame(uint16_t slot, uint8_t port, const uint8_t *f, uint16_t len)
+{
+	uint32_t pos = (uint32_t)slot * 8;
+	uint8_t h[8] = { 0, 0, 0, port, len, len >> 8, 0, 0 };
+	for (int i = 0; i < 8; i++)
+		asic[(pos + i) % RING] = h[i];
+	for (uint16_t i = 0; i < len; i++)
+		asic[(pos + 8 + i) % RING] = f[i];
+	rx_slot[rx_count++] = slot;
+	rx_regs();
+}
+
+#define NIC_GO(b, r, w) sim_nic(b, r, w)
 
 volatile uint8_t *sd_24(void) { sd_t[0] = true; return &sd_v[0]; }
 volatile uint8_t *sd_16(void) { sd_t[1] = true; return &sd_v[1]; }
@@ -168,6 +226,13 @@ volatile uint8_t *status_p(void)
 			v |= (uint32_t)b << (8 * (3 - i));
 		}
 		*r = v;
+		reg_written(addr_v, v);
+	} else if (exec_v == SFR_EXEC_WRITE_SMI && smi_count < 8) {
+		smi[smi_count].mask = SFR_SMI_PHYMASK;
+		smi[smi_count].dev = SFR_SMI_DEV;
+		smi[smi_count].reg = SFR_SMI_REG_U16;
+		smi[smi_count].val = (uint16_t)sd_v[2] << 8 | sd_v[3];
+		smi_count++;
 	}
 	exec_v = 0;
 	memset(sd_t, 0, sizeof(sd_t));
@@ -209,6 +274,7 @@ static void alias_jump(uint16_t a)
 #define main loader_main
 #include "../loader/loader.c"
 #undef main
+#include "../loader/net.c"
 
 static const uint8_t *xm_img;
 static int xm_state;
@@ -288,9 +354,16 @@ static void uart_step(void)
 	}
 }
 
+static size_t rx_gate = (size_t)-1;
+static int rx_delay;
+
 static void uart_rx(void)
 {
 	uart_step();
+	if (rx_head == rx_gate && rx_delay) {
+		rx_delay--;
+		return;
+	}
 	if (!ri_reg && rx_head < rx_tail && t0_wraps >= rx_after) {
 		rx_reg = rxq[rx_head++];
 		ri_reg = true;
@@ -307,6 +380,8 @@ static void xm_arm(const uint8_t *img, uint32_t corrupt, uint32_t dup)
 	xm_stop = 0;
 	xm_stx = false;
 	xm_skip = 0;
+	rx_gate = (size_t)-1;
+	rx_delay = 0;
 	rx_head = rx_tail = 0;
 }
 
@@ -386,6 +461,87 @@ static int boot(void)
 		loader_main();
 	out[out_len] = 0;
 	return r;
+}
+
+
+static const uint8_t peer_mac[6] = { 0x02, 0xaa, 0xbb, 0xcc, 0xdd, 0x01 };
+static const uint8_t own_mac[6] = { 0x06, 0x22, 0xee, 0x55, 0x66, 0x77 };
+
+static uint16_t eth_hdr(uint8_t *f, bool tagged, uint16_t type)
+{
+	uint16_t o = 12;
+	memset(f, 0xff, 6);
+	memcpy(f + 6, peer_mac, 6);
+	if (tagged) {
+		const uint8_t tag[12] = { 0x88, 0x99, 0x04, 0x00, 0x00, 0x00, 0x00, 0x05, 0x81, 0x00, 0x00, 0x01 };
+		memcpy(f + o, tag, sizeof(tag));
+		o += sizeof(tag);
+	}
+	f[o] = type >> 8;
+	f[o + 1] = type;
+	return o + 2;
+}
+
+static uint16_t arp_req(uint8_t *f, bool tagged, const uint8_t *target)
+{
+	uint16_t o = eth_hdr(f, tagged, 0x0806);
+	const uint8_t h[8] = { 0, 1, 8, 0, 6, 4, 0, 1 };
+	memcpy(f + o, h, 8);
+	memcpy(f + o + 8, peer_mac, 6);
+	memcpy(f + o + 14, (uint8_t[]){ 192, 168, 2, 9 }, 4);
+	memset(f + o + 18, 0, 6);
+	memcpy(f + o + 24, target, 4);
+	return o + 28;
+}
+
+static uint16_t ip_csum(const uint8_t *p, size_t n)
+{
+	uint32_t s = 0;
+	for (size_t i = 0; i < n; i += 2)
+		s += (uint32_t)p[i] << 8 | (i + 1 < n ? p[i + 1] : 0);
+	while (s >> 16)
+		s = (s & 0xffff) + (s >> 16);
+	return ~s & 0xffff;
+}
+
+static uint16_t ping_req(uint8_t *f, bool tagged, const uint8_t *target, uint16_t data)
+{
+	uint16_t o = eth_hdr(f, tagged, 0x0800);
+	uint8_t *ip4 = f + o;
+	uint16_t tl = 20 + 8 + data;
+	memset(ip4, 0, tl);
+	ip4[0] = 0x45;
+	ip4[2] = tl >> 8;
+	ip4[3] = tl;
+	ip4[8] = 128;
+	ip4[9] = 1;
+	memcpy(ip4 + 12, (uint8_t[]){ 192, 168, 2, 9 }, 4);
+	memcpy(ip4 + 16, target, 4);
+	uint16_t c = ip_csum(ip4, 20);
+	ip4[10] = c >> 8;
+	ip4[11] = c;
+	uint8_t *ic = ip4 + 20;
+	ic[0] = 8;
+	ic[4] = 0x12;
+	ic[5] = 0x34;
+	ic[7] = 7;
+	for (uint16_t i = 0; i < data; i++)
+		ic[8 + i] = i * 3;
+	c = ip_csum(ic, 8 + data);
+	ic[2] = c >> 8;
+	ic[3] = c;
+	return o + tl;
+}
+
+static void nic_reset_model(void)
+{
+	memset(asic, 0, sizeof(asic));
+	rx_count = rx_cur = nic_resets = tx_count = smi_count = 0;
+	rx_regs();
+	regmem[RTL837X_REG_CHIP_UUID >> 2] = 0x11223344;
+	regmem[RTL837X_REG_CHIP_LOT_NO >> 2] = 0x55667788;
+	regmem[RTL837X_REG_CPU_TX_CURR_PKT >> 2] = 0;
+	net_used = false;
 }
 
 static int fails;
@@ -750,6 +906,89 @@ int main(void)
 	type("c");
 	check(boot() == 1 && started == 1 && app_is(a2) && strstr(out, "Console idle"), "a console without input lets the switch boot");
 	confirm();
+
+
+	{
+		static uint8_t f[1600], ping[1600];
+		uint16_t n;
+		uint16_t pn;
+		const uint8_t own_ip[4] = { 192, 168, 2, 2 };
+
+		nic_reset_model();
+		for (int i = 0; i < 3; i++)
+			boot();
+		nic_reset_model();
+		n = arp_req(f, true, own_ip);
+		rx_frame(RING / 8 - 1, 5, f, n);
+		n = arp_req(f, false, (uint8_t[]){ 192, 168, 2, 3 });
+		rx_frame(10, 6, f, n);
+		pn = ping_req(ping, false, own_ip, 56);
+		rx_frame(30, 4, ping, pn);
+		xm_arm(NULL, 0, 0);
+		type("c");
+		type("net\r");
+		rx_gate = rx_tail;
+		rx_delay = 50;
+		type("q");
+		check(boot() == 4 && strstr(out, "MAC 06:22:ee:55:66:77 IP 192.168.2.2\n") && strstr(out, "rx port 05 type 0806"),
+			"net brings the ports up with a MAC from the chip UUID and reads a CPU-tagged frame");
+		check(rx_cur == 3 && strstr(out, "rx port 06 type 0806") && strstr(out, "rx port 04 type 0800") && !strstr(out, "rx error"),
+			"net reads every queued frame, also one whose data wraps around the ring");
+		check(tx_count == 2, "net answers the ARP request and the ping for its address and nothing else");
+		{
+			uint8_t *d = txlog[0], *e = d + 8, *a = e + 14;
+			check(d[1] == 0x07 && (d[4] | d[5] << 8) == 42 && !memcmp(e, peer_mac, 6) && !memcmp(e + 6, own_mac, 6)
+				&& e[12] == 0x08 && e[13] == 0x06 && a[7] == 2 && !memcmp(a + 8, own_mac, 6) && !memcmp(a + 14, own_ip, 4)
+				&& !memcmp(a + 18, peer_mac, 6) && !memcmp(a + 24, (uint8_t[]){ 192, 168, 2, 9 }, 4),
+				"the ARP reply carries the own MAC and IP and goes back to the asker");
+		}
+		{
+			uint8_t *d = txlog[1], *e = d + 8, *ip4 = e + 14, *q = ping + 14;
+			uint16_t tl = 20 + 8 + 56;
+			check((d[4] | d[5] << 8) == 14 + tl && !memcmp(e, peer_mac, 6) && e[12] == 0x08 && e[13] == 0x00
+				&& !memcmp(ip4 + 12, own_ip, 4) && !memcmp(ip4 + 16, q + 12, 4) && ip_csum(ip4, 20) == 0
+				&& ip4[20] == 0 && ip_csum(ip4 + 20, tl - 20) == 0 && !memcmp(ip4 + 24, q + 24, tl - 24),
+				"the echo reply swaps the addresses, keeps id, sequence and data, and has valid checksums");
+		}
+		check((regmem[RTL837X_CFG_PHY_MDI_REVERSE >> 2] & 0x0f) == 0x0c && regmem[RTL837X_CFG_PHY_TX_POLARITY_SWAP >> 2] == 0,
+			"the pair order of the built-in PHYs is set, the TX polarity only on an N chip");
+		check(smi_count == 2 && smi[0].mask == 0xf0 && smi[0].dev == (31 << 3 | 2) && smi[0].reg == 0xa610 && smi[0].val == 0x2858
+			&& smi[1].mask == 0xf0 && smi[1].val == 0x2058, "only the built-in PHYs 4-7 are written, off and on again");
+		{
+			bool iso = true;
+			for (int p = 0; p < 9; p++)
+				iso = iso && regmem[(RTL837X_PORT_ISOLATION_BASE + p * 4) >> 2] == 0x200;
+			for (int p = 4; p < 8; p++)
+				iso = iso && regmem[(0x1238 + p * 0x100) >> 2] == 0xf77;
+			iso = iso && regmem[0x1538 >> 2] == 0 && regmem[0x1a38 >> 2] == 0;
+			check(iso && nic_resets == 1 && (reg_hw_conf & 0x1001) == 0x1001 && (regmem[0x632c >> 2] & 0x000f0000) == 0x000f0000
+				&& (regmem[(RTL837X_REG_MAC_FORCE_MODE + 36) >> 2] & 3) == 3,
+				"every port only reaches the CPU, the NIC is reset and enabled, ports 4-7 get MAC access");
+		}
+		check(strstr(out, "Console idle") && !started && loader_intact() && app_is(a2),
+			"leaving the console after net resets the chip instead of jumping to the application");
+
+		nic_reset_model();
+		regmem[RTL837X_REG_CHIP_ID >> 2] = 0x00837000;
+		n = arp_req(f, false, own_ip);
+		rx_frame(0, 4, f, n);
+		n = arp_req(f, false, (uint8_t[]){ 10, 0, 0, 9 });
+		rx_frame(8, 4, f, n);
+		xm_arm(NULL, 0, 0);
+		type("c");
+		type("net 300.1.1.1\r");
+		type("net 10.0.0.9\r");
+		rx_gate = rx_tail;
+		rx_delay = 50;
+		type("q");
+		check(boot() == 4 && strstr(out, "?\n") && strstr(out, "IP 10.0.0.9\n") && tx_count == 1 && !memcmp(txlog[0] + 8 + 14 + 14, (uint8_t[]){ 10, 0, 0, 9 }, 4),
+			"net takes an address, refuses a bad one and answers only for the new address");
+		check(regmem[RTL837X_CFG_PHY_TX_POLARITY_SWAP >> 2] == 0x596a, "an N chip gets the TX polarity swap of the application");
+		regmem[RTL837X_REG_CHIP_ID >> 2] = 0;
+		ip[0] = 192; ip[1] = 168; ip[2] = 2; ip[3] = 2;
+		net_used = false;
+		confirm();
+	}
 
 	printf("%s: %d failed\n", fails ? "FAIL" : "OK", fails);
 	return fails != 0;
