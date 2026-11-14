@@ -28,7 +28,7 @@ __xdata bool net_used;
 
 static void rd(uint16_t a)
 {
-	reg_rd(a);
+	reg_read(a);
 	rb[0] = SFR_DATA_0;
 	rb[1] = SFR_DATA_8;
 	rb[2] = SFR_DATA_16;
@@ -41,7 +41,7 @@ static void wr(uint16_t a)
 	SFR_DATA_8 = rb[1];
 	SFR_DATA_16 = rb[2];
 	SFR_DATA_24 = rb[3];
-	reg_wr(a);
+	reg_write(a);
 }
 
 static void reg16(uint16_t a, uint16_t v)
@@ -94,7 +94,7 @@ static void net_up(void)
 
 	reg_bits(RTL837X_REG_RESET, 0, 0, 1 << RESET_NIC_BIT);
 	do {
-		reg_rd(RTL837X_REG_RESET);
+		reg_read(RTL837X_REG_RESET);
 	} while (SFR_DATA_0 & (1 << RESET_NIC_BIT));
 
 	reg_bits(RTL837X_REG_SMI_CTRL, 1, 0, 0x70);

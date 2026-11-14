@@ -51,15 +51,17 @@ Code RAM can be written while the CPU runs:
 - `app_start` is plain asm with relative jumps only (`sjmp`, `djnz`, `cjne`, `jz`) and one `ljmp 0x0000` at the end, so it works at whatever address the window maps it to. The Makefile checks `loader_alias.lst` and stops the build if any other `ljmp`, `lcall`, `ajmp` or `acall` shows up.
 - It uses r0-r7, a, b, dptr, two IRAM bytes (0x08, 0x09) as wait counters, the SFR register interface and XDATA. No stack and no calls.
 
-The numeric labels are local labels of the sdcc inline assembler (`nnnnn$`). They are grouped by step:
+The steps have named labels:
 
 | Labels | Step |
 |--------|------|
-| 20101-20102 | disable interrupts, read 0x6040 and keep it in r2-r5 |
-| 20110-20116 | for each of the 4 pages: set bit 1 and the page in 0x6040, write 4096 bytes from `slotbuf` to 0x80b0, 0x80b4, ... 0xc0ac |
-| 20120-20122 | write the saved value back to 0x6040 |
-| 20123-20124 | compare code RAM (movc) with `slotbuf`, on a match `ljmp 0x0000` |
-| 20125-20126 | on a mismatch try again through 20117, up to 3 times, then reset the chip through register 0x0024 |
+| `app_start` | disable interrupts, read 0x6040 and keep it in r2-r5 |
+| `copy_attempt`, `copy_page`, `copy_byte` | for each of the 4 pages: set bit 1 and the page in 0x6040, write 4096 bytes from `slotbuf` to 0x80b0, 0x80b4, ... 0xc0ac |
+| `restore_hw_conf` | write the saved value back to 0x6040 |
+| `verify_byte`, `verify_next` | compare code RAM (movc) with `slotbuf`, on a match `ljmp 0x0000` |
+| `verify_failed`, `retry_copy`, `wait_for_reset` | on a mismatch try again, up to 3 times, then reset the chip through register 0x0024 |
+
+The register access is written out with the macros `REG_ADDR`, `REG_DATA`, `REG_GO` and `REG_WAIT`, since a subroutine would need a call and a stack.
 
 Each register access waits for the busy flag with a bounded loop, so a stuck register interface can not hang the copy forever.
 

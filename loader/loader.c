@@ -78,14 +78,14 @@ void print_byte(uint8_t a)
 	write_char(hexd[a & 0xf]);
 }
 
-void reg_rd(uint16_t a)
+void reg_read(uint16_t a)
 {
 	SFR_REG_ADDR_U16 = a;
 	SFR_EXEC_GO = SFR_EXEC_READ_REG;
 	while (SFR_EXEC_STATUS != 0);
 }
 
-void reg_wr(uint16_t a)
+void reg_write(uint16_t a)
 {
 	SFR_REG_ADDR_U16 = a;
 	SFR_EXEC_GO = SFR_EXEC_WRITE_REG;
@@ -96,7 +96,7 @@ static void reg_modify(uint16_t a, uint8_t clr0, uint8_t set0, uint8_t set8)
 {
 	uint8_t d24, d16, d8, d0;
 
-	reg_rd(a);
+	reg_read(a);
 	d24 = SFR_DATA_24;
 	d16 = SFR_DATA_16;
 	d8 = SFR_DATA_8;
@@ -105,7 +105,7 @@ static void reg_modify(uint16_t a, uint8_t clr0, uint8_t set0, uint8_t set8)
 	SFR_DATA_16 = d16;
 	SFR_DATA_8 = d8 | set8;
 	SFR_DATA_0 = (d0 & ~clr0) | set0;
-	reg_wr(a);
+	reg_write(a);
 }
 
 static void setup_clock(void)
@@ -797,11 +797,7 @@ static void info(void)
 static void reset(void)
 {
 	while (!TI);
-	SFR_DATA_24 = 0;
-	SFR_DATA_16 = 0;
-	SFR_DATA_8 = 0;
-	SFR_DATA_0 = 1;
-	reg_wr(RTL837X_REG_RESET);
+	REG_SET(RTL837X_REG_RESET, 1 << RESET_SOC_BIT);
 	while (1);
 }
 

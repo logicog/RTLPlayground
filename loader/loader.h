@@ -10,8 +10,8 @@ void put(uint8_t c);
 void write_char(char c);
 void print_string(__code const char *p);
 void print_byte(uint8_t a);
-void reg_rd(uint16_t a);
-void reg_wr(uint16_t a);
+void reg_read(uint16_t a);
+void reg_write(uint16_t a);
 void timer0_start(void);
 bool tick(void);
 
