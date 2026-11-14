@@ -1471,6 +1471,12 @@ uip_process(u8_t flag) __banked
   /* Calculated the length of the data, if the application has sent
      any data to us. */
   c = (BUF->tcpoffset >> 4) << 2;
+  /* Check that the indicated length of the TCP header is not too large
+     for the total packet length, or the subtraction below underflows
+     uip_len and uip_appdata reaches past uip_buf. */
+  if(uip_len < c + UIP_IPH_LEN) {
+    goto drop;
+  }
   /* uip_len will contain the length of the actual TCP data. This is
      calculated by subtracing the length of the TCP header (in
      c) and the length of the IP header (20 bytes). */
