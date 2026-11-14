@@ -15,7 +15,7 @@ Without the loader, an update copies the uploaded image over the running one at 
 
 | Flash | Content |
 |-------|---------|
-| 0x00000-0x03fff | loader (home bank, the copy routine at 0x3800, CRC in the last 2 bytes) |
+| 0x00000-0x03fff | loader (home bank, the copy routine at 0x3e00, CRC in the last 2 bytes) |
 | 0x04000-0x39fff | application banks below the loader data |
 | 0x3a000 | boot counter |
 | 0x3b000 | metadata: `RTLB`, application CRC, layout version |
@@ -27,7 +27,7 @@ Without the loader, an update copies the uploaded image over the running one at 
 
 0x3a000-0x3ffff is the upper part of bank 5 (0x34000-0x3ffff). A normal build leaves it empty, so the image format stays the same and every image installs as it is. An image that uses this area is refused, unless it is a boot image that carries its own metadata.
 
-All addresses are in `loader/layout.h`. `LDR_LAYOUT` is stored in the metadata, and a boot image built for another layout is refused with "Image needs another loader".
+All addresses are in `loader/layout.h`, `tools/bootpack.py` and the Makefile read them from there. `LDR_LAYOUT` is stored in the metadata, and a boot image built for another layout is refused with "Image needs another loader".
 
 ## Boot
 
@@ -47,7 +47,7 @@ Code RAM can be written while the CPU runs:
 
 `app_start` (`loader/loader_alias.c`) does the copy. The tricky part is that it overwrites the home bank, which is the RAM the rest of the loader runs from. So it can not run from there and can not call anything there:
 
-- The loader is linked so that `app_start` sits at 0x3800 in flash. The flash is also visible through the bank window (PSBANK) at some bank and address. `alias_find()` in `loader.c` searches the banks for the window whose 2 KiB match the code RAM copy of `app_start`, and `start_app()` jumps there. On a 2 MiB flash this is bank 0x2b, address 0xb800. If no window matches, the loader says "Loader window check failed" and does not start the application.
+- The loader is linked so that `app_start` sits at 0x3e00 in flash. The flash is also visible through the bank window (PSBANK) at some bank and address. `alias_find()` in `loader.c` searches the banks for the window whose last 512 bytes of the loader match the code RAM copy of `app_start`, and `start_app()` jumps there. On a 2 MiB flash this is bank 0x2b, address 0xbe00. If no window matches, the loader says "Loader window check failed" and does not start the application.
 - `app_start` is plain asm with relative jumps only (`sjmp`, `djnz`, `cjne`, `jz`) and one `ljmp 0x0000` at the end, so it works at whatever address the window maps it to. The Makefile checks `loader_alias.lst` and stops the build if any other `ljmp`, `lcall`, `ajmp` or `acall` shows up.
 - It uses r0-r7, a, b, dptr, two IRAM bytes (0x08, 0x09) as wait counters, the SFR register interface and XDATA. No stack and no calls.
 

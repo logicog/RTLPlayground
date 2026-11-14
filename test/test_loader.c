@@ -712,13 +712,13 @@ int main(void)
 	install_by_old_updater(a1);
 	check(boot() == 1 && started == 1, "first boot after the old updater starts the application");
 	check(slot_copied, "the application HOME is copied to xdata before the jump");
-	check(jumped_bank == 0x2b && jumped_code == 0xb800, "a 2 MB flash runs app_start through bank 0x2b at 0xb800");
+	check(jumped_bank == 0x2b && jumped_code == 0xbe00, "a 2 MB flash runs app_start through bank 0x2b at 0xbe00");
 	check(reg_pin_mux_1 == 0x40000041 && reg_hw_conf == 0x00001101, "setup_clock writes every byte of the registers it modifies");
 	check(unconfirmed() == 1, "first boot writes the counter magic and one mark");
 	confirm();
 
 	memcpy(flash + LDR_UPLOAD, flash, 0x4000);
-	check(boot() == 1 && jumped_bank == 0x2b && jumped_code == 0xb800, "a copy of the loader in the upload area is dropped and not used as the bank window");
+	check(boot() == 1 && jumped_bank == 0x2b && jumped_code == 0xbe00, "a copy of the loader in the upload area is dropped and not used as the bank window");
 	check(flash[LDR_UPLOAD + 0x3800] == 0xff && flash[LDR_UPLOAD] == 0xff, "a dropped upload loses its first 16 KB");
 	confirm();
 

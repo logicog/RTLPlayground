@@ -1,20 +1,34 @@
 #!/usr/bin/env python3
+import os
+import re
 import sys
 
-DATA = 0x3a000
-DATA_END = 0x40000
-ALIAS_FLASH = 0x3800
-ALIAS_CODE = 0xb800
-ALIAS_RAM = ALIAS_FLASH - 2
-LOADER_LEN = 0x4000
-BOOTCNT = 0x3a000
-META = 0x3b000
-SLOT = 0x3c000
-HOME_LEN = 0x3ffe
-APP = ((0x04000, 0x3a000), (0x40000, 0x70000))
-IMAGE_LEN = 0x80000
-LAYOUT = 1
 
+def read_layout():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'loader', 'layout.h')
+    names = {}
+    for line in open(path):
+        m = re.match(r'#define\s+(LDR_\w+)\s+(.+?)\s*$', line)
+        if m:
+            expr = re.sub(r'\b(0x[0-9a-fA-F]+|\d+)UL\b', r'\1', m.group(2))
+            names[m.group(1)] = eval(expr, {'__builtins__': {}}, names)
+    return names
+
+
+L = read_layout()
+DATA = L['LDR_DATA']
+DATA_END = L['LDR_DATA_END']
+ALIAS_FLASH = L['LDR_ALIAS_FLASH']
+ALIAS_CODE = L['LDR_ALIAS_CODE']
+ALIAS_RAM = L['LDR_ALIAS_RAM']
+LOADER_LEN = L['LDR_LOADER_LEN']
+BOOTCNT = L['LDR_BOOTCNT']
+META = L['LDR_META']
+SLOT = L['LDR_SLOT']
+HOME_LEN = L['LDR_HOME_LEN']
+APP = ((L['LDR_APP_A'], L['LDR_APP_A_END']), (L['LDR_APP_B'], L['LDR_APP_B_END']))
+IMAGE_LEN = L['LDR_IMAGE_LEN']
+LAYOUT = L['LDR_LAYOUT']
 
 def crc16(data, crc=0):
     for b in data:
@@ -46,6 +60,9 @@ def read_ihx(path):
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == '--get':
+        print('0x%x' % L[sys.argv[2]])
+        return
     if len(sys.argv) != 5:
         sys.exit("usage: bootpack.py LOADER.ihx APP.bin OUT.bin LOADER_OUT.bin")
     mem = read_ihx(sys.argv[1])
