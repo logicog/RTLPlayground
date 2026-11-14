@@ -1683,6 +1683,7 @@ void main(void)
 	else
 		rtl8372_init();
 	delay(1000);
+	sfp_fixed_init();
 
 	check_and_flash_update_image();
 

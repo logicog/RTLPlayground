@@ -1091,6 +1091,10 @@ void parse_sfp(void)
 	if (cmd_words_len == 1) {
 		for (slot = 0; slot < machine.n_sfp; slot++) {
 			print_string("\nSlot "); write_char('1' + slot);
+			if (machine.sfp_port[slot].fixed_mode) {
+				print_string(" - fixed link, no module\n");
+				continue;
+			}
 			if (gpio_pin_test(machine.sfp_port[slot].pin_detect)) {
 				print_string(" - empty\n");
 				continue;
@@ -1137,6 +1141,10 @@ void parse_sfp(void)
 		sfp_speed[slot] = SFP_SPEED_AUTO;
 	} else {
 		goto err;
+	}
+	if (machine.sfp_port[slot].fixed_mode) {
+		sfp_fixed_apply(slot);
+		return;
 	}
 	sfp_pins_last |= 0x1 << (slot << 2);
 	handle_sfp();
