@@ -50,6 +50,7 @@ The following devices have been tested and are fully working:
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
 | RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)             | 2M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                                         | 4M    | 4 + 2 |
+| Ruiying  | RY-5GT-1SX      | No      | [FG-5GT-1SX_V1.1](devices/FG-5GT-1SX_V1.1.md)                                         | 4M    | 5 + 1 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                                   | 1M    | 8 + 1 |
 | SICSOLINK| SL-G0402F       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | Sirivision | SR-S25G2109F  | Yes     | [S25G1109FP V1.3](devices/S25G1109FP_V1.3.md)                                         | 2M    | 8 + 1 |
