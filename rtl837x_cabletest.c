@@ -48,7 +48,7 @@ extern __xdata struct machine_runtime machine_detected;
 
 __xdata uint8_t ct_state = CT_IDLE;
 __xdata uint8_t ct_port;
-__xdata struct timer ct_timer;
+static __xdata struct timer ct_timer;
 __xdata uint8_t ct_polls;
 __xdata uint8_t ct_valid;
 __xdata uint8_t ct_have = 0;

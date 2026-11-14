@@ -72,7 +72,7 @@ __xdata uint16_t short_parsed;
 #define POSTBODY_LOGIN	2
 #define POSTBODY_TIMEOUT (5 * SYS_TICK_HZ)
 __xdata uint8_t postbody_endpoint;
-__xdata struct timer postbody_timer;
+static __xdata struct timer postbody_timer;
 
 __xdata char passwd[21];
 // Up to four logins at once, see sessions.c
