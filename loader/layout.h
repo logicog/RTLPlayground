@@ -28,6 +28,10 @@
 #define LDR_ALIAS_CODE		(0x8000 + LDR_ALIAS_FLASH)
 #define LDR_SLOT_BUF		0x4000
 
+// A flash above 2 MiB has no bank window on LDR_ALIAS_FLASH, so the loader
+// keeps a copy of app_start here, bank 0x0a shows it at LDR_ALIAS_CODE
+#define LDR_ALIAS_COPY		0x77e00UL
+
 // Application banks below and above the loader data
 #define LDR_APP_A		0x04000UL
 #define LDR_APP_A_END		0x3a000UL

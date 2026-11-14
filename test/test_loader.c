@@ -713,6 +713,7 @@ int main(void)
 	check(boot() == 1 && started == 1, "first boot after the old updater starts the application");
 	check(slot_copied, "the application HOME is copied to xdata before the jump");
 	check(jumped_bank == 0x2b && jumped_code == 0xbe00, "a 2 MB flash runs app_start through bank 0x2b at 0xbe00");
+	check(flash[LDR_ALIAS_COPY] == 0xff, "a flash with a window on the loader gets no copy of app_start");
 	check(reg_pin_mux_1 == 0x40000041 && reg_hw_conf == 0x00001101, "setup_clock writes every byte of the registers it modifies");
 	check(unconfirmed() == 1, "first boot writes the counter magic and one mark");
 	confirm();
@@ -875,6 +876,7 @@ int main(void)
 	skew = true;
 	check(boot() == 2 && !started && strstr(out, "Loader window check failed"), "no jump when no bank window shows the loader");
 	skew = false;
+	memset(flash + (LDR_ALIAS_COPY & ~0xfffUL), 0xff, 0x1000);
 	confirm();
 
 	static const uint32_t wraps[] = { 0x80000, 0x100000 };
@@ -885,7 +887,13 @@ int main(void)
 		confirm();
 	}
 	wrap = 0x400000;
-	check(boot() == 2 && !started && strstr(out, "Loader window check failed"), "a flash with no window on the loader does not jump");
+	check(boot() == 1 && jumped_bank == 0x0a && jumped_code == LDR_ALIAS_CODE && !memcmp(flash + LDR_ALIAS_COPY, flash + LDR_ALIAS_FLASH, LDR_ALIAS_LEN),
+		"a flash with no window on the loader runs app_start from a copy in bank 0x0a");
+	confirm();
+	flash[LDR_ALIAS_COPY + 0x40] = 0x00;
+	check(boot() == 1 && jumped_bank == 0x0a && !memcmp(flash + LDR_ALIAS_COPY, flash + LDR_ALIAS_FLASH, LDR_ALIAS_LEN),
+		"a copy of app_start that no longer matches is written again");
+	memset(flash + (LDR_ALIAS_COPY & ~0xfffUL), 0xff, 0x1000);
 	wrap = 0x200000;
 	confirm();
 

@@ -23,6 +23,7 @@ Without the loader, an update copies the uploaded image over the running one at 
 | 0x40000-0x6ffff | application banks, default configuration at 0x6f000 |
 | 0x70000 | saved configuration, never touched by the loader |
 | 0x71000-0x74fff | staging area for a new loader |
+| 0x77000 | copy of the copy routine at 0x77e00, only written on a flash above 2 MiB |
 | 0x80000-0xfffff | upload area |
 
 0x3a000-0x3ffff is the upper part of bank 5 (0x34000-0x3ffff). A normal build leaves it empty, so the image format stays the same and every image installs as it is. An image that uses this area is refused, unless it is a boot image that carries its own metadata.
@@ -47,7 +48,8 @@ Code RAM can be written while the CPU runs:
 
 `app_start` (`loader/loader_alias.c`) does the copy. The tricky part is that it overwrites the home bank, which is the RAM the rest of the loader runs from. So it can not run from there and can not call anything there:
 
-- The loader is linked so that `app_start` sits at 0x3e00 in flash. The flash is also visible through the bank window (PSBANK) at some bank and address. `alias_find()` in `loader.c` searches the banks for the window whose last 512 bytes of the loader match the code RAM copy of `app_start`, and `start_app()` jumps there. On a 2 MiB flash this is bank 0x2b, address 0xbe00. If no window matches, the loader says "Loader window check failed" and does not start the application.
+- The loader is linked so that `app_start` sits at 0x3e00 in flash. The flash is also visible through the bank window (PSBANK) at some bank and address. `alias_find()` in `loader.c` searches the banks for the window whose last 512 bytes of the loader match the code RAM copy of `app_start`, and `start_app()` jumps there. On a 2 MiB flash this is bank 0x2b, address 0xbe00.
+- The windows only reach 0x3e00 because the address wraps around on a flash of up to 2 MiB, the highest bank ends at 0x2f7fff. On a larger flash no window matches, so the loader erases the sector at 0x77000 and copies `app_start` to 0x77e00, where bank 0x0a shows it at 0xbe00. It does this on any start where no window matches, so a copy left from another loader is replaced. This path is covered by the host test and was run in a simulator, not yet on a switch with such a flash. If there is still no match, the loader says "Loader window check failed" and does not start the application.
 - `app_start` is plain asm with relative jumps only (`sjmp`, `djnz`, `cjne`, `jz`) and one `ljmp 0x0000` at the end, so it works at whatever address the window maps it to. The Makefile checks `loader_alias.lst` and stops the build if any other `ljmp`, `lcall`, `ajmp` or `acall` shows up.
 - It uses r0-r7, a, b, dptr, two IRAM bytes (0x08, 0x09) as wait counters, the SFR register interface and XDATA. No stack and no calls.
 

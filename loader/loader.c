@@ -898,6 +898,10 @@ void main(void)
 		print_string("Small flash, updates over XMODEM only\n");
 	else
 		handle_upload();
+	if (!alias_find()) {
+		erase(LDR_ALIAS_COPY & ~0xfffUL);
+		copy(LDR_ALIAS_FLASH, LDR_ALIAS_COPY, LDR_ALIAS_LEN);
+	}
 
 	if (bootcount() >= LDR_RECOVERY_BOOTS) {
 		print_string("Recovery boot, press x within 3 s for XMODEM, c for the console\n");
