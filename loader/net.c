@@ -7,6 +7,7 @@
 #include "loader.h"
 
 #define NET_MTU		1536
+#define TFTP_PORT	49152
 
 
 __xdata uint8_t rb[4];
@@ -15,6 +16,11 @@ __xdata uint8_t rxb[NET_MTU + 8];
 __xdata uint8_t txb[NET_MTU + 8];
 __xdata uint8_t mac[6];
 __xdata uint8_t ip[4] = { 192, 168, 2, 2 };
+__xdata uint8_t srv[4];
+__xdata uint8_t srv_mac[6];
+__xdata uint16_t srv_port;
+__xdata uint16_t tf_blk;
+__xdata uint8_t tf_tries;
 __xdata uint8_t seq;
 __xdata uint16_t rlen;
 __xdata uint8_t links;
@@ -185,7 +191,7 @@ static void print_dec(uint8_t v)
 	write_char('0' + v % 10);
 }
 
-static bool ip_arg(void)
+static uint8_t ip_arg(__xdata uint8_t *dst)
 {
 	__xdata uint8_t n[4];
 	uint8_t i;
@@ -195,7 +201,7 @@ static bool ip_arg(void)
 	while (line[lp] == ' ')
 		lp++;
 	if (!line[lp])
-		return true;
+		return 1;
 	for (i = 0; i < 4; i++) {
 		v = 0;
 		k = 0;
@@ -204,12 +210,40 @@ static bool ip_arg(void)
 			k++;
 		}
 		if (!k || v > 255 || line[lp] != (i < 3 ? '.' : 0))
-			return false;
+			return 0;
 		lp++;
 		n[i] = v;
 	}
-	cp(ip, n, 4);
-	return true;
+	cp(dst, n, 4);
+	return 2;
+}
+
+static void print_ip(__xdata const uint8_t *a)
+{
+	uint8_t i;
+
+	for (i = 0; i < 4; i++) {
+		print_dec(a[i]);
+		write_char(i < 3 ? '.' : '\n');
+	}
+}
+
+static void set_ip(__xdata uint8_t *dst)
+{
+	if (ip_arg(dst))
+		print_ip(dst);
+	else
+		print_string("?\n");
+}
+
+void ipaddr(void)
+{
+	set_ip(ip);
+}
+
+void serverip(void)
+{
+	set_ip(srv);
 }
 
 static __xdata uint8_t *eth(__xdata const uint8_t *dst, uint8_t type)
@@ -344,12 +378,218 @@ static void handle(void)
 		icmp(rxb + o, rlen - o);
 }
 
+static void arp_ask(void)
+{
+	__xdata uint8_t *t;
+	uint8_t i;
+
+	for (i = 0; i < 6; i++)
+		srv_mac[i] = 0xff;
+	t = eth(srv_mac, 0x06);
+	t[0] = 0x00;
+	t[1] = 0x01;
+	t[2] = 0x08;
+	t[3] = 0x00;
+	t[4] = 6;
+	t[5] = 4;
+	t[6] = 0;
+	t[7] = 1;
+	cp(t + 8, mac, 6);
+	cp(t + 14, ip, 4);
+	for (i = 18; i < 24; i++)
+		t[i] = 0;
+	cp(t + 24, srv, 4);
+	send(42);
+}
+
+static void udp_send(uint16_t port, uint16_t n)
+{
+	__xdata uint8_t *t = txb + 22;
+	uint16_t c;
+
+	eth(srv_mac, 0x00);
+	t[0] = 0x45;
+	t[1] = 0;
+	t[2] = (28 + n) >> 8;
+	t[3] = 28 + n;
+	t[4] = 0;
+	t[5] = 0;
+	t[6] = 0x40;
+	t[7] = 0;
+	t[8] = 64;
+	t[9] = 17;
+	t[10] = 0;
+	t[11] = 0;
+	cp(t + 12, ip, 4);
+	cp(t + 16, srv, 4);
+	c = csum(t, 20);
+	t[10] = c >> 8;
+	t[11] = c;
+	t[20] = TFTP_PORT >> 8;
+	t[21] = TFTP_PORT & 0xff;
+	t[22] = port >> 8;
+	t[23] = port;
+	t[24] = (8 + n) >> 8;
+	t[25] = 8 + n;
+	t[26] = 0;
+	t[27] = 0;
+	send(42 + n);
+}
+
+static void tftp_send(void)
+{
+	__xdata uint8_t *t = txb + 50;
+	uint8_t i;
+
+	if (srv_mac[0] == 0xff && srv_mac[1] == 0xff) {
+		arp_ask();
+		return;
+	}
+	t[0] = 0;
+	if (!tf_blk) {
+		t[1] = 1;
+		for (i = 0; line[lp + i]; i++)
+			t[2 + i] = line[lp + i];
+		t[2 + i] = 0;
+		t[3 + i] = 'o';
+		t[4 + i] = 'c';
+		t[5 + i] = 't';
+		t[6 + i] = 'e';
+		t[7 + i] = 't';
+		t[8 + i] = 0;
+		udp_send(69, 9 + i);
+		return;
+	}
+	t[1] = 4;
+	t[2] = tf_blk >> 8;
+	t[3] = tf_blk;
+	udp_send(srv_port, 4);
+}
+
+static uint8_t tftp_frame(void)
+{
+	uint8_t o = 12;
+	uint16_t t = be16(rxb + 12);
+	__xdata uint8_t *f;
+	__xdata uint8_t *u;
+	uint16_t n;
+
+	if (t == 0x8899) {
+		o += 8;
+		t = be16(rxb + o);
+	}
+	if (t == 0x8100) {
+		o += 4;
+		t = be16(rxb + o);
+	}
+	o += 2;
+	if (rlen < o)
+		return 0;
+	f = rxb + o;
+	n = rlen - o;
+	if (t == 0x0806) {
+		if (n >= 28 && f[7] == 2 && same(f + 14, srv, 4) && srv_mac[0] == 0xff && srv_mac[1] == 0xff) {
+			cp(srv_mac, f + 8, 6);
+			tftp_send();
+			return 1;
+		}
+		arp(f, n);
+		return 0;
+	}
+	if (t != 0x0800)
+		return 0;
+	if (n < 32 || f[9] != 17 || (f[0] & 0x0f) != 5 || !same(f + 12, srv, 4) || !same(f + 16, ip, 4)) {
+		icmp(f, n);
+		return 0;
+	}
+	u = f + 20;
+	if (be16(u + 2) != TFTP_PORT || be16(u + 4) < 12 || be16(u + 4) > n - 20)
+		return 0;
+	n = be16(u + 4) - 12;
+	if (tf_blk && be16(u) != srv_port)
+		return 0;
+	if (u[9] == 5) {
+		print_string("\nTFTP error: ");
+		for (u += 12; n-- && *u; u++)
+			write_char(*u >= 0x20 && *u < 0x7f ? *u : '?');
+		write_char('\n');
+		return 3;
+	}
+	if (u[9] != 3)
+		return 0;
+	if (be16(u + 10) != tf_blk + 1)
+		return 0;
+	srv_port = be16(u);
+	if (!up_add(u + 12, n)) {
+		print_string("\nImage too large or not in 128 byte steps\n");
+		return 3;
+	}
+	tf_blk++;
+	tftp_send();
+	if (!(tf_blk & 63))
+		write_char('#');
+	return n < 512 ? 2 : 1;
+}
+
+void tftp(void)
+{
+	uint8_t r;
+	uint8_t n = 0;
+
+	while (line[lp] == ' ')
+		lp++;
+	if (!line[lp]) {
+		print_string("?\n");
+		return;
+	}
+	net_used = true;
+	net_up();
+	tf_blk = 0;
+	tf_tries = 0;
+	srv_mac[0] = 0xff;
+	srv_mac[1] = 0xff;
+	up_begin();
+	print_string("TFTP from ");
+	print_ip(srv);
+	tftp_send();
+	timer0_start();
+	while (1) {
+		if (RI) {
+			RI = 0;
+			print_string("\nStopped\n");
+			return;
+		}
+		if (rx()) {
+			r = tftp_frame();
+			if (r == 3)
+				return;
+			if (r) {
+				tf_tries = 0;
+				n = 0;
+			}
+			if (r == 2) {
+				print_string("\nReceived\n");
+				up_end();
+				return;
+			}
+		}
+		if (tick() && ++n == TICKS_1S) {
+			n = 0;
+			if (++tf_tries > 10) {
+				print_string("\nTFTP timeout\n");
+				return;
+			}
+			tftp_send();
+		}
+	}
+}
+
 void net(void)
 {
 	uint8_t i;
 	uint8_t n = 0;
 
-	if (!ip_arg()) {
+	if (!ip_arg(ip)) {
 		print_string("?\n");
 		return;
 	}
@@ -361,10 +601,7 @@ void net(void)
 		write_char(i < 5 ? ':' : ' ');
 	}
 	print_string("IP ");
-	for (i = 0; i < 4; i++) {
-		print_dec(ip[i]);
-		write_char(i < 3 ? '.' : '\n');
-	}
+	print_ip(ip);
 	print_string("Built-in ports 4-7 up, any key stops\n");
 	links = 0xff;
 	timer0_start();

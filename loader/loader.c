@@ -34,7 +34,7 @@ static bool small;
 static bool cli_req;
 static bool bad;
 uint8_t lp;
-__xdata char line[40];
+__xdata char line[128];
 static bool direct_boot;
 static bool direct_nonzero;
 static bool direct_other;
@@ -549,6 +549,39 @@ static bool xmodem(void)
 	}
 }
 
+void up_begin(void)
+{
+	xcrc = 0;
+	scrc = 0;
+	xlen = 0;
+}
+
+bool up_add(__xdata const uint8_t *d, uint16_t n)
+{
+	uint8_t i;
+
+	if (n & 0x7f)
+		return false;
+	while (n) {
+		if (xlen >= LDR_IMAGE_LEN)
+			return false;
+		for (i = 0; i < 128; i++)
+			buf[i] = *d++;
+		store(xlen);
+		xlen += 128;
+		n -= 128;
+	}
+	return true;
+}
+
+void up_end(void)
+{
+	if (small)
+		direct_finish();
+	else
+		handle_upload();
+}
+
 static bool load_slot(void)
 {
 	uint16_t want;
@@ -794,6 +827,9 @@ static void console(void)
 				"crc ADDR LEN      CRC16 of a flash range\n"
 				"xmodem            receive a firmware image\n"
 				"net [IP]          ports 4-7 up, answer ARP and ping\n"
+				"ipaddr [IP]       own address\n"
+				"serverip [IP]     TFTP server address\n"
+				"tftp FILE         fetch and install an image\n"
 				"boot              leave the console\n"
 				"reset             restart the switch\n"
 				"Numbers are hex\n");
@@ -818,6 +854,12 @@ static void console(void)
 			cli_req = false;
 		} else if (cmd("net")) {
 			net();
+		} else if (cmd("ipaddr")) {
+			ipaddr();
+		} else if (cmd("serverip")) {
+			serverip();
+		} else if (cmd("tftp")) {
+			tftp();
 		} else if (cmd("boot")) {
 			break;
 		} else if (cmd("reset")) {

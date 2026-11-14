@@ -150,7 +150,7 @@ static uint32_t *reg_of(uint16_t a)
 
 #define RING RTL837X_NIC_RX_RING_BYTES
 static uint8_t asic[RING];
-static uint16_t rx_slot[16];
+static uint16_t rx_slot[4096];
 static int rx_count, rx_cur, nic_resets, tx_count;
 static uint8_t txlog[8][1600];
 static struct { uint8_t mask, dev; uint16_t reg, val; } smi[8];
@@ -178,12 +178,15 @@ static void reg_written(uint16_t a, uint32_t v)
 	}
 }
 
+static void tftp_tx(const uint8_t *b);
+
 static bool sim_nic(uint8_t *b, uint16_t ring, uint8_t words)
 {
 	if (ring & 0x8000) {
 		if (tx_count < 8)
 			memcpy(txlog[tx_count], b, (size_t)words * 8);
 		tx_count++;
+		tftp_tx(b);
 		return true;
 	}
 	for (size_t i = 0; i < (size_t)words * 8; i++)
@@ -531,6 +534,120 @@ static uint16_t ping_req(uint8_t *f, bool tagged, const uint8_t *target, uint16_
 	ic[2] = c >> 8;
 	ic[3] = c;
 	return o + tl;
+}
+
+static uint16_t udp_frame(uint8_t *f, const uint8_t *dst, uint16_t sport, uint16_t dport, const uint8_t *pl, uint16_t pn)
+{
+	uint16_t o = eth_hdr(f, false, 0x0800);
+	uint8_t *ip4 = f + o, *u = ip4 + 20;
+	uint16_t tl = 20 + 8 + pn;
+	memset(ip4, 0, 28);
+	ip4[0] = 0x45;
+	ip4[2] = tl >> 8;
+	ip4[3] = tl;
+	ip4[8] = 64;
+	ip4[9] = 17;
+	memcpy(ip4 + 12, (uint8_t[]){ 192, 168, 2, 9 }, 4);
+	memcpy(ip4 + 16, dst, 4);
+	uint16_t c = ip_csum(ip4, 20);
+	ip4[10] = c >> 8;
+	ip4[11] = c;
+	u[0] = sport >> 8;
+	u[1] = sport;
+	u[2] = dport >> 8;
+	u[3] = dport;
+	u[4] = (8 + pn) >> 8;
+	u[5] = 8 + pn;
+	memcpy(u + 8, pl, pn);
+	return o + tl;
+}
+
+static const uint8_t *tf_img;
+static uint32_t tf_len;
+static uint16_t tf_cport, tf_dup_at, tf_last_ack;
+static int tf_acks, tf_rrqs, tf_arps, tf_frames, tf_fail;
+static bool tf_on;
+static char tf_name[128];
+static const uint8_t srv_ip[4] = { 192, 168, 2, 9 };
+
+static void tftp_queue(const uint8_t *f, uint16_t fl)
+{
+	rx_frame(tf_frames++ % 2 ? RING / 16 : 0, 4, f, fl);
+}
+
+static void tftp_data(uint16_t blk)
+{
+	static uint8_t f[1600], pl[516];
+	uint32_t at = (uint32_t)(blk - 1) * 512;
+	uint16_t n = tf_len - at > 512 ? 512 : tf_len - at;
+	pl[0] = 0;
+	pl[1] = 3;
+	pl[2] = blk >> 8;
+	pl[3] = blk;
+	memcpy(pl + 4, tf_img + at, n);
+	tftp_queue(f, udp_frame(f, (uint8_t[]){ 192, 168, 2, 2 }, 3456, tf_cport, pl, n + 4));
+}
+
+static void tftp_tx(const uint8_t *b)
+{
+	static uint8_t f[1600];
+	const uint8_t *e = b + 8, *ip4 = e + 14, *u = ip4 + 20;
+	if (!tf_on)
+		return;
+	if (e[12] == 0x08 && e[13] == 0x06 && ip4[7] == 1 && !memcmp(ip4 + 24, srv_ip, 4)) {
+		uint16_t o = eth_hdr(f, false, 0x0806);
+		const uint8_t h[8] = { 0, 1, 8, 0, 6, 4, 0, 2 };
+		tf_arps++;
+		memcpy(f + o, h, 8);
+		memcpy(f + o + 8, peer_mac, 6);
+		memcpy(f + o + 14, srv_ip, 4);
+		memcpy(f + o + 18, own_mac, 6);
+		memcpy(f + o + 24, (uint8_t[]){ 192, 168, 2, 2 }, 4);
+		tftp_queue(f, o + 28);
+		return;
+	}
+	if (e[12] != 0x08 || e[13] != 0x00 || ip4[9] != 17 || memcmp(ip4 + 16, srv_ip, 4) || ip_csum(ip4, 20))
+		return;
+	if ((u[2] << 8 | u[3]) == 69 && u[9] == 1) {
+		tf_rrqs++;
+		tf_cport = u[0] << 8 | u[1];
+		snprintf(tf_name, sizeof(tf_name), "%s", (const char *)u + 10);
+		if (tf_fail) {
+			uint8_t pl[24] = { 0, 5, 0, 1 };
+			const char *m = tf_fail == 2 ? "Bad\x1b[2J\x07name" : "Not found";
+			memcpy(pl + 4, m, strlen(m) + 1);
+			tftp_queue(f, udp_frame(f, (uint8_t[]){ 192, 168, 2, 2 }, 3456, tf_cport, pl, 5 + strlen(m)));
+			tf_on = false;
+			return;
+		}
+		tftp_data(1);
+		return;
+	}
+	if ((u[2] << 8 | u[3]) != 3456 || u[9] != 4)
+		return;
+	uint16_t blk = u[10] << 8 | u[11];
+	tf_acks++;
+	tf_last_ack = blk;
+	if (blk == tf_dup_at) {
+		tf_dup_at = 0;
+		tftp_data(blk);
+		return;
+	}
+	if ((uint32_t)blk * 512 <= tf_len)
+		tftp_data(blk + 1);
+	else
+		tf_on = false;
+}
+
+static void tftp_serve(const uint8_t *img, uint32_t len, int fail)
+{
+	tf_img = img;
+	tf_len = len;
+	tf_fail = fail;
+	tf_acks = tf_rrqs = tf_arps = tf_frames = 0;
+	tf_last_ack = 0xffff;
+	tf_name[0] = 0;
+	tf_on = true;
 }
 
 static void nic_reset_model(void)
@@ -986,6 +1103,50 @@ int main(void)
 		check(regmem[RTL837X_CFG_PHY_TX_POLARITY_SWAP >> 2] == 0x596a, "an N chip gets the TX polarity swap of the application");
 		regmem[RTL837X_REG_CHIP_ID >> 2] = 0;
 		ip[0] = 192; ip[1] = 168; ip[2] = 2; ip[3] = 2;
+		net_used = false;
+		confirm();
+
+		static uint8_t a3[LDR_IMAGE_LEN];
+		make_app(a3, 3);
+		nic_reset_model();
+		for (int i = 0; i < 3; i++)
+			boot();
+		nic_reset_model();
+		tftp_serve(a3, LDR_IMAGE_LEN, 0);
+		tf_dup_at = 5;
+		xm_arm(NULL, 0, 0);
+		type("c");
+		type("ipaddr 192.168.2.2\r");
+		type("serverip 192.168.2.9\r");
+		type("tftp rtlplayground-v0.1.0-28281b6-MOKERLINK_ZX_SWTGW218AS.bin\r");
+		check(boot() == 4 && tf_arps == 1 && tf_rrqs == 1 && !strcmp(tf_name, "rtlplayground-v0.1.0-28281b6-MOKERLINK_ZX_SWTGW218AS.bin") && tf_cport != 69
+			&& tf_last_ack == LDR_IMAGE_LEN / 512 + 1 && tf_acks == LDR_IMAGE_LEN / 512 + 2 && strstr(out, "Installed"),
+			"tftp asks the server by ARP, reads the file block by block, stores a repeated block once and installs it");
+		check(boot() == 1 && started == 1 && app_is(a3), "the application fetched over TFTP starts after the reset");
+		confirm();
+
+		nic_reset_model();
+		for (int i = 0; i < 3; i++)
+			boot();
+		nic_reset_model();
+		tftp_serve(a3, LDR_IMAGE_LEN, 1);
+		xm_arm(NULL, 0, 0);
+		type("c");
+		type("serverip 192.168.2.9\r");
+		type("tftp missing.bin\r");
+		check(boot() == 4 && tf_rrqs == 1 && strstr(out, "Not found") && app_is(a3), "a TFTP error from the server is shown and nothing is installed");
+		net_used = false;
+		confirm();
+		nic_reset_model();
+		for (int i = 0; i < 3; i++)
+			boot();
+		nic_reset_model();
+		tftp_serve(a3, LDR_IMAGE_LEN, 2);
+		xm_arm(NULL, 0, 0);
+		type("c");
+		type("serverip 192.168.2.9\r");
+		type("tftp x.bin\r");
+		check(boot() == 4 && strstr(out, "Bad?[2J?name") && !strchr(out, 0x1b) && !strchr(out, 0x07), "control bytes in a TFTP error are not passed to the terminal");
 		net_used = false;
 		confirm();
 	}

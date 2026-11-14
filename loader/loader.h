@@ -15,11 +15,17 @@ void reg_wr(uint16_t a);
 void timer0_start(void);
 bool tick(void);
 
-extern __xdata char line[40];
+extern __xdata char line[128];
 extern uint8_t lp;
 
 extern __xdata bool net_used;
 
 void net(void);
+void ipaddr(void);
+void serverip(void);
+void tftp(void);
+void up_begin(void);
+bool up_add(__xdata const uint8_t *d, uint16_t n);
+void up_end(void);
 
 #endif
