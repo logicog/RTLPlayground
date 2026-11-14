@@ -18,6 +18,16 @@
 
 #define RTL837X_REG_HW_CONF		0x6040
 // Bits 4 & 5: CLOCK DIVIDER from 125MHz for Timer
+// Bit 1 opens code RAM for writes, bits 2-3 select the 4 KiB page to write
+#define HW_CONF_CODE_RAM_WRITE		0x02
+#define HW_CONF_CODE_RAM_PAGE_MASK	0x0c
+#define HW_CONF_CODE_RAM_PAGE_SHIFT	2
+
+// Write window of the selected code RAM page: one register per byte,
+// the byte goes into the low data byte of RTL837X_REG_CODE_RAM + 4 * offset
+#define RTL837X_REG_CODE_RAM		0x80b0
+#define CODE_RAM_PAGE_SIZE		0x1000
+#define CODE_RAM_PAGES			4
 
 #define SYS_LED_OFF	   0
 #define SYS_LED_FAST   1
