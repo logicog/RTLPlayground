@@ -65,7 +65,7 @@ var LANG = {
         i_gw: "Gateway",
         i_mac: "MAC",
         i_fw: "Firmware",
-        i_built: "Built",
+        i_built: "Built", p_nomod: "No module",
         i_uptime: "Uptime",
         i_uptime_d: "{d} d {t}",
         i_hw: "Hardware",
@@ -449,7 +449,7 @@ var LANG = {
         i_gw: "ゲートウェイ",
         i_mac: "MAC",
         i_fw: "ファームウェア",
-        i_built: "ビルド日",
+        i_built: "ビルド日", p_nomod: "モジュールなし",
         i_uptime: "稼働時間",
         i_uptime_d: "{d}日 {t}",
         i_hw: "ハードウェア",
@@ -758,7 +758,7 @@ var LANG = {
         i_gw: "网关",
         i_mac: "MAC",
         i_fw: "固件",
-        i_built: "构建日期",
+        i_built: "构建日期", p_nomod: "未插入模块",
         i_uptime: "运行时间",
         i_uptime_d: "{d}天 {t}",
         i_hw: "硬件",
@@ -1141,7 +1141,7 @@ var LANG = {
         i_gw: "Puerta de enlace",
         i_mac: "MAC",
         i_fw: "Firmware",
-        i_built: "Compilado",
+        i_built: "Compilado", p_nomod: "Sin módulo",
         i_uptime: "Tiempo en marcha",
         i_uptime_d: "{d} d {t}",
         i_hw: "Hardware",
@@ -1529,7 +1529,7 @@ var LANG = {
         i_gw: "Passerelle",
         i_mac: "Adresse MAC",
         i_fw: "Micro logiciel",
-        i_built: "Compilé le",
+        i_built: "Compilé le", p_nomod: "Aucun module",
         i_uptime: "Temps de fonctionnement",
         i_uptime_d: "{d} j {t}",
         i_hw: "Matériel",
@@ -1878,7 +1878,7 @@ var LANG = {
         i_gw: "Gateway",
         i_mac: "MAC",
         i_fw: "Firmware",
-        i_built: "Erstellt",
+        i_built: "Erstellt", p_nomod: "Kein Modul",
         i_uptime: "Betriebszeit",
         i_uptime_d: "{d} T {t}",
         i_hw: "Hardware",
@@ -2831,6 +2831,7 @@ function portRows(p) {
     rows.push([t("st_rxg"), BigInt(p.rxG) + " " + t("p_pkts")]);
     rows.push([t("st_rxb"), BigInt(p.rxB) + " " + t("p_pkts")]);
     if (p.isSFP) {
+        if (p.module === false) rows.push([t("p_module"), t("p_nomod")]);
         if (p.sfp_vendor) rows.push([t("p_module"), [p.sfp_vendor, p.sfp_model, p.sfp_serial].filter(Boolean).join(" / ")]);
         var ext = p.sfp_options & 0x40;
         if (ext) {
