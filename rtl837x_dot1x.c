@@ -156,6 +156,11 @@ static void dot1x_out_code(__code const char *s) __reentrant
     slen += strtox(outbuf + slen, s);
 }
 
+static void dot1x_out_bool(uint8_t v) __reentrant
+{
+    dot1x_out_code(v ? "true" : "false");
+}
+
 void dot1x_show(void) __banked __reentrant
 {
     uint8_t port;
@@ -200,7 +205,7 @@ void dot1x_to_html(void) __banked __reentrant
     uint8_t i;
 
     dot1x_out_code("{\"on\":");
-    dot1x_out('0' + dot1x_enabled);
+    dot1x_out_bool(dot1x_enabled);
     dot1x_out_code(",\"guest\":");
     dot1x_out_dec(dot1x_guest_get());
     dot1x_out_code(",\"ports\":[");
@@ -214,8 +219,8 @@ void dot1x_to_html(void) __banked __reentrant
         dot1x_out_code("\",\"action\":\"");
         dot1x_out_code(dot1x_action_names[dot1x_action_get(port)]);
         dot1x_out_code("\",\"authorized\":");
-        dot1x_out('0' + (!dot1x_enabled || dot1x_mode[port] == DOT1X_PORT_OFF
-                         || dot1x_reg_bit_get(RTL837X_DOT1X_PORT_AUTH, port)));
+        dot1x_out_bool((!dot1x_enabled || dot1x_mode[port] == DOT1X_PORT_OFF
+                        || dot1x_reg_bit_get(RTL837X_DOT1X_PORT_AUTH, port)));
         if (dot1x_mode[port] == DOT1X_PORT_AUTO) {
             dot1x_out_code(",\"state\":\"");
             dot1x_out_code(eapol_state_name(port));
@@ -226,9 +231,9 @@ void dot1x_to_html(void) __banked __reentrant
                           ? '.' : eapol_ports[port].identity[i]);
             dot1x_out('"');
             dot1x_out_code(",\"mab\":");
-            dot1x_out('0' + eapol_ports[port].mab);
+            dot1x_out_bool(eapol_ports[port].mab);
             dot1x_out_code(",\"viaMab\":");
-            dot1x_out('0' + eapol_ports[port].via_mab);
+            dot1x_out_bool(eapol_ports[port].via_mab);
             dot1x_out_code(",\"ok\":");
             dot1x_out_dec(eapol_ports[port].ok);
             dot1x_out_code(",\"fail\":");
@@ -245,6 +250,6 @@ void dot1x_to_html(void) __banked __reentrant
     dot1x_out_code("\",\"serverPort\":");
     dot1x_out_dec(radius_cfg.port);
     dot1x_out_code(",\"secretSet\":");
-    dot1x_out('0' + (radius_cfg.secret[0] != 0));
+    dot1x_out_bool(radius_cfg.secret[0] != 0);
     dot1x_out('}');
 }

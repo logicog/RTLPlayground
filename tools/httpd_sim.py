@@ -579,23 +579,23 @@ class Handler(SimpleHTTPRequestHandler):
                 "portNum": i,
                 "mode": "auto" if i == 2 else "force-unauth" if i == 3 else "off",
                 "action": "guest" if i == 3 else "drop",
-                "authorized": 1 if i == 2 else 0,
+                "authorized": i == 2,
             }
             if i == 2:
                 p["state"] = "authenticated"
                 p["identity"] = "alice"
-                p["mab"] = 1
-                p["viaMab"] = 0
+                p["mab"] = True
+                p["viaMab"] = False
                 p["ok"] = 3
                 p["fail"] = 1
             ports.append(p)
         return {
-            "on": 1,
+            "on": True,
             "guest": 99,
             "ports": ports,
             "server": "192.168.1.10",
             "serverPort": 1812,
-            "secretSet": 1,
+            "secretSet": True,
         }
 
     def _api_lldp(self):
