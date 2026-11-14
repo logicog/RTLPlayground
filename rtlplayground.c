@@ -32,6 +32,7 @@
 #include "dns.h"
 #include "ntp.h"
 #include "timer.h"
+#include "sflow.h"
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
@@ -965,6 +966,11 @@ void handle_rx(void)
 		uip_len = (((uint16_t)rx_headers[5]) << 8) | rx_headers[4];
 
 		rx_packet_vlan = NTOHS(ETH_IN->vlan_tag.vlan) & 0x0fff;
+		if (ETH_IN->rtl_tag.reason == RTL_REASON_MIRROR) {
+			if (sflow_state.rate && sflow_state.conn)
+				sflow_rx();
+			continue;
+		}
 
 #ifdef RXTXDBG
 		print_string(" RX-VLAN: "); print_short(rx_packet_vlan); write_char('\n');
@@ -1689,6 +1695,7 @@ void main(void)
 	syslog_init();
 	dns_init();
 	ntp_init();
+	sflow_init();
 
 #ifdef DEBUG
 	// This register seems to work on the RTL8373 only if also the SDS
