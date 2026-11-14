@@ -123,13 +123,24 @@ static void serial_init(void)
 	TI = 1;
 }
 
+static __data uint8_t th0_last;
+
 static void timer0_start(void)
 {
 	TMOD = (TMOD & 0xf0) | 0x01;
 	TH0 = 0;
 	TL0 = 0;
-	TF0 = 0;
+	th0_last = 0;
 	TR0 = 1;
+}
+
+static bool tick(void)
+{
+	uint8_t h = TH0;
+	bool t = h < th0_last;
+
+	th0_last = h;
+	return t;
 }
 
 static int16_t get_timeout(uint16_t ticks)
@@ -139,8 +150,7 @@ static int16_t get_timeout(uint16_t ticks)
 			RI = 0;
 			return SBUF;
 		}
-		if (TF0) {
-			TF0 = 0;
+		if (tick()) {
 			if (!ticks--)
 				return -1;
 		}
@@ -156,10 +166,8 @@ static bool wait_key(uint8_t k, uint16_t ticks)
 			if (SBUF == k)
 				return true;
 		}
-		if (TF0) {
-			TF0 = 0;
+		if (tick())
 			ticks--;
-		}
 	}
 	return false;
 }
@@ -581,7 +589,6 @@ static void start_app(void)
 	}
 	print_string("Starting application\n");
 	TR0 = 0;
-	TF0 = 0;
 	while (!TI);
 	PSBANK = alias_bank;
 	ALIAS_JUMP(alias_code);
