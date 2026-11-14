@@ -135,7 +135,6 @@ void flash_init(uint8_t enable_dio)
 	flash_configure_mmio();
 }
 
-#ifndef LDR_BUILD
 void flash_read_uid(void)
 {
 	flash_configure_sio();
@@ -171,7 +170,6 @@ void flash_read_uid(void)
 
 	flash_configure_mmio();
 }
-#endif
 
 __code const char* get_flash_size_str(void)
 {

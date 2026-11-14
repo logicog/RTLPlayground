@@ -94,6 +94,8 @@ static size_t out_len;
 void flash_init(uint8_t enable_dio) { (void)enable_dio; }
 
 void flash_read_jedecid(void) { flash_size = chip_size; }
+static bool uid_read;
+void flash_read_uid(void) { uid_read = true; }
 
 void flash_read_bulk(__xdata uint8_t *dst)
 {
@@ -214,6 +216,7 @@ static uint32_t xm_blk;
 static uint32_t xm_corrupt, xm_dup, xm_stop;
 static bool xm_stx;
 static bool xm_done;
+static int xm_skip;
 
 static void xm_send(uint32_t blk, bool bad)
 {
@@ -237,6 +240,10 @@ static void xm_react(uint8_t c)
 {
 	if (!xm_img || xm_done)
 		return;
+	if (c == 0x15 && xm_skip) {
+		xm_skip--;
+		return;
+	}
 	if (c == 0x15) {
 		if (!xm_state) {
 			xm_state = 1;
@@ -299,7 +306,14 @@ static void xm_arm(const uint8_t *img, uint32_t corrupt, uint32_t dup)
 	xm_dup = dup;
 	xm_stop = 0;
 	xm_stx = false;
+	xm_skip = 0;
 	rx_head = rx_tail = 0;
+}
+
+static void type(const char *s)
+{
+	while (*s)
+		rxq[rx_tail++] = *s++;
 }
 
 static uint16_t crc_of(const uint8_t *p, size_t n, uint16_t c)
@@ -691,6 +705,51 @@ int main(void)
 	flash[LDR_SLOT + 0x200] ^= 0x01;
 	xm_arm(inst, 0, 0);
 	check(boot() == 2 && !started && strstr(out, "Bad checksum"), "a corrupt image over XMODEM is dropped and nothing starts");
+
+	install_by_old_updater(a1);
+	for (int i = 0; i < 3; i++)
+		boot();
+	xm_arm(NULL, 0, 0);
+	type("c");
+	type("inx\x7f" "fo\r");
+	type("crc 0 4000\r");
+	type("dump 0x3a000 10\r");
+	type("zzz\r");
+	type("dump\r");
+	type("crc 0 4g00\r");
+	type("boot\r");
+	uid_read = false;
+	char want[64];
+	snprintf(want, sizeof(want), "%04x", crc_of(flash, 0x4000, 0));
+	snprintf(want + 8, sizeof(want) - 8, "%04x ok", installed_crc(a1 + 2, a1));
+	check(boot() == 1 && started == 1 && app_is(a1) && strstr(out, "Loader console"), "c in the recovery window opens the console and boot starts the application");
+	check(uid_read && strstr(out, "Loader CRC: bad") && strstr(out, want + 8) && strstr(out, "Unconfirmed boots: 04") && strstr(out, "Upload header: ffff"),
+		"info reports the flash, the loader, the application and the boot marks, with a deleted character");
+	check(strstr(out, want) != NULL, "crc prints the CRC16 of a flash range");
+	check(strstr(out, "0003a000: 42 43 00 00 00 00 ff ff ff ff ff ff ff ff ff ff\n") != NULL, "dump prints the flash bytes with their address");
+	{
+		int q = 0;
+		for (char *p = out; (p = strstr(p, "?\n")); p++)
+			q++;
+		check(q == 3, "an unknown command, a missing argument and a bad number are refused");
+	}
+	check(unconfirmed() == 4 && loader_intact(), "the console writes nothing to the flash");
+	confirm();
+
+	flash[LDR_APP_A + 0x10] ^= 0x01;
+	xm_arm(a2, 0, 0);
+	xm_skip = 1;
+	type("\rxmodem\r");
+	check(boot() == 1 && started == 1 && app_is(a2) && strstr(out, "Loader console") && strstr(out, "Console idle"),
+		"Enter while XMODEM waits opens the console, xmodem there installs, an idle console leaves");
+	confirm();
+
+	for (int i = 0; i < 3; i++)
+		boot();
+	xm_arm(NULL, 0, 0);
+	type("c");
+	check(boot() == 1 && started == 1 && app_is(a2) && strstr(out, "Console idle"), "a console without input lets the switch boot");
+	confirm();
 
 	printf("%s: %d failed\n", fails ? "FAIL" : "OK", fails);
 	return fails != 0;

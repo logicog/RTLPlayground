@@ -32,6 +32,10 @@ __xdata uint8_t slotbuf[LDR_SLOT_BUF];
 #endif
 
 static bool small;
+static bool cli_req;
+static bool bad;
+static uint8_t lp;
+__xdata char line[40];
 static bool direct_boot;
 static bool direct_nonzero;
 static bool direct_other;
@@ -157,19 +161,22 @@ static int16_t get_timeout(uint16_t ticks)
 	}
 }
 
-static bool wait_key(uint8_t k, uint16_t ticks)
+static uint8_t wait_key(uint16_t ticks)
 {
+	uint8_t k;
+
 	timer0_start();
 	while (ticks) {
 		if (RI) {
 			RI = 0;
-			if (SBUF == k)
-				return true;
+			k = SBUF;
+			if (k == 'x' || k == 'c')
+				return k;
 		}
 		if (tick())
 			ticks--;
 	}
-	return false;
+	return 0;
 }
 
 static void crc_table(void)
@@ -343,11 +350,19 @@ static void handle_upload(void)
 	}
 }
 
-static uint8_t bootcount(void)
+static uint8_t marks(void)
 {
 	uint8_t n;
 
 	readb(LDR_BOOTCNT, 64);
+	for (n = 2; n < 64 && buf[n] == 0; n++);
+	return n - 2;
+}
+
+static uint8_t bootcount(void)
+{
+	uint8_t n = marks();
+
 	if (buf[0] != 'B' || buf[1] != 'C') {
 		erase(LDR_BOOTCNT);
 		buf[0] = 'B';
@@ -356,12 +371,11 @@ static uint8_t bootcount(void)
 		program(LDR_BOOTCNT, 3);
 		return 0;
 	}
-	for (n = 2; n < 64 && buf[n] == 0; n++);
-	if (n == 64)
-		return n - 2;
+	if (n == 62)
+		return n;
 	buf[0] = 0;
-	program(LDR_BOOTCNT + n, 1);
-	return n - 2;
+	program(LDR_BOOTCNT + 2 + n, 1);
+	return n;
 }
 
 static void store(uint32_t off)
@@ -477,6 +491,10 @@ static bool xmodem(void)
 			continue;
 		}
 		idle = 0;
+		if (!started && c == '\r') {
+			cli_req = true;
+			return false;
+		}
 		if (c == XM_EOT) {
 			put(XM_ACK);
 			return true;
@@ -596,17 +614,218 @@ static void start_app(void)
 
 static void recover(void)
 {
-	print_string("XMODEM upload of a firmware image, 115200 8N1\n");
+	print_string("XMODEM upload of a firmware image, 115200 8N1, Enter opens the console\n");
 	if (xmodem()) {
 		get_timeout(TICKS_1S);
 		print_string("\nReceived\n");
 		if (small)
 			direct_finish();
-	} else {
+	} else if (!cli_req) {
 		print_string("\nNo image received, 128 byte blocks with checksum only\n");
 	}
 	if (!small)
 		handle_upload();
+}
+
+static void print_hex16(uint16_t v)
+{
+	print_byte(v >> 8);
+	print_byte(v);
+}
+
+static void print_hex32(uint32_t v)
+{
+	print_hex16(v >> 16);
+	print_hex16(v);
+}
+
+static uint8_t readline(void)
+{
+	uint8_t n = 0;
+	int16_t c;
+
+	timer0_start();
+	while (1) {
+		c = get_timeout(60 * TICKS_1S);
+		if (c < 0)
+			return 0xff;
+		if (c == '\r' || c == '\n') {
+			write_char('\n');
+			line[n] = 0;
+			return n;
+		}
+		if ((c == 0x08 || c == 0x7f) && n) {
+			n--;
+			put(0x08);
+			put(' ');
+			put(0x08);
+		} else if (c >= ' ' && c < 0x7f && n < sizeof(line) - 1) {
+			line[n++] = c;
+			put(c);
+		}
+	}
+}
+
+static bool cmd(__code const char *w)
+{
+	uint8_t i = 0;
+
+	while (*w) {
+		if (line[i++] != *w++)
+			return false;
+	}
+	if (line[i] && line[i] != ' ')
+		return false;
+	lp = i;
+	return true;
+}
+
+static uint32_t arg(bool need, uint32_t dflt)
+{
+	uint32_t v = 0;
+	uint8_t c;
+
+	while (line[lp] == ' ')
+		lp++;
+	if (!line[lp]) {
+		if (need)
+			bad = true;
+		return dflt;
+	}
+	if (line[lp] == '0' && (line[lp + 1] | 0x20) == 'x')
+		lp += 2;
+	while ((c = line[lp]) && c != ' ') {
+		if (c >= '0' && c <= '9')
+			c -= '0';
+		else if ((c | 0x20) >= 'a' && (c | 0x20) <= 'f')
+			c = (c | 0x20) - 'a' + 10;
+		else
+			bad = true;
+		v = (v << 4) | c;
+		lp++;
+	}
+	return v;
+}
+
+static void dump(uint32_t a, uint32_t n)
+{
+	uint16_t i;
+	uint16_t k;
+
+	while (n) {
+		k = n > sizeof(buf) ? sizeof(buf) : n;
+		readb(a, k);
+		for (i = 0; i < k; i++) {
+			if (!(i & 0xf)) {
+				if (RI) {
+					RI = 0;
+					return;
+				}
+				print_hex32(a + i);
+				write_char(':');
+			}
+			write_char(' ');
+			print_byte(buf[i]);
+			if ((i & 0xf) == 0xf || i == k - 1)
+				write_char('\n');
+		}
+		a += k;
+		n -= k;
+	}
+}
+
+static void info(void)
+{
+	uint16_t want;
+
+	flash_read_jedecid();
+	print_string("  Unique ID:       ");
+	flash_read_uid();
+	print_string("\nLoader CRC: ");
+	crc = 0;
+	crc_range(0, LDR_LOADER_LEN);
+	print_string(crc == 0xb001 ? "ok\n" : "bad\n");
+	print_string("Application: ");
+	if (has_meta(LDR_META)) {
+		want = buf[4] | ((uint16_t)buf[5] << 8);
+		print_hex16(want);
+		print_string(app_crc(0, LDR_SLOT) == want ? " ok\n" : " bad\n");
+	} else {
+		print_string("none\n");
+	}
+	print_string("Unconfirmed boots: ");
+	print_byte(marks());
+	print_string("\nUpload header: ");
+	readb(LDR_UPLOAD, 2);
+	print_byte(buf[0]);
+	print_byte(buf[1]);
+	write_char('\n');
+}
+
+static void reset(void)
+{
+	while (!TI);
+	SFR_DATA_24 = 0;
+	SFR_DATA_16 = 0;
+	SFR_DATA_8 = 0;
+	SFR_DATA_0 = 1;
+	reg_wr(RTL837X_REG_RESET);
+	while (1);
+}
+
+static void console(void)
+{
+	uint32_t a;
+	uint32_t n;
+
+	cli_req = false;
+	print_string("Loader console, help lists the commands\n");
+	while (1) {
+		print_string("> ");
+		if (readline() == 0xff) {
+			print_string("\nConsole idle, leaving\n");
+			return;
+		}
+		if (!line[0])
+			continue;
+		bad = false;
+		if (cmd("help")) {
+			print_string("info              flash and image state\n"
+				"dump ADDR [LEN]   show flash bytes\n"
+				"crc ADDR LEN      CRC16 of a flash range\n"
+				"xmodem            receive a firmware image\n"
+				"boot              leave the console\n"
+				"reset             restart the switch\n"
+				"Numbers are hex\n");
+		} else if (cmd("info")) {
+			info();
+		} else if (cmd("dump")) {
+			a = arg(true, 0);
+			n = arg(false, 0x100);
+			if (!bad)
+				dump(a, n);
+		} else if (cmd("crc")) {
+			a = arg(true, 0);
+			n = arg(true, 0);
+			if (!bad) {
+				crc = 0;
+				crc_range(a, a + n);
+				print_hex16(crc);
+				write_char('\n');
+			}
+		} else if (cmd("xmodem")) {
+			recover();
+			cli_req = false;
+		} else if (cmd("boot")) {
+			return;
+		} else if (cmd("reset")) {
+			reset();
+		} else {
+			bad = true;
+		}
+		if (bad)
+			print_string("?\n");
+	}
 }
 
 void main(void)
@@ -631,17 +850,29 @@ void main(void)
 		handle_upload();
 
 	if (bootcount() >= LDR_RECOVERY_BOOTS) {
-		print_string("Recovery boot, press x within 3 s for XMODEM\n");
-		if (wait_key('x', 3 * TICKS_1S))
+		print_string("Recovery boot, press x within 3 s for XMODEM, c for the console\n");
+		switch (wait_key(3 * TICKS_1S)) {
+		case 'x':
 			recover();
+			break;
+		case 'c':
+			cli_req = true;
+			break;
+		}
+		if (cli_req)
+			console();
 	}
 
 	while (1) {
 		while (!app_valid()) {
 			print_string("No valid application\n");
 			recover();
+			if (cli_req)
+				console();
 		}
 		start_app();
 		recover();
+		if (cli_req)
+			console();
 	}
 }
