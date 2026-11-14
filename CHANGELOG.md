@@ -4,6 +4,9 @@
 
 ## Added
 
+- The login page has a show/hide button inside the password field (eye icon,
+  aria-pressed and translated labels), so an operator can check what was
+  typed before signing in.
 - Devices
   - Support the hongyavision HYWS-SGT0204S (PCB marking `2G5F4_10G2_V1.01`), an
     RTL8372 based 4x2.5G + 2xSFP+ unmanaged switch with a 512 KB Bright Moon
