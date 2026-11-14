@@ -509,7 +509,10 @@ bool loader_recovery(void) __banked
 
 void loader_confirm(void) __banked
 {
-	if (!loader_read_bootcnt())
+	flash_region.addr = LDR_BOOTCNT;
+	flash_region.len = 1;
+	flash_read_bulk(&loader_boots);
+	if (loader_boots != 'B')
 		return;
 	flash_region.addr = LDR_BOOTCNT;
 	flash_sector_erase();
