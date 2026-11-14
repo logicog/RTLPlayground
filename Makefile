@@ -307,7 +307,7 @@ $(BUILDDIR)/loader/%.rel: loader/%.c $(LOADER_HDRS) $(CCFLAGS_STAMP) | create_bu
 
 $(BUILDDIR)/loader/rtl837x_flash.rel: rtl837x_flash.c $(LOADER_HDRS) $(CCFLAGS_STAMP) | create_build_dir
 	mkdir -p "$(BUILDDIR)/loader"
-	$(CC) $(CC_FLAGS) -o $@ -c $<
+	$(CC) $(CC_FLAGS) -DLDR_BUILD -o $@ -c $<
 
 $(BUILDDIR)/loader/loader.ihx: $(LOADER_OBJS)
 	@if grep -E '^ +[0-9A-F]{6} ' $(BUILDDIR)/loader/loader_alias.lst | grep -E '(ljmp|lcall|ajmp|acall)' | grep -vq 'ljmp 0x0000'; then echo "app_start must only use relative jumps"; exit 1; fi

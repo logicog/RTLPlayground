@@ -135,6 +135,7 @@ void flash_init(uint8_t enable_dio)
 	flash_configure_mmio();
 }
 
+#ifndef LDR_BUILD
 void flash_read_uid(void)
 {
 	flash_configure_sio();
@@ -170,6 +171,7 @@ void flash_read_uid(void)
 
 	flash_configure_mmio();
 }
+#endif
 
 __code const char* get_flash_size_str(void)
 {
@@ -258,6 +260,7 @@ void flash_read_bulk(__xdata uint8_t *dst)
 }
 
 
+#ifndef LDR_BUILD
 void flash_read_security(void)
 {
 	if (!flash_region.len)
@@ -298,6 +301,7 @@ void flash_read_security(void)
 
 	flash_configure_mmio();
 }
+#endif
 
 
 void flash_sector_erase(void)
