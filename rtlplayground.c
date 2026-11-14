@@ -876,9 +876,9 @@ void delay(uint16_t t)
 
 /*
  * Adds TX Header to uip_buf and calls nic_tx_packet to send the packet
- * over the wire
+ * over the wire. vlan selects the optional 802.1Q tag; 0 sends untagged.
  */
-void tcpip_output(void)
+void tcpip_output_vlan(uint16_t vlan)
 {
 	// Add TX-TAG
 	FRAME->tx_seq = tx_seq++;
@@ -887,10 +887,10 @@ void tcpip_output(void)
 	FRAME->len = uip_len;
 	FRAME->reserved_2[0] = 0x00; FRAME->reserved_2[1] = 0x00;
 
-	// For the management VLAN we insert an 802.1Q VLAN tag, but never into a
+	// For the selected VLAN we insert an 802.1Q VLAN tag, but never into a
 	// CPU-tagged frame, where the ASIC expects its tag right behind the addresses
 	frame_tagged = false;
-	if (management_vlan && FRAME_ETHERTYPE != HTONS(RTL_FRAME_TAG_ID)) {
+	if (vlan && FRAME_ETHERTYPE != HTONS(RTL_FRAME_TAG_ID)) {
 		frame_tagged = true;
 		// Shift the ethernet header before the HW type including the rtl_frame_desc to the beginning of uip_buf
 		// to allow space to insert the dot 1Q tag
@@ -898,7 +898,7 @@ void tcpip_output(void)
 			uip_buf[i] = uip_buf[i + DOT_1Q_TAG_SIZE];
 		FRAME_Q->len += DOT_1Q_TAG_SIZE;
 		FRAME_Q->tpid = HTONS(0x8100);  // Change ether-type to Dot1Q
-		FRAME_Q->tci = HTONS(management_vlan);
+		FRAME_Q->tci = HTONS(vlan);
 	}
 
 	reg_read_m(RTL837X_REG_CPU_TX_CURR_PKT);
@@ -917,6 +917,12 @@ void tcpip_output(void)
 
 	// Do actual TX of data on ASIC side
 	REG_SET(RTL837X_REG_NIC_TXCMD, 1);
+}
+
+
+void tcpip_output(void)
+{
+	tcpip_output_vlan(management_vlan);
 }
 
 

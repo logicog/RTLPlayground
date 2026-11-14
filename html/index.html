@@ -514,6 +514,16 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         </div>
       </div>
     </section>
+    <section class="tab" id="tab-wol">
+      <div class="card"><h2 data-i18n="wol_title">Wake-on-LAN</h2>
+        <p class="small mut" data-i18n="wol_intro">Send a magic packet to a MAC address. Without a VLAN the management VLAN is used; VLAN 0 sends the packet untagged.</p>
+        <label class="row"><span class="lb" data-i18n="wol_mac">MAC address</span>
+          <input class="in mono" id="wolmac" maxlength="17" spellcheck="false" data-i18n-p="wol_mac_p" placeholder="aa:bb:cc:dd:ee:ff"></label>
+        <label class="row"><span class="lb" data-i18n="wol_vlan">VLAN (optional)</span>
+          <input class="in sm" id="wolvlan" type="number" min="0" max="4094" data-i18n-p="wol_vlan_p" placeholder="management VLAN"></label>
+        <div style="margin-top:10px"><button class="ctl pri" id="wolsend" data-i18n="wol_send">Send magic packet</button></div>
+      </div>
+    </section>
   </main>
 </div>
 

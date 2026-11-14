@@ -196,6 +196,7 @@ uint16_t strtox(__xdata uint8_t *dst, __code const char *s);
 bool strstart(__xdata const uint8_t *a, __code const uint8_t *b);
 bool strstart_x(__xdata const uint8_t *a, __xdata const uint8_t *b);
 void tcpip_output(void);
+void tcpip_output_vlan(uint16_t vlan);
 uint8_t read_flash(uint8_t bank, __code const uint8_t *addr);
 void get_random_32(void);
 void read_reg_timer(__xdata uint32_t * tmr);

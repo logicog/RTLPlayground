@@ -500,6 +500,74 @@ void parse_mac_cmd(void)
 }
 
 
+#define WOL_ETHERTYPE 0x0842
+#define WOL_MAGIC_LEN 102
+
+/*
+ * Wake-on-LAN magic packet: 6 x 0xff followed by the target MAC repeated 16
+ * times, sent as an Ethernet frame with EtherType 0x0842. The optional second
+ * argument selects the VLAN; without it the management VLAN is used. VLAN 0
+ * sends the frame untagged.
+ */
+void parse_wol(void)
+{
+	__xdata uint8_t *p;
+	__xdata uint16_t vlan;
+	uint8_t n;
+
+	if (cmd_words_len < 2 || cmd_words_len > 3) {
+		cmd_error("wol <aa:bb:cc:dd:ee:ff> [vlan]\n");
+		return;
+	}
+	if (!parse_mac(cmd_words_b[1])) {
+		cmd_error("Invalid MAC address\n");
+		return;
+	}
+	if ((mac_parse_result[0] & 0x01) ||
+	    !(mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2] |
+	      mac_parse_result[3] | mac_parse_result[4] | mac_parse_result[5])) {
+		cmd_error("Wake-on-LAN needs a unicast MAC address\n");
+		return;
+	}
+
+	vlan = management_vlan;
+	if (cmd_words_len == 3) {
+		uint8_t digits = atoi_short(cmd_words_b[2]);
+
+		if (!digits || atoi_results_short > 4094 ||
+		    !cmd_is_space_or_nul(cmd_words_b[2] + digits)) {
+			cmd_error("VLAN must be 0..4094\n");
+			return;
+		}
+		vlan = atoi_results_short;
+	}
+
+	print_string("Wake-on-LAN to ");
+	print_mac(mac_parse_result);
+	if (vlan) {
+		print_string(" on VLAN ");
+		print_short(vlan);
+	} else {
+		print_string(" untagged");
+	}
+	write_char('\n');
+
+	p = &uip_buf[RTL_FRAME_DESC_SIZE];
+	memset(p, 0xff, 6);			/* broadcast destination */
+	memcpy(p + 6, uip_ethaddr.addr, 6);
+	p[12] = WOL_ETHERTYPE >> 8;
+	p[13] = WOL_ETHERTYPE & 0xff;
+	p += ETHER_HEADER_SIZE;
+	memset(p, 0xff, 6);
+	for (n = 0; n < 16; n++)
+		memcpy(p + 6 + n * 6, mac_parse_result, 6);
+
+	uip_len = ETHER_HEADER_SIZE + WOL_MAGIC_LEN;
+	tcpip_output_vlan(vlan);
+	print_string("Magic packet sent\n");
+}
+
+
 void parse_lag(void)
 {
 	__xdata uint8_t group;
@@ -1993,6 +2061,8 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "mac")) {
 			parse_mac_cmd();
+		} else if (cmd_compare(0, "wol")) {
+			parse_wol();
 		} else if (cmd_compare(0, "hostname")) {
 			/* "hostname" alone reports the current name; "hostname <text>"
 			 * sets it, sanitized to JSON-safe printable ASCII. A name with
