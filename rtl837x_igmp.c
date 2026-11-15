@@ -113,6 +113,16 @@ struct igmp_out {
 #define IGMP_O ((__xdata struct igmp_out *)&uip_buf[RTL_FRAME_DESC_SIZE])
 
 
+static void igmp_filter(void)
+{
+	__xdata uint32_t act = LOOKUP_MISS_FLOOD;
+
+	if (igmp_rports)
+		act = machine_detected.isRTL8373 ? LOOKUP_MISS_DROP_9 : LOOKUP_MISS_DROP_6;
+	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, act);
+}
+
+
 void igmp_setup(void) __banked
 {
 	uint8_t i;
@@ -173,9 +183,7 @@ void igmp_enable(void) __banked
 	// Configure trapping of unhandled IGMP protocol packets to CPU
 	REG_SET(RTL837X_IGMP_TRAP_CFG, IGMP_CPU_PORT | IGMP_TRAP_PRIORITY);
 
-	// Drop unknown IP-MC packets
-	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, machine_detected.isRTL8373? LOOKUP_MISS_DROP_9: LOOKUP_MISS_DROP_6);
-//	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, machine_detected.isRTL8373? LOOKUP_MISS_DROP_9: LOOKUP_MISS_DROP_6);
+	igmp_filter();
 
 	// Configure per-port IGMP configuration, bits 0-10 enable MC protocol snooping,
 	// bits 16-24 configure max MC group used by that port. Trap to CPU (10)
@@ -463,7 +471,10 @@ static void igmp_forward(void)
 		if (stp_port_state(i) != IGMP_STP_FORWARDING)
 			pmask &= ~PORT_BIT(i);
 	link = port_link_mask();
-	igmp_rports &= link;
+	if (igmp_rports & ~link) {
+		igmp_rports &= link;
+		igmp_filter();
+	}
 	if (igmp_report && igmp_rports)
 		pmask &= igmp_rports;
 	for (lag = 0; lag < 4; lag++) {
@@ -529,8 +540,10 @@ uint8_t igmp_packet_handler(void) __banked
 		uip_len = 0;
 		return 1;
 	}
-	if (igmp_query)
+	if (igmp_query && !(igmp_rports & PORT_BIT(port))) {
 		igmp_rports |= PORT_BIT(port);
+		igmp_filter();
+	}
 	igmp_snoop();
 	igmp_forward();
 	return 1;

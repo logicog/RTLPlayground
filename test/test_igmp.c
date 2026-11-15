@@ -28,12 +28,15 @@ void print_sfr_data(void) { }
 
 static int tbl_writes;
 static uint8_t cap_b[4], cap_c[4];
+static uint32_t lm_act;
 void reg_read_m(uint16_t reg) { (void)reg; memset(sfr_data, 0, sizeof(sfr_data)); }
 void reg_write_m(uint16_t reg) { (void)reg; }
 void reg_write(uint16_t reg)
 {
 	if (reg == RTL837X_TBL_CTRL)
 		tbl_writes++;
+	if (reg == RTL837X_IPV4_PORT_MC_LM_ACT)
+		lm_act = ((uint32_t)SFR_DATA_24 << 24) | ((uint32_t)SFR_DATA_16 << 16) | ((uint32_t)SFR_DATA_8 << 8) | SFR_DATA_0;
 	if (reg == RTL837x_TBL_DATA_IN_B) {
 		cap_b[0] = SFR_DATA_24; cap_b[1] = SFR_DATA_16; cap_b[2] = SFR_DATA_8; cap_b[3] = SFR_DATA_0;
 	}
@@ -455,6 +458,25 @@ int main(int argc, char **argv)
 	build(2, grp, IGMP_V2_REPORT, grp);
 	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
 	      == HTONS((PMASK_9 & ~PORT_BIT(2))), "igmp on: router ports forgotten, report flooded");
+	CHECK(lm_act == LOOKUP_MISS_FLOOD, "igmp on: unknown multicast flooded while no querier is known");
+	build(6, all_hosts, IGMP_QUERY, none);
+	igmp_packet_handler();
+	CHECK(lm_act == LOOKUP_MISS_DROP_9, "first query: unknown multicast dropped");
+	lm_act = 1;
+	build(6, all_hosts, IGMP_QUERY, none);
+	igmp_packet_handler();
+	CHECK(lm_act == 1, "query from a known querier port: lookup-miss action left alone");
+	build(2, grp, IGMP_V2_REPORT, grp);
+	igmp_packet_handler();
+	CHECK(lm_act == 1, "report: lookup-miss action left alone");
+	link_up &= ~PORT_BIT(6);
+	build(2, grp, IGMP_V2_REPORT, grp);
+	igmp_packet_handler();
+	CHECK(lm_act == LOOKUP_MISS_FLOOD, "last querier port lost its link: unknown multicast flooded again");
+	link_up = 0x3ff;
+	lm_act = 1;
+	igmp_setup();
+	CHECK(lm_act == LOOKUP_MISS_FLOOD, "igmp off: unknown multicast flooded");
 
 	if (fails) {
 		printf("test_igmp: %d FAILED\n", fails);

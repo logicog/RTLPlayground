@@ -51,9 +51,12 @@ IP-MC packet is encountered at a switch port and there is no rule for forwarding
 the forwarding tables. The default action is to flood such Lookup-Miss packets to all
 ports. This is the configuration without IGMP/MLD enabled.
 
-When IGMP/MLD is turned on, the Lookup-Miss action will be changed to drop such packets
-unless a rule is found in the forwarding tables, which will need to be configured by
-IGMP packets.
+When IGMP is turned on and a query has been seen, the Lookup-Miss action is changed to
+drop such packets unless a rule is found in the forwarding tables, which will need to be
+configured by IGMP packets. While no querier port is known, because no query has arrived
+yet or the port it came on has lost its link, unknown IP-MC packets are still flooded: a
+host only reports its groups when it joins or when a querier asks, so without a querier
+there is nothing the switch could learn from, for example after a restart.
 
 Switching on IGMP also configures all ports via `RTL837X_IGMP_PORT_CFG` to trap all
 incoming IGMP packets to the CPU. `RTL837X_IGMP_TRAP_CFG` then is used to configure
@@ -129,8 +132,9 @@ Enable IGMP on the switch-CLI:
 ```
 > igmp on
 ```
-The flickering should now stop on all ports except the port where the streaming device is connected:
-the switch drops all IP-MC packets as there are no listeners.
+Once a querier has sent a query, the flickering should stop on all ports except the port where
+the streaming device is connected: the switch drops all IP-MC packets as there are no listeners.
+Without a querier in the network the switch keeps flooding.
 
 Now, on the second Linux/Windows device start listening to the stream:
 ```
