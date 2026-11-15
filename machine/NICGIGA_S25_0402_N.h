@@ -1,0 +1,7 @@
+#ifndef _MACHINE_NICGIGA_S25_0402_N_H_
+#define _MACHINE_NICGIGA_S25_0402_N_H_
+
+#define MACHINE_MODEL "Nicgiga S25-0402-N"
+#define MACHINE_CHIPSET RTL8372
+
+#endif
