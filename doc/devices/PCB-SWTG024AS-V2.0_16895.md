@@ -11,7 +11,8 @@
 make MACHINE=SWTG024AS_V2_0 CI=1
 ```
 
-This target uses `machine/pcb/PCB_SWTG024AS_V2_0_16895.c` and its custom init hook.
+This target uses `machine/pcb/PCB_SWTG024AS_V2_0_16895.c`, which contains its
+custom initialization hook.
 
 
 ### Label specifications

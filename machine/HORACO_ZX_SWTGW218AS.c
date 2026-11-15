@@ -1,1 +1,0 @@
-pcb/PCB_SWTG118AS_V2_1_17462.c

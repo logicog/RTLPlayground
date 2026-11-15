@@ -1,1 +1,0 @@
-pcb/FG_4GT_2SX_V2_0_init.c

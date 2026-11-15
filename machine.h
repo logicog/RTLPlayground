@@ -12,23 +12,17 @@
 #define MACHINE_PCB_INFO MACHINE_STR(MACHINE_PCB_NAME)
 
 
-#define MACHINE_DEF_DIR machine
-
 #ifndef MACHINE_NAME
+	#include "machine/default_machine.h"
 	#define MACHINE_NAME default_machine
 #endif
-
-#define MACHINE_INC(dir,file) MACHINE_STR(dir/file)
 
 #define RTL8370 0x70
 #define RTL8372 0x72
 #define RTL8373 0x73
 
-#include  MACHINE_INC(MACHINE_DEF_DIR,MACHINE_NAME.h)
-
-
 #ifndef MACHINE_CHIPSET
-#error "MACHINE_CHIPSET shall be defined in <machine>.h file"
+#error "MACHINE_CHIPSET shall be defined by the selected PCB source or build"
 #endif
 
 #ifndef MACHINE_MIN_PORT

@@ -22,8 +22,9 @@ make MACHINE=DOTX_DX_1009N CI=1
 ```
 
 This target uses the independent board definition
-`machine/pcb/PCB_SWTG118AS_V1_0_11430.c`. The machine entry
-`machine/DOTX_DX_1009N.c` is a symlink to that definition.
+`machine/pcb/PCB_SWTG118AS_V1_0_11430.c`. The machine description
+The `DOTX_DX_1009N` entry in `machine/machines.json` selects that PCB and
+provides the model name.
 
 ### What works
 
