@@ -1227,6 +1227,41 @@ static void scen_guard_link_flap(void)
 	check(ticks_forwarding(3, NULL, 5) > 0, "and the port can forward again");
 }
 
+static void scen_guard_change_clears(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+
+	printf("67. changing the guard of a tripped port brings it back\n");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	secs(6);
+	bpdu_in(&r);
+	check_state(3, 0, "the BPDU trips the edge port");
+	sim_cmd("stp port 4 guard none");
+	check(!(stp_pflags[3] & STP_PF_TRIPPED), "guard none clears the trip");
+	check(ticks_forwarding(3, NULL, 2) == 0, "the port does not forward at once");
+	check(ticks_forwarding(3, NULL, 10) > 0, "but does after the edge wait");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	secs(6);
+	bpdu_in(&r);
+	sim_cmd("stp port 4 guard bpdu");
+	check(ticks_forwarding(3, NULL, 1) == 0, "re-arming the guard does not forward before the next BPDU");
+	bpdu_in(&r);
+	check(stp_pflags[3] & STP_PF_TRIPPED, "a BPDU still arriving trips it again");
+	check(ticks_forwarding(3, NULL, 10) == 0, "and it stays off");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	secs(6);
+	bpdu_in(&r);
+	sim_cmd("stp port 4 off");
+	sim_cmd("stp port 4 guard none");
+	check(ticks_forwarding(3, NULL, 5) == 5 * STP_HZ, "a port with STP off keeps forwarding");
+}
+
 static void scen_guard_lag_change(void)
 {
 	struct sim_bpdu r = rogue_on(3);
@@ -2522,6 +2557,7 @@ int main(int argc, char **argv)
 	scen_link_loss_no_tc();
 	scen_guard_in_listen();
 	scen_guard_link_flap();
+	scen_guard_change_clears();
 	scen_guard_lag_change();
 	scen_proposal_agreement();
 	scen_no_agreement();

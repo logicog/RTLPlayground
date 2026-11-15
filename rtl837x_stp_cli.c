@@ -140,6 +140,10 @@ void stp_parse(void) __banked __reentrant
 				stp_pflags[port] |= STP_PF_ROOTGUARD;
 			else if (!cmd_compare(4, "none"))
 				goto err;
+			if (stp_pflags[port] & STP_PF_TRIPPED) {
+				stp_pflags[port] &= ~STP_PF_TRIPPED;
+				stp_port_admin(port);
+			}
 		} else if (cmd_compare(3, "filter")) {
 			if (cmd_compare(4, "on"))
 				stp_pflags[port] |= STP_PF_FILTER;
