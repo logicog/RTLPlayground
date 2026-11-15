@@ -21,7 +21,7 @@ __code const struct machine machine = {
     .sfp_port[1].sds = 1,
     .sfp_port[1].i2c =  I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
-    .reset_pin = GPIO_NA,
+    .reset_pin = GPIO48_I2C_SCL1,
     .high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1 },
     .led_sets = {
@@ -48,7 +48,5 @@ __code const struct machine machine = {
       0x3f, 0x19, 0x3f, 0x3f, 0x1c,
       0x1d, 0x20, 0x21
     },
+    .mac_flash_offset = 0x1FC000,
 };
-
-// Boot 1-4G    6Y
-//      1-4Y 5G 6Y

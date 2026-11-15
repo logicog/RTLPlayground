@@ -17,7 +17,7 @@
 extern unsigned int alarm(unsigned int);
 extern void _exit(int);
 #include "rtl837x_common.h"     /* SBUF_SIZE, CMD_BUF_SIZE, CMD_HISTORY_SIZE, decls */
-#include "support.h"
+#include <test/support.h>
 
 /* --- symbols the editor/parser reference (extern in the firmware headers) --- */
 __xdata volatile uint8_t sbuf_ptr;

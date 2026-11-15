@@ -3,8 +3,8 @@
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "machine.h"
-#include "support.h"
-#include "hw_mock.h"
+#include <test/support.h>
+#include <test/hw_mock.h>
 extern const struct machine machine;
 extern struct machine_runtime machine_detected;
 int main(void) {

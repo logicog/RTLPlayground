@@ -15,6 +15,7 @@
 
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
+volatile uint32_t ticks;
 struct uip_eth_addr uip_ethaddr = { .addr = { 0x1c, 0x2a, 0xa3, 0x1a, 0x72, 0x4e } };
 const struct machine machine = {
 	.log_to_phys_port = { 1, 2, 3, 4, 5, 6, 10, 8, 9 }
@@ -1490,6 +1491,7 @@ static void scen_backup_role(void)
 	check_state(3, 1, "port 4, the worse of the two, is blocked");
 	check(((stp_backup >> 3) & 1) == 1, "and has the backup role");
 	check(((stp_backup >> 2) & 1) == 0, "port 3 is not a backup");
+	check(stp_loop_held[3] == 2 + 1, "port 3 is recorded as the one that keeps the segment");
 	for (int i = 0; i < 20; i++) {
 		bpdu_in(&r);
 		secs(2);

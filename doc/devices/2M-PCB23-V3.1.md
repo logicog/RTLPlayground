@@ -3,7 +3,7 @@
 ## Brands
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
-| keepLINK | KP-9000-9XHML-X | Yes|  2M-PCB23-V3.1 | 2M| 8273N + 8224N |
+| keepLINK | KP-9000-9XHML-X | Yes|  2M-PCB23-V3.1 | 2M| 8373N + 8224N |
 
 ## PCB
 

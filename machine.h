@@ -6,6 +6,11 @@
 #define MACHINE_STR_HELPER(x)  #x
 #define MACHINE_STR(x) MACHINE_STR_HELPER(x)
 
+#ifndef MACHINE_PCB_NAME
+#define MACHINE_PCB_NAME unknown
+#endif
+#define MACHINE_PCB_INFO MACHINE_STR(MACHINE_PCB_NAME)
+
 
 #define MACHINE_DEF_DIR machine
 

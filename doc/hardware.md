@@ -1,4 +1,4 @@
-#RTL8272/3 features
+#RTL8372/3 features
 
 The following hardware features of the RTL8372/3 is supported:
 - Clock generation, including different divider settings
@@ -44,7 +44,7 @@ the MOVC instruction, possibly setting the bank register before and
 resetting it to access the entire 4MB space. Code is prefetched from flash
 and cached in a small RAM automatically by the HW.
 
-The peripherial functions are accessed through 2 different mechanisms:
+The peripheral functions are accessed through 2 different mechanisms:
 - Special Function Registers (SFRs, 0x80-0xff) for banking, timers, UART, access to
   switch registers, MDIO, SPI (flash) and NIC transfers. Some SFRs are not
   used for HW purposes and can be used as RAM. Some SFRs are bit-adressable,

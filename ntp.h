@@ -24,7 +24,7 @@ struct ntp_state {
 	uint32_t utc;		/* seconds since 1970 UTC at the last synchronisation */
 	uint32_t at;		/* uptime seconds at the last synchronisation */
 	uint32_t next;		/* uptime seconds of the next synchronisation */
-	uint32_t sent;		/* ticks when the request went out */
+	struct timer wait;
 	struct uip_udp_conn *conn;
 };
 

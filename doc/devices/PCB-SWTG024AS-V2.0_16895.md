@@ -3,11 +3,20 @@
 ## Brands
 |Brand|Type|Managed|PCB|Flash|Chip RTL|
 |---|---|---|---|---|---|
-| hongyavision | LG-SG5T1 | No | PCB-SWTG024AS-V2.0_16895 | 25Q40 | 8272 |
+| hongyavision | LG-SG5T1 | No | PCB-SWTG024AS-V2.0_16895 | 25Q40 | 8372 |
+
+### Machine target
+
+```text
+make MACHINE=SWTG024AS_V2_0 CI=1
+```
+
+This target uses `machine/pcb/PCB_SWTG024AS_V2_0_16895.c` and its custom init hook.
+
 
 ### Label specifications
 
-- **Name**: 
+- **Name**: LG-SG5T1
 - **Ports**:
   - 5 × RJ45: 10/100/1000/2500 Mbps
   - 1 × SFP+: 1000 / 2500 / 10000 Mbps
@@ -16,11 +25,18 @@
 <img src="photos/PCB-SWTG024AS-V2.0_16895/label.jpg" width="300" />
 
 ### What works
-The device is fully supported:
 - ALL 2.5GBASE-T RJ45 ports work at 10/100/1000/2500 Mbps
 - The SFP+ port supports 1G, 2.5G and 10G modules 
-- LEDs work with the same indiciations as the OEM firmware
-- Online update does not work with 512KiB flash.
+- LEDs work with the same indications as the OEM firmware
+
+### Limitations and unverified items
+
+- Online update does not work with 512 KiB flash; use an external flash programmer.
+
+### Front panel
+
+<img src="photos/PCB-SWTG024AS-V2.0_16895/front.jpg" width="600" />
+
 ### PCB overview
 
 **Board markings**

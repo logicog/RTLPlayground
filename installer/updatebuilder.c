@@ -137,7 +137,8 @@ int main(int argc, char **argv)
 		printf("File too large.\n");
 		return 5;
 	}
-	size_t bytes_read = fread(buffer + SEG_1d000_OFFSET + 2 * HEADER_LENGTH, 1, sizeof(buffer), inptr);
+	uint32_t offset = SEG_1d000_OFFSET + 2 * HEADER_LENGTH;
+	size_t bytes_read = fread(buffer + offset, 1, BUFFER_SIZE - offset, inptr);
 
 	printf("Bytes read: %ld\n", bytes_read);
 

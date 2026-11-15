@@ -26,7 +26,6 @@
 #define NTP_WAIT	3
 
 extern __xdata uint8_t sfr_data[4];
-extern volatile __xdata uint32_t ticks;
 
 __xdata struct ntp_state ntp_state;
 __xdata uip_ipaddr_t ntp_ip;
@@ -326,12 +325,12 @@ void ntp_callback(uint16_t lport) __banked __reentrant
 		ntp_connect(ntp_state.addr);
 		return;
 	case NTP_SEND:
-		ntp_state.sent = ticks;
+		timer_set(&ntp_state.wait, NTP_TIMEOUT);
 		ntp_state.phase = NTP_WAIT;
 		ntp_request();
 		return;
 	case NTP_WAIT:
-		if (ticks - ntp_state.sent < NTP_TIMEOUT)
+		if (!timer_expired(&ntp_state.wait))
 			return;
 		if (++ntp_state.tries < NTP_TRIES)
 			ntp_state.phase = NTP_SEND;

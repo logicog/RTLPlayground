@@ -38,9 +38,18 @@ SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 ifneq ($(MACHINE),)
 	CC_FLAGS += -DMACHINE_NAME=$(MACHINE)
 endif
+
+# PCB information
+MACHINE_LINK_TARGET := $(shell readlink machine/$(MACHINE).c 2>/dev/null)
+ifneq ($(MACHINE_LINK_TARGET),)
+	CC_FLAGS += -DMACHINE_PCB_NAME=$(basename $(notdir $(MACHINE_LINK_TARGET)))
+endif
 # Health instrumentation and the "health" console command: HEALTH=1 gmake ...
 ifneq ($(HEALTH),)
 	CC_FLAGS += -DHEALTH
+endif
+ifneq ($(DEBUG),)
+	CC_FLAGS += -DDEBUG
 endif
 
 ifeq ($(CI),1)
@@ -72,6 +81,21 @@ endif
 VERSION_EXTENSION = v$(VERSION)-$(GIT_VERSION)
 FILENAME_EXTENSION = $(VERSION_EXTENSION)-$(MACHINE)
 
+# Path and file name of the final image. BUILDDIR still holds the intermediate
+# objects and tools. OUTPUT_DIR is the destination directory. OUTPUT_PREFIX is
+# prepended to the automatic file name (version, git hash and machine);
+# OUTPUT_NAME replaces that whole name and takes precedence, so use only one of
+# OUTPUT_PREFIX and OUTPUT_NAME. Both refer to OUTPUT_DIR. OUTPUT sets a
+# complete path and overrides all three:
+# make MACHINE=<name> OUTPUT_DIR=/path/to/firmware
+# make MACHINE=<name> OUTPUT_DIR=/path/to/firmware OUTPUT_PREFIX=my-switch-
+# make MACHINE=<name> OUTPUT_DIR=/path/to/firmware OUTPUT_NAME=my-switch.bin
+# make MACHINE=<name> OUTPUT=/path/to/firmware.bin
+OUTPUT_DIR ?= $(BUILDDIR)
+OUTPUT_PREFIX ?= rtlplayground-
+OUTPUT_NAME ?= $(OUTPUT_PREFIX)$(FILENAME_EXTENSION).bin
+OUTPUT ?= $(OUTPUT_DIR)/$(OUTPUT_NAME)
+
 # Deterministic build date: honor SOURCE_DATE_EPOCH, else the HEAD commit date,
 # else wall-clock (no-git fallback). Keeps same-commit builds byte-identical
 # (BUILD_DATE is baked into the image and covered by the trailing CRC).
@@ -86,7 +110,7 @@ endif
 # $(MACHINE_SRC) and $(CONFIG) are listed here so an unknown $MACHINE or a
 # missing config file fails before anything else is built, including the tools/
 # subdirectory.
-all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(CONFIG) $(SUBDIRS) $(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin
+all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(CONFIG) $(SUBDIRS) $(OUTPUT)
 
 bank_size:
 	tools/bank_occupancy.sh "$(MACHINE)"
@@ -96,6 +120,7 @@ create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)/uip"
 	mkdir -p "$(BUILDDIR)/httpd"
 	mkdir -p "$(BUILDDIR)/machine"
+	mkdir -p "$(BUILDDIR)/crypto"
 
 # Every machine is a pair machine/<MACHINE>.c + machine/<MACHINE>.h. Selecting
 # them by name means no #if/#elif chain, so an unknown or empty $MACHINE is
@@ -131,7 +156,9 @@ SRCS = \
 	ntp.c \
 	ntp_cli.c \
 	syslog.c \
-	udp_apps.c
+	timer.c \
+	udp_apps.c \
+	crypto/chacha20.c
 
 # RTL837x
 SRCS += \
@@ -155,9 +182,9 @@ SRCS += \
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c \
+	httpd/html_out.c \
 	httpd/page_stp.c
 SRCS += \
-	uip/timer.c \
 	uip/uip.c \
 	uip/uiplib.c \
 	uip/uip_arp.c \
@@ -191,7 +218,7 @@ $(HTML_MIN_STAMP): $(HTML) html/app.js $(HTML_MIN_LIST) tools/minify.py tools/rj
 	@touch $@
 
 html_data.c html_data.h &: $(HTML_MIN_STAMP) | tools
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -b BANK1 -z -d $(HTML_MIN) -p html_data
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -l $(DEFAULT_CONFIG_LOCATION) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
 $(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
@@ -248,20 +275,23 @@ $(BUILDDIR)/%.rel: %.asm $(CCFLAGS_STAMP) | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel
+$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel $(BUILDDIR)/crypto/chacha_8051.rel
 	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-bBANK4=0x44000 -Wl-r -o $@ $^
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin: $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
-	if [ -e $@ ]; then rm $@; fi
-	tools/$(BUILDDIR)/imagebuilder -i $(BUILDDIR)/rtlplayground.img $@
-	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" $@
-	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -d "$(CONFIG)" $@
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -z -d $(HTML_MIN) -b BANK1 $@
-	tools/$(BUILDDIR)/crc_calculator -u $@
-	ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin $(BUILDDIR)/../rtlplayground.bin
+$(OUTPUT): $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
+	@mkdir -p "$(dir $@)"
+	if [ -e "$@" ]; then rm "$@"; fi
+	tools/$(BUILDDIR)/imagebuilder -i $(BUILDDIR)/rtlplayground.img "$@"
+	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -l $(CONFIG_LOCATION) -d "$(CONFIG)" "$@"
+	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -l $(IMAGESIZE) -d "$(CONFIG)" "$@"
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -l $(DEFAULT_CONFIG_LOCATION) -z -d $(HTML_MIN) -b BANK1 "$@"
+	tools/$(BUILDDIR)/crc_calculator -u "$@"
+	if [ "$(OUTPUT)" = "$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin" ]; then \
+		ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin "$(BUILDDIR)/../rtlplayground.bin"; \
+	fi
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 

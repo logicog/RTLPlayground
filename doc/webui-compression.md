@@ -39,7 +39,7 @@ html/  --(minify.py)-->  output/html_min/  --(fileadder -z)-->  flash image
   the `gzip` flag in its `f_data` entry.  The 8051 only copies compressed
   bytes from flash to the socket; decompression happens in the browser.
 - Only the static files are compressed.  The JSON API responses
-  (`/information.json`, `/vlanlist`, ...) are generated on the fly and
+  (`/information.json`, `/vlanlist.json`, ...) are generated on the fly and
   stay uncompressed.
 
 ## Measured effect
