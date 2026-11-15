@@ -37,6 +37,7 @@ __xdata uint16_t idx;
 #define IGMP_IP_HDR		offsetof(struct igmp_pkt, hlen)
 #define IGMP_IP_IHL		0x0f
 #define IGMP_GROUP_OFS		4
+#define IGMP_GROUP_KEY		0x0f
 #define IGMP_V3_RECORD_OFS	8
 #define IGMP_V3_RECORD_LEN	8
 
@@ -245,7 +246,7 @@ static void igmp_learn(void)
 #ifdef DEBUG
 	print_string("IGMP join "); print_byte(igmp_join); write_char('\n');
 #endif
-	if (uip_buf[igmp_grp] == IGMP_LOCAL_NET_0 && !uip_buf[igmp_grp + 1] && !uip_buf[igmp_grp + 2])
+	if (!(uip_buf[igmp_grp] & IGMP_GROUP_KEY) && !uip_buf[igmp_grp + 1] && !uip_buf[igmp_grp + 2])
 		return;
 
 #ifdef IPMC_USES_L3MC

@@ -14,7 +14,6 @@
 #define IGMP_V3_TO_INCLUDE	3
 #define IGMP_V3_TO_EXCLUDE	4
 #define IGMP_V3_ALLOW_NEW	5
-#define IGMP_LOCAL_NET_0	224
 
 void igmp_setup(void) __banked;
 void igmp_enable(void) __banked;

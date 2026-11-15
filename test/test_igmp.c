@@ -206,6 +206,7 @@ static const uint8_t v3_reports[4] = {224, 0, 0, 22};
 static const uint8_t grp[4] = {239, 1, 2, 4};
 static const uint8_t grp2[4] = {239, 1, 2, 5};
 static const uint8_t none[4] = {0, 0, 0, 0};
+static const uint8_t alias[4] = {0, 0, 0, 251};
 
 int main(int argc, char **argv)
 {
@@ -336,6 +337,8 @@ int main(int argc, char **argv)
 	CHECK(DIP_OK(grp) && PM() == PORT_BIT(4), "v3 include with a source: learned");
 	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(0)] = IGMP_V3_IS_INCLUDE; igmp_packet_handler();
 	CHECK(tbl_writes == 1, "v3 include without sources: leave, nothing written");
+	CLR(); tbl_writes = 0; build(2, grp, IGMP_V2_REPORT, alias); igmp_packet_handler();
+	CHECK(tbl_writes == 0, "group that the table would key as 224.0.0.x: ignored");
 	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(0)] = 6; igmp_packet_handler();
 	CHECK(tbl_writes == 0, "v3 block old sources: ignored");
 	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); RECORDS(2);
