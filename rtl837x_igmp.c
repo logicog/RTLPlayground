@@ -45,6 +45,8 @@ static __xdata uint8_t igmp_vofs;
 static __xdata uint8_t igmp_query;
 static __xdata uint8_t igmp_report;
 static __xdata uint16_t igmp_rports;
+static __xdata uint16_t igmp_vid;
+static __xdata uint16_t igmp_vmask;
 
 #ifdef IPMC_USES_L3MC
 struct ipmc_table_entry {
@@ -427,6 +429,7 @@ static void igmp_forward(void)
 	__xdata uint16_t i;
 	__xdata uint8_t port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
 	__xdata uint16_t pmask = machine_detected.isRTL8373 ? PMASK_9 : PMASK_6;
+	__xdata uint16_t m, link;
 	__xdata uint8_t lag;
 
 	if (uip_len < IGMP_ETH_HDR + igmp_vofs
@@ -435,9 +438,18 @@ static void igmp_forward(void)
 		return;
 	}
 	lag = port_lag_of(port);
-	pmask &= ~(lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag));
+	pmask &= igmp_vmask & ~(lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag));
+	for (i = 0; stp_enabled && i <= MACHINE_MAX_PORT; i++)
+		if (stp_port_state(i) != IGMP_STP_FORWARDING)
+			pmask &= ~PORT_BIT(i);
 	if (igmp_report && igmp_rports)
 		pmask &= igmp_rports;
+	link = port_link_mask();
+	for (lag = 0; lag < 4; lag++) {
+		m = port_lag_members_get(lag);
+		i = m & pmask & link;
+		pmask &= ~m | (i & -i);
+	}
 	if (!pmask) {
 		uip_len = 0;
 		return;
@@ -456,11 +468,10 @@ static void igmp_forward(void)
 	IGMP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	IGMP_O->rtl_tag.reason = 0x00;
 	IGMP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
-	IGMP_O->rtl_tag.pmask = HTONS(RTL_TAG_ALLOW | pmask);
+	IGMP_O->rtl_tag.pmask = HTONS(pmask);
 	if (!igmp_vofs) {
-		i = port_pvid_get(port);
 		IGMP_O->vlan_tag.svlan = HTONS(0x8100);
-		IGMP_O->vlan_tag.vlan = HTONS(i);
+		IGMP_O->vlan_tag.vlan = HTONS(igmp_vid);
 		uip_len += VLAN_TAG_SIZE;
 	}
 }
@@ -486,17 +497,17 @@ uint8_t igmp_packet_handler(void) __banked
 		igmp_report = uip_buf[type] == IGMP_V1_REPORT || uip_buf[type] == IGMP_V2_REPORT
 			      || uip_buf[type] == IGMP_V2_LEAVE || uip_buf[type] == IGMP_V3_REPORT;
 	}
+	igmp_vid = port_pvid_get(port);
 	if (igmp_vofs) {
 		vid = ((uint16_t)(uip_buf[TRAP_RX_HDR_SIZE + 2] & 0x0f) << 8) | uip_buf[TRAP_RX_HDR_SIZE + 3];
-		if (!vid) {
-			vid = port_pvid_get(port);
-			uip_buf[TRAP_RX_HDR_SIZE + 2] = (uip_buf[TRAP_RX_HDR_SIZE + 2] & 0xf0) | (vid >> 8);
-			uip_buf[TRAP_RX_HDR_SIZE + 3] = vid;
-		}
-		if (vlan_get(vid) || !((((uint16_t)(sfr_data[2] & 0x03) << 8) | sfr_data[3]) & PORT_BIT(port))) {
-			uip_len = 0;
-			return 1;
-		}
+		if (vid)
+			igmp_vid = vid;
+		uip_buf[TRAP_RX_HDR_SIZE + 2] = (uip_buf[TRAP_RX_HDR_SIZE + 2] & 0xf0) | (igmp_vid >> 8);
+		uip_buf[TRAP_RX_HDR_SIZE + 3] = igmp_vid;
+	}
+	if (vlan_get(igmp_vid) || !((igmp_vmask = ((uint16_t)(sfr_data[2] & 0x03) << 8) | sfr_data[3]) & PORT_BIT(port))) {
+		uip_len = 0;
+		return 1;
 	}
 	if (igmp_query)
 		igmp_rports |= PORT_BIT(port);
