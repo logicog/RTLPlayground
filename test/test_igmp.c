@@ -232,8 +232,9 @@ int main(int argc, char **argv)
 	      == HTONS(RTL_TAG_ALLOW | (PMASK_6 & ~PORT_BIT(4))), "8372: only its ports");
 	machine_detected.isRTL8373 = 1;
 
-	build(15, all_hosts, 0x11, none);
-	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "invalid ingress port: nothing sent");
+	build(15, grp, IGMP_V2_REPORT, grp);
+	tbl_writes = 0;
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0 && tbl_writes == 0, "invalid ingress port: nothing sent, nothing learned");
 
 	build(8, all_hosts, 0x11, none);
 	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE;
@@ -243,7 +244,9 @@ int main(int argc, char **argv)
 	memset(stp_state, 3, sizeof(stp_state));
 	stp_state[2] = 1;
 	build(2, grp, IGMP_V2_REPORT, grp);
+	tbl_writes = 0;
 	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "STP: nothing sent from a blocked port");
+	CHECK(tbl_writes == 0, "STP: nothing learned from a blocked port");
 	build(8, all_hosts, 0x11, none);
 	CHECK(igmp_packet_handler() == 1, "STP: query on a forwarding port handled");
 	check_forwarded(8, 1, "query on a forwarding port");

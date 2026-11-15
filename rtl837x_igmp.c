@@ -424,9 +424,8 @@ static void igmp_forward(void)
 	__xdata uint16_t pmask = machine_detected.isRTL8373 ? PMASK_9 : PMASK_6;
 	__xdata uint8_t lag;
 
-	if (!MACHINE_PORT_VALID(port) || uip_len < IGMP_ETH_HDR + igmp_vofs
-	    || uip_len + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE - igmp_vofs > UIP_CONF_BUFFER_ALLOC_SIZE
-	    || (stp_enabled && stp_port_state(port) != IGMP_STP_FORWARDING)) {
+	if (uip_len < IGMP_ETH_HDR + igmp_vofs
+	    || uip_len + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE - igmp_vofs > UIP_CONF_BUFFER_ALLOC_SIZE) {
 		uip_len = 0;
 		return;
 	}
@@ -458,18 +457,17 @@ static void igmp_forward(void)
 
 uint8_t igmp_packet_handler(void) __banked
 {
-	__xdata uint8_t port;
+	__xdata uint8_t port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
 	__xdata uint16_t vid;
 
 	igmp_vofs = TRAP_RX_BODY() - TRAP_RX_HDR_SIZE;
 	if (IGMP_V->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_V->protocol != IGMP_PROTO)
 		return 0;
+	if (!MACHINE_PORT_VALID(port) || (stp_enabled && stp_port_state(port) != IGMP_STP_FORWARDING)) {
+		uip_len = 0;
+		return 1;
+	}
 	if (igmp_vofs) {
-		port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
-		if (!MACHINE_PORT_VALID(port)) {
-			uip_len = 0;
-			return 1;
-		}
 		vid = ((uint16_t)(uip_buf[TRAP_RX_HDR_SIZE + 2] & 0x0f) << 8) | uip_buf[TRAP_RX_HDR_SIZE + 3];
 		if (!vid) {
 			vid = port_pvid_get(port);
