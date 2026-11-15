@@ -1,5 +1,8 @@
 #include "machine_defs.h"
 
+#define RTL8221_PTP
+#include "rtl8221_ptp.h"
+
 __code const struct machine machine = {
 	MACHINE_COMMON_SETTING,
 	.n_sfp = 1,
@@ -22,4 +25,14 @@ __code const struct machine machine = {
 			LEDS_1G | LEDS_LINK,
 			0 },
 		    },
+	.n_ptp = 2,
+	.ptp[0].init = ptp_init,
+	.ptp[0].read = ptp_read_time,
+	.ptp[0].get = ptp_get_time,
+	.ptp[0].set = ptp_set_time,
+	.ptp[1].phy = 3,
+	.ptp[1].init = ptp_rtl8221_init,
+	.ptp[1].read = ptp_rtl8221_read_time,
+	.ptp[1].get = ptp_rtl8221_get_time,
+	.ptp[1].set = ptp_rtl8221_set_time,
 };
