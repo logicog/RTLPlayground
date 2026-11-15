@@ -27,18 +27,44 @@ void write_char(char c) { if (verbose) putchar(c); }
 void print_sfr_data(void) { }
 
 static int tbl_writes;
+static uint8_t cap_b[4], cap_c[4];
 void reg_read_m(uint16_t reg) { (void)reg; memset(sfr_data, 0, sizeof(sfr_data)); }
 void reg_write_m(uint16_t reg) { (void)reg; }
 void reg_write(uint16_t reg)
 {
 	if (reg == RTL837X_TBL_CTRL)
 		tbl_writes++;
+	if (reg == RTL837x_TBL_DATA_IN_B) {
+		cap_b[0] = SFR_DATA_24; cap_b[1] = SFR_DATA_16; cap_b[2] = SFR_DATA_8; cap_b[3] = SFR_DATA_0;
+	}
+	if (reg == RTL837x_TBL_DATA_IN_C) {
+		cap_c[0] = SFR_DATA_24; cap_c[1] = SFR_DATA_16; cap_c[2] = SFR_DATA_8; cap_c[3] = SFR_DATA_0;
+	}
 }
 void reg_bit_set(uint16_t reg, char bit) { (void)reg; (void)bit; }
 void reg_bit_clear(uint16_t reg, char bit) { (void)reg; (void)bit; }
 
 static uint16_t pvid[16];
 uint16_t port_pvid_get(uint8_t port) { return pvid[port]; }
+
+static uint16_t vlan_members(uint16_t vid)
+{
+	switch (vid) {
+	case 1: case 2: case 7: case 20: return 0x3ff;
+	case 30: return 0x3ff & ~PORT_BIT(2);
+	default: return 0;
+	}
+}
+int8_t vlan_get(uint16_t vid)
+{
+	uint16_t m = vlan_members(vid);
+	memset(sfr_data, 0, sizeof(sfr_data));
+	if (vid >= 0xfff)
+		return -1;
+	sfr_data[2] = m >> 8;
+	sfr_data[3] = m;
+	return 0;
+}
 
 bool stp_enabled;
 static uint8_t stp_state[16];
@@ -259,6 +285,60 @@ int main(int argc, char **argv)
 	build_tagged(8, 0x0002, all_hosts, 0x11, none);
 	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE + 1;
 	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "tagged oversize frame: nothing sent");
+
+#define DIP_OK(g) (cap_b[1] == (g)[1] && cap_b[2] == (g)[2] && cap_b[3] == (g)[3] && (cap_b[0] & 0x0f) == ((g)[0] & 0x0f))
+#define PM() ((uint16_t)(cap_b[0] >> 6) | ((uint16_t)cap_c[3] << 2))
+#define CLR() do { memset(cap_b, 0, 4); memset(cap_c, 0, 4); } while (0)
+	CLR(); build(2, grp, IGMP_V2_REPORT, grp); igmp_packet_handler();
+	CHECK(DIP_OK(grp) && PM() == PORT_BIT(2), "untagged v2: group and port in table");
+	CLR(); build(4, v3_reports, IGMP_V3_REPORT, grp); igmp_packet_handler();
+	CHECK(DIP_OK(grp) && PM() == PORT_BIT(4), "untagged v3: group and port in table");
+	CLR(); build_tagged(2, 2, grp, IGMP_V2_REPORT, grp); igmp_packet_handler();
+	CHECK(DIP_OK(grp) && PM() == PORT_BIT(2), "tagged v2: group and port in table");
+	CLR(); build_tagged(4, 0x14, v3_reports, IGMP_V3_REPORT, grp); igmp_packet_handler();
+	CHECK(DIP_OK(grp) && PM() == PORT_BIT(4), "tagged v3: group and port in table");
+
+	CLR(); build_tagged(2, 2, grp, IGMP_V2_REPORT, grp);
+	uip_buf[offsetof(struct wire_out, ip)] = 0x45;
+	memmove(&uip_buf[offsetof(struct wire_out, ip) + 20], &uip_buf[offsetof(struct wire_out, ip) + 24], 16);
+	uip_len -= 4;
+	igmp_packet_handler();
+	CHECK(DIP_OK(grp), "tagged v2, IHL 5: group in table");
+	CLR(); build(2, grp, IGMP_V2_REPORT, grp);
+	uip_buf[offsetof(struct wire_in, ip)] = 0x45;
+	memmove(&uip_buf[offsetof(struct wire_in, ip) + 20], &uip_buf[offsetof(struct wire_in, ip) + 24], 16);
+	uip_len -= 4;
+	igmp_packet_handler();
+	CHECK(DIP_OK(grp), "untagged v2, IHL 5: group in table");
+
+	build_tagged(15, 2, all_hosts, 0x11, none);
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "tagged, invalid port: nothing sent");
+	build_tagged(8, 2, all_hosts, 0x11, none);
+	uip_len = 23;
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "tagged, shorter than the tag: nothing sent");
+	build(8, all_hosts, 0x11, none);
+	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE - VLAN_TAG_SIZE;
+	CHECK(igmp_packet_handler() == 1 && uip_len == UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE,
+	      "untagged frame that fits: sent");
+	build(8, all_hosts, 0x11, none);
+	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE - VLAN_TAG_SIZE + 1;
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "untagged one byte over: nothing sent");
+
+	pvid[2] = 7;
+	build_tagged(2, 0xa000, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1, "priority tag: handled");
+	CHECK(((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->vlan_tag.vlan == HTONS(0xa007) && uip_len == sizeof(tin),
+	      "priority tag: sent in the ingress PVID, priority kept");
+	pvid[2] = 1;
+
+	build_tagged(2, 0x0063, grp, IGMP_V2_REPORT, grp);
+	tbl_writes = 0;
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0 && tbl_writes == 0, "VLAN that does not exist: dropped, not learned");
+	build_tagged(2, 0x001e, grp, IGMP_V2_REPORT, grp);
+	tbl_writes = 0;
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0 && tbl_writes == 0, "ingress port not in the VLAN: dropped, not learned");
+	build_tagged(4, 0x001e, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && uip_len == sizeof(tin), "ingress port in the VLAN: sent");
 
 	if (fails) {
 		printf("test_igmp: %d FAILED\n", fails);

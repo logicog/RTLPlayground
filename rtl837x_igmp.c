@@ -456,9 +456,29 @@ static void igmp_forward(void)
 
 uint8_t igmp_packet_handler(void) __banked
 {
+	__xdata uint8_t port;
+	__xdata uint16_t vid;
+
 	igmp_vofs = TRAP_RX_BODY() - TRAP_RX_HDR_SIZE;
 	if (IGMP_V->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_V->protocol != IGMP_PROTO)
 		return 0;
+	if (igmp_vofs) {
+		port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
+		if (!MACHINE_PORT_VALID(port)) {
+			uip_len = 0;
+			return 1;
+		}
+		vid = ((uint16_t)(uip_buf[TRAP_RX_HDR_SIZE + 2] & 0x0f) << 8) | uip_buf[TRAP_RX_HDR_SIZE + 3];
+		if (!vid) {
+			vid = port_pvid_get(port);
+			uip_buf[TRAP_RX_HDR_SIZE + 2] = (uip_buf[TRAP_RX_HDR_SIZE + 2] & 0xf0) | (vid >> 8);
+			uip_buf[TRAP_RX_HDR_SIZE + 3] = vid;
+		}
+		if (vlan_get(vid) || !((((uint16_t)(sfr_data[2] & 0x03) << 8) | sfr_data[3]) & PORT_BIT(port))) {
+			uip_len = 0;
+			return 1;
+		}
+	}
 	igmp_snoop();
 	igmp_forward();
 	return 1;
