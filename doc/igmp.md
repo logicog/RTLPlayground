@@ -98,6 +98,9 @@ A trapped IGMP frame from a tagged port keeps its 802.1Q tag.
 Reports for groups in 224.0.0.0/24 are ignored: the switch floods that block
 even with IGMP on, and an entry for a group such as 224.0.0.251 (mDNS) would
 otherwise limit it to the ports that reported it, as RFC 4541 warns against.
+A report for a group outside 224.0.0.0/4 is ignored too: the table keys a group on the
+low four bits of its first byte, so such an address would make an entry for a multicast
+group.
 
 `igmp_show()` prints out the IGMP configuration on the CLI.
 
