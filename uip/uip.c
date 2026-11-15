@@ -196,7 +196,7 @@ __xdata static u16_t lastport;       /* Keeps track of the last port used for
 
 /* Temporary variables. */
 __xdata u8_t uip_acc32[4];
-static __xdata u8_t c, opt;
+static __xdata u8_t c;
 static __xdata u16_t tmp16;
 
 /* Structures and definitions. */
@@ -688,53 +688,51 @@ uip_add_rcv_nxt(u16_t n)
 static void
 process_tcp_options(__xdata struct uip_conn *conn)
 {
+  u8_t opt, optlen, pos, len;
+  u16_t mss;
+
   if((BUF->tcpoffset & 0xf0) <= 0x50) {
     return;
   }
 
-  /* Parse the TCP MSS option, if present. */
-  for(u16_t c = 0; c < ((BUF->tcpoffset >> 4) - 5) << 2 ;) {
-    if(UIP_LLH_LEN + UIP_IPTCPH_LEN + c >= UIP_BUFSIZE) {
-      /* TCP option data out of bounds. */
-      return;
-    }
-    opt = uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + c];
-    switch(opt) {
-    case TCP_OPT_END:
+  /* The option area follows the 20-byte base header. The data offset is a
+     4-bit field, so it is at most 40 bytes; pos stays within it and cannot
+     wrap. Parse the TCP MSS option, if present. */
+  optlen = ((BUF->tcpoffset >> 4) - 5) << 2;
+  for(pos = 0; pos < optlen; ) {
+    opt = uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + pos];
+    if(opt == TCP_OPT_END) {
       /* Stop processing options. */
       return;
-    case TCP_OPT_NOOP:
-      c++;
-      break;
-    case TCP_OPT_MSS:
-      if(UIP_LLH_LEN + UIP_IPTCPH_LEN + 3 + c >= UIP_BUFSIZE ||
-         uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + 1 + c] != TCP_OPT_MSS_LEN) {
-	/* TCP option data out of bounds or invalid MSS option length. */
-	return;
-      }
-
-      /* An MSS option with the right option length. */
-      tmp16 = ((u16_t)uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + 2 + c] << 8) |
-	(u16_t)uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + 3 + c];
+    }
+    if(opt == TCP_OPT_NOOP) {
+      pos++;
+      continue;
+    }
+    /* Every other option carries a length byte covering itself; it and the
+       option body must fit the remaining option area. */
+    if(optlen - pos < 2) {
+      return;
+    }
+    len = uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + pos + 1];
+    if(len < 2 || len > optlen - pos) {
+      /* A missing or oversized length is malformed; stop. */
+      return;
+    }
+    if(opt == TCP_OPT_MSS && len == TCP_OPT_MSS_LEN) {
+      mss = ((u16_t)uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + pos + 2] << 8) |
+	(u16_t)uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + pos + 3];
+      /* Clamp to our maximum, and treat an advertised MSS of 0 as that
+	 maximum: uip_send clamps uip_slen to conn->mss, so a 0 would leave a
+	 connection that can never send and holds its slot until the
+	 application times out. (uip_init does not default mss, and the passive
+	 open does not set it, so there is no safe prior value to keep.) */
       conn->initialmss = conn->mss =
-	tmp16 > UIP_TCP_MSS ? UIP_TCP_MSS : tmp16;
+	(mss == 0 || mss > UIP_TCP_MSS) ? UIP_TCP_MSS : mss;
       /* Stop processing options. */
       return;
-    default:
-      if(UIP_LLH_LEN + UIP_IPTCPH_LEN + 1 + c >= UIP_BUFSIZE) {
-	/* TCP option data out of bounds. */
-	return;
-      }
-      /* All other options have a length field, so that we easily
-	 can skip past them. */
-      if(uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + 1 + c] == 0) {
-	/* If the length field is zero, the options are malformed
-	   and we don't process them further. */
-	return;
-      }
-      c += uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + 1 + c];
-      break;
     }
+    pos += len;
   }
 }
 /*---------------------------------------------------------------------------*/
