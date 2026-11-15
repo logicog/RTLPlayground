@@ -38,8 +38,9 @@ __xdata uint16_t idx;
 #define IGMP_IP_IHL		0x0f
 #define IGMP_GROUP_OFS		4
 #define IGMP_V3_RECORD_OFS	8
+#define IGMP_V3_RECORD_LEN	8
 
-static __xdata uint8_t igmp_grp;
+static __xdata uint16_t igmp_grp;
 static __xdata uint8_t igmp_join;
 static __xdata uint8_t igmp_vofs;
 static __xdata uint8_t igmp_query;
@@ -231,44 +232,8 @@ void entry_to_l2mc(void)
 #endif
 
 
-static void igmp_snoop(void)
+static void igmp_learn(void)
 {
-
-#ifdef DEBUG
-	print_string("\nIPv4 MC packet:\n");
-	for (uint8_t i = 0; i < 80; i++) {
-		print_byte(uip_buf[i]);
-		write_char(' ');
-	}
-	write_char('\n');
-#endif
-	igmp_grp = IGMP_IP_HDR + igmp_vofs + ((IGMP_V->hlen & IGMP_IP_IHL) << 2);
-#ifdef DEBUG
-	print_string("Found IGMP, type: "); print_byte(uip_buf[igmp_grp]); write_char('\n');
-#endif
-	switch (uip_buf[igmp_grp]) {
-	case IGMP_V1_REPORT:
-	case IGMP_V2_REPORT:
-		igmp_join = 1;
-		break;
-	case IGMP_V2_LEAVE:
-		igmp_join = 0;
-		break;
-	case IGMP_V3_REPORT:
-		igmp_grp += IGMP_V3_RECORD_OFS;
-		if (uip_buf[igmp_grp] == IGMP_V3_TO_EXCLUDE)
-			igmp_join = 1;
-		else if (uip_buf[igmp_grp] == IGMP_V3_TO_INCLUDE)
-			igmp_join = 0;
-		else
-			return;
-		break;
-	default:
-		return;
-	}
-	igmp_grp += IGMP_GROUP_OFS;
-	if (uip_len < igmp_grp + 4)
-		return;
 #ifdef DEBUG
 	print_string("IGMP join "); print_byte(igmp_join); write_char('\n');
 #endif
@@ -424,6 +389,61 @@ static void igmp_snoop(void)
 	return;
 }
 
+static void igmp_snoop(void)
+{
+	__xdata uint16_t rec, n;
+
+#ifdef DEBUG
+	print_string("\nIPv4 MC packet:\n");
+	for (uint8_t i = 0; i < 80; i++) {
+		print_byte(uip_buf[i]);
+		write_char(' ');
+	}
+	write_char('\n');
+	print_string("Found IGMP, type: "); print_byte(uip_buf[igmp_grp]); write_char('\n');
+#endif
+	switch (uip_buf[igmp_grp]) {
+	case IGMP_V1_REPORT:
+	case IGMP_V2_REPORT:
+		igmp_join = 1;
+		break;
+	case IGMP_V2_LEAVE:
+		igmp_join = 0;
+		break;
+	case IGMP_V3_REPORT:
+		rec = igmp_grp + IGMP_V3_RECORD_OFS;
+		if (uip_len < rec)
+			return;
+		n = ((uint16_t)uip_buf[igmp_grp + 6] << 8) | uip_buf[igmp_grp + 7];
+		for (; n-- && uip_len >= rec + IGMP_V3_RECORD_LEN && uip_buf[rec + 2] < 2;
+		     rec += IGMP_V3_RECORD_LEN + ((((uint16_t)uip_buf[rec + 2] << 8) + uip_buf[rec + 3] + uip_buf[rec + 1]) << 2)) {
+			switch (uip_buf[rec]) {
+			case IGMP_V3_IS_INCLUDE:
+			case IGMP_V3_TO_INCLUDE:
+				igmp_join = uip_buf[rec + 2] || uip_buf[rec + 3];
+				break;
+			case IGMP_V3_IS_EXCLUDE:
+			case IGMP_V3_TO_EXCLUDE:
+			case IGMP_V3_ALLOW_NEW:
+				igmp_join = 1;
+				break;
+			default:
+				continue;
+			}
+			igmp_grp = rec + IGMP_GROUP_OFS;
+			igmp_learn();
+		}
+		return;
+	default:
+		return;
+	}
+	igmp_grp += IGMP_GROUP_OFS;
+	if (uip_len < igmp_grp + 4)
+		return;
+	igmp_learn();
+}
+
+
 static void igmp_forward(void)
 {
 	__xdata uint16_t i;
@@ -482,7 +502,6 @@ uint8_t igmp_packet_handler(void) __banked
 {
 	__xdata uint8_t port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
 	__xdata uint16_t vid;
-	__xdata uint8_t type;
 
 	igmp_vofs = TRAP_RX_BODY() - TRAP_RX_HDR_SIZE;
 	if (IGMP_V->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_V->protocol != IGMP_PROTO)
@@ -491,12 +510,12 @@ uint8_t igmp_packet_handler(void) __banked
 		uip_len = 0;
 		return 1;
 	}
-	type = IGMP_IP_HDR + igmp_vofs + ((IGMP_V->hlen & IGMP_IP_IHL) << 2);
+	igmp_grp = IGMP_IP_HDR + igmp_vofs + ((IGMP_V->hlen & IGMP_IP_IHL) << 2);
 	igmp_query = igmp_report = 0;
-	if (uip_len > type) {
-		igmp_query = uip_buf[type] == IGMP_QUERY;
-		igmp_report = uip_buf[type] == IGMP_V1_REPORT || uip_buf[type] == IGMP_V2_REPORT
-			      || uip_buf[type] == IGMP_V2_LEAVE || uip_buf[type] == IGMP_V3_REPORT;
+	if (uip_len > igmp_grp) {
+		igmp_query = uip_buf[igmp_grp] == IGMP_QUERY;
+		igmp_report = uip_buf[igmp_grp] == IGMP_V1_REPORT || uip_buf[igmp_grp] == IGMP_V2_REPORT
+			      || uip_buf[igmp_grp] == IGMP_V2_LEAVE || uip_buf[igmp_grp] == IGMP_V3_REPORT;
 	}
 	igmp_vid = port_pvid_get(port);
 	if (igmp_vofs) {

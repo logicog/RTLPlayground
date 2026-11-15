@@ -197,6 +197,7 @@ static void check_forwarded_tagged(uint8_t port, const char *what)
 static const uint8_t all_hosts[4] = {224, 0, 0, 1};
 static const uint8_t v3_reports[4] = {224, 0, 0, 22};
 static const uint8_t grp[4] = {239, 1, 2, 4};
+static const uint8_t grp2[4] = {239, 1, 2, 5};
 static const uint8_t none[4] = {0, 0, 0, 0};
 
 int main(int argc, char **argv)
@@ -316,6 +317,41 @@ int main(int argc, char **argv)
 	CHECK(DIP_OK(grp) && PM() == PORT_BIT(2), "tagged v2: group and port in table");
 	CLR(); build_tagged(4, 0x14, v3_reports, IGMP_V3_REPORT, grp); igmp_packet_handler();
 	CHECK(DIP_OK(grp) && PM() == PORT_BIT(4), "tagged v3: group and port in table");
+
+#define REC(i) (offsetof(struct wire_in, igmp) + 8 + (i))
+#define RECORDS(n) (uip_buf[offsetof(struct wire_in, igmp) + 7] = (n))
+#define ADD(i, t, g) do { memset(&uip_buf[REC(i)], 0, 8); uip_buf[REC(i)] = (t); memcpy(&uip_buf[REC(i) + 4], (g), 4); } while (0)
+	CLR(); build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(0)] = IGMP_V3_IS_EXCLUDE; igmp_packet_handler();
+	CHECK(DIP_OK(grp) && PM() == PORT_BIT(4), "v3 current state exclude: learned");
+	CLR(); build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(0)] = IGMP_V3_ALLOW_NEW; igmp_packet_handler();
+	CHECK(DIP_OK(grp) && PM() == PORT_BIT(4), "v3 allow new sources: learned");
+	CLR(); build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(0)] = IGMP_V3_IS_INCLUDE; uip_buf[REC(3)] = 1; uip_len += 4; igmp_packet_handler();
+	CHECK(DIP_OK(grp) && PM() == PORT_BIT(4), "v3 include with a source: learned");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(0)] = IGMP_V3_IS_INCLUDE; igmp_packet_handler();
+	CHECK(tbl_writes == 1, "v3 include without sources: leave, nothing written");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(0)] = 6; igmp_packet_handler();
+	CHECK(tbl_writes == 0, "v3 block old sources: ignored");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); RECORDS(2);
+	ADD(8, IGMP_V3_IS_EXCLUDE, grp2); uip_len += 8; igmp_packet_handler();
+	CHECK(DIP_OK(grp2) && tbl_writes == 4, "v3 two records: both learned");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp2); RECORDS(2);
+	ADD(8, IGMP_V3_IS_EXCLUDE, grp); uip_len += 8; igmp_packet_handler();
+	CHECK(DIP_OK(grp) && tbl_writes == 4, "v3 two records, other order: both learned");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); RECORDS(2); uip_buf[REC(0)] = IGMP_V3_IS_INCLUDE; uip_buf[REC(3)] = 1;
+	ADD(12, IGMP_V3_IS_EXCLUDE, grp2); uip_len += 12; igmp_packet_handler();
+	CHECK(DIP_OK(grp2) && tbl_writes == 4, "v3 record with a source, then another: both learned");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); RECORDS(2); uip_buf[REC(0)] = 6;
+	ADD(8, IGMP_V3_IS_EXCLUDE, grp2); uip_len += 8; igmp_packet_handler();
+	CHECK(DIP_OK(grp2) && tbl_writes == 2, "v3 unknown record, then a known one: second learned");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); RECORDS(2);
+	ADD(8, IGMP_V3_IS_EXCLUDE, grp2); uip_len += 4; igmp_packet_handler();
+	CHECK(DIP_OK(grp) && tbl_writes == 2, "v3 second record cut: only the first learned");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); RECORDS(9); igmp_packet_handler();
+	CHECK(DIP_OK(grp) && tbl_writes == 2, "v3 record count beyond the frame: only what is there");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); uip_buf[REC(2)] = 0xff; uip_buf[REC(3)] = 0xff; igmp_packet_handler();
+	CHECK(tbl_writes == 0, "v3 source count beyond any frame: nothing learned");
+	CLR(); tbl_writes = 0; build(4, v3_reports, IGMP_V3_REPORT, grp); uip_len = offsetof(struct wire_in, igmp) + 7; igmp_packet_handler();
+	CHECK(tbl_writes == 0, "v3 report cut before the record count: nothing learned");
 
 	CLR(); build_tagged(2, 2, grp, IGMP_V2_REPORT, grp);
 	uip_buf[offsetof(struct wire_out, ip)] = 0x45;
