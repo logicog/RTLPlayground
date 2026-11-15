@@ -55,6 +55,7 @@ static uint16_t vlan_members(uint16_t vid)
 	switch (vid) {
 	case 1: case 2: case 7: case 20: return 0x3ff;
 	case 30: return 0x3ff & ~PORT_BIT(2);
+	case 40: return 0x3ff;
 	default: return 0;
 	}
 }
@@ -64,6 +65,7 @@ int8_t vlan_get(uint16_t vid)
 	memset(sfr_data, 0, sizeof(sfr_data));
 	if (vid >= 0xfff)
 		return -1;
+	sfr_data[0] = m && vid != 40 ? 0x02 : 0;
 	sfr_data[2] = m >> 8;
 	sfr_data[3] = m;
 	return 0;
@@ -397,6 +399,9 @@ int main(int argc, char **argv)
 	CHECK(igmp_packet_handler() == 1 && uip_len == 0 && tbl_writes == 0, "ingress port not in the VLAN: dropped, not learned");
 	build_tagged(4, 0x001e, grp, IGMP_V2_REPORT, grp);
 	CHECK(igmp_packet_handler() == 1 && uip_len == sizeof(tin), "ingress port in the VLAN: sent");
+	tbl_writes = 0;
+	build_tagged(2, 40, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0 && tbl_writes == 0, "VLAN entry not valid: dropped, not learned");
 
 	build(2, grp, IGMP_V2_REPORT, grp);
 	uip_len = 14;

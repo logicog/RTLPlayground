@@ -536,7 +536,8 @@ uint8_t igmp_packet_handler(void) __banked
 		uip_buf[TRAP_RX_HDR_SIZE + 2] = (uip_buf[TRAP_RX_HDR_SIZE + 2] & 0xf0) | (igmp_vid >> 8);
 		uip_buf[TRAP_RX_HDR_SIZE + 3] = igmp_vid;
 	}
-	if (vlan_get(igmp_vid) || !((igmp_vmask = ((uint16_t)(sfr_data[2] & 0x03) << 8) | sfr_data[3]) & PORT_BIT(port))) {
+	if (vlan_get(igmp_vid) || !(sfr_data[0] & 0x02)
+	    || !((igmp_vmask = ((uint16_t)(sfr_data[2] & 0x03) << 8) | sfr_data[3]) & PORT_BIT(port))) {
 		uip_len = 0;
 		return 1;
 	}
