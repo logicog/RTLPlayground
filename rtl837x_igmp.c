@@ -42,6 +42,9 @@ __xdata uint16_t idx;
 static __xdata uint8_t igmp_grp;
 static __xdata uint8_t igmp_join;
 static __xdata uint8_t igmp_vofs;
+static __xdata uint8_t igmp_query;
+static __xdata uint8_t igmp_report;
+static __xdata uint16_t igmp_rports;
 
 #ifdef IPMC_USES_L3MC
 struct ipmc_table_entry {
@@ -112,6 +115,7 @@ void igmp_setup(void) __banked
 	uint8_t i;
 	print_string("igmp_setup called\n");
 	igmpEnabled = 0;
+	igmp_rports = 0;
 	// For now, forward all unkown IP-MC pkts (2 bits per port. 00: flood via floodmask, 01: drop, 10: trap, 11: to rport)
 	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
 	REG_SET(RTL837X_IPV6_PORT_MC_LM_ACT, LOOKUP_MISS_FLOOD);
@@ -160,6 +164,7 @@ void igmp_enable(void) __banked
 {
 	print_string("igmp_enable called\n");
 	igmpEnabled = 1;
+	igmp_rports = 0;
 	// Enable lookup of IPv4 MC addresses in table
 	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
 	// Configure trapping of unhandled IGMP protocol packets to CPU
@@ -431,6 +436,12 @@ static void igmp_forward(void)
 	}
 	lag = port_lag_of(port);
 	pmask &= ~(lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag));
+	if (igmp_report && igmp_rports)
+		pmask &= igmp_rports;
+	if (!pmask) {
+		uip_len = 0;
+		return;
+	}
 	if (igmp_vofs) {
 		for (i = uip_len; i--;)
 			uip_buf[i + RTL_FRAME_DESC_SIZE] = uip_buf[i];
@@ -459,6 +470,7 @@ uint8_t igmp_packet_handler(void) __banked
 {
 	__xdata uint8_t port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
 	__xdata uint16_t vid;
+	__xdata uint8_t type;
 
 	igmp_vofs = TRAP_RX_BODY() - TRAP_RX_HDR_SIZE;
 	if (IGMP_V->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_V->protocol != IGMP_PROTO)
@@ -466,6 +478,13 @@ uint8_t igmp_packet_handler(void) __banked
 	if (!MACHINE_PORT_VALID(port) || (stp_enabled && stp_port_state(port) != IGMP_STP_FORWARDING)) {
 		uip_len = 0;
 		return 1;
+	}
+	type = IGMP_IP_HDR + igmp_vofs + ((IGMP_V->hlen & IGMP_IP_IHL) << 2);
+	igmp_query = igmp_report = 0;
+	if (uip_len > type) {
+		igmp_query = uip_buf[type] == IGMP_QUERY;
+		igmp_report = uip_buf[type] == IGMP_V1_REPORT || uip_buf[type] == IGMP_V2_REPORT
+			      || uip_buf[type] == IGMP_V2_LEAVE || uip_buf[type] == IGMP_V3_REPORT;
 	}
 	if (igmp_vofs) {
 		vid = ((uint16_t)(uip_buf[TRAP_RX_HDR_SIZE + 2] & 0x0f) << 8) | uip_buf[TRAP_RX_HDR_SIZE + 3];
@@ -479,6 +498,8 @@ uint8_t igmp_packet_handler(void) __banked
 			return 1;
 		}
 	}
+	if (igmp_query)
+		igmp_rports |= PORT_BIT(port);
 	igmp_snoop();
 	igmp_forward();
 	return 1;

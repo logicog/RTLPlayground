@@ -103,6 +103,7 @@ struct wire_out {
 };
 
 static struct wire_in in;
+static uint16_t rp;
 
 static void build(uint8_t port, const uint8_t dip[4], uint8_t type, const uint8_t grp[4])
 {
@@ -116,6 +117,7 @@ static void build(uint8_t port, const uint8_t dip[4], uint8_t type, const uint8_
 	in.ethertype = HTONS(0x0800);
 	in.ip[0] = 0x46;
 	in.ip[9] = IGMP_PROTO;
+	in.ip[12] = 10; in.ip[15] = 1;
 	memcpy(&in.ip[16], dip, 4);
 	in.ip[20] = 0x94; in.ip[21] = 0x04;
 	in.igmp[0] = type;
@@ -143,8 +145,8 @@ static void check_forwarded(uint8_t port, uint16_t vid, const char *what)
 	snprintf(msg, sizeof(msg), "%s: CPU tag for TX", what);
 	CHECK(o->rtl_tag.tag == HTONS(RTL_FRAME_TAG_ID) && o->rtl_tag.version == RTL_FRAME_TAG_VERSION
 	      && o->rtl_tag.reason == 0 && o->rtl_tag.flags == HTONS(RTL_TAG_LEARN_DIS), msg);
-	snprintf(msg, sizeof(msg), "%s: lookup limited to all ports but ingress", what);
-	CHECK(o->rtl_tag.pmask == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~PORT_BIT(port))), msg);
+	snprintf(msg, sizeof(msg), "%s: lookup limited to the right ports", what);
+	CHECK(o->rtl_tag.pmask == HTONS(RTL_TAG_ALLOW | ((in.igmp[0] == IGMP_QUERY || !rp ? PMASK_9 : rp) & ~PORT_BIT(port))), msg);
 	snprintf(msg, sizeof(msg), "%s: tagged with ingress PVID", what);
 	CHECK(o->vlan_tag.svlan == HTONS(0x8100) && o->vlan_tag.vlan == HTONS(vid), msg);
 	snprintf(msg, sizeof(msg), "%s: IP and IGMP unchanged", what);
@@ -182,7 +184,7 @@ static void check_forwarded_tagged(uint8_t port, const char *what)
 	CHECK(!memcmp(o->dst, tin.dst, 6) && !memcmp(o->src, tin.src, 6), msg);
 	snprintf(msg, sizeof(msg), "%s: CPU tag for TX", what);
 	CHECK(o->rtl_tag.tag == HTONS(RTL_FRAME_TAG_ID) && o->rtl_tag.flags == HTONS(RTL_TAG_LEARN_DIS)
-	      && o->rtl_tag.pmask == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~PORT_BIT(port))), msg);
+	      && o->rtl_tag.pmask == HTONS(RTL_TAG_ALLOW | ((tin.igmp[0] == IGMP_QUERY || !rp ? PMASK_9 : rp) & ~PORT_BIT(port))), msg);
 	snprintf(msg, sizeof(msg), "%s: VLAN tag of the frame kept", what);
 	CHECK(o->vlan_tag.svlan == tin.vlan_tag.svlan && o->vlan_tag.vlan == tin.vlan_tag.vlan, msg);
 	snprintf(msg, sizeof(msg), "%s: IP and IGMP unchanged", what);
@@ -206,6 +208,7 @@ int main(int argc, char **argv)
 	build(8, all_hosts, 0x11, none);
 	CHECK(igmp_packet_handler() == 1, "query: handled");
 	check_forwarded(8, 1, "general query");
+	rp = PORT_BIT(8);
 
 	build(4, v3_reports, IGMP_V3_REPORT, grp);
 	tbl_writes = 0;
@@ -230,6 +233,7 @@ int main(int argc, char **argv)
 	CHECK(igmp_packet_handler() == 1, "8372 query: handled");
 	CHECK(((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
 	      == HTONS(RTL_TAG_ALLOW | (PMASK_6 & ~PORT_BIT(4))), "8372: only its ports");
+	rp |= PORT_BIT(4);
 	machine_detected.isRTL8373 = 1;
 
 	build(15, grp, IGMP_V2_REPORT, grp);
@@ -256,7 +260,7 @@ int main(int argc, char **argv)
 	build(2, grp, IGMP_V2_REPORT, grp);
 	CHECK(igmp_packet_handler() == 1, "LAG: report handled");
 	CHECK(((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
-	      == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~(PORT_BIT(2) | PORT_BIT(3)))), "LAG: not sent back into the ingress LAG");
+	      == HTONS(RTL_TAG_ALLOW | (rp & ~(PORT_BIT(2) | PORT_BIT(3)))), "LAG: not sent back into the ingress LAG");
 	lag_members[1] = 0;
 
 	build(8, all_hosts, 0x11, none);
@@ -358,6 +362,40 @@ int main(int argc, char **argv)
 	tbl_writes = 0;
 	igmp_packet_handler();
 	CHECK(tbl_writes == 0, "IHL beyond the frame: not learned");
+
+	igmp_setup();
+	build(2, grp, IGMP_V2_REPORT, grp);
+	tbl_writes = 0;
+	CHECK(igmp_packet_handler() == 1 && tbl_writes > 0 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~PORT_BIT(2))), "no router port known: report learned and flooded");
+	build(6, all_hosts, IGMP_QUERY, none);
+	memset(&uip_buf[offsetof(struct wire_in, ip) + 12], 0, 4);
+	CHECK(igmp_packet_handler() == 1, "query from 0.0.0.0: handled");
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | PORT_BIT(6)), "query from 0.0.0.0: querier port learned");
+	build(6, all_hosts, IGMP_QUERY, none);
+	CHECK(igmp_packet_handler() == 1 && uip_len == sizeof(in) + VLAN_TAG_SIZE, "query from the querier port: sent");
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | PORT_BIT(6)), "report: sent only towards the querier");
+	build(4, all_hosts, IGMP_V2_LEAVE, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | PORT_BIT(6)), "leave: sent only towards the querier");
+	build(6, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "report from the router port: nothing sent");
+	build(2, all_hosts, 0x13, none);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~PORT_BIT(2))), "unknown IGMP type: flooded");
+	build_tagged(7, 0x0063, all_hosts, IGMP_QUERY, none);
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "query in a foreign VLAN: dropped");
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | PORT_BIT(6)), "query in a foreign VLAN: no router port learned");
+	igmp_enable();
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~PORT_BIT(2))), "igmp on: router ports forgotten, report flooded");
 
 	if (fails) {
 		printf("test_igmp: %d FAILED\n", fails);

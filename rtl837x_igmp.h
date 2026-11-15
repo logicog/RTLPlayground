@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define IGMP_PROTO		2
+#define IGMP_QUERY		0x11
 #define IGMP_V1_REPORT		0x12
 #define IGMP_V2_REPORT		0x16
 #define IGMP_V2_LEAVE		0x17
