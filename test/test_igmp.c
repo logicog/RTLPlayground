@@ -264,14 +264,14 @@ int main(int argc, char **argv)
 	CHECK(((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
 	      == HTONS((rp & ~(PORT_BIT(2) | PORT_BIT(3)))), "LAG: not sent back into the ingress LAG");
 	lag_members[1] = 0;
-	lag_members[2] = PORT_BIT(4) | PORT_BIT(5);
+	lag_members[2] = PORT_BIT(5) | PORT_BIT(6);
 	build(8, all_hosts, IGMP_QUERY, none);
 	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
-	      == HTONS(PMASK_9 & ~(PORT_BIT(5) | PORT_BIT(8))), "LAG: sent on one member only");
-	link_up &= ~PORT_BIT(4);
+	      == HTONS(PMASK_9 & ~(PORT_BIT(6) | PORT_BIT(8))), "LAG: sent on one member only");
+	link_up &= ~PORT_BIT(5);
 	build(8, all_hosts, IGMP_QUERY, none);
 	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
-	      == HTONS(PMASK_9 & ~(PORT_BIT(4) | PORT_BIT(8))), "LAG: sent on a member with link");
+	      == HTONS(PMASK_9 & ~(PORT_BIT(5) | PORT_BIT(8))), "LAG: sent on a member with link");
 	link_up = 0x3ff;
 	lag_members[2] = 0;
 
@@ -407,6 +407,14 @@ int main(int argc, char **argv)
 	build_tagged(8, 30, all_hosts, IGMP_QUERY, none);
 	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
 	      == HTONS(PMASK_9 & ~(PORT_BIT(2) | PORT_BIT(8))), "query: only to the members of its VLAN");
+	link_up &= ~PORT_BIT(6);
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(PORT_BIT(8)), "querier port without link: not used");
+	link_up = 0x3ff;
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(PORT_BIT(8)), "querier port without link: forgotten");
 	igmp_enable();
 	build(2, grp, IGMP_V2_REPORT, grp);
 	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask

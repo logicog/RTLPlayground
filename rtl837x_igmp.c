@@ -442,9 +442,10 @@ static void igmp_forward(void)
 	for (i = 0; stp_enabled && i <= MACHINE_MAX_PORT; i++)
 		if (stp_port_state(i) != IGMP_STP_FORWARDING)
 			pmask &= ~PORT_BIT(i);
+	link = port_link_mask();
+	igmp_rports &= link;
 	if (igmp_report && igmp_rports)
 		pmask &= igmp_rports;
-	link = port_link_mask();
 	for (lag = 0; lag < 4; lag++) {
 		m = port_lag_members_get(lag);
 		i = m & pmask & link;
