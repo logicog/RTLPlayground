@@ -16,6 +16,7 @@
 #include "rtl837x_igmp.h"
 #include "rtl837x_port.h"
 #include "rtl837x_stp.h"
+#include "rtl837x_trap.h"
 #include "machine.h"
 
 extern __code const struct machine machine;
@@ -40,6 +41,7 @@ __xdata uint16_t idx;
 
 static __xdata uint8_t igmp_grp;
 static __xdata uint8_t igmp_join;
+static __xdata uint8_t igmp_vofs;
 
 #ifdef IPMC_USES_L3MC
 struct ipmc_table_entry {
@@ -91,6 +93,7 @@ struct igmp_pkt {
 	uint8_t mc_ip[4];
 };
 #define IGMP_I ((__xdata struct igmp_pkt *)&uip_buf[0])
+#define IGMP_V ((__xdata struct igmp_pkt *)&uip_buf[igmp_vofs])
 #define IGMP_ETH_HDR offsetof(struct igmp_pkt, ipv4_tag)
 #define IGMP_STP_FORWARDING 3
 
@@ -232,7 +235,7 @@ static void igmp_snoop(void)
 	}
 	write_char('\n');
 #endif
-	igmp_grp = IGMP_IP_HDR + ((IGMP_I->hlen & IGMP_IP_IHL) << 2);
+	igmp_grp = IGMP_IP_HDR + igmp_vofs + ((IGMP_V->hlen & IGMP_IP_IHL) << 2);
 #ifdef DEBUG
 	print_string("Found IGMP, type: "); print_byte(uip_buf[igmp_grp]); write_char('\n');
 #endif
@@ -419,33 +422,42 @@ static void igmp_forward(void)
 	__xdata uint16_t pmask = machine_detected.isRTL8373 ? PMASK_9 : PMASK_6;
 	__xdata uint8_t lag;
 
-	if (!MACHINE_PORT_VALID(port) || uip_len < IGMP_ETH_HDR
-	    || uip_len + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE > UIP_CONF_BUFFER_ALLOC_SIZE
+	if (!MACHINE_PORT_VALID(port) || uip_len < IGMP_ETH_HDR + igmp_vofs
+	    || uip_len + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE - igmp_vofs > UIP_CONF_BUFFER_ALLOC_SIZE
 	    || (stp_enabled && stp_port_state(port) != IGMP_STP_FORWARDING)) {
 		uip_len = 0;
 		return;
 	}
 	lag = port_lag_of(port);
 	pmask &= ~(lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag));
-	for (i = uip_len; i-- > IGMP_ETH_HDR;)
-		uip_buf[i + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE] = uip_buf[i];
-	for (i = IGMP_ETH_HDR; i--;)
-		uip_buf[i + RTL_FRAME_DESC_SIZE] = uip_buf[i];
+	if (igmp_vofs) {
+		for (i = uip_len; i--;)
+			uip_buf[i + RTL_FRAME_DESC_SIZE] = uip_buf[i];
+	} else {
+		for (i = uip_len; i-- > IGMP_ETH_HDR;)
+			uip_buf[i + RTL_FRAME_DESC_SIZE + VLAN_TAG_SIZE] = uip_buf[i];
+		for (i = IGMP_ETH_HDR; i--;)
+			uip_buf[i + RTL_FRAME_DESC_SIZE] = uip_buf[i];
+	}
 
 	IGMP_O->rtl_tag.tag = HTONS(RTL_FRAME_TAG_ID);
 	IGMP_O->rtl_tag.version = RTL_FRAME_TAG_VERSION;
 	IGMP_O->rtl_tag.reason = 0x00;
 	IGMP_O->rtl_tag.flags = HTONS(RTL_TAG_LEARN_DIS);
 	IGMP_O->rtl_tag.pmask = HTONS(RTL_TAG_ALLOW | pmask);
-	IGMP_O->vlan_tag.svlan = HTONS(0x8100);
-	IGMP_O->vlan_tag.vlan = HTONS(port_pvid_get(port));
-	uip_len += VLAN_TAG_SIZE;
+	if (!igmp_vofs) {
+		i = port_pvid_get(port);
+		IGMP_O->vlan_tag.svlan = HTONS(0x8100);
+		IGMP_O->vlan_tag.vlan = HTONS(i);
+		uip_len += VLAN_TAG_SIZE;
+	}
 }
 
 
 uint8_t igmp_packet_handler(void) __banked
 {
-	if (IGMP_I->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_I->protocol != IGMP_PROTO)
+	igmp_vofs = TRAP_RX_BODY() - TRAP_RX_HDR_SIZE;
+	if (IGMP_V->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_V->protocol != IGMP_PROTO)
 		return 0;
 	igmp_snoop();
 	igmp_forward();

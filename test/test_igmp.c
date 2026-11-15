@@ -126,6 +126,44 @@ static void check_forwarded(uint8_t port, uint16_t vid, const char *what)
 	      && !memcmp(o->igmp, in.igmp, sizeof(in.igmp)), msg);
 }
 
+static struct wire_out tin;
+
+static void build_tagged(uint8_t port, uint16_t tci, const uint8_t dip[4], uint8_t type, const uint8_t grp[4])
+{
+	build(port, dip, type, grp);
+	memset(&tin, 0, sizeof(tin));
+	memcpy(tin.dst, in.dst, 6);
+	memcpy(tin.src, in.src, 6);
+	tin.rtl_tag = in.rtl_tag;
+	tin.vlan_tag.svlan = HTONS(0x8100);
+	tin.vlan_tag.vlan = HTONS(tci);
+	tin.ethertype = in.ethertype;
+	memcpy(tin.ip, in.ip, sizeof(tin.ip));
+	memcpy(tin.igmp, in.igmp, sizeof(tin.igmp));
+	memset(uip_buf, 0xa5, sizeof(uip_buf));
+	memcpy(uip_buf, &tin, sizeof(tin));
+	uip_len = sizeof(tin);
+}
+
+static void check_forwarded_tagged(uint8_t port, const char *what)
+{
+	struct wire_out *o = (struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE];
+	char msg[96];
+
+	snprintf(msg, sizeof(msg), "%s: length unchanged", what);
+	CHECK(uip_len == sizeof(tin), msg);
+	snprintf(msg, sizeof(msg), "%s: addresses kept", what);
+	CHECK(!memcmp(o->dst, tin.dst, 6) && !memcmp(o->src, tin.src, 6), msg);
+	snprintf(msg, sizeof(msg), "%s: CPU tag for TX", what);
+	CHECK(o->rtl_tag.tag == HTONS(RTL_FRAME_TAG_ID) && o->rtl_tag.flags == HTONS(RTL_TAG_LEARN_DIS)
+	      && o->rtl_tag.pmask == HTONS(RTL_TAG_ALLOW | (PMASK_9 & ~PORT_BIT(port))), msg);
+	snprintf(msg, sizeof(msg), "%s: VLAN tag of the frame kept", what);
+	CHECK(o->vlan_tag.svlan == tin.vlan_tag.svlan && o->vlan_tag.vlan == tin.vlan_tag.vlan, msg);
+	snprintf(msg, sizeof(msg), "%s: IP and IGMP unchanged", what);
+	CHECK(o->ethertype == tin.ethertype && !memcmp(o->ip, tin.ip, sizeof(tin.ip))
+	      && !memcmp(o->igmp, tin.igmp, sizeof(tin.igmp)), msg);
+}
+
 static const uint8_t all_hosts[4] = {224, 0, 0, 1};
 static const uint8_t v3_reports[4] = {224, 0, 0, 22};
 static const uint8_t grp[4] = {239, 1, 2, 4};
@@ -195,6 +233,32 @@ int main(int argc, char **argv)
 	build(8, all_hosts, 0x11, none);
 	uip_buf[offsetof(struct wire_in, ip) + 9] = 17;
 	CHECK(igmp_packet_handler() == 0 && uip_len == sizeof(in), "not IGMP: left to the caller");
+
+	build_tagged(8, 0xa002, all_hosts, 0x11, none);
+	CHECK(igmp_packet_handler() == 1, "tagged query: handled");
+	check_forwarded_tagged(8, "tagged query");
+
+	build_tagged(2, 0x0002, grp, IGMP_V2_REPORT, grp);
+	tbl_writes = 0;
+	CHECK(igmp_packet_handler() == 1, "tagged v2 report: handled");
+	CHECK(tbl_writes > 0, "tagged v2 report: table updated");
+	check_forwarded_tagged(2, "tagged v2 report");
+
+	build_tagged(4, 0x0014, v3_reports, IGMP_V3_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1, "tagged v3 report: handled");
+	check_forwarded_tagged(4, "tagged v3 report");
+
+	build_tagged(8, 0x0002, all_hosts, 0x11, none);
+	uip_buf[offsetof(struct wire_out, ip) + 9] = 17;
+	CHECK(igmp_packet_handler() == 0 && uip_len == sizeof(tin), "tagged, not IGMP: left to the caller");
+
+	build_tagged(8, 0x0002, all_hosts, 0x11, none);
+	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE;
+	CHECK(igmp_packet_handler() == 1 && uip_len == UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE,
+	      "tagged frame that fits: sent");
+	build_tagged(8, 0x0002, all_hosts, 0x11, none);
+	uip_len = UIP_CONF_BUFFER_ALLOC_SIZE - RTL_FRAME_DESC_SIZE + 1;
+	CHECK(igmp_packet_handler() == 1 && uip_len == 0, "tagged oversize frame: nothing sent");
 
 	if (fails) {
 		printf("test_igmp: %d FAILED\n", fails);
