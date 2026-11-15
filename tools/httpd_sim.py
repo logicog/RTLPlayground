@@ -97,6 +97,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/stpcnt.json": self._api_stpcnt,
             "/vlan.json": lambda: self._api_vlan(query),
             "/vlanlist.json": self._api_vlanlist,
+            "/time.json": self._api_time,
         }
 
     def _send(self, status, body=b"", content_type="text/plain",
@@ -320,6 +321,7 @@ class Handler(SimpleHTTPRequestHandler):
             "pvid": self._parse_pvid,
             "dns": self._parse_dns,
             "ntp": self._parse_ntp,
+            "ptp": self._parse_ptp,
         }
 
     def remove_vlan(self, id):
@@ -373,6 +375,10 @@ class Handler(SimpleHTTPRequestHandler):
         state.lldp_enabled = (pieces[0] == "on")
 
     def _parse_ntp(self, pieces):
+        global state
+        return b"NTP off, server pool.ntp.org, address 0.0.0.0, interval 60 min, timezone +00:00, dst off\nTime not synchronised"
+
+    def _parse_ptp(self, pieces):
         global state
         return b"NTP off, server pool.ntp.org, address 0.0.0.0, interval 60 min, timezone +00:00, dst off\nTime not synchronised"
 
@@ -677,6 +683,12 @@ class Handler(SimpleHTTPRequestHandler):
             "uptime":f"0x{int(time.time()) - started:08x}",
             "hw_ver":"SWGT024-V2.0",
             "pcb_ver":"PCB_SWTG024AS_A_V2_0_1_19650"
+        }
+
+    def _api_time(self):
+        return {
+#            "time":"0x{:012x}".format(int(time.time()))
+            "time":"0x000012345678"
         }
 
     def _api_debug(self):
