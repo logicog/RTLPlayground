@@ -614,6 +614,24 @@ static void scenario_oversized_data_offset(void)
 	      "oversized data offset: a normal request after it still serves the file");
 }
 
+/* A SYN advertising MSS 0 (option 02 04 00 00). uip_send clamps to conn->mss,
+ * so storing 0 would leave a connection that can never send and holds its slot
+ * until timeout. The option must be floored to a usable MSS instead. */
+static void scenario_mss_zero(void)
+{
+	static const uint8_t mss0[4] = { 0x02, 0x04, 0x00, 0x00 };
+
+	uip_init();
+	httpd_init();
+	cli_window = MSS_FULL;
+	cli_rcv_nxt = 0;
+	put_tcp(TCP_SYN, 6 /* 24-byte header */, mss0, sizeof(mss0), 1000, 44);
+	uip_len = 44;
+	uip_input();
+	CHECK(uip_conns[0].mss != 0,
+	      "an advertised MSS of 0 is floored, so the connection can send");
+}
+
 
 /* Private HTTP lifecycle values; drive the real callback, not a model. */
 enum { TSTATE_NONE = 0, TSTATE_TX = 1, TSTATE_POST = 4 };
@@ -1370,6 +1388,7 @@ int main(int argc, char **argv)
 	scenario_bad_l4_checksum();
 	scenario_malformed_tcp_options();
 	scenario_oversized_data_offset();
+	scenario_mss_zero();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();
