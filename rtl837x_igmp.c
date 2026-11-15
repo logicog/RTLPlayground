@@ -118,8 +118,12 @@ static void igmp_filter(void)
 {
 	__xdata uint32_t act = LOOKUP_MISS_FLOOD;
 
-	if (igmp_rports)
+	if (igmp_rports) {
 		act = machine_detected.isRTL8373 ? LOOKUP_MISS_DROP_9 : LOOKUP_MISS_DROP_6;
+		reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
+	} else {
+		reg_bit_clear(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
+	}
 	REG_SET(RTL837X_IPV4_PORT_MC_LM_ACT, act);
 }
 
@@ -179,8 +183,6 @@ void igmp_enable(void) __banked
 	print_string("igmp_enable called\n");
 	igmpEnabled = 1;
 	igmp_rports = 0;
-	// Enable lookup of IPv4 MC addresses in table
-	reg_bit_set(RTL837X_L2_CTRL, L2_CTRL_LUT_IPMC_HASH);
 	// Configure trapping of unhandled IGMP protocol packets to CPU
 	REG_SET(RTL837X_IGMP_TRAP_CFG, IGMP_CPU_PORT | IGMP_TRAP_PRIORITY);
 

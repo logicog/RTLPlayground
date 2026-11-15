@@ -44,8 +44,9 @@ void reg_write(uint16_t reg)
 		cap_c[0] = SFR_DATA_24; cap_c[1] = SFR_DATA_16; cap_c[2] = SFR_DATA_8; cap_c[3] = SFR_DATA_0;
 	}
 }
-void reg_bit_set(uint16_t reg, char bit) { (void)reg; (void)bit; }
-void reg_bit_clear(uint16_t reg, char bit) { (void)reg; (void)bit; }
+static int lut = -1;
+void reg_bit_set(uint16_t reg, char bit) { if (reg == RTL837X_L2_CTRL && bit == L2_CTRL_LUT_IPMC_HASH) lut = 1; }
+void reg_bit_clear(uint16_t reg, char bit) { if (reg == RTL837X_L2_CTRL && bit == L2_CTRL_LUT_IPMC_HASH) lut = 0; }
 
 static uint16_t pvid[16];
 uint16_t port_pvid_get(uint8_t port) { return pvid[port]; }
@@ -469,9 +470,11 @@ int main(int argc, char **argv)
 	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
 	      == HTONS((PMASK_9 & ~PORT_BIT(2))), "igmp on: router ports forgotten, report flooded");
 	CHECK(lm_act == LOOKUP_MISS_FLOOD, "igmp on: unknown multicast flooded while no querier is known");
+	CHECK(lut == 0, "igmp on: groups not looked up while no querier is known");
 	build(6, all_hosts, IGMP_QUERY, none);
 	igmp_packet_handler();
 	CHECK(lm_act == LOOKUP_MISS_DROP_9, "first query: unknown multicast dropped");
+	CHECK(lut == 1, "first query: groups looked up");
 	lm_act = 1;
 	build(6, all_hosts, IGMP_QUERY, none);
 	igmp_packet_handler();
@@ -483,10 +486,13 @@ int main(int argc, char **argv)
 	build(2, grp, IGMP_V2_REPORT, grp);
 	igmp_packet_handler();
 	CHECK(lm_act == LOOKUP_MISS_FLOOD, "last querier port lost its link: unknown multicast flooded again");
+	CHECK(lut == 0, "last querier port lost its link: groups not looked up");
+	lut = -1;
 	link_up = 0x3ff;
 	lm_act = 1;
 	igmp_setup();
 	CHECK(lm_act == LOOKUP_MISS_FLOOD, "igmp off: unknown multicast flooded");
+	CHECK(lut == 0, "igmp off: groups not looked up");
 	build(2, all_hosts, IGMP_QUERY, none);
 	igmp_packet_handler();
 	build_tagged(4, 30, grp, IGMP_V2_REPORT, grp);

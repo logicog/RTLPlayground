@@ -54,9 +54,11 @@ ports. This is the configuration without IGMP/MLD enabled.
 When IGMP is turned on and a query has been seen, the Lookup-Miss action is changed to
 drop such packets unless a rule is found in the forwarding tables, which will need to be
 configured by IGMP packets. While no querier port is known, because no query has arrived
-yet or the port it came on has lost its link, unknown IP-MC packets are still flooded: a
-host only reports its groups when it joins or when a querier asks, so without a querier
-there is nothing the switch could learn from, for example after a restart.
+yet or the port it came on has lost its link, the table is not looked up and all IP-MC
+packets are flooded, as with IGMP off: a host only reports its groups when it joins or when
+a querier asks, so without a querier the table would miss hosts that were joined before a
+restart of the switch, and a group learned from one host would be withheld from the others.
+The querier is tracked for the switch as a whole, not per VLAN.
 
 Switching on IGMP also configures all ports via `RTL837X_IGMP_PORT_CFG` to trap all
 incoming IGMP packets to the CPU. `RTL837X_IGMP_TRAP_CFG` then is used to configure
