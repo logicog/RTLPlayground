@@ -315,7 +315,6 @@ static void igmp_learn(void)
 	idx = ((sfr_data[2] & 0xf) << 8) | sfr_data[3];
 	if (igmp_join) {// Join group
 		if (sfr_data[2] & 0x10) {
-			print_string("\nIGMP-Entry FOUND\n");
 			reg_read_m(RTL837x_L2_DATA_OUT_B);
 			entry.pmask = sfr_data[0] >> 6;
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
@@ -326,7 +325,6 @@ static void igmp_learn(void)
 //		print_string("\nPort-Mask: "); print_short(entry.pmask); write_char('\n');
 	} else {  // Leave group
 		if (sfr_data[2] & 0x10) {
-			print_string("\nIGMP_Entry FOUND\n");
 			reg_read_m(RTL837x_L2_DATA_OUT_B);
 			entry.pmask = sfr_data[0] >> 6;
 			reg_read_m(RTL837x_L2_DATA_OUT_C);
@@ -342,7 +340,6 @@ static void igmp_learn(void)
 			entry.pmask &= ~(((uint16_t)1) << ((IGMP_I->rtl_tag.pmask >> 8) & 0x0f));  // Swap bytes from network order, only 4 LSB count
 //			print_string("\nPort-Mask: "); print_short(entry.pmask); write_char('\n');
 		} else {
-			print_string("IGMP Entry already deleted\n");
 			return;
 		}
 		if (!entry.pmask && idx) { // No more ports in that group and an actual entry?
@@ -354,14 +351,12 @@ static void igmp_learn(void)
 			do {
 				reg_read_m(RTL837X_TBL_CTRL);
 			} while (sfr_data[3] & 0x1);
-			print_string("IGMP Entry deleted\n");
 			return;
 		}
 	}
 
 	if (!entry.pmask)
 		return;
-	print_string("Updating IGMP entry\n");
 	// Write the updated entry
 #ifdef IPMC_USES_L3MC
 	entry_to_l3mc();
