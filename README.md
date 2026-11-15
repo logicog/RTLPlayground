@@ -121,7 +121,8 @@ docker run --rm -p 8081:8081 -v $(pwd):/workspace rtlplayground-dev \
 Edit `config.txt` on your host, then re-run `make` — the
 source directory is mounted into the container, so changes take effect
 immediately. To build for a different machine, pass `MACHINE=<name>`, which
-selects `machine/<name>.c` (see [Adding a new device](doc/adding-a-device.md)).
+selects the matching entry in `machine/machines.json` (see
+[Adding a new device](doc/adding-a-device.md)).
 
 </details>
 
@@ -131,9 +132,19 @@ Pass the machine that matches your device, for example:
 ```
 make MACHINE=DEFAULT_8C_1SFP
 ```
-The name selects the board definition `machine/<name>.c`; `make` without a
-`MACHINE` value stops with an error listing what is expected. If your board is
-not in the list yet, see [Adding a new device](doc/adding-a-device.md).
+The name selects the matching entry in `machine/machines.json`, which contains
+the `FriendlyName` and PCB source; `make` without a `MACHINE` value stops with
+an error listing what is expected. If your board is not in the list yet, see
+[Adding a new device](doc/adding-a-device.md).
+
+To build a generic image directly from a PCB definition, pass its source name
+without the `.c` extension:
+```
+make PCB=PCB_K0402W_V2_0
+```
+This selects `machine/pcb/PCB_K0402W_V2_0.c` and uses
+`GENERIC_PCB_K0402W_V2_0` as the machine name. Specify only one of `PCB` or
+`MACHINE`.
 
 To embed a machine-specific startup configuration, pass `CONFIG`:
 ```

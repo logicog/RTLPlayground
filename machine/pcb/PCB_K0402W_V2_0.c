@@ -1,3 +1,6 @@
+#ifndef MACHINE_CHIPSET
+#define MACHINE_CHIPSET RTL8372
+#endif
 #include "machine_defs.h"
 
 __code const struct machine machine = {
@@ -50,3 +53,10 @@ __code const struct machine machine = {
         0x1c, 0x1d, 0x1e, 0x20, 0x21, 0x22, 0x23            /* GPIO21-27 */
     },
 };
+
+#pragma codeseg BANK2
+
+void machine_custom_init(void) __banked
+{
+	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
+}
