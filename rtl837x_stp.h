@@ -19,6 +19,23 @@ uint8_t stp_ent_id(uint8_t e) __banked;
 void stp_lag_map(void) __banked;
 void stp_counters_clear(void) __banked __reentrant;
 
+#define STP_DISABLED	0
+#define STP_DISCARDING	1
+#define STP_LEARNING	2
+#define STP_FORWARDING	3
+
+#define BPDU_FLAG_TC		0x01
+#define BPDU_FLAG_PROPOSAL	0x02
+#define BPDU_FLAG_AGREEMENT	0x40
+#define BPDU_FLAG_LEARNING	0x10
+#define BPDU_FLAG_FORWARDING	0x20
+#define BPDU_FLAG_TCACK		0x80
+
+#define BPDU_ROLE_ROOT		(0b10 << 2)
+#define BPDU_ROLE_DESIGNATED	(0b11 << 2)
+#define BPDU_ROLE_MASK		(0b11 << 2)
+#define BPDU_ROLE_ALTBACK	(0b01 << 2)
+
 /* Tick rate of stp_timers(), also used by the web UI. */
 #define STP_HZ 50
 #define STP_TICK_STEP (SYS_TICK_HZ / STP_HZ)
