@@ -466,7 +466,7 @@ static void igmp_forward(void)
 		return;
 	}
 	lag = port_lag_of(port);
-	pmask &= igmp_vmask & ~(lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag));
+	pmask &= igmp_vmask & port_isolation_get(port) & ~(lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag));
 	for (i = 0; stp_enabled && i <= MACHINE_MAX_PORT; i++)
 		if (stp_port_state(i) != IGMP_STP_FORWARDING)
 			pmask &= ~PORT_BIT(i);
@@ -475,7 +475,7 @@ static void igmp_forward(void)
 		igmp_rports &= link;
 		igmp_filter();
 	}
-	if (igmp_report && igmp_rports)
+	if (igmp_report && (igmp_rports & igmp_vmask))
 		pmask &= igmp_rports;
 	for (lag = 0; lag < 4; lag++) {
 		m = port_lag_members_get(lag);

@@ -78,6 +78,8 @@ uint8_t stp_port_state(uint8_t port) { return stp_state[port]; }
 static uint16_t lag_members[4];
 static uint16_t link_up = 0x3ff;
 uint16_t port_link_mask(void) { return link_up; }
+static uint16_t iso_block;
+uint16_t port_isolation_get(uint8_t port) { (void)port; return (uint16_t)~iso_block; }
 uint16_t port_lag_members_get(uint8_t lag) { return lag_members[lag]; }
 uint8_t port_lag_of(uint8_t port)
 {
@@ -482,6 +484,16 @@ int main(int argc, char **argv)
 	lm_act = 1;
 	igmp_setup();
 	CHECK(lm_act == LOOKUP_MISS_FLOOD, "igmp off: unknown multicast flooded");
+	build(2, all_hosts, IGMP_QUERY, none);
+	igmp_packet_handler();
+	build_tagged(4, 30, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(PMASK_9 & ~(PORT_BIT(2) | PORT_BIT(4))), "router port outside the VLAN: report flooded in the VLAN");
+	iso_block = PORT_BIT(3);
+	build(8, all_hosts, IGMP_QUERY, none);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(PMASK_9 & ~(PORT_BIT(3) | PORT_BIT(8))), "isolation: not sent where the ingress port may not go");
+	iso_block = 0;
 
 	if (fails) {
 		printf("test_igmp: %d FAILED\n", fails);
