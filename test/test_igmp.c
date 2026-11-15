@@ -340,6 +340,22 @@ int main(int argc, char **argv)
 	build_tagged(4, 0x001e, grp, IGMP_V2_REPORT, grp);
 	CHECK(igmp_packet_handler() == 1 && uip_len == sizeof(tin), "ingress port in the VLAN: sent");
 
+	build(2, grp, IGMP_V2_REPORT, grp);
+	uip_len = 14;
+	tbl_writes = 0;
+	igmp_packet_handler();
+	CHECK(tbl_writes == 0, "report cut before the group: not learned");
+	build_tagged(2, 2, grp, IGMP_V2_REPORT, grp);
+	uip_len = 30;
+	tbl_writes = 0;
+	igmp_packet_handler();
+	CHECK(tbl_writes == 0, "tagged report cut before the group: not learned");
+	build(2, grp, IGMP_V2_REPORT, grp);
+	uip_buf[offsetof(struct wire_in, ip)] = 0x4f;
+	tbl_writes = 0;
+	igmp_packet_handler();
+	CHECK(tbl_writes == 0, "IHL beyond the frame: not learned");
+
 	if (fails) {
 		printf("test_igmp: %d FAILED\n", fails);
 		return 1;

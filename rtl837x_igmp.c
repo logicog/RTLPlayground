@@ -260,6 +260,8 @@ static void igmp_snoop(void)
 		return;
 	}
 	igmp_grp += IGMP_GROUP_OFS;
+	if (uip_len < igmp_grp + 4)
+		return;
 #ifdef DEBUG
 	print_string("IGMP join "); print_byte(igmp_join); write_char('\n');
 #endif
