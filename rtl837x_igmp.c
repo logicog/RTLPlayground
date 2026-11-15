@@ -465,10 +465,11 @@ static void igmp_forward(void)
 	}
 	lag = port_lag_of(port);
 	pmask &= igmp_vmask & port_isolation_get(port) & ~(lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag));
+	link = port_link_mask();
 	for (i = 0; stp_enabled && i <= MACHINE_MAX_PORT; i++)
 		if (stp_port_state(i) != IGMP_STP_FORWARDING)
-			pmask &= ~PORT_BIT(i);
-	link = port_link_mask();
+			link &= ~PORT_BIT(i);
+	pmask &= link;
 	if (igmp_rports & ~link) {
 		igmp_rports &= link;
 		igmp_filter();
@@ -477,7 +478,7 @@ static void igmp_forward(void)
 		pmask &= igmp_rports;
 	for (lag = 0; lag < 4; lag++) {
 		m = port_lag_members_get(lag);
-		i = m & pmask & link;
+		i = m & pmask;
 		pmask &= ~m | (i & -i);
 	}
 	if (!pmask) {
@@ -510,7 +511,8 @@ static void igmp_forward(void)
 uint8_t igmp_packet_handler(void) __banked
 {
 	__xdata uint8_t port = ((uint8_t)HTONS(IGMP_I->rtl_tag.pmask)) & 0x0f;
-	__xdata uint16_t vid;
+	__xdata uint16_t vid, m;
+	__xdata uint8_t lag;
 
 	igmp_vofs = TRAP_RX_BODY() - TRAP_RX_HDR_SIZE;
 	if (IGMP_V->ipv4_tag != HTONS(UIP_ETHTYPE_IP) || IGMP_V->protocol != IGMP_PROTO)
@@ -539,9 +541,13 @@ uint8_t igmp_packet_handler(void) __banked
 		uip_len = 0;
 		return 1;
 	}
-	if (igmp_query && !(igmp_rports & PORT_BIT(port))) {
-		igmp_rports |= PORT_BIT(port);
-		igmp_filter();
+	if (igmp_query) {
+		lag = port_lag_of(port);
+		m = (lag == PORT_LAG_NONE ? PORT_BIT(port) : port_lag_members_get(lag)) & port_link_mask();
+		if (m & ~igmp_rports) {
+			igmp_rports |= m;
+			igmp_filter();
+		}
 	}
 	igmp_snoop();
 	igmp_forward();

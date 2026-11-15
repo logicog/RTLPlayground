@@ -504,6 +504,33 @@ int main(int argc, char **argv)
 	      == HTONS(PMASK_9 & ~(PORT_BIT(3) | PORT_BIT(8))), "isolation: not sent where the ingress port may not go");
 	iso_block = 0;
 
+	igmp_enable();
+	build(6, all_hosts, IGMP_QUERY, none);
+	igmp_packet_handler();
+	stp_enabled = true;
+	memset(stp_state, 3, sizeof(stp_state));
+	stp_state[6] = 1;
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(PMASK_9 & ~(PORT_BIT(2) | PORT_BIT(6))) && lm_act == LOOKUP_MISS_FLOOD,
+	      "querier port blocked by STP: forgotten, report flooded");
+	stp_state[6] = 3;
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(PMASK_9 & ~PORT_BIT(2)), "querier port forwarding again: not a querier port until a query");
+	stp_enabled = false;
+
+	igmp_enable();
+	lag_members[2] = PORT_BIT(6) | PORT_BIT(7);
+	build(6, all_hosts, IGMP_QUERY, none);
+	igmp_packet_handler();
+	link_up &= ~PORT_BIT(6);
+	build(2, grp, IGMP_V2_REPORT, grp);
+	CHECK(igmp_packet_handler() == 1 && ((struct wire_out *)&uip_buf[RTL_FRAME_DESC_SIZE])->rtl_tag.pmask
+	      == HTONS(PORT_BIT(7)) && lm_act == LOOKUP_MISS_DROP_9, "querier behind a LAG: the other member keeps it");
+	link_up = 0x3ff;
+	lag_members[2] = 0;
+
 	if (fails) {
 		printf("test_igmp: %d FAILED\n", fails);
 		return 1;
