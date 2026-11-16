@@ -157,7 +157,8 @@ SRCS = \
 	syslog.c \
 	timer.c \
 	udp_apps.c \
-	crypto/chacha20.c
+	crypto/chacha20.c \
+	crypto/random.c
 
 # RTL837x
 SRCS += \

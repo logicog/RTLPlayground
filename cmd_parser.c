@@ -30,6 +30,7 @@
 #include "ntp.h"
 #include "uip/uip.h"
 #include "version.h"
+#include "crypto/random.h"
 
 #include "machine.h"
 #include "rtl837x_leds.h"
@@ -1534,6 +1535,16 @@ void parse_rnd(void)
 }
 
 
+void parse_random64(void)
+{
+	get_random_64();
+	for (uint8_t i = 0; i < 8; i++) {
+		print_byte(random_64[i]); write_char(' ');
+	}
+	write_char('\n');
+}
+
+
 void parse_passwd(void)
 {
 	// cmd_words_len can be more then 2 if a SPACE in the password.
@@ -2123,6 +2134,8 @@ void cmd_parser(void) __banked
 			parse_physet();
 		} else if (cmd_compare(0, "rnd")) {
 			parse_rnd();
+		} else if (cmd_compare(0, "random64")) {
+			parse_random64();
 		} else if (cmd_compare(0, "passwd")) {
 			parse_passwd();
 		} else if (cmd_compare(0, "eee")) {

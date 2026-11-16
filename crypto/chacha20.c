@@ -10,7 +10,6 @@ void chacha_count(void);
 
 // generate a block of ChaCha20 keystream as per RFC7539
 
-
 __xdata struct chacha20_t __at(0xbf00) chacha20;
 
 #ifdef CHACHA20_TEST

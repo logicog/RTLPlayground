@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "sessions.h"
+#include "crypto/random.h"
 
 extern volatile __xdata uint8_t sfr_data[4];
 extern __xdata uint16_t session_timeout;
@@ -117,8 +118,8 @@ void session_new(void) __banked
 	last_session_use[ss_slot] = now;
 	for (ss_i = 0; ss_i < SESSION_ID_LENGTH; ss_i++) {
 		if (!(ss_i & 7))
-			get_random_32();
-		ss_c = sfr_data[(ss_i >> 1) & 3];
+			get_random_64();
+		ss_c = random_64[(ss_i >> 1) & 3];
 		if (ss_i & 1)
 			ss_c >>= 4;
 		session_id[ss_slot][ss_i] = ss_hex[ss_c & 0xf];

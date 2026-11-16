@@ -12,6 +12,7 @@
 #include "uip.h"
 #include "uip/uip.h"
 #include "timer.h"
+#include "crypto/random.h"
 
 __xdata struct dhcp_state dhcp_state;
 static __xdata struct timer dhcp_second;
