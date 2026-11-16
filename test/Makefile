@@ -40,6 +40,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
 # stands in for the two headers a firmware build generates.
 TABLE_ENV = support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c \
             $(SRCROOT)/rtl837x_port.c $(SRCROOT)/httpd/page_impl.c \
+            $(SRCROOT)/rtl837x_ptp.c \
             $(SRCROOT)/httpd/html_out.c
 
 all: run
