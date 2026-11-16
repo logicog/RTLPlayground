@@ -5,6 +5,12 @@
 ## Added
 
 - Devices
+  - Support the POE Plus S604GTP-2SX-SL (PCB marking `Hasivo RTL-4GT-2S+ V1.04`), an
+    RTL8372 based 4x2.5G PoE + 2xSFP+ switch. The power LED (SYS LED, pad 28) is
+    active-high on this board and is flipped in the board's init hook. PoE works
+    standalone but is not configurable, the per-port PoE LEDs and the reset
+    button do not work. New machine target `MACHINE_S604GTP_2SX_SL`, see
+    `doc/devices/RTL-4GT-2S+_V1.04.md`.
   - Support the hongyavision HYWS-SGT0204S (PCB marking `2G5F4_10G2_V1.01`), an
     RTL8372 based 4x2.5G + 2xSFP+ unmanaged switch with a 512 KB Bright Moon
     `T25S40` flash. It is a sibling of the KP-9000-6XH-X2 (2M-PCB43-V1.1) with
