@@ -80,7 +80,7 @@ $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c $(SRCROOT)/timer.c 
 $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/uip/uip.c $(SRCROOT)/timer.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 # the login sessions httpd.c calls into
-$(BUILDDIR)/test_httpd_tx: $(SRCROOT)/sessions.c
+$(BUILDDIR)/test_httpd_tx: $(SRCROOT)/httpd/sessions.c
 
 # CPU VLAN initialization with full and reduced user-port ranges.
 $(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DMACHINE_MAX_PORT=7
