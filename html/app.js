@@ -305,6 +305,12 @@ var LANG = {
         sy_unknown_note: "Unknown lines are highlighted before writing.",
         sy_maint: "Maintenance",
         sy_reboot: "Reboot switch",
+        sy_defaults: "Restore factory defaults",
+        sy_defaults_q: "Restore the factory defaults?",
+        sy_defaults_d: "The configuration compiled into the image replaces the startup configuration and the switch reboots. The address, web port and password return to the image defaults; reconnect afterwards.",
+        sy_defaults_doing: "Restoring the factory defaults, the switch reboots",
+        sy_defaults_note: "Restore factory defaults writes the configuration compiled into the image over the startup configuration and reboots. The repository's config.txt uses the static address 192.168.10.247/24, web port 80 and default password 1234; a build with ip dhcp uses DHCP. The current port, NTP, hostname and password are replaced.",
+        sy_reset_note: "If the board has a RESET button: hold it for about 10 seconds or more (10-30 s at power-up) to restore the factory defaults; 3-10 s only reboots; a short press does nothing.",
         sy_lang: "Language",
         sy_ip_err: "Invalid IP / netmask / gateway",
         sy_host_err: "Hostname: 1-23 printable characters, no spaces or quotes",
@@ -635,6 +641,12 @@ var LANG = {
         sy_unknown_note: "不明な行は書き込み前に強調表示されます。",
         sy_maint: "メンテナンス",
         sy_reboot: "スイッチを再起動",
+        sy_defaults: "工場出荷状態に戻す",
+        sy_defaults_q: "工場出荷状態の設定に戻しますか?",
+        sy_defaults_d: "イメージに組み込まれた設定が起動設定を置き換え、スイッチが再起動します。アドレス、Web ポート、パスワードはイメージの既定値に戻ります。再接続してください。",
+        sy_defaults_doing: "工場出荷状態に戻しています。スイッチが再起動します",
+        sy_defaults_note: "工場出荷状態に戻すと、イメージに組み込まれた設定が起動設定を上書きし、再起動します。リポジトリの config.txt は固定アドレス 192.168.10.247/24、Web ポート 80、既定パスワード 1234 を使用します（ip dhcp でビルドした場合は DHCP）。現在のポート、NTP、ホスト名、パスワードは置き換えられます。",
+        sy_reset_note: "基板に RESET ボタンがある場合：約10秒以上（電源投入時は10〜30秒）押し続けると工場出荷状態に戻ります。3〜10秒は再起動のみ、短押しは何も行いません。",
         sy_lang: "言語",
         sy_ip_err: "IP / ネットマスク / ゲートウェイが無効です",
         sy_host_err: "ホスト名: 1〜23 文字の印字可能文字、空白と引用符は不可",
@@ -997,6 +1009,12 @@ var LANG = {
         sy_unknown_note: "未知行会在写入前高亮显示。",
         sy_maint: "维护",
         sy_reboot: "重启交换机",
+        sy_defaults: "恢复出厂设置",
+        sy_defaults_q: "恢复出厂设置?",
+        sy_defaults_d: "将用镜像内嵌的配置替换当前启动配置并重启交换机。地址、Web 端口和密码会恢复到镜像默认值，请重新连接。",
+        sy_defaults_doing: "正在恢复出厂设置，交换机重启中",
+        sy_defaults_note: "恢复出厂设置会用镜像内嵌的配置覆盖当前启动配置并重启。仓库的 config.txt 使用固定地址 192.168.10.247/24、Web 端口 80、默认密码 1234；如果构建时使用 ip dhcp，则使用 DHCP。当前的端口、NTP、hostname 和密码都会被替换。",
+        sy_reset_note: "如果板卡带有 RESET 键：按住约 10 秒以上（上电时 10–30 秒）恢复出厂设置；3–10 秒仅重启；短按无动作。",
         sy_lang: "语言",
         sy_ip_err: "IP / 子网掩码 / 网关无效",
         sy_host_err: "主机名: 1-23 个可打印字符，不能包含空格或引号",
@@ -1326,6 +1344,12 @@ var LANG = {
         sy_unknown_note: "Las líneas desconocidas se resaltan antes de escribir.",
         sy_maint: "Mantenimiento",
         sy_reboot: "Reiniciar switch",
+        sy_defaults: "Restaurar valores de fábrica",
+        sy_defaults_q: "¿Restaurar los valores de fábrica?",
+        sy_defaults_d: "La configuración incluida en la imagen sustituye a la configuración de arranque y el switch se reinicia. La dirección, el puerto web y la contraseña vuelven a los valores predeterminados de la imagen; vuelve a conectarte.",
+        sy_defaults_doing: "Restaurando los valores de fábrica, el switch se reinicia",
+        sy_defaults_note: "Restaurar los valores de fábrica escribe la configuración incluida en la imagen sobre la configuración de arranque y reinicia. El config.txt del repositorio usa la dirección fija 192.168.10.247/24, el puerto web 80 y la contraseña predeterminada 1234; una compilación con ip dhcp usa DHCP. El puerto, NTP, nombre de host y contraseña actuales se sustituyen.",
+        sy_reset_note: "Si la placa tiene un botón RESET: manténlo pulsado unos 10 segundos o más (10-30 s al encender) para restaurar los valores de fábrica; de 3 a 10 s solo reinicia; una pulsación corta no hace nada.",
         sy_lang: "Idioma",
         sy_ip_err: "IP / máscara / puerta de enlace no válidos",
         sy_host_err: "Nombre de host: 1-23 caracteres imprimibles, sin espacios ni comillas",
@@ -1733,6 +1757,12 @@ var LANG = {
         sy_unknown_note: "Les lignes incorrectes sont mises en évidence avant l'écriture.",
         sy_maint: "Maintenance",
         sy_reboot: "Redémarre le commutateur",
+        sy_defaults: "Rétablir les réglages d'usine",
+        sy_defaults_q: "Rétablir les réglages d'usine ?",
+        sy_defaults_d: "La configuration intégrée à l'image remplace la configuration de démarrage et le commutateur redémarre. L'adresse, le port web et le mot de passe reviennent aux valeurs par défaut de l'image ; reconnectez-vous ensuite.",
+        sy_defaults_doing: "Rétablissement des réglages d'usine, redémarrage du commutateur",
+        sy_defaults_note: "Le rétablissement des réglages d'usine écrit la configuration intégrée à l'image sur la configuration de démarrage et redémarre. Le config.txt du dépôt utilise l'adresse fixe 192.168.10.247/24, le port web 80 et le mot de passe par défaut 1234 ; une compilation avec ip dhcp utilise DHCP. Le port, le NTP, le nom d'hôte et le mot de passe actuels sont remplacés.",
+        sy_reset_note: "Si la carte a un bouton RESET : maintenez-le environ 10 secondes ou plus (10 à 30 s à la mise sous tension) pour rétablir les réglages d'usine ; 3 à 10 s ne font que redémarrer ; un appui court ne fait rien.",
         sy_lang: "Langage",
         sy_ip_err: "Erreur d'IP / masque réseau / passerelle",
         sy_host_err: "Nom d'hôte : 1 à 23 caractères, sans espace ni apostrophes",
@@ -2120,6 +2150,12 @@ var LANG = {
         sy_unknown_note: "Unbekannte Zeilen werden vor dem Schreiben hervorgehoben.",
         sy_maint: "Wartung",
         sy_reboot: "Switch neu starten",
+        sy_defaults: "Werkseinstellungen wiederherstellen",
+        sy_defaults_q: "Werkseinstellungen wiederherstellen?",
+        sy_defaults_d: "Die im Image eingebaute Konfiguration ersetzt die Startkonfiguration und der Switch startet neu. Adresse, Web-Port und Passwort kehren zu den Image-Standardwerten zurück; verbinde dich danach neu.",
+        sy_defaults_doing: "Werkseinstellungen werden wiederhergestellt, der Switch startet neu",
+        sy_defaults_note: "Werkseinstellungen wiederherstellen schreibt die im Image eingebaute Konfiguration über die Startkonfiguration und startet neu. Die config.txt des Repositories verwendet die feste Adresse 192.168.10.247/24, Web-Port 80 und das Standardpasswort 1234; ein Build mit ip dhcp verwendet DHCP. Port, NTP, Hostname und Passwort werden ersetzt.",
+        sy_reset_note: "Wenn die Platine eine RESET-Taste hat: etwa 10 Sekunden oder länger halten (10-30 s beim Einschalten), um die Werkseinstellungen wiederherzustellen; 3-10 s starten nur neu; ein kurzer Druck bewirkt nichts.",
         sy_lang: "Sprache",
         sy_ip_err: "Ungültige IP / Netzmaske / Gateway",
         sy_host_err: "Hostname: 1-23 druckbare Zeichen, keine Leerzeichen oder Anführungszeichen",
@@ -4874,6 +4910,15 @@ function sysConsole() {
     });
     $("sy-cmd").value = "";
 }
+$("sy-defaults").addEventListener("click", function() {
+    confirmModal(t("sy_defaults_q"), t("sy_defaults_d"), function() {
+        api("/cmd", {
+            method: "POST",
+            body: "factory-reset"
+        }).catch(function() {});
+        toast(t("sy_defaults_doing"), "ok");
+    });
+});
 $("sy-reboot").addEventListener("click", function() {
     confirmModal(t("sy_reboot_q"), S.dirty ? t("sy_reboot_d") : "", function() {
         api("/reset").catch(function() {});

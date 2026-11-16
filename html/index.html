@@ -498,7 +498,12 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         </div>
       </div>
       <div class="card dangerzone" style="margin-top:16px"><h2 data-i18n="sy_maint">Maintenance</h2>
-        <button class="ctl danger" id="sy-reboot" data-i18n="sy_reboot">Reboot switch</button>
+        <p class="small mut" data-i18n="sy_defaults_note">Restore factory defaults writes the configuration compiled into the image over the startup configuration and reboots. The repository's config.txt uses the static address 192.168.10.247/24, web port 80 and default password 1234; a build with ip dhcp uses DHCP. The current port, NTP, hostname and password are replaced.</p>
+        <p class="small mut" data-i18n="sy_reset_note" style="margin-top:6px">If the board has a RESET button: hold it for about 10 seconds or more (10-30 s at power-up) to restore the factory defaults; 3-10 s only reboots; a short press does nothing.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <button class="ctl danger" id="sy-reboot" data-i18n="sy_reboot">Reboot switch</button>
+          <button class="ctl danger" id="sy-defaults" data-i18n="sy_defaults" data-i18n-t="sy_defaults_d">Restore factory defaults</button>
+        </div>
       </div>
     </section>
 
