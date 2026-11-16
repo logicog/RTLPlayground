@@ -18,6 +18,7 @@ var LANG = {
         hdr_dirty: "unsaved changes",
         hdr_dirty_t: "Running config differs from startup config",
         hdr_save: "Save to flash",
+        hdr_logout: "Log out",
         hdr_save_t: "Persist running configuration to flash",
         th_auto: "System",
         th_auto_sel: "System (Selenized)",
@@ -402,6 +403,7 @@ var LANG = {
         hdr_dirty: "未保存の変更",
         hdr_dirty_t: "実行中の設定が起動設定と異なります",
         hdr_save: "フラッシュに保存",
+        hdr_logout: "ログアウト",
         hdr_save_t: "実行中の設定をフラッシュに書き込む",
         th_auto: "システム",
         th_auto_sel: "システム (Selenized)",
@@ -711,6 +713,7 @@ var LANG = {
         hdr_dirty: "未保存的更改",
         hdr_dirty_t: "运行配置与启动配置不同",
         hdr_save: "保存到 Flash",
+        hdr_logout: "退出登录",
         hdr_save_t: "将运行配置写入 Flash",
         th_auto: "跟随系统",
         th_auto_sel: "跟随系统 (Selenized)",
@@ -1094,6 +1097,7 @@ var LANG = {
         hdr_dirty: "cambios sin guardar",
         hdr_dirty_t: "La configuración en ejecución difiere de la guardada",
         hdr_save: "Guardar en flash",
+        hdr_logout: "Cerrar sesión",
         hdr_save_t: "Persistir la configuración en ejecución a flash",
         th_auto: "Sistema",
         th_auto_sel: "Sistema (Selenized)",
@@ -1482,6 +1486,7 @@ var LANG = {
         hdr_dirty: "Changements non sauvegardés",
         hdr_dirty_t: "La configuration utilisée diffère de celle au démarrage",
         hdr_save: "Sauvegarder en flash",
+        hdr_logout: "Se déconnecter",
         hdr_save_t: "Maintenir la configuration actuelle en flash",
         th_auto: "Système",
         th_auto_sel: "Système (sélénisé)",
@@ -1831,6 +1836,7 @@ var LANG = {
         hdr_dirty: "ungespeicherte Änderungen",
         hdr_dirty_t: "Laufende Konfiguration weicht von der Startkonfiguration ab",
         hdr_save: "Im Flash speichern",
+        hdr_logout: "Abmelden",
         hdr_save_t: "Laufende Konfiguration dauerhaft im Flash speichern",
         th_auto: "System",
         th_auto_sel: "System (Selenized)",
@@ -4874,6 +4880,16 @@ function sysConsole() {
     });
     $("sy-cmd").value = "";
 }
+$("logoutBtn").addEventListener("click", function() {
+    api("/logout", {
+        method: "POST",
+        body: "1"
+    }).then(function() {
+        location.href = "/login.html";
+    }, function() {
+        location.href = "/login.html";
+    });
+});
 $("sy-reboot").addEventListener("click", function() {
     confirmModal(t("sy_reboot_q"), S.dirty ? t("sy_reboot_d") : "", function() {
         api("/reset").catch(function() {});
