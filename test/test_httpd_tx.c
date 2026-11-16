@@ -76,6 +76,7 @@ const uint8_t * const HTTP_RESPONSE_TXT = (const uint8_t *)"HTTP/1.1 200 OK\r\n\
 uint32_t flash_size = 0x80000;
 uint8_t flash_buf[FLASH_BUF_SIZE];
 uint8_t rx_headers[16];
+uint8_t random_64[8];
 struct flash_region_t flash_region;
 
 static uint8_t written_config[CONFIG_LEN];
@@ -145,6 +146,8 @@ void clear_command_history(void) { }
 void udp_callbacks(void) { }
 void tcpip_output(void) { }
 void get_random_32(void) { }
+void get_random_64(void) { }
+void send_time(void) { }
 static uint32_t fake_now;
 void read_reg_timer(uint32_t *tmr) { *tmr = fake_now; }
 
