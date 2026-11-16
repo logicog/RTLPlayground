@@ -290,6 +290,7 @@ tools for that.
 Once the board has been tested on hardware:
 
 1. Add a row to the table in [Supported devices](supported_devices.md).
+   Keep the table sorted by brand and then type, both case insensitive.
 2. Add `doc/devices/<PCB_DOC_NAME>.md` describing the board, the build target
    (`make MACHINE=MY_BOARD_1_0`), what works and what is unverified, plus
    photos and the PCB silkscreen marking.

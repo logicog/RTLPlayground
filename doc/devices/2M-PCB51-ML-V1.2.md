@@ -79,4 +79,4 @@ Not tested:
 
 ### Machine target
 
-	make MACHINE=KEEPLINK_KP_9000_9XHPML_V1_2
+	make MACHINE=KEEPLINK_KP_9000_9XHPML_X

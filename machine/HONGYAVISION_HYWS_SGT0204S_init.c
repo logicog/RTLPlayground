@@ -1,1 +1,1 @@
-pcb/2M_PCB43_V2_1_init.c
+pcb/2G5F4_10G2_V1_01_init.c

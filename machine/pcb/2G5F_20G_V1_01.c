@@ -14,6 +14,9 @@ __code const struct machine machine = {
     .sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
     .reset_pin = GPIO_NA,
+	/* The fitted T25S40 does not work in DIO mode on this board, so read the flash
+	 * with single-IO; see doc/devices/2G5F4_10G2_V1.01.md. */
+	.flash_sio = 1,
 	.high_leds = { .mux = 0, .enable = 0 },
 	.port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1 },
 	.led_sets = { 

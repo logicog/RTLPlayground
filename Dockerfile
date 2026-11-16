@@ -2,6 +2,7 @@ FROM debian:13-slim
 
 RUN apt-get update && apt-get install -y \
     make \
+    pkg-config \
     gcc \
     g++ \
     bison \

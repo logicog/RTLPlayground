@@ -164,6 +164,7 @@ void port_l2_forget_port(uint8_t port)
 }
 
 static uint8_t mstp_reg[4];
+static int mstp_writes;
 static uint16_t sim_lag[4];
 
 uint16_t port_lag_members_get(uint8_t lag)
@@ -224,6 +225,7 @@ void reg_read_m(uint16_t addr)
 void reg_write_m(uint16_t addr)
 {
 	if (addr == RTL837X_MSTP_STATES) {
+		mstp_writes++;
 		memcpy(mstp_reg, sfr_data, 4);
 		if (verbose > 1)
 			printf("    [mstp <- %02x %02x %02x %02x]\n", mstp_reg[0], mstp_reg[1], mstp_reg[2],
@@ -554,6 +556,27 @@ static void scen_alt_survives_link_bounce(void)
 	check(stp_root_port == 8, "the uplink is still the root port");
 }
 
+static void scen_alt_no_rewrites(void)
+{
+	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
+	struct sim_bpdu from_peer = { .port = 0, .root_prio = 0x40, .root_cost = 2000, .br_prio = 0x80, .port_id = 1 };
+
+	printf("64. an alternate port that stays alternate is not written again\n");
+	ring();
+	memcpy(from_root.root_mac, ROOT_MAC, 6);
+	memcpy(from_root.br_mac, ROOT_MAC, 6);
+	memcpy(from_peer.root_mac, ROOT_MAC, 6);
+	memcpy(from_peer.br_mac, PEER_MAC, 6);
+	mstp_writes = 0;
+	for (int i = 0; i < 10; i++) {
+		bpdu_in(&from_root);
+		bpdu_in(&from_peer);
+		secs(2);
+	}
+	check_state(0, 1, "port 1 is still discarding");
+	check(mstp_writes == 0, "and the port state register was not rewritten");
+}
+
 static void scen_speed_cost(void)
 {
 	struct sim_bpdu from_root = { .port = 8, .root_prio = 0x40, .root_cost = 0, .br_prio = 0x40, .port_id = 2 };
@@ -675,6 +698,37 @@ static void scen_info_expiry(void)
 	check(stp_root_port == 8, "still the root port 2.5 s later");
 	tick(STP_HZ);
 	check(stp_root_port == 0xff, "gone after 3 s with a 1 s hello");
+}
+
+static void scen_port_off_forgets(void)
+{
+	struct sim_bpdu r;
+	int as_root = 0;
+
+	printf("63. switching STP off on a port drops what it heard there\n");
+	reset_all();
+	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
+	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
+	links_set((1 << 1) | (1 << 2) | (1 << 8));
+	secs(1);
+	r = root_on(8);
+	for (int i = 0; i < 21; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	check(stp_root_port == 8, "port 9 is the root port");
+	sim_cmd("stp port 9 off");
+	check(stp_root_port != 8, "it stops being the root port at once");
+	check_state(8, 3, "and forwards as a plain port");
+	secs(30);
+	sim_cmd("stp port 9 on");
+	for (int t = 0; t < 10 * STP_HZ; t++) {
+		stp_timers();
+		if (stp_root_port == 8)
+			as_root++;
+	}
+	check(as_root == 0, "no root port from information heard before it was switched off");
+	check(port_state(8) == 3, "port 9 comes back through the listen period");
 }
 
 static void scen_dport_tiebreak(void)
@@ -1109,6 +1163,91 @@ static void scen_link_loss_no_tc(void)
 	}
 	check(flush_count[1] > 0, "port 2's addresses are flushed");
 	check(tc_frames[2] == tc3 && tc_frames[8] == tc9, "no TC goes out");
+}
+
+static struct sim_bpdu rogue_on(uint8_t port)
+{
+	struct sim_bpdu b = { .port = port, .root_prio = 0x80, .br_prio = 0x80, .port_id = 1 };
+
+	memcpy(b.root_mac, PEER_MAC, 6);
+	memcpy(b.br_mac, PEER_MAC, 6);
+	return b;
+}
+
+static int ticks_forwarding(uint8_t port, struct sim_bpdu *b, unsigned s)
+{
+	int fwd = 0;
+
+	for (unsigned t = 0; t < s * STP_HZ; t++) {
+		if (b && t % (2 * STP_HZ) == 0)
+			bpdu_in(b);
+		stp_timers();
+		if (port_state(port) == 3)
+			fwd++;
+	}
+	return fwd;
+}
+
+static void scen_guard_in_listen(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+
+	printf("59. a port tripped by BPDU guard while listening stays off\n");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	tick(STP_HZ / 2);
+	bpdu_in(&r);
+	check(stp_pflags[3] & STP_PF_TRIPPED, "the BPDU trips port 4");
+	check(ticks_forwarding(3, NULL, 10) == 0, "it does not go forwarding once the sender falls silent");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	tick(STP_HZ / 2);
+	check(ticks_forwarding(3, &r, 20) == 0, "nor while the sender keeps sending hellos");
+}
+
+static void scen_guard_link_flap(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+
+	printf("60. a link flap does not bring a tripped port back\n");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	secs(6);
+	bpdu_in(&r);
+	check_state(3, 0, "the BPDU trips the edge port");
+	links_set(0);
+	secs(2);
+	links_set(1 << 3);
+	check(ticks_forwarding(3, NULL, 10) == 0, "carrier coming back leaves it off");
+	sim_cmd("stp port 4 on");
+	check(!(stp_pflags[3] & STP_PF_TRIPPED), "stp port on clears the trip");
+	check(ticks_forwarding(3, NULL, 5) > 0, "and the port can forward again");
+}
+
+static void scen_guard_lag_change(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+
+	printf("61. a tripped group stays off when its membership changes\n");
+	reset_all();
+	links_set((1 << 3) | (1 << 4) | (1 << 5));
+	sim_lag[0] = (1 << 3) | (1 << 4);
+	secs(1);
+	sim_cmd("stp lag 1 guard bpdu");
+	secs(6);
+	bpdu_in(&r);
+	check(port_state(3) == 0 && port_state(4) == 0, "the BPDU trips both members");
+	sim_lag[0] |= 1 << 5;
+	secs(1);
+	check(stp_pflags[STP_LAG_BASE] & STP_PF_TRIPPED, "a new member does not clear the trip");
+	check(port_state(5) == 0, "the new member joins switched off");
+	check(ticks_forwarding(3, &r, 10) == 0, "the group stays off");
+	sim_lag[0] = 0;
+	secs(1);
+	check(!(stp_pflags[STP_LAG_BASE] & STP_PF_TRIPPED), "dissolving the group drops the trip with it");
 }
 
 static void scen_proposal_agreement(void)
@@ -2007,6 +2146,45 @@ static void scen_last_tc(void)
 	check(stp_tc_secs <= 1, "and starts again at the next change");
 }
 
+static void scen_tc_count_real_only(void)
+{
+	struct sim_bpdu r;
+	struct sim_bpdu better;
+	struct sim_bpdu rogue = { .port = 3, .root_prio = 0x80, .br_prio = 0x80, .port_id = 1 };
+	uint16_t tc;
+
+	printf("65. the topology change counter counts topology changes only\n");
+	reset_all();
+	links_set(1 << 8);
+	secs(1);
+	r = root_on(8);
+	for (int i = 0; i < 18; i++) {
+		bpdu_in(&r);
+		secs(2);
+	}
+	tc = stp_tc_count;
+	better = r;
+	better.root_prio = 0x30;
+	better.br_prio = 0x30;
+	memcpy(better.root_mac, THIRD_MAC, 6);
+	memcpy(better.br_mac, THIRD_MAC, 6);
+	for (int i = 0; i < 3; i++) {
+		bpdu_in(&better);
+		secs(2);
+	}
+	check(stp_root_port == 8 && root_bridge.prio == 0x30, "a better root heard on the root port takes over");
+	check(stp_tc_count == tc, "without a topology change being counted");
+	sim_cmd("stp port 4 guard bpdu");
+	links_set((1 << 8) | (1 << 3));
+	secs(6);
+	tc = stp_tc_count;
+	memcpy(rogue.root_mac, PEER_MAC, 6);
+	memcpy(rogue.br_mac, PEER_MAC, 6);
+	bpdu_in(&rogue);
+	check(stp_pflags[3] & STP_PF_TRIPPED, "a BPDU trips the guarded edge port");
+	check(stp_tc_count == tc, "and the trip is not counted as a topology change");
+}
+
 static void scen_lag(void)
 {
 	struct sim_bpdu before;
@@ -2322,10 +2500,12 @@ int main(int argc, char **argv)
 	scen_cheaper_path();
 	scen_we_are_better();
 	scen_alt_survives_link_bounce();
+	scen_alt_no_rewrites();
 	scen_speed_cost();
 	scen_root_times();
 	scen_too_old();
 	scen_info_expiry();
+	scen_port_off_forgets();
 	scen_dport_tiebreak();
 	scen_rxport_tiebreak();
 	scen_inferior_info();
@@ -2340,6 +2520,9 @@ int main(int argc, char **argv)
 	scen_alt_forgets();
 	scen_edge_no_tc();
 	scen_link_loss_no_tc();
+	scen_guard_in_listen();
+	scen_guard_link_flap();
+	scen_guard_lag_change();
 	scen_proposal_agreement();
 	scen_no_agreement();
 	scen_sync_on_proposal();
@@ -2366,6 +2549,7 @@ int main(int argc, char **argv)
 	scen_path_cost_method();
 	scen_bpdu_handling();
 	scen_last_tc();
+	scen_tc_count_real_only();
 	scen_lag();
 	scen_tc_needs_forwarding();
 	scen_root_port_needs_link();
