@@ -12,6 +12,10 @@
 #include "rtl837x_stp.h"
 
 #define NPORTS 9 /* indices 0..8, front-panel 1..9 */
+#define PORT(n) ((n) - 1)
+#define LINK(n) (1 << PORT(n))
+#define ROOT_HELLO_S 2
+#define SETTLE_MAX_S 60
 
 uint8_t uip_buf[UIP_CONF_BUFFER_ALLOC_SIZE];
 uint16_t uip_len;
@@ -1033,36 +1037,55 @@ static void scen_tc_propagation(void)
 	check(tc_frames[8] == tc9, "no TC is echoed back to the root");
 }
 
+extern uint16_t stp_tcwhile[STP_ENTITIES];
+
+static void settle(const struct sim_bpdu *r, uint16_t ports)
+{
+	int s;
+
+	for (s = 0; s < SETTLE_MAX_S; s += ROOT_HELLO_S) {
+		int busy = 0;
+		for (int p = 0; p < NPORTS; p++)
+			if ((ports >> p) & 1 && (port_state(p) != STP_FORWARDING || stp_tcwhile[p]))
+				busy = 1;
+		if (!busy)
+			break;
+		bpdu_in(r);
+		secs(ROOT_HELLO_S);
+	}
+	check(s < SETTLE_MAX_S, "the ports forward and their TC window has closed");
+}
+
 static void scen_tc_each_flushes(void)
 {
+	const uint16_t others = LINK(2) | LINK(3);
 	struct sim_bpdu r;
 	struct sim_bpdu rtc;
 	int tc2;
 
 	printf("62. every TC heard inside the TC window flushes again\n");
 	reset_all();
-	stp_pflags[1] &= ~STP_PF_AUTOEDGE;
-	stp_pflags[2] &= ~STP_PF_AUTOEDGE;
-	links_set((1 << 1) | (1 << 2) | (1 << 8));
+	stp_pflags[PORT(2)] &= ~STP_PF_AUTOEDGE;
+	stp_pflags[PORT(3)] &= ~STP_PF_AUTOEDGE;
+	links_set(others | LINK(9));
 	secs(1);
-	r = root_on(8);
-	for (int i = 0; i < 21; i++) {
-		bpdu_in(&r);
-		secs(2);
-	}
+	r = root_on(PORT(9));
+	settle(&r, others);
 	memset(flush_count, 0, sizeof(flush_count));
 	rtc = r;
-	rtc.flags = 0x3d;
+	rtc.flags = BPDU_ROLE_DESIGNATED | BPDU_FLAG_LEARNING | BPDU_FLAG_FORWARDING | BPDU_FLAG_TC;
 	bpdu_in(&rtc);
 	tick(2);
-	tc2 = tc_frames[1];
+	tc2 = tc_frames[PORT(2)];
 	tick(STP_HZ);
 	bpdu_in(&rtc);
 	tick(2);
-	check(flush_count[1] == 2 && flush_count[2] == 2, "the second TC flushes ports 2 and 3 again");
-	check(flush_count[8] == 0, "but never the port it came in on");
+	for (int p = 0; p < NPORTS; p++)
+		if ((others >> p) & 1)
+			check(flush_count[p] == 2, "the second TC flushes the other forwarding ports again");
+	check(flush_count[PORT(9)] == 0, "but never the port it came in on");
 	tick(5 * STP_HZ);
-	check(tc_frames[1] - tc2 <= 2, "and does not stretch the TC window");
+	check(tc_frames[PORT(2)] - tc2 <= 2, "and does not stretch the TC window");
 }
 
 static void scen_tc_legacy_tcn(void)
