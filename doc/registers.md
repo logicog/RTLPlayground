@@ -102,7 +102,7 @@ in brackets. Board setup is described in [howto_leds.md](howto_leds.md).
 | 0x65dc | `REG_LED_GLB_IO_EN` | bit n enables LED output on pad n (0-29). Bit 6 also seems needed for link/speed conditions on some boards | confirmed, partly understood |
 | 0x65e0 … 0x65f4 | `REG_LED_GLB_MUX_1..6` | Pad → LED signal mux, 6 bits per pad, 5 pads per register (bits 0/6/12/18/24). 0x3f unused, otherwise apparently port × 4 + LED | layout confirmed, values guess |
 | 0x65f8 | `REG_LED_RLDP_1` (LED_RLDP_CTRL_1) | bits 1:0 loop-detection LED indication; firmware clears them, stock sets them | comment |
-| 0x65fc | `REG_LED_RLDP_2` | One nibble per port 0-7: port LED takes part in the loop indication | trace |
+| 0x65fc | `REG_LED_RLDP_2` | One nibble per port 0-7: port LED takes part in the loop indication. Stock writes 0xfffff000 on an RTL8372 (ports 3-7), 0xffffffff on an RTL8373 | confirmed |
 | 0x6600 | `REG_LED_RLDP_3` | bits 3:0 port 8 | trace |
 
 ## GPIO and pin mux
@@ -404,12 +404,14 @@ of them.
 | Address | Name | Fields | |
 |---|---|---|---|
 | 0x106c | `RLDP_RLPP` | bit 3 `RLDP_RND_EN`: each pulse shifts the LFSR in `RAND_NUM1:RAND_NUM0` by one bit | confirmed (#512) |
-| 0x107c | `RAND_NUM0` | Bits 31:0 of a 48-bit LFSR, x^48 + x^47 + x^21 + x^20 + 1. Reseeded at reset; whether the seed varies between boots is not measured. Used for the DHCP xid and session ids | confirmed (#512) |
+| 0x107c | `RAND_NUM0` | Bits 31:0 of a 48-bit LFSR, x^48 + x^47 + x^21 + x^20 + 1. Reseeded at reset; whether the seed varies between boots is not measured | confirmed (#512) |
 | 0x1080 | `RAND_NUM1` | 15:0 = bits 47:32 of the same LFSR | confirmed (#512) |
 
 This is a pseudo-random sequence, not a source of entropy. Consecutive reads one
 pulse apart share 47 of 48 bits, and the whole state follows from 48 output
-bits. The RANDOM block at 0xe90-0xec8 does not feed it.
+bits. The RANDOM block at 0xe90-0xec8 does not feed it. On REM-8x
+(`crypto/rnd.c`, 61940a9) it is only one input of the entropy pool that keys
+ChaCha20 for session ids and the DHCP xid.
 
 ## Registers known only by address
 
@@ -427,28 +429,9 @@ Copied from stock firmware traces, used without a name:
 
 Found while writing this, not fixed:
 
-- `rtl837x_leds.c` builds `LED_RLDP_2` with `sfr_data[3 - (i >> 2)]`, which should
-  be `i >> 1` (two ports per byte).
 - `rtl837x_leds_dump.c` does not mask the per-port set with `& 3`.
 - `rtl8373_revision()` prints `sfr_data[2]` (the unlock key) twice instead of the
   revision; the comment on the second write says "Enable" where it disables.
-- `sfp_read_block()` waits for the I2C GO bit without a timeout.
-- Random numbers: `get_random_32()` pulses `RLDP_RND_EN` once and reads
-  `RAND_NUM0`, a 48-bit LFSR (#512). A session id (`sessions.c`) is built from
-  successive reads one bit shift apart, so its digits largely repeat the same
-  bits. The DHCP xid sends one 32-bit read on the wire; two of them, or the
-  `rnd` CLI output, recover the linear state and predict the next web session
-  ids. Shifting more often does not help; real entropy (timer jitter, frame
-  arrival times) has to be mixed in.
-- `igmp_packet_handler()` (`struct igmp_pkt`) expects EtherType 0x0800 right
-  after the RTL tag, which only holds for untagged reports. A VID 1 or
-  priority-tagged report has 0x8100 there, is passed to the IP stack, and joins
-  no group. Skipping an 802.1Q tag would also give the VID for the hard-coded
-  `entry.vlan = 1`.
-- `TBL_DATA_0`: the L2 walk in `page_impl.c` and `l2_delete()` clear only bits
-  17:16, so bit 18 left by a delete is still set at the next walk and `/l2.json`
-  comes back empty (upstream #908). `port_l2mc_set()` does not clear it either.
-  `l2_delete()` also writes `TBL_L2_UNICAST` (a table type) into the method byte.
 - `L2_LRN_PORT_CONSTRT_ACT`: only bit 0 is set, probably port 0's action only.
 - `LAG_HASH_RESET`: a hash chosen as 0x3f is replaced by 0x7e on the next member
   change.
@@ -459,7 +442,25 @@ Found while writing this, not fixed:
   masks (`VLAN_CVLAN_FILTER`, `L2_TBL_FLUSH_EXEC`).
 - Unused names: `REG_SEC_COUNTER2`, `MAC_EEE_ABLTY`, `RESET_SOC_BIT`,
   `I2C_DEV_ADDR`. Raw addresses where a name exists: 0x65d8 (`LED_GLB_ACTIVE`),
-  0x3f8 (`SDS_INDACS_CMD`), literal I2C GO/FAIL bits in `sfp_read_block()`.
+  0x3f8 (`SDS_INDACS_CMD`).
 - Docs: [vlan.md](vlan.md) gives the VLAN table type as 2 (it is 3);
   [l2.md](l2.md) calls entry bit B29 "IVL" (it is the valid bit);
   [hardware.md](hardware.md) says the RX interrupt is not used (it is).
+
+Fixed on the REM-8x branch, verified on hardware; still open upstream:
+
+- `igmp_packet_handler()` expected EtherType 0x0800 right after the RTL tag, so
+  VID 1 and priority-tagged reports joined no group. It now finds the IP header
+  with `TRAP_RX_BODY()` (47098e8).
+- `TBL_DATA_0` bit 18: the `/l2.json` walk and `l2_delete()` cleared only bits
+  17:16, the CLI listing nothing, and `port_l2mc_set()` did not set
+  `TBL_DATA_0` at all, so a delete bit left over emptied the walk (#908) or
+  turned the next write into a delete. `port_l2_tbl_method()` now sets the
+  method and clears bit 18 everywhere (c9ce654).
+- Random numbers came straight from the `RAND_NUM` LFSR: the DHCP xid on the
+  wire predicted the next web session ids. They now come from ChaCha20 keyed
+  from frame arrival timing (`crypto/rnd.c`, 61940a9).
+- `rtl837x_leds.c` built `LED_RLDP_2` with `i >> 2` instead of `i >> 1`
+  (7a8a8cc).
+- `sfp_read_block()` waited for the I2C GO bit without a timeout; it now gives
+  up after 50 ms (e343fde).

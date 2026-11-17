@@ -97,8 +97,8 @@ for frames to 01:00:5e:xx:xx:xx and returns 0 when the frame is not a trapped IG
 so that it is passed on to the IP stack. IGMPv1/v2 reports (0x12, 0x16) join the group given
 in the IGMP header, IGMPv2 leaves (0x17) leave it, IGMPv3 reports use the first group record
 (type 4 joins, type 3 leaves). Trapped IGMP frames arrive in their ingress tagging: an untagged report has no VLAN tag,
-a VID 1 or priority-tagged report keeps its 802.1Q tag. The handler only parses untagged
-reports.
+a VID 1 or priority-tagged report keeps its 802.1Q tag. The handler finds the IP header
+behind either (on the REM-8x branch, 47098e8; before, it only parsed untagged reports).
 Reports for groups in 224.0.0.0/24 are ignored: the switch floods that block
 even with IGMP on, and an entry for a group such as 224.0.0.251 (mDNS) would
 otherwise limit it to the ports that reported it, as RFC 4541 warns against.
