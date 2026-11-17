@@ -223,6 +223,9 @@ RX descriptor (8 bytes before each frame): byte 0 sequence, byte 1 flags
 (little endian). TX descriptor: byte 0 sequence, byte 1 = 0x07 (checksum
 offloads), bytes 4-5 length.
 
+Frames to the CPU normally carry an 802.1Q tag after the RTL tag. Trapped IGMP
+is the exception: it keeps its ingress tagging (see [IGMP](#igmp--multicast)).
+
 To confirm 0x7880: with RX idle, read 0x787c, 0x7880 and 0x7874. If 0x7880 is
 the write slot, it equals 0x787c when the ring is empty. With frames waiting,
 (0x7880 − 0x787c) × 8 should match the byte count in 0x7874, modulo the ring
@@ -338,6 +341,10 @@ See [igmp.md](igmp.md).
 | 0x52a0 + 4 × port | `IGMP_PORT_CFG` | 2 bits per protocol, 00 ASIC, 01 flood, 10 trap, 11 drop: 1:0 IGMPv1, 3:2 v2, 5:4 v3, 7:6 MLDv1, 9:8 MLDv2. 10 dynamic router port, 11 MRP, 12 fast leave, 13 allow report, 14 allow query. 23:16 max groups | comment |
 | 0x50bc | `IGMP_TRAP_CFG` | 2:0 priority of trapped IGMP/MLD, bit 16 to the CPU port | comment |
 
+A trapped IGMP frame reaches the CPU in its ingress tagging: an untagged report
+arrives with no 802.1Q tag, a VID 1 or priority-tagged one keeps its tag. Other
+frames to the CPU arrive tagged. Measured on RTL8372 and RTL8373.
+
 ## STP and reserved multicast (RMA) trapping
 
 See [stp.md](stp.md).
@@ -417,6 +424,11 @@ Found while writing this, not fixed:
 - `rtl8373_revision()` prints `sfr_data[2]` (the unlock key) twice instead of the
   revision; the comment on the second write says "Enable" where it disables.
 - `sfp_read_block()` waits for the I2C GO bit without a timeout.
+- `igmp_packet_handler()` (`struct igmp_pkt`) expects EtherType 0x0800 right
+  after the RTL tag, which only holds for untagged reports. A VID 1 or
+  priority-tagged report has 0x8100 there, is passed to the IP stack, and joins
+  no group. Skipping an 802.1Q tag would also give the VID for the hard-coded
+  `entry.vlan = 1`.
 - `TBL_DATA_0`: `port_l2mc_set()` does not reset the read method or the clear
   bit 18 left behind by an earlier listing or delete, and `l2_delete()` writes
   `TBL_L2_UNICAST` (a table type) into the method byte.
