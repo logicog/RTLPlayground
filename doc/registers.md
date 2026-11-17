@@ -403,9 +403,13 @@ of them.
 
 | Address | Name | Fields | |
 |---|---|---|---|
-| 0x106c | `RLDP_RLPP` | Set bit 3 (`RLDP_RND_EN`) before each read for a new number | comment |
-| 0x107c | `RAND_NUM0` | 32 random bits (DHCP xid, session ids) | comment |
-| 0x1080 | `RAND_NUM1` | 15:0 16 more | comment |
+| 0x106c | `RLDP_RLPP` | bit 3 `RLDP_RND_EN`: each pulse shifts the LFSR in `RAND_NUM1:RAND_NUM0` by one bit | confirmed (#512) |
+| 0x107c | `RAND_NUM0` | Bits 31:0 of a 48-bit LFSR, x^48 + x^47 + x^21 + x^20 + 1. Reseeded at reset; whether the seed varies between boots is not measured. Used for the DHCP xid and session ids | confirmed (#512) |
+| 0x1080 | `RAND_NUM1` | 15:0 = bits 47:32 of the same LFSR | confirmed (#512) |
+
+This is a pseudo-random sequence, not a source of entropy. Consecutive reads one
+pulse apart share 47 of 48 bits, and the whole state follows from 48 output
+bits. The RANDOM block at 0xe90-0xec8 does not feed it.
 
 ## Registers known only by address
 
@@ -429,6 +433,13 @@ Found while writing this, not fixed:
 - `rtl8373_revision()` prints `sfr_data[2]` (the unlock key) twice instead of the
   revision; the comment on the second write says "Enable" where it disables.
 - `sfp_read_block()` waits for the I2C GO bit without a timeout.
+- Random numbers: `get_random_32()` pulses `RLDP_RND_EN` once and reads
+  `RAND_NUM0`, a 48-bit LFSR (#512). A session id (`sessions.c`) is built from
+  successive reads one bit shift apart, so its digits largely repeat the same
+  bits. The DHCP xid sends one 32-bit read on the wire; two of them, or the
+  `rnd` CLI output, recover the linear state and predict the next web session
+  ids. Shifting more often does not help; real entropy (timer jitter, frame
+  arrival times) has to be mixed in.
 - `igmp_packet_handler()` (`struct igmp_pkt`) expects EtherType 0x0800 right
   after the RTL tag, which only holds for untagged reports. A VID 1 or
   priority-tagged report has 0x8100 there, is passed to the IP stack, and joins
