@@ -214,6 +214,7 @@ Frames move between the CPU and an 8-byte-slot ring through SFRs 0xb3-0xb7, see
 | 0x7860 | `REG_TX_CTRL` | bit 0 TX enable | confirmed |
 | 0x7874 | `REG_NIC_RX_BUFF_DATA` | Bytes waiting in the RX ring (15:0) | confirmed |
 | 0x787c | `REG_CPU_RX_CURR_PKT` | Slot of the current RX frame (× 8 = byte offset) | confirmed |
+| 0x7880 | — | Not used by this firmware. The stock managed firmware busy-waits on it until a frame arrives. Probably the RX write slot, where the hardware puts the next frame (the counterpart of 0x787c) | busy-wait trace; meaning guess |
 | 0x7884 | `REG_NIC_TX_CURR_PKT` | Read after TX, value unused | comment |
 | 0x7890 | `REG_CPU_TX_CURR_PKT` | TX write slot | confirmed |
 
@@ -221,6 +222,11 @@ RX descriptor (8 bytes before each frame): byte 0 sequence, byte 1 flags
 (bit 2 `RX_TAG_L4_CSUM_BAD`), byte 3 bits 3:0 source port, bytes 4-5 length
 (little endian). TX descriptor: byte 0 sequence, byte 1 = 0x07 (checksum
 offloads), bytes 4-5 length.
+
+To confirm 0x7880: with RX idle, read 0x787c, 0x7880 and 0x7874. If 0x7880 is
+the write slot, it equals 0x787c when the ring is empty. With frames waiting,
+(0x7880 − 0x787c) × 8 should match the byte count in 0x7874, modulo the ring
+size.
 
 ## MIB counters
 
