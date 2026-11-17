@@ -48,6 +48,7 @@ The following devices have been tested and are fully working:
 | MokerLink| ZX_SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.0-16029](devices/PCB-SWTG118AS-V2.0-16029.md)                       | 2M    | 8 + 1 |
 | Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
+| POEPlus  | S604GTP-2SX-SL  | Yes     | [RTL-4GT-2S+ V1.04](devices/RTL-4GT-2S+_V1.04.md)                                     | 2M    | 4 + 2 |
 | RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)             | 2M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                                         | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                                   | 1M    | 8 + 1 |
