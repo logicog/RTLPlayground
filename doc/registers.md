@@ -178,9 +178,9 @@ After setting the mode, `sds_config()` writes a page for the speed (0x24 SGMII,
 
 | Address | Name | Fields | |
 |---|---|---|---|
-| 0x63e8 | `REG_LINKS_STS` | Link up. The code reads port p < 8 at bit 16 + p and ports 8/9 at bits 8/9 (see [problems](#known-problems)) | ports 0-7 confirmed |
+| 0x63e8 | `REG_LINKS_STS` | Link up, bit n = port n (0-9, 9 = CPU), in 9:0 and again in 25:16. The code reads ports 0-7 at 16 + p and ports 8/9 at bits 8/9; both copies agree. Example: 0x030f030f = ports 0-3, 8 and CPU | confirmed (RTL8373) |
 | 0x63f0 | `REG_LINKS` | Speed, one nibble per port 0-7 (port n at 4n+3:4n): 0 10M, 1 100M, 2 1G, 3 500M (only a label), 4 10G, 5 2.5G, 6 5G. Valid only with link | confirmed |
-| 0x63f4 | `REG_LINKS_89` | Same for port 8 (3:0) and 9 (7:4) | confirmed |
+| 0x63f4 | `REG_LINKS_89` | Same for port 8 (3:0) and 9 (7:4). The CPU port reads 2 (1G): 0x24 = port 8 at 10G, CPU at 1G | confirmed |
 | 0x63fc | `MAC_TX_PAUSE_STS` | bit n: port n sends pause | comment |
 | 0x6400 | `MAC_RX_PAUSE_STS` | bit n: port n honours pause | comment |
 | 0x6404 | `MAC_EEE_ABLTY` | Unused; probably a per-port bitmap like its neighbours | guess |
@@ -411,9 +411,6 @@ Copied from stock firmware traces, used without a name:
 
 Found while writing this, not fixed:
 
-- `REG_LINKS_STS`: ports 0-7 are read at bits 23:16 but ports 8 and 9 at bits
-  9:8 (page_impl.c, rtl837x_port.c, rtl837x_stp.c, rtl837x_lldp.c). One of the
-  two is probably wrong; check with a link on port 8.
 - `rtl837x_leds.c` builds `LED_RLDP_2` with `sfr_data[3 - (i >> 2)]`, which should
   be `i >> 1` (two ports per byte).
 - `rtl837x_leds_dump.c` does not mask the per-port set with `& 3`.
