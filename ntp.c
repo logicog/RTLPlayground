@@ -11,8 +11,6 @@
 #include "dns.h"
 #include "ntp.h"
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 #define NTP_PORT	123
 #define NTP_TRIES	3

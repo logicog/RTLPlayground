@@ -24,8 +24,6 @@
 
 #define L2_MAX_TRANSFER 30
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
 
 extern __code const struct machine machine;
 extern __xdata uint8_t outbuf[TCP_OUTBUF_SIZE];

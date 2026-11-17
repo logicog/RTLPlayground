@@ -1,5 +1,3 @@
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 #include <8051.h>
 #include <stdint.h>

@@ -5,8 +5,6 @@
 
 // #define DEBUG
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 #include <stdint.h>
 #include "rtl837x_common.h"

@@ -8,8 +8,6 @@
 #include "machine.h"
 #include "timer.h"
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 #define RTCT_CTRL		0xa422
 #define RTCT_CTRL_START		0x00f1

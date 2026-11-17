@@ -8,8 +8,6 @@
 #include "cmd_parser.h"
 #include "dns.h"
 
-#pragma codeseg BANK2
-#pragma constseg BANK2
 
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_words_len;

@@ -34,8 +34,6 @@
 #include "rtl837x_leds.h"
 #include "phy.h"
 
-#pragma codeseg BANK2
-#pragma constseg BANK2
 
 extern __code const struct machine machine;
 extern __xdata bool stp_enabled;

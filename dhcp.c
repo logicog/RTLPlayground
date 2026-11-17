@@ -52,8 +52,6 @@ __xdata uip_ipaddr_t server;
 #define DHCP_PARAM_DNS		6
 #define DHCP_END		255
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 struct dhcp_pkt {
 	uint8_t type;

@@ -87,8 +87,6 @@
 #include "uip_arch.h"
 #include <stddef.h>
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
 
 #if UIP_CONF_IPV6
 #include "uip-neighbor.h"

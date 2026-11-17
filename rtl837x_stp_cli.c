@@ -8,8 +8,6 @@
 #include "rtl837x_stp.h"
 #include "machine.h"
 
-#pragma codeseg BANK2
-#pragma constseg BANK2
 
 extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
 extern __xdata uint8_t cmd_words_len;

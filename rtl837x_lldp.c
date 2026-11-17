@@ -1,5 +1,3 @@
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 #include "rtl837x_common.h"
 #include "rtl837x_lldp.h"

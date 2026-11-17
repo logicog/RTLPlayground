@@ -115,6 +115,10 @@ all: create_build_dir $(VERSION_HEADER) $(MACHINE_SRC) $(CONFIG) $(SUBDIRS) $(OU
 bank_size:
 	tools/bank_occupancy.sh "$(MACHINE)"
 
+# Fail if a direct call or a __code read crosses a code bank (needs a build of $MACHINE).
+check-banks:
+	python3 tools/check_cross_bank.py $(BUILDDIR)
+
 create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)"
 	mkdir -p "$(BUILDDIR)/uip"
@@ -194,6 +198,27 @@ SRCS += \
 
 OBJS = ${SRCS:%.c=$(BUILDDIR)/%.rel}
 DEPS := ${SRCS:%.c=$(BUILDDIR)/%.d}
+
+# Code banks. These sources stay in the home bank: interrupt handlers and the
+# code they call, the flash and NIC code, the board definition and the
+# generated web UI index (html_data names its own bank). Every other C source
+# is compiled into the area BANKED, and each build places it in BANK1 to
+# BANK$(CODE_BANKS) after compiling (tools/place_banks.py, the result in
+# $(BUILDDIR)/banks.txt), so no source names its bank. Assembly modules name
+# their bank and pin the files that call them directly.
+CODE_BANKS ?= 3
+RESIDENT_SRCS = $(MACHINE_SRC) html_data.c rtlplayground.c timer.c udp_apps.c \
+	rtl837x_flash.c rtl837x_nic.c httpd/html_out.c
+BANKED_SRCS = $(filter-out $(RESIDENT_SRCS),$(SRCS))
+BANKED_OBJS = $(BANKED_SRCS:%.c=$(BUILDDIR)/%.rel)
+RESIDENT_OBJS = $(filter-out $(BANKED_OBJS),$(OBJS))
+ASM_OBJS = $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel $(BUILDDIR)/crypto/chacha_8051.rel
+# What is linked: every object in SRCS order, a banked one as its placed copy.
+LINK_OBJS = $(foreach o,$(OBJS),$(if $(filter $(o),$(BANKED_OBJS)),$(BUILDDIR)/placed/$(patsubst $(BUILDDIR)/%,%,$(o)),$(o))) $(ASM_OBJS)
+# Bank n links at 0xn4000: its 0x4000-0xffff window, n above the home bank.
+BANK_LINK_FLAGS = $(foreach n,$(shell seq 1 $(CODE_BANKS)),-Wl-bBANK$(n)=0x$(n)4000)
+BANKED_FLAGS = --codeseg BANKED --constseg BANKED
+$(BANKED_OBJS): BANK_FLAGS = $(BANKED_FLAGS)
 HTML := $(shell find html -name '*.html' -or -name '*.svg' -or -name '*.css' -or -name '*.ico')
 
 # Minified copy of the web UI sources, used as the fileadder input.
@@ -269,14 +294,20 @@ $(CONFIG_STAMP): FORCE | create_build_dir
 	@echo '$(CONFIG)' | cmp -s - $@ 2>/dev/null || echo '$(CONFIG)' > $@
 
 $(BUILDDIR)/%.rel: %.c $(CCFLAGS_STAMP) | create_build_dir html_data.h
-	$(CC) -MMD $(CC_FLAGS) -o $@ -c $<
+	$(CC) -MMD $(CC_FLAGS) $(BANK_FLAGS) -o $@ -c $<
 
 $(BUILDDIR)/%.rel: %.asm $(CCFLAGS_STAMP) | create_build_dir
 	${ASM} ${AFLAGS} -o $@ $<
 #	mv -f $(addprefix $(basename $^), .lst .rel .sym) .
 
-$(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16.rel $(BUILDDIR)/crypto/chacha_8051.rel
-	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 -Wl-bBANK1=0x14000 -Wl-bBANK2=0x24000 -Wl-bBANK3=0x34000 -Wl-bBANK4=0x44000 -Wl-r -o $@ $^
+# Place the banked objects into the banks: copies under placed/ for the link.
+$(BUILDDIR)/placed.stamp: $(OBJS) $(ASM_OBJS) tools/place_banks.py
+	python3 tools/place_banks.py --banks $(CODE_BANKS) $(BUILDDIR) $(BANKED_OBJS) -- $(RESIDENT_OBJS) $(ASM_OBJS)
+	@touch $@
+
+$(BUILDDIR)/rtlplayground.ihx: $(BUILDDIR)/placed.stamp
+	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 $(BANK_LINK_FLAGS) -Wl-r -o $@ $(LINK_OBJS)
+	python3 tools/check_cross_bank.py $(BUILDDIR) || { rm -f $@; exit 1; }
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
@@ -316,7 +347,7 @@ machine_check: $(SDCC)
 	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c machine/$${MACHINE}.c; \
 	INIT=machine/$${MACHINE}_init.c; \
 	if [ ! -e $$INIT ] && [ ! -L $$INIT ]; then INIT=$(MACHINE_INIT_DEFAULT); fi; \
-	$(CC) $(MACHINE_LESS_CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$INIT; \
+	$(CC) $(MACHINE_LESS_CC_FLAGS) $(BANKED_FLAGS) -DMACHINE_NAME=$${MACHINE} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$INIT; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
 

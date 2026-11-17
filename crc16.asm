@@ -16,11 +16,14 @@ _crc_value::
 ; CRC16 subroutine
 ; - dptr points to byte to be CRCd in xmem
 ; - algorithm uses table lookup
+; - maps bank 1 for the tables and restores the caller's bank: a home-bank
+;   function called from another bank returns into that bank's window
 ;-------------------------------------------------------
 	.area HOME    (CODE)
 	.area CSEG    (CODE)
 ;	.area BANK1   (CODE)
 _crc16_bank1:
+	push	BANK
 	mov	BANK, #1
 	push	dph
 	push	dpl
@@ -50,6 +53,7 @@ _crc16_bank1:
 	pop	dpl
 	pop	dph
 ;	clr	DPS
+	pop	BANK
 	ret
 
 	.area BANK1   (CODE)

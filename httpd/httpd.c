@@ -21,8 +21,6 @@ __xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 
 #define CMARK_S 6
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
 
 extern volatile __xdata uint8_t sfr_data[4];
 extern __xdata uint8_t cmd_capture;	/* owned by rtlplayground.c, see write_char_no_syslog() */
