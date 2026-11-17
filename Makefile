@@ -307,6 +307,7 @@ $(BUILDDIR)/placed.stamp: $(OBJS) $(ASM_OBJS) tools/place_banks.py
 
 $(BUILDDIR)/rtlplayground.ihx: $(BUILDDIR)/placed.stamp
 	$(CC) $(CC_FLAGS) --xram-size 49151 -Wl-bHOME=0x00000 $(BANK_LINK_FLAGS) -Wl-r -o $@ $(LINK_OBJS)
+	python3 tools/check_linked.py $(BUILDDIR) $(BUILDDIR)/rtlplayground.map || { rm -f $@; exit 1; }
 	python3 tools/check_cross_bank.py $(BUILDDIR) || { rm -f $@; exit 1; }
 
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx

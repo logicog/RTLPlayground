@@ -37,3 +37,7 @@ definition.
 - After each link, `tools/check_cross_bank.py` checks the linked image: a
   direct call into another bank, or a `__code` read across banks, fails the
   build. `make check-banks MACHINE=...` runs it on its own.
+- `tools/check_linked.py` runs after each link too. It fails the build on an
+  `__at` variable where the linker also places relocatable ones (it doesn't
+  reserve the address), a bank fuller than its 48 KiB window, or code that
+  writes `PSBANK` and returns without restoring the caller's bank.
