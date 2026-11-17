@@ -340,9 +340,9 @@ See [igmp.md](igmp.md).
 
 | Address | Name | Fields | |
 |---|---|---|---|
-| 0x4f78 / 0x4f7c | `IPV4_` / `IPV6_PORT_MC_LM_ACT` | Unknown IP multicast, 2 bits per port: 00 flood, 01 drop, 10 trap, 11 router port | comment |
-| 0x5368 / 0x536c | `IPV4_` / `IPV6_UNKN_MC_FLD_PMSK` | Flood mask for unknown IP multicast | comment |
-| 0x529c | `IGMP_ROUTER_PORT` | 15:0 static router ports; 31:16 probably ports allowed to become router ports. Not used | guess |
+| 0x4f78 / 0x4f7c | `IPV4_` / `IPV6_PORT_MC_LM_ACT` | Unknown IP multicast, 2 bits per ingress port: 00 flood to `UNKN_MC_FLD_PMSK`; 01 drop; 10 trap to the CPU, nothing on the front ports; 11 only to the `IGMP_ROUTER_PORT` mask. 224.0.0.0/24 floods whatever the action | IPv4 confirmed (RTL8372), IPv6 comment |
+| 0x5368 / 0x536c | `IPV4_` / `IPV6_UNKN_MC_FLD_PMSK` | Flood mask for action 00: exactly these ports get the stream (set to one port, only that port does) | IPv4 confirmed (RTL8372), IPv6 comment |
+| 0x529c | `IGMP_ROUTER_PORT` | 15:0 router ports, the destination of action 11. 31:16 probably ports allowed to become router ports. `igmp_router_port_set()` writes 15:0 but nothing calls it; a commented-out block in `igmp_setup()` would write 31:16 | 15:0 confirmed (RTL8372), 31:16 guess |
 | 0x52a0 + 4 × port | `IGMP_PORT_CFG` | 2 bits per protocol, 00 ASIC, 01 flood, 10 trap, 11 drop: 1:0 IGMPv1, 3:2 v2, 5:4 v3, 7:6 MLDv1, 9:8 MLDv2. 10 dynamic router port, 11 MRP, 12 fast leave, 13 allow report, 14 allow query. 23:16 max groups | comment |
 | 0x50bc | `IGMP_TRAP_CFG` | 2:0 priority of trapped IGMP/MLD, bit 16 to the CPU port | comment |
 
