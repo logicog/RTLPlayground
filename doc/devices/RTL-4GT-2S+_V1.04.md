@@ -1,4 +1,4 @@
-# POE Plus S604GTP-2SX-SL
+# POEPlus S604GTP-2SX-SL
 
 RTL8372-based 4×2.5G PoE + 2×SFP+ switch.
 
@@ -12,7 +12,7 @@ make MACHINE=S604GTP_2SX_SL
 
 | Brand | Type | Managed | PCB | Flash | Chip RTL |
 |-------|------|---------|-----|-------|----------|
-| POE Plus | S604GTP-2SX-SL | Web (stock) | Hasivo RTL-4GT-2S+ V1.04 | 2 MB | RTL8372 (non-N) |
+| POEPlus | S604GTP-2SX-SL | Web (stock) | Hasivo RTL-4GT-2S+ V1.04 | 2 MB | RTL8372 |
 
 
 ### What works
@@ -40,7 +40,7 @@ Front panel
 
 <img src="photos/RTL-4GT-2S+_V1.04/front.png" width="400" />
 
-PCB, marked `Hasivo RTL-4GT-2S+ V1.04` (under the 2026 sticker), with the PoE
+PCB, marked `Hasivo RTL-4GT-2S+ V1.04` with the PoE
 daughterboard fitted over the RJ45 ports
 
 <img src="photos/RTL-4GT-2S+_V1.04/pcb.png" width="600" />

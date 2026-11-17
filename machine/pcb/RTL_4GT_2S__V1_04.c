@@ -1,7 +1,7 @@
 #include "machine_defs.h"
 
 /*
- * POE Plus S604GTP-2SX-SL  (4x copper PoE + 2x SFP+, RTL8372)
+ * POEPlus S604GTP-2SX-SL  (4x copper PoE + 2x SFP+, RTL8372)
  *
  * Starting point:
  *   - Copper ports / LEDs: taken from HASIVO_S600W_4GT_2XGT_SE (copper LEDs confirmed working on this board)
@@ -39,13 +39,18 @@ __code const struct machine machine = {
 	.high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1 },
 	.led_sets = {
-		{	/* copper ports 1-4 */
+		{	/* Copper ports 1-4 
+			*  Amber = 2.5G
+      *  Green = 1G/100M/10M with activity
+			*/
 			LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
 			LEDS_2G5 | LEDS_LINK,
 			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK,
 			0,
 		},
-		{	/* SFP ports 5-6 */
+		{	/* SFP ports 5-6 
+			*  Green LED for all valid speeds
+			*/
 			LEDS_10G | LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
 			LEDS_10G | LEDS_LINK,
 			LEDS_5G | LEDS_2G5 | LEDS_1G | LEDS_LINK,
