@@ -252,9 +252,9 @@ execute bit clears, read the output words.
 | Address | Name | Fields | |
 |---|---|---|---|
 | 0x5cac | `TBL_CTRL` | 27:16 entry index or VLAN ID. 15:8 table: 3 VLAN (`TBL_VLAN`), 4 the whole L2 table incl. multicast (`TBL_L2_UNICAST`). bit 1 write, bit 0 execute/busy | confirmed |
-| 0x5cb0 | `TBL_DATA_0` | 11:0 index found. 12 hit. 16:14 L2 read method (`TBL_LUTREAD_*`: 0 by key, 3 next unicast; 1, 2, 4-7 unused). 18 clear the entry (with write) | confirmed, bit 18 comment |
+| 0x5cb0 | `TBL_DATA_0` | 11:0 index found. 12 hit. 13 miss: set by a method-0 lookup that misses, cleared by a hit or a write. 16:14 L2 read method (`TBL_LUTREAD_*`): 0 by key; 1 and 2 index reads that also return IPv4 multicast (L3MC) entries; 3 next entry, skipping L3MC; 4-7 unused. 18 delete the entry (with write): not cleared by the chip, stays set until written to 0 | confirmed (multicast parts on RTL8372 too) |
 | 0x5cb8 / 0x5cbc / 0x5cc0 | `TBL_DATA_IN_A/B/C` | Entry to write or key to look up | confirmed |
-| 0x5ccc / 0x5cd0 / 0x5cd4 | `L2_DATA_OUT_A/B/C` | Entry read; a VLAN read also lands in OUT_A | confirmed |
+| 0x5ccc / 0x5cd0 / 0x5cd4 | `L2_DATA_OUT_A/B/C` | Entry read; a VLAN read also lands in OUT_A. On a lookup miss, A/B hold the key and C reads 0 | confirmed |
 
 **VLAN entry** (one word): 9:0 member ports (bit 9 CPU), 19:10 untagged ports,
 25 valid. VLAN 1 at boot: 0x0207ffff (RTL8373), 0x0207e3f8 (RTL8372).
@@ -275,11 +275,16 @@ L2 multicast.
 Sequences, all ending with a poll of `TBL_CTRL` bit 0:
 - VLAN write: `TBL_DATA_IN_A` = entry, `TBL_CTRL` = vid << 16 | 3 << 8 | write | exec.
 - VLAN read: `TBL_CTRL` = vid << 16 | 3 << 8 | exec, then read `L2_DATA_OUT_A`.
-- L2 walk: method 3 in `TBL_DATA_0`, `TBL_CTRL` = idx << 16 | 4 << 8 | exec,
-  read OUT_A/B/C, next index from `TBL_DATA_0` 11:0 + 1, stop when it wraps.
+- L2 walk: method 3 in `TBL_DATA_0` with bit 18 cleared, `TBL_CTRL` = idx << 16 |
+  4 << 8 | exec, read OUT_A/B/C, next index from `TBL_DATA_0` 11:0 + 1, stop when
+  it wraps. A bit 18 left by a delete makes the walk return nothing (upstream #908).
 - L2 lookup/insert by key: key in IN_A/B/C, method 0, `TBL_CTRL` = 4 << 8 | exec
-  (lookup, hit in `TBL_DATA_0` bit 12) or | write (insert, the chip picks the slot).
-- L2 delete: look up, then set `TBL_DATA_0` bit 18 and write at the index.
+  (lookup: hit in `TBL_DATA_0` bit 12, miss in bit 13) or | write (insert, the
+  chip picks the slot).
+- L2 delete: goes by the index in `TBL_CTRL` 27:16, not by the key; a write with
+  bit 18 at index 0 leaves the entry. Look up, then set `TBL_DATA_0` bit 18 and
+  write at the index found. The delete leaves `TBL_DATA_0` and `L2_DATA_OUT` as
+  they were, so clear bit 18 afterwards.
 
 Host tests: `test/hw_mock.h` describes the layouts independently.
 
@@ -429,9 +434,10 @@ Found while writing this, not fixed:
   priority-tagged report has 0x8100 there, is passed to the IP stack, and joins
   no group. Skipping an 802.1Q tag would also give the VID for the hard-coded
   `entry.vlan = 1`.
-- `TBL_DATA_0`: `port_l2mc_set()` does not reset the read method or the clear
-  bit 18 left behind by an earlier listing or delete, and `l2_delete()` writes
-  `TBL_L2_UNICAST` (a table type) into the method byte.
+- `TBL_DATA_0`: the L2 walk in `page_impl.c` and `l2_delete()` clear only bits
+  17:16, so bit 18 left by a delete is still set at the next walk and `/l2.json`
+  comes back empty (upstream #908). `port_l2mc_set()` does not clear it either.
+  `l2_delete()` also writes `TBL_L2_UNICAST` (a table type) into the method byte.
 - `L2_LRN_PORT_CONSTRT_ACT`: only bit 0 is set, probably port 0's action only.
 - `LAG_HASH_RESET`: a hash chosen as 0x3f is replaced by 0x7e on the next member
   change.
