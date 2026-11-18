@@ -56,4 +56,9 @@ void hw_l2_decode(const struct hw_l2 *e, uint8_t mac[6], uint16_t *vid, uint16_t
 /* MIB counter the next STAT_GET for (port, counter) returns */
 void hw_counter_set(uint8_t port, uint8_t counter, uint64_t value);
 
+/* I2C master: when set, called for each transfer started in RTL837X_REG_I2C_CTRL
+ * with the control word; it reads and fills RTL837X_REG_I2C_IN/OUT through
+ * hw_reg_get()/hw_reg_set() and returns 0 for a NACK. */
+extern uint8_t (*hw_i2c_hook)(uint32_t ctrl);
+
 #endif /* TEST_HW_MOCK_H */

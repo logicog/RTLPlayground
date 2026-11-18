@@ -3,6 +3,9 @@ IMAGESIZE = 524288
 DEFAULT_CONFIG_LOCATION = 454656
 CONFIG_LOCATION = 458752
 HTML_LOCATION = 262144
+# PoE controller firmware (TPS23880 SRAM image), only on machines with such a
+# PSE; the web pages then end below it. See doc/poe-tps23880.md.
+POE_IMAGE_LOCATION = 393216
 
 # Startup configuration embedded in the image. Override it to build a specific
 # machine with its own configuration: make MACHINE=<name> CONFIG=<file>
@@ -58,6 +61,24 @@ endif
 
 # The board definition being built: one file per MACHINE_* symbol in machine.h.
 MACHINE_SRC = machine/$(MACHINE).c
+
+# PoE: a machine selects its PSE with MACHINE_POE_CHIP in machine/<MACHINE>.h.
+# NO_POE=1 builds it without. The TPS23880 needs TI's SRAM image, which is not
+# in the repository: put slvc709c.zip into stock_fw/ (see stock_fw/README.md).
+MACHINE_POE_CHIP := $(shell sed -n 's/^[[:space:]]*\#[[:space:]]*define[[:space:]]\{1,\}MACHINE_POE_CHIP[[:space:]]\{1,\}\([A-Z0-9_]*\).*/\1/p' machine/$(MACHINE).h 2>/dev/null | head -n 1)
+HTML_LIMIT = $(DEFAULT_CONFIG_LOCATION)
+POE_IMAGE :=
+ifneq ($(NO_POE),)
+	CC_FLAGS += -DNO_POE
+else ifeq ($(MACHINE_POE_CHIP),POE_TPS23880)
+	CC_FLAGS += -DPOE_IMAGE_LOCATION=$(POE_IMAGE_LOCATION)UL
+	POE_SRCS = poe/tps23880.c
+	POE_IMAGE = poe/firmware/tps23880.bin
+	POE_STOCK = stock_fw/slvc709c.zip
+	HTML_LIMIT = $(POE_IMAGE_LOCATION)
+else ifneq ($(MACHINE_POE_CHIP),)
+$(error MACHINE_POE_CHIP=$(MACHINE_POE_CHIP) has no driver in poe/)
+endif
 
 MACHINE_INIT_DEFAULT := machine/default_machine_init.c
 MACHINE_INIT_SRC := $(wildcard machine/$(MACHINE)_init.c)
@@ -121,6 +142,7 @@ create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)/httpd"
 	mkdir -p "$(BUILDDIR)/machine"
 	mkdir -p "$(BUILDDIR)/crypto"
+	mkdir -p "$(BUILDDIR)/poe"
 
 # Every machine is a pair machine/<MACHINE>.c + machine/<MACHINE>.h. Selecting
 # them by name means no #if/#elif chain, so an unknown or empty $MACHINE is
@@ -158,7 +180,8 @@ SRCS = \
 	syslog.c \
 	timer.c \
 	udp_apps.c \
-	crypto/chacha20.c
+	crypto/chacha20.c \
+	$(POE_SRCS)
 
 # RTL837x
 SRCS += \
@@ -218,7 +241,7 @@ $(HTML_MIN_STAMP): $(HTML) html/app.js $(HTML_MIN_LIST) tools/minify.py tools/rj
 	@touch $@
 
 html_data.c html_data.h &: $(HTML_MIN_STAMP) | tools
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -l $(DEFAULT_CONFIG_LOCATION) -b BANK1 -z -d $(HTML_MIN) -p html_data
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -l $(HTML_LIMIT) -b BANK1 -z -d $(HTML_MIN) -p html_data
 
 $(VERSION_HEADER): FORCE
 	@printf '%s\n' "#ifndef VERSION_H" "#define VERSION_H" \
@@ -281,13 +304,23 @@ $(BUILDDIR)/rtlplayground.ihx: $(OBJS) $(BUILDDIR)/crtbank.rel $(BUILDDIR)/crc16
 $(BUILDDIR)/rtlplayground.img: $(BUILDDIR)/rtlplayground.ihx
 	objcopy --input-target=ihex -O binary $< $@
 
-$(OUTPUT): $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
+$(OUTPUT): $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) $(if $(POE_IMAGE),$(wildcard $(POE_STOCK) $(POE_IMAGE))) | tools
 	@mkdir -p "$(dir $@)"
 	if [ -e "$@" ]; then rm "$@"; fi
 	tools/$(BUILDDIR)/imagebuilder -i $(BUILDDIR)/rtlplayground.img "$@"
 	tools/$(BUILDDIR)/fileadder -a $(DEFAULT_CONFIG_LOCATION) -s $(IMAGESIZE) -l $(CONFIG_LOCATION) -d "$(CONFIG)" "$@"
 	tools/$(BUILDDIR)/fileadder -a $(CONFIG_LOCATION) -s $(IMAGESIZE) -l $(IMAGESIZE) -d "$(CONFIG)" "$@"
-	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -l $(DEFAULT_CONFIG_LOCATION) -z -d $(HTML_MIN) -b BANK1 "$@"
+	tools/$(BUILDDIR)/fileadder -a $(HTML_LOCATION) -s $(IMAGESIZE) -l $(HTML_LIMIT) -z -d $(HTML_MIN) -b BANK1 "$@"
+	@if [ -n "$(POE_IMAGE)" ]; then \
+		if [ -f "$(POE_STOCK)" ] && { [ ! -f "$(POE_IMAGE)" ] || [ "$(POE_STOCK)" -nt "$(POE_IMAGE)" ]; }; then \
+			mkdir -p $(dir $(POE_IMAGE)) && python3 tools/poe/extract_tps23880.py "$(POE_STOCK)" -o "$(POE_IMAGE)" || exit 1; \
+		fi; \
+		if [ -f "$(POE_IMAGE)" ]; then \
+			tools/$(BUILDDIR)/fileadder -a $(POE_IMAGE_LOCATION) -s $(IMAGESIZE) -l $(DEFAULT_CONFIG_LOCATION) -d "$(POE_IMAGE)" "$@" || exit 1; \
+		else \
+			echo "WARNING: no $(POE_IMAGE): PoE firmware not in the image, see stock_fw/README.md" >&2; \
+		fi; \
+	fi
 	tools/$(BUILDDIR)/crc_calculator -u "$@"
 	if [ "$(OUTPUT)" = "$(BUILDDIR)/rtlplayground-$(FILENAME_EXTENSION).bin" ]; then \
 		ln -sf $(MACHINE)/rtlplayground-$(FILENAME_EXTENSION).bin "$(BUILDDIR)/../rtlplayground.bin"; \

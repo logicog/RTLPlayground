@@ -146,6 +146,9 @@
 #define RTL837X_REG_I2C_MST_IF_CTRL	0x0414
 #define RTL837X_REG_I2C_CTRL		0x0418
 #define I2C_DEV_ADDR			3
+#define I2C_CTRL_GO			0x01	// Start, reads 1 while busy
+#define I2C_CTRL_FAIL			0x02	// Set after a failed (NACKed) transfer
+#define I2C_CTRL_WRITE			0x04	// 1 = write, data taken from RTL837X_REG_I2C_OUT
 #define I2C_MEM_ADDR_WIDTH		20
 #define RTL837X_REG_I2C_CTRL2		0x041c
 #define RTL837X_REG_I2C_IN		0x0420

@@ -35,6 +35,7 @@
 #include "httpd/page_impl.h"
 #include "boot.h"
 #include "sfp.h"
+#include "poe/poe.h"
 
 extern __code const struct machine machine;
 extern __xdata uint32_t flash_size;
@@ -1739,6 +1740,9 @@ void main(void)
 
 	early_boot_handle_button();
 
+#ifdef POE_PRESENT
+	poe_init();	// Before the config, whose `poe` lines then refine it
+#endif
 	execute_config();
 	// After the config so the entry lands in the final management VLAN
 	port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);

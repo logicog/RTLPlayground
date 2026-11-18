@@ -15,3 +15,8 @@ build/
 !test/stub/html_data.h
 !test/stub/version.h
 .vscode
+
+# Vendor firmware: local input only, never committed (stock_fw/README.md)
+stock_fw/*
+!stock_fw/README.md
+poe/firmware/

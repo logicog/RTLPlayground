@@ -22,6 +22,7 @@
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
+#include "poe/poe.h"
 #include "dhcp.h"
 #include "syslog.h"
 #include "sessions.h"
@@ -1242,6 +1243,109 @@ static void print_temperature(uint16_t reg)
 }
 
 
+#ifdef POE_PRESENT
+/* A voltage in mV as volts with one decimal */
+static void print_volts(uint16_t mv)
+{
+	itoa_short(mv / 1000);
+	write_char('.');
+	write_char('0' + (mv % 1000) / 100);
+}
+
+/* poe [show] | poe load | poe port <n> on|off | poe global on|off */
+void parse_poe(void)
+{
+	__xdata uint8_t on;
+
+	if (cmd_words_len == 1 || (cmd_words_len == 2 && cmd_compare(1, "show"))) {
+		if (poe_get_global()) {
+			print_string(POE_CHIP_NAME " does not answer\n");
+			return;
+		}
+		print_string(POE_CHIP_NAME ": firmware ");
+		if (poe_fw) {
+			itoa(poe_fw);
+		} else {
+			print_string("not loaded");
+		}
+		print_string(", input ");
+		print_volts(poe_vin_mv);
+		print_string(" V, ");
+		if (poe_temp < 0) {
+			write_char('-');
+			itoa(-poe_temp);
+		} else {
+			itoa(poe_temp);
+		}
+		print_string(" C\nPort\tAdmin\tPower\tClass\tVolt\tmA\n");
+		for (poe_port_num = 1; poe_port_num <= 16; poe_port_num++) {
+			poe_get_port();
+			if (!poe_st_valid)
+				continue;
+			itoa(poe_port_num);
+			print_string(poe_st_admin ? "\ton" : "\toff");
+			print_string(poe_st_on ? "\ton\t" : "\toff\t");
+			if (poe_st_class == 0xff)
+				write_char('-');
+			else
+				itoa(poe_st_class);
+			write_char('\t');
+			print_volts(poe_st_mv);
+			write_char('\t');
+			itoa_short(poe_st_ma);
+			write_char('\n');
+		}
+		return;
+	}
+	if (cmd_words_len == 2 && cmd_compare(1, "load")) {
+		if (poe_bringup())
+			cmd_error("PoE bring-up failed\n");
+		return;
+	}
+	if (cmd_words_len == 4 && cmd_compare(1, "port") && atoi_short(cmd_words_b[2])) {
+		on = cmd_compare(3, "on") ? 1 : (cmd_compare(3, "off") ? 0 : 2);
+		if (on == 2 || atoi_results_short > 16)
+			goto err;
+		if (poe_port_set(atoi_results_short, on))
+			cmd_error("That port has no PoE\n");
+		return;
+	}
+#if MACHINE_POE_CHIP == POE_TPS23880
+	if ((cmd_words_len == 4 || cmd_words_len == 5) && cmd_compare(1, "reg")) {
+		// poe reg <0|1> <hex reg> [<hex value>]: raw access for bring-up
+		__xdata uint8_t dev = cmd_buffer[cmd_words_b[2]] - '0';
+		__xdata uint8_t reg;
+		__xdata uint16_t val = 0x100;
+		if (dev > 1 || atoi_hex(cmd_words_b[3]) != 1)
+			goto err;
+		reg = hexvalue[0];
+		if (cmd_words_len == 5) {
+			if (atoi_hex(cmd_words_b[4]) != 1)
+				goto err;
+			val = hexvalue[0];
+		}
+		val = poe_reg(dev, reg, val);
+		if (val == 0xffff) {
+			cmd_error("No answer\n");
+		} else if (val & 0x100) {
+			print_string("0x"); print_byte(val); write_char('\n');
+		}
+		return;
+	}
+#endif
+	if (cmd_words_len == 3 && cmd_compare(1, "global")) {
+		on = cmd_compare(2, "on") ? 1 : (cmd_compare(2, "off") ? 0 : 2);
+		if (on == 2)
+			goto err;
+		poe_global_set(on);
+		return;
+	}
+err:
+	cmd_error("poe [show] | poe load | poe port <n> on|off | poe global on|off | poe reg <0|1> <reg> [val]\n");
+}
+#endif
+
+
 void parse_temp(void)
 {
 	print_string("\nChip temperature: ");
@@ -2073,6 +2177,12 @@ void cmd_parser(void) __banked
 			parse_bw();
 		} else if (cmd_compare(0, "temp")) {
 			parse_temp();
+		} else if (cmd_compare(0, "poe")) {
+#ifdef POE_PRESENT
+			parse_poe();
+#else
+			print_string("No PoE on this machine\n");
+#endif
 		} else if (cmd_compare(0, "storm")) {
 			parse_storm();
 		} else if (cmd_compare(0, "version")) {

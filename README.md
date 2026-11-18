@@ -433,6 +433,7 @@ The machine parsing is somewhat experimental.
 The following documents give further documentation on specific features of the RTL837x SoCs:
 - [Adding a new device](doc/adding-a-device.md)
 - [RTL8372/3 Feature support](doc/hardware.md)
+- [PoE with the TPS23880 (REM-8x)](doc/poe-tps23880.md)
 - [CPU Port](doc/CpuPort.md)
 - [L2 learning](doc/l2.md) 
 - [IGMP (IP-MC streaming)](doc/igmp.md)

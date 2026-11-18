@@ -260,6 +260,23 @@ var LANG = {
         e_enable: "Enable",
         e_note: "Advertised and link-partner flags per speed: 100M, 1G, 2.5G. SFP ports do not support EEE.",
         e_idle: "idle",
+        nav_poe: "PoE",
+        poe_title: "Power over Ethernet",
+        poe_sum: "{chip}: firmware {fw}, supply {v} V, {t} °C, delivering {w} W",
+        poe_nofw: "{chip}: no firmware running, see doc/poe-tps23880.md",
+        poe_enable: "Enable",
+        poe_state: "Status",
+        poe_class: "Class",
+        poe_volt: "Voltage",
+        poe_cur: "Current",
+        poe_pow: "Power",
+        poe_on: "powered",
+        poe_off: "off",
+        poe_det: "detecting",
+        poe_alloff: "All off",
+        poe_ask: "Enable PoE on port {p}?",
+        poe_ask_d: "The port then powers any device that answers PoE detection. Do not enable it on an uplink or for a device that must not get power.",
+        poe_note: "Every port starts with PoE off at boot. Save to flash to keep the ports you enable.",
         e_na: "n/a",
         bw_title: "Bandwidth limits",
         bw_h: "Mbit/s, 0.016-10000",
@@ -598,6 +615,18 @@ var LANG = {
         e_enable: "有効化",
         e_note: "速度ごとのアドバタイズ/リンクパートナーのフラグ: 100M、1G、2.5G。SFP ポートは EEE に対応していません。",
         e_idle: "アイドル",
+        nav_poe: "PoE",
+        poe_title: "PoE 給電",
+        poe_enable: "有効",
+        poe_state: "状態",
+        poe_class: "クラス",
+        poe_volt: "電圧",
+        poe_cur: "電流",
+        poe_pow: "電力",
+        poe_on: "給電中",
+        poe_off: "オフ",
+        poe_det: "検出中",
+        poe_alloff: "すべてオフ",
         e_na: "n/a",
         bw_title: "帯域制限",
         bw_h: "Mbit/s、0.016〜10000",
@@ -952,6 +981,18 @@ var LANG = {
         e_enable: "启用",
         e_note: "按速率显示本端/链路伙伴的通告标志: 100M、1G、2.5G。SFP 端口不支持 EEE。",
         e_idle: "空闲",
+        nav_poe: "PoE",
+        poe_title: "以太网供电",
+        poe_enable: "启用",
+        poe_state: "状态",
+        poe_class: "等级",
+        poe_volt: "电压",
+        poe_cur: "电流",
+        poe_pow: "功率",
+        poe_on: "供电中",
+        poe_off: "关闭",
+        poe_det: "检测中",
+        poe_alloff: "全部关闭",
         e_na: "n/a",
         bw_title: "带宽限制",
         bw_h: "Mbit/s，0.016-10000",
@@ -1289,6 +1330,18 @@ var LANG = {
         e_enable: "Habilitar",
         e_note: "Banderas anunciadas y del socio de enlace por velocidad: 100M, 1G, 2.5G. Los puertos SFP no soportan EEE.",
         e_idle: "inactivo",
+        nav_poe: "PoE",
+        poe_title: "Alimentación por Ethernet",
+        poe_enable: "Activar",
+        poe_state: "Estado",
+        poe_class: "Clase",
+        poe_volt: "Tensión",
+        poe_cur: "Corriente",
+        poe_pow: "Potencia",
+        poe_on: "alimentando",
+        poe_off: "apagado",
+        poe_det: "detectando",
+        poe_alloff: "Apagar todo",
         e_na: "n/d",
         bw_title: "Límites de ancho de banda",
         bw_h: "Mbit/s, 0.016-10000",
@@ -1688,6 +1741,18 @@ var LANG = {
         e_enable: "Basse consommation",
         e_note: "Capacité de l'hôte et des partenaires : 100M, 1G, 2.5G. Les ports SFP ne peuvent pas bénéficier de l'EEE.",
         e_idle: "Inactif",
+        nav_poe: "PoE",
+        poe_title: "Alimentation par Ethernet",
+        poe_enable: "Activer",
+        poe_state: "État",
+        poe_class: "Classe",
+        poe_volt: "Tension",
+        poe_cur: "Courant",
+        poe_pow: "Puissance",
+        poe_on: "alimenté",
+        poe_off: "arrêt",
+        poe_det: "détection",
+        poe_alloff: "Tout arrêter",
         e_na: "N/A",
         bw_title: "Limitations de bande passante",
         bw_h: "Mbit/s, 0.016-10000",
@@ -2075,6 +2140,18 @@ var LANG = {
         e_enable: "Aktivieren",
         e_note: "Angebotene und von der Gegenstelle unterstützte Stufen je Geschwindigkeit: 100M, 1G, 2.5G. SFP-Ports unterstützen kein EEE.",
         e_idle: "inaktiv",
+        nav_poe: "PoE",
+        poe_title: "Power over Ethernet",
+        poe_enable: "Aktiv",
+        poe_state: "Status",
+        poe_class: "Klasse",
+        poe_volt: "Spannung",
+        poe_cur: "Strom",
+        poe_pow: "Leistung",
+        poe_on: "versorgt",
+        poe_off: "aus",
+        poe_det: "Erkennung",
+        poe_alloff: "Alle aus",
         e_na: "k. A.",
         bw_title: "Bandbreitenbegrenzung",
         bw_h: "Mbit/s, 0.016-10000",
@@ -2409,6 +2486,7 @@ var CONF_CMDS = [
     /^lldp\s+(on|off)$/,
     /^bw\s+(in|out)\s+\d+\s+\S+$/,
     /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
+    /^poe\s+port\s+\d{1,2}\s+(on|off)$/, /^poe\s+global\s+(on|off)$/,
 ];
 
 function isConfCmd(line) {
@@ -2565,6 +2643,10 @@ var TABS = [{
         icon: "M13 2L4 14h6l-1 8 9-12h-6z"
     },
     {
+        id: "poe",
+        icon: "M9 2v6M15 2v6M6 8h12v3a6 6 0 01-12 0zM12 17v5"
+    },
+    {
         id: "bw",
         icon: "M4 18a8 8 0 0116 0M12 18l4-6"
     },
@@ -2689,9 +2771,34 @@ function pollStatus() {
         }
         S.prev = s;
         S.prevT = now;
+        poeStatus();
         updateStrip();
         var hk = tabHooks[curTab];
         if (hk && hk.status) hk.status();
+    });
+}
+/* Watts per powered PoE port for the strip and the dashboard, every other
+ * status poll; S.poeHas false once /poe.json is found missing */
+function poeStatus() {
+    if (S.poeHas === false || (S.poeTick = (S.poeTick || 0) + 1) % 2 !== 1) return;
+    getJSON("/poe.json").then(function(d) {
+        S.poeHas = true;
+        poeWatts(d);
+        updateStrip();
+        if (curTab === "dash") dashStatus();
+    }).catch(function() {
+        if (!S.poeHas) {
+            S.poeHas = false;
+            $("nv-poe").style.display = "none";
+            if (curTab === "poe") showTab("dash");
+        }
+    });
+}
+
+function poeWatts(d) {
+    S.poe = {};
+    (d.ports || []).forEach(function(p) {
+        if (p.on) S.poe[p.port] = p.mv * p.ma / 1e6;
     });
 }
 var statusPoller = new Poller(pollStatus, 2500);
@@ -2773,6 +2880,7 @@ function updateStrip() {
             lb = $("ppl" + i);
         if (!el) return;
         el.classList.toggle("dis", !p.enabled);
+        el.classList.toggle("poe", !!(S.poe && S.poe[p.port] != null));
         var up = p.enabled && p.link != "DOWN";
         el.classList.toggle("up", !!up);
         if (up) el.style.setProperty("--pc", "var(" + "--s" + p.link.replace(/\-[HF]D$/,"").replace("2.5G","2G5").toLowerCase() + ")");
@@ -2947,7 +3055,8 @@ function dashStatus() {
         if (!r) return;
         var rt = S.rates[p.port - 1];
         r.cells[0].textContent = portLabel(p);
-        r.cells[1].innerHTML = linkBadge(p);
+        var pw = S.poe && S.poe[p.port];
+        r.cells[1].innerHTML = linkBadge(p) + (pw != null ? " " + badge("PoE " + pw.toFixed(1) + " W", "poe") : "");
         r.cells[2].textContent = rt ? fmtPps(rt.tx) : "-";
         r.cells[3].textContent = rt ? fmtPps(rt.rx) : "-";
         r.cells[4].textContent = BigInt(p.txB).toString();
@@ -4475,6 +4584,73 @@ tabHooks.lldp = {
     enter: lldpLoad
 };
 
+/* PoE: only on a switch with a PSE, see doc/poe-tps23880.md */
+function poeSwitch(p) {
+    var sw = h("label", { class: "switch" }, [
+        h("input", {
+            type: "checkbox",
+            onchange: function() {
+                var box = this, on = box.checked;
+                function send() {
+                    postCmd("poe port " + p.port + (on ? " on" : " off")).then(function() {
+                        setTimeout(poeLoad, on ? 1500 : 300)
+                    }).catch(function() {
+                        box.checked = !on
+                    });
+                }
+                if (!on) return send();
+                box.checked = false;	// until confirmed
+                confirmModal(t("poe_ask", { p: p.port }), t("poe_ask_d"), function() {
+                    box.checked = true;
+                    send();
+                });
+            }
+        }), h("i")
+    ]);
+    sw.firstChild.checked = !!p.admin;
+    return sw;
+}
+
+function poeLoad() {
+    return getJSON("/poe.json").then(function(s) {
+        var tb = $("poetbl").tBodies[0], w = 0;
+        poeWatts(s);
+        updateStrip();
+        tb.innerHTML = "";
+        (s.ports || []).forEach(function(p) {
+            var tr = tb.insertRow(), pw = p.mv * p.ma / 1e6;
+            if (p.on) w += pw;
+            tr.insertCell().textContent = p.port;
+            tr.insertCell().appendChild(poeSwitch(p));
+            tr.insertCell().innerHTML = p.on ? badge(t("poe_on"), "ok") : (p.admin ? badge(t("poe_det")) : badge(t("poe_off")));
+            tr.insertCell().textContent = p.on && p.class !== 255 ? p.class : "-";
+            tr.insertCell().textContent = p.on ? (p.mv / 1000).toFixed(1) + " V" : "-";
+            tr.insertCell().textContent = p.on ? p.ma + " mA" : "-";
+            tr.insertCell().textContent = p.on ? pw.toFixed(1) + " W" : "-";
+        });
+        $("poesum").textContent = s.fw ? t("poe_sum", {
+            chip: s.chip, fw: s.fw, v: (s.vin / 1000).toFixed(1), t: s.temp, w: w.toFixed(1)
+        }) : t("poe_nofw", { chip: s.chip });
+    });
+}
+var poePoller = new Poller(function() {
+    return poeLoad()
+}, 3000);
+tabHooks.poe = {
+    enter: function() {
+        poePoller.start()
+    },
+    leave: function() {
+        poePoller.stop()
+    }
+};
+$("poeAllOff").addEventListener("click", function() {
+    postCmd("poe global off").then(function() {
+        setTimeout(poeLoad, 300)
+    }).catch(function() {});
+});
+// The PoE entry only where the switch has a PSE, see poeStatus()
+
 function eeeLoad() {
     return getJSON("/eee.json").then(function(s) {
         var tb = $("etable").tBodies[0];
@@ -5022,7 +5198,7 @@ var CONF_OVERWRITE = [
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
     /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
-var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
+var CONF_TOGGLE = [/^(poe\s+port\s+\d{1,2})\s+(on|off)$/, /^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
 function mergeConf(base, texts) {
     var conf = base.slice();
@@ -5053,6 +5229,11 @@ function mergeConf(base, texts) {
             }
             if ((m = line.match(/^lag (\d) lacp off$/))) {
                 drop(new RegExp("^lag " + m[1] + " lacp( |$)"));
+                return;
+            }
+            if ((m = line.match(/^poe global (on|off)$/))) {
+                drop(/^poe (port \d{1,2}|global) /);
+                conf.push(line);
                 return;
             }
             if (line === "mirror off") {
