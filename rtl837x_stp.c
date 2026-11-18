@@ -220,18 +220,6 @@ struct stp_pkt_in {
 #define BPDU_LEN_FULL_BODY	40
 #define BPDU_LEN_TCN		0x07	// LLC and a 4 byte body
 
-#define BPDU_FLAG_TC		0x01
-#define BPDU_FLAG_PROPOSAL	0x02
-#define BPDU_FLAG_AGREEMENT	0x40
-#define BPDU_FLAG_LEARNING	0x10
-#define BPDU_FLAG_FORWARDING	0x20
-#define BPDU_FLAG_TCACK		0x80
-
-#define BPDU_ROLE_ROOT		(0b10 << 2)
-#define BPDU_ROLE_DESIGNATED	(0b11 << 2)
-#define BPDU_ROLE_MASK		(0b11 << 2)
-#define BPDU_ROLE_ALTBACK	(0b01 << 2)
-
 /* Console messages name the port on the front panel, not the internal index. */
 static void print_ent(uint8_t e) __reentrant
 {
@@ -474,7 +462,7 @@ static void stp_state_set(uint8_t port, uint8_t state) __reentrant
 static uint8_t stp_state_get(uint8_t port) __reentrant
 {
 	if (stp_first(stp_members(port)) == 0xff)
-		return 0;
+		return STP_DISABLED;
 	reg_read_m(RTL837X_MSTP_STATES);
 	return (sfr_data[3 - (stp_ss_i >> 2)] >> ((stp_ss_i << 1) & 0x7)) & 0b11;
 }
@@ -509,11 +497,13 @@ static uint8_t stp_tc_prop(uint8_t from) __reentrant
 {
 	stp_armed = 0;
 	for (stp_k = 0; stp_k < STP_ENTITIES; stp_k++) {
-		if (stp_k == from || !stp_ent_active(stp_k) || stp_tcwhile[stp_k] || stp_state_get(stp_k) != 0b11)
+		if (stp_k == from || !stp_ent_active(stp_k) || stp_state_get(stp_k) != STP_FORWARDING)
 			continue;
 		if (!STP_RUNS(stp_k) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
 			continue;
 		stp_forget(stp_k);
+		if (stp_tcwhile[stp_k])
+			continue;
 		stp_new_tc_while(stp_k);
 		stp_armed = 1;
 	}
@@ -536,7 +526,7 @@ static void stp_forward_now(uint8_t port) __reentrant
 	port_timers[port] = 0;
 	stp_loop_held[port] = 0;
 	stp_backup &= ~((uint16_t)1 << port);
-	stp_state_set(port, 0b11);
+	stp_state_set(port, STP_FORWARDING);
 	print_string("STP: rapid transition, port forwarding ");
 	print_port_nl(port);
 	stp_tc_detected(port);
@@ -552,8 +542,8 @@ static void stp_sync(uint8_t from) __reentrant
 		    || (stp_pflags[stp_k] & STP_PF_OPEREDGE) || ((stp_alt >> stp_k) & 1)
 		    || !((stp_link_prev >> stp_k) & 1))
 			continue;
-		if (stp_state_get(stp_k) != 0b01) {
-			stp_state_set(stp_k, 0b01);
+		if (stp_state_get(stp_k) != STP_DISCARDING) {
+			stp_state_set(stp_k, STP_DISCARDING);
 			port_timers[stp_k] = FWD_TICKS;
 		}
 		stp_newinfo |= (uint16_t)1 << stp_k;
@@ -580,7 +570,7 @@ static void stp_loop_hold_peer(uint8_t port, uint8_t by) __reentrant
 	if (!port_timers[port]) {
 		print_string("STP: loop detected, blocking port ");
 		print_port_nl(port);
-		stp_state_set(port, 0b01);
+		stp_state_set(port, STP_DISCARDING);
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		stp_forget(port);
 		stp_tcwhile[port] = 0;
@@ -655,8 +645,8 @@ static void stp_reroot_tree(void) __reentrant
 		    || !STP_RUNS(stp_k) || (stp_pflags[stp_k] & STP_PF_OPEREDGE))
 			continue;
 		stp_reroot |= (uint16_t)1 << stp_k;
-		if (stp_state_get(stp_k) != 0b01) {
-			stp_state_set(stp_k, 0b01);
+		if (stp_state_get(stp_k) != STP_DISCARDING) {
+			stp_state_set(stp_k, STP_DISCARDING);
 			port_timers[stp_k] = FWD_TICKS;
 			stp_newinfo |= (uint16_t)1 << stp_k;
 		}
@@ -717,8 +707,8 @@ static void stp_reselect(void)
 		    && stp_cmp_designated(stp_j) < 0) {
 			stp_pflags[stp_j] &= ~STP_PF_OPEREDGE;
 			port_timers[stp_j] = 0;
-			if (stp_state_get(stp_j) != 0b01)
-				stp_state_set(stp_j, 0b01);
+			if (stp_state_get(stp_j) != STP_DISCARDING)
+				stp_state_set(stp_j, STP_DISCARDING);
 			if (!((stp_alt >> stp_j) & 1)) {
 				stp_alt |= (uint16_t)1 << stp_j;
 				stp_forget(stp_j);
@@ -787,9 +777,9 @@ void stp_cnf_send(uint8_t port) __reentrant
 		STP_O->flags = port == stp_root_port ? BPDU_ROLE_ROOT
 			     : (((stp_alt | stp_backup) >> port) & 1) ? BPDU_ROLE_ALTBACK : BPDU_ROLE_DESIGNATED;
 		stp_scratch = stp_state_get(port);
-		if (stp_scratch == 0b11)
+		if (stp_scratch == STP_FORWARDING)
 			STP_O->flags |= BPDU_FLAG_LEARNING | BPDU_FLAG_FORWARDING;
-		else if (stp_scratch == 0b10)
+		else if (stp_scratch == STP_LEARNING)
 			STP_O->flags |= BPDU_FLAG_LEARNING;
 		if (port != stp_root_port && port_timers[port] && P2P(port)
 		    && !(stp_pflags[port] & STP_PF_OPEREDGE) && !(((stp_alt | stp_backup) >> port) & 1))
@@ -932,8 +922,8 @@ static void stp_dispute_rx(uint8_t port) __reentrant
 	if (!stp_rstp || STP_I->bpdu_type != BPDU_TYPE_RST
 	    || !(STP_I->flags & BPDU_FLAG_LEARNING))
 		return;
-	if (stp_state_get(port) != 0b01) {
-		stp_state_set(port, 0b01);
+	if (stp_state_get(port) != STP_DISCARDING) {
+		stp_state_set(port, STP_DISCARDING);
 		print_string("STP: dispute, port discarding ");
 		print_port_nl(port);
 	}
@@ -1012,7 +1002,7 @@ void stp_in(void) __banked
 		print_port_nl(port);
 		stp_pflags[port] |= STP_PF_TRIPPED;
 		port_timers[port] = 0;
-		stp_state_set(port, 0b00);
+		stp_state_set(port, STP_DISABLED);
 		return;
 	}
 
@@ -1033,7 +1023,7 @@ void stp_in(void) __banked
 		return;
 
 	if (STP_I->bpdu_type == BPDU_TYPE_TCN) {
-		if (stp_state_get(port) != 0b11)
+		if (stp_state_get(port) != STP_FORWARDING)
 			return;
 		stp_tx_flags_extra = BPDU_FLAG_TCACK;
 		stp_cnf_send(port);
@@ -1079,14 +1069,14 @@ void stp_in(void) __banked
 
 	if ((STP_I->flags & BPDU_FLAG_TCACK) && port == stp_root_port)
 		stp_tcwhile[port] = 0;
-	if ((STP_I->flags & BPDU_FLAG_TC) && stp_state_get(port) == 0b11 && stp_tc_prop(port))
+	if ((STP_I->flags & BPDU_FLAG_TC) && stp_state_get(port) == STP_FORWARDING && stp_tc_prop(port))
 		stp_tc_count++;
 
 	if ((stp_pflags[port] & STP_PF_ROOTGUARD)
 	    && cmpBytes((__xdata uint8_t *)&STP_I->root, (__xdata uint8_t *)&root_bridge, 8) < 0) {
 		print_string("STP: root guard blocking port ");
 		print_port_nl(port);
-		stp_state_set(port, 0b01);
+		stp_state_set(port, STP_DISCARDING);
 		port_timers[port] = FWD_TICKS;
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		return;
@@ -1174,15 +1164,15 @@ static void stp_ent_reset(uint8_t e) __reentrant
 		return;
 	}
 	if ((stp_pflags[e] & STP_PF_ENABLED) && (stp_pflags[e] & STP_PF_TRIPPED)) {
-		stp_state_set(e, 0b00);
+		stp_state_set(e, STP_DISABLED);
 		return;
 	}
 	if (!(stp_pflags[e] & STP_PF_ENABLED) || (stp_pflags[e] & STP_PF_ADMEDGE)) {
 		if (stp_pflags[e] & STP_PF_ADMEDGE)
 			stp_pflags[e] |= STP_PF_OPEREDGE;
-		stp_state_set(e, 0b11);
+		stp_state_set(e, STP_FORWARDING);
 	} else {
-		stp_state_set(e, 0b01);
+		stp_state_set(e, STP_DISCARDING);
 		port_timers[e] = FWD_TICKS;
 	}
 }
@@ -1229,7 +1219,7 @@ void stp_timers(void) __banked
 				if (!((stp_link_now ^ stp_link_prev) >> stp_i & 1))
 					continue;
 				/* Either way the port must stop forwarding first. */
-				stp_state_set(stp_i, 0b01);
+				stp_state_set(stp_i, STP_DISCARDING);
 				if ((stp_link_now >> stp_i) & 1) {
 					/* Carrier back: re-run the listen period rather than
 					 * forwarding straight away - the segment may have been
@@ -1311,8 +1301,8 @@ void stp_timers(void) __banked
 			if (!--port_timers[stp_i]) {
 				if (((stp_reroot >> stp_i) & 1) && stp_rrwhile[stp_i]) {
 					port_timers[stp_i] = stp_rrwhile[stp_i] + 1;
-				} else if (stp_state_get(stp_i) == 0b01) {
-					stp_state_set(stp_i, 0b10);
+				} else if (stp_state_get(stp_i) == STP_DISCARDING) {
+					stp_state_set(stp_i, STP_LEARNING);
 					port_timers[stp_i] = FWD_TICKS;
 					print_string("STP: port learning ");
 					print_port_nl(stp_i);
@@ -1326,7 +1316,7 @@ void stp_timers(void) __banked
 						stp_pflags[stp_i] |= STP_PF_OPEREDGE;
 					stp_loop_held[stp_i] = 0;
 					stp_backup &= ~((uint16_t)1 << stp_i);
-					stp_state_set(stp_i, 0b11);
+					stp_state_set(stp_i, STP_FORWARDING);
 					print_string("STP: port forwarding ");
 					print_port_nl(stp_i);
 					stp_tc_detected(stp_i);
@@ -1339,7 +1329,7 @@ void stp_timers(void) __banked
 				 * host-facing, go to forwarding without the full wait. */
 				port_timers[stp_i] = 0;
 				stp_pflags[stp_i] |= STP_PF_OPEREDGE;
-				stp_state_set(stp_i, 0b11);
+				stp_state_set(stp_i, STP_FORWARDING);
 				print_string("STP: edge port forwarding ");
 				print_port_nl(stp_i);
 			}
@@ -1485,7 +1475,7 @@ void stp_off(void) __banked
 {
 	sfr_data[0] = sfr_data[1] = sfr_data[2] = sfr_data[3] = 0;
 	for (stp_i = MACHINE_MIN_PORT; stp_i <= MACHINE_MAX_PORT; stp_i++)
-		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(0b11 << ((stp_i << 1) & 0x7));
+		sfr_data[3 - (stp_i >> 2)] |= (uint8_t)(STP_FORWARDING << ((stp_i << 1) & 0x7));
 	for (stp_i = 0; stp_i < STP_ENTITIES; stp_i++) {
 		stp_pflags[stp_i] &= ~(STP_PF_OPEREDGE | STP_PF_TRIPPED);
 		stp_loop_held[stp_i] = 0;
