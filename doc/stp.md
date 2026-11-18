@@ -212,6 +212,10 @@ should never see one); `root` keeps a port from ever becoming the path to the
 root, which protects an existing topology from a newly attached bridge that
 claims a better priority.
 
+A port shut down by BPDU guard stays down, also across a link flap. Changing
+its guard brings it back through the listen period; `stp port <N> on` and
+`stp off` also clear it.
+
 **filter** — the port neither sends nor accepts BPDUs. Useful when the device
 on the far side reacts badly to them (some unmanaged switches with loop
 prevention cut the link) but you still want STP on the rest of the ports.

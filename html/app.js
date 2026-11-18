@@ -135,6 +135,7 @@ var LANG = {
         stp_r2: "Designated",
         stp_r3: "Alternate",
         stp_trip: "guard tripped",
+        stp_trip_t: "Change the guard of this port and press apply to bring it back",
         stp_g_none: "None",
         stp_g_bpdu: "BPDU",
         stp_g_root: "Root",
@@ -519,6 +520,7 @@ var LANG = {
         stp_r2: "指定",
         stp_r3: "代替",
         stp_trip: "ガード作動",
+        stp_trip_t: "このポートのガード設定を変更して適用すると復帰します",
         stp_g_none: "なし",
         stp_g_bpdu: "BPDU",
         stp_g_root: "ルート",
@@ -828,6 +830,7 @@ var LANG = {
         stp_r2: "指定端口",
         stp_r3: "替代端口",
         stp_trip: "保护触发",
+        stp_trip_t: "更改此端口的保护设置并应用即可恢复",
         stp_g_none: "无",
         stp_g_bpdu: "BPDU",
         stp_g_root: "根桥",
@@ -1210,6 +1213,7 @@ var LANG = {
         stp_r2: "Designado",
         stp_r3: "Alternativo",
         stp_trip: "protección disparada",
+        stp_trip_t: "Cambie la protección de este puerto y aplique para recuperarlo",
         stp_g_none: "Ninguno",
         stp_g_bpdu: "BPDU",
         stp_g_root: "Raíz",
@@ -1599,6 +1603,7 @@ var LANG = {
         stp_r2: "Designé",
         stp_r3: "Alternatif",
         stp_trip: "protection déclenchée",
+        stp_trip_t: "Changez la protection de ce port et appliquez pour le rétablir",
         stp_g_none: "Aucun",
         stp_g_bpdu: "BPDU",
         stp_g_root: "Racine",
@@ -1948,6 +1953,7 @@ var LANG = {
         stp_r2: "Designated",
         stp_r3: "Alternate",
         stp_trip: "Guard ausgelöst",
+        stp_trip_t: "Guard dieses Ports ändern und übernehmen, um ihn zurückzuholen",
         stp_g_none: "Keiner",
         stp_g_bpdu: "BPDU",
         stp_g_root: "Root",
@@ -2274,8 +2280,8 @@ function esc(s) {
     })
 }
 
-function badge(txt, cls) {
-    return '<span class="badge' + (cls ? " " + cls : "") + '">' + esc(txt) + "</span>"
+function badge(txt, cls, tip) {
+    return '<span class="badge' + (cls ? " " + cls : "") + '"' + (tip ? ' title="' + esc(tip) + '"' : "") + ">" + esc(txt) + (tip ? " 🛈" : "") + "</span>"
 }
 
 function linkBadge(p) {
@@ -3311,7 +3317,7 @@ function stpLoad() {
         }
         s.ports.forEach(function(pt) {
             var p = stpKey(pt);
-            var trip = (pt.f & STP_PF.TRIP) ? " " + badge(t("stp_trip"), "bad") : "";
+            var trip = (pt.f & STP_PF.TRIP) ? " " + badge(t("stp_trip"), "bad", t("stp_trip_t")) : "";
             $("stro" + p).textContent = s.on && pt.role ? t("stp_r" + pt.role) : "-";
             $("stst" + p).innerHTML = s.on ? (pt.lk ? badge(t("stp_s" + pt.st), pt.st === 3 ? "ok" : "") : badge(t("stp_nolink"))) + trip : "-";
             $("stdb" + p).textContent = s.on ? fmtBridge(pt.db) : "-";
