@@ -225,6 +225,17 @@ var LANG = {
         l2_entries: "entries",
         l2_del_t: "Delete entry",
         l2_flush_q: "Flush all learned MAC entries?",
+        l2_pin_t: "Make static, on this port (saved with the config)",
+        l2_add: "Add static entry",
+        l2_mac_err: "Enter a unicast MAC address, e.g. 00:11:22:33:44:55",
+        l2_vlan_err: "VLAN must be 1-4094",
+        l2_sec_title: "Learning limits",
+        l2_limit: "Learning limit",
+        l2_unlimited: "no limit",
+        l2_limit_err: "The limit must be 0-4159, or empty for none",
+        l2_limit_q: "Limit port {n} to fewer than 2 addresses?",
+        l2_limit_d: "Frames from any further source address on this port are dropped. If you manage the switch through this port, you can lock yourself out, also after a restart once saved.",
+        l2_sec_note: "A port learns at most this many addresses at a time; frames from further source addresses are dropped. Static entries do not count. Save keeps the limits.",
         m_title: "Port mirroring",
         m_active: "active",
         m_monitor: "Monitor port",
@@ -582,6 +593,17 @@ var LANG = {
         l2_entries: "エントリ",
         l2_del_t: "エントリを削除",
         l2_flush_q: "学習した MAC エントリをすべて消去しますか?",
+        l2_pin_t: "このポートに静的登録 (設定と一緒に保存)",
+        l2_add: "静的エントリを追加",
+        l2_mac_err: "ユニキャスト MAC アドレスを入力してください (例: 00:11:22:33:44:55)",
+        l2_vlan_err: "VLAN は 1-4094 です",
+        l2_sec_title: "学習上限",
+        l2_limit: "学習上限",
+        l2_unlimited: "上限なし",
+        l2_limit_err: "上限は 0-4159、空欄で無制限です",
+        l2_limit_q: "ポート {n} の上限を 2 未満にしますか?",
+        l2_limit_d: "このポートでそれ以上の送信元アドレスからのフレームは破棄されます。このポート経由で管理している場合、締め出される可能性があり、保存すると再起動後も続きます。",
+        l2_sec_note: "ポートが一度に学習するアドレス数の上限です。それを超える送信元アドレスからのフレームは破棄されます。静的エントリは数えません。保存すると上限が保持されます。",
         m_title: "ポートミラーリング",
         m_active: "有効",
         m_monitor: "モニタポート",
@@ -919,6 +941,17 @@ var LANG = {
         l2_entries: "条",
         l2_del_t: "删除条目",
         l2_flush_q: "清除所有动态学习的 MAC 条目?",
+        l2_pin_t: "固定为此端口的静态条目 (随配置保存)",
+        l2_add: "添加静态条目",
+        l2_mac_err: "请输入单播 MAC 地址,例如 00:11:22:33:44:55",
+        l2_vlan_err: "VLAN 必须为 1-4094",
+        l2_sec_title: "学习上限",
+        l2_limit: "学习上限",
+        l2_unlimited: "无上限",
+        l2_limit_err: "上限为 0-4159,留空表示无上限",
+        l2_limit_q: "将端口 {n} 限制为少于 2 个地址?",
+        l2_limit_d: "来自此端口更多源地址的帧会被丢弃。如果您通过此端口管理交换机,可能会把自己锁在外面,保存后重启也一样。",
+        l2_sec_note: "端口同时最多学习这么多地址;来自更多源地址的帧会被丢弃。静态条目不计入。保存后上限会保留。",
         m_title: "端口镜像",
         m_active: "已启用",
         m_monitor: "镜像目的端口",
@@ -1275,6 +1308,17 @@ var LANG = {
         l2_entries: "entradas",
         l2_del_t: "Eliminar entrada",
         l2_flush_q: "¿Vaciar todas las entradas MAC aprendidas?",
+        l2_pin_t: "Fijar como estática en este puerto (se guarda con la configuración)",
+        l2_add: "Añadir entrada estática",
+        l2_mac_err: "Introduzca una MAC unicast, p. ej. 00:11:22:33:44:55",
+        l2_vlan_err: "La VLAN debe ser 1-4094",
+        l2_sec_title: "Límites de aprendizaje",
+        l2_limit: "Límite de aprendizaje",
+        l2_unlimited: "sin límite",
+        l2_limit_err: "El límite debe ser 0-4159, o vacío para ninguno",
+        l2_limit_q: "¿Limitar el puerto {n} a menos de 2 direcciones?",
+        l2_limit_d: "Las tramas de cualquier otra dirección de origen en este puerto se descartan. Si gestiona el switch por este puerto, puede quedarse sin acceso, también tras reiniciar si lo guarda.",
+        l2_sec_note: "Un puerto aprende como máximo este número de direcciones a la vez; las tramas de más direcciones de origen se descartan. Las entradas estáticas no cuentan. Guardar conserva los límites.",
         m_title: "Duplicación de puertos",
         m_active: "activa",
         m_monitor: "Puerto monitor",
@@ -1669,6 +1713,17 @@ var LANG = {
         l2_entries: "entrées",
         l2_del_t: "Supprimer l'entrée",
         l2_flush_q: "Effacer toutes les entrées MAC apprises?",
+        l2_pin_t: "Rendre statique sur ce port (enregistré avec la configuration)",
+        l2_add: "Ajouter une entrée statique",
+        l2_mac_err: "Saisissez une adresse MAC unicast, p. ex. 00:11:22:33:44:55",
+        l2_vlan_err: "Le VLAN doit être entre 1 et 4094",
+        l2_sec_title: "Limites d'apprentissage",
+        l2_limit: "Limite d'apprentissage",
+        l2_unlimited: "sans limite",
+        l2_limit_err: "La limite doit être entre 0 et 4159, ou vide pour aucune",
+        l2_limit_q: "Limiter le port {n} à moins de 2 adresses ?",
+        l2_limit_d: "Les trames de toute autre adresse source sur ce port sont rejetées. Si vous gérez le switch par ce port, vous pouvez perdre l'accès, aussi après un redémarrage une fois enregistré.",
+        l2_sec_note: "Un port apprend au plus ce nombre d'adresses à la fois ; les trames d'autres adresses source sont rejetées. Les entrées statiques ne comptent pas. Enregistrer conserve les limites.",
         m_title: "Duplication de ports",
         m_active: "actif",
         m_monitor: "Port de supervision",
@@ -2045,6 +2100,17 @@ var LANG = {
         l2_entries: "Einträge",
         l2_del_t: "Eintrag löschen",
         l2_flush_q: "Alle gelernten MAC-Einträge löschen?",
+        l2_pin_t: "Statisch an diesem Port festlegen (wird mit der Konfiguration gespeichert)",
+        l2_add: "Statischen Eintrag hinzufügen",
+        l2_mac_err: "Bitte eine Unicast-MAC eingeben, z. B. 00:11:22:33:44:55",
+        l2_vlan_err: "VLAN muss 1-4094 sein",
+        l2_sec_title: "Lernlimits",
+        l2_limit: "Lernlimit",
+        l2_unlimited: "kein Limit",
+        l2_limit_err: "Das Limit muss 0-4159 sein, leer für keines",
+        l2_limit_q: "Port {n} auf weniger als 2 Adressen begrenzen?",
+        l2_limit_d: "Frames weiterer Quelladressen an diesem Port werden verworfen. Wenn Sie den Switch über diesen Port verwalten, können Sie sich aussperren, nach dem Speichern auch über einen Neustart hinaus.",
+        l2_sec_note: "Ein Port lernt höchstens so viele Adressen gleichzeitig; Frames weiterer Quelladressen werden verworfen. Statische Einträge zählen nicht. Speichern behält die Limits.",
         m_title: "Port-Spiegelung",
         m_active: "aktiv",
         m_monitor: "Monitor-Port",
@@ -2415,6 +2481,8 @@ var CONF_CMDS = [
     /^lldp\s+(on|off)$/,
     /^bw\s+(in|out)\s+\d+\s+\S+$/,
     /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
+    /^l2\s+static\s+[0-9a-f]{2}([:-][0-9a-f]{2}){5}\s+\d{1,4}\s+(\d+|d)$/i,
+    /^l2\s+limit\s+\d+\s+(\d+|off)$/,
 ];
 
 function isConfCmd(line) {
@@ -4052,12 +4120,26 @@ function l2Render() {
         tr.insertCell().textContent = e.vlan;
         tr.insertCell().textContent = ty;
         var dc = tr.insertCell();
+        // A learned entry can be pinned to its port: an "l2 static" command, saved with the config
+        if (e.pport !== "CPU" && !e.stat && !e.lag && !(parseInt(e.mac.slice(0, 2), 16) & 1)) dc.appendChild(h("button", {
+            class: "ctl",
+            text: "\ud83d\udccc",
+            title: t("l2_pin_t"),
+            onclick: function() {
+                postCmd(l2StaticCmd(e.mac, e.vlan, e.pport)).then(function() {
+                    e.stat = true;
+                    l2Render();
+                }).catch(function() {});
+            }
+        }));
+        // A static unicast entry goes through "l2 static ... d", so the saved config forgets it too;
+        // the firmware's own multicast entries (01:80:c2:...) are deleted as before
         if (e.pport !== "CPU") dc.appendChild(h("button", {
             class: "ctl",
             text: "\u2715",
             title: t("l2_del_t"),
             onclick: function() {
-                getJSON("/l2_del.json?idx=" + e.idx).then(function() {
+                (e.stat && !(parseInt(e.mac.slice(0, 2), 16) & 1) ? postCmd(l2StaticCmd(e.mac, e.vlan, "d")) : getJSON("/l2_del.json?idx=" + e.idx)).then(function() {
                     l2Rows = l2Rows.filter(function(x) {
                         return x !== e
                     });
@@ -4087,10 +4169,92 @@ $("l2flush").addEventListener("click", function() {
         }).catch(function() {});
     });
 });
+function l2StaticCmd(mac, vlan, port) {
+    return "l2 static " + mac.toLowerCase().replace(/-/g, ":") + " " + vlan + " " + port;
+}
+$("l2add").addEventListener("click", function() {
+    var mac = $("l2mac").value.trim(),
+        vlan = parseInt($("l2vlan").value, 10);
+    if (!/^[0-9a-f]{2}([:-][0-9a-f]{2}){5}$/i.test(mac) || (parseInt(mac.slice(0, 2), 16) & 1)) {
+        toast(t("l2_mac_err"), "err");
+        return;
+    }
+    if (!(vlan >= 1 && vlan <= 4094)) {
+        toast(t("l2_vlan_err"), "err");
+        return;
+    }
+    postCmd(l2StaticCmd(mac, vlan, $("l2port").value)).then(function() {
+        $("l2mac").value = "";
+        setTimeout(l2Fetch, 300);
+    }).catch(function() {});
+});
+
+/* Learning limits: the running state is the saved config with this session's
+ * commands merged in, as Save would write it */
+function l2SecLoad() {
+    return Promise.all([getText("/config").catch(function() {
+        return ""
+    }), getText("/cmd_log").catch(function() {
+        return ""
+    })]).then(function(r) {
+        var cur = r[0].replace(/\0[\s\S]*$/, "").split(/\r?\n/).map(function(l) {
+            return l.trim().replace(/\s+/g, " ")
+        }).filter(Boolean);
+        var limit = {};
+        mergeConf(cur, [r[1].replace(/\0[\s\S]*$/, "")]).forEach(function(l) {
+            var m;
+            if ((m = l.match(/^l2 limit (\d{1,2}) (\d+)$/))) limit[m[1]] = m[2];
+        });
+        var tb = $("l2sectable").tBodies[0];
+        tb.innerHTML = "";
+        S.ports.forEach(function(p) {
+            var tr = tb.insertRow(),
+                n = String(p.port);
+            var lim = h("input", {
+                class: "in",
+                type: "number",
+                min: "0",
+                max: "4159",
+                placeholder: t("l2_unlimited"),
+                style: "width:8em"
+            });
+            lim.value = limit[n] || "";
+            tr.insertCell().textContent = n;
+            tr.insertCell().appendChild(lim);
+            tr.insertCell().appendChild(h("button", {
+                class: "ctl",
+                text: t("c_apply"),
+                onclick: function() {
+                    var v = lim.value.trim();
+                    if (v !== "" && !(/^\d+$/.test(v) && +v <= 4159)) {
+                        toast(t("l2_limit_err"), "err");
+                        return;
+                    }
+                    var go = function() {
+                        postCmd("l2 limit " + n + " " + (v === "" ? "off" : v)).catch(function() {});
+                    };
+                    if (v !== "" && +v < 2) confirmModal(t("l2_limit_q", {
+                        n: n
+                    }), t("l2_limit_d"), go);
+                    else go();
+                }
+            }));
+        });
+    });
+}
+
 tabHooks.l2 = {
     enter: function() {
         needPorts(function() {
-            l2Fetch()
+            var sel = $("l2port");
+            if (!sel.options.length) S.ports.forEach(function(p) {
+                sel.appendChild(h("option", {
+                    value: p.port,
+                    text: p.port
+                }));
+            });
+            l2Fetch();
+            l2SecLoad();
         })
     },
     leave: function() {
@@ -5027,11 +5191,18 @@ var CONF_OVERWRITE = [
     /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
     /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
+    /^l2\s+static\s+\S+\s+\d{1,4}\b/, /^l2\s+limit\s+\d{1,2}\b/,
 ];
 var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
+function l2StaticNorm(line) {
+    // one spelling per MAC, so a later line for the same MAC and VLAN replaces it
+    var m = line.match(/^l2 static (\S+) (\d{1,4}) (\S+)$/i);
+    return m ? "l2 static " + m[1].toLowerCase().replace(/-/g, ":") + " " + (+m[2]) + " " + m[3].toLowerCase() : line;
+}
+
 function mergeConf(base, texts) {
-    var conf = base.slice();
+    var conf = base.map(l2StaticNorm);
 
     function drop(rx) {
         conf = conf.filter(function(c) {
@@ -5045,6 +5216,11 @@ function mergeConf(base, texts) {
             var m;
             if ((m = line.match(/^vlan (\d{1,4}) d$/))) {
                 drop(new RegExp("^vlan " + m[1] + "( |$)"));
+                return;
+            }
+            line = l2StaticNorm(line);
+            if ((m = line.match(/^l2 static (\S+) (\d{1,4}) d$/))) {
+                drop(new RegExp("^l2 static " + m[1] + " " + m[2] + " "));
                 return;
             }
             if ((m = line.match(/^lag (\d) d$/))) {

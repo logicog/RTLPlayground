@@ -335,6 +335,18 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <div class="scrollx"><table class="t" id="l2table">
           <thead><tr><th data-sort="pport"><span data-i18n="c_port">Port</span><span class="arrow"></span></th><th data-sort="mac">MAC<span class="arrow"></span></th><th data-sort="vlan">VLAN<span class="arrow"></span></th><th data-sort="stat"><span data-i18n="c_type">Type</span><span class="arrow"></span></th><th></th></tr></thead>
           <tbody></tbody></table></div>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center">
+          <input class="in mono" id="l2mac" placeholder="00:11:22:33:44:55" size="17">
+          <label>VLAN <input class="in" id="l2vlan" type="number" min="1" max="4094" value="1" style="width:6em"></label>
+          <label><span data-i18n="c_port">Port</span> <select class="in" id="l2port"></select></label>
+          <button class="ctl" id="l2add" data-i18n="l2_add">Add static entry</button>
+        </div>
+      </div>
+      <div class="card"><h2 data-i18n="l2_sec_title">Learning limits</h2>
+        <p class="small mut" data-i18n="l2_sec_note"></p>
+        <div class="scrollx"><table class="t" id="l2sectable">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="l2_limit">Learning limit</th><th></th></tr></thead>
+          <tbody></tbody></table></div>
       </div>
     </section>
 
