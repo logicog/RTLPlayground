@@ -206,6 +206,38 @@ void rtl8372_init(void) __banked
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();
+	if (machine.phy8221_p8) {
+		// RTL8221B on port 8 / SerDes 1, SFP on port 3 / SerDes 0.
+		// SDS 0 = SGMII as on the dual-SFP boards (RTL837X_REG_SEC_COUNTER needs
+		// SDS 0 on; the SFP code reconfigures it when a module is inserted),
+		// SDS 1 = SGMII for the PHY. The link handler switches SDS 1 to HiSGMII at 2.5G.
+		REG_SET(RTL837X_REG_SDS_MODES, 0x00000042);
+		delay(20);
+		// Find the PHY's MDIO address (the OEM firmware takes it from its board
+		// config; on the S25G2106FP V1.1 it answers at 1, on MDC1/MDIO1):
+		// bits 10-14 of RTL837X_REG_SMI_PORT6_9_ADDR are port 8. Try 1-31 first,
+		// then 0, which Realtek PHYs also answer to as broadcast address.
+		for (uint8_t i = 1; i <= 32; i++) {
+			uint8_t a = i & 0x1f;
+			reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+			sfr_mask_data(1, 0x7c, a << 2);
+			reg_write_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+			phy_read(8, PHY_MMD_PMAPMD, 0x2);
+			if (SFR_DATA_U16 == 0x001c) {
+				print_string("\nRTL8221B on port 8 at MDIO address ");
+				print_byte(a);
+				write_char('\n');
+				break;
+			}
+			if (i == 32)
+				print_string("\nRTL8221B on port 8 not found\n");
+		}
+		phy_config(8);
+		// The PHY comes up powered down and isolated (BMCR 0x3ce0, state 5):
+		// clear BMCR power down (bit 11) and isolate (bit 10), restart autoneg.
+		phy_modify(8, PHY_MMD31, 0xa400, 0x0c00, 0x0200);
+		goto sds_done;
+	}
 	if (machine.n_10g != 2)
 		phy_config(8);	// PHY configuration: External 8221B?
 	if (machine.n_10g)
@@ -228,6 +260,7 @@ void rtl8372_init(void) __banked
 		sfr_mask_data(0, 0xff, 0xe2);
 		reg_write_m(RTL837X_REG_SDS_MODES);
 	}
+sds_done:
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);

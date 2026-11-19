@@ -114,6 +114,10 @@ struct machine {
 	// random resets. Costs management-plane speed only, the ASIC keeps
 	// forwarding in hardware.
 	uint8_t flash_sio;
+	// RTL8372 boards whose RTL8221B 2.5G PHY sits on chip port 8 / SerDes 1,
+	// with the SFP cage on chip port 3 / SerDes 0 (the reverse of the usual
+	// 5+1 layout), e.g. Sirivision S25G2106FP V1.1.
+	uint8_t phy8221_p8;
 };
 
 struct machine_runtime
