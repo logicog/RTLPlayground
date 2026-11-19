@@ -192,11 +192,12 @@ textarea.cfg{
 .dangerzone{border-color:color-mix(in srgb,var(--bad) 40%,var(--bd))}
 button.danger{background:var(--bad);color:#fff;border-color:transparent}
 @media (max-width:820px){
-  #nav{position:fixed;left:-210px;transition:left .18s;z-index:4;box-shadow:var(--shadow)}
+  #nav{position:fixed;left:-210px;transition:left .18s;z-index:30;box-shadow:var(--shadow)}
   #nav.open{left:0}
-  #burger{display:block}
+  #burger{display:block;position:fixed;top:8px;left:10px;z-index:33;background:var(--panel);border:0;border-radius:4px;cursor:pointer;padding:4px;}
+  #brand{padding-left:46px}
   main{padding:14px 12px 40px}
-  #top{padding:8px 10px;gap:7px}
+  #top{padding:8px 46px 8px 46px;gap:7px}
   #ttitle{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #dirty{padding:2px 7px}
 }
@@ -230,11 +231,13 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   <div id="navfoot"><span id="fver"></span></div>
 </nav>
 
+<button id="burger" title="Menu">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+</button>
+  
 <div id="wrap">
   <header id="top">
-    <button id="burger" title="Menu">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-    </button>
+
     <span id="ttitle"></span>
     <div id="strip"></div>
     <span id="dirty" data-i18n="hdr_dirty" data-i18n-t="hdr_dirty_t">unsaved changes</span>
