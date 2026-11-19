@@ -37,3 +37,24 @@ mirror <mirroring port> <P1>[r|t] [P2][r|t] ...
 mirror d
   Deletes mirroring configuration
 ```
+
+# Remote SPAN (RSPAN)
+RSPAN mirrors traffic to a monitoring port and adds an outer VLAN tag (TPID 0x8100)
+to the copies, so they can be carried across the network to an analyzer that is a
+member of that VLAN. The inner frame keeps its original VLAN tag.
+
+The monitoring port must be a copper 2.5G port. On the RTL8373 the SFP/10G port does
+not emit mirror copies and cannot be used as the monitoring port.
+
+The mirror VLAN should be dedicated: copies keep the original source MAC addresses,
+so switches behind the monitoring port learn those addresses in the RSPAN VLAN.
+
+# RSPAN on the Serial Console
+```
+rspan <mirroring port> <vlan> <P1>[r|t] [P2][r|t] ...
+  mirror to <mirroring port> and add outer 802.1Q tag <vlan> to the copies,
+  source ports are P1 with the given packet types, P2 and so on
+
+rspan off
+  Deletes mirroring and RSPAN tagging
+```

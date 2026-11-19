@@ -841,6 +841,57 @@ err:
 	cmd_error("ingress [p]<u/t/a>...\n");
 }
 
+void parse_rspan(void)
+{
+	__xdata uint8_t mtp = 0;
+	__xdata uint16_t vid = 0;
+	__xdata uint16_t rx_pmask = 0;
+	__xdata uint16_t tx_pmask = 0;
+
+	if (cmd_compare(1, "off")) {
+		port_mirror_del();
+		return;
+	}
+
+	if (cmd_words_len < 4)
+		goto err;
+
+	uint8_t ret = cmd_parse_port(cmd_words_b[1]);
+	if (ret == 0)
+		goto err;
+	mtp = atoi_results_u8;
+
+	if (atoi_short(cmd_words_b[2]) == 0 || atoi_results_short == 0 || atoi_results_short > 4094)
+		goto err;
+	vid = atoi_results_short;
+
+	uint8_t w = 3;
+	uint8_t port;
+	while (w < cmd_words_len) {
+		uint8_t idx = cmd_words_b[w++];
+		ret = cmd_parse_port(idx);
+		if (ret == 0)
+			goto err;
+
+		idx += ret;
+		port = atoi_results_u8;
+
+		ret = cmd_buffer[idx];
+		uint16_t pmask = ((uint16_t)1) << port;
+		if (ret != 't')
+			rx_pmask |= pmask;
+		if (ret != 'r')
+			tx_pmask |= pmask;
+	}
+	port_rspan_set(mtp, vid, rx_pmask, tx_pmask);
+	return;
+
+err:
+	cmd_error("rspan [off/<mirroring port> <vlan> [port][t/r]]...\n");
+	return;
+}
+
+
 void parse_mirror(void)
 {
 	__xdata uint8_t mirroring_port = 0;
@@ -2040,6 +2091,8 @@ void cmd_parser(void) __banked
 			parse_isolate();
 		} else if (cmd_compare(0, "mirror")) {
 			parse_mirror();
+		} else if (cmd_compare(0, "rspan")) {
+			parse_rspan();
 		} else if (cmd_compare(0, "lag")) {
 			parse_lag();
 		} else if (cmd_compare(0, "laghash")) {
