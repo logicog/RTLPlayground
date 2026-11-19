@@ -15,6 +15,7 @@ var LANG = {
         nav_system: "System",
         nav_fw: "Firmware",
         nav_wol: "Wake-on-LAN",
+        nav_tools: "Tools",
         wol_title: "Wake-on-LAN",
         wol_intro: "Send a magic packet to a MAC address. Without a VLAN the management VLAN is used; VLAN 0 sends the packet untagged.",
         wol_mac: "MAC address",
@@ -412,6 +413,7 @@ var LANG = {
         nav_system: "システム",
         nav_fw: "ファームウェア",
         nav_wol: "Wake-on-LAN",
+        nav_tools: "ツール",
         wol_title: "Wake-on-LAN",
         wol_intro: "MAC アドレスにマジックパケットを送信します。VLAN を省略すると管理 VLAN を使用し、VLAN 0 はタグなしで送信します。",
         wol_mac: "MAC アドレス",
@@ -732,6 +734,7 @@ var LANG = {
         nav_system: "系统",
         nav_fw: "固件",
         nav_wol: "网络唤醒",
+        nav_tools: "工具",
         wol_title: "网络唤醒",
         wol_intro: "向 MAC 地址发送魔术包。省略 VLAN 时使用管理 VLAN；VLAN 0 表示不带标签发送。",
         wol_mac: "MAC 地址",
@@ -1128,6 +1131,7 @@ var LANG = {
         nav_system: "Sistema",
         nav_fw: "Firmware",
         nav_wol: "Wake-on-LAN",
+        nav_tools: "Herramientas",
         wol_title: "Wake-on-LAN",
         wol_intro: "Envía un magic packet a una dirección MAC. Sin VLAN se usa la VLAN de gestión; VLAN 0 envía sin etiqueta.",
         wol_mac: "Dirección MAC",
@@ -1527,6 +1531,7 @@ var LANG = {
         nav_system: "Système",
         nav_fw: "Micro logiciel",
         nav_wol: "Wake-on-LAN",
+        nav_tools: "Outils",
         wol_title: "Wake-on-LAN",
         wol_intro: "Envoie un magic packet à une adresse MAC. Sans VLAN, la VLAN de gestion est utilisée ; VLAN 0 envoie sans étiquette.",
         wol_mac: "Adresse MAC",
@@ -1889,6 +1894,7 @@ var LANG = {
         nav_system: "System",
         nav_fw: "Firmware",
         nav_wol: "Wake-on-LAN",
+        nav_tools: "Werkzeuge",
         wol_title: "Wake-on-LAN",
         wol_intro: "Sendet ein Magic Packet an eine MAC-Adresse. Ohne VLAN wird das Management-VLAN verwendet; VLAN 0 sendet ohne Tag.",
         wol_mac: "MAC-Adresse",
@@ -2592,6 +2598,13 @@ function confirmModal(title, detail, onok) {
     ]);
 }
 
+var NAV_GROUPS = {
+    tools: {
+        icon: "M14 3l7 7-3 3-7-7zM3 18l6-6 3 3-6 6H3z",
+        labelKey: "nav_tools"
+    }
+};
+
 var TABS = [{
         id: "dash",
         icon: "M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z"
@@ -2646,7 +2659,8 @@ var TABS = [{
     },
     {
         id: "wol",
-        icon: "M12 2v10M5.6 5.6a9 9 0 1012.8 0"
+        icon: "M12 2v10M5.6 5.6a9 9 0 1012.8 0",
+        group: "tools"
     },
     {
         id: "fw",
@@ -2655,6 +2669,42 @@ var TABS = [{
 ];
 var curTab = "dash";
 var tabHooks = {};
+
+var navGroups = {};
+
+function navGroup(id) {
+    var group = NAV_GROUPS[id];
+    if (!navGroups[id]) {
+        var el = h("li", {
+            id: "nv-" + id,
+            class: "navgroup"
+        });
+        var sub = h("ul", {
+            class: "navsub"
+        });
+        el.appendChild(h("div", {
+            class: "navhead",
+            onclick: function() {
+                el.classList.toggle("open")
+            }
+        }, [
+            h("span", {
+                html: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="' + group.icon + '"/></svg>'
+            }),
+            h("span", {
+                text: t(group.labelKey)
+            }),
+            h("span", {
+                class: "caret",
+                text: "\u203a"
+            }),
+        ]));
+        el.appendChild(sub);
+        $("navlist").appendChild(el);
+        navGroups[id] = el;
+    }
+    return navGroups[id].querySelector("ul.navsub");
+}
 
 function showTab(id) {
     var old = tabHooks[curTab];
@@ -2665,13 +2715,21 @@ function showTab(id) {
         $("nv-" + tb.id).classList.toggle("act", tb.id === id);
     });
     $("ttitle").textContent = t("nav_" + id);
+    var tb = null;
+    TABS.forEach(function(t) {
+        if (t.id === id) tb = t;
+    });
+    if (tb && tb.group) {
+        var g = $("nv-" + tb.group);
+        if (g) g.classList.add("open");
+    }
     $("nav").classList.remove("open");
     if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
     var hk = tabHooks[id];
     if (hk && hk.enter) hk.enter();
 }
 TABS.forEach(function(tb) {
-    $("navlist").appendChild(h("li", {
+    var li = h("li", {
         id: "nv-" + tb.id,
         onclick: function() {
             showTab(tb.id)
@@ -2683,7 +2741,12 @@ TABS.forEach(function(tb) {
         h("span", {
             text: t("nav_" + tb.id)
         }),
-    ]));
+    ]);
+    if (tb.group) {
+        navGroup(tb.group).appendChild(li);
+        return;
+    }
+    $("navlist").appendChild(li);
 });
 $("burger").addEventListener("click", function() {
     $("nav").classList.toggle("open")
