@@ -226,7 +226,10 @@ class Handler(SimpleHTTPRequestHandler):
             command = self._read_raw()
             state["cmd_history"].append(command)
             vprint(f"Received command: '{command}'")
-            response = self.parse_cmd(command.strip());
+            response, missing = self.parse_cmd(command.strip())
+
+            if missing:
+                return self._send(501, f"httpd_sim: no handler for {' '.join(missing)}\n".encode())
 
             if response is not None:
                 return self._send(200, response, "text/plain")
@@ -304,14 +307,21 @@ class Handler(SimpleHTTPRequestHandler):
 
     def parse_cmd(self, cmdstring):
         response = bytearray()
+        missing = []
         for cmd in cmdstring.split("\n"):
             pieces = cmd.split(" ")
+            if not pieces[0]:
+                continue
             handler = self.get_parsers().get(pieces[0])
+            if handler is None:
+                print(f"httpd_sim: no handler for '{cmd}'")
+                missing.append(pieces[0])
+                continue
             result = handler(pieces)
             if(result is not None):
                 response.extend(result)
                 response.extend(b"\n")
-        return response
+        return response, missing
 
     def get_parsers(self):
         return {
