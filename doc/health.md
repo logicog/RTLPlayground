@@ -15,14 +15,15 @@ tx   max 00 slow 0x0000
 stp  max 04 slow 0x0001
 cmd  max 02 slow 0x0001
 lldp max 00 slow 0x0000
+cpu busy 3% max 41%
 sp 80 untouched 62
 tcp st 00 tmr 00 rtx 00 rto 00 len 0x0000 mss 0x05b4
   lport 0x0000 rport 0x0000 rip 0x0000 0x0000
 httpd left 0x0000 entry 00 stp 01 mvlan 0x0002
 ```
 
-The instrumentation is not part of a default build. It costs about 1.1 kB
-of bank 2, a few bytes of xdata and seven banked calls per main-loop pass,
+The instrumentation is not part of a default build. It costs about 1.9 kB
+of bank 2, a few bytes of xdata and nine banked calls per main-loop pass,
 which is nothing a user needs unless they are chasing a problem, so it is
 switched on at build time:
 
@@ -32,7 +33,7 @@ make MACHINE=SWTGW218AS HEALTH=1
 
 Without it the hooks compile to nothing and `health` is not a command.
 
-All figures are raw hex. The counters are cumulative: take two dumps a known
+All figures but the CPU line are raw hex. The counters are cumulative: take two dumps a known
 time apart and the differences give the rates.
 
 ## The first line
@@ -56,6 +57,22 @@ slow and knowing why.
 A dump of its own output takes the console some milliseconds, so running
 `health` repeatedly increments the `cmd` counters by itself. That is the
 instrument observing itself, not a fault.
+
+## CPU load
+
+The loop sleeps in one place, right before it would poll for nothing, and
+wakes on the next interrupt. The time between the two sides of that sleep
+is measured with the free-running count of timer2 and kept as whole ticks
+plus a remainder, which gives a resolution far below the tick. Once a second the time asleep is turned into the share
+of the second the CPU was awake: `busy` is that figure for the last whole
+second and `max` the worst second since boot, both in decimal percent,
+rounded to the nearest tick. An idle switch sits in the low single digits.
+A second in which the loop never slept reads 100, and a stall longer than a
+second stretches the window rather than skipping it.
+The interrupt handlers that end a sleep and the stamps themselves are counted
+as asleep, so the figure runs about one percent low: on rtlsim the switch
+reads 3 against the simulator's own 3.8 when idle and 13 against 14.0 under
+a 500 packet per second ping.
 
 ## Stack
 

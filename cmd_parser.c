@@ -2248,6 +2248,7 @@ void execute_commands(__xdata uint8_t *p) __banked {
 }
 
 #ifdef HEALTH
+#include "health_idle.h"
 /*
  * Health instrumentation. The counters live in xdata and are fed from the
  * main loop through the banked entry points below; the "health" command
@@ -2265,6 +2266,10 @@ static __xdata uint16_t ph_last_t;
 static __xdata uint8_t  ph_max[HEALTH_PHASES];
 static __xdata uint16_t ph_slow[HEALTH_PHASES];
 
+static __xdata uint16_t idle_win_tick;
+static __xdata uint8_t  busy_last;
+static __xdata uint8_t  busy_max;
+
 /* The ISR increments ticks between the two byte reads of a 16-bit load, so
  * read until two loads agree. */
 static uint16_t ticks_lo(void)
@@ -2279,10 +2284,52 @@ static uint16_t ticks_lo(void)
 }
 
 
+static void health_stamp(void)
+{
+	__xdata uint8_t h, l;
+	do {
+		health_now_tick = ticks_lo();
+		do {
+			h = TH2;
+			l = TL2;
+		} while (h != TH2);
+	} while (health_now_tick != ticks_lo());
+	health_now_t2 = ((uint16_t)h << 8) | l;
+}
+
+
 void health_loop_start(void) __banked
 {
 	health_loops++;
 	ph_last_t = ticks_lo();
+	if (!health_t2_per_tick) {
+		health_t2_per_tick = 0 - RCAP2_U16;
+		idle_win_tick = ph_last_t;
+	}
+	health_window = ph_last_t - idle_win_tick;
+	if (health_window < SYS_TICK_HZ)
+		return;
+	busy_last = health_busy_pct();
+	if (busy_last > busy_max)
+		busy_max = busy_last;
+	health_idle_ticks = 0;
+	health_idle_sub = 0;
+	idle_win_tick = ph_last_t;
+}
+
+
+void health_sleep_start(void) __banked
+{
+	health_stamp();
+	health_sleep_tick = health_now_tick;
+	health_sleep_t2 = health_now_t2;
+}
+
+
+void health_sleep_end(void) __banked
+{
+	health_stamp();
+	health_idle_add();
 }
 
 
@@ -2350,6 +2397,12 @@ void health_show(void) __banked
 	ph_line("stp ", HEALTH_PH_STP);
 	ph_line("cmd ", HEALTH_PH_CMD);
 	ph_line("lldp", HEALTH_PH_LLDP);
+
+	print_string("cpu busy ");
+	itoa(busy_last);
+	print_string("% max ");
+	itoa(busy_max);
+	print_string("%\n");
 
 	/* Stack: current depth plus how much of the painted area is untouched */
 	print_string("sp ");
