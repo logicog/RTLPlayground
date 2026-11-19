@@ -307,6 +307,8 @@ class Handler(SimpleHTTPRequestHandler):
         for cmd in cmdstring.split("\n"):
             pieces = cmd.split(" ")
             handler = self.get_parsers().get(pieces[0])
+            if handler is None:
+                continue
             result = handler(pieces)
             if(result is not None):
                 response.extend(result)
