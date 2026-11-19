@@ -4320,8 +4320,18 @@ tabHooks.isolate = {
     }
 };
 
-var HASHF = ["spa", "smac", "dmac", "sip", "dip", "sport", "dport"];
+var lagPortOwner = [];
 
+function lagRefreshPortLocks() {
+    for (var g = 1; g <= 4; g++) {
+        for (var p = 1; p <= S.n; p++) {
+            var cb = $("lg" + g + "p" + p);
+            cb.disabled = lagPortOwner[p] !== 0 && lagPortOwner[p] !== g;
+        }
+    }
+}
+
+var HASHF = ["spa", "smac", "dmac", "sip", "dip", "sport", "dport"];
 function buildLag() {
     var w = $("lagwrap");
     if (w.children.length) return;
@@ -4334,19 +4344,21 @@ function buildLag() {
         ms.appendChild(h("option", { value: "static", text: t("lag_static") }));
         ms.appendChild(h("option", { value: "lacp", text: "LACP" }));
         ms.addEventListener("change", function() {
-            $("lgs" + g).textContent = ms.value === "lacp" ? t("lacp_hint") : ""
+            $("lgs" + g).textContent = ms.value === "lacp" ? t("lacp_hint") : "\u00a0"
         });
         mr.appendChild(ms);
         card.appendChild(mr);
-        card.appendChild(h("p", { class: "small mono", id: "lgs" + g, style: "margin-bottom:10px" }));
+        card.appendChild(h("p", { class: "small mono", id: "lgs" + g, text: "\u00a0", style: "margin-bottom:10px" }));
         var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" });
-        for (var p = 1; p <= S.n; p++) pr.appendChild(h("label", null, [
-            h("input", {
-                type: "checkbox",
-                id: "lg" + g + "p" + p
-            }), document.createTextNode(" " + p + " "),
-        ]));
+        lagPortOwner[0] = 0;
+        for (var p = 1; p <= S.n; p++) {
+            var cb = h("input", {type: "checkbox",id: "lg" + g + "p" + p});
+            pr.appendChild(h("label", null, [cb, document.createTextNode(" " + p + " "),]))
+            lagPortOwner[p] = 0;
+        };
         card.appendChild(pr);
+        console.log("buildLag:" + lagPortOwner)
+        
         var hr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small" });
         hr.appendChild(h("span", { class: "mut", text: t("lag_hash") }));
         HASHF.forEach(function(f) {
@@ -4365,24 +4377,29 @@ function buildLag() {
         w.appendChild(card);
     })(g);
 }
-var lacpCfg = [0, 0, 0, 0, 0];
 
+var lacpCfg = [0, 0, 0, 0, 0];
 function lagLoad() {
     return getJSON("/lag.json").then(function(s) {
         s.lags.forEach(function(l) {
             var g = l.lagNum + 1;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            for (var p = 1; p <= S.n; p++)
-                $("lg" + g + "p" + p).checked = l.members.includes(p);
+            for (var p = 1; p <= S.n; p++) {
+                if (l.members.includes(p))
+                    lagPortOwner[p] = g;
+                $("lg" + g + "p" + p).checked = lagPortOwner[p]===g;
+            };
+            
             $("lgm" + g).value = l.type;
-            $("lgs" + g).textContent = l.type == "lacp" ? "LACP: " + t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "";
+            $("lgs" + g).textContent = l.type == "lacp" ? "LACP: " + t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "\u00a0";
             lacpCfg[g] = l.type=="lacp";
             var hash = parseInt(l.hash, 16);
             HASHF.forEach(function(f, i) {
                 $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)
             });
         });
-
+        lagRefreshPortLocks();
+        
         var tb = $("lacptbl").tBodies[0];
         tb.innerHTML = "";
         s.ports.forEach(function(p) {
