@@ -29,6 +29,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_page_json \
         $(BUILDDIR)/test_httpd_tx \
         $(BUILDDIR)/test_tick_gate \
+        $(BUILDDIR)/test_health_idle \
         $(BUILDDIR)/test_timer \
         $(BUILDDIR)/test_cpu_vlan_full \
         $(BUILDDIR)/test_cpu_vlan_restricted \
@@ -58,6 +59,9 @@ $(BUILDDIR)/test_port_tables: test_port_tables.c $(TABLE_ENV) hw_mock.h | $(BUIL
 
 $(BUILDDIR)/test_tick_gate: test_tick_gate.c support.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/timer.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BUILDDIR)/test_health_idle: test_health_idle.c support.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/health_idle.h | $(BUILDDIR)
+	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
 # timer.c is compiled UNMODIFIED from the firmware tree.
 $(BUILDDIR)/test_timer: test_timer.c support.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/timer.c | $(BUILDDIR)
