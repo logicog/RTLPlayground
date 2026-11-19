@@ -53,7 +53,7 @@ static void t_rates(void)
 	run(600, 10);
 	CHECK(stp_calls == 10 * STP_HZ, "a 0.6 ms pass, the loop no longer sleeping: still 500 (was 4166)");
 	run(1300000, 13);
-	CHECK(stp_calls <= 10 * STP_CATCH_UP, "a 1.3 s pass loses time instead of firing 65 steps at once");
+	CHECK(stp_calls == 9 * STP_CATCH_UP, "a 1.3 s pass fires at most STP_CATCH_UP steps: 9 passes with work give 72, not 65 at once");
 }
 
 static void t_wrap(void)
