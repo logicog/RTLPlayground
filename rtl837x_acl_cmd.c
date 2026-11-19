@@ -6,8 +6,8 @@
 #include "cmd_parser.h"
 #include "rtl837x_acl.h"
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
+#pragma codeseg BANK4
+#pragma constseg BANK4
 
 #define ACL_BAD		0xff
 
