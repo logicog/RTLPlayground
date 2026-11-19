@@ -1855,6 +1855,35 @@ void print_sw_version(void) __banked {
 	write_char('\n');
 }
 
+// reboot [now | in <minutes> | cancel]
+static void parse_reboot(void)
+{
+	if (cmd_words_len == 2 && cmd_compare(1, "now")) {
+		reboot_sec = 2;		// 1..2 s: the reply gets out first
+		reboot_pending = 1;
+		return;
+	}
+	if (cmd_words_len == 3 && cmd_compare(1, "in")
+	    && atoi_short(cmd_words_b[2]) && atoi_results_short
+	    && atoi_results_short <= 1092) {	// 65535 s
+		reboot_sec = atoi_results_short * 60;
+		reboot_pending = 1;
+	} else if (cmd_words_len == 2 && cmd_compare(1, "cancel")) {
+		reboot_pending = 0;
+	} else if (cmd_words_len != 1) {
+		cmd_error("reboot [now | in <minutes> | cancel]\n");
+		return;
+	}
+	if (!reboot_pending) {
+		print_string("No reboot scheduled\n");
+		if (cmd_words_len == 1)
+			print_string("reboot [now | in <minutes> | cancel]\n");
+		return;
+	}
+	print_string("Reboot in ");
+	itoa_short((reboot_sec - 1) / 60 + 1);	// round up
+	print_string(" minute(s)\n");
+}
 
 // Identify command
 void cmd_parser(void) __banked
@@ -1875,9 +1904,8 @@ void cmd_parser(void) __banked
 	print_byte(cmd_words_b[6]); write_char('\n');
 #endif
 	if (cmd_words_len >= 1) {
-		if (cmd_compare(0, "reset")) {
-			print_string("\nRESET\n\n");
-			reset_chip();
+		if (cmd_compare(0, "reboot")) {
+			parse_reboot();
 		} else if (cmd_compare(0, "factory-reset")) {
 			print_string("\nFACTORY RESET\n\n");
 			flash_default_config();
