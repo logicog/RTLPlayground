@@ -17,7 +17,7 @@ seg() {
 }
 
 stack() {
-    sed -rn 's/.* with ([0-9]+) bytes available.*/\1/p' "$1/rtlplayground.mem"
+    sed -rn 's/.*[Ss]tack starts at.* with ([0-9]+) bytes available.*/\1/p' "$1/rtlplayground.mem"
 }
 
 web() {
