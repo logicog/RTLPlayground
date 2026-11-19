@@ -17,7 +17,13 @@ seg() {
 }
 
 stack() {
-    sed -rn 's/.* with ([0-9]+) bytes available.*/\1/p' "$1/rtlplayground.mem"
+    sed -rn 's/.*[Ss]tack starts at.* with ([0-9]+) bytes available.*/\1/p' "$1/rtlplayground.mem"
+}
+
+direct() {
+    local s
+    s=$(stack "$1")
+    echo $(( ${s:-0} > 128 ? ${s:-0} - 128 : 0 ))
 }
 
 web() {
@@ -33,8 +39,9 @@ echo "### $MACHINE"
 echo
 printf '| %-15s | %7s | %7s | %7s |\n' "segment" "main" "branch" "change"
 echo "| --------------- | ------: | ------: | ------: |"
-for s in HOME CSEG BANK1 BANK2 BANK3 BANK4 DSEG XSEG; do
+for s in HOME CSEG BANK1 BANK2 BANK3 BANK4 XSEG; do
     print_line "$s" "$(seg "$s" "$MAIN")" "$(seg "$s" "$BRANCH")"
 done
+print_line "direct RAM free" "$(direct "$MAIN")" "$(direct "$BRANCH")"
 print_line "stack available" "$(stack "$MAIN")" "$(stack "$BRANCH")"
 print_line "WEB" "$(web "$MAIN")" "$(web "$BRANCH")"
