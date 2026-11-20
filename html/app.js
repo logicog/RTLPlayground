@@ -4396,7 +4396,7 @@ function lagLoad() {
             };
             
             $("lgm" + g).value = l.type;
-            $("lgs" + g).textContent = l.type == "lacp" ? t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "\u00a0";
+            $("lgs" + g).textContent = l.type == "lacp" ? t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "";
             lacpCfg[g] = l.type=="lacp";
             var hash = parseInt(l.hash, 16);
             HASHF.forEach(function(f, i) {
