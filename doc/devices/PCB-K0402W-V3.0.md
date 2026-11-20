@@ -13,6 +13,35 @@ of the device just above the big label, might be covered by a QC sticker.
 
 <img src="photos/PCB-K0402W-V3.0/HiSource_HI-K0402WS.jpg" width="300" />
 
+* Davuaz Da-K6402W
+
+  This variant has **no reset button** - the front panel switch is a VLAN
+  switch marked `S<>V`, not a reset. The reset button is only a modification
+  on this board (a push button from TP131 to ground through 1 kOhm), so the
+  reset input is left unpopulated. #824 enables the internal pull-up on that
+  input, which keeps the boot from mistaking the floating pin for a pressed
+  button.
+
+  The front switch on the Da-K6402W is marked `S<>V` and selects the flash chip
+  that is active. With it in the `S` position the switch runs the firmware from
+  the chip that carries the web interface, with it in `V` the original firmware
+  runs - and that one has no network stack at all (no DHCP, no IP), so the web
+  interface is not reachable in that position.
+
+  Keep the switch in the `S` position for RTLPlayground. Note when
+  programming: the clip does not have to hold the HOLD line, so it programs
+  the chip the switch has selected, regardless of which chip it is clipped to.
+
+  **Status:** the machine target `DAVUAZ_DA_K6402W` reuses the
+  `PCB-K0402W-V3.0` board definition unchanged. Verified on the device: `regget
+  4` reports `0x83727000` (RTL8372N), the green and the amber port LEDs light
+  up as documented, the four copper ports are numbered 1 to 4 as expected, and
+  both SFP cages work - a 10G module in the left cage (physical port 5,
+  logical port 8, SDS1) and in the right cage (physical port 6, logical port
+  3, SDS0) link at 10G, read their EEPROM over I2C and report the vendor, the
+  part number, the temperature, the supply voltage, the TX bias and the
+  optical power.
+
 * Ztyuav Z-QWYT0402
 
 <img src="photos/PCB-K0402W-V3.0/Ztyuav_Z-QWYT0402.jpg" width="300" />
@@ -26,6 +55,17 @@ of the device just above the big label, might be covered by a QC sticker.
 * YuanLey YS25-0402 <sup><sub>Note: there are [multiple revisions](PCB-K0402W-V1.0.md) of the YS25-0402. This is the newer revision that has a "Vlan" switch on the front.</sub></sup>
 
 <img src="photos/PCB-K0402W-V3.0/YuanLey_YS25-0402.jpg" width="300"/>
+
+### CPU, PHY and flash
+
+| Part | Identification |
+|------|----------------|
+| SoC | RTL8372N: `regget 4` returns `0x83727000` |
+| PHY | the four 2.5G ports are the internal PHYs of the RTL8372, the board has no external RTL8224 |
+| Flash | `BY25Q16BS`, 16 Mbit / 2 MB |
+
+The stock firmware of the device is the Realtek RTL837x SDK firmware without a
+web interface, so the flash has to be programmed with an SPI clip.
 
 ### Programming
 
