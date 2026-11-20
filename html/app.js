@@ -246,7 +246,7 @@ var LANG = {
         lacp_neg: "negotiating",
         lacp_agg: "aggregator",
         lacp_members: "active members",
-        lacp_hint: "LACP: select candidate ports and press Apply to start negotiation",
+        lacp_hint: "select candidate ports and press Apply to start negotiation",
         lacp_actor: "Actor",
         lacp_partner: "Partner",
         lacp_rxstate: "RX state",
@@ -1430,7 +1430,7 @@ var LANG = {
         lacp_neg: "negociando",
         lacp_agg: "agregador",
         lacp_members: "miembros activos",
-        lacp_hint: "LACP: elige los puertos candidatos y pulsa Aplicar para iniciar la negociación",
+        lacp_hint: "elige los puertos candidatos y pulsa Aplicar para iniciar la negociación",
         lacp_actor: "Local",
         lacp_partner: "Remoto",
         lacp_rxstate: "Estado RX",
@@ -2068,7 +2068,7 @@ var LANG = {
         lacp_neg: "wird ausgehandelt",
         lacp_agg: "Aggregator",
         lacp_members: "aktive Mitglieder",
-        lacp_hint: "LACP: Ports auswählen und Übernehmen drücken, um die Aushandlung zu starten",
+        lacp_hint: "Ports auswählen und Übernehmen drücken, um die Aushandlung zu starten",
         lacp_actor: "Lokal",
         lacp_partner: "Partner",
         lacp_rxstate: "Empfangsstatus",
@@ -4326,7 +4326,10 @@ function lagRefreshPortLocks() {
     for (var g = 1; g <= 4; g++) {
         for (var p = 1; p <= S.n; p++) {
             var cb = $("lg" + g + "p" + p);
-            cb.disabled = lagPortOwner[p] !== 0 && lagPortOwner[p] !== g;
+            if (lagPortOwner[p] !== 0 && lagPortOwner[p] !== g) {
+              cb.checked = false;
+              cb.disabled = true;
+            }
         }
     }
 }
@@ -4344,11 +4347,11 @@ function buildLag() {
         ms.appendChild(h("option", { value: "static", text: t("lag_static") }));
         ms.appendChild(h("option", { value: "lacp", text: "LACP" }));
         ms.addEventListener("change", function() {
-            $("lgs" + g).textContent = ms.value === "lacp" ? t("lacp_hint") : "\u00a0"
+            $("lgs" + g).textContent = ms.value === "lacp" ? t("lacp_hint") : ""
         });
         mr.appendChild(ms);
+        mr.appendChild(h("span", { class: "small mono", id: "lgs" + g, style: "display:inline-blocck;margin-left:10px"}));
         card.appendChild(mr);
-        card.appendChild(h("p", { class: "small mono", id: "lgs" + g, text: "\u00a0", style: "margin-bottom:10px" }));
         var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small"});
         pr.appendChild(h("span", { class: "mut", text: t("c_port") + ":" }));
         lagPortOwner[0] = 0;
@@ -4393,7 +4396,7 @@ function lagLoad() {
             };
             
             $("lgm" + g).value = l.type;
-            $("lgs" + g).textContent = l.type == "lacp" ? "LACP: " + t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "\u00a0";
+            $("lgs" + g).textContent = l.type == "lacp" ? t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "\u00a0";
             lacpCfg[g] = l.type=="lacp";
             var hash = parseInt(l.hash, 16);
             HASHF.forEach(function(f, i) {
