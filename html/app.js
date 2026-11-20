@@ -4349,16 +4349,17 @@ function buildLag() {
         mr.appendChild(ms);
         card.appendChild(mr);
         card.appendChild(h("p", { class: "small mono", id: "lgs" + g, text: "\u00a0", style: "margin-bottom:10px" }));
-        var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" });
+        var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small"});
         pr.appendChild(h("span", { class: "mut", text: t("c_port") + ":" }));
         lagPortOwner[0] = 0;
         for (var p = 1; p <= S.n; p++) {
-            var cb = h("input", {type: "checkbox",id: "lg" + g + "p" + p});
-            pr.appendChild(h("label", null, [cb, document.createTextNode(" " + p + " "),]))
+            pr.appendChild(h("label", null, [
+                h("input", {type: "checkbox",id: "lg" + g + "p" + p}), 
+                document.createTextNode(" " + p + " "),
+            ]))
             lagPortOwner[p] = 0;
         };
         card.appendChild(pr);
-        console.log("buildLag:" + lagPortOwner)
         
         var hr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small" });
         hr.appendChild(h("span", { class: "mut", text: t("lag_hash") }));
