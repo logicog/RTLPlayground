@@ -36,11 +36,24 @@ body{
 h1{font-size:19px;font-weight:650}
 p.sub{color:var(--fg2);font-size:13px;margin-bottom:24px}
 label{display:block;font-size:13px;color:var(--fg2);margin-bottom:6px}
-input[type=password]{
-  width:100%;padding:10px 12px;font-size:15px;color:var(--fg);
+.pwrow{position:relative}
+input.pw{
+  width:100%;padding:10px 44px 10px 12px;font-size:15px;color:var(--fg);
   background:var(--bg);border:1px solid var(--bd);border-radius:8px;outline:none;
 }
-input[type=password]:focus{border-color:var(--ac)}
+input.pw:focus{border-color:var(--ac)}
+/* Reveal toggle inside the field, at its right edge. */
+.eye{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:32px;height:32px;margin:0;padding:0;display:flex;align-items:center;justify-content:center;
+  color:var(--fg2);background:transparent;border:0;border-radius:6px;cursor:pointer;
+}
+.eye:hover{color:var(--fg);background:var(--bg)}
+.eye:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.eye svg{width:19px;height:19px;pointer-events:none}
+.eye .ic-shut{display:none}
+.eye.on .ic-occhi{display:none}
+.eye.on .ic-shut{display:block}
 button{
   width:100%;margin-top:18px;padding:10px;font-size:15px;font-weight:600;
   color:var(--acfg);background:var(--ac);border:0;border-radius:8px;cursor:pointer;
@@ -72,8 +85,23 @@ button:hover{filter:brightness(1.1)}
   <p class="sub" id="sub">RTLPlayground management interface</p>
   <form method="post" action="login">
     <label for="pwd" id="lp">Password</label>
-    <input id="pwd" name="pwd" type="password" autocomplete="current-password" autofocus required
-           oninput="document.getElementById('err').textContent=''">
+    <div class="pwrow">
+      <input id="pwd" class="pw" name="pwd" type="password" autocomplete="current-password" autofocus required
+             oninput="document.getElementById('err').textContent=''">
+      <button type="button" class="eye" id="pwtoggle" aria-pressed="false"
+              aria-label="Show password" title="Show password">
+        <svg class="ic-occhi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <svg class="ic-shut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 3l18 18"/><path d="M10.6 5.2A10.9 10.9 0 0 1 12 5c7 0 11 7 11 7a18.7 18.7 0 0 1-3.2 4.1"/>
+          <path d="M6.6 6.7A18.6 18.6 0 0 0 1 12s4 7 11 7a10.8 10.8 0 0 0 5.4-1.4"/>
+          <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+        </svg>
+      </button>
+    </div>
     <button type="submit" id="lb">Sign in</button>
     <div id="err"></div>
   </form>
@@ -81,16 +109,17 @@ button:hover{filter:brightness(1.1)}
 <script>
 (function(){
   var L={
-    de:["Switch-Anmeldung","RTLPlayground-Verwaltungsoberfläche","Passwort","Anmelden","Falsches Passwort, bitte erneut versuchen."],
-    en:["Switch Login","RTLPlayground management interface","Password","Sign in","Wrong password, try again."],
-    ja:["スイッチ ログイン","RTLPlayground 管理インターフェース","パスワード","ログイン","パスワードが違います。もう一度お試しください。"],
-    zh:["交换机登录","RTLPlayground 管理界面","密码","登录","密码错误，请重试。"],
-    es:["Inicio de sesión del switch","Interfaz de gestión de RTLPlayground","Contraseña","Iniciar sesión","Contraseña incorrecta, inténtalo de nuevo."],
-    fr:["Utilisateur du commutateur","Interface de management RTLPlayground","Mot de passe","Se connecter","Mot de passe erronné, essayez à nouveau."]
+    de:["Switch-Anmeldung","RTLPlayground-Verwaltungsoberfläche","Passwort","Anmelden","Falsches Passwort, bitte erneut versuchen.","Passwort anzeigen","Passwort verbergen"],
+    en:["Switch Login","RTLPlayground management interface","Password","Sign in","Wrong password, try again.","Show password","Hide password"],
+    ja:["スイッチ ログイン","RTLPlayground 管理インターフェース","パスワード","ログイン","パスワードが違います。もう一度お試しください。","パスワードを表示","パスワードを隠す"],
+    zh:["交换机登录","RTLPlayground 管理界面","密码","登录","密码错误，请重试。","显示密码","隐藏密码"],
+    es:["Inicio de sesión del switch","Interfaz de gestión de RTLPlayground","Contraseña","Iniciar sesión","Contraseña incorrecta, inténtalo de nuevo.","Mostrar contraseña","Ocultar contraseña"],
+    fr:["Utilisateur du commutateur","Interface de management RTLPlayground","Mot de passe","Se connecter","Mot de passe erronné, essayez à nouveau.","Afficher le mot de passe","Masquer le mot de passe"]
   };
   var l=null;
   try{l=localStorage.getItem("rtl_lang");}catch(e){}
   if(!L[l])l=(navigator.language||"en").slice(0,2);
+  window.__loginI18n=s;
   var s=L[l]||L.en;
   // Name the tab after the switch: the hostname seen at the last login here,
   // otherwise the address, so several open switches can be told apart

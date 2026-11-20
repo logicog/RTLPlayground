@@ -4,6 +4,9 @@
 
 ## Added
 
+- The login page has a show/hide button inside the password field (eye icon,
+  aria-pressed and translated labels), so an operator can check what was
+  typed before signing in.
 - Devices
   - Support the POE Plus S604GTP-2SX-SL (PCB marking `Hasivo RTL-4GT-2S+ V1.04`), an
     RTL8372 based 4x2.5G PoE + 2xSFP+ switch. The power LED (SYS LED, pad 28) is
