@@ -4320,19 +4320,19 @@ tabHooks.isolate = {
     }
 };
 
-var lagPortOwner = [];
-
-function lagRefreshPortLocks() {
+function lagRefreshPortLocks(lagPortOwner) {
     for (var g = 1; g <= 4; g++) {
         for (var p = 1; p <= S.n; p++) {
             var cb = $("lg" + g + "p" + p);
             if (lagPortOwner[p] !== 0 && lagPortOwner[p] !== g) {
               cb.checked = false;
               cb.disabled = true;
+            } else {
+              cb.disabled = false;
             }
         }
     }
-}
+};
 
 var HASHF = ["spa", "smac", "dmac", "sip", "dip", "sport", "dport"];
 function buildLag() {
@@ -4354,13 +4354,11 @@ function buildLag() {
         card.appendChild(mr);
         var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small"});
         pr.appendChild(h("span", { class: "mut", text: t("c_port") + ":" }));
-        lagPortOwner[0] = 0;
         for (var p = 1; p <= S.n; p++) {
             pr.appendChild(h("label", null, [
                 h("input", {type: "checkbox",id: "lg" + g + "p" + p}), 
                 document.createTextNode(" " + p + " "),
             ]))
-            lagPortOwner[p] = 0;
         };
         card.appendChild(pr);
         
@@ -4381,17 +4379,22 @@ function buildLag() {
         card.addEventListener("change", function() { card.dataset.dirty = "1" });
         w.appendChild(card);
     })(g);
-}
+};
 
 var lacpCfg = [0, 0, 0, 0, 0];
 function lagLoad() {
     return getJSON("/lag.json").then(function(s) {
+        var lagPortOwner = Array(S.n + 1).fill(0);
+        s.lags.forEach(function(l) {
+            var g = l.lagNum + 1;
+            l.members.forEach(function(p) {
+                lagPortOwner[p] = g;
+            })
+        });
         s.lags.forEach(function(l) {
             var g = l.lagNum + 1;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
             for (var p = 1; p <= S.n; p++) {
-                if (l.members.includes(p))
-                    lagPortOwner[p] = g;
                 $("lg" + g + "p" + p).checked = lagPortOwner[p]===g;
             };
             
@@ -4403,7 +4406,7 @@ function lagLoad() {
                 $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)
             });
         });
-        lagRefreshPortLocks();
+        lagRefreshPortLocks(lagPortOwner);
         
         var tb = $("lacptbl").tBodies[0];
         tb.innerHTML = "";
@@ -4415,7 +4418,7 @@ function lagLoad() {
             });
         });
     });
-}
+};
 
 function lagApply(g) {
     var lacp = $("lgm" + g).value === "lacp",
