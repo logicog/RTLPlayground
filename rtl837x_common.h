@@ -83,6 +83,7 @@ struct vlan_tag {
 #define VLAN_TAG_SIZE		(sizeof (struct vlan_tag))
 #define RTL_FRAME_TAG_ID	0x8899
 #define RTL_FRAME_TAG_VERSION	0x04
+#define RTL_REASON_MIRROR	0x3a
 /* Bits of the tag's `flags` word, see doc/CpuPort.md. */
 #define RTL_TAG_LEARN_DIS	0x0020	/* do not learn the source address from this frame */
 #define RTL_TAG_KEEP		0x0080	/* keep the frame's 802.1Q tag format as injected */

@@ -27,6 +27,7 @@
 #include "sessions.h"
 #include "dns.h"
 #include "ntp.h"
+#include "sflow.h"
 #include "uip/uip.h"
 #include "version.h"
 
@@ -87,7 +88,6 @@ __xdata uint8_t  syslog_port_was_on;
 // `N_WORDS`: The total number of command arguments that can be tracked.
 // `cmd_words_len` stores the number of arguments found inside `cmd_buffer`
 // `cmd_words_b` stores the index into `cmd_buffer`, check `cmd_words_len` is index is valid.
-#define N_WORDS 15
 __xdata uint8_t cmd_words_len;
 __xdata uint8_t cmd_words_b[N_WORDS];
 
@@ -868,7 +868,12 @@ void parse_mirror(void)
 		print_short(m);
 		write_char('\n');
 		return;
-	} else if (cmd_compare(1, "off")) {
+	}
+	if (sflow_state.rate) {
+		cmd_error("the mirror session is used by sflow sampling, set it to 0 first\n");
+		return;
+	}
+	if (cmd_compare(1, "off")) {
 		port_mirror_del();
 		return;
 	}
@@ -1920,6 +1925,8 @@ void cmd_parser(void) __banked
 			dns_parse();
 		} else if (cmd_compare(0, "ntp") || cmd_compare(0, "time")) {
 			ntp_parse();
+		} else if (cmd_compare(0, "sflow")) {
+			sflow_parse();
 		} else if (cmd_compare(0, "ip")) {
 			if (cmd_compare(1, "dhcp")) {
 				dhcp_start();
