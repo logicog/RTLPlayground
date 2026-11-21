@@ -24,7 +24,7 @@
 #include "sfp.h"
 #include "dhcp.h"
 #include "syslog.h"
-#include "sessions.h"
+#include "httpd/sessions.h"
 #include "dns.h"
 #include "ntp.h"
 #include "uip/uip.h"
