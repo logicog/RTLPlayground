@@ -2619,6 +2619,11 @@ $("burger").addEventListener("click", function() {
     $("nav").classList.toggle("open")
 });
 
+$("nav-overlay").addEventListener("click", function() {
+    $("nav").classList.remove("open");
+    $("burger").focus();
+});
+
 var IDLE_STOP_MS = 600000,
     lastInput = Date.now();
 ["mousemove", "mousedown", "keydown", "touchstart", "wheel"].forEach(function(ev) {
