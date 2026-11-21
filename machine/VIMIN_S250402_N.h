@@ -1,0 +1,7 @@
+#ifndef _MACHINE_VIMIN_S250402_N_H_
+#define _MACHINE_VIMIN_S250402_N_H_
+
+#define MACHINE_MODEL "Vimin S250402-N"
+#define MACHINE_CHIPSET RTL8372
+
+#endif
