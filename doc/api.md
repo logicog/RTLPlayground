@@ -331,7 +331,7 @@ Object representing static and LACP lags
 | Property | Description
 |----------|------------
 | `on` | Enabled/Disabled globally
-| `type` | "rstp" (rapid) or "stp" (legacy)
+| `type` | "mstp" (multiple), "rstp" (rapid) or "stp" (legacy)
 | `prio` | Bridge Priority
 | `hello` | Hello time (s)
 | `maxage` | Max Age (s)
