@@ -592,6 +592,25 @@ class Handler(SimpleHTTPRequestHandler):
                 }
                 for i in range(1, PORTS + 1)
             ],
+            "neighbors": [
+                {
+                    "port": 3,
+                    "chassis": "00:11:22:33:44:55",
+                    "portId": "eth0",
+                    "sysName": "desk-pc",
+                    "ttl": 117,
+                }
+            ],
+            "counters": [
+                {
+                    "port": i,
+                    "tx": i * 7,
+                    "rx": 5 if i == 3 else 0,
+                    "discarded": 0,
+                    "ageouts": 0,
+                }
+                for i in range(1, PORTS + 1)
+            ],
         }
 
     def _api_counters(self):
