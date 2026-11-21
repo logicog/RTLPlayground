@@ -52,6 +52,17 @@ a{color:var(--ac);text-decoration:none}
 #navlist li svg{flex:none;stroke:currentColor}
 #navlist li:hover{background:var(--panel2);color:var(--fg)}
 #navlist li.act{background:var(--sel);color:var(--ac)}
+#navlist li.navgroup{display:block;padding:0}
+#navlist .navhead{
+  display:flex;align-items:center;gap:9px;padding:7px 10px;
+  border-radius:7px;cursor:pointer;color:var(--fg2);font-weight:500;
+}
+#navlist .navhead:hover{background:var(--panel2);color:var(--fg)}
+#navlist .caret{margin-left:auto;font-size:16px;line-height:1;transition:transform .15s}
+#navlist li.navgroup.open .caret{transform:rotate(90deg)}
+#navlist ul.navsub{display:none;list-style:none;padding:0 0 0 20px;margin:0}
+#navlist li.navgroup.open ul.navsub{display:block}
+#navlist ul.navsub li{padding:6px 10px;font-size:13px}
 #navfoot{padding:10px 16px;border-top:1px solid var(--bd);font-size:12px;color:var(--fg2)}
 #wrap{flex:1;min-width:0;display:flex;flex-direction:column}
 #top{
@@ -519,6 +530,16 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <progress id="fwprog" max="100" value="0" style="display:none;width:220px"></progress>
           <span class="small" id="fwstat"></span>
         </div>
+      </div>
+    </section>
+    <section class="tab" id="tab-wol">
+      <div class="card"><h2 data-i18n="wol_title">Wake-on-LAN</h2>
+        <p class="small mut" data-i18n="wol_intro">Send a magic packet to a MAC address. Without a VLAN the management VLAN is used; VLAN 0 sends the packet untagged.</p>
+        <label class="row"><span class="lb" data-i18n="wol_mac">MAC address</span>
+          <input class="in mono" id="wolmac" maxlength="17" spellcheck="false" data-i18n-p="wol_mac_p" placeholder="aa:bb:cc:dd:ee:ff"></label>
+        <label class="row"><span class="lb" data-i18n="wol_vlan">VLAN (optional)</span>
+          <input class="in sm" id="wolvlan" type="number" min="0" max="4094" data-i18n-p="wol_vlan_p" placeholder="management VLAN"></label>
+        <div style="margin-top:10px"><button class="ctl pri" id="wolsend" data-i18n="wol_send">Send magic packet</button></div>
       </div>
     </section>
   </main>

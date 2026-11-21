@@ -14,6 +14,18 @@ var LANG = {
         nav_bw: "Bandwidth",
         nav_system: "System",
         nav_fw: "Firmware",
+        nav_wol: "Wake-on-LAN",
+        nav_tools: "Tools",
+        wol_title: "Wake-on-LAN",
+        wol_intro: "Send a magic packet to a MAC address. Without a VLAN the management VLAN is used; VLAN 0 sends the packet untagged.",
+        wol_mac: "MAC address",
+        wol_mac_p: "aa:bb:cc:dd:ee:ff",
+        wol_vlan: "VLAN (optional)",
+        wol_vlan_p: "management VLAN",
+        wol_send: "Send magic packet",
+        wol_sent: "Magic packet sent",
+        wol_mac_err: "Enter a valid MAC address",
+        wol_vlan_err: "VLAN must be 0-4094 or empty",
         nav_lldp: "LLDP",
         hdr_dirty: "unsaved changes",
         hdr_dirty_t: "Running config differs from startup config",
@@ -400,6 +412,18 @@ var LANG = {
         nav_bw: "帯域制限",
         nav_system: "システム",
         nav_fw: "ファームウェア",
+        nav_wol: "Wake-on-LAN",
+        nav_tools: "ツール",
+        wol_title: "Wake-on-LAN",
+        wol_intro: "MAC アドレスにマジックパケットを送信します。VLAN を省略すると管理 VLAN を使用し、VLAN 0 はタグなしで送信します。",
+        wol_mac: "MAC アドレス",
+        wol_mac_p: "aa:bb:cc:dd:ee:ff",
+        wol_vlan: "VLAN (任意)",
+        wol_vlan_p: "管理 VLAN",
+        wol_send: "マジックパケットを送信",
+        wol_sent: "マジックパケットを送信しました",
+        wol_mac_err: "有効な MAC アドレスを入力してください",
+        wol_vlan_err: "VLAN は 0〜4094 または空欄にしてください",
         hdr_dirty: "未保存の変更",
         hdr_dirty_t: "実行中の設定が起動設定と異なります",
         hdr_save: "フラッシュに保存",
@@ -709,6 +733,18 @@ var LANG = {
         nav_bw: "带宽限制",
         nav_system: "系统",
         nav_fw: "固件",
+        nav_wol: "网络唤醒",
+        nav_tools: "工具",
+        wol_title: "网络唤醒",
+        wol_intro: "向 MAC 地址发送魔术包。省略 VLAN 时使用管理 VLAN；VLAN 0 表示不带标签发送。",
+        wol_mac: "MAC 地址",
+        wol_mac_p: "aa:bb:cc:dd:ee:ff",
+        wol_vlan: "VLAN (可选)",
+        wol_vlan_p: "管理 VLAN",
+        wol_send: "发送魔术包",
+        wol_sent: "魔术包已发送",
+        wol_mac_err: "请输入有效的 MAC 地址",
+        wol_vlan_err: "VLAN 必须为 0-4094 或留空",
         nav_lldp: "LLDP",
         hdr_dirty: "未保存的更改",
         hdr_dirty_t: "运行配置与启动配置不同",
@@ -1094,6 +1130,18 @@ var LANG = {
         nav_bw: "Ancho de banda",
         nav_system: "Sistema",
         nav_fw: "Firmware",
+        nav_wol: "Wake-on-LAN",
+        nav_tools: "Herramientas",
+        wol_title: "Wake-on-LAN",
+        wol_intro: "Envía un magic packet a una dirección MAC. Sin VLAN se usa la VLAN de gestión; VLAN 0 envía sin etiqueta.",
+        wol_mac: "Dirección MAC",
+        wol_mac_p: "aa:bb:cc:dd:ee:ff",
+        wol_vlan: "VLAN (opcional)",
+        wol_vlan_p: "VLAN de gestión",
+        wol_send: "Enviar magic packet",
+        wol_sent: "Magic packet enviado",
+        wol_mac_err: "Introduce una dirección MAC válida",
+        wol_vlan_err: "La VLAN debe ser 0-4094 o estar vacía",
         hdr_dirty: "cambios sin guardar",
         hdr_dirty_t: "La configuración en ejecución difiere de la guardada",
         hdr_save: "Guardar en flash",
@@ -1482,6 +1530,18 @@ var LANG = {
         nav_bw: "Bande passante",
         nav_system: "Système",
         nav_fw: "Micro logiciel",
+        nav_wol: "Wake-on-LAN",
+        nav_tools: "Outils",
+        wol_title: "Wake-on-LAN",
+        wol_intro: "Envoie un magic packet à une adresse MAC. Sans VLAN, la VLAN de gestion est utilisée ; VLAN 0 envoie sans étiquette.",
+        wol_mac: "Adresse MAC",
+        wol_mac_p: "aa:bb:cc:dd:ee:ff",
+        wol_vlan: "VLAN (facultatif)",
+        wol_vlan_p: "VLAN de gestion",
+        wol_send: "Envoyer le magic packet",
+        wol_sent: "Magic packet envoyé",
+        wol_mac_err: "Saisissez une adresse MAC valide",
+        wol_vlan_err: "La VLAN doit être comprise entre 0 et 4094, ou vide",
         nav_lldp: "Couche de Liaison",
         hdr_dirty: "Changements non sauvegardés",
         hdr_dirty_t: "La configuration utilisée diffère de celle au démarrage",
@@ -1833,6 +1893,18 @@ var LANG = {
         nav_bw: "Bandbreite",
         nav_system: "System",
         nav_fw: "Firmware",
+        nav_wol: "Wake-on-LAN",
+        nav_tools: "Werkzeuge",
+        wol_title: "Wake-on-LAN",
+        wol_intro: "Sendet ein Magic Packet an eine MAC-Adresse. Ohne VLAN wird das Management-VLAN verwendet; VLAN 0 sendet ohne Tag.",
+        wol_mac: "MAC-Adresse",
+        wol_mac_p: "aa:bb:cc:dd:ee:ff",
+        wol_vlan: "VLAN (optional)",
+        wol_vlan_p: "Management-VLAN",
+        wol_send: "Magic Packet senden",
+        wol_sent: "Magic Packet gesendet",
+        wol_mac_err: "Gültige MAC-Adresse eingeben",
+        wol_vlan_err: "VLAN muss 0-4094 oder leer sein",
         hdr_dirty: "ungespeicherte Änderungen",
         hdr_dirty_t: "Laufende Konfiguration weicht von der Startkonfiguration ab",
         hdr_save: "Im Flash speichern",
@@ -2526,6 +2598,13 @@ function confirmModal(title, detail, onok) {
     ]);
 }
 
+var NAV_GROUPS = {
+    tools: {
+        icon: "M14 3l7 7-3 3-7-7zM3 18l6-6 3 3-6 6H3z",
+        labelKey: "nav_tools"
+    }
+};
+
 var TABS = [{
         id: "dash",
         icon: "M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z"
@@ -2579,12 +2658,53 @@ var TABS = [{
         icon: "M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5L6 18"
     },
     {
+        id: "wol",
+        icon: "M12 2v10M5.6 5.6a9 9 0 1012.8 0",
+        group: "tools"
+    },
+    {
         id: "fw",
         icon: "M12 3v12M8 11l4 4 4-4M4 19h16"
     },
 ];
 var curTab = "dash";
 var tabHooks = {};
+
+var navGroups = {};
+
+function navGroup(id) {
+    var group = NAV_GROUPS[id];
+    if (!navGroups[id]) {
+        var el = h("li", {
+            id: "nv-" + id,
+            class: "navgroup"
+        });
+        var sub = h("ul", {
+            class: "navsub"
+        });
+        el.appendChild(h("div", {
+            class: "navhead",
+            onclick: function() {
+                el.classList.toggle("open")
+            }
+        }, [
+            h("span", {
+                html: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="' + group.icon + '"/></svg>'
+            }),
+            h("span", {
+                text: t(group.labelKey)
+            }),
+            h("span", {
+                class: "caret",
+                text: "\u203a"
+            }),
+        ]));
+        el.appendChild(sub);
+        $("navlist").appendChild(el);
+        navGroups[id] = el;
+    }
+    return navGroups[id].querySelector("ul.navsub");
+}
 
 function showTab(id) {
     var old = tabHooks[curTab];
@@ -2595,13 +2715,21 @@ function showTab(id) {
         $("nv-" + tb.id).classList.toggle("act", tb.id === id);
     });
     $("ttitle").textContent = t("nav_" + id);
+    var tb = null;
+    TABS.forEach(function(t) {
+        if (t.id === id) tb = t;
+    });
+    if (tb && tb.group) {
+        var g = $("nv-" + tb.group);
+        if (g) g.classList.add("open");
+    }
     $("nav").classList.remove("open");
     if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
     var hk = tabHooks[id];
     if (hk && hk.enter) hk.enter();
 }
 TABS.forEach(function(tb) {
-    $("navlist").appendChild(h("li", {
+    var li = h("li", {
         id: "nv-" + tb.id,
         onclick: function() {
             showTab(tb.id)
@@ -2613,7 +2741,12 @@ TABS.forEach(function(tb) {
         h("span", {
             text: t("nav_" + tb.id)
         }),
-    ]));
+    ]);
+    if (tb.group) {
+        navGroup(tb.group).appendChild(li);
+        return;
+    }
+    $("navlist").appendChild(li);
 });
 $("burger").addEventListener("click", function() {
     $("nav").classList.toggle("open")
@@ -5459,6 +5592,35 @@ function fwSettle(st, knownGood) {
     }
     setTimeout(probe, 3000);
 }
+function wolSend() {
+    var mac = $("wolmac").value.trim();
+    var vlan = $("wolvlan").value.trim();
+    if (!/^([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$/.test(mac)) {
+        toast(t("wol_mac_err"), "err");
+        return;
+    }
+    if (vlan !== "" && (!/^\d{1,4}$/.test(vlan) || +vlan > 4094)) {
+        toast(t("wol_vlan_err"), "err");
+        return;
+    }
+    var cmd = "wol " + mac.replace(/-/g, ":");
+    if (vlan !== "") cmd += " " + vlan;
+    postCmd(cmd, true).then(function() {
+        toast(t("wol_sent"), "ok");
+    }).catch(function() {});
+}
+$("wolsend").addEventListener("click", wolSend);
+$("wolmac").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") wolSend();
+});
+$("wolvlan").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") wolSend();
+});
+tabHooks.wol = {
+    enter: function() {
+        $("wolmac").focus();
+    }
+};
 tabHooks.fw = {};
 
 window.addEventListener("hashchange", function() {
