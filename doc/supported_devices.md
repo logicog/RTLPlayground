@@ -59,6 +59,7 @@ The following devices have been tested and are fully working:
 | Sodola   | SL902-SWTG024AS | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
 | Sodola   | SL902-SWTGW124AS| Yes     | [PCB-SWTG024AS-V2.1.1_19023](devices/PCB-SWTG024AS-V2.1.1_19023.md) | 2M    | 4 + 2 |
 | Sodola   | SL902-SWTGW215AS| Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 5 + 1 |
+| Sodola   | SL902-SWTGW218AS| Yes     | [PCB_SWTG018AS_V2_1_0](/devices/PCB_SWTG018AS_V2_1_0.md)                  | 2M    | 8 + 1 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                               |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1_REV.A1](devices/270-NB1-MS206B004A1_REV.A1.md)                   | 2M    | 4 + 2 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
