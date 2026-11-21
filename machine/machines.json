@@ -240,6 +240,11 @@
     "pcb": "FG_8GT_1SX"
   },
   {
+    "machine": "S604GTP_2SX_SL",
+    "FriendlyName":  "POEPlus S604GTP-2SX-SL",
+    "pcb": "RTL_4GT_2S__V1_04"
+  },
+  {
     "machine": "SIRIVISION_S25G2206FP_V1_1",
     "FriendlyName": "SIRIVISION S25G2206FP V1.1",
     "pcb": "S25G2206FP_V1_1"
