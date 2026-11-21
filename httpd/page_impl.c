@@ -15,6 +15,7 @@
 #include "machine.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_lacp.h"
+#include "rtl837x_ptp.h"
 #include "page_impl.h"
 #include "syslog.h"
 #include "dhcp.h"
@@ -1162,5 +1163,21 @@ void send_vlanlist(void)
 
 	}
 	char_to_html(']');
+	char_to_html('}');
+}
+
+
+void send_time(void)
+{
+	dbg_string("send_time called\n");
+	machine.ptp[0].read(&machine.ptp[0]);
+
+	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
+	str_code_to_html("{" JSONQUOTE("time") ":\"");
+
+	for (uint8_t i = 0; i < 6; i++)
+		byte_to_html(ptp_sec[i]);
+
+	char_to_html('"');
 	char_to_html('}');
 }

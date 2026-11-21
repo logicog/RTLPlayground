@@ -19,6 +19,7 @@
 #include "rtl837x_bandwidth.h"
 #include "rtl837x_lldp.h"
 #include "rtl837x_storm.h"
+#include "rtl837x_ptp.h"
 #include "rtl837x_trap.h"
 #include "rtl837x_cabletest.h"
 #include "sfp.h"
@@ -29,6 +30,7 @@
 #include "ntp.h"
 #include "uip/uip.h"
 #include "version.h"
+#include "crypto/random.h"
 
 #include "machine.h"
 #include "rtl837x_leds.h"
@@ -39,7 +41,6 @@
 
 extern __code const struct machine machine;
 extern __xdata bool stp_enabled;
-extern __code const uint8_t log_to_phys_port[9];
 extern __xdata bool lldp_enabled;
 
 extern volatile __xdata uint32_t ticks;
@@ -57,13 +58,14 @@ extern __xdata uint16_t session_timeout;
 
 extern __xdata struct dhcp_state dhcp_state;
 
+extern __xdata uint16_t management_vlan;
+extern __xdata struct uip_eth_addr uip_ethaddr;
+
 __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 __xdata uint16_t vlan_ptr;
 
 __xdata char port_names[9][PORT_NAME_SIZE];
 
-extern __xdata uint16_t management_vlan;
-extern __xdata struct uip_eth_addr uip_ethaddr;
 __xdata uint8_t gpio_last_value[8] = { 0 };
 
 // Temporatly for str to hex convertion value.
@@ -1225,6 +1227,63 @@ err:
 }
 
 
+void parse_ptp_set(void)
+{
+	uint8_t idx;
+	uint8_t h_idx = 0;
+	uint8_t val = 0;
+
+	if (cmd_words_len != 3) {
+		goto err;
+	}
+
+	idx = cmd_words_b[2];
+	while(1) {
+		uint8_t c;
+
+		c = cmd_buffer[idx];
+
+		if (c == NUL || c == ' ') {
+			break;
+		}
+
+		if (h_idx == 12) {
+			h_idx = 0;
+			break;
+		}
+
+		// swap hex nibbles
+		val = (val >> 4) | (val << 4);
+
+		if ((uint8_t)(c - '0') < 10) {
+			val |= c - '0';
+		} else {
+			c |= 0x20;
+			c -= 'a';
+			if (c > 5) {
+				h_idx = 0;
+				break;
+			}
+			val |= c + 10;
+		}
+
+		idx++;
+
+		ptp_sec[h_idx >> 1] = val;
+
+		if (h_idx & 1 == 1) {
+			val = 0;
+		}
+		h_idx++;
+	}
+
+	ptp_nsec[0] = ptp_nsec[1] = ptp_nsec[2] = ptp_nsec[3] = 0;
+	return;
+err:
+	cmd_error("ptp [on|off|set|show] [001122334455]");
+}
+
+
 static void print_temperature(uint16_t reg)
 {
 	int16_t v;
@@ -1472,6 +1531,16 @@ void parse_rnd(void)
 	print_byte(sfr_data[1]);
 	print_byte(sfr_data[2]);
 	print_byte(sfr_data[3]);
+	write_char('\n');
+}
+
+
+void parse_random64(void)
+{
+	get_random_64();
+	for (uint8_t i = 0; i < 8; i++) {
+		print_byte(random_64[i]); write_char(' ');
+	}
 	write_char('\n');
 }
 
@@ -2065,6 +2134,8 @@ void cmd_parser(void) __banked
 			parse_physet();
 		} else if (cmd_compare(0, "rnd")) {
 			parse_rnd();
+		} else if (cmd_compare(0, "random64")) {
+			parse_random64();
 		} else if (cmd_compare(0, "passwd")) {
 			parse_passwd();
 		} else if (cmd_compare(0, "eee")) {
@@ -2075,6 +2146,18 @@ void cmd_parser(void) __banked
 			parse_temp();
 		} else if (cmd_compare(0, "storm")) {
 			parse_storm();
+		} else if (cmd_compare(0, "ptp")) {
+			if (cmd_compare(1, "show")) {
+				for (uint8_t i = 0; i < machine.n_ptp; i++)
+					machine.ptp[i].get(&machine.ptp[i]);
+			} else if (cmd_compare(1, "set")) {
+				parse_ptp_set();
+				for (uint8_t i = 0; i < machine.n_ptp; i++)
+					machine.ptp[i].set(&machine.ptp[i]);
+			} else { // FIXME: check for on/off
+				for (uint8_t i = 0; i < machine.n_ptp; i++)
+					machine.ptp[i].init(&machine.ptp[i]);
+			}
 		} else if (cmd_compare(0, "version")) {
 			print_sw_version();
 		} else if (cmd_compare(0, "history")) {

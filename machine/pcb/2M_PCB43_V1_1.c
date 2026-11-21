@@ -1,5 +1,7 @@
 #include "machine_defs.h"
 
+#include "rtl837x_ptp.h"
+
 __code const struct machine machine = {
 	MACHINE_COMMON_SETTING,
 	.mac_flash_offset = 0x1FC000,
@@ -32,4 +34,9 @@ __code const struct machine machine = {
 			LEDS_1G | LEDS_LINK,
 			0 },
 		    },
+	.n_ptp = 1,
+	.ptp[0].init = ptp_init,
+	.ptp[0].read = ptp_read_time,
+	.ptp[0].get = ptp_get_time,
+	.ptp[0].set = ptp_set_time,
 };

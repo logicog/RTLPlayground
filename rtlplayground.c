@@ -711,17 +711,6 @@ void sfr_set_zero(void) {
 }
 
 
-/*
- * Create 32 random number in sfr_data
- */
-void get_random_32(void)
-{
-	// In order to get a new random numner, this bit has to be set each time!
-	reg_bit_set(RTL837X_RLDP_RLPP, RLDP_RND_EN);
-	reg_read_m(RTL837X_RAND_NUM0);
-}
-
-
 /* Read flash using the MMIO capabilities of the DW8051 core
  * Bank is < 0x3f and is the MSB
  * addr gives the address in the bank
@@ -1753,7 +1742,8 @@ void main(void)
 	idle_ready = 1;
 
 	set_sys_led_state(SYS_LED_ON);
-
+	for (uint8_t i = 0; i < machine.n_ptp; i++)
+		machine.ptp[i].init(&machine.ptp[i]);
 	cmd_editor_init();
 
 	health_stack_paint();

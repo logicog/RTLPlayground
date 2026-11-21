@@ -152,13 +152,13 @@ SRCS = \
 	sfp.c \
 	dns.c \
 	dns_cli.c \
-	sessions.c \
 	ntp.c \
 	ntp_cli.c \
 	syslog.c \
 	timer.c \
 	udp_apps.c \
-	crypto/chacha20.c
+	crypto/chacha20.c \
+	crypto/random.c
 
 # RTL837x
 SRCS += \
@@ -178,12 +178,16 @@ SRCS += \
 	rtl837x_storm.c \
 	rtl837x_lacp.c \
 	rtl837x_trap.c \
-	rtl837x_stp_cli.c
+	rtl837x_stp_cli.c \
+	rtl837x_ptp.c \
+	rtl8224_ptp.c \
+	rtl8221_ptp.c
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c \
 	httpd/html_out.c \
-	httpd/page_stp.c
+	httpd/page_stp.c \
+	httpd/sessions.c
 SRCS += \
 	uip/uip.c \
 	uip/uiplib.c \

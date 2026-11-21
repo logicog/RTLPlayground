@@ -36,6 +36,7 @@ var LANG = {
         c_confirm: "Confirm",
         c_close: "Close",
         c_refresh: "Refresh",
+        c_set: "Set",
         c_off: "off",
         c_offc: "Off",
         c_down: "down",
@@ -337,6 +338,8 @@ var LANG = {
         sy_ntp_err: "Enter the host name or IPv4 address of the NTP server",
         sy_ntpint_err: "Poll interval must be 1-1440",
         sy_time_note: "The switch has no battery backed clock: the time is lost at every restart and set again from the NTP server once the network is up. Save to flash to keep the settings.",
+        sy_ptp: "PTP",
+        sy_ptp_time: "PTP time",
         sy_sysport_err: "Syslog port must be 1-65535",
         sy_pw_len: "Password: 1-20 characters",
         sy_pw_space: "Password cannot contain spaces",
@@ -4947,7 +4950,8 @@ $("cfgwrite").addEventListener("click", function() {
     writeConfig($("cfgedit").value, t("cw_title"));
 });
 var ntpBase = null,
-    ntpTimer = null;
+    ntpTimer = null,
+    ptpTimer = null;
 
 function tzText(m) {
     var a = Math.abs(m);
@@ -5027,19 +5031,38 @@ $("sy-ntpapply").addEventListener("click", function() {
         "ntp " + ($("sy-ntp").checked ? "on" : "off")
     ]).then(ntpLoad).catch(function() {});
 });
+function ptpTimeRefresh() {
+    return getJSON("/time.json").then(function(d) {
+        var t = parseInt(d.time, 16);
+        console.log(d);
+        console.log(t);
+        $("sy-ptp-time").textContent = new Date(t * 1000);
+    });
+}
 $("sy-ntprefresh").addEventListener("click", ntpLoad);
 tabHooks.system = {
     enter: function() {
         sysLoad();
         ntpLoad();
+        ptpTimeRefresh();
         clearInterval(ntpTimer);
-        ntpTimer = setInterval(ntpTick, 1000)
+        clearInterval(ptpTimer);
+        ntpTimer = setInterval(ptpTimeRefresh, 1000)
     },
     leave: function() {
-        clearInterval(ntpTimer)
+        clearInterval(ntpTimer);
+        clearInterval(ptpTimer)
     },
 };
-
+$("sy-ptpapply").addEventListener("click", function() {
+    delete $("sy-ntpcard").dataset.dirty;
+    postCmds(["ptp " + ($("sy-ptp").checked ? "on" : "off")
+    ]).catch(function() {});
+});
+$("sy-ptpset").addEventListener("click", function() {
+    delete $("sy-ntpcard").dataset.dirty;
+    postCmds(["ptp set " + Math.floor(Date.now() / 1000).toString(16).padStart(12, '0')]).catch(function() {});
+});
 var CONF_OVERWRITE = [
     /^ip\b/, /^gw\b/, /^netmask\b/, /^hostname\b/,
     /^syslog\s+ip\b/, /^syslog\s+port\b/, /^dns\s+server\b/, /^passwd\b/, /^session\b/,

@@ -457,6 +457,13 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <label class="row" style="margin-top:10px"><span class="lb" data-i18n="sy_now">Local time</span><span class="mono" id="sy-now">-</span></label>
           <label class="row"><span class="lb" data-i18n="sy_sync">Last synchronisation</span><span id="sy-sync">-</span></label>
           <label class="row"><span class="lb" data-i18n="sy_ntpaddr">Server address</span><span class="mono" id="sy-ntpaddr">-</span></label>
+          <label class="row" style="justify-content:space-between"><span data-i18n="sy_ptp">PTP</span>
+            <span class="switch"><input type="checkbox" id="sy-ptp"><i></i></span></label>
+          <label class="row" style="margin-top:10px"><span class="lb" data-i18n="sy_ptp_time">Local time</span><span class="mono" id="sy-ptp-time">-</span></label>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="ctl pri" id="sy-ptpapply" data-i18n="c_apply">Apply</button>
+            <button class="ctl" id="sy-ptpset" data-i18n="c_set">Set</button>
+          </div>
           <p class="small mut" style="margin-top:8px" data-i18n="sy_time_note">The switch has no battery backed clock.</p>
         </div>
         <div class="card"><h2 data-i18n="sy_password">Admin password</h2>
