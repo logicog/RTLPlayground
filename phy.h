@@ -17,6 +17,12 @@
 #define PHY_MMD31	31
 
 /*
+ * Power register of the PHY in MMD 31, bit 11 powers the PHY down
+ */
+#define PHY_POWER		0xa610
+#define PHY_POWER_OFF		0x0800
+
+/*
  * Define registers in Auto-Negotiation page
  */
 #define PHY_ANEG_CTRL		0x00
