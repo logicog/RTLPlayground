@@ -44,6 +44,7 @@ void port_mirror_set(uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t t
 	print_short(rx_pmask); print_string(", tx mask: "); print_short(tx_pmask);
 	write_char('\n');
 
+	REG_SET(RTL837x_RSPAN_TX_PORT, 0);
 	REG_WRITE(RTL837x_MIRROR_CONF, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
 	REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (port << 1) | 0x1);
 }
@@ -52,6 +53,17 @@ void port_mirror_set(uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t t
 void port_mirror_del(void) __banked
 {
 	REG_SET(RTL837x_MIRROR_CTRL, 0);
+	REG_SET(RTL837x_RSPAN_TX_PORT, 0);
+}
+
+
+void port_rspan_set(uint8_t port, __xdata uint16_t vid, __xdata uint16_t rx_pmask, __xdata uint16_t tx_pmask) __banked
+{
+	REG_SET(RTL837x_MIRROR_CTRL, 0);
+	REG_WRITE(RTL837x_RSPAN_TAG_CTRL, 0x81, 0x00, vid >> 8, vid);
+	REG_WRITE(RTL837x_RSPAN_TX_PORT, 0, 0, bit_mask[port] >> 8, bit_mask[port]);
+	REG_WRITE(RTL837x_MIRROR_CONF, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
+	REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (port << 1) | 0x1);
 }
 
 
