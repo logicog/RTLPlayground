@@ -134,6 +134,34 @@ static void t_static_mgmt(void)
 	CHECK(hw_l2_count() == 1, "removing an entry that is not there changes nothing");
 }
 
+static void t_static_port(void)
+{
+	printf("[test] a static entry on a front port, then removed\n");
+	hw_reset();
+	uint8_t mac[6] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x66 };
+	l2_static_port = 5;
+	port_l2_static(mac, 20, false);
+	const struct hw_l2 *e = hw_l2_find(mac, 20);
+	CHECK(e != 0, "entry present in VLAN 20");
+	if (e) {
+		uint8_t m[6]; uint16_t vid, p; bool valid, st, mc;
+		hw_l2_decode(e, m, &vid, &p, &valid, &st, &mc);
+		CHECK(valid && st && !mc && p == 5, "valid, static, on logical port 5");
+	}
+	hw_l2_put(0x100, mac, 30, 2, false);
+	l2_static_port = 7;
+	port_l2_static(mac, 30, false);
+	e = hw_l2_find(mac, 30);
+	CHECK(e != 0, "entry present in VLAN 30");
+	if (e) {
+		uint8_t m[6]; uint16_t vid, p; bool valid, st, mc;
+		hw_l2_decode(e, m, &vid, &p, &valid, &st, &mc);
+		CHECK(st && p == 7 && hw_l2_count() == 2, "a learned entry for the same MAC and VLAN is replaced");
+	}
+	port_l2_static(mac, 20, true);
+	CHECK(hw_l2_find(mac, 20) == 0 && hw_l2_find(mac, 30) != 0, "removal deletes only the VLAN 20 entry");
+}
+
 static void t_flush(void)
 {
 	printf("[test] flushing a port forgets its learned entries only\n");
@@ -174,6 +202,7 @@ int main(void)
 	t_pvid();
 	t_l2mc();
 	t_static_mgmt();
+	t_static_port();
 	t_flush();
 	t_lag();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
