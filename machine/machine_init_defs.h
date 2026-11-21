@@ -4,7 +4,4 @@
 
 #include "machine_defs.h"
 
-#pragma codeseg BANK2
-#pragma constseg BANK2
-
 #endif

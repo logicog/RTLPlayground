@@ -11,8 +11,6 @@
  * (authenticated); the reply is written to outbuf at slen.
  */
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 #include <stdint.h>
 #include "rtl837x_common.h"

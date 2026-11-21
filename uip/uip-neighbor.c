@@ -45,8 +45,6 @@
 
 #if UIP_CONF_IPV6
 
-#pragma codeseg BANK1
-#pragma constseg BANK1
 
 #define MAX_TIME 128
 

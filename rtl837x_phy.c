@@ -18,8 +18,6 @@
 #include "machine.h"
 #include "timer.h"
 
-#pragma codeseg BANK2
-#pragma constseg BANK2
 
 extern __code const uint16_t bit_mask[16];
 extern __code const struct machine machine;

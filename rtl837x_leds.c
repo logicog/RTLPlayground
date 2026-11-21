@@ -19,8 +19,6 @@ extern __code const struct machine machine;
 
 #include "uip.h"
 
-#pragma codeseg BANK2
-#pragma constseg BANK2
 
 extern __xdata uint8_t sfr_data[4];
 

@@ -10,8 +10,6 @@
 #include "dhcp.h"
 #include "dns.h"
 
-#pragma codeseg BANK3
-#pragma constseg BANK3
 
 #define DNS_PORT	53
 #define DNS_TRIES	6

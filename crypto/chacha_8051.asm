@@ -16,7 +16,7 @@
 ; CHACHA_QR( v[ 0], v[ 4], v[ 8], v[12] );
 
 ; Choose one of the below and adapt approprietly
-	.area BANK4   (CODE)
+	.area BANK3   (CODE)
 ;	.area HOME    (CODE)
 
 store_32:
