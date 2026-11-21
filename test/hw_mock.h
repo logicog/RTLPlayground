@@ -53,6 +53,16 @@ void hw_l2_put(uint16_t idx, const uint8_t mac[6], uint16_t vid, uint16_t port_o
 void hw_l2_decode(const struct hw_l2 *e, uint8_t mac[6], uint16_t *vid, uint16_t *port_or_pmask,
 		  bool *valid, bool *is_static, bool *mc);
 
+/* I2C master: a write to I2C_CTRL with the go bit starts a transaction that
+ * stays busy for hw_i2c_busy_reads polls of I2C_CTRL, then clears the go bit
+ * and loads I2C_OUT from hw_eeprom[bus][dev 0x51 ? 1 : 0][reg..], or sets the
+ * error bit instead when hw_i2c_fail was armed. */
+#define HW_I2C_BUSES 64
+extern uint8_t  hw_eeprom[HW_I2C_BUSES][2][256];
+extern unsigned hw_i2c_busy_reads;
+extern bool     hw_i2c_fail;
+extern unsigned hw_i2c_started, hw_i2c_polls, hw_i2c_clobbered;
+
 /* MIB counter the next STAT_GET for (port, counter) returns */
 void hw_counter_set(uint8_t port, uint8_t counter, uint64_t value);
 
