@@ -132,6 +132,7 @@ static void t_l2(void)
 	put(0x010, 0x01, 1, 4, false);
 	put(0x020, 0x02, 2, CPU_LOGICAL_PORT, true);
 	put(0x8f0, 0x03, 1, 7, false);
+	hw_reg_set(RTL837x_TBL_DATA_0, 1u << 18);
 	send_l2(0);
 	CHECK(count("\"mac\":") == 4, "three entries, and the first one again: that repeat is how the page sees the wrap");
 	CHECK(count("\"idx\":\"0010\"") == 2 && strstr(body(), "\"idx\":\"0010\"}]"), "the repeat closes the list");

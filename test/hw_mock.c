@@ -212,6 +212,10 @@ static void table_exec(uint32_t ctrl)
 	l2_sort();
 	int n = hw_l2_count();
 	struct hw_l2 *e = 0;
+	if (clear && !write) {
+		l2_out(0, idx);
+		return;
+	}
 	for (int i = 0; i < n; i++)
 		if (l2[i].idx >= idx) { e = &l2[i]; break; }
 	if (!e && n)
