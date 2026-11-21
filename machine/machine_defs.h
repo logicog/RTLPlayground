@@ -41,8 +41,13 @@
 	 (scl_pin) == GPIO50_I2C_SCL2_UART1_TX ? 2 : \
 	 (scl_pin) == GPIO40_I2C_SCL3_MDC1 ? 3 : I2CBUS_INVALID)
 
+
+#ifndef FRIENDLY_NAME
+	#error FRIENDLY_NAME missing
+#endif
+
 #define MACHINE_COMMON_SETTING \
-	.machine_name = MACHINE_MODEL, \
+	.machine_name = FRIENDLY_NAME, \
 	.isRTL8373 = MACHINE_CHIPSET == RTL8373
 
 #endif

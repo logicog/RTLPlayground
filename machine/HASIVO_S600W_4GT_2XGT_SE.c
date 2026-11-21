@@ -1,1 +1,0 @@
-pcb/NONAME_S600W_4GT_2XGT_SE.c
