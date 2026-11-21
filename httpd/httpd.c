@@ -9,6 +9,7 @@
 #include "timer.h"
 #include "sessions.h"
 #include "html_data.h"
+#include "poe/poe.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -1059,6 +1060,10 @@ void httpd_appcall(void)
 				send_stp_counters();
 			} else if (is_word(q, "/vlanlist.json")) {
 				send_vlanlist();
+#ifdef POE_PRESENT
+			} else if (is_word(q, "/poe.json")) {
+				send_poe();
+#endif
 			} else if (is_word(q, "/config")) {
 				send_config();
 			} else if (is_word(q, "/cmd_log")) {

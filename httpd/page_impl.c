@@ -18,6 +18,7 @@
 #include "page_impl.h"
 #include "syslog.h"
 #include "dhcp.h"
+#include "poe/poe.h"
 
 // #define DEBUG
 #include "debug.h"
@@ -1119,6 +1120,56 @@ void send_cmd_log(void)
 		p = (p + 1) & CMD_HISTORY_MASK;
 	}
 }
+
+
+#ifdef POE_PRESENT
+/* /poe.json: {"chip":..,"fw":..,"vin":mV,"temp":C,"ports":[{"port","admin","on","class","mv","ma"},..]};
+ * class 255 = none. The `poe` command controls it, e.g. POST /cmd "poe port 3 off". */
+void send_poe(void)
+{
+	uint8_t first = 1;
+
+	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
+	str_code_to_html("{" JSONQUOTE("chip") ":\"" POE_CHIP_NAME "\"," JSONQUOTE("fw") ":");
+	if (poe_get_global()) {
+		str_code_to_html("0," JSONQUOTE("error") ":\"no answer\"}");
+		return;
+	}
+	itoa_html(poe_fw);
+	str_code_to_html("," JSONQUOTE("vin") ":");
+	itoa16_html(poe_vin_mv);
+	str_code_to_html("," JSONQUOTE("temp") ":");
+	if (poe_temp < 0) {
+		char_to_html('-');
+		itoa_html(-poe_temp);
+	} else {
+		itoa_html(poe_temp);
+	}
+	str_code_to_html("," JSONQUOTE("ports") ":[");
+	for (poe_port_num = 1; poe_port_num <= 16; poe_port_num++) {
+		poe_get_port();
+		if (!poe_st_valid)
+			continue;
+		if (!first)
+			char_to_html(',');
+		first = 0;
+		str_code_to_html("{" JSONQUOTE("port") ":");
+		itoa_html(poe_port_num);
+		str_code_to_html("," JSONQUOTE("admin") ":");
+		itoa_html(poe_st_admin);
+		str_code_to_html("," JSONQUOTE("on") ":");
+		itoa_html(poe_st_on);
+		str_code_to_html("," JSONQUOTE("class") ":");
+		itoa_html(poe_st_class);
+		str_code_to_html("," JSONQUOTE("mv") ":");
+		itoa16_html(poe_st_mv);
+		str_code_to_html("," JSONQUOTE("ma") ":");
+		itoa16_html(poe_st_ma);
+		char_to_html('}');
+	}
+	str_code_to_html("]}");
+}
+#endif
 
 
 void send_vlanlist(void)

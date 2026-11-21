@@ -36,7 +36,8 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_cpu_vlan_8372 \
         $(BUILDDIR)/test_nic_rx \
         $(BUILDDIR)/test_lacp \
-        $(BUILDDIR)/test_igmp
+        $(BUILDDIR)/test_igmp \
+        $(BUILDDIR)/test_poe
 
 # The table tests link the register mock and one environment file; stub/
 # stands in for the two headers a firmware build generates.
@@ -80,6 +81,14 @@ $(BUILDDIR)/test_lacp: test_lacp.c $(SRCROOT)/rtl837x_lacp.c $(SRCROOT)/timer.c 
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(BUILDDIR)/test_igmp: test_igmp.c $(SRCROOT)/rtl837x_igmp.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# poe/tps23880.c is compiled UNMODIFIED, with the REM-8x PoE settings;
+# hw_mock.c's I2C hook plays the TPS23880.
+$(BUILDDIR)/test_poe: CFLAGS += -DMACHINE_POE_CHIP=POE_TPS23880 -DPOE_TPS_ADDR=0x20 \
+	-DPOE_I2C_BUS=0x24 -DPOE_RESET_GPIO=30 -DPOE_IMAGE_LOCATION=0x60000UL \
+	'-DPOE_CHANNEL_PORTS={ 1, 2, 3, 4, 7, 9, 8, 0 }'
+$(BUILDDIR)/test_poe: test_poe.c support.c hw_mock.c $(SRCROOT)/cmd_editor.c $(SRCROOT)/poe/tps23880.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # httpd/httpd.c and uip/uip.c are compiled UNMODIFIED from the firmware tree;

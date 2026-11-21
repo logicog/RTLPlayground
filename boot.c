@@ -10,6 +10,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_pins.h"
+#include "machine_defs.h"	// I2CBUS() for POE_I2C_BUS
 #include "rtl837x_phy.h"
 #include "rtl837x_port.h"
 #include "rtl837x_init.h"
@@ -393,6 +394,60 @@ void init_smi(void) __banked
 
 
 
+/* Select the I2C function on the pins of bus i2c (an I2CBUS() value) in the
+ * PIN_MUX_1 value held in sfr_data */
+static void i2c_pinmux(uint8_t i2c)
+{
+	uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & RTL837X_REG_I2C_SCL_MASK;
+	uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & RTL837X_REG_I2C_SDA_MASK;
+	print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
+	// `& RTL837X_REG_I2C_SCL_MASK` is needed to silens a compiler warning 110.
+	switch (scl_bus & RTL837X_REG_I2C_SCL_MASK) {
+		case 3:
+			// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
+			sfr_mask_data(0, 0x60, 0x40);
+			break;
+		case 2: 
+			// Bit 15-16 0b01 -> SCL
+			sfr_mask_data(1, 0x80, 0x80);
+			sfr_mask_data(2, 0x01, 0x00);
+			break;
+		case 1:
+			// Bit 11-12 0b01 -> SCL
+			sfr_mask_data(1, 0x18, 0x08);
+			break;
+		case 0:
+			// Bit 7-8 0b01 -> SCL
+			sfr_mask_data(0, 0x80, 0x80);
+			sfr_mask_data(1, 0x01, 0x00);
+			break;
+	}
+
+	switch (sda_bus) {
+		case 4:
+			// Bit 29 0b0 -> SDA
+			sfr_mask_data(3, 0x20, 0x00);
+			break;
+		case 3:
+			// Bit 5-6 0b10 -> SDA (implies enabled SCL on bus 3)
+			sfr_mask_data(0, 0x60, 0x40);
+			break;
+		case 2:
+			// Bit 17-18 0b01 -> SDA
+			sfr_mask_data(2, 0x06, 0x02);
+			break;
+		case 1:
+			// Bit 13-14 0b01 -> SDA
+			sfr_mask_data(1, 0x60, 0x20);
+			break;
+		case 0:
+			// Bit 9-10 0b01 -> SDA
+			sfr_mask_data(1, 0x06, 0x02);
+			break;
+	}
+}
+
+
 void setup_i2c(void) __banked
 {
 	REG_SET(RTL837X_REG_I2C_MST_IF_CTRL, 0);
@@ -405,56 +460,14 @@ void setup_i2c(void) __banked
 	// HW Control register, enable I2C depending on PIN configuration
 	reg_read_m(RTL837X_PIN_MUX_1);
 	for (uint8_t sfp = 0; sfp < machine.n_sfp; sfp++) {
-		uint8_t i2c = machine.sfp_port[sfp].i2c;
-		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & RTL837X_REG_I2C_SCL_MASK;
-		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & RTL837X_REG_I2C_SDA_MASK;
-		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
-		// `& RTL837X_REG_I2C_SCL_MASK` is needed to silens a compiler warning 110.
-		switch (scl_bus & RTL837X_REG_I2C_SCL_MASK) {
-			case 3:
-				// Bit 5-6 0b10 -> SCL (implies enabled SDA on bus 3)
-				sfr_mask_data(0, 0x60, 0x40);
-				break;
-			case 2: 
-				// Bit 15-16 0b01 -> SCL
-				sfr_mask_data(1, 0x80, 0x80);
-				sfr_mask_data(2, 0x01, 0x00);
-				break;
-			case 1:
-				// Bit 11-12 0b01 -> SCL
-				sfr_mask_data(1, 0x18, 0x08);
-				break;
-			case 0:
-				// Bit 7-8 0b01 -> SCL
-				sfr_mask_data(0, 0x80, 0x80);
-				sfr_mask_data(1, 0x01, 0x00);
-				break;
-		}
-
-		switch (sda_bus) {
-			case 4:
-				// Bit 29 0b0 -> SDA
-				sfr_mask_data(3, 0x20, 0x00);
-				break;
-			case 3:
-				// Bit 5-6 0b10 -> SDA (implies enabled SCL on bus 3)
-				sfr_mask_data(0, 0x60, 0x40);
-				break;
-			case 2:
-				// Bit 17-18 0b01 -> SDA
-				sfr_mask_data(2, 0x06, 0x02);
-				break;
-			case 1:
-				// Bit 13-14 0b01 -> SDA
-				sfr_mask_data(1, 0x60, 0x20);
-				break;
-			case 0:
-				// Bit 9-10 0b01 -> SDA
-				sfr_mask_data(1, 0x06, 0x02);
-				break;
-		}
+		print_string("Configuring I2C for SFP idx="); print_byte(sfp);
+		i2c_pinmux(machine.sfp_port[sfp].i2c);
 	}
-	reg_write_m(RTL837X_PIN_MUX_1);	
+#if defined(POE_I2C_BUS) && !defined(NO_POE)
+	print_string("Configuring I2C for the PoE controller");
+	i2c_pinmux(POE_I2C_BUS);
+#endif
+	reg_write_m(RTL837X_PIN_MUX_1);
 }
 
 

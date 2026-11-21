@@ -257,6 +257,8 @@ static void stat_exec(uint32_t v)
 	regfile[RTL837X_STAT_V_LOW]  = (uint32_t)c;
 }
 
+uint8_t (*hw_i2c_hook)(uint32_t ctrl);
+
 static void reg_store(uint16_t addr, uint32_t v)
 {
 	hw_writes++;
@@ -278,6 +280,13 @@ static void reg_store(uint16_t addr, uint32_t v)
 		if (v & 1) {
 			stat_exec(v);
 			regfile[addr] = v & ~1u;
+		}
+		break;
+	case RTL837X_REG_I2C_CTRL:
+		if ((v & I2C_CTRL_GO) && hw_i2c_hook) {
+			/* the transfer completes at once; a NACK sets FAIL */
+			regfile[addr] = (v & ~(uint32_t)(I2C_CTRL_GO | I2C_CTRL_FAIL))
+					| (hw_i2c_hook(v) ? 0 : I2C_CTRL_FAIL);
 		}
 		break;
 	}

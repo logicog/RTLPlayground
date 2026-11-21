@@ -146,7 +146,8 @@ label.row span.lb{width:110px;flex:none;color:var(--fg2);font-size:13px}
 .port.up .ps{color:var(--pc);font-weight:600}
 .port.dis{opacity:.45;border-style:dashed}
 .badge{font-size:11px;font-weight:600;border-radius:10px;padding:1px 8px;background:var(--panel2);color:var(--fg2)}
-.badge.ok{color:var(--ok)}.badge.bad{color:var(--bad)}
+.badge.ok{color:var(--ok)}.badge.bad{color:var(--bad)}.badge.poe{color:var(--bad)}
+.port.poe:after{content:"";position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
 .seg{display:inline-flex;border:1px solid var(--bd);border-radius:7px;overflow:hidden}
 .seg button{
   background:var(--panel);border:0;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--fg2);
@@ -397,6 +398,17 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
           <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="e_adv">Advertised</th><th data-i18n="e_lp">Link partner</th><th data-i18n="e_active">Active</th><th data-i18n="e_enable">Enable</th></tr></thead>
           <tbody></tbody></table></div>
         <p class="small mut" style="margin-top:8px" data-i18n="e_note">Advertised and link-partner flags per speed: 100M, 1G, 2.5G. SFP ports do not support EEE.</p>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-poe">
+      <div class="card"><h2 data-i18n="poe_title">Power over Ethernet</h2>
+        <p class="small" id="poesum"></p>
+        <div class="scrollx"><table class="t" id="poetbl">
+          <thead><tr><th data-i18n="c_port">Port</th><th data-i18n="poe_enable">Enable</th><th data-i18n="poe_state">Status</th><th data-i18n="poe_class">Class</th><th data-i18n="poe_volt">Voltage</th><th data-i18n="poe_cur">Current</th><th data-i18n="poe_pow">Power</th></tr></thead>
+          <tbody></tbody></table></div>
+        <p style="margin-top:10px"><button class="ctl" id="poeAllOff" data-i18n="poe_alloff">All off</button></p>
+        <p class="small mut" style="margin-top:8px" data-i18n="poe_note">Every port starts with PoE off at boot. Save to flash to keep the ports you enable.</p>
       </div>
     </section>
 
