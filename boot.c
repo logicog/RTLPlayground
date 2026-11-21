@@ -346,6 +346,11 @@ void init_smi(void) __banked
 	} else if (machine.n_sfp == 2)
 		// 0x00005515
 		SFR_DATA_0 = 0x15;
+	if (machine.phy8221_p8) {
+		// 0x00015515: RTL8221B on port 8 is a 2.5G PHY, port 3 is the SFP
+		SFR_DATA_16 = 0x01;
+		SFR_DATA_0 = 0x15;
+	}
 	reg_write(RTL837X_REG_SMI_MAC_TYPE);
 
 	// Configure polling of all PHYs by the MAC to detect link-state changes
@@ -356,6 +361,10 @@ void init_smi(void) __banked
 	if (!machine_detected.isRTL8373) {
 		if (machine.n_sfp == 2) {
 			// 0x000000f0, only change the bytes that differs from the default.
+			SFR_DATA_0 = 0xf0;
+		} else if (machine.phy8221_p8) {
+			// 0x000001f0: poll ports 4-8, port 3 is the SFP
+			SFR_DATA_8 = 0x01;
 			SFR_DATA_0 = 0xf0;
 		} else {
 			// 0x000001f8, only change the bytes that differs from the default.
@@ -373,9 +382,12 @@ void init_smi(void) __banked
 	if (!machine_detected.isRTL8373) {
 		// Change I2C addresses for SMI of the non-existent PHYs
 		// r6450:000020e6 R6450-000000e6
-		reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
-		sfr_mask_data(1, 0x7c, 0);
-		reg_write_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+		// Keep the port 8 address for an RTL8221B on port 8, it is probed in rtl8372_init()
+		if (!machine.phy8221_p8) {
+			reg_read_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+			sfr_mask_data(1, 0x7c, 0);
+			reg_write_m(RTL837X_REG_SMI_PORT6_9_ADDR);
+		}
 
 		// r644c:0a418820 R644c-0a400820
 		reg_read_m(RTL837X_REG_SMI_PORT0_5_ADDR);
@@ -409,6 +421,12 @@ void setup_i2c(void) __banked
 		uint8_t scl_bus = (i2c >> RTL837X_REG_I2C_SCL_SHIFT) & RTL837X_REG_I2C_SCL_MASK;
 		uint8_t sda_bus = (i2c >> RTL837X_REG_I2C_SDA_SHIFT) & RTL837X_REG_I2C_SDA_MASK;
 		print_string("Configuring I2C for SFP idx="); print_byte(sfp); print_string(" SCL="); print_byte(scl_bus); print_string(", SDA="); print_byte(sda_bus); write_char('\n');
+		// GPIO40/41 (I2C bus 3) are MDC1/MDIO1 of the RTL8221B on port 8: keep them for MDIO.
+		// The SFP I2C pins of such boards are not known yet.
+		if (machine.phy8221_p8 && (scl_bus == 3 || sda_bus == 3)) {
+			print_string("  skipped: I2C bus 3 pins are MDC1/MDIO1\n");
+			continue;
+		}
 		// `& RTL837X_REG_I2C_SCL_MASK` is needed to silens a compiler warning 110.
 		switch (scl_bus & RTL837X_REG_I2C_SCL_MASK) {
 			case 3:

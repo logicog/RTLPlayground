@@ -1122,8 +1122,19 @@ void check_links(void)
 		print_byte(linkbits_last_p89); print_byte(linkbits_last[0]); print_byte(linkbits_last[1]);
 		print_byte(linkbits_last[2]); print_byte(linkbits_last[3]);
 		print_string(">\n");
+		uint8_t p8_last = linkbits_last_p89 & 0x0f;
 		linkbits_last_p89 = linkbits_p89;
-		if (!machine_detected.isRTL8373 && machine.n_sfp != 2) {
+		if (machine.phy8221_p8) {
+			// RTL8221B on port 8 / SerDes 1: adjust SDS 1 to the link speed
+			uint8_t p8 = linkbits_p89 & 0x0f;
+			cpy_4(linkbits_last, sfr_data);
+			if (p8 != p8_last) {
+				if (p8 == 0x5)	// 2.5GBit Mode
+					sds_config(1, SDS_HISGMII);
+				else		// 1GBit and 100Mbit
+					sds_config(1, SDS_SGMII);
+			}
+		} else if (!machine_detected.isRTL8373 && machine.n_sfp != 2) {
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
