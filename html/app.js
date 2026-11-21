@@ -4332,7 +4332,7 @@ function lagRefreshPortLocks(lagPortOwner) {
             }
         }
     }
-};
+}
 
 var HASHF = ["spa", "smac", "dmac", "sip", "dip", "sport", "dport"];
 function buildLag() {
@@ -4379,7 +4379,7 @@ function buildLag() {
         card.addEventListener("change", function() { card.dataset.dirty = "1" });
         w.appendChild(card);
     })(g);
-};
+}
 
 var lacpCfg = [0, 0, 0, 0, 0];
 function lagLoad() {
@@ -4418,7 +4418,7 @@ function lagLoad() {
             });
         });
     });
-};
+}
 
 function lagApply(g) {
     var lacp = $("lgm" + g).value === "lacp",
