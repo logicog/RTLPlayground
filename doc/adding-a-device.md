@@ -23,7 +23,10 @@ the PCB inside the casing and the photo shows where this is from.
 - `<MACHINE_PCB>` is `S1100W_88T_1SX_SE_V1_05`: the `PCB_DOC_NAME` with every remaining punctuation character (hyphens, dots, ...) converted to `_`.
 - `<MACHINE_PCB_EXT>` is `S1100W_88T_1SX_SE_V1_05__POE`: `<MACHINE_PCB>` plus an extension suffix for an _optional_ add-on; see the later section for details.
 - `<MACHINE_MODEL>` is `CSCI SW-425A` — the human-readable vendor and model string shown in the UI.
-- `<MACHINE>` is `CSCI_SW-425A`: (`<MACHINE_MODEL>`) in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
+- `<MACHINE>` is `CSCI_SW_425A`: (`<MACHINE_MODEL>`) in all capitals with punctuation converted to `_`. This is the name passed to `make MACHINE=...`.
+
+Important: Some devices are sold with the same manufacturer and model (`CSCI` and `SW-425A` in this example) however the product contains a different PCB. In this situation
+you should append `_VAR_` (for variant) and then the next unused number, starting with 2. For example you are adding the first known occurrence on this example device, it would be `CSCI_SW_425A_VAR_2`.
 
 ### Quick Start
 > [!TIP]
