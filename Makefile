@@ -33,7 +33,7 @@ else
 SDCC_BANNER = system
 endif
 # Keep default constants in the fixed HOME code area.
-CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip --constseg HOME
+CC_FLAGS = -mmcs51 -I. -Imachine -Ihttpd -Iuip
 MACHINE_CC_FLAGS =
 ASM ?= sdas8051
 AFLAGS= -plosgff
@@ -106,16 +106,6 @@ endif
 
 ifeq ($(CI),1)
 	CC_FLAGS += --Werror
-endif
-
-MACHINE_INIT_DEFAULT := machine/default_machine_init.c
-ifneq ($(strip $(MACHINE_PCB_SOURCE)),)
-MACHINE_HAS_CUSTOM_INIT := $(shell grep -q 'void machine_custom_init(void)' $(MACHINE_PCB_SOURCE) 2>/dev/null && echo yes)
-else
-MACHINE_HAS_CUSTOM_INIT =
-endif
-ifeq ($(MACHINE_HAS_CUSTOM_INIT),)
-	MACHINE_INIT_SRC := $(MACHINE_INIT_DEFAULT)
 endif
 
 ifndef BUILDDIR
@@ -214,7 +204,6 @@ $(CONFIG):
 # Keep the selected PCB source first so an invalid $MACHINE value fails early.
 SRCS = \
 	$(MACHINE_SRC) \
-	$(MACHINE_INIT_SRC) \
 	cmd_editor.c \
 	cmd_parser.c \
 	dhcp.c \
@@ -376,8 +365,6 @@ $(OUTPUT): $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
 # Every machine description is checked by compiling its selected PCB source.
-# The default boot hook is compiled only when that source does not define
-# machine_custom_init().
 MACHINE_DEFS := $(shell python3 tools/machine_config.py machines $(MACHINE_REGISTRY))
 
 .PHONY: machine_check
@@ -394,9 +381,6 @@ machine_check: $(SDCC) $(MACHINE_REGISTRY)
 	CHIPSET=$$(sed -n 's/^#define MACHINE_CHIPSET //p' $$CHIPSET_SOURCE 2>/dev/null | head -n 1); \
 	test -n "$$CHIPSET" || { echo "ERROR: $$CHIPSET_SOURCE has no MACHINE_CHIPSET definition." >&2; exit 1; }; \
 	$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$CHIPSET_SOURCE; \
-	if ! grep -q 'void machine_custom_init(void)' $$CHIPSET_SOURCE; then \
-		$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $(MACHINE_INIT_DEFAULT); \
-	fi; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
 

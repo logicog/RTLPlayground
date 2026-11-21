@@ -1,6 +1,4 @@
-#ifndef MACHINE_CHIPSET
 #define MACHINE_CHIPSET RTL8373
-#endif
 #include "machine_defs.h"
 
 // 2M-PCB23-V3.2 is wired like V3.1 (SFP detection, LEDs, factory MAC location)
@@ -35,3 +33,8 @@ __code const struct machine machine = {
 				0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21},
 	.mac_flash_offset = 0x1FC000,
 };
+
+#pragma codeseg BANK2
+void machine_custom_init(void) __banked
+{
+}

@@ -1,6 +1,4 @@
-#ifndef MACHINE_CHIPSET
 #define MACHINE_CHIPSET RTL8373
-#endif
 #include "machine_defs.h"
 
 // Sirivision S25G1109FP V1.3 (label: SR-S25G2109F): 8x2.5G RJ45 + 1x10G SFP+,
@@ -54,3 +52,8 @@ __code const struct machine machine = {
 	 * UUID-derived MAC is used unless a valid one is stored here. */
 	.mac_flash_offset = 0x1FC000,
 };
+
+#pragma codeseg BANK2
+void machine_custom_init(void) __banked
+{
+}

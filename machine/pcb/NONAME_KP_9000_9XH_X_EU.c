@@ -1,6 +1,4 @@
-#ifndef MACHINE_CHIPSET
 #define MACHINE_CHIPSET RTL8373
-#endif
 #include "machine_defs.h"
 
 __code const struct machine machine = {
@@ -23,3 +21,8 @@ __code const struct machine machine = {
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT },
 		    },
 };
+
+#pragma codeseg BANK2
+void machine_custom_init(void) __banked
+{
+}

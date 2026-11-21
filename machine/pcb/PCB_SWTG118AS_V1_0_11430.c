@@ -1,6 +1,4 @@
-#ifndef MACHINE_CHIPSET
 #define MACHINE_CHIPSET RTL8373
-#endif
 #include "machine_defs.h"
 
 __code const struct machine machine = {
@@ -36,3 +34,8 @@ __code const struct machine machine = {
 	},
 	.mac_flash_offset = 0,
 };
+
+#pragma codeseg BANK2
+void machine_custom_init(void) __banked
+{
+}
