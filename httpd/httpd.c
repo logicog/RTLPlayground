@@ -644,6 +644,16 @@ static void run_cmd_body(__xdata uint8_t *body)
 }
 
 
+static void run_logout(void)
+{
+	session_drop();
+	authenticated = 0;
+	slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\n" \
+			      "Cache-Control: no-store\r\nLocation: login.html\r\n" \
+			      "Set-Cookie: session=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict\r\n\r\n");
+}
+
+
 static void run_login_body(__xdata uint8_t *body)
 {
 	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
@@ -838,6 +848,13 @@ void handle_post(uint16_t body_off)
 		if (!post_body_take(p))
 			return;
 		run_cmd_body(p);
+		return;
+	} else if (is_word(request_path, "logout")) {
+		if (!authenticated) {
+			send_unauthorized();
+			return;
+		}
+		run_logout();
 		return;
 	} else if (is_word(request_path, "login")) {
 		dbg_string("POST login\n");

@@ -15,5 +15,7 @@ void session_init(void) __banked;
 void session_check(void) __banked;
 /* Starts a session at now and writes its id to outbuf at slen */
 void session_new(void) __banked;
+/* Ends the session whose cookie the current request came with, if any */
+void session_drop(void) __banked;
 
 #endif

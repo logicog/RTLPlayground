@@ -126,3 +126,9 @@ void session_new(void) __banked
 	}
 	session_id[ss_slot][SESSION_ID_LENGTH] = NUL;
 }
+
+void session_drop(void) __banked
+{
+	if (authenticated && session_id[ss_hit][0])
+		session_id[ss_hit][0] = NUL;
+}
