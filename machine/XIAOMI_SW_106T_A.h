@@ -1,0 +1,7 @@
+#ifndef _MACHINE_XIAOMI_SW_106T_A_H_
+#define _MACHINE_XIAOMI_SW_106T_A_H_
+
+#define MACHINE_MODEL "Xiaomi SW-106T-A"
+#define MACHINE_CHIPSET RTL8372
+
+#endif

@@ -231,7 +231,9 @@ void rtl8372_init(void) __banked
 
 	// r0a90:000000f3 R0a90-000000fc
 	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
-	sfr_mask_data(0, 0x0f, 0x0c);
+	// Some boards have the copper MDI pairs wired the other way round and do
+	// not link on ports 1/2 with the reset default of 0x0c.
+	sfr_mask_data(0, 0x0f, machine.mdi_reverse ? machine.mdi_reverse : 0x0c);
 	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
 
 	// Disable PHYs for configuration
