@@ -89,7 +89,7 @@ RULES = {
         ERROR, 'every symlink under machine/ and machine/pcb/ resolves'),
     # machine targets
     'machine-config-invalid': (
-        ERROR, 'machine/machines.json contains valid machine, FriendlyName and pcb fields'),
+        ERROR, 'machine/machines.json contains valid machine, friendly_name and pcb fields'),
     'machine-link-dangling': (
         ERROR, 'machine/machines.json entries name existing PCB sources'),
     'machine-pcb-named': (
@@ -311,7 +311,7 @@ class Checker:
         for machine, config in self.machine_configs.items():
             rel = 'machine/machines.json'
             scope = 'machine:' + machine
-            model = config['FriendlyName']
+            model = config['friendly_name']
             pcb = config['pcb']
             self.machine_pcbs[machine] = pcb
             target = 'pcb/' + pcb + '.c'

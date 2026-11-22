@@ -82,7 +82,7 @@ needs an entry with `"machine": "MY_BOARD_1_0"` in `machine/machines.json`.
 
 ## Step 1: machine build settings
 
-The Makefile reads the matching `machine`, `FriendlyName` and `pcb` entry from
+The Makefile reads the matching `machine`, `friendly_name` and `pcb` entry from
 `machine/machines.json` using `tools/machine_config.py`. It passes the model as
 `-DFRIENDLY_NAME="..."` to
 the compiler. `MACHINE_CHIPSET` is read from the selected PCB source and passed
@@ -96,7 +96,7 @@ identify the device.
 > [!NOTE]
 > `machine_name` is a `char[30]` and can hold at most 29 characters plus the
 > null terminator. For `PCB=` builds, the product name is always
-> `GENERIC_PCB`. For registered machines, keep `FriendlyName` to 29 characters
+> `GENERIC_PCB`. For registered machines, keep `friendly_name` to 29 characters
 > or less; longer values trigger an SDCC warning and are truncated.
 
 ## Step 2: the machine description and PCB definition
@@ -108,7 +108,7 @@ share one PCB definition while retaining their own names:
 ```json
 {
   "machine": "BRAND_MODEL_V1_0",
-  "FriendlyName": "Brand Model V1.0",
+  "friendly_name": "Brand Model V1.0",
   "pcb": "MY_BOARD_1_0"
 }
 ```
@@ -223,7 +223,7 @@ file a symlink, so the two boards cannot drift apart:
 ```
 ln -s EXISTING_PCB.c machine/pcb/MY_PCB_BOARD_1_0.c
 ```
-Then add a `machine/machines.json` entry with its own `machine`, `FriendlyName`
+Then add a `machine/machines.json` entry with its own `machine`, `friendly_name`
 and `"pcb": "MY_PCB_BOARD_1_0"`. The entry names the new PCB, not
 `EXISTING_PCB.c`, so the chain is two steps, never a direct reference to the
 shared definition.[^2]

@@ -34,13 +34,13 @@ def load_machine_configs(path):
         if machine in machines:
             raise MachineConfigError('duplicate machine target %r' % machine)
 
-        friendly_name = config.get('FriendlyName')
+        friendly_name = config.get('friendly_name')
         if not isinstance(friendly_name, str) or not friendly_name.strip():
             raise MachineConfigError(
-                '%s: "FriendlyName" must be a non-empty string' % machine)
+                '%s: "friendly_name" must be a non-empty string' % machine)
         if any(ord(char) < 32 or char in '"\\' for char in friendly_name):
             raise MachineConfigError(
-                '%s: "FriendlyName" contains a character unsafe for '
+                '%s: "friendly_name" contains a character unsafe for '
                 'the compiler command line' % machine)
 
         pcb = config.get('pcb')
@@ -49,7 +49,7 @@ def load_machine_configs(path):
                 '%s: "pcb" must be a PCB source name without .c' % machine)
         machines[machine] = {
             'machine': machine,
-            'FriendlyName': friendly_name,
+            'friendly_name': friendly_name,
             'pcb': pcb,
         }
     return machines
@@ -64,7 +64,7 @@ def load_machine_config(path, machine):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('field', choices=('machines', 'FriendlyName', 'pcb'))
+    parser.add_argument('field', choices=('machines', 'friendly_name', 'pcb'))
     parser.add_argument('path')
     parser.add_argument('machine', nargs='?')
     args = parser.parse_args()

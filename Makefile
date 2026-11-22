@@ -43,7 +43,7 @@ SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 MACHINE_REGISTRY = machine/machines.json
 
 # $MACHINE selects a JSON machine description and is passed as -DMACHINE_NAME.
-# Its FriendlyName and PCB fields select the PCB source and compiler flags.
+# Its friendly_name and PCB fields select the PCB source and compiler flags.
 # Alternatively, PCB selects a PCB source and gives it a generic machine name.
 ifneq ($(MACHINE),)
 	MACHINE_CC_FLAGS += -DMACHINE_NAME=$(MACHINE)
@@ -60,7 +60,7 @@ ifeq ($(GENERIC_PCB_BUILD),1)
 else ifneq ($(strip $(MACHINE)),)
 	MACHINE_DESCRIPTOR = $(MACHINE_REGISTRY)
 	ifneq ($(wildcard $(MACHINE_DESCRIPTOR)),)
-	FRIENDLY_NAME := $(shell python3 tools/machine_config.py FriendlyName $(MACHINE_DESCRIPTOR) $(MACHINE))
+	FRIENDLY_NAME := $(shell python3 tools/machine_config.py friendly_name $(MACHINE_DESCRIPTOR) $(MACHINE))
 	MACHINE_PCB_NAME := $(shell python3 tools/machine_config.py pcb $(MACHINE_DESCRIPTOR) $(MACHINE))
 	ifeq ($(strip $(FRIENDLY_NAME)),)
 	$(error MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR))
@@ -88,7 +88,7 @@ $(error MACHINE_CHIPSET is missing from $(MACHINE_PCB_SOURCE))
 endif
 	MACHINE_CC_FLAGS += -DMACHINE_CHIPSET=$(MACHINE_CHIPSET)
 ifeq ($(strip $(FRIENDLY_NAME)),)
-$(error FriendlyName is missing from $(MACHINE_DESCRIPTOR))
+$(error friendly_name is missing from $(MACHINE_DESCRIPTOR))
 endif
 	MACHINE_CC_FLAGS += -DFRIENDLY_NAME='"$(FRIENDLY_NAME)"'
 ifneq ($(MACHINE_PCB_NAME),)
@@ -375,7 +375,7 @@ machine_check: $(SDCC) $(MACHINE_REGISTRY)
 	do \
 	echo "Checking $${MACHINE}"; \
 	DESCRIPTION=$(MACHINE_REGISTRY); \
-	FRIENDLY_NAME=$$(python3 tools/machine_config.py FriendlyName $$DESCRIPTION $$MACHINE); \
+	FRIENDLY_NAME=$$(python3 tools/machine_config.py friendly_name $$DESCRIPTION $$MACHINE); \
 	PCB=$$(python3 tools/machine_config.py pcb $$DESCRIPTION $$MACHINE); \
 	CHIPSET_SOURCE=machine/pcb/$${PCB}.c; \
 	CHIPSET=$$(sed -n 's/^#define MACHINE_CHIPSET //p' $$CHIPSET_SOURCE 2>/dev/null | head -n 1); \

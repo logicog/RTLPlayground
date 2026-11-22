@@ -140,7 +140,7 @@ class TestConversions(unittest.TestCase):
             'PCB_1_0.c', 'Brand', 'Model')
         self.assertEqual(description, {
             'machine': 'BRAND_MODEL',
-            'FriendlyName': 'Brand Model',
+            'friendly_name': 'Brand Model',
             'pcb': 'PCB_1_0',
         })
 
@@ -314,7 +314,7 @@ def create_machine_description(pcb_file, vendor, model):
 def machine_description_template(pcb_file, vendor, model):
     return {
         'machine': machine_name(vendor, model),
-        'FriendlyName': f'{vendor} {model}',
+        'friendly_name': f'{vendor} {model}',
         'pcb': os.path.splitext(pcb_file)[0],
     }
 
@@ -580,7 +580,7 @@ def machine_already_supported(mdl):
     for description in descriptions:
         if isinstance(description, dict) and description.get('machine') == mdl:
             return [
-                f'  machine/machines.json ({description.get("FriendlyName")!r}, '
+                f'  machine/machines.json ({description.get("friendly_name")!r}, '
                 f'PCB {description.get("pcb")!r})',
             ]
     return None
