@@ -39,8 +39,3 @@ __code const struct machine machine = {
     },
 
 };
-
-#pragma codeseg BANK2
-void machine_custom_init(void) __banked
-{
-}

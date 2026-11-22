@@ -41,8 +41,3 @@ __code const struct machine machine = {
 		0x1a, 0x19, 0x1d, 0x1e, 0x1c, 0x1d, 0x20, 0x21,
 	},
 };
-
-#pragma codeseg BANK2
-void machine_custom_init(void) __banked
-{
-}

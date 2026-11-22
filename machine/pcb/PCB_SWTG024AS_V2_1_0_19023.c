@@ -52,10 +52,7 @@ __code const struct machine machine = {
     .mac_flash_offset = 0x1FC000,
 };
 
-#pragma codeseg BANK2
-
-void machine_custom_init(void) __banked
-{
+MACHINE_CUSTOM_INIT(
 	// Stock LED_MODE: [8:5]=1, [12:9]=2 (leds_setup hard-codes 5/3); same as clearing bits 7 and 9
 	reg_bit_set(RTL837X_REG_LED_MODE, 17);
 	reg_bit_clear(RTL837X_REG_LED_MODE, 9);
@@ -73,4 +70,4 @@ void machine_custom_init(void) __banked
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 24);
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 25);
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 26);
-}
+)

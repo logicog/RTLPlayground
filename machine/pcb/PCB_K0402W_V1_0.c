@@ -53,8 +53,3 @@ __code const struct machine machine = {
 		0x1c, 0x1d, 0x1e, 0x20, 0x21, 0x22, 0x23         /* GPIO21-27 */
 	},
 };
-
-#pragma codeseg BANK2
-void machine_custom_init(void) __banked
-{
-}

@@ -50,4 +50,8 @@
 	.machine_name = FRIENDLY_NAME, \
 	.isRTL8373 = MACHINE_CHIPSET == RTL8373
 
+#define MACHINE_CUSTOM_INIT(body) \
+    _Pragma("codeseg BANK2") \
+    void machine_custom_init(void) __banked { body }
+
 #endif

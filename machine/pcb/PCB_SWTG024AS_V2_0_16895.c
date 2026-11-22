@@ -40,10 +40,7 @@ __code const struct machine machine = {
             },
     };
 
-#pragma codeseg BANK2
-
-void machine_custom_init(void) __banked
-{
+MACHINE_CUSTOM_INIT(
 	uint16_t pval;
 
 	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
@@ -59,4 +56,4 @@ void machine_custom_init(void) __banked
 	sds_read(0, 6, 2);
 	pval = SFR_DATA_U16;
 	sds_write_v(0, 6, 2, pval | 0x4000);
-}
+)

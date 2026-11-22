@@ -75,6 +75,14 @@ else
 	MACHINE_PCB_SOURCE =
 endif
 
+MACHINE_INIT_DEFAULT := machine/default_machine_init.c
+ifneq ($(strip $(MACHINE_PCB_SOURCE)),)
+MACHINE_HAS_CUSTOM_INIT := $(shell grep -q 'MACHINE_CUSTOM_INIT' $(MACHINE_PCB_SOURCE) 2>/dev/null && echo yes)
+ifeq ($(MACHINE_HAS_CUSTOM_INIT),)
+	MACHINE_INIT_SRC := $(MACHINE_INIT_DEFAULT)
+endif
+endif
+
 # PCB information
 ifneq ($(strip $(MACHINE_PCB_SOURCE)),)
 MACHINE_CHIPSET := $(shell sed -n 's/^#define MACHINE_CHIPSET //p' $(MACHINE_PCB_SOURCE) 2>/dev/null | head -n 1)
@@ -204,6 +212,7 @@ $(CONFIG):
 # Keep the selected PCB source first so an invalid $MACHINE value fails early.
 SRCS = \
 	$(MACHINE_SRC) \
+	$(MACHINE_INIT_SRC) \
 	cmd_editor.c \
 	cmd_parser.c \
 	dhcp.c \
@@ -382,6 +391,9 @@ machine_check: $(SDCC) $(MACHINE_REGISTRY)
 	CHIPSET=$$(sed -n 's/^#define MACHINE_CHIPSET //p' $$CHIPSET_SOURCE 2>/dev/null | head -n 1); \
 	test -n "$$CHIPSET" || { echo "ERROR: $$CHIPSET_SOURCE has no MACHINE_CHIPSET definition." >&2; exit 1; }; \
 	$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$CHIPSET_SOURCE; \
+	if ! grep -q 'MACHINE_CUSTOM_INIT(' $$CHIPSET_SOURCE; then \
+		$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $(MACHINE_INIT_DEFAULT); \
+	fi; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
 

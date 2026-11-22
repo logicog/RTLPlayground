@@ -29,8 +29,3 @@ __code const struct machine machine = {
 				},
 	.led_mux_custom = 0,
 };
-
-#pragma codeseg BANK2
-void machine_custom_init(void) __banked
-{
-}

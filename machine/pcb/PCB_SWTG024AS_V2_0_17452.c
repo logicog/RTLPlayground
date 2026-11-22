@@ -38,8 +38,3 @@ __code const struct machine machine = {
 	},
 	.mac_flash_offset = 0x1FC000,
 };
-
-#pragma codeseg BANK2
-void machine_custom_init(void) __banked
-{
-}

@@ -52,8 +52,3 @@ __code const struct machine machine = {
 	 * UUID-derived MAC is used unless a valid one is stored here. */
 	.mac_flash_offset = 0x1FC000,
 };
-
-#pragma codeseg BANK2
-void machine_custom_init(void) __banked
-{
-}

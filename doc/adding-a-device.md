@@ -246,13 +246,13 @@ be collapsed this way.
 
 ### Custom initialization
 
-Every PCB definition must define `machine_custom_init()` in
-`machine/pcb/<MACHINE_PCB>.c`. If no custom initialization is needed, use an
-empty function body. Put the function at the end of the file and place
-`#pragma codeseg BANK2` immediately before it to select the bank for the hook.
-Do not add `#pragma constseg BANK2` here: default constants and the machine
-descriptor reside in the fixed `HOME` area so they can be read from every code
-bank.
+When a PCB needs custom initialization, define its `machine_custom_init()`
+hook with `MACHINE_CUSTOM_INIT(body)` at the end of
+`machine/pcb/<MACHINE_PCB>.c`. The macro places the hook in `BANK2`. If no
+custom initialization is needed, omit the macro; the Makefile links a default
+empty hook. Do not add `#pragma constseg BANK2` here: default constants and the
+machine descriptor reside in the fixed `HOME` area so they can be read from
+every code bank.
 
 The hook is compiled with the PCB definition, so every machine that includes
 that PCB source uses the same initialization.

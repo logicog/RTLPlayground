@@ -36,9 +36,6 @@ __code const struct machine machine = {
 		     0x1d, 0x20, 0x21 },
 };
 
-#pragma codeseg BANK2
-
-void machine_custom_init(void) __banked
-{
+MACHINE_CUSTOM_INIT(
 	REG_SET(RTL837X_REG_LED_GLB_IO_EN, 0x7f24977fUL);
-}
+)
