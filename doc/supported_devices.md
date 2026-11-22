@@ -38,6 +38,7 @@ The following devices have been tested and are fully working:
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3.1.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.2](devices/2M-PCB23-V3.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHP-X  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 4M    | 8 + 1 |
+| keepLINK | KP-9000-9XHPML-X | Yes    | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHPML-X | Yes    | [2M-PCB51-ML-V1.2](devices/2M-PCB51-ML-V1.2.md)                                       | 2M    | 8 + 1 |
 | LIANGUO  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/2G5F_20G_V1.01.md)                                           | 0.5M  | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 0.5M  | 4 + 2 |
@@ -71,7 +72,7 @@ The following devices have been tested and are fully working:
 | ZoeRax   | HG0402XG        | No      | [HG0402XG_V1.1](devices/HG0402XG_V1.1.md)                                             | 1M    | 4 + 2 |
 | Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 
-For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
+For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / KP-9000-9XHPML-X / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label
 alone does not identify the wiring.
 
