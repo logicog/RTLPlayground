@@ -5599,12 +5599,13 @@ function fwSettle(st, knownGood) {
 }
 function wolSend() {
     var mac = $("wolmac").value.trim();
-    var vlan = $("wolvlan").value.trim();
+    var vlan = $("wolvlan").value;
     if (!/^([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$/.test(mac)) {
         toast(t("wol_mac_err"), "err");
         return;
     }
-    if (vlan !== "" && (!/^\d{1,4}$/.test(vlan) || +vlan > 4094)) {
+    if (vlan !== "" && ($("wolvlan").validity.badInput ||
+        !/^\d{1,4}$/.test(vlan) || +vlan > 4094)) {
         toast(t("wol_vlan_err"), "err");
         return;
     }
