@@ -540,6 +540,15 @@ void parse_wol(void)
 			return;
 		}
 		vlan = atoi_results_short;
+		if (vlan) {
+			vlan_get(vlan);
+			if (!(sfr_data[0] & 0x02)) {
+				cmd_error("VLAN ");
+				print_short(vlan);
+				print_string(" does not exist\n");
+				return;
+			}
+		}
 	}
 
 	print_string("Wake-on-LAN to ");
