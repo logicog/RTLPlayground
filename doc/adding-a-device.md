@@ -82,11 +82,11 @@ needs an entry with `"machine": "MY_BOARD_1_0"` in `machine/machines.json`.
 
 ## Step 1: machine build settings
 
-The Makefile reads the matching `machine`, `friendly_name` and `pcb` entry from
-`machine/machines.json` using `tools/machine_config.py`. It passes the model as
-`-DFRIENDLY_NAME="..."` to
-the compiler. `MACHINE_CHIPSET` is read from the selected PCB source and passed
-to all translation units. It selects the default logical port range:
+The Makefile uses `jq` to read the matching `machine`, `friendly_name` and
+`pcb` entry from `machine/machines.json`. It passes the model as
+`-DFRIENDLY_NAME="..."` to the compiler. `MACHINE_CHIPSET` is read from the
+selected PCB source and passed to all translation units. It selects the
+default logical port range:
 `MACHINE_MIN_PORT` is `0` for RTL8373 and `3` for RTL8372, while
 `MACHINE_MAX_PORT` is `8`, the highest logical port index.
 

@@ -60,8 +60,8 @@ ifeq ($(GENERIC_PCB_BUILD),1)
 else ifneq ($(strip $(MACHINE)),)
 	MACHINE_DESCRIPTOR = $(MACHINE_REGISTRY)
 	ifneq ($(wildcard $(MACHINE_DESCRIPTOR)),)
-	FRIENDLY_NAME := $(shell python3 tools/machine_config.py friendly_name $(MACHINE_DESCRIPTOR) $(MACHINE))
-	MACHINE_PCB_NAME := $(shell python3 tools/machine_config.py pcb $(MACHINE_DESCRIPTOR) $(MACHINE))
+	FRIENDLY_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 1 then .[0].friendly_name else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
+	MACHINE_PCB_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 1 then .[0].pcb else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
 	ifeq ($(strip $(FRIENDLY_NAME)),)
 	$(error MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR))
 	endif
@@ -365,18 +365,19 @@ $(OUTPUT): $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
 
 # Every machine description is checked by compiling its selected PCB source.
-MACHINE_DEFS := $(shell python3 tools/machine_config.py machines $(MACHINE_REGISTRY))
+MACHINE_DEFS := $(shell jq -er 'if type == "array" then .[].machine else error("expected an array") end' $(MACHINE_REGISTRY))
 
 .PHONY: machine_check
 machine_check: $(SDCC) $(MACHINE_REGISTRY)
 	@mkdir -p $(BUILDDIR)/tmp
 	@set -eo pipefail; \
+	test -n "$(MACHINE_DEFS)" || { echo "ERROR: No machine entries found in $(MACHINE_REGISTRY)." >&2; exit 1; }; \
 	for MACHINE in $(MACHINE_DEFS); \
 	do \
 	echo "Checking $${MACHINE}"; \
 	DESCRIPTION=$(MACHINE_REGISTRY); \
-	FRIENDLY_NAME=$$(python3 tools/machine_config.py friendly_name $$DESCRIPTION $$MACHINE); \
-	PCB=$$(python3 tools/machine_config.py pcb $$DESCRIPTION $$MACHINE); \
+	FRIENDLY_NAME=$$(jq -er --arg machine "$${MACHINE}" '.[] | select(.machine == $$machine) | .friendly_name' $$DESCRIPTION); \
+	PCB=$$(jq -er --arg machine "$${MACHINE}" '.[] | select(.machine == $$machine) | .pcb' $$DESCRIPTION); \
 	CHIPSET_SOURCE=machine/pcb/$${PCB}.c; \
 	CHIPSET=$$(sed -n 's/^#define MACHINE_CHIPSET //p' $$CHIPSET_SOURCE 2>/dev/null | head -n 1); \
 	test -n "$$CHIPSET" || { echo "ERROR: $$CHIPSET_SOURCE has no MACHINE_CHIPSET definition." >&2; exit 1; }; \
