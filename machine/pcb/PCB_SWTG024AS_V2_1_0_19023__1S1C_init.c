@@ -1,1 +1,0 @@
-PCB_SWTG024AS_V2_0_16895_init.c

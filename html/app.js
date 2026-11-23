@@ -246,7 +246,7 @@ var LANG = {
         lacp_neg: "negotiating",
         lacp_agg: "aggregator",
         lacp_members: "active members",
-        lacp_hint: "LACP: select candidate ports and press Apply to start negotiation",
+        lacp_hint: "select candidate ports and press Apply to start negotiation",
         lacp_actor: "Actor",
         lacp_partner: "Partner",
         lacp_rxstate: "RX state",
@@ -1430,7 +1430,7 @@ var LANG = {
         lacp_neg: "negociando",
         lacp_agg: "agregador",
         lacp_members: "miembros activos",
-        lacp_hint: "LACP: elige los puertos candidatos y pulsa Aplicar para iniciar la negociación",
+        lacp_hint: "elige los puertos candidatos y pulsa Aplicar para iniciar la negociación",
         lacp_actor: "Local",
         lacp_partner: "Remoto",
         lacp_rxstate: "Estado RX",
@@ -2068,7 +2068,7 @@ var LANG = {
         lacp_neg: "wird ausgehandelt",
         lacp_agg: "Aggregator",
         lacp_members: "aktive Mitglieder",
-        lacp_hint: "LACP: Ports auswählen und Übernehmen drücken, um die Aushandlung zu starten",
+        lacp_hint: "Ports auswählen und Übernehmen drücken, um die Aushandlung zu starten",
         lacp_actor: "Lokal",
         lacp_partner: "Partner",
         lacp_rxstate: "Empfangsstatus",
@@ -2617,6 +2617,11 @@ TABS.forEach(function(tb) {
 });
 $("burger").addEventListener("click", function() {
     $("nav").classList.toggle("open")
+});
+
+$("nav-overlay").addEventListener("click", function() {
+    $("nav").classList.remove("open");
+    $("burger").focus();
 });
 
 var IDLE_STOP_MS = 600000,
@@ -4320,8 +4325,21 @@ tabHooks.isolate = {
     }
 };
 
-var HASHF = ["spa", "smac", "dmac", "sip", "dip", "sport", "dport"];
+function lagRefreshPortLocks(lagPortOwner) {
+    for (var g = 1; g <= 4; g++) {
+        for (var p = 1; p <= S.n; p++) {
+            var cb = $("lg" + g + "p" + p);
+            if (lagPortOwner[p] !== 0 && lagPortOwner[p] !== g) {
+              cb.checked = false;
+              cb.disabled = true;
+            } else {
+              cb.disabled = false;
+            }
+        }
+    }
+}
 
+var HASHF = ["spa", "smac", "dmac", "sip", "dip", "sport", "dport"];
 function buildLag() {
     var w = $("lagwrap");
     if (w.children.length) return;
@@ -4337,16 +4355,18 @@ function buildLag() {
             $("lgs" + g).textContent = ms.value === "lacp" ? t("lacp_hint") : ""
         });
         mr.appendChild(ms);
+        mr.appendChild(h("span", { class: "small mono", id: "lgs" + g, style: "display:inline-blocck;margin-left:10px"}));
         card.appendChild(mr);
-        card.appendChild(h("p", { class: "small mono", id: "lgs" + g, style: "margin-bottom:10px" }));
-        var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px" });
-        for (var p = 1; p <= S.n; p++) pr.appendChild(h("label", null, [
-            h("input", {
-                type: "checkbox",
-                id: "lg" + g + "p" + p
-            }), document.createTextNode(" " + p + " "),
-        ]));
+        var pr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small"});
+        pr.appendChild(h("span", { class: "mut", text: t("c_port") + ":" }));
+        for (var p = 1; p <= S.n; p++) {
+            pr.appendChild(h("label", null, [
+                h("input", {type: "checkbox",id: "lg" + g + "p" + p}), 
+                document.createTextNode(" " + p + " "),
+            ]))
+        };
         card.appendChild(pr);
+        
         var hr = h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px", class: "small" });
         hr.appendChild(h("span", { class: "mut", text: t("lag_hash") }));
         HASHF.forEach(function(f) {
@@ -4365,24 +4385,34 @@ function buildLag() {
         w.appendChild(card);
     })(g);
 }
-var lacpCfg = [0, 0, 0, 0, 0];
 
+var lacpCfg = [0, 0, 0, 0, 0];
 function lagLoad() {
     return getJSON("/lag.json").then(function(s) {
+        var lagPortOwner = Array(S.n + 1).fill(0);
+        s.lags.forEach(function(l) {
+            var g = l.lagNum + 1;
+            l.members.forEach(function(p) {
+                lagPortOwner[p] = g;
+            })
+        });
         s.lags.forEach(function(l) {
             var g = l.lagNum + 1;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
-            for (var p = 1; p <= S.n; p++)
-                $("lg" + g + "p" + p).checked = l.members.includes(p);
+            for (var p = 1; p <= S.n; p++) {
+                $("lg" + g + "p" + p).checked = lagPortOwner[p]===g;
+            };
+            
             $("lgm" + g).value = l.type;
-            $("lgs" + g).textContent = l.type == "lacp" ? "LACP: " + t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "";
+            $("lgs" + g).textContent = l.type == "lacp" ? t("lacp_agg") + " " + (l.valid ? l.aggregator : "(" + t("lacp_neg") + ")") + ", " + t("lacp_members") + " " + l.active_members.join(" ") : "";
             lacpCfg[g] = l.type=="lacp";
             var hash = parseInt(l.hash, 16);
             HASHF.forEach(function(f, i) {
                 $("lg" + g + "h" + f).checked = !!((hash >> i) & 1)
             });
         });
-
+        lagRefreshPortLocks(lagPortOwner);
+        
         var tb = $("lacptbl").tBodies[0];
         tb.innerHTML = "";
         s.ports.forEach(function(p) {

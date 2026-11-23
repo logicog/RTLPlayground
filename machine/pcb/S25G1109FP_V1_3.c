@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8373
 #include "machine_defs.h"
 
 // Sirivision S25G1109FP V1.3 (label: SR-S25G2109F): 8x2.5G RJ45 + 1x10G SFP+,

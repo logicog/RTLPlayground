@@ -1,1 +1,0 @@
-pcb/PCB_310S_4T2XT_V1_0_0_22273_init.c

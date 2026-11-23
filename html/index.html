@@ -41,6 +41,9 @@ a{color:var(--ac);text-decoration:none}
   width:200px;flex:none;background:var(--panel);border-right:1px solid var(--bd);
   display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
 }
+#nav-overlay {
+    display: none;
+}
 #brand{display:flex;align-items:center;gap:9px;padding:16px 16px 12px;font-weight:650;font-size:15px}
 #brand svg{flex:none;stroke:var(--ac)}
 #brand span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -83,6 +86,10 @@ section.tab.act{display:block}
 .card h2 .hint{font-weight:400;font-size:12px;color:var(--fg2);margin-left:8px}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
 .grid2 .card{margin-bottom:0}
+#lagwrap {grid-template-columns:repeat(2, minmax(0, 1fr))}
+@media (max-width:930px) {
+  #lagwrap {grid-template-columns:1fr}
+}
 table.t{width:100%;border-collapse:collapse;font-size:13px}
 table.t th{
   text-align:left;font-weight:600;color:var(--fg2);font-size:12px;
@@ -193,8 +200,10 @@ textarea.cfg{
 button.danger{background:var(--bad);color:#fff;border-color:transparent}
 @media (max-width:820px){
   #nav{position:fixed;left:-210px;transition:left .18s;z-index:30;box-shadow:var(--shadow)}
-  #nav.open{left:0}
-  #burger{display:block;position:fixed;top:8px;left:10px;z-index:33;background:var(--panel);border:0;border-radius:4px;cursor:pointer;padding:4px;}
+  #nav.open{left:0;z-index: 1001;}
+  #nav-overlay {display: none;position: fixed;inset: 0;z-index: 1000;border: 0;padding: 0;background: transparent;}
+  #nav.open + #nav-overlay {display: block;}
+  #burger{display:block;position:fixed;top:8px;left:10px;z-index:1002;background:var(--panel);border:0;border-radius:4px;cursor:pointer;padding:4px;}
   #brand{padding-left:46px}
   main{padding:14px 12px 40px}
   #top{padding:8px 46px 8px 46px;gap:7px}
@@ -230,6 +239,10 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
   <ul id="navlist"></ul>
   <div id="navfoot"><span id="fver"></span></div>
 </nav>
+
+<button id="nav-overlay" type="button"
+        aria-label="Close navigation menu">
+</button>
 
 <button id="burger" title="Menu">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>

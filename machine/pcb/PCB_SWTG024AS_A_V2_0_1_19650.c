@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8372
 #include "machine_defs.h"
 
 __code const struct machine machine = {
@@ -44,3 +45,10 @@ __code const struct machine machine = {
                             0x00,0x01,0x04,0x05,0x08,0x09,0x0c,0x3f,0x0d,0x10,0x11,0x0e,0x14,0x11,0x12,0x15,0x15,0x16,0x18,0x19,0x1a,0x19,0x1d,0x1e,0x1c,0x1d,0x20,0x21
             },
     };
+
+MACHINE_CUSTOM_INIT(
+	reg_bit_set(RTL837X_REG_LED_GLB_IO_EN, 6);
+	reg_bit_set(RTL837X_REG_LED_MODE, 17);
+	reg_bit_clear(RTL837X_REG_LED_MODE, 9);
+	reg_bit_clear(RTL837X_REG_LED_MODE, 7);
+)
