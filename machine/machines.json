@@ -122,7 +122,7 @@
   {
     "machine": "HORACO_ZX_SG4T2",
     "friendly_name": "Horaco ZX-SG4T2",
-    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650"
+    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650__UNMANAGED"
   },
   {
     "machine": "HORACO_ZX_SWTGW218AS",
