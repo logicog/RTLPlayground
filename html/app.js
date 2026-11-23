@@ -4391,13 +4391,13 @@ function lagLoad() {
     return getJSON("/lag.json").then(function(s) {
         var lagPortOwner = Array(S.n + 1).fill(0);
         s.lags.forEach(function(l) {
-            var g = l.lagNum + 1;
+            var g = l.lagNum;
             l.members.forEach(function(p) {
                 lagPortOwner[p] = g;
             })
         });
         s.lags.forEach(function(l) {
-            var g = l.lagNum + 1;
+            var g = l.lagNum;
             if ($("lgm" + g).closest(".card").dataset.dirty) return;
             for (var p = 1; p <= S.n; p++) {
                 $("lg" + g + "p" + p).checked = lagPortOwner[p]===g;
@@ -4418,7 +4418,7 @@ function lagLoad() {
         s.ports.forEach(function(p) {
             if (p.lag === 255) return;
             var tr = tb.insertRow();
-            [p.p, p.lag + 1, p.a, p.pt, p.rs, parseInt(p.rx, 16), p.psys].forEach(function(v) {
+            [p.p, p.lag, p.a, p.pt, p.rs, parseInt(p.rx, 16), p.psys].forEach(function(v) {
                 tr.insertCell().textContent = v
             });
         });
