@@ -6,19 +6,20 @@ __code const struct machine machine = {
     .log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
     .phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
     .is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
-	.sfp_port[0].pin_detect = GPIO38,
+    .sfp_port[0].pin_detect = GPIO38,
     .sfp_port[0].pin_los = GPIO_NA,
     .sfp_port[0].pin_tx_disable = GPIO_NA,
     .sfp_port[0].sds = 1,
     .sfp_port[0].i2c = I2CBUS( GPIO39_I2C_SDA4, GPIO40_I2C_SCL3_MDC1 ),
 
-    .reset_pin = GPIO_NA,
+    .reset_pin = GPIO48_I2C_SCL1,
+    .mac_flash_offset = 0x1FC000,
     .high_leds = { .mux =  LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 0, 0, 0, 0, 0, 1},
-	/* Ports 1-5 RJ45 use set 0, port 9 SFP uses set 1 
-	 * Ports 1-5: Green: 2.5GBit, Amber: 10/100/1000MBit
-	 * SFP-port: Blue: 10GBit, Amber(PCB_SWTG024AS_V2_0_16895), Green(PCB_SWTG024AS_A_V2_0_1_19650__1S1C): 100MBit-2.5GBit
-	 */
+    /* Ports 1-5 RJ45 use set 0, port 9 SFP uses set 1 
+     * Ports 1-5: Green: 2.5GBit, Amber: 10/100/1000MBit
+     * SFP-port: Blue: 10GBit, Amber(PCB_SWTG024AS_V2_0_16895), Green(PCB_SWTG024AS_A_V2_0_1_19650__1S1C): 100MBit-2.5GBit
+     */
     .led_sets = {
                     {
                             LEDS_2G5 | LEDS_LINK | LEDS_ACT,
