@@ -16,7 +16,6 @@ Usage:
     fwupdate.py [options] IMAGE [HOST]
 
     fwupdate.py -p secret output/rtlplayground_....bin 192.168.10.247
-    fwupdate.py -p secret --health output/rtlplayground_....bin 192.168.10.247
     fwupdate.py -p secret --check 192.168.10.247
     RTLP_PASSWORD=secret fwupdate.py output/rtlplayground_....bin --no-wait
 
@@ -25,7 +24,7 @@ Exit status:
     1  the local image is not a valid RTLPlayground image
     2  login failed
     3  the switch rejected the upload
-    4  transfer, reboot or health read failed
+    4  transfer, reboot or status read failed
 """
 
 import argparse
@@ -44,7 +43,6 @@ IMAGE_MAGIC = b"\x00\x40\x02"
 IMAGE_CRC = 0xB001
 DEFAULT_HOST = "192.168.10.247"
 DEFAULT_WAIT_TIMEOUT = 180
-LINK_SPEEDS = ("down", "10M", "100M", "1000M", "500M", "10G", "2.5G", "5G")
 
 
 class Failure(Exception):
@@ -187,81 +185,6 @@ def describe(info):
     return (f"{info.get('sw_ver', '?')} "
             f"(built {info.get('build_date', '?')}, "
             f"hardware {info.get('hw_ver', '?')})")
-
-
-def fetch_status(host, port, timeout, cookie):
-    """Return the port list from /status.json."""
-    status, _, _, body = http_request(
-        host, port, timeout, "GET", "/status.json", cookie=cookie)
-    if status != 200:
-        raise Failure(f"/status.json returned HTTP {status}", 4)
-    try:
-        ports = json.loads(body.decode("utf-8", "replace"))
-    except ValueError:
-        raise Failure("/status.json is not valid JSON", 4)
-    if not isinstance(ports, list):
-        raise Failure("/status.json did not return a port list", 4)
-    return ports
-
-
-def print_health(host, port, timeout, password, cookie,
-                 label="Post-update health"):
-    """Print the port health from /status.json (best effort).
-
-    Returns True when the summary was printed, False when the read failed.
-    """
-    if cookie is None:
-        try:
-            cookie = login(host, port, timeout, password)
-        except Failure as error:
-            print(f"warning: cannot read health data: {error}", file=sys.stderr)
-            return False
-    try:
-        ports = fetch_status(host, port, timeout, cookie)
-    except Failure as error:
-        print(f"warning: cannot read health data: {error}", file=sys.stderr)
-        return False
-
-    def number(entry, key, base=10):
-        try:
-            return int(str(entry.get(key, "0")), base)
-        except (TypeError, ValueError):
-            return 0
-
-    rows = []
-    up = tx_errors = rx_errors = learned = 0
-    for entry in ports:
-        link = number(entry, "link")
-        speed = (LINK_SPEEDS[link] if 0 <= link < len(LINK_SPEEDS)
-                 else f"link {link}")
-        if link:
-            up += 1
-        enabled = entry.get("enabled")
-        enabled = ("?" if enabled is None
-                   else ("yes" if number(entry, "enabled") else "no"))
-        tx_good = number(entry, "txG", 16)
-        tx_bad = number(entry, "txB", 16)
-        rx_good = number(entry, "rxG", 16)
-        rx_bad = number(entry, "rxB", 16)
-        macs = number(entry, "macs", 16)
-        tx_errors += tx_bad
-        rx_errors += rx_bad
-        learned += macs
-        rows.append((entry.get("portNum", "?"), entry.get("name", ""), speed,
-                     enabled, tx_good, tx_bad, rx_good, rx_bad, macs))
-
-    print()
-    print(f"{label} (/status.json): {len(ports)} ports, {up} up, "
-          f"{learned} MACs learned, TX bad pkts {tx_errors}, "
-          f"RX bad pkts {rx_errors}")
-    print(f"{'Port':>4} {'Name':<12} {'Link':>6} {'En':>3} "
-          f"{'TX pkts':>10} {'TX bad':>7} {'RX pkts':>10} {'RX bad':>7} "
-          f"{'MACs':>6}")
-    for port_num, name, speed, enabled, tx_good, tx_bad, rx_good, rx_bad, macs in rows:
-        print(f"{str(port_num):>4} {str(name)[:12]:<12} {speed:>6} {enabled:>3} "
-              f"{tx_good:>10} {tx_bad:>7} {rx_good:>10} {rx_bad:>7} "
-              f"{macs:>6}")
-    return True
 
 
 def image_matches_hardware(image, hardware):
@@ -438,12 +361,8 @@ def parse_args(argv):
                              f"(default: {DEFAULT_WAIT_TIMEOUT})")
     parser.add_argument("--no-wait", action="store_true",
                         help="do not wait for the switch to reboot")
-    parser.add_argument("--health", action="store_true",
-                        help="after the reboot, fetch /status.json and print "
-                             "a port health summary")
     parser.add_argument("--check", action="store_true",
-                        help="read-only: print the version and /status.json "
-                             "health, then exit without uploading; give the "
+                        help="read-only: print switch information and exit; give the "
                              "host as the only positional "
                              f"(default: {DEFAULT_HOST})")
     parser.add_argument("--force", action="store_true",
@@ -462,7 +381,7 @@ def resolve_password(args, host):
 
 
 def check_switch(args, target):
-    """Read-only mode: print the running version and /status.json health."""
+    """Read-only mode: print switch information."""
     host, port = parse_target(target, args.port)
     password = resolve_password(args, host)
     cookie = login(host, port, args.timeout, password)
@@ -475,8 +394,7 @@ def check_switch(args, target):
     print(f"Version: {describe(info)}")
     print(f"Flash: {info.get('flash_size', '?')}, "
           f"chip temperature: {info.get('chip_temp', '?')}")
-    return (0 if print_health(host, port, args.timeout, password, cookie,
-                              "Health") else 4)
+    return 0
 
 
 def run(args):
@@ -498,8 +416,6 @@ def run(args):
 
     if args.image is None:
         raise Failure("IMAGE is required unless --check is used", 1)
-    if args.health and args.no_wait:
-        raise Failure("--health needs the reboot; remove --no-wait", 1)
     image = load_image(args.image)
     print(f"{args.image}: {len(image)} bytes, magic and CRC16 0x"
           f"{IMAGE_CRC:04x} OK", file=sys.stderr)
@@ -536,11 +452,8 @@ def run(args):
         print("Firmware staged; the switch is rebooting to apply it.")
         return 0
 
-    _, cookie = wait_for_switch(host, port, args.timeout, args.wait_timeout,
-                                password, before,
-                                require_down=accepted is None)
-    if args.health:
-        print_health(host, port, args.timeout, password, cookie)
+    wait_for_switch(host, port, args.timeout, args.wait_timeout,
+                    password, before, require_down=accepted is None)
     print("Firmware update complete.")
     return 0
 
