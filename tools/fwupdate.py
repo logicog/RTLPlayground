@@ -1,473 +1,355 @@
 #!/usr/bin/env python3
-"""Update an RTLPlayground switch over its web API.
+"""Read switch information or flash a 512 KiB RTLPlayground image.
 
-The web UI logs in with a form POST to /login (field ``pwd``), keeps the
-``session`` cookie from the reply, and posts the image as the ``uploadedfile``
-part of a multipart/form-data request to /upload.  This tool performs the same
-exchange, checks the image locally before sending it, prints the switch's
-verdict, and waits for the switch to reboot and answer again.
+    fwupdate.py 192.168.10.247                           # Read model and version
+    fwupdate.py 192.168.10.247 output/rtlplayground.bin  # Flash and wait for reboot
 
-The image must be the 512 KiB RTLPlayground build
-(output/rtlplayground_*.bin), not the OEM upgrade image.  The switch only
-accepts an image whose size, header and CRC16 are valid; checking them here
-avoids a 512 KiB upload just to be rejected.
+Set RTLP_PASSWORD or enter the password at the prompt. Python callers can use the same updater directly.
 
-Usage:
-    fwupdate.py [options] IMAGE [HOST]
+    switch = fwupdate.FirmwareUpdater(host, password)
+    info = switch.status()
+    result = switch.update(image_path)
 
-    fwupdate.py -p secret output/rtlplayground_....bin 192.168.10.247
-    fwupdate.py -p secret --check 192.168.10.247
-    RTLP_PASSWORD=secret fwupdate.py output/rtlplayground_....bin --no-wait
+fwupdate.Failure reports switch-specific problems such as a model mismatch or an unconfirmed upload.
 
-Exit status:
-    0  image accepted (and, unless --no-wait, the switch came back)
-    1  the local image is not a valid RTLPlayground image
-    2  login failed
-    3  the switch rejected the upload
-    4  transfer, reboot or status read failed
+Exit status is 0 on success and 1 on error.
 """
 
 import argparse
 import getpass
 import http.client
+import http.cookies
 import json
 import os
-import re
-import secrets
 import sys
 import time
-import urllib.parse
-
-IMAGE_SIZE = 512 * 1024
-IMAGE_MAGIC = b"\x00\x40\x02"
-IMAGE_CRC = 0xB001
-DEFAULT_HOST = "192.168.10.247"
-DEFAULT_WAIT_TIMEOUT = 180
+from contextlib import closing
+from datetime import timedelta
+from functools import partial
+from pathlib import Path
+from urllib.parse import quote, urlencode
 
 
 class Failure(Exception):
-    """An error that ends the run with a specific exit status."""
-
-    def __init__(self, message, status=4):
-        super().__init__(message)
-        self.status = status
+    """A switch-specific failure during a status check or firmware update."""
 
 
-def _crc_table():
-    """Reflected CRC-16 table for poly 0xA001 (the switch's crc16_bank1)."""
-    table = []
-    for value in range(256):
-        crc = value
-        for _ in range(8):
-            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
-        table.append(crc)
-    return table
+_UPDATE_ERRORS = (Failure, OSError, ValueError, http.client.HTTPException, http.cookies.CookieError)
 
 
-CRC_TABLE = _crc_table()
+class FirmwareUpdater:
+    """Read status and update firmware over HTTP.
 
-
-def crc16(data):
-    crc = 0
-    for byte in data:
-        crc = (crc >> 8) ^ CRC_TABLE[(crc ^ byte) & 0xFF]
-    return crc
-
-
-def load_image(path):
-    try:
-        with open(path, "rb") as image_file:
-            data = image_file.read()
-    except OSError as error:
-        raise Failure(f"cannot read {path}: {error}", 1)
-
-    if len(data) != IMAGE_SIZE:
-        raise Failure(
-            f"{path}: size is {len(data)}, expected {IMAGE_SIZE} "
-            f"({IMAGE_SIZE // 1024} KiB)", 1)
-    if data[:len(IMAGE_MAGIC)] != IMAGE_MAGIC:
-        raise Failure(
-            f"{path}: missing bank header / LJMP magic: not an "
-            "RTLPlayground firmware image", 1)
-    crc = crc16(data)
-    if crc != IMAGE_CRC:
-        raise Failure(
-            f"{path}: CRC16 is 0x{crc:04x}, expected 0x{IMAGE_CRC:04x}; "
-            "the image is corrupt", 1)
-    return data
-
-
-def parse_target(target, port_override):
-    """Return (host, port) for a host, host:port or http://host URL."""
-    if "://" in target:
-        try:
-            url = urllib.parse.urlsplit(target)
-            port = url.port
-        except ValueError as error:
-            raise Failure(f"invalid target {target!r}: {error}", 1)
-        if url.scheme.lower() != "http":
-            raise Failure("only the switch's plain HTTP API is supported", 1)
-        if url.path not in ("", "/"):
-            raise Failure("the target must not include a path", 1)
-        host = url.hostname
-    else:
-        host, port = target, None
-        if target.count(":") == 1:
-            host, possible_port = target.split(":", 1)
-            if possible_port.isdigit():
-                port = int(possible_port)
-
-    if not host:
-        raise Failure("no switch address given", 1)
-    if port_override is not None:
-        port = port_override
-    if port is None:
-        port = 80
-    if not 0 < port < 65536:
-        raise Failure(f"invalid port {port}", 1)
-    return host, port
-
-
-def http_request(host, port, timeout, method, path, body=None, cookie=None,
-                 content_type=None):
-    """Make one request; the switch closes the connection after every reply."""
-    connection = http.client.HTTPConnection(host, port, timeout=timeout)
-    headers = {"Connection": "close"}
-    if cookie:
-        headers["Cookie"] = f"session={cookie}"
-    if content_type:
-        headers["Content-Type"] = content_type
-    try:
-        connection.request(method, path, body=body, headers=headers)
-        response = connection.getresponse()
-        data = response.read()
-        return (response.status, response.getheader("Location"),
-                response.getheader("Set-Cookie"), data)
-    except (OSError, http.client.HTTPException) as error:
-        raise Failure(f"{method} {path}: {error}", 4)
-    finally:
-        connection.close()
-
-
-def login(host, port, timeout, password):
-    body = ("pwd=" + urllib.parse.quote_plus(password)).encode("ascii")
-    status, location, set_cookie, _ = http_request(
-        host, port, timeout, "POST", "/login", body=body,
-        content_type="application/x-www-form-urlencoded")
-    if status != 302:
-        raise Failure(f"login returned HTTP {status}", 2)
-
-    if "index.html" not in (location or ""):
-        raise Failure("login failed: wrong password", 2)
-    match = re.search(r"(?:^|;\s*)session=([^;]*)", set_cookie or "")
-    if not match or not match.group(1):
-        raise Failure("login succeeded but the reply had no session cookie", 2)
-    return match.group(1)
-
-
-def fetch_info(host, port, timeout, cookie):
-    try:
-        status, _, _, body = http_request(
-            host, port, timeout, "GET", "/information.json", cookie=cookie)
-    except Failure:
-        return None
-    if status != 200:
-        return None
-    try:
-        return json.loads(body.decode("utf-8", "replace"))
-    except ValueError:
-        return None
-
-
-def describe(info):
-    if not info:
-        return "unknown version"
-    return (f"{info.get('sw_ver', '?')} "
-            f"(built {info.get('build_date', '?')}, "
-            f"hardware {info.get('hw_ver', '?')})")
-
-
-def image_matches_hardware(image, hardware):
-    """True if the image carries the switch's NUL-terminated machine name."""
-    if not hardware:
-        return True
-    return hardware.encode("ascii", "replace") + b"\0" in image
-
-
-def build_multipart(image, path):
-    boundary = "----RTLPlayground" + secrets.token_hex(12)
-    marker = b"\r\n--" + boundary.encode("ascii")
-    while marker in image:
-        boundary = "----RTLPlayground" + secrets.token_hex(12)
-        marker = b"\r\n--" + boundary.encode("ascii")
-
-    filename = os.path.basename(path) or "firmware.bin"
-    filename = (filename.replace('"', "_").replace("\r", "_")
-                .replace("\n", "_"))
-    filename = filename.encode("ascii", "replace").decode()
-    head = (
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="uploadedfile"; '
-        f'filename="{filename}"\r\n'
-        "Content-Type: application/octet-stream\r\n"
-        "\r\n"
-    ).encode("ascii")
-    return boundary, head + image + f"\r\n--{boundary}--\r\n".encode("ascii")
-
-
-def upload(host, port, timeout, cookie, image, path):
-    """Send the image; return (accepted, verdict).
-
-    accepted is None when the switch closed the connection without a verdict
-    (older firmware did that).  The caller then falls back to watching the
-    reboot.
+    Supply a password string or a function that returns it at first login.
+    Pass a text stream for progress messages.
     """
-    boundary, body = build_multipart(image, path)
-    connection = http.client.HTTPConnection(host, port, timeout=timeout)
 
-    print(f"Uploading {len(image)} bytes to http://{host}:{port}/upload ...",
-          file=sys.stderr)
-    try:
-        connection.putrequest("POST", "/upload")
-        connection.putheader(
-            "Content-Type", f"multipart/form-data; boundary={boundary}")
-        connection.putheader("Content-Length", str(len(body)))
-        connection.putheader("Cookie", f"session={cookie}")
-        connection.putheader("Connection", "close")
-        connection.endheaders()
+    DEFAULT_TIMEOUT = float(os.getenv("RTLP_FWUPDATE_TIMEOUT", "60"))
+    DEFAULT_WAIT_TIMEOUT = float(os.getenv("RTLP_FWUPDATE_WAIT_TIMEOUT", "180"))
 
-        sent = 0
-        last_percent = -1
-        for offset in range(0, len(body), 8192):
-            chunk = body[offset:offset + 8192]
-            connection.send(chunk)
-            sent += len(chunk)
-            if sys.stderr.isatty():
-                percent = sent * 100 // len(body)
-                if percent != last_percent:
-                    last_percent = percent
-                    print(f"\rUploading {percent:3d}% "
-                          f"({sent}/{len(body)} bytes)", end="",
-                          file=sys.stderr)
-        if sys.stderr.isatty():
-            print(file=sys.stderr)
+    IMAGE_SIZE = 512 * 1024
+    IMAGE_MAGIC = b"\x00\x40\x02"
+    IMAGE_CRC = 0xB001
 
-        try:
-            response = connection.getresponse()
-        except (http.client.HTTPException, ConnectionResetError,
-                BrokenPipeError):
-            return None, "connection closed without a verdict"
+    CRC_TABLE = list(range(256))
+    for _ in range(8):
+        CRC_TABLE = [(crc >> 1) ^ (0xA001 if crc & 1 else 0) for crc in CRC_TABLE]
 
-        verdict = response.read().decode("utf-8", "replace").strip()
-        if response.status == 200:
-            return True, verdict
-        if response.status == 400:
-            return False, verdict or "HTTP 400 Bad Request"
-        if response.status == 401:
-            raise Failure("the switch rejected the session cookie", 2)
-        raise Failure(
-            f"upload returned HTTP {response.status}"
-            + (f": {verdict}" if verdict else ""), 3)
-    except (BrokenPipeError, ConnectionResetError) as error:
-        raise Failure(f"connection lost during upload: {error}", 4)
-    except OSError as error:
-        raise Failure(f"upload failed: {error}", 4)
-    finally:
-        connection.close()
+    def __init__(self, host, password, *, timeout=DEFAULT_TIMEOUT, wait_timeout=DEFAULT_WAIT_TIMEOUT, progress=None):
+        if not all(0 < value < float("inf") for value in (timeout, wait_timeout)):
+            raise ValueError("timeout and wait_timeout must be positive and finite")
 
+        host = host.removeprefix("http://").removesuffix("/")
+        self.host = f"[{host}]" if host.count(":") > 1 and not host.startswith("[") else host
+        self.password = password
+        self.timeout = timeout
+        self.wait_timeout = wait_timeout
+        self.progress = progress
+        self.update_warning = None
+        self._session_cookie = None
 
-def probe(host, port, timeout):
-    """Return the HTTP status, or None when the switch is not answering."""
-    try:
-        status, _, _, _ = http_request(
-            host, port, timeout, "GET", "/information.json")
-        return status
-    except Failure:
-        return None
+    def status(self, *, image=None, timeout=None):
+        """Return switch information and check the model if firmware bytes are supplied."""
+        status, _, body = self._request("GET", "/information.json", timeout=timeout)
+        if status != 200:
+            raise Failure(f"/information.json returned HTTP {status}")
 
+        info = json.loads(body)
+        if not isinstance(info, dict) or not info:
+            raise Failure("/information.json did not return switch information")
 
-def wait_for_switch(host, port, timeout, wait_timeout, password, before,
-                    require_down=False):
-    """Wait until the switch has rebooted and answers again.
+        if image is not None:
+            model = info.get("hw_ver")
+            hint = "use --force only if you know the target board"
+            if not isinstance(model, str) or not model.strip() or not (model.isascii() and model.isprintable()):
+                raise Failure(f"cannot read the switch model from /information.json; {hint}")
+            if model.encode("ascii") + b"\0" not in image:
+                raise Failure(f"image does not match {model!r}; {hint}")
 
-    require_down is set when the switch closed the upload connection without
-    a verdict: then only an observed reboot proves that the image was taken.
-    Returns (info, cookie) from the fresh login after the reboot; both are None
-    when that login or the /information.json read failed.
-    """
-    start = time.monotonic()
-    seen_down = False
-    print("Waiting for the switch to reboot ...", file=sys.stderr)
-    while time.monotonic() - start < wait_timeout:
-        status = probe(host, port, min(timeout, 5))
-        elapsed = time.monotonic() - start
-        if status is None:
-            if not seen_down:
-                print("Switch is down (rebooting) ...", file=sys.stderr)
-                seen_down = True
-            time.sleep(2)
-            continue
-        if (status in (200, 401) and not seen_down and elapsed >= 9
-                and require_down):
-            raise Failure(
-                "switch never rebooted and gave no verdict; the image was "
-                "probably rejected", 3)
-        # Stay reachable for a few seconds before believing the boot is
-        # complete; otherwise a fast reply may just be the old session.
-        if status in (200, 401) and (seen_down or elapsed >= 9):
-            print("Switch is back.", file=sys.stderr)
-            after = None
-            cookie = None
+        return info
+
+    @staticmethod
+    def describe(info):
+        host = info.get("hostname") or info.get("ip_address") or "?"
+        hardware = [info[key] for key in ("hw_ver", "flash_size") if info.get(key)]
+        if hardware:
+            host += f" ({', '.join(hardware)})"
+
+        summary = f"{host} running {info.get('sw_ver') or '?'}"
+        if build_date := info.get("build_date"):
+            summary += f" ({build_date})"
+        if (uptime := FirmwareUpdater._uptime(info)) is not None:
+            summary += f" up for {timedelta(seconds=uptime)}"
+        return summary
+
+    def update(self, image_path, *, force=False, wait=True):
+        """Return the upload reply after the requested reboot or recovery status check."""
+        self.update_warning = None
+        path = Path(image_path)
+        image = self._read_image(path)
+
+        previous_uptime = None
+        previous_version = None
+        if not force or wait:
             try:
-                cookie = login(host, port, timeout, password)
-                after = fetch_info(host, port, timeout, cookie)
-            except Failure:
-                pass
-            if after:
-                print(f"Now running {describe(after)}", file=sys.stderr)
-                if before and (after.get("sw_ver") == before.get("sw_ver")
-                               and after.get("build_date")
-                               == before.get("build_date")):
-                    print("Note: the switch reports the same version; this "
-                          "may be the image that was already installed.",
-                          file=sys.stderr)
-            return after, cookie
-        time.sleep(2)
-    raise Failure(f"switch did not answer within {wait_timeout} seconds", 4)
+                info = self.status(image=None if force else image)
+                if wait and self._uptime(info) == 0:
+                    # Give a freshly booted switch a nonzero baseline before uploading.
+                    time.sleep(2)
+                    info = self.status(image=None if force else image)
+            except _UPDATE_ERRORS:
+                if not force:
+                    raise
+            else:
+                previous_uptime = self._uptime(info)
+                previous_version = info.get("sw_ver")
+                self._report(self.describe(info))
 
+        self._report(f"Uploading {len(image)} bytes to {self.host}...")
+        upload_started = time.monotonic()
+        accepted, result = self._upload(image, path.name, wait=wait)
+        self._report(f"Switch: {result}")
 
-def parse_args(argv):
-    parser = argparse.ArgumentParser(
-        description="Update RTLPlayground switch firmware via its web API.",
-        epilog="The image is the 512 KiB RTLPlayground build "
-               "(output/rtlplayground_*.bin), not the OEM upgrade image. "
-               "The password can also be set in RTLP_PASSWORD.")
-    parser.add_argument("image", nargs="?",
-                        help="RTLPlayground firmware image (.bin); with --check, "
-                             "the single positional is the host")
-    parser.add_argument(
-        "host", nargs="?", default=None,
-        help=f"switch address, optionally host:port or http://host "
-             f"(default: {DEFAULT_HOST})")
-    parser.add_argument("-p", "--password",
-                        help="web interface password (prompted if not given)")
-    parser.add_argument("--port", type=int,
-                        help="HTTP port (overrides the port in HOST)")
-    parser.add_argument("--timeout", type=float, default=60,
-                        help="socket timeout in seconds (default: 60)")
-    parser.add_argument("--wait-timeout", type=float,
-                        default=DEFAULT_WAIT_TIMEOUT,
-                        help="seconds to wait for the reboot "
-                             f"(default: {DEFAULT_WAIT_TIMEOUT})")
-    parser.add_argument("--no-wait", action="store_true",
-                        help="do not wait for the switch to reboot")
-    parser.add_argument("--check", action="store_true",
-                        help="read-only: print switch information and exit; give the "
-                             "host as the only positional "
-                             f"(default: {DEFAULT_HOST})")
-    parser.add_argument("--force", action="store_true",
-                        help="upload even if the image does not name the "
-                             "switch's hardware")
-    return parser.parse_args(argv)
+        if wait:
+            status_only = force and previous_uptime is None and accepted
+            self._wait_after_upload(upload_started, previous_uptime, previous_version, status_only=status_only)
+        return result
 
+    def _read_image(self, path):
+        image = path.read_bytes()
+        if len(image) != self.IMAGE_SIZE:
+            raise ValueError(f"{path}: expected {self.IMAGE_SIZE} bytes, got {len(image)}")
+        if not image.startswith(self.IMAGE_MAGIC):
+            raise ValueError(f"{path}: missing RTLPlayground bank header")
 
-def resolve_password(args, host):
-    password = args.password
-    if password is None:
-        password = os.environ.get("RTLP_PASSWORD")
-    if password is None:
-        password = getpass.getpass(f"Password for {host}: ")
-    return password
+        crc = 0
+        for byte in image:
+            crc = (crc >> 8) ^ self.CRC_TABLE[(crc ^ byte) & 0xFF]
+        if crc != self.IMAGE_CRC:
+            raise ValueError(f"{path}: expected CRC16 {self.IMAGE_CRC:#06x}, got {crc:#06x}")
+        return image
 
+    def _wait_after_upload(self, upload_started, previous_uptime, previous_version, *, status_only):
+        deadline = time.monotonic() + self.wait_timeout
+        self._report("Waiting for switch status..." if status_only else "Waiting for the switch to reboot...")
+        previous_cookie = self._session_cookie
+        observed_at = upload_started
+        while (remaining := deadline - time.monotonic()) > 0:
+            timeout = min(self.timeout, remaining, 5)
+            probe_started = time.monotonic()
+            had_cookie = self._session_cookie is not None
+            try:
+                info = self.status(timeout=timeout)
+            except _UPDATE_ERRORS:
+                if had_cookie and self._session_cookie is None:
+                    continue  # The old cookie was rejected. Read uptime with a fresh session.
+            else:
+                received = time.monotonic()
+                if received >= deadline:
+                    break
+                if status_only:
+                    self._report(self.describe(info))
+                    return
+                uptime = self._uptime(info)
+                if uptime is not None:
+                    # A small forward step across the 32-bit counter wrap is still the same boot.
+                    if previous_uptime is not None and uptime < previous_uptime:
+                        rebooted = (1 << 32) - previous_uptime + uptime > received - observed_at + 1
+                    else:
+                        # After a missed reboot, even a higher uptime can date the new boot
+                        # after our last reading. Allow one second for counter resolution.
+                        rebooted = (uptime != previous_uptime and self._session_cookie != previous_cookie
+                                    and uptime + 1 < probe_started - observed_at)
+                    # The reported boot must also fit inside this update.
+                    if rebooted and uptime <= received - upload_started + 1:
+                        self._report(self.describe(info))
+                        version = info.get("sw_ver")
+                        if version and version == previous_version:
+                            self.update_warning = f"Warning: firmware version is still {version} after reboot."
+                        return
+                    previous_uptime, previous_cookie, observed_at = uptime, self._session_cookie, received
+            time.sleep(min(2, max(0, deadline - time.monotonic())))
 
-def check_switch(args, target):
-    """Read-only mode: print switch information."""
-    host, port = parse_target(target, args.port)
-    password = resolve_password(args, host)
-    cookie = login(host, port, args.timeout, password)
-    info = fetch_info(host, port, args.timeout, cookie)
-    if not info:
-        raise Failure("could not read /information.json", 4)
+        self._session_cookie = None
+        if status_only:
+            raise Failure(f"upload accepted, but switch status was unavailable after {self.wait_timeout:g} seconds")
+        raise Failure(f"could not confirm reboot from switch uptime within {self.wait_timeout:g} seconds")
 
-    name = info.get("hostname") or host
-    print(f"Switch: {name} at {host}:{port}")
-    print(f"Version: {describe(info)}")
-    print(f"Flash: {info.get('flash_size', '?')}, "
-          f"chip temperature: {info.get('chip_temp', '?')}")
-    return 0
+    @staticmethod
+    def _uptime(info):
+        try:
+            return int(info.get("uptime"), 16)
+        except (TypeError, ValueError):
+            return None
 
+    def _upload(self, image, filename, *, wait):
+        boundary = "----RTLPlayground"
+        while boundary.encode("ascii") in image:
+            boundary = os.urandom(24).hex()
 
-def run(args):
-    if args.timeout <= 0:
-        raise Failure("--timeout must be positive", 1)
-    if not args.check and args.wait_timeout <= 0:
-        raise Failure("--wait-timeout must be positive", 1)
+        filename = quote(os.fsencode(filename), safe=" ")
+        head = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="uploadedfile"; filename="{filename}"\r\n'
+            "Content-Type: application/octet-stream\r\n\r\n"
+        ).encode("ascii")
+        body = head + image + f"\r\n--{boundary}--\r\n".encode("ascii")
+        total = len(body)
 
-    if args.check:
-        if args.host is not None:
-            raise Failure("--check takes only the host; do not pass an image",
-                          1)
-        if args.no_wait:
-            raise Failure("--no-wait has no effect with --check", 1)
-        target = args.image if args.image is not None else DEFAULT_HOST
-        if args.image is not None and os.path.isfile(target):
-            raise Failure("--check takes a host, not a firmware image", 1)
-        return check_switch(args, target)
+        def chunks():
+            """Report each block after http.client has sent it."""
+            block_size = 8192
+            for offset in range(0, total, block_size):
+                chunk = body[offset:offset + block_size]
+                yield chunk
 
-    if args.image is None:
-        raise Failure("IMAGE is required unless --check is used", 1)
-    image = load_image(args.image)
-    print(f"{args.image}: {len(image)} bytes, magic and CRC16 0x"
-          f"{IMAGE_CRC:04x} OK", file=sys.stderr)
-    host, port = parse_target(args.host or DEFAULT_HOST, args.port)
-    password = resolve_password(args, host)
+                sent = offset + len(chunk)
+                print(f"\rUploading {sent * 100 // total:3d}% ({sent}/{total} bytes)",
+                      end="\n" if sent == total else "", file=self.progress, flush=True)
 
-    cookie = login(host, port, args.timeout, password)
-    print(f"Logged in to {host}:{port}", file=sys.stderr)
+        payload = chunks() if self.progress is not None and self.progress.isatty() else body
+        try:
+            status, _, data = self._request(
+                "POST", "/upload", payload, content_type=f"multipart/form-data; boundary={boundary}",
+                content_length=total, allow_no_reply=wait)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError,
+                TimeoutError, http.client.HTTPException) as error:
+            if self._session_cookie is None:  # Login failed before the upload started.
+                raise
+            self._session_cookie = None
+            raise Failure(f"upload outcome unconfirmed: {error}. Check the running firmware before retrying.") from error
 
-    before = fetch_info(host, port, args.timeout, cookie)
-    if before:
-        print(f"Currently running {describe(before)}", file=sys.stderr)
-        if not args.force and not image_matches_hardware(
-                image, before.get("hw_ver")):
-            raise Failure(
-                f"the image does not contain the switch's hardware name "
-                f"({before.get('hw_ver')}); it was probably built for another "
-                "board. Use --force to upload it anyway.", 1)
-    else:
-        print("Could not read /information.json; skipping the hardware check",
-              file=sys.stderr)
+        if status == 401:
+            raise Failure("the switch rejected the session cookie")
+        result = data.decode(errors="replace").strip()
+        if status not in (200, None):
+            raise Failure(f"upload returned HTTP {status}: {result or 'upload rejected'}")
 
-    accepted, verdict = upload(
-        host, port, args.timeout, cookie, image, args.image)
+        # The switch may already be rebooting with the old session invalidated.
+        if not wait:
+            self._session_cookie = None
+        if status is None:
+            return False, "connection closed without a result"
+        return True, result or "upload accepted"
 
-    if accepted is False:
-        raise Failure(f"switch rejected the image: {verdict}", 3)
-    if accepted is None:
-        print(f"Switch: {verdict}", file=sys.stderr)
-    else:
-        print(f"Switch: {verdict or 'upload accepted'}", file=sys.stderr)
+    def _request(self, method, path, body=None, *, content_type=None,
+                 content_length=None, allow_no_reply=False, timeout=None):
+        """Make one request; older firmware may reboot after receiving all upload bytes."""
+        if path != "/login" and self._session_cookie is None:
+            started = time.monotonic()
+            self._login(timeout)
+            if timeout is not None:
+                timeout -= time.monotonic() - started
+                if timeout <= 0:
+                    raise TimeoutError("login used the request timeout")
 
-    if args.no_wait:
-        print("Firmware staged; the switch is rebooting to apply it.")
-        return 0
+        headers = {
+            "Connection": "close",
+            "Content-Type": content_type,
+            "Content-Length": content_length,
+            "Cookie": self._session_cookie,
+        }
+        timeout = self.timeout if timeout is None else timeout
+        with closing(http.client.HTTPConnection(self.host, timeout=timeout)) as conn:
+            conn.request(method, path, body, {name: value for name, value in headers.items() if value is not None})
 
-    wait_for_switch(host, port, args.timeout, args.wait_timeout,
-                    password, before, require_down=accepted is None)
-    print("Firmware update complete.")
-    return 0
+            try:
+                response = conn.getresponse()
+            except (ConnectionResetError, BrokenPipeError):
+                if allow_no_reply:
+                    return None, {}, b""
+                raise
+
+            with response:
+                data = response.read()
+                if response.status == 401:
+                    self._session_cookie = None
+                return response.status, response.headers, data
+
+    def _login(self, timeout=None):
+        if callable(self.password):
+            self.password = self.password()
+
+        body = urlencode({"pwd": self.password}).encode("ascii")
+        status, headers, _ = self._request("POST", "/login", body,
+                                          content_type="application/x-www-form-urlencoded", timeout=timeout)
+
+        # Both login outcomes redirect. A session cookie signals success.
+        if status == 302:
+            session = http.cookies.SimpleCookie(headers.get("Set-Cookie", "")).get("session")
+            if session is not None and session.value:
+                self._session_cookie = f"session={session.coded_value}"
+                return
+            if headers.get("Location", "").rsplit("/", 1)[-1] == "login.html":
+                raise Failure("login failed: wrong password")
+        raise Failure(f"login returned HTTP {status} without a valid session")
+
+    def _report(self, message):
+        if self.progress is not None:
+            print(message, file=self.progress)
 
 
 def main(argv=None):
-    args = parse_args(argv)
+    parser = argparse.ArgumentParser(description="Read switch information or flash firmware.",
+                                     epilog="Recover a known board: %(prog)s --force --no-wait HOST IMAGE")
+
+    parser.add_argument("host", metavar="HOST", help="switch address or HTTP URL, optionally with a port")
+    parser.add_argument("image", metavar="IMAGE", nargs="?", type=Path,
+                        help="RTLPlayground firmware image (.bin). Omit for status.")
+
+    parser.add_argument("--force", action="store_true", help="skip the board-model check")
+    parser.add_argument("--no-wait", action="store_true", help="return once the switch accepts the upload")
+    parser.add_argument("-p", "--password", default=os.getenv("RTLP_PASSWORD"), help="uses RTLP_PASSWORD or prompts")
+
     try:
-        return run(args)
-    except Failure as error:
+        args = parser.parse_intermixed_args(argv)
+
+        password = (
+            args.password if args.password is not None
+            else partial(getpass.getpass, f"Password for {args.host}: ")
+        )
+        switch = FirmwareUpdater(args.host, password, progress=sys.stderr)
+
+        if args.image is None:
+            print(switch.describe(switch.status()))
+        else:
+            switch.update(args.image, force=args.force, wait=not args.no_wait)
+            if args.no_wait:
+                print("Firmware staged; the switch is rebooting to apply it.")
+            else:
+                summary = "Switch is responding after upload." if args.force else "Firmware update complete."
+                if switch.update_warning:
+                    summary += f" {switch.update_warning}"
+                print(summary)
+        return 0
+
+    except SystemExit as exit_status:
+        return int(bool(exit_status.code))
+    except _UPDATE_ERRORS as error:
         print(f"error: {error}", file=sys.stderr)
-        return error.status
-    except KeyboardInterrupt:
+    except (EOFError, KeyboardInterrupt):
         print("\naborted", file=sys.stderr)
-        return 130
+    return 1
 
 
 if __name__ == "__main__":
