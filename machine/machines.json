@@ -15,11 +15,6 @@
     "pcb": "PCB_K0501W_V2_0"
   },
   {
-    "machine": "DEFAULT_8C_1SFP",
-    "friendly_name": "8+1 SFP Port Switch",
-    "pcb": "NONAME_KP_9000_9XH_X_EU"
-  },
-  {
     "machine": "DOTX_DX_1009N",
     "friendly_name": "DOTX DX-1009N",
     "pcb": "PCB_SWTG118AS_V1_0_11430"
@@ -190,9 +185,9 @@
     "pcb": "2M_PCB51_ML_V1_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XH_X_EU",
-    "friendly_name": "keepLink KP-9000-9XH-X-EU",
-    "pcb": "NONAME_KP_9000_9XH_X_EU"
+    "machine": "KEEPLINK_KP_9000_9XH_X",
+    "friendly_name": "keepLink KP-9000-9XH-X",
+    "pcb": "2M_PCB23_V2_0"
   },
   {
     "machine": "LIANGUO_HYWS_SGT0108S",
