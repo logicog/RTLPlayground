@@ -90,6 +90,11 @@
     "pcb": "2G5F4_10G2_V1_01"
   },
   {
+    "machine": "HONGYAVISION_LG_SG5T1__WEB_",
+    "friendly_name": "Hongyavision LG-SG5T1 (WEB)",
+    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650__1S1C"
+  },
+  {
     "machine": "HORACO_HC_SWTG124AS",
     "friendly_name": "Horaco HC-SWTG124AS",
     "pcb": "PCB_SWTG024AS_A_V2_0_1_19650"
