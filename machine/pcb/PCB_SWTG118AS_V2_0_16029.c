@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8373
 #include "machine_defs.h"
 
 

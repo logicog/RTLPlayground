@@ -8,9 +8,9 @@
  * notably the host-side tests under test/, which define their own `machine`
  * object.
  *
- * MACHINE_MODEL is deliberately not defined here: a build that reaches this
+ * FRIENDLY_NAME is deliberately not defined here: a build that reaches this
  * header must not silently pick up some default model string. Any code that
- * needs MACHINE_MODEL therefore fails to compile unless a real machine is
+ * needs FRIENDLY_NAME therefore fails to compile unless a real machine is
  * selected. MACHINE_CHIPSET has to be present because machine.h requires it;
  * the tests supply their own `machine` object, so the chipset-derived port
  * defaults below it are unused.

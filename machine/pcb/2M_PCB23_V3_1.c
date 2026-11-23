@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8373
 #include "machine_defs.h"
 
 // 2M-PCB23-V3.2 is wired like V3.1 (SFP detection, LEDs, factory MAC location)

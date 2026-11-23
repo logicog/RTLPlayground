@@ -1,3 +1,5 @@
+#define MACHINE_CHIPSET RTL8372
+
 #include "machine_defs.h"
 
 /*
@@ -72,3 +74,9 @@ __code const struct machine machine = {
 		0x21, 0x22, 0x0f
 	},
 };
+
+MACHINE_CUSTOM_INIT(
+	// The power LED on pad 28 (SYS LED) is wired active-high; the chip defaults
+	// to active-low, so SYS_LED_ON would show as off. Flip pad 28's polarity.
+	reg_bit_clear(RTL837X_REG_LED_GLB_ACTIVE, 28);
+)

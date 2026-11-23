@@ -5,7 +5,7 @@ This script talks to the switch's serial console and reads the LED registers wit
 the firmware's own ``regget`` command. The report it prints is the same as
 ``dec_leds_from_dump.py``: the LED pad mux (``.led_mux``), the four LED sets
 (``.led_sets``) and the set each port uses (``.port_led_set``) - exactly what a
-``machine/<NAME>.c`` definition needs - followed by the pin mux, i.e. the
+``machine/pcb/<PCB>.c`` definition needs - followed by the pin mux, i.e. the
 function every GPIO pin is set to.
 
 Run it against the firmware that still holds the wiring you want to learn, i.e.

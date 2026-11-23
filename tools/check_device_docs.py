@@ -5,8 +5,8 @@ The rules implemented here are the ones stated in doc/adding-a-device.md; run
 the tool with --list-rules to print them all with their default severity.
 
 Violations of these rules are errors. The remaining rules in the document are
-not yet followed everywhere in this repository (init hooks borrowed from
-another PCB, PCB-named machine targets, ...). Those are reported as warnings.
+not yet followed everywhere in this repository (PCB-named machine targets,
+...). Those are reported as warnings.
 
 Some findings are only informational: they point at something worth knowing
 (a doc that shows no build target at all, a doc that does not record the CPU
@@ -40,6 +40,11 @@ import argparse
 import os
 import re
 import sys
+
+if __package__:
+    from .machine_config import MachineConfigError, load_machine_configs
+else:
+    from machine_config import MachineConfigError, load_machine_configs
 
 ALLOWED_EXT_SUFFIXES = {'POE', 'VLANSW', 'UNMANAGED', '1S1C', '2C', '1C'}
 # MACHINE_CHIPSET is compared with the numeric RTL837x macros of machine.h, so
@@ -83,31 +88,19 @@ RULES = {
     'symlink-dangling': (
         ERROR, 'every symlink under machine/ and machine/pcb/ resolves'),
     # machine targets
-    'machine-not-symlink': (
-        ERROR, 'machine/<MACHINE>.c is a symlink'),
-    'machine-link-form': (
-        ERROR, 'machine/<MACHINE>.c uses the relative form pcb/<MACHINE_PCB>.c'),
+    'machine-config-invalid': (
+        ERROR, 'machine/machines.json contains valid machine, friendly_name and pcb fields'),
     'machine-link-dangling': (
-        ERROR, 'machine/<MACHINE>.c points at a file that exists'),
+        ERROR, 'machine/machines.json entries name existing PCB sources'),
     'machine-pcb-named': (
         WARNING, 'a machine target is named after vendor + model, not the PCB'),
-    'machine-header-missing': (
-        ERROR, 'machine/<MACHINE>.h exists'),
-    'machine-header-model': (
-        ERROR, 'machine/<MACHINE>.h defines MACHINE_MODEL'),
-    'machine-header-chipset': (
-        ERROR, 'MACHINE_CHIPSET is RTL8372 or RTL8373'),
+    'machine-pcb-chipset': (
+        ERROR, 'the PCB source defines MACHINE_CHIPSET as RTL8372 or RTL8373'),
     'machine-model-length': (
         WARNING, 'MACHINE_MODEL is at most 29 characters'),
     'machine-model-name': (
         WARNING, 'MACHINE_MODEL in capitals, optionally followed by the PCB '
                  'name, gives the machine target name'),
-    'machine-init-form': (
-        ERROR, 'machine/<MACHINE>_init.c is a symlink when present'),
-    'machine-init-dangling': (
-        ERROR, 'machine/<MACHINE>_init.c points at a file that exists'),
-    'machine-init-name': (
-        WARNING, "machine/<MACHINE>_init.c points at this PCB's own _init.c"),
     'machine-doc-missing': (
         WARNING, 'every machine PCB is documented in doc/devices/'),
     'pcb-orphan': (
@@ -208,6 +201,8 @@ class Checker:
         self.docs = {}
         self.pcbs = {}
         self.machines = {}
+        self.machine_configs = {}
+        self.machine_pcbs = {}
         self.only = list(only or [])
         self.scope = None
         self.waived = []
@@ -231,13 +226,16 @@ class Checker:
         for name in sorted(os.listdir(self.path('machine/pcb'))):
             if name.endswith('.c'):
                 self.pcbs[name[:-2]] = 'machine/pcb/' + name
-        for name in sorted(os.listdir(self.path('machine'))):
-            if not name.endswith('.c'):
-                continue
-            stem = name[:-2]
-            if stem.endswith('_init') or stem == 'default_machine_init':
-                continue
-            self.machines[stem] = 'machine/' + name
+        try:
+            self.machine_configs = load_machine_configs(
+                self.path('machine/machines.json'))
+        except MachineConfigError as exc:
+            self.add('machine-config-invalid',
+                     'machine/machines.json: %s' % exc)
+        self.machines = {
+            machine: 'machine/machines.json'
+            for machine in self.machine_configs
+        }
 
     # -- doc <-> pcb names ----------------------------------------------
     def check_doc_pcb_files(self):
@@ -309,73 +307,50 @@ class Checker:
                      ['pcb:' + s for s in stems])
 
     # -- machine targets --------------------------------------------------
-    def machine_header(self, machine):
-        return self.path('machine', machine + '.h')
-
     def check_machines(self):
-        for machine, rel in self.machines.items():
-            if not os.path.islink(self.path(rel)):
-                self.add('machine-not-symlink',
-                         '%s: is not a symlink to machine/pcb/' % rel,
-                         'machine:' + machine)
-                continue
-            target = os.readlink(self.path(rel))
-            match = re.fullmatch(r'pcb/([^/]+)\.c', target)
-            if not match:
-                self.add('machine-link-form',
-                         '%s: points at %r, expected the relative form '
-                         'pcb/<MACHINE_PCB>.c' % (rel, target),
-                         'machine:' + machine)
-                continue
-            pcb = match.group(1)
+        for machine, config in self.machine_configs.items():
+            rel = 'machine/machines.json'
             scope = 'machine:' + machine
+            model = config['friendly_name']
+            pcb = config['pcb']
+            self.machine_pcbs[machine] = pcb
+            target = 'pcb/' + pcb + '.c'
             if not os.path.exists(self.path('machine', target)):
                 self.add('machine-link-dangling',
-                         '%s: points at missing machine/%s' % (rel, target), scope)
+                         '%s: names missing machine/%s' % (rel, target),
+                         scope)
             if machine == pcb:
                 self.add('machine-pcb-named',
                          '%s: machine target carries the PCB name %s, expected '
                          'vendor + model' % (rel, pcb), scope)
-            self.check_machine_header(rel, machine, pcb, scope)
+            self.check_machine_definition(rel, machine, model, pcb, target,
+                                           scope)
             self.check_machine_doc(rel, pcb, scope)
-            self.check_machine_init(rel, machine, pcb, scope)
 
-    def check_machine_header(self, rel, machine, pcb, scope):
-        header = self.machine_header(machine)
-        header_rel = 'machine/%s.h' % machine
-        if not os.path.exists(header):
-            self.add('machine-header-missing',
-                     '%s: %s is missing' % (rel, header_rel), scope)
-            return
-        text = self.read(header_rel)
-        model = re.search(r'#define\s+MACHINE_MODEL\s+"([^"]*)"', text)
-        chip = re.search(r'#define\s+MACHINE_CHIPSET\s+(\w+)', text)
-        if not model:
-            self.add('machine-header-model',
-                     '%s: does not define MACHINE_MODEL' % header_rel, scope)
-        else:
-            if len(model.group(1)) > MODEL_MAX_LEN:
-                self.add('machine-model-length',
-                         '%s: MACHINE_MODEL is %d characters, the limit is %d'
-                         % (header_rel, len(model.group(1)), MODEL_MAX_LEN), scope)
-            # <MACHINE> is <MACHINE_MODEL> in capitals, or that name with this
-            # PCB's name appended when the model string alone identifies more
-            # than one board (e.g. HISOURCE_HI_K0402WS_PCB_K0402W_V2_0).
-            names = [machine_name(model.group(1)),
-                     machine_name('%s %s' % (model.group(1), pcb))]
-            if machine not in names:
-                self.add('machine-model-name',
-                         '%s: MACHINE_MODEL %r gives the target name %s (or %s),'
-                         ' not %s'
-                         % (header_rel, model.group(1), names[0], names[1],
-                            machine), scope)
+    def check_machine_definition(self, rel, machine, model, pcb, target, scope):
+        if len(model) > MODEL_MAX_LEN:
+            self.add('machine-model-length',
+                     '%s: model is %d characters, the limit is %d'
+                     % (rel, len(model), MODEL_MAX_LEN), scope)
+        # <MACHINE> is <MACHINE_MODEL> in capitals, or that name with this
+        # PCB's name appended when the model string alone identifies more
+        # than one board (e.g. HISOURCE_HI_K0402WS_PCB_K0402W_V2_0).
+        names = [machine_name(model),
+                 machine_name('%s %s' % (model, pcb))]
+        if machine not in names:
+            self.add('machine-model-name',
+                     '%s: model %r gives the target name %s (or %s), not %s'
+                     % (rel, model, names[0], names[1], machine), scope)
+        pcb_rel = 'machine/' + target
+        pcb_text = self.read(pcb_rel) if os.path.exists(self.path(pcb_rel)) else ''
+        chip = re.search(r'#define\s+MACHINE_CHIPSET\s+(\w+)', pcb_text)
         if not chip:
-            self.add('machine-header-chipset',
-                     '%s: does not define MACHINE_CHIPSET' % header_rel, scope)
+            self.add('machine-pcb-chipset',
+                     '%s: does not define MACHINE_CHIPSET' % pcb_rel, scope)
         elif chip.group(1) not in CHIPSETS:
-            self.add('machine-header-chipset',
+            self.add('machine-pcb-chipset',
                      '%s: MACHINE_CHIPSET is %s, expected one of %s'
-                     % (header_rel, chip.group(1), ', '.join(sorted(CHIPSETS))),
+                     % (pcb_rel, chip.group(1), ', '.join(sorted(CHIPSETS))),
                      scope)
 
     def docs_for_pcb(self, pcb):
@@ -391,33 +366,11 @@ class Checker:
             self.add('machine-doc-missing',
                      '%s: no doc/devices/*.md documents PCB %s' % (rel, pcb), scope)
 
-    def check_machine_init(self, rel, machine, pcb, scope):
-        init_rel = 'machine/%s_init.c' % machine
-        init_path = self.path(init_rel)
-        if not os.path.exists(init_path) and not os.path.islink(init_path):
-            return
-        if not os.path.islink(init_path):
-            self.add('machine-init-form', '%s: is not a symlink' % init_rel, scope)
-            return
-        target = os.readlink(init_path)
-        if not os.path.exists(self.path('machine', target)):
-            self.add('machine-init-dangling',
-                     '%s: points at missing machine/%s' % (init_rel, target), scope)
-        expected = 'pcb/%s_init.c' % pcb
-        if target != expected:
-            self.add('machine-init-name',
-                     '%s: points at %s, expected %s (share the hook through '
-                     "this PCB's own init file)" % (init_rel, target, expected),
-                     scope)
-
     # -- orphan definitions ----------------------------------------------
     def check_orphan_pcbs(self):
-        used = set()
-        for rel in self.machines.values():
-            if os.path.islink(self.path(rel)):
-                used.add(os.path.basename(os.readlink(self.path(rel)))[:-2])
+        used = set(self.machine_pcbs.values())
         for stem, rel in self.pcbs.items():
-            if stem.endswith('_init') or stem in used:
+            if stem in used:
                 continue
             target = ''
             if os.path.islink(self.path(rel)):
@@ -473,16 +426,15 @@ class Checker:
         for target in sorted(set(targets)):
             if target not in self.machines:
                 self.add('doc-target-missing',
-                         '%s: names MACHINE=%s, which has no machine/%s.c'
-                         % (rel, target, target), scope)
+                         '%s: names MACHINE=%s, which has no entry in '
+                         'machine/machines.json' % (rel, target), scope)
                 continue
-            link = self.path('machine', target + '.c')
-            if not os.path.islink(link):
+            pcb = self.machine_pcbs.get(target)
+            if not pcb:
                 continue
-            pcb = os.path.basename(os.readlink(link))[:-2]
             if pcb.split('__', 1)[0] != pcb_name(doc):
                 self.add('doc-target-pcb',
-                         '%s: MACHINE=%s links to pcb/%s.c, not to this doc\'s '
+                         '%s: MACHINE=%s selects pcb/%s.c, not this doc\'s '
                          'PCB name' % (rel, target, pcb), scope)
 
     def check_doc_paths(self, rel, text, scope):
@@ -614,12 +566,8 @@ class Checker:
         tags = set()
         for machine in self.only:
             tags.add('machine:' + machine)
-            rel = self.machines[machine]
-            pcb = None
-            if os.path.islink(self.path(rel)):
-                match = re.fullmatch(r'pcb/([^/]+)\.c', os.readlink(self.path(rel)))
-                if match:
-                    pcb = match.group(1)
+            config = self.machine_configs[machine]
+            pcb = config['pcb']
             if pcb:
                 tags.add('pcb:' + pcb)
                 for doc in self.docs_for_pcb(pcb):
@@ -636,8 +584,9 @@ class Checker:
             unknown = [m for m in self.only if m not in self.machines]
             if unknown:
                 raise UnknownMachine(
-                    'no %s; --machine takes the name passed to make MACHINE=...'
-                    % ', '.join('machine/%s.c' % m for m in unknown))
+                    'unknown machine target(s) %s; --machine takes the name '
+                    'passed to make MACHINE=...'
+                    % ', '.join(unknown))
             self.scope = self.build_scope()
         self.check_symlinks()
         self.check_supported_devices()
@@ -645,8 +594,8 @@ class Checker:
         self.check_doc_pcb_files()
         self.check_pcb_extension_suffixes()
         self.check_pcb_duplicates()
-        self.check_docs()
         self.check_machines()
+        self.check_docs()
         self.check_orphan_pcbs()
 
     def apply_waivers(self, waived, path):
