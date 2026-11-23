@@ -93,6 +93,7 @@ def vprint(string):
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
+        self._update_lacp_ports()         # Initialize LACP ports
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def api_handlers(self,query):
@@ -691,8 +692,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _api_lacp(self):
         global state
-        if not state["lacp_ports"]:
-            self._update_lacp_ports()
+
         return {
             "on": state["lacp_enabled"],
             "lags": state["lacp"],
@@ -701,8 +701,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _api_lag(self):
         global state
-        if not state["lacp_ports"]:
-            self._update_lacp_ports()
+
         return {
             "lags": state["lags"],
             "ports": state["lacp_ports"]
