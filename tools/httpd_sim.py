@@ -220,7 +220,7 @@ class Handler(SimpleHTTPRequestHandler):
         )
 
     def do_POST(self):
-        global uploaded_config, state
+        global uploaded_config, state, started
 
         path = urlsplit(self.path).path
 
@@ -282,6 +282,9 @@ class Handler(SimpleHTTPRequestHandler):
 
             if path == "/config":
                 uploaded_config = file_data
+            else:
+                sessions.clear()
+                started = int(time.time())
 
             return self._send(
                 200,
