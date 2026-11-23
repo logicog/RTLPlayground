@@ -62,7 +62,7 @@
   {
     "machine": "HASIVO_S600W_4GT_2XGT_SE",
     "friendly_name": "Hasivo S600W-4GT-2XGT-SE",
-    "pcb": "NONAME_S600W_4GT_2XGT_SE"
+    "pcb": "S600W_4GT_2XGT_SE"
   },
   {
     "machine": "HISOURCE_HI_K0402WS_V2_0",
