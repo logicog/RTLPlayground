@@ -180,6 +180,11 @@
     "pcb": "2M_PCB51_ML_V1_2"
   },
   {
+    "machine": "KEEPLINK_KP_9000_9XHPML_X_2M_PCB51_ML_V1_1",
+    "friendly_name": "keepLiNK KP-9000-9XHPML-X",
+    "pcb": "2M_PCB51_ML_V1_1"
+  },
+  {
     "machine": "KEEPLINK_KP_9000_9XH_X_EU",
     "friendly_name": "keepLink KP-9000-9XH-X-EU",
     "pcb": "NONAME_KP_9000_9XH_X_EU"
@@ -215,6 +220,11 @@
     "pcb": "PCB_SWTG118AS_V2_0_16029"
   },
   {
+    "machine": "NICGIGA_S25_0402_N",
+    "friendly_name": "Nicgiga S25-0402-N",
+    "pcb": "SR_S25G2206F_N_V1_2"
+  },
+  {
     "machine": "PCB_SWTG024AS_A_2_0_1",
     "friendly_name": "PCB-SWTG024AS-A-2.0.1",
     "pcb": "PCB_SWTG024AS_A_V2_0_1_19650"
@@ -248,6 +258,11 @@
     "machine": "SIRIVISION_S25G2206FP_V1_1",
     "friendly_name": "SIRIVISION S25G2206FP V1.1",
     "pcb": "S25G2206FP_V1_1"
+  },
+  {
+    "machine": "SIRIVISION_SR_S25G2206F",
+    "friendly_name": "Sirivision SR-S25G2206F",
+    "pcb": "SR_S25G2206F_N_V1_2"
   },
   {
     "machine": "SIRIVISION_SR_S25G2109F",
@@ -303,6 +318,11 @@
     "machine": "TRENDNET_TEG_S562",
     "friendly_name": "Trendnet TEG-S562",
     "pcb": "270_NB1_MS206B004A1_REV_A1"
+  },
+  {
+    "machine": "VIMIN_S250402_N",
+    "friendly_name": "Vimin S250402-N",
+    "pcb": "SR_S25G2206F_N_V1_2"
   },
   {
     "machine": "XIKESTOR_SKS3200M_8GPY1XF",
