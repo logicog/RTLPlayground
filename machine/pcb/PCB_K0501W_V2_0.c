@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8372
 #include "machine_defs.h"
 
 __code const struct machine machine = {

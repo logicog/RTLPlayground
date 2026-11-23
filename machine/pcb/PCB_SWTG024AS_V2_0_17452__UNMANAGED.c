@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8372
 #include "machine_defs.h"
 
 __code const struct machine machine = {
@@ -22,11 +23,11 @@ __code const struct machine machine = {
 	.high_leds = { .mux = LED_27 | LED_29, .enable = LED_28_SYS | LED_29 },
 	.port_led_set = { 0, 0, 0, 1, 0, 0, 0, 0, 1},
 	.led_sets = {
-		{ /* RJ45: Green LED */
-			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
-			0,
-			/* Amber LED */
+		{ /* RJ45: Amber LED */
 			LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+			0,
+			/* Green LED */
+			LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT | LEDS_10G,
 			0
 		}, { /* SFP PORT: SINGLE GREEN LED */
 			LEDS_10M | LEDS_100M | LEDS_1G | LEDS_2G5 | LEDS_10G | LEDS_LINK | LEDS_ACT,

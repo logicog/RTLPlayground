@@ -1,6 +1,3 @@
-/*
- * Fallback boot hook for boards without a machine/<MACHINE>_init.c.
- */
-#include "machine_init_defs.h"
+#include "machine_defs.h"
 
-void machine_custom_init(void) __banked { }
+MACHINE_CUSTOM_INIT()

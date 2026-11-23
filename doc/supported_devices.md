@@ -38,6 +38,7 @@ The following devices have been tested and are fully working:
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.1](devices/2M-PCB23-V3.1.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHML-X | Yes     | [2M-PCB23-V3.2](devices/2M-PCB23-V3.2.md)                                             | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHP-X  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 4M    | 8 + 1 |
+| keepLINK | KP-9000-9XHPML-X | Yes    | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 2M    | 8 + 1 |
 | keepLINK | KP-9000-9XHPML-X | Yes    | [2M-PCB51-ML-V1.2](devices/2M-PCB51-ML-V1.2.md)                                       | 2M    | 8 + 1 |
 | LIANGUO  | HYWS-SGT0108S   | No      | [2G5F_20G_V1.01](devices/2G5F_20G_V1.01.md)                                           | 0.5M  | 8 + 1 |
 | LIANGUO  | SWTG024AS       | No      | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 0.5M  | 4 + 2 |
@@ -47,12 +48,15 @@ The following devices have been tested and are fully working:
 | MokerLink| POE-2G080110GS  | No      | [2M-PCB51-ML-V1.1](devices/2M-PCB51-ML-V1.1.md)                                       | 4M    | 8 + 1 |
 | MokerLink| ZX_SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.0-16029](devices/PCB-SWTG118AS-V2.0-16029.md)                       | 2M    | 8 + 1 |
 | Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
+| Nicgiga  | S25-0402-N      | No      | [SR-S25G2206F-N-V1.2](devices/SR-S25G2206F-N-V1.2.md)                                 | 2M    | 4 + 2 |
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
+| POEPlus  | S604GTP-2SX-SL  | Yes     | [RTL-4GT-2S+ V1.04](devices/RTL-4GT-2S+_V1.04.md)                                     | 2M    | 4 + 2 |
 | RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)             | 2M    | 8 + 1 |
 | Ruiying  | RY-4GT-2SX      | No      | [FG-4GT-2SX_V2.0](devices/FG-4GT-2SX_V2.0.md)                                         | 4M    | 4 + 2 |
 | Ruiying  | RY-8GT-1SX      | No      | [FG-8GT-1SX](devices/FG-8GT-1SX.md)                                                   | 1M    | 8 + 1 |
 | SICSOLINK| SL-G0402F       | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | Sirivision | SR-S25G2109F  | Yes     | [S25G1109FP V1.3](devices/S25G1109FP_V1.3.md)                                         | 2M    | 8 + 1 |
+| Sirivision | SR-S25G2206F  | No      | [SR-S25G2206F-N-V1.2](devices/SR-S25G2206F-N-V1.2.md)                                 | 2M    | 4 + 2 |
 | Sodola   | SL-SWTG124AS-D  | Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       | 2M    | 4 + 2 |
 | Sodola   | SL-SWTGW215AS-D | Yes     | [SWTG115AS-V2.1-17443](devices/PCB-SWTG115AS-V2.1-17443.md)                           | 2M    | 5 + 1 |
 | Sodola   | SL902-SWTG024AS | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
@@ -60,6 +64,7 @@ The following devices have been tested and are fully working:
 | Sodola   | SL902-SWTGW215AS| Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 5 + 1 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                               |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1_REV.A1](devices/270-NB1-MS206B004A1_REV.A1.md)                   | 2M    | 4 + 2 |
+| Vimin    | S250402-N       | No      | [SR-S25G2206F-N-V1.2](devices/SR-S25G2206F-N-V1.2.md)                                 | 2M    | 4 + 2 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
 | XikeStor | SKS3200-8E1X    | Yes     | [PCB-SWTG018AS-V2.1.0_19030](devices/PCB-SWTG018AS-V2.1.0_19030.md)                   | 2M    | 8 + 1 |
 | XikeStor | SKS3200M-4GPY2XF| Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
@@ -70,7 +75,7 @@ The following devices have been tested and are fully working:
 | ZoeRax   | HG0402XG        | No      | [HG0402XG_V1.1](devices/HG0402XG_V1.1.md)                                             | 1M    | 4 + 2 |
 | Ztyuav   | Z-QWYT0402      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 
-For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / Mokerlink 2G040210GSM devices, select
+For KP-9000-6XH-X2 / KP-9000-6XHML-X2 / KP-9000-9XHPML-X / Mokerlink 2G040210GSM devices, select
 the machine target by PCB revision. The ML/non-ML or managed/unmanaged label
 alone does not identify the wiring.
 

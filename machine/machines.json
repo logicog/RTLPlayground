@@ -1,0 +1,352 @@
+[
+  {
+    "machine": "AMPCOM_WAM902_SWTG018AS",
+    "friendly_name": "Ampcom WAM902-SWTG018AS",
+    "pcb": "PCB_SWTG018AS_A_V2_0_1_19649"
+  },
+  {
+    "machine": "BINARDAT_2G06_04210GSM",
+    "friendly_name": "Binardat 2G06-04210GSM",
+    "pcb": "NONAME_20240111"
+  },
+  {
+    "machine": "DAVUAZ_DA_K6501W",
+    "friendly_name": "Davuaz Da-K6501W",
+    "pcb": "PCB_K0501W_V2_0"
+  },
+  {
+    "machine": "DEFAULT_8C_1SFP",
+    "friendly_name": "8+1 SFP Port Switch",
+    "pcb": "NONAME_KP_9000_9XH_X_EU"
+  },
+  {
+    "machine": "DOTX_DX_1009N",
+    "friendly_name": "DOTX DX-1009N",
+    "pcb": "PCB_SWTG118AS_V1_0_11430"
+  },
+  {
+    "machine": "FOXNEO_FNS_1200P",
+    "friendly_name": "FOXNEO FNS-1200P",
+    "pcb": "PCB_K0402W_U13_V2_0"
+  },
+  {
+    "machine": "GOALAKE_IG108",
+    "friendly_name": "Goalake IG108",
+    "pcb": "PB_2132"
+  },
+  {
+    "machine": "GOALAKE_IG204",
+    "friendly_name": "Goalake IG204",
+    "pcb": "PB_2131"
+  },
+  {
+    "machine": "GOODTOP_GT_ST018M",
+    "friendly_name": "GoodTop GT-ST018M",
+    "pcb": "PCB_SWTG018AS_A_V2_0_1_19649"
+  },
+  {
+    "machine": "GOODTOP_GT_ST024M",
+    "friendly_name": "GoodTop GT-ST024M",
+    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650"
+  },
+  {
+    "machine": "GUANGNIANWEI_7018_2_5G",
+    "friendly_name": "Guangnianwei 7018-2.5G",
+    "pcb": "F7008_2_5GPOE_V1_2"
+  },
+  {
+    "machine": "HASIVO_S1100P_8GT_1SX_S",
+    "friendly_name": "Hasivo S1100P-8GT-1SX-S",
+    "pcb": "S1100P_8GT_1SX_73N_S_V1_01"
+  },
+  {
+    "machine": "HASIVO_S1100WP_8GT_1SX_SE",
+    "friendly_name": "Hasivo S1100WP-8GT-1SX-SE",
+    "pcb": "S1100W_8GT_1SX_SE_V1_05"
+  },
+  {
+    "machine": "HASIVO_S600W_4GT_2XGT_SE",
+    "friendly_name": "Hasivo S600W-4GT-2XGT-SE",
+    "pcb": "NONAME_S600W_4GT_2XGT_SE"
+  },
+  {
+    "machine": "HISOURCE_HI_K0402WS_PCB_K0402W_V2_0",
+    "friendly_name": "Hisource Hi-K0402WS",
+    "pcb": "PCB_K0402W_V2_0"
+  },
+  {
+    "machine": "HISOURCE_HI_K0402WS_PCB_K0402W_V3_0",
+    "friendly_name": "Hisource Hi-K0402WS",
+    "pcb": "PCB_K0402W_V3_0"
+  },
+  {
+    "machine": "HISOURCE_HI_K0801WS",
+    "friendly_name": "Hisource Hi-K0801WS",
+    "pcb": "PCB_K0801W_V2_0"
+  },
+  {
+    "machine": "HONGYAVISION_HYWS_SGT0204S",
+    "friendly_name": "Hongyavision HYWS-SGT0204S",
+    "pcb": "2G5F4_10G2_V1_01"
+  },
+  {
+    "machine": "HORACO_HC_SWTG124AS",
+    "friendly_name": "Horaco HC-SWTG124AS",
+    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650"
+  },
+  {
+    "machine": "HORACO_HC_SWTG218AS",
+    "friendly_name": "Horaco HC-SWTG218AS",
+    "pcb": "PCB_SWTG018AS_A_V2_0_1_19649"
+  },
+  {
+    "machine": "HORACO_HC_SWTGW218AS",
+    "friendly_name": "Horaco HC-SWTGW218AS",
+    "pcb": "PCB_SWTG118AS_V2_0_16029"
+  },
+  {
+    "machine": "HORACO_ZX310S_4T2XH",
+    "friendly_name": "Horaco ZX310S-4T2XH",
+    "pcb": "PCB_SL310S_4T1T1X_V1_0_1_24107"
+  },
+  {
+    "machine": "HORACO_ZX310S_4T2XT",
+    "friendly_name": "Horaco ZX310S-4T2XT",
+    "pcb": "PCB_310S_4T2XT_V1_0_0_22273"
+  },
+  {
+    "machine": "HORACO_ZX_SG4T2",
+    "friendly_name": "Horaco ZX-SG4T2",
+    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650"
+  },
+  {
+    "machine": "HORACO_ZX_SWTGW218AS",
+    "friendly_name": "Horaco ZX-SWTGW218AS",
+    "pcb": "PCB_SWTG118AS_V2_1_17462"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1",
+    "friendly_name": "keepLiNK KP-9000-6XHML-X2",
+    "pcb": "2M_PCB43_V1_1"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_2",
+    "friendly_name": "keepLiNK KP-9000-6XHML-X2",
+    "pcb": "2M_PCB43_V1_2"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V2_1",
+    "friendly_name": "keepLiNK KP-9000-6XHML-X2",
+    "pcb": "2M_PCB43_V2_1"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_6XH_X",
+    "friendly_name": "keepLink KP-9000-6XH-X",
+    "pcb": "NONAME_KP_9000_6XH_X"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V1_1",
+    "friendly_name": "keepLiNK KP-9000-6XH-X2",
+    "pcb": "2M_PCB43_V1_1"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V1_2",
+    "friendly_name": "keepLiNK KP-9000-6XH-X2",
+    "pcb": "2M_PCB43_V1_2"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V2_1",
+    "friendly_name": "keepLiNK KP-9000-6XH-X2",
+    "pcb": "2M_PCB43_V2_1"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V2_2",
+    "friendly_name": "keepLiNK KP-9000-9XHML-X",
+    "pcb": "2M_PCB23_V2_2"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V3_1",
+    "friendly_name": "keepLiNK KP-9000-9XHML-X",
+    "pcb": "2M_PCB23_V3_1"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V3_2",
+    "friendly_name": "keepLiNK KP-9000-9XHML-X",
+    "pcb": "2M_PCB23_V3_2"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_9XHPML_X",
+    "friendly_name": "keepLiNK KP-9000-9XHPML-X",
+    "pcb": "2M_PCB51_ML_V1_2"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_9XHPML_X_2M_PCB51_ML_V1_1",
+    "friendly_name": "keepLiNK KP-9000-9XHPML-X",
+    "pcb": "2M_PCB51_ML_V1_1"
+  },
+  {
+    "machine": "KEEPLINK_KP_9000_9XH_X_EU",
+    "friendly_name": "keepLink KP-9000-9XH-X-EU",
+    "pcb": "NONAME_KP_9000_9XH_X_EU"
+  },
+  {
+    "machine": "LIANGUO_HYWS_SGT0108S",
+    "friendly_name": "Lianguo HYWS-SGT0108S",
+    "pcb": "2G5F_20G_V1_01"
+  },
+  {
+    "machine": "LIANGUO_ZX_SWTGW215AS",
+    "friendly_name": "Lianguo ZX-SWTGW215AS",
+    "pcb": "PCB_SWTG115AS_V2_0_16030"
+  },
+  {
+    "machine": "MOKERLINK_2G040210GSM",
+    "friendly_name": "MokerLink 2G040210GSM",
+    "pcb": "2M_PCB43_V1_1"
+  },
+  {
+    "machine": "MOKERLINK_2G08110GSN",
+    "friendly_name": "MokerLink 2G08110GSN",
+    "pcb": "PCB_SWTG018AS_A_V2_0_1_19649"
+  },
+  {
+    "machine": "MOKERLINK_POE_2G080110GS",
+    "friendly_name": "MokerLink POE-2G080110GS",
+    "pcb": "2M_PCB51_ML_V1_1__UNMANAGED"
+  },
+  {
+    "machine": "MOKERLINK_ZX_SWTGW218AS",
+    "friendly_name": "MokerLink ZX-SWTGW218AS",
+    "pcb": "PCB_SWTG118AS_V2_0_16029"
+  },
+  {
+    "machine": "NICGIGA_S25_0402_N",
+    "friendly_name": "Nicgiga S25-0402-N",
+    "pcb": "SR_S25G2206F_N_V1_2"
+  },
+  {
+    "machine": "PCB_SWTG024AS_A_2_0_1",
+    "friendly_name": "PCB-SWTG024AS-A-2.0.1",
+    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650"
+  },
+  {
+    "machine": "PCB_SWTG024AS_V2_1_0",
+    "friendly_name": "SWTG024AS-V2.1.0",
+    "pcb": "PCB_SWTG024AS_V2_1_0_19023"
+  },
+  {
+    "machine": "REALHD_PSW8_25MG",
+    "friendly_name": "RealHD PSW8-25MG",
+    "pcb": "PCB_AFGW_SWTG218ANS_V2_0_2_23308"
+  },
+  {
+    "machine": "RUIYING_RY_4GT_2SX",
+    "friendly_name": "Ruiying RY-4GT-2SX",
+    "pcb": "FG_4GT_2SX_V2_0"
+  },
+  {
+    "machine": "RUIYING_RY_8GT_1SX",
+    "friendly_name": "Ruiying RY-8GT-1SX",
+    "pcb": "FG_8GT_1SX"
+  },
+  {
+    "machine": "S604GTP_2SX_SL",
+    "friendly_name":  "POEPlus S604GTP-2SX-SL",
+    "pcb": "RTL_4GT_2S__V1_04"
+  },
+  {
+    "machine": "SIRIVISION_S25G2206FP_V1_1",
+    "friendly_name": "SIRIVISION S25G2206FP V1.1",
+    "pcb": "S25G2206FP_V1_1"
+  },
+  {
+    "machine": "SIRIVISION_SR_S25G2206F",
+    "friendly_name": "Sirivision SR-S25G2206F",
+    "pcb": "SR_S25G2206F_N_V1_2"
+  },
+  {
+    "machine": "SIRIVISION_SR_S25G2109F",
+    "friendly_name": "Sirivision SR-S25G2109F",
+    "pcb": "S25G1109FP_V1_3"
+  },
+  {
+    "machine": "SODOLA_SL902_SWTGW124AS",
+    "friendly_name": "Sodola SL902-SWTGW124AS",
+    "pcb": "PCB_SWTG024AS_V2_1_1_19023"
+  },
+  {
+    "machine": "SODOLA_SL902_SWTGW215AS",
+    "friendly_name": "Sodola SL902-SWTGW215AS",
+    "pcb": "PCB_SWTG024AS_V2_1_0_19023__1S1C"
+  },
+  {
+    "machine": "SODOLA_SL_SWTGW215AS_D",
+    "friendly_name": "Sodola SL-SWTGW215AS-D",
+    "pcb": "PCB_SWTG115AS_V2_1_17443"
+  },
+  {
+    "machine": "STEAMEMO_IG204_V1",
+    "friendly_name": "Steamemo IG204 V1",
+    "pcb": "PB_2131"
+  },
+  {
+    "machine": "SWGT024_V2_0_MANAGED",
+    "friendly_name": "SWGT024 V2.0 Managed",
+    "pcb": "PCB_SWTG024AS_V2_0_17452"
+  },
+  {
+    "machine": "SWGT024_V2_0_UNMANAGED",
+    "friendly_name": "SWGT024 V2.0 Unmanaged",
+    "pcb": "PCB_SWTG024AS_V2_0_17452__UNMANAGED"
+  },
+  {
+    "machine": "SWTG018AS_A_V2_0",
+    "friendly_name": "SWTG018AS-A V2.0",
+    "pcb": "PCB_SWTG018AS_A_V2_0_1_19649"
+  },
+  {
+    "machine": "SWTG024AS_A_V2_0_1_5C_1SFP",
+    "friendly_name": "SWTG024AS-A-V2.0.1-5C-1SFP",
+    "pcb": "PCB_SWTG024AS_A_V2_0_1_19650__1S1C"
+  },
+  {
+    "machine": "SWTG024AS_V2_0",
+    "friendly_name": "SWTG024AS-V2.0",
+    "pcb": "PCB_SWTG024AS_V2_0_16895"
+  },
+  {
+    "machine": "TRENDNET_TEG_S562",
+    "friendly_name": "Trendnet TEG-S562",
+    "pcb": "270_NB1_MS206B004A1_REV_A1"
+  },
+  {
+    "machine": "VIMIN_S250402_N",
+    "friendly_name": "Vimin S250402-N",
+    "pcb": "SR_S25G2206F_N_V1_2"
+  },
+  {
+    "machine": "XIKESTOR_SKS3200M_8GPY1XF",
+    "friendly_name": "XikeStor SKS3200M-8GPY1XF",
+    "pcb": "PCB_SWTG118AS_V2_1_17462"
+  },
+  {
+    "machine": "XIKESTOR_SKS3200_8E1X",
+    "friendly_name": "XikeStor SKS3200-8E1X",
+    "pcb": "PCB_SWTG018AS_V2_1_0_19030"
+  },
+  {
+    "machine": "YUANLEY_YS25_0402",
+    "friendly_name": "YuanLey YS25-0402",
+    "pcb": "PCB_K0402W_V1_0"
+  },
+  {
+    "machine": "YUANLEY_YS25_0402M",
+    "friendly_name": "YuanLey YS25-0402M",
+    "pcb": "S25G2206FP_V1_1"
+  },
+  {
+    "machine": "ZOERAX_HG0402XG",
+    "friendly_name": "ZoeRax HG0402XG",
+    "pcb": "HG0402XG_V1_1"
+  }
+]

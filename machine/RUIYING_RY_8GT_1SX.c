@@ -1,1 +1,0 @@
-pcb/FG_8GT_1SX.c

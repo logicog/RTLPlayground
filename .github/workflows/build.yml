@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install make gcc g++ pkg-config bison flex libboost-dev patch bzip2 curl ca-certificates xxd python-is-python3 libjson-c-dev zlib1g-dev -y
+          apt install make gcc g++ pkg-config bison flex libboost-dev patch bzip2 curl ca-certificates xxd jq python-is-python3 libjson-c-dev zlib1g-dev -y
       - name: Cache the patched SDCC
         uses: actions/cache@v4
         with:
@@ -35,8 +35,8 @@ jobs:
           key: sdcc-${{ hashFiles('branch/sdcc/*') }}
       - name: Run the host-side unit tests
         run: cd branch && make -C test
-      - name: Check that every machine definition can be compiled
-        run: cd branch && make machine_check
+      - name: Check that every machine definition can be compiled without warnings
+        run: cd branch && make machine_check CI=1
       - name: Make project (4x2/RTL8372)
         run: mkdir -p /tmp/branch /tmp/main && cd branch && make CI=1 MACHINE="KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1" && cp -r output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.map output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/rtlplayground.mem output/KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1/html_min /tmp/branch/
       - name: Make project (8x1/RTL8373)

@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8373
 #include "machine_defs.h"
 
 __code const struct machine machine = {
@@ -29,3 +30,7 @@ __code const struct machine machine = {
 		      },
 		},
 };
+
+MACHINE_CUSTOM_INIT(
+	REG_SET(RTL837X_REG_LED_GLB_IO_EN, 0x7f24977f);
+)

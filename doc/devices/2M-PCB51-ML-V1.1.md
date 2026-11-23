@@ -8,6 +8,7 @@ The`KP-9000-9XHP-X` is the KeepLink rebrand for same product.
 |--------|------------------|-------|------------------|-----------------|---------------|
 | Mokerlink | POE-2G080110GS | No | 2M-PCB51-ML-V1.1 | 4MB (W25Q32JV) | 8373N + 8224N |
 | KeepLink  | KP-9000-9XHP-X | No | 2M-PCB51-ML-V1.1 | 4MB (W25Q32JV) | 8373N + 8224N |
+| KeepLink  | KP-9000-9XHPML-X-AC | Yes | 2M-PCB51-ML-V1.1 | 2MB (W25Q16) | 8373N + 8224N |
 
 ## Hardware overview
 Front
@@ -28,6 +29,47 @@ Top silkscreen is marked `2M-PCB51-ML-V1.1`. PoE is provided by RTL8238C. Flash 
 
 > [!CAUTION]
 > This device operates on mains voltage, which can be a dangerous or potentially lethal hazard. Even after the device is unplugged, high-voltage capacitors can remain charged afterward and may still shock you. Do not attempt to open/disassemble a mains powered device unless you understand how to do so safely. Also, opening the device may void your warranty.
+
+## Managed vs unmanaged
+
+The managed `KP-9000-9XHPML-X-AC` differs from the unmanaged boards above:
+
+- U8 is a 2 MB W25Q16.
+- Reset button on the front (GPIO48).
+- Label MAC in flash at `0x1FC000`.
+- Different power supply.
+
+PCB
+
+<img src="photos/2M-PCB51-ML-V1.1/KP-9000-9XHPML-X-AC-pcb.jpg" width="300" />
+
+U8
+
+<img src="photos/2M-PCB51-ML-V1.1/KP-9000-9XHPML-X-AC-flash.jpg" width="300" />
+
+PoE board `StandardPOE8-SKY-V1.3`
+
+<img src="photos/2M-PCB51-ML-V1.1/KP-9000-9XHPML-X-AC-poe.jpg" width="300" />
+
+Tested on two units:
+
+- RJ45 ports, VLANs, LLDP.
+- SFP+ with a 10G optic and a 10G DAC.
+- Label MAC from `0x1FC000`.
+- Installing from the stock web UI with `installer/`. There is no public download of the stock firmware (V100.9.9.1.7), so back up the flash first.
+- PoE with the RTL8238C driver that waits on #712, see [this comment](https://github.com/logicog/RTLPlayground/pull/712#issuecomment-7076615670).
+- Reset button on GPIO48 (one unit).
+
+## Machine targets
+
+| Device | Machine target |
+|---|---|
+| MokerLink POE-2G080110GS | `MOKERLINK_POE_2G080110GS` |
+| keepLiNK KP-9000-9XHP-X | `MOKERLINK_POE_2G080110GS` |
+| keepLiNK KP-9000-9XHPML-X-AC | `KEEPLINK_KP_9000_9XHPML_X_2M_PCB51_ML_V1_1` |
+
+	make MACHINE=MOKERLINK_POE_2G080110GS
+	make MACHINE=KEEPLINK_KP_9000_9XHPML_X_2M_PCB51_ML_V1_1
 
 ## Notes
 

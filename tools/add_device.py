@@ -3,8 +3,8 @@
 
 Implements the workflow of doc/adding-a-device.md: it derives the device
 names from the PCB silkscreen identifier, checks whether the PCB is already
-documented, then either reuses an existing machine/pcb definition (symlink +
-header) or creates a new board definition, device documentation and photos
+documented, then either reuses an existing machine/pcb definition or creates a
+new board definition, machine description, device documentation and photos
 directory for you.
 
 Usage: add_device.py [--pcb <PCB_IDENTIFIER>] [--vendor <VENDOR>] [--model <MODEL>]
@@ -23,12 +23,12 @@ Run it from the repository root; run tools/add_device.md for the full
 description of the naming rules and the step-by-step behaviour.
 """
 import argparse
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import unittest
 
 DOC_DEVICES = 'doc/devices'
@@ -134,6 +134,15 @@ class TestConversions(unittest.TestCase):
         for value in ('', None, '1', '4', '8374', '8372N1', 'RTL8372X',
                       'abc', 'rtl 3n'):
             self.assertIsNone(normalize_chipset(value), repr(value))
+
+    def test_machine_description_template(self):
+        description = machine_description_template(
+            'PCB_1_0.c', 'Brand', 'Model')
+        self.assertEqual(description, {
+            'machine': 'BRAND_MODEL',
+            'friendly_name': 'Brand Model',
+            'pcb': 'PCB_1_0',
+        })
 
 
 def ask(prompt):
@@ -241,13 +250,10 @@ def find_device_doc(pcb_id):
 
 
 def select_pcb_file(machine_pcb):
-    """Step 6: pick the machine/pcb/<MACHINE_PCB>*.c (or <MACHINE_PCB_EXT>.c)
-    file that matches the hardware."""
+    """Step 6: pick the machine/pcb/<MACHINE_PCB>*.c file matching the hardware."""
     candidates = []
     for name in sorted(os.listdir(PCB_DIR)):
         if not name.endswith('.c'):
-            continue
-        if name == machine_pcb + '_init.c':
             continue
         if name.startswith(machine_pcb):
             candidates.append(name)
@@ -268,70 +274,49 @@ def select_pcb_file(machine_pcb):
             return choice
 
 
-def create_symlink_and_header(machine_pcb, pcb_file, vendor, model, chipset):
-    """Step 7: machine/<MACHINE>.c symlink (plus the matching
-    machine/<MACHINE>_init.c symlink when a machine/pcb *_init.c exists)
-    and machine/<MACHINE>.h."""
+def create_machine_description(pcb_file, vendor, model):
+    """Step 7: add the machine description to machine/machines.json."""
     mdl = machine_name(vendor, model)
-    created = []
-    link = os.path.join(MACHINE_DIR, mdl + '.c')
-    target = os.path.join('pcb', pcb_file)  # relative, as in the doc
-    if os.path.islink(link) and os.readlink(link).replace(os.sep, '/') == target:
-        print(f'Symlink machine/{mdl}.c -> {target} already in place.')
-    elif prepare(link):
-        if DRY_RUN:
-            print(f'Would add symlink: machine/{mdl}.c -> {target}')
-        else:
-            if os.path.lexists(link):
-                os.remove(link)
-            os.symlink(target, link)
-            print(f'Added symlink: machine/{mdl}.c -> {target}')
-        created.append(link)
-    # machine/<MACHINE>_init.c: prefer the _init.c belonging to the selected
-    # definition (<MACHINE_PCB_EXT>_init.c), fall back to the plain
-    # <MACHINE_PCB>_init.c; if neither exists, no link is added.
-    init_target = None
-    for name in (pcb_file[:-len('.c')] + '_init.c', machine_pcb + '_init.c'):
-        if os.path.lexists(os.path.join(PCB_DIR, name)):
-            init_target = os.path.join('pcb', name)
-            break
-    init_link = os.path.join(MACHINE_DIR, mdl + '_init.c')
-    if init_target is None:
-        print(f'No machine/pcb/{pcb_file[:-len(".c")]}_init.c;'
-              f' not adding machine/{mdl}_init.c.')
-    elif os.path.islink(init_link) and \
-            os.readlink(init_link).replace(os.sep, '/') == init_target:
-        print(f'Symlink machine/{mdl}_init.c -> {init_target} already in place.')
-    elif prepare(init_link):
-        if DRY_RUN:
-            print(f'Would add symlink: machine/{mdl}_init.c -> {init_target}')
-        else:
-            if os.path.lexists(init_link):
-                os.remove(init_link)
-            os.symlink(init_target, init_link)
-            print(f'Added symlink: machine/{mdl}_init.c -> {init_target}')
-        created.append(init_link)
-    header = os.path.join(MACHINE_DIR, mdl + '.h')
-    if prepare(header):
-        if DRY_RUN:
-            print(f'Would add header:   machine/{mdl}.h')
-        else:
-            with open(header, 'w') as f:
-                f.write(header_template(mdl, vendor, model, chipset))
-            print(f'Added header:   machine/{mdl}.h')
-        created.append(header)
-    return created, mdl
+    source = os.path.join(MACHINE_DIR, 'machines.json')
+    description = machine_description_template(pcb_file, vendor, model)
+    if os.path.isfile(source):
+        with open(source, encoding='utf-8') as f:
+            descriptions = json.load(f)
+    else:
+        descriptions = []
+    if not isinstance(descriptions, list):
+        raise ValueError('%s must contain a JSON array' % source)
+
+    existing_index = next(
+        (index for index, entry in enumerate(descriptions)
+         if isinstance(entry, dict) and entry.get('machine') == mdl),
+        None)
+    if existing_index is not None and descriptions[existing_index] == description:
+        print(f'Machine entry {mdl} already in machine/machines.json.')
+        return [], mdl
+    if existing_index is not None:
+        descriptions[existing_index] = description
+        action = 'update'
+    else:
+        descriptions.append(description)
+        action = 'add'
+
+    if DRY_RUN:
+        print(f'Would {action} machine entry {mdl} in machine/machines.json.')
+    else:
+        with open(source, 'w', encoding='utf-8') as f:
+            json.dump(descriptions, f, indent=2)
+            f.write('\n')
+        print(f'Updated machine/machines.json with target {mdl}.')
+    return [source], mdl
 
 
-def header_template(mdl, vendor, model, chipset):
-    return f'''#ifndef _MACHINE_{mdl}_H_
-#define _MACHINE_{mdl}_H_
-
-#define MACHINE_MODEL "{vendor} {model}"
-#define MACHINE_CHIPSET {chipset}
-
-#endif
-'''
+def machine_description_template(pcb_file, vendor, model):
+    return {
+        'machine': machine_name(vendor, model),
+        'friendly_name': f'{vendor} {model}',
+        'pcb': os.path.splitext(pcb_file)[0],
+    }
 
 
 # Canonical photo file names inside doc/devices/photos/<PCB_DOC_NAME>/,
@@ -368,7 +353,7 @@ def collect_images():
 
 def create_new_device(pcb_id, vendor, model, chipset, photos):
     """Steps 11+12 for an undocumented PCB: device doc, photos directory,
-    board definition, then the same symlink and header as step 7.
+    board definition, then the same machine description as step 7.
 
     photos is the {kind: source path} mapping returned by collect_images().
     """
@@ -416,13 +401,13 @@ def create_new_device(pcb_id, vendor, model, chipset, photos):
             print(f'Would add board definition: {pcb_path}')
         else:
             with open(pcb_path, 'w') as f:
-                f.write(pcb_template(machine_pcb))
+                f.write(pcb_template(machine_pcb, chipset))
             print(f'Added board definition: {pcb_path}')
         created.append(pcb_path)
 
-    link_files, mdl = create_symlink_and_header(
-        machine_pcb, pcb_file, vendor, model, chipset)
-    created.extend(link_files)
+    description_files, mdl = create_machine_description(
+        pcb_file, vendor, model)
+    created.extend(description_files)
     return created, mdl, pcb_doc_name, photo_dir
 
 
@@ -463,8 +448,11 @@ def device_doc_template(pcb_id, vendor, model, chipset, pcb_doc_name, photos):
     return '\n'.join(lines)
 
 
-def pcb_template(machine_pcb):
-    return f'''#include "machine_defs.h"
+def pcb_template(machine_pcb, chipset):
+    return f'''#ifndef MACHINE_CHIPSET
+#define MACHINE_CHIPSET {chipset}
+#endif
+#include "machine_defs.h"
 
 /* TODO: template for machine/pcb/{machine_pcb}.c - fill in the values for this board.
  * The easiest start is the closest existing machine/pcb/*.c with the same
@@ -520,7 +508,7 @@ def report(created, mdl, pcb_doc_name, doc_target, new_device=False, photo_dir=N
     print(f'=== Summary ==={" (dry run)" if DRY_RUN else ""}')
     if new_device:
         print(f'New PCB ({pcb_doc_name}): device doc, photos directory, board'
-              f' definition, symlink and header'
+              f' definition and machine description'
               f' {"would be added" if DRY_RUN else "added"}.')
         if photo_dir:
             print(f'  Photos directory: {photo_dir}')
@@ -540,36 +528,6 @@ def report(created, mdl, pcb_doc_name, doc_target, new_device=False, photo_dir=N
     print('  4. Run the CI checks:  make machine_check && make -C test')
     print('  5. Verify behaviour on hardware (port, stat, sfp, leds console'
           ' commands).')
-
-
-def check_symlink_support():
-    """Abort with a helpful message if creating a symlink is not possible.
-
-    The tool builds machine/<MACHINE>.c as a symlink into machine/pcb/, which
-    fails on Windows without Developer Mode or administrator rights (winerror
-    1314). A harmless probe in a temporary directory detects this up front so
-    the tool exits before touching anything instead of failing midway.
-    """
-    try:
-        with tempfile.TemporaryDirectory(prefix='add_device_probe_') as tmp:
-            real = os.path.join(tmp, 'probe_target')
-            with open(real, 'w') as f:
-                f.write('probe')
-            link = os.path.join(tmp, 'probe_link')
-            os.symlink(real, link)
-    except (OSError, NotImplementedError) as exc:
-        print()
-        print('WARNING: this tool needs to create symlinks'
-              ' (machine/<MACHINE>.c -> machine/pcb/...), but creating a'
-              ' symlink failed on this host:')
-        print(f'  {exc}')
-        print('On Windows, symlink creation requires Developer Mode or an'
-              ' administrator shell:')
-        print('  - enable Developer Mode (Settings > Update & Security >'
-              ' For developers),')
-        print('  - or start the terminal as administrator and run the tool'
-              ' again.')
-        sys.exit('Exiting without making any changes.')
 
 
 def main():
@@ -603,8 +561,6 @@ def main():
     if DRY_RUN:
         print('DRY RUN: the flow is walked and every step reports what it'
               ' would do, but nothing is written to disk.')
-    else:
-        check_symlink_support()
 
     os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -613,25 +569,21 @@ def main():
 
 
 def machine_already_supported(mdl):
-    """Return the info lines when machine/<MACHINE>.c AND .h already exist,
-    otherwise None."""
-    link = os.path.join(MACHINE_DIR, mdl + '.c')
-    header = os.path.join(MACHINE_DIR, mdl + '.h')
-    if not (os.path.lexists(link) and os.path.lexists(header)):
+    """Return info lines when a machine target already has a registry entry."""
+    path = os.path.join(MACHINE_DIR, 'machines.json')
+    if not os.path.isfile(path):
         return None
-    if os.path.islink(link):
-        link_desc = (f'machine/{mdl}.c -> '
-                     f'{os.readlink(link).replace(os.sep, "/")} (symlink)')
-    else:
-        link_desc = f'machine/{mdl}.c (regular file)'
-    with open(header, 'r') as f:
-        header_text = f.read()
-    m = re.search(r'^#define MACHINE_MODEL "(.*)"\s*$', header_text, re.MULTILINE)
-    model_suffix = f' (MACHINE_MODEL "{m.group(1)}")' if m else ''
-    return [
-        f'  {link_desc}',
-        f'  machine/{mdl}.h{model_suffix}',
-    ]
+    with open(path, encoding='utf-8') as f:
+        descriptions = json.load(f)
+    if not isinstance(descriptions, list):
+        raise ValueError('%s must contain a JSON array' % path)
+    for description in descriptions:
+        if isinstance(description, dict) and description.get('machine') == mdl:
+            return [
+                f'  machine/machines.json ({description.get("friendly_name")!r}, '
+                f'PCB {description.get("pcb")!r})',
+            ]
+    return None
 
 
 def run(pcb_id, vendor, model, chipset):
@@ -647,10 +599,10 @@ def run(pcb_id, vendor, model, chipset):
     if info:
         print()
         print('=== Device already supported ===')
-        print(f'machine/{mdl}.c and machine/{mdl}.h are both in place:')
+        print(f'Machine target {mdl} already has a registry entry:')
         for line in info:
             print(line)
-        print('Nothing to add. Remove these files (or adjust them by hand) to'
+        print('Nothing to add. Remove or adjust its entry in machines.json to'
               ' run the helper again, or use -n to preview the plan without'
               ' writing.')
         sys.exit(0)
@@ -684,8 +636,8 @@ def run(pcb_id, vendor, model, chipset):
                      f' though the device is documented under'
                      f' doc/devices/{doc_name} - please file a bug report.')
         confirm_write()
-        created, mdl = create_symlink_and_header(
-            machine_pcb, pcb_file, vendor, model, chipset)
+        created, mdl = create_machine_description(
+            pcb_file, vendor, model)
         doc_target = key_matches[0] if key_matches else pcb_doc_name
         doc_target = doc_target[:-len('.md')]
         git_add_files(created)

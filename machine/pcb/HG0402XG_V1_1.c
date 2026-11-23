@@ -1,10 +1,11 @@
+#define MACHINE_CHIPSET RTL8372
 #include "machine_defs.h"
 __code const struct machine machine = {
 	MACHINE_COMMON_SETTING,
 	.n_sfp = 2,
-	.log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
-	.phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
-	.is_sfp = {0, 0, 0, 1, 0, 0, 0, 0, 2},
+	.log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
+	.phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
+	.is_sfp = {0, 0, 0, 2, 0, 0, 0, 0, 1},
 	// Left SFP port (5)
 	.sfp_port[0].pin_detect = GPIO30_ACL_BIT3_EN,
 	.sfp_port[0].pin_los = GPIO_NA,
@@ -38,4 +39,3 @@ __code const struct machine machine = {
 		      }
 		    }
 };
-

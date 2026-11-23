@@ -51,9 +51,14 @@ IP-MC packet is encountered at a switch port and there is no rule for forwarding
 the forwarding tables. The default action is to flood such Lookup-Miss packets to all
 ports. This is the configuration without IGMP/MLD enabled.
 
-When IGMP/MLD is turned on, the Lookup-Miss action will be changed to drop such packets
-unless a rule is found in the forwarding tables, which will need to be configured by
-IGMP packets.
+When IGMP is turned on and a query has been seen, the Lookup-Miss action is changed to
+drop such packets unless a rule is found in the forwarding tables, which will need to be
+configured by IGMP packets. While no querier port is known, because no query has arrived
+yet or the port it came on has lost its link, the table is not looked up and all IP-MC
+packets are flooded, as with IGMP off: a host only reports its groups when it joins or when
+a querier asks, so without a querier the table would miss hosts that were joined before a
+restart of the switch, and a group learned from one host would be withheld from the others.
+The querier is tracked for the switch as a whole, not per VLAN.
 
 Switching on IGMP also configures all ports via `RTL837X_IGMP_PORT_CFG` to trap all
 incoming IGMP packets to the CPU. `RTL837X_IGMP_TRAP_CFG` then is used to configure
@@ -79,16 +84,23 @@ well; groups learned while IGMP was on stay in the table, but are no longer look
 `igmp_enable()`starts IGMP which cause IGMP packets to be handled by the CPU and forwarding
 of IP-MC packets to be limited to only subscribed ports.
 
-`igmp_router_port_set()`configures forwarding ports for IGMP messages.
+`igmp_router_port_set()` writes a router port mask into the ASIC; nothing calls it yet. The
+querier ports learned from queries are kept by the handler and used for forwarding by the CPU.
 
 `igmp_packet_handler()` implements handling of trapped IGMP packets by the CPU. It is called
 for frames to 01:00:5e:xx:xx:xx and returns 0 when the frame is not a trapped IGMP packet,
 so that it is passed on to the IP stack. IGMPv1/v2 reports (0x12, 0x16) join the group given
-in the IGMP header, IGMPv2 leaves (0x17) leave it, IGMPv3 reports use the first group record
-(type 4 joins, type 3 leaves). Trapped IGMP frames arrive without a VLAN tag.
+in the IGMP header, IGMPv2 leaves (0x17) leave it. Of an IGMPv3 report every group record is
+taken: exclude mode (types 2 and 4) and allow new sources (5) join, include mode (1 and 3)
+without sources leaves, with sources joins. Block old sources (6) is not evaluated, so a port
+that joined by sources stays in the group until it leaves the group or the switch restarts.
+A trapped IGMP frame from a tagged port keeps its 802.1Q tag.
 Reports for groups in 224.0.0.0/24 are ignored: the switch floods that block
 even with IGMP on, and an entry for a group such as 224.0.0.251 (mDNS) would
 otherwise limit it to the ports that reported it, as RFC 4541 warns against.
+A report for a group outside 224.0.0.0/4 is ignored too: the table keys a group on the
+low four bits of its first byte, so such an address would make an entry for a multicast
+group.
 
 `igmp_show()` prints out the IGMP configuration on the CLI.
 
@@ -129,8 +141,9 @@ Enable IGMP on the switch-CLI:
 ```
 > igmp on
 ```
-The flickering should now stop on all ports except the port where the streaming device is connected:
-the switch drops all IP-MC packets as there are no listeners.
+Once a querier has sent a query, the flickering should stop on all ports except the port where
+the streaming device is connected: the switch drops all IP-MC packets as there are no listeners.
+Without a querier in the network the switch keeps flooding.
 
 Now, on the second Linux/Windows device start listening to the stream:
 ```

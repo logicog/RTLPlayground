@@ -1218,8 +1218,11 @@ static void handle_tick(void)
 
 void idle(void)
 {
-	if (!(tick_pending || rx_irq || link_irq || cmd_available))
+	if (!(tick_pending || rx_irq || link_irq || cmd_available)) {
+		health_sleep_start();
 		PCON |= 1;
+		health_sleep_end();
+	}
 	health_loop_start();
 	if (tick_pending) {
 		tick_pending = 0;

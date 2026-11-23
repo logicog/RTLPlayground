@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     xxd \
+    jq \
     python3 \
     libjson-c-dev \
     git \
