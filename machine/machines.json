@@ -70,12 +70,12 @@
     "pcb": "NONAME_S600W_4GT_2XGT_SE"
   },
   {
-    "machine": "HISOURCE_HI_K0402WS_PCB_K0402W_V2_0",
+    "machine": "HISOURCE_HI_K0402WS_V2_0",
     "friendly_name": "Hisource Hi-K0402WS",
     "pcb": "PCB_K0402W_V2_0"
   },
   {
-    "machine": "HISOURCE_HI_K0402WS_PCB_K0402W_V3_0",
+    "machine": "HISOURCE_HI_K0402WS_V3_0",
     "friendly_name": "Hisource Hi-K0402WS",
     "pcb": "PCB_K0402W_V3_0"
   },
@@ -130,17 +130,17 @@
     "pcb": "PCB_SWTG118AS_V2_1_17462"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1",
+    "machine": "KEEPLINK_KP_9000_6XHML_V1_1",
     "friendly_name": "keepLiNK KP-9000-6XHML-X2",
     "pcb": "2M_PCB43_V1_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_2",
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_V1_2",
     "friendly_name": "keepLiNK KP-9000-6XHML-X2",
     "pcb": "2M_PCB43_V1_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V2_1",
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_V2_1",
     "friendly_name": "keepLiNK KP-9000-6XHML-X2",
     "pcb": "2M_PCB43_V2_1"
   },
@@ -150,32 +150,32 @@
     "pcb": "NONAME_KP_9000_6XH_X"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V1_1",
+    "machine": "KEEPLINK_KP_9000_6XH_X2_V1_1",
     "friendly_name": "keepLiNK KP-9000-6XH-X2",
     "pcb": "2M_PCB43_V1_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V1_2",
+    "machine": "KEEPLINK_KP_9000_6XH_X2_V1_2",
     "friendly_name": "keepLiNK KP-9000-6XH-X2",
     "pcb": "2M_PCB43_V1_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V2_1",
+    "machine": "KEEPLINK_KP_9000_6XH_X2_V2_1",
     "friendly_name": "keepLiNK KP-9000-6XH-X2",
     "pcb": "2M_PCB43_V2_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V2_2",
+    "machine": "KEEPLINK_KP_9000_9XHML_X_V2_2",
     "friendly_name": "keepLiNK KP-9000-9XHML-X",
     "pcb": "2M_PCB23_V2_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V3_1",
+    "machine": "KEEPLINK_KP_9000_9XHML_X_V3_1",
     "friendly_name": "keepLiNK KP-9000-9XHML-X",
     "pcb": "2M_PCB23_V3_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V3_2",
+    "machine": "KEEPLINK_KP_9000_9XHML_X_V3_2",
     "friendly_name": "keepLiNK KP-9000-9XHML-X",
     "pcb": "2M_PCB23_V3_2"
   },
@@ -185,7 +185,7 @@
     "pcb": "2M_PCB51_ML_V1_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHPML_X_2M_PCB51_ML_V1_1",
+    "machine": "KEEPLINK_KP_9000_9XHPML_X_V1_1",
     "friendly_name": "keepLiNK KP-9000-9XHPML-X",
     "pcb": "2M_PCB51_ML_V1_1"
   },
