@@ -3,6 +3,8 @@
 
 import os
 import secrets
+from random import randint
+from threading import Timer
 import time
 import re
 import argparse
@@ -50,14 +52,30 @@ state = {
     },
     "cmd_history": [],
     "mgmt_vlan": 1,
+    "lacp_enabled": True,
     "lags": [
+                {"lagNum":0,"type":"static","members":[],"hash":"3f"},
+                {"lagNum":1,"type":"lacp","members":[5,6],"active_members":[6],"valid":1,"aggregator":"ce654f01cb99","hash":"7e"},
+                {"lagNum":2,"type":"static","members":[],"hash":"3f"},
+                {"lagNum":3,"type":"static","members":[],"hash":"3f"}
+            ],
+    "lacp": [
                 {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]},
                 {"cfg":[5,6], "aggValid": 1, "agg": "ce654f01cb99", "members": [5]},
                 {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]},
                 {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]}
             ],
+    "lacp_ports": []
 }
 
+hashTag = {"spa":    1,
+           "smac":   2,
+           "dmac":   4, 
+           "sip":    8,
+           "dip":   16,
+           "sport": 32,
+           "dport": 64,
+          }
 
 tx_g = [0] * PORTS
 rx_g = [0] * PORTS
@@ -75,6 +93,7 @@ def vprint(string):
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
+        self._update_lacp_ports()         # Initialize LACP ports
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def api_handlers(self,query):
@@ -330,6 +349,8 @@ class Handler(SimpleHTTPRequestHandler):
             "pvid": self._parse_pvid,
             "dns": self._parse_dns,
             "ntp": self._parse_ntp,
+            "lag": self._parse_lag,
+            "laghash": self._parse_laghash,
         }
 
     def remove_vlan(self, id):
@@ -378,6 +399,127 @@ class Handler(SimpleHTTPRequestHandler):
         else :
             state["vlans"][vid] = self.newVlan("")
 
+    def _parse_lag(self, pieces):
+        global state
+        
+        lagNum = int(pieces[1]) - 1   # convert to internal index
+        delete = lacp = False         # default setup a static lag
+        if not pieces[2].isdigit():   # got a command
+            delete = pieces[2]=="d"   # delete lag
+            lacp = pieces[2]=="lacp"  # setup LACP based lag
+            if lacp and pieces[3]=="off":  # delete LACP based lag
+                delete = True
+                lacp = False
+                ports = []
+            else:
+                ports = [int(port) for port in pieces[3:]] 
+        else:
+            ports = [int(port) for port in pieces[2:]] 
+        bitmask = 0
+        for port in ports:
+            bitmask |= 1 << (port - 1)
+        if delete:
+            # reset global LAG & LACP data to return in lag.json
+            state["lacp"][lagNum] = {"cfg":[],"aggValid":0,"agg":"000000000000","members":[]}
+            state["lags"][lagNum] = {"lagNum":lagNum,"type":"static","members":[],"hash":"3f"}
+
+            # check if LACP is still to be active
+            state["lacp_enabled"] = any([l["aggValid"] for l in state["lacp"]])
+            result = f'port_lag_members_set, lag: {lagNum:02x}, members: 0x{bitmask:04x}'
+        elif lacp:
+            # Update global LAG data to return in lag.json
+            state["lacp_enabled"] = True
+            state["lags"][lagNum] = {
+                "lagNum":lagNum,
+                "type":"lacp",
+                "members": ports,
+                "active_members":[],
+                "valid": False,
+                "aggregator":"000000000000",
+                "hash":"7e"
+            }
+            for port in ports:
+              
+              rt = randint(10,25)
+              Timer(rt, self._activate_lacp_member,args=(lagNum, port,)).start()
+            result = f'port_lag_members_set, lag: {lagNum:02x}, members: 0x{bitmask:04x}'
+        else:
+            # Update global LAG data to return in lag.json
+            state["lags"][lagNum] = {
+                "lagNum": lagNum,
+                "type":"static",
+                "members":ports,
+                "hash":"3f"
+            }
+            result = f'port_lag_members_set, lag: {lagNum:02x}, members: 0x{bitmask:04x}'
+        self._update_lacp_ports()
+        return result.encode("utf-8")
+
+    def _parse_laghash(self, pieces):
+        lagNum = int(pieces[1]) - 1
+        bitmask = 0
+        for tag in pieces[2:]:
+            bitmask |= hashTag[tag]
+        # Update global LAG data to return in lag.json
+        hashValue = f'{bitmask:02x}'
+        state["lags"][lagNum]["hash"] = hashValue
+        result = f'port_lag_hash_set, lag: {lagNum:02x}, hash: {hashValue}'
+        return result.encode("utf-8")
+
+    def _activate_lacp_member(self, lagNum, port):
+        global state
+        
+        lag = state["lags"][lagNum]
+        # note that the user can delete the LACP before the timer
+        # triggered task is run. Guard for this by check the type
+        if lag["type"]!="lacp":
+            return
+            
+        active = randint(0, 100) < 90     # randomly allow a member activation to fail
+        if active:
+          lag["valid"] = 1
+          lag["active_members"].append(port)
+
+          if lag["aggregator"]=="000000000000" and active:
+            # Random locally administered, unicast MAC address
+            mac = bytearray(secrets.token_bytes(6))
+            mac[0] = (mac[0] | 0x02) & 0xFE  # Set local bit; clear multicast bit
+
+            lag["aggregator"] = "".join(f"{byte:02x}" for byte in mac)
+            
+        vprint(f'Updated LAG for port({port}): {lag}')
+        self._update_lacp_ports()
+        
+    def _update_lacp_ports(self):
+        global state
+        
+        # Initialize ports
+        lacp_ports = [{"p":i,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"} 
+                      for i in range(1, PORTS + 1)]
+        # Determine LACP ports
+        for lag in state["lags"]:
+            if lag["type"]!="lacp":
+                continue
+
+            for port in lag["members"]:
+                if port in lag.get("active_members",[]):
+                    lacp_ports[port-1] = {"p": port,
+                                          "lag": lag["lagNum"] + 1,
+                                          "a": lag["aggregator"][2:4],
+                                          "pt": lag["aggregator"][-2:],
+                                          "rs":4,
+                                          "rx":"0003",
+                                          "psys": lag["aggregator"]
+                                        }
+                else:
+                    lacp_ports[port-1] = {"p": port,
+                                          "lag":lag["lagNum"] + 1,
+                                          "a":"07",
+                                          "pt":"40",
+                                          "rs":0,
+                                          "rx":"0000",
+                                          "psys":"000000000000"}
+        state['lacp_ports'] = lacp_ports
     def _parse_lldp(self, pieces):
         global state
         state.lldp_enabled = (pieces[0] == "on")
@@ -550,35 +692,19 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _api_lacp(self):
         global state
+
         return {
-            "on": False,
-            "lags": state["lags"],
-            "ports": [
-                {
-                    "p":i,
-                    "lag":255,
-                    "a":"00",
-                    "pt":"00",
-                    "rs":0,
-                    "rx":"0000",
-                    "psys":"000000000000"
-                } for i in range(1, PORTS + 1)
-            ]
+            "on": state["lacp_enabled"],
+            "lags": state["lacp"],
+            "ports": state["lacp_ports"]
         }
 
     def _api_lag(self):
+        global state
+
         return {
-            "lags":[
-                {"lagNum":0,"type":"static","members":[],"hash":"3f"},
-                {"lagNum":1,"type":"lacp","members":[5,6],"active_members":[6],"valid":1,"aggregator":"ce654f01cb99","hash":"7e"},
-                {"lagNum":2,"type":"static","members":[],"hash":"3f"},
-                {"lagNum":3,"type":"static","members":[],"hash":"3f"}
-            ],
-            "ports":[(
-                    {"p":5,"lag":1,"a":"07","pt":"40","rs":0,"rx":"0000","psys":"000000000000"} if i == 5 else 
-                    {"p":6,"lag":1,"a":"3f","pt":"3f","rs":4,"rx":"000d","psys":"ce654f01cb99"} if i == 6 else
-                    {"p":i,"lag":255,"a":"00","pt":"00","rs":0,"rx":"0000","psys":"000000000000"} ) for i in range(1, PORTS + 1)
-                ]
+            "lags": state["lags"],
+            "ports": state["lacp_ports"]
             }
 
     def _api_lldp(self):
@@ -778,4 +904,10 @@ if __name__ == "__main__":
     PORT = args.port
 
     print(f"Serving {ROOT} on http://{HOST}:{PORT}")
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    try:
+        server = ThreadingHTTPServer((HOST, PORT), Handler)
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nExiting")    # Ctrl-C stops the script without a traceback
+    finally:
+        server.server_close()
