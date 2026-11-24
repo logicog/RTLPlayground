@@ -76,5 +76,6 @@ the image, the other half stages the update).
 A stock 1 MB device is therefore the reference configuration; anything with a
 different flash layout gets its own `machines.json` entry.
 
-`mac_flash_offset = 0x1FC000` is the upstream default for 2 MB parts and matches
-neither a 1 MB nor a 4 MB device, so the factory MAC has to be verified per unit.
+This is an unmanaged device: the stock firmware stores no factory MAC, so
+`mac_flash_offset = 0` and the address is derived from the chip UUID (locally
+administered, `06:` prefix), which is stable per unit.
