@@ -7,17 +7,12 @@
   {
     "machine": "BINARDAT_2G06_04210GSM",
     "friendly_name": "Binardat 2G06-04210GSM",
-    "pcb": "NONAME_20240111"
+    "pcb": "20240111"
   },
   {
     "machine": "DAVUAZ_DA_K6501W",
     "friendly_name": "Davuaz Da-K6501W",
     "pcb": "PCB_K0501W_V2_0"
-  },
-  {
-    "machine": "DEFAULT_8C_1SFP",
-    "friendly_name": "8+1 SFP Port Switch",
-    "pcb": "NONAME_KP_9000_9XH_X_EU"
   },
   {
     "machine": "DOTX_DX_1009N",
@@ -67,15 +62,15 @@
   {
     "machine": "HASIVO_S600W_4GT_2XGT_SE",
     "friendly_name": "Hasivo S600W-4GT-2XGT-SE",
-    "pcb": "NONAME_S600W_4GT_2XGT_SE"
+    "pcb": "S600W_4GT_2XGT_SE"
   },
   {
-    "machine": "HISOURCE_HI_K0402WS_PCB_K0402W_V2_0",
+    "machine": "HISOURCE_HI_K0402WS_V2_0",
     "friendly_name": "Hisource Hi-K0402WS",
     "pcb": "PCB_K0402W_V2_0"
   },
   {
-    "machine": "HISOURCE_HI_K0402WS_PCB_K0402W_V3_0",
+    "machine": "HISOURCE_HI_K0402WS_V3_0",
     "friendly_name": "Hisource Hi-K0402WS",
     "pcb": "PCB_K0402W_V3_0"
   },
@@ -100,12 +95,12 @@
     "pcb": "PCB_SWTG018AS_A_V2_0_1_19649"
   },
   {
-    "machine": "HORACO_HC_SWTGW218AS_PCB_SWTG018AS_A_V2_0_1_19649",
+    "machine": "HORACO_HC_SWTGW218AS_V2_0_1_19649",
     "friendly_name": "Horaco HC-SWTG218AS",
     "pcb": "PCB_SWTG018AS_A_V2_0_1_19649"
   },
   {
-    "machine": "HORACO_HC_SWTGW218AS_PCB_SWTG118AS_V2_0_16029",
+    "machine": "HORACO_HC_SWTGW218AS_V2_0_16029",
     "friendly_name": "Horaco HC-SWTGW218AS",
     "pcb": "PCB_SWTG118AS_V2_0_16029"
   },
@@ -130,52 +125,52 @@
     "pcb": "PCB_SWTG118AS_V2_1_17462"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_1",
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_V1_1",
     "friendly_name": "keepLiNK KP-9000-6XHML-X2",
     "pcb": "2M_PCB43_V1_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V1_2",
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_V1_2",
     "friendly_name": "keepLiNK KP-9000-6XHML-X2",
     "pcb": "2M_PCB43_V1_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XHML_X2_2M_PCB43_V2_1",
+    "machine": "KEEPLINK_KP_9000_6XHML_X2_V2_1",
     "friendly_name": "keepLiNK KP-9000-6XHML-X2",
     "pcb": "2M_PCB43_V2_1"
   },
   {
     "machine": "KEEPLINK_KP_9000_6XH_X",
     "friendly_name": "keepLink KP-9000-6XH-X",
-    "pcb": "NONAME_KP_9000_6XH_X"
+    "pcb": "2M_PCB38_V1_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V1_1",
+    "machine": "KEEPLINK_KP_9000_6XH_X2_V1_1",
     "friendly_name": "keepLiNK KP-9000-6XH-X2",
     "pcb": "2M_PCB43_V1_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V1_2",
+    "machine": "KEEPLINK_KP_9000_6XH_X2_V1_2",
     "friendly_name": "keepLiNK KP-9000-6XH-X2",
     "pcb": "2M_PCB43_V1_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_6XH_X2_2M_PCB43_V2_1",
+    "machine": "KEEPLINK_KP_9000_6XH_X2_V2_1",
     "friendly_name": "keepLiNK KP-9000-6XH-X2",
     "pcb": "2M_PCB43_V2_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V2_2",
+    "machine": "KEEPLINK_KP_9000_9XHML_X_V2_2",
     "friendly_name": "keepLiNK KP-9000-9XHML-X",
     "pcb": "2M_PCB23_V2_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V3_1",
+    "machine": "KEEPLINK_KP_9000_9XHML_X_V3_1",
     "friendly_name": "keepLiNK KP-9000-9XHML-X",
     "pcb": "2M_PCB23_V3_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHML_X_2M_PCB23_V3_2",
+    "machine": "KEEPLINK_KP_9000_9XHML_X_V3_2",
     "friendly_name": "keepLiNK KP-9000-9XHML-X",
     "pcb": "2M_PCB23_V3_2"
   },
@@ -185,14 +180,14 @@
     "pcb": "2M_PCB51_ML_V1_2"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XHPML_X_2M_PCB51_ML_V1_1",
+    "machine": "KEEPLINK_KP_9000_9XHPML_X_V1_1",
     "friendly_name": "keepLiNK KP-9000-9XHPML-X",
     "pcb": "2M_PCB51_ML_V1_1"
   },
   {
-    "machine": "KEEPLINK_KP_9000_9XH_X_EU",
-    "friendly_name": "keepLink KP-9000-9XH-X-EU",
-    "pcb": "NONAME_KP_9000_9XH_X_EU"
+    "machine": "KEEPLINK_KP_9000_9XH_X",
+    "friendly_name": "keepLink KP-9000-9XH-X",
+    "pcb": "2M_PCB23_V2_0"
   },
   {
     "machine": "LIANGUO_HYWS_SGT0108S",

@@ -42,15 +42,11 @@ SUBDIRS := tools
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 MACHINE_REGISTRY = machine/machines.json
 
-# $MACHINE selects a JSON machine description and is passed as -DMACHINE_NAME.
-# Its friendly_name and PCB fields select the PCB source and compiler flags.
+# $MACHINE selects a JSON machine description whose friendly_name and PCB
+# fields select the PCB source and compiler flags.
 # Alternatively, PCB selects a PCB source and gives it a generic machine name.
-ifneq ($(MACHINE),)
-	MACHINE_CC_FLAGS += -DMACHINE_NAME=$(MACHINE)
-endif
 ifeq ($(GENERIC_PCB_BUILD),1)
 	MACHINE_SRC = machine/pcb/$(PCB).c
-	MACHINE_PCB_SOURCE = $(MACHINE_SRC)
 	FRIENDLY_NAME = GENERIC_PCB
 	MACHINE_PCB_NAME = $(PCB)
 	MACHINE_LINK_TARGET := $(shell readlink $(MACHINE_SRC) 2>/dev/null)
@@ -60,39 +56,37 @@ ifeq ($(GENERIC_PCB_BUILD),1)
 else ifneq ($(strip $(MACHINE)),)
 	MACHINE_DESCRIPTOR = $(MACHINE_REGISTRY)
 	ifneq ($(wildcard $(MACHINE_DESCRIPTOR)),)
-	FRIENDLY_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 1 then .[0].friendly_name else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
-	MACHINE_PCB_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 1 then .[0].pcb else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
+	FRIENDLY_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 0 then error("MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR)") elif length == 1 then .[0].friendly_name else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
+	MACHINE_PCB_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 0 then error("MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR)") elif length == 1 then .[0].pcb else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
 	ifeq ($(strip $(FRIENDLY_NAME)),)
 	$(error MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR))
 	endif
 	MACHINE_SRC = machine/pcb/$(MACHINE_PCB_NAME).c
-	MACHINE_PCB_SOURCE = $(MACHINE_SRC)
 	else
 	$(error Machine registry $(MACHINE_DESCRIPTOR) does not exist)
 	endif
 else
 	MACHINE_SRC =
-	MACHINE_PCB_SOURCE =
 endif
 
 MACHINE_INIT_DEFAULT := machine/default_machine_init.c
-ifneq ($(strip $(MACHINE_PCB_SOURCE)),)
-MACHINE_HAS_CUSTOM_INIT := $(shell grep -q 'MACHINE_CUSTOM_INIT' $(MACHINE_PCB_SOURCE) 2>/dev/null && echo yes)
+ifneq ($(strip $(MACHINE_SRC)),)
+MACHINE_HAS_CUSTOM_INIT := $(shell grep -q 'MACHINE_CUSTOM_INIT' $(MACHINE_SRC) 2>/dev/null && echo yes)
 ifeq ($(MACHINE_HAS_CUSTOM_INIT),)
 	MACHINE_INIT_SRC := $(MACHINE_INIT_DEFAULT)
 endif
 endif
 
 # PCB information
-ifneq ($(strip $(MACHINE_PCB_SOURCE)),)
-MACHINE_CHIPSET := $(shell sed -n 's/^#define MACHINE_CHIPSET //p' $(MACHINE_PCB_SOURCE) 2>/dev/null | head -n 1)
+ifneq ($(strip $(MACHINE_SRC)),)
+MACHINE_CHIPSET := $(shell sed -n 's/^#define MACHINE_CHIPSET //p' $(MACHINE_SRC) 2>/dev/null | head -n 1)
 else
 MACHINE_CHIPSET =
 endif
 ifneq ($(strip $(MACHINE)),)
-ifneq ($(wildcard $(MACHINE_PCB_SOURCE)),)
+ifneq ($(wildcard $(MACHINE_SRC)),)
 ifeq ($(strip $(MACHINE_CHIPSET)),)
-$(error MACHINE_CHIPSET is missing from $(MACHINE_PCB_SOURCE))
+$(error MACHINE_CHIPSET is missing from $(MACHINE_SRC))
 endif
 	MACHINE_CC_FLAGS += -DMACHINE_CHIPSET=$(MACHINE_CHIPSET)
 ifeq ($(strip $(FRIENDLY_NAME)),)
@@ -390,9 +384,9 @@ machine_check: $(SDCC) $(MACHINE_REGISTRY)
 	CHIPSET_SOURCE=machine/pcb/$${PCB}.c; \
 	CHIPSET=$$(sed -n 's/^#define MACHINE_CHIPSET //p' $$CHIPSET_SOURCE 2>/dev/null | head -n 1); \
 	test -n "$$CHIPSET" || { echo "ERROR: $$CHIPSET_SOURCE has no MACHINE_CHIPSET definition." >&2; exit 1; }; \
-	$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$CHIPSET_SOURCE; \
+	$(CC) $(CC_FLAGS) -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$CHIPSET_SOURCE; \
 	if ! grep -q 'MACHINE_CUSTOM_INIT(' $$CHIPSET_SOURCE; then \
-		$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $(MACHINE_INIT_DEFAULT); \
+		$(CC) $(CC_FLAGS) -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $(MACHINE_INIT_DEFAULT); \
 	fi; \
 	done
 	@rm -rf $(BUILDDIR)/tmp
