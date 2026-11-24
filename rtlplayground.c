@@ -1180,7 +1180,7 @@ static void handle_tick(void)
 		reg_read_m(RTL837X_REG_SEC_COUNTER);
 
 		if (reboot_pending && !--reboot_sec) {
-			print_string("\nMANUAL REBOOT\n\n");
+			print_string("\nSCHEDULED REBOOT\n\n");
 			reset_chip();
 		}
 
