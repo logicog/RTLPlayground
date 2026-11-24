@@ -722,13 +722,13 @@ process_tcp_options(__xdata struct uip_conn *conn)
     if(opt == TCP_OPT_MSS && len == TCP_OPT_MSS_LEN) {
       mss = ((u16_t)uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + pos + 2] << 8) |
 	(u16_t)uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN + pos + 3];
-      /* Clamp to our maximum, and treat an advertised MSS of 0 as that
-	 maximum: uip_send clamps uip_slen to conn->mss, so a 0 would leave a
+      /* Clamp to our maximum. An MSS of 0 is ignored and the default kept:
+	 uip_send clamps uip_slen to conn->mss, so a 0 would leave a
 	 connection that can never send and holds its slot until the
-	 application times out. (uip_init does not default mss, and the passive
-	 open does not set it, so there is no safe prior value to keep.) */
-      conn->initialmss = conn->mss =
-	(mss == 0 || mss > UIP_TCP_MSS) ? UIP_TCP_MSS : mss;
+	 application times out. */
+      if(mss != 0) {
+	conn->initialmss = conn->mss = mss > UIP_TCP_MSS ? UIP_TCP_MSS : mss;
+      }
       /* Stop processing options. */
       return;
     }
@@ -1425,8 +1425,11 @@ uip_process(u8_t flag) __banked
   uip_connr->rcv_nxt[0] = BUF->seqno[0];
   uip_add_rcv_nxt(1);
 
+  /* Default the MSS, as uip_connect does for an active open: a SYN without
+     a usable MSS option would otherwise leave a stale or zero MSS. */
+  uip_connr->initialmss = uip_connr->mss = UIP_TCP_MSS;
   process_tcp_options(uip_connr);
-  
+
   /* Our response will be a SYNACK. */
 #if UIP_ACTIVE_OPEN
  tcp_send_synack:

@@ -587,11 +587,15 @@ static void scenario_malformed_tcp_options(void)
 	httpd_init();
 	cli_window = MSS_FULL;
 	cli_rcv_nxt = 0;
+	/* uip_init leaves the slot's MSS alone; clear it so the default is seen. */
+	uip_conns[0].initialmss = uip_conns[0].mss = 0;
 	put_tcp(TCP_SYN, 6 /* 24-byte header */, opts, sizeof(opts), 1000, 44);
 	uip_len = 44;
 	uip_input();
 	CHECK(uip_len && (TCPH->flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK),
 	      "malformed SYN options: the walk terminates and a SYN-ACK is sent");
+	CHECK(uip_conns[0].mss == UIP_TCP_MSS && uip_conns[0].initialmss == UIP_TCP_MSS,
+	      "malformed SYN options: no MSS is parsed, the connection keeps the default");
 }
 
 /* A segment claiming a 60-byte TCP header (data offset 15) while only 40 bytes
@@ -616,7 +620,7 @@ static void scenario_oversized_data_offset(void)
 
 /* A SYN advertising MSS 0 (option 02 04 00 00). uip_send clamps to conn->mss,
  * so storing 0 would leave a connection that can never send and holds its slot
- * until timeout. The option must be floored to a usable MSS instead. */
+ * until timeout. The option must be ignored and the default MSS kept. */
 static void scenario_mss_zero(void)
 {
 	static const uint8_t mss0[4] = { 0x02, 0x04, 0x00, 0x00 };
@@ -625,11 +629,13 @@ static void scenario_mss_zero(void)
 	httpd_init();
 	cli_window = MSS_FULL;
 	cli_rcv_nxt = 0;
+	/* uip_init leaves the slot's MSS alone; clear it so the default is seen. */
+	uip_conns[0].initialmss = uip_conns[0].mss = 0;
 	put_tcp(TCP_SYN, 6 /* 24-byte header */, mss0, sizeof(mss0), 1000, 44);
 	uip_len = 44;
 	uip_input();
-	CHECK(uip_conns[0].mss != 0,
-	      "an advertised MSS of 0 is floored, so the connection can send");
+	CHECK(uip_conns[0].mss == UIP_TCP_MSS && uip_conns[0].initialmss == UIP_TCP_MSS,
+	      "an advertised MSS of 0 is ignored, the connection keeps the default");
 }
 
 
