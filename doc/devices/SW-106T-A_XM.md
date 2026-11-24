@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Board | SW-106T-A_XM |
+| Board | SW-106T-A_XM (provisional, see PCB marking) |
 | SoC | RTL8372N |
 | Copper | 4 x 2.5G RJ45 |
 | Uplink | 2 x SFP+ |
@@ -53,3 +53,15 @@ make MACHINE=SW-106T-A_XM CONFIG=config/default.txt VERSION=0.2.6
 - Web firmware update preserves the configuration sector
 - A configured image needs `factory-reset`, restore-defaults, or a full
   programmer write
+
+## PCB marking
+
+The case label only gives the vendor and model (Xiaomi SW-106T-A). The PCB
+silkscreen has **not been photographed or confirmed** yet, so the identifier
+`SW-106T-A_XM` used for the PCB source and for this document is derived from the
+model name and is provisional.
+
+If the silkscreen turns out to be different, this document and
+`machine/pcb/SW_106T_A_XM.c` get renamed; a *different board revision* would
+instead get its own `machines.json` entry (like the Horaco HC-SWTGW218AS V2.0 /
+V2.1 pair) rather than changing this one.
