@@ -208,6 +208,7 @@ extern u16_t uip_listenports[UIP_LISTENPORTS];
 static uint32_t cli_seq;	/* next sequence number we send */
 static uint32_t cli_rcv_nxt;	/* next sequence number we expect */
 static uint16_t cli_window;	/* what we advertise */
+static uint16_t cli_urgp;	/* urgent pointer, sent when TCP_URG is set */
 
 static uint8_t stream[STREAM_MAX];	/* bytes accepted from the server */
 static int stream_len;
@@ -315,6 +316,8 @@ static void client_send(uint8_t flags, const char *payload, int plen)
 	TCPH->wnd[0] = (uint8_t)(cli_window >> 8);
 	TCPH->wnd[1] = (uint8_t)(cli_window & 0xff);
 	TCPH->tcpchksum = 0;
+	TCPH->urgp[0] = (uint8_t)(cli_urgp >> 8);
+	TCPH->urgp[1] = (uint8_t)(cli_urgp & 0xff);
 
 	if (hlen == 24) {
 		uint8_t *opt = &uip_buf[UIP_LLH_LEN + 40];
@@ -669,6 +672,24 @@ static void scenario_urg_inline(void)
 	uip_input();
 	CHECK(uip_conn_active(0),
 	      "URG segment: delivered inline, no out-of-bounds, connection survives");
+	CHECK(uip_len == 40 && rd32(TCPH->ackno) == cli_seq + 1,
+	      "URG segment: the byte is acknowledged, rcv_nxt moves by exactly one");
+}
+
+/* A GET with URG set and the urgent pointer inside the request. Delivered
+ * inline, httpd sees the whole request and serves the file; skipping the
+ * urgent bytes instead would leave it a request with its start missing. */
+static void scenario_urg_get(void)
+{
+	static const char get[] = "GET " FILE_NAME " HTTP/1.1\r\nHost: sw\r\n\r\n";
+
+	session_start(MSS_FULL);
+	cli_urgp = 4;
+	client_send(TCP_ACK | TCP_PSH | TCP_URG, get, (int)strlen(get));
+	cli_urgp = 0;
+	drain(MSS_FULL);
+	CHECK(first_body_mismatch() == -1,
+	      "URG GET: the request is read inline and the file is served");
 }
 
 
@@ -1458,6 +1479,7 @@ int main(int argc, char **argv)
 	scenario_oversized_data_offset();
 	scenario_mss_zero();
 	scenario_urg_inline();
+	scenario_urg_get();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();
