@@ -47,7 +47,6 @@ MACHINE_REGISTRY = machine/machines.json
 # Alternatively, PCB selects a PCB source and gives it a generic machine name.
 ifeq ($(GENERIC_PCB_BUILD),1)
 	MACHINE_SRC = machine/pcb/$(PCB).c
-	MACHINE_PCB_SOURCE = $(MACHINE_SRC)
 	FRIENDLY_NAME = GENERIC_PCB
 	MACHINE_PCB_NAME = $(PCB)
 	MACHINE_LINK_TARGET := $(shell readlink $(MACHINE_SRC) 2>/dev/null)
@@ -63,33 +62,31 @@ else ifneq ($(strip $(MACHINE)),)
 	$(error MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR))
 	endif
 	MACHINE_SRC = machine/pcb/$(MACHINE_PCB_NAME).c
-	MACHINE_PCB_SOURCE = $(MACHINE_SRC)
 	else
 	$(error Machine registry $(MACHINE_DESCRIPTOR) does not exist)
 	endif
 else
 	MACHINE_SRC =
-	MACHINE_PCB_SOURCE =
 endif
 
 MACHINE_INIT_DEFAULT := machine/default_machine_init.c
-ifneq ($(strip $(MACHINE_PCB_SOURCE)),)
-MACHINE_HAS_CUSTOM_INIT := $(shell grep -q 'MACHINE_CUSTOM_INIT' $(MACHINE_PCB_SOURCE) 2>/dev/null && echo yes)
+ifneq ($(strip $(MACHINE_SRC)),)
+MACHINE_HAS_CUSTOM_INIT := $(shell grep -q 'MACHINE_CUSTOM_INIT' $(MACHINE_SRC) 2>/dev/null && echo yes)
 ifeq ($(MACHINE_HAS_CUSTOM_INIT),)
 	MACHINE_INIT_SRC := $(MACHINE_INIT_DEFAULT)
 endif
 endif
 
 # PCB information
-ifneq ($(strip $(MACHINE_PCB_SOURCE)),)
-MACHINE_CHIPSET := $(shell sed -n 's/^#define MACHINE_CHIPSET //p' $(MACHINE_PCB_SOURCE) 2>/dev/null | head -n 1)
+ifneq ($(strip $(MACHINE_SRC)),)
+MACHINE_CHIPSET := $(shell sed -n 's/^#define MACHINE_CHIPSET //p' $(MACHINE_SRC) 2>/dev/null | head -n 1)
 else
 MACHINE_CHIPSET =
 endif
 ifneq ($(strip $(MACHINE)),)
-ifneq ($(wildcard $(MACHINE_PCB_SOURCE)),)
+ifneq ($(wildcard $(MACHINE_SRC)),)
 ifeq ($(strip $(MACHINE_CHIPSET)),)
-$(error MACHINE_CHIPSET is missing from $(MACHINE_PCB_SOURCE))
+$(error MACHINE_CHIPSET is missing from $(MACHINE_SRC))
 endif
 	MACHINE_CC_FLAGS += -DMACHINE_CHIPSET=$(MACHINE_CHIPSET)
 ifeq ($(strip $(FRIENDLY_NAME)),)
