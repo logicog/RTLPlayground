@@ -42,12 +42,9 @@ SUBDIRS := tools
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 MACHINE_REGISTRY = machine/machines.json
 
-# $MACHINE selects a JSON machine description and is passed as -DMACHINE_NAME.
-# Its friendly_name and PCB fields select the PCB source and compiler flags.
+# $MACHINE selects a JSON machine description whose friendly_name and PCB
+# fields select the PCB source and compiler flags.
 # Alternatively, PCB selects a PCB source and gives it a generic machine name.
-ifneq ($(MACHINE),)
-	MACHINE_CC_FLAGS += -DMACHINE_NAME=$(MACHINE)
-endif
 ifeq ($(GENERIC_PCB_BUILD),1)
 	MACHINE_SRC = machine/pcb/$(PCB).c
 	MACHINE_PCB_SOURCE = $(MACHINE_SRC)
@@ -390,9 +387,9 @@ machine_check: $(SDCC) $(MACHINE_REGISTRY)
 	CHIPSET_SOURCE=machine/pcb/$${PCB}.c; \
 	CHIPSET=$$(sed -n 's/^#define MACHINE_CHIPSET //p' $$CHIPSET_SOURCE 2>/dev/null | head -n 1); \
 	test -n "$$CHIPSET" || { echo "ERROR: $$CHIPSET_SOURCE has no MACHINE_CHIPSET definition." >&2; exit 1; }; \
-	$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$CHIPSET_SOURCE; \
+	$(CC) $(CC_FLAGS) -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $$CHIPSET_SOURCE; \
 	if ! grep -q 'MACHINE_CUSTOM_INIT(' $$CHIPSET_SOURCE; then \
-		$(CC) $(CC_FLAGS) -DMACHINE_NAME=$${MACHINE} -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $(MACHINE_INIT_DEFAULT); \
+		$(CC) $(CC_FLAGS) -DMACHINE_CHIPSET=$$CHIPSET "-DFRIENDLY_NAME=\"$$FRIENDLY_NAME\"" -DMACHINE_PCB_NAME=$${PCB} -MMD -o $(BUILDDIR)/tmp/machine_check -c $(MACHINE_INIT_DEFAULT); \
 	fi; \
 	done
 	@rm -rf $(BUILDDIR)/tmp

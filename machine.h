@@ -12,9 +12,8 @@
 #define MACHINE_PCB_INFO MACHINE_STR(MACHINE_PCB_NAME)
 
 
-#ifndef MACHINE_NAME
+#ifndef MACHINE_CHIPSET
 	#include "machine/default_machine.h"
-	#define MACHINE_NAME default_machine
 #endif
 
 #define RTL8370 0x70
