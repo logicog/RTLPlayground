@@ -335,6 +335,11 @@
     "pcb": "SR_S25G2206F_N_V1_2"
   },
   {
+    "machine": "XIAOMI_SW_106T_A",
+    "friendly_name": "SW-106T-A_XM",
+    "pcb": "SW_106T_A_XM"
+  },
+  {
     "machine": "XIKESTOR_SKS3200M_8GPY1XF",
     "friendly_name": "XikeStor SKS3200M-8GPY1XF",
     "pcb": "PCB_SWTG118AS_V2_1_17462"

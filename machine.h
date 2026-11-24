@@ -107,6 +107,9 @@ struct machine {
 	// random resets. Costs management-plane speed only, the ASIC keeps
 	// forwarding in hardware.
 	uint8_t flash_sio;
+	// MDI pair polarity for the four copper PHYs. 0 = default 0x0c,
+	// 0x10 = force 0x00, other values are written as-is.
+	uint8_t mdi_reverse;
 };
 
 struct machine_runtime
