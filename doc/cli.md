@@ -17,8 +17,8 @@
 | `port 1 auto` | `port 1 speed 10g` |
 | `port 1 off` | `port 1 down` |
 | `port 1 on` | `port 1 up` |
-| `port 1 duplex [full\|_else_]` | ?? Why have this separate from the speed? I think remove this |
-| `mtu show` | I think should be on `show port` |
+| `port 1 duplex [full\|_else_]` | Remove this, included in speed |
+| `mtu show` | I think should included in `show port`, could do `show port mtu` if we really felt like it |
 | `mtu 1 1500` | `port 1 mtu 1500` |
 | `syslog` | `show system syslog` |
 | `syslog [on\|off]` | `system syslog on\|off` |
@@ -38,8 +38,8 @@
 | `ip 123.45.67.89` | `system ip static 123.45.67.89/24` |
 | `gw` | `show system ip gateway` |
 | `gw 123.45.67.89` | `system ip gateway 123.45.67.89` |
-| `netmask` | --removed and moved into ip command |
-| `netmask 123.45.67.89` | --removed and moved into ip command |
+| `netmask` | removed and moved into ip command |
+| `netmask 123.45.67.89` | removed and moved into ip command |
 | `l2` | `show system mac-table` |
 | `l2 forget` | `system clear-mac-table` |
 | `igmp on` | `feature igmp on` |
@@ -67,8 +67,8 @@
 | `stp fwd 4` | `stp fwd 4` |
 | `stp txhold 5` | `stp txhold 5` |
 | `lacp show` | `show lag lacp` |
-| `lacp off` | Not sure, this just disables all LACP; when would you do this? |
-| `lacp off 1` | `remove lag 2 lacp or `lag 2 static 1 2 3 4` |
+| `lacp off` | Remove this, disables all LACP; when would you do this? |
+| `lacp off 1` | `remove lag 2 lacp` |
 | `pvid <port> <vid>` | `port 1 pvid 3` |
 | `vlan 2 show` | `show vlan 2` |
 | `vlan 2 mgmt` | `system mgmt-vlan 2` |
@@ -92,18 +92,18 @@
 | `physet <id> <devid> <reg> <val>` | `debug physet <id> <devid> <reg> <val>` |
 | `rnd` | `debug rnd` |
 | `passwd <new password>` | `system passwd <pass>` |
-| `eee [on\|off] <port>` | `port <port> eee [on\|off] OR remove port 1 eee` |
+| `eee [on\|off] <port>` | `port <port> eee <speed>` (as below) and `remove port 1 eee` |
 | `eee status <port>` | `show eee <port>` |
 | `eee on <port> [100m\|1g\|2g5]` | `port <port> eee <speed>` |
 | `bw [status] <port>` | `show bw <port>` |
 | `bw in 1 <hex value>` | `port 1 bw-in-max <hex>` |
-| `bw in 1 [drop\|fc]` | `port 1 bw-in-action [drop|fc|off]` or maybe add onto above |
+| `bw in 1 [drop\|fc]` | `port 1 bw-in-action [drop\|fc\|off]` or maybe add onto above as `port 1 bw-in <hex> [drop\|fc]`  or similiar |
 | `bw in 1 off` | `remove port 1 bw-in` |
 | `bw out off` | `port 1 bw-out off` |
 | `bw out <hex value>` | `remove port 1 bw-out` |
 | `storm <port> [bcast\|mcast\|ucast\|umcast] <value> [pps\|kbps]` | `port 1 storm [bcast\|mcast…] <val> [pps\|kbps]` |
 | `storm <port> [bcast\|mcast\|ucast\|umcast] off` | `remove port 1 storm [bcast\|mcast] …` |
-| `ingress [uta]` | ?? not sure; this applies to all ports; remove it? |
-| `ingress <list of ports and modes>` | `Port 1 ingress-filter [uta]` |
+| `ingress [uta]` | Remove this, applies to all ports |
+| `ingress <list of ports and modes>` | `Port 1 ingress-filter [uta]` other option would be `port 1 ingress-filter [untagged\|tagged]` and `remove port 1 ingress-filter`|
 | `session <number>` | `system session-timeout <number>` |
 | `lldp [on\|off]` | `feature lldp on` |
