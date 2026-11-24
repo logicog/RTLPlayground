@@ -6,7 +6,7 @@
 | SoC | RTL8372N |
 | Copper | 4 x 2.5G RJ45 |
 | Uplink | 2 x SFP+ |
-| Flash | 32 Mbit SPI, DIO |
+| Flash | 8 Mbit / 1 MB (stock); the development unit has a 4 MB part fitted by the maintainer |
 | Final firmware | V0.2.6 |
 
 ## Ports
@@ -66,14 +66,15 @@ If the silkscreen turns out to be different, this document and
 instead get its own `machines.json` entry (like the Horaco HC-SWTGW218AS V2.0 /
 V2.1 pair) rather than changing this one.
 
-## Flash variants
+## Flash
 
-Public teardown photos of a retail unit (2024-07) show a cFeon Q80C-104HIP
-(8 Mbit / 1 MB) on the back side, plus a **second, unpopulated flash footprint** —
-so units with a different flash capacity exist. The 512 KB image fits a 1 MB part
-(one half for the image, one for the staged update).
+Retail units carry a cFeon Q80C-104HIP (8 Mbit / 1 MB) on the back side, and the
+board has a second, unpopulated flash footprint. The unit used for development had
+its flash replaced with a 4 MB part; **the 512 KB image fits both** (one half holds
+the image, the other half stages the update).
+
+A stock 1 MB device is therefore the reference configuration; anything with a
+different flash layout gets its own `machines.json` entry.
 
 `mac_flash_offset = 0x1FC000` is the upstream default for 2 MB parts and matches
-neither a 1 MB nor a 4 MB device, so the factory MAC should be verified per unit.
-A unit with a different flash layout would get its own `machines.json` entry
-rather than changing this one.
+neither a 1 MB nor a 4 MB device, so the factory MAC has to be verified per unit.
