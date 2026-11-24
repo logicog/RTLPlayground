@@ -35,7 +35,7 @@ __code const struct machine machine = {
     .mdi_reverse = 0x03,
     .high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 3, 2, 2, 0, 0, 3 },
-    .mac_flash_offset = 0x1FC000,
+    .mac_flash_offset = 0,
     .led_sets = {
         { // RJ45 ports 3-4 (normal wiring)
             LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
