@@ -256,7 +256,7 @@
   },
   {
     "machine": "S604GTP_2SX_SL",
-    "friendly_name":  "POEPlus S604GTP-2SX-SL",
+    "friendly_name": "POEPlus S604GTP-2SX-SL",
     "pcb": "RTL_4GT_2S__V1_04"
   },
   {
@@ -353,5 +353,10 @@
     "machine": "ZOERAX_HG0402XG",
     "friendly_name": "ZoeRax HG0402XG",
     "pcb": "HG0402XG_V1_1"
+  },
+  {
+    "machine": "SODOLA_SL_SWTGW0108P",
+    "friendly_name": "Sodola SL-SWTGW0108P",
+    "pcb": "S1100W_8GT_1SX_73N_V1_04"
   }
 ]

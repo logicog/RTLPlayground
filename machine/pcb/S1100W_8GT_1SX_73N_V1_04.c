@@ -1,3 +1,4 @@
+#define MACHINE_CHIPSET RTL8373
 #include "machine_defs.h"
 
 __code const struct machine machine = {
@@ -47,3 +48,10 @@ __code const struct machine machine = {
         0x20, 0x3f              /* GPIO 26:    Port 9 SFP (GPIO 27 unused) */
     },
 };
+
+MACHINE_CUSTOM_INIT(
+    /* Set SYS_LED (pin 28) to active-high so Power LED stays ON after boot */
+    reg_read_m(RTL837X_REG_LED_GLB_ACTIVE);
+    sfr_mask_data(3, 0x10, 0);
+    reg_write_m(RTL837X_REG_LED_GLB_ACTIVE);
+)
