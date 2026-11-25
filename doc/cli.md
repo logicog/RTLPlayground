@@ -112,3 +112,5 @@
 | `ingress <list of ports and modes>` | `Port 1 ingress-filter [uta]` other option would be `port 1 ingress-filter [untagged\|tagged]` and `remove port 1 ingress-filter`|
 | `session <number>` | `system session-timeout <number>` |
 | `lldp [on\|off]` | `feature lldp on` |
+| `reset` | `system reboot` |
+| `factory-reset` | `system factory-reset` |
