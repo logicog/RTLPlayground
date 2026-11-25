@@ -84,6 +84,11 @@
 | `lag <number> d` | `remove lag 2` |
 | `lag <number> [lacp] <list of ports>` | `lag 2 [static\|lacp] 1 2 3 4` |
 | `laghash <number> <list of hashes>` | `lag 2 hash <list of hashes>` |
+| `stat` | `show status` |
+| `flash [sju]` | `debug flash [sju]` |
+| `sds` | `debug sds` |
+| `gpio` | `debug gpio` |
+| `leds` | `debuge leds` |
 | `regget <hex value>` | `debug regget <hex value>` |
 | `regset <register hex> <value hex>` | `debug regset <register hex> <value hex>` |
 | `sdsget <id> <page> <reg>` | `debug sdsget <id> <page> <reg>` |
