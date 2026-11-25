@@ -705,7 +705,7 @@ void send_lldp(void)
 
 void send_lldp_neighbors(void)
 {
-	static __xdata uint8_t i;
+	static __xdata uint8_t i, v;
 	static __xdata uint8_t first;
 
 	dbg_string("send_lldp_neighbors called\n");
@@ -716,7 +716,7 @@ void send_lldp_neighbors(void)
 	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		if (i >= LLDP_MAX_PORTS || !lldp_neighbors[i].ttl)
 			continue;
-		if (slen + 220 > TCP_OUTBUF_SIZE)
+		if (slen + 320 > TCP_OUTBUF_SIZE)
 			break;
 		if (!first)
 			char_to_html(',');
@@ -742,6 +742,16 @@ void send_lldp_neighbors(void)
 		}
 		str_code_to_html("\"," JSONQUOTE("caps") ":");
 		itoa16_html(lldp_neighbors[i].caps_enabled);
+		str_code_to_html("," JSONQUOTE("pvid") ":");
+		itoa16_html(lldp_neighbors[i].pvid);
+		str_code_to_html("," JSONQUOTE("vlans") ":[");
+		for (v = 0; v < lldp_neighbors[i].vlan_count && v < LLDP_MAX_VLANS; v++) {
+			if (v)
+				char_to_html(',');
+			itoa16_html(lldp_neighbors[i].vlans[v]);
+		}
+		str_code_to_html("]," JSONQUOTE("vlanTotal") ":");
+		itoa_html(lldp_neighbors[i].vlan_total);
 		str_code_to_html("," JSONQUOTE("ttl") ":");
 		itoa16_html(lldp_neighbors[i].ttl);
 		char_to_html('}');

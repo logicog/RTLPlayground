@@ -234,6 +234,11 @@ static void t_lldp(void)
 	memset(lldp_neighbors, 0, sizeof(lldp_neighbors));
 	lldp_neighbors[2].ttl = 95;
 	lldp_neighbors[2].caps_enabled = 0x0014;
+	lldp_neighbors[2].pvid = 10;
+	lldp_neighbors[2].vlan_count = 2;
+	lldp_neighbors[2].vlan_total = 2;
+	lldp_neighbors[2].vlans[0] = 10;
+	lldp_neighbors[2].vlans[1] = 20;
 	lldp_neighbors[2].mgmt_ip[0] = 192;
 	lldp_neighbors[2].mgmt_ip[1] = 0;
 	lldp_neighbors[2].mgmt_ip[2] = 2;
@@ -259,6 +264,9 @@ static void t_lldp(void)
 	CHECK(has("\"portDesc\":\"uplink\""), "neighbor portDesc");
 	CHECK(has("\"mgmtIp\":\"192.0.2.10\""), "neighbor mgmtIp");
 	CHECK(has("\"caps\":20"), "neighbor capabilities");
+	CHECK(has("\"pvid\":10"), "neighbor pvid");
+	CHECK(has("\"vlans\":[10,20]"), "neighbor vlans");
+	CHECK(has("\"vlanTotal\":2"), "neighbor vlanTotal");
 	CHECK(has("\"ttl\":95"), "neighbor ttl");
 	CHECK(slen <= TCP_OUTBUF_SIZE, "/lldp_neighbors.json fits outbuf");
 	CHECK(balanced(), "/lldp_neighbors.json valid JSON");

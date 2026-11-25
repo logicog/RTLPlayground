@@ -12,6 +12,7 @@
 #define LLDP_FAST_TX_COUNT   4
 
 #define LLDP_MAX_PORTS       9
+#define LLDP_MAX_VLANS       16
 #define LLDP_CHASSIS_MAX     20
 #define LLDP_PORTID_MAX      24
 #define LLDP_SYSNAME_MAX     24
@@ -35,6 +36,7 @@
 #define LLDP_ORG_TLV_TYPE 127
 #define LLDP_ORG_TLV_HEADER_LENGTH 4
 #define LLDP_8021_SUBTYPE_PVID 1
+#define LLDP_8021_SUBTYPE_VLAN_NAME 3
 #define LLDP_8023_SUBTYPE_MAC_PHY 1
 #define LLDP_8023_SUBTYPE_LINK_AGG 3
 #define LLDP_AUTONEG_SUPPORTED 0x01
@@ -89,11 +91,15 @@
 #define LLDP_MGMT_ADDR_SUBTYPE_IPV4 1
 #define LLDP_MGMT_IF_NUMBERING_UNKNOWN 1
 
-#define LLDP_MAX_PAYLOAD 128
+#define LLDP_MAX_PAYLOAD 512
 
 struct lldp_neighbor {
 	uint16_t ttl;
 	uint16_t caps_enabled;
+	uint16_t pvid;
+	uint8_t  vlan_count;
+	uint8_t  vlan_total;
+	uint16_t vlans[LLDP_MAX_VLANS];
 	uint8_t  mgmt_ip[4];
 	char     chassis[LLDP_CHASSIS_MAX];
 	char     port_id[LLDP_PORTID_MAX];
@@ -119,6 +125,6 @@ void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;
 uint8_t lldp_sysdesc(__xdata uint8_t *p) __banked;
 uint8_t lldp_portdesc(__xdata uint8_t *p, uint8_t port) __banked;
-uint8_t lldp_port_org_tlvs(__xdata uint8_t *p, uint8_t port) __banked __reentrant;
+uint16_t lldp_port_org_tlvs(__xdata uint8_t *p, uint8_t port) __banked __reentrant;
 
 #endif

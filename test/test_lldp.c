@@ -20,6 +20,7 @@ uip_ipaddr_t uip_hostaddr = { HTONS(0xc000), HTONS(0x0201) };
 struct uip_eth_addr uip_ethaddr = { .addr = { 0x02, 0x00, 0x00, 0x00, 0x00, 0x01 } };
 uint8_t  sfr_data[4];
 uint16_t SFR_DATA_U16;
+uint8_t  vlan_names[VLAN_NAMES_SIZE];
 bool     lldp_enabled = true;
 char     hostname[24] = "switch_test";
 char     port_names[9][PORT_NAME_SIZE];
@@ -46,6 +47,15 @@ void reg_read_m(uint16_t reg)
 void phy_read(uint8_t phy_id, uint8_t dev_id, uint16_t reg) { (void)phy_id; (void)dev_id; (void)reg; }
 uint16_t port_pvid_get(uint8_t port) { (void)port; return 1; }
 uint8_t port_lag_of(uint8_t port) { (void)port; return 0xff; }
+void vlan_get(uint16_t vlan)
+{
+	(void)vlan;
+	/* Valid entry, all 9 ports are members */
+	sfr_data[0] = 0x02;
+	sfr_data[1] = 0x00;
+	sfr_data[2] = 0x01;
+	sfr_data[3] = 0xff;
+}
 void tcpip_output(void) { tx_count++; }
 void print_string(const char *s) { (void)s; }
 void print_string_x(char *s) { (void)s; }
@@ -103,6 +113,9 @@ static void t_rx_basic(void)
 	uint8_t ttl[2]     = { 0x00, 120 };
 	uint8_t caps[4]    = { 0x00, 0x14, 0x00, 0x04 };
 	uint8_t mgmt[12]   = { 5, 1, 192, 0, 2, 20, 1, 0, 0, 0, 0, 0 };
+	uint8_t pvid_tlv[6] = { 0x00, 0x80, 0xc2, 1, 0x00, 10 };
+	uint8_t v10_tlv[11] = { 0x00, 0x80, 0xc2, 3, 0x00, 10, 4, 'l', 'a', 'n', '1' };
+	uint8_t v20_tlv[11] = { 0x00, 0x80, 0xc2, 3, 0x00, 20, 4, 'l', 'a', 'n', '2' };
 	p = put_tlv(p, 1, chassis, sizeof(chassis));
 	p = put_tlv(p, 2, portid, sizeof(portid));
 	p = put_tlv(p, 3, ttl, sizeof(ttl));
@@ -110,6 +123,10 @@ static void t_rx_basic(void)
 	p = put_tlv(p, 5, "peer-switch", 11);
 	p = put_tlv(p, 7, caps, sizeof(caps));
 	p = put_tlv(p, 8, mgmt, sizeof(mgmt));
+	p = put_tlv(p, 127, pvid_tlv, sizeof(pvid_tlv));
+	p = put_tlv(p, 127, v10_tlv, sizeof(v10_tlv));
+	p = put_tlv(p, 127, v20_tlv, sizeof(v20_tlv));
+	p = put_tlv(p, 127, v10_tlv, sizeof(v10_tlv)); /* duplicate ignored */
 	p = put_tlv(p, 0, NULL, 0);
 	uip_len = (uint16_t)(p - uip_buf);
 
@@ -123,6 +140,9 @@ static void t_rx_basic(void)
 	CHECK(strcmp(lldp_neighbors[3].sys_name, "peer-switch") == 0, "sys name decoded");
 	CHECK(lldp_neighbors[3].caps_enabled == 0x0004, "enabled caps decoded");
 	CHECK(lldp_neighbors[3].mgmt_ip[0] == 192 && lldp_neighbors[3].mgmt_ip[3] == 20, "mgmt IPv4 decoded");
+	CHECK(lldp_neighbors[3].pvid == 10, "802.1 PVID decoded");
+	CHECK(lldp_neighbors[3].vlan_count == 2 && lldp_neighbors[3].vlan_total == 2, "two unique VLANs recorded");
+	CHECK(lldp_neighbors[3].vlans[0] == 10 && lldp_neighbors[3].vlans[1] == 20, "VLAN IDs 10 and 20 stored");
 }
 
 static void t_rx_shutdown_and_malformed(void)

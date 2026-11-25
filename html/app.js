@@ -156,6 +156,7 @@ var LANG = {
         lldp_portdesc: "Port Description",
         lldp_mgmtip: "Mgmt IP",
         lldp_caps: "Capabilities",
+        lldp_vlans: "VLANs",
         lldp_ttl: "TTL",
         lldp_none: "No neighbors discovered",
         stp_pcs: "Path cost",
@@ -4497,7 +4498,26 @@ function lldpFmtCaps(bits) {
     return out.length ? out.join(", ") : "0x" + bits.toString(16);
 }
 
+function lldpFmtVlans(n, vlanMap) {
+    var ids = [];
+    if (n.pvid) ids.push(n.pvid);
+    (n.vlans || []).forEach(function(v) {
+        if (v && ids.indexOf(v) === -1) ids.push(v);
+    });
+    if (!ids.length) return "-";
+    ids.sort(function(a, b) { return a - b; });
+    var parts = ids.map(function(v) {
+        var name = vlanMap[v];
+        var label = name ? (v + " (" + name + ")") : String(v);
+        return v === n.pvid ? (label + "*") : label;
+    });
+    var extra = (n.vlanTotal || 0) - (n.vlans ? n.vlans.length : 0);
+    if (extra > 0) parts.push("+" + extra + " more");
+    return parts.join(", ");
+}
+
 function lldpLoad() {
+    var vlanMap = {};
     return getJSON("/lldp.json").then(function(s) {
         $("lldp_en").checked = s.on;
         if (s.stats) {
@@ -4526,6 +4546,13 @@ function lldpLoad() {
             sw.firstChild.checked = p.permitted;
             tr.insertCell().appendChild(sw);
         });
+        return getJSON("/vlanlist.json").catch(function() { return null; });
+    }).then(function(vl) {
+        if (vl && vl.vlan) {
+            vl.vlan.forEach(function(v) {
+                if (v.name) vlanMap[v.id] = v.name;
+            });
+        }
         return getJSON("/lldp_neighbors.json");
     }).then(function(nbrs) {
         var tb = $("lldp_nbr_table").tBodies[0];
@@ -4533,7 +4560,7 @@ function lldpLoad() {
         if (!nbrs || !nbrs.length) {
             var empty = tb.insertRow();
             var td = empty.insertCell();
-            td.colSpan = 8;
+            td.colSpan = 9;
             td.className = "mut";
             td.textContent = t("lldp_none");
             return;
@@ -4547,6 +4574,7 @@ function lldpLoad() {
             tr.insertCell().textContent = n.portDesc || "-";
             tr.insertCell().textContent = n.mgmtIp || "-";
             tr.insertCell().textContent = lldpFmtCaps(n.caps);
+            tr.insertCell().textContent = lldpFmtVlans(n, vlanMap);
             tr.insertCell().textContent = n.ttl + "s";
         });
     });

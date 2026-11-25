@@ -16,6 +16,7 @@
 
 extern __xdata bool lldp_enabled;
 extern __xdata uint8_t sfr_data[4];
+extern __xdata uint8_t vlan_names[VLAN_NAMES_SIZE];
 extern __code const struct machine machine;
 static __code const char lldp_hex[] = "0123456789abcdef";
 static __code const uint8_t lldp_oui_8021[3] = {0x00, 0x80, 0xc2};
@@ -185,6 +186,22 @@ static void lldp_copy_str(__xdata char *dst, uint8_t max_len, __xdata const uint
     dst[out] = 0;
 }
 
+static void lldp_add_rx_vlan(uint16_t vid)
+{
+    static __xdata uint8_t i;
+
+    if (!vid || vid > 4094)
+        return;
+    for (i = 0; i < rx_tmp.vlan_count; i++) {
+        if (rx_tmp.vlans[i] == vid)
+            return;
+    }
+    if (rx_tmp.vlan_total < 255)
+        rx_tmp.vlan_total++;
+    if (rx_tmp.vlan_count < LLDP_MAX_VLANS)
+        rx_tmp.vlans[rx_tmp.vlan_count++] = vid;
+}
+
 void lldp_in(void) __banked
 {
     static __xdata uint8_t  port;
@@ -275,6 +292,15 @@ void lldp_in(void) __banked
             // addr_str_len == 5 (1 subtype + 4 IPv4 bytes), subtype == 1 (IPv4)
             if (uip_buf[pos] == 5 && uip_buf[pos + 1] == LLDP_MGMT_ADDR_SUBTYPE_IPV4) {
                 memcpy(rx_tmp.mgmt_ip, &uip_buf[pos + 2], 4);
+            }
+        } else if (tlv_type == LLDP_ORG_TLV_TYPE && tlv_len >= 6) {
+            // IEEE 802.1 Organization-Specific TLVs (OUI 00:80:c2)
+            if (uip_buf[pos] == 0x00 && uip_buf[pos + 1] == 0x80 && uip_buf[pos + 2] == 0xc2) {
+                if (uip_buf[pos + 3] == LLDP_8021_SUBTYPE_PVID) {
+                    rx_tmp.pvid = (((uint16_t)uip_buf[pos + 4] << 8) | uip_buf[pos + 5]) & 0x0fff;
+                } else if (uip_buf[pos + 3] == LLDP_8021_SUBTYPE_VLAN_NAME && tlv_len >= 7) {
+                    lldp_add_rx_vlan((((uint16_t)uip_buf[pos + 4] << 8) | uip_buf[pos + 5]) & 0x0fff);
+                }
             }
         }
 
@@ -605,7 +631,64 @@ static __xdata uint8_t *lldp_mac_phy(__xdata uint8_t *p, uint8_t port) __reentra
     return p;
 }
 
-uint8_t lldp_port_org_tlvs(__xdata uint8_t *p, uint8_t port) __banked __reentrant
+static uint8_t lldp_hex_val(uint8_t c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return 0xff;
+}
+
+static __xdata uint8_t *lldp_vlan_name_tlvs(__xdata uint8_t *p, uint8_t port, __xdata uint8_t *limit)
+{
+    static __xdata uint16_t pos;
+    static __xdata uint16_t vid;
+    static __xdata uint8_t h0, h1, h2;
+    static __xdata uint8_t nlen;
+    static __xdata uint16_t members;
+    static __xdata uint16_t pmask;
+
+    pmask = (uint16_t)1 << port;
+    pos = 0;
+    while (pos + 3 < VLAN_NAMES_SIZE && vlan_names[pos]) {
+        h0 = lldp_hex_val(vlan_names[pos]);
+        h1 = lldp_hex_val(vlan_names[pos + 1]);
+        h2 = lldp_hex_val(vlan_names[pos + 2]);
+        pos += 3;
+        nlen = 0;
+        while (pos + nlen < VLAN_NAMES_SIZE && vlan_names[pos + nlen] && vlan_names[pos + nlen] != ' ')
+            nlen++;
+
+        if (h0 != 0xff && h1 != 0xff && h2 != 0xff) {
+            vid = ((uint16_t)h0 << 8) | ((uint16_t)h1 << 4) | h2;
+            if (vid >= 1 && vid <= 4094) {
+                vlan_get(vid);
+                members = (((uint16_t)sfr_data[2] << 8) | sfr_data[3]) & 0x03ff;
+                if ((sfr_data[0] & 0x02) && (members & pmask)) {
+                    uint8_t clen = nlen > 32 ? 32 : nlen;
+                    if (p + 2 + LLDP_ORG_TLV_HEADER_LENGTH + 3 + clen <= limit) {
+                        p = lldp_org_header(p, lldp_oui_8021, LLDP_8021_SUBTYPE_VLAN_NAME, 3 + clen);
+                        *p++ = vid >> 8;
+                        *p++ = vid & 0xff;
+                        *p++ = clen;
+                        memcpy(p, &vlan_names[pos], clen);
+                        p += clen;
+                    }
+                }
+            }
+        }
+
+        pos += nlen;
+        if (pos < VLAN_NAMES_SIZE && vlan_names[pos] == ' ')
+            pos++;
+    }
+    return p;
+}
+
+uint16_t lldp_port_org_tlvs(__xdata uint8_t *p, uint8_t port) __banked __reentrant
 {
     __xdata uint8_t *start = p;
     uint16_t v;
@@ -632,5 +715,7 @@ uint8_t lldp_port_org_tlvs(__xdata uint8_t *p, uint8_t port) __banked __reentran
     *p++ = v >> 8;
     *p++ = v & 0xff;
 
-    return p - start;
+    p = lldp_vlan_name_tlvs(p, port, LLDP_O->payload + LLDP_MAX_PAYLOAD - 2);
+
+    return (uint16_t)(p - start);
 }
