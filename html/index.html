@@ -372,8 +372,27 @@ button.danger{background:var(--bad);color:#fff;border-color:transparent}
         <label class="row"><span class="lb" data-i18n="lldp_enabled">Enabled</span>
           <span class="switch"><input type="checkbox" id="lldp_en"><i></i></span>
         </label>
+        <p class="small mut" id="lldp_stats" style="margin:6px 0 8px"></p>
         <div class="scrollx"><table class="t" id="lldp_table">
           <thead><tr><th data-i18n="c_port">Port Number</th><th data-i18n="lldp_portname">Name</th><th data-i18n="lldp_enable">Send Frames</th></tr></thead>
+          <tbody></tbody></table></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <h2 style="margin:0" data-i18n="lldp_nbr_title">Neighbors</h2>
+          <button class="ctl" id="lldp_clear" data-i18n="lldp_clear">Clear</button>
+        </div>
+        <div class="scrollx" style="margin-top:8px"><table class="t" id="lldp_nbr_table">
+          <thead><tr>
+            <th data-i18n="c_port">Port</th>
+            <th data-i18n="lldp_sysname">System Name</th>
+            <th data-i18n="lldp_chassis">Chassis ID</th>
+            <th data-i18n="lldp_remport">Remote Port</th>
+            <th data-i18n="lldp_portdesc">Port Description</th>
+            <th data-i18n="lldp_mgmtip">Mgmt IP</th>
+            <th data-i18n="lldp_caps">Capabilities</th>
+            <th data-i18n="lldp_ttl">TTL</th>
+          </tr></thead>
           <tbody></tbody></table></div>
       </div>
     </section>

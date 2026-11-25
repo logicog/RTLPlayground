@@ -148,6 +148,16 @@ var LANG = {
         lldp_title: "Service Status",
         lldp_portname: "Name",
         lldp_enable: "Send Frames",
+        lldp_nbr_title: "Neighbors",
+        lldp_clear: "Clear",
+        lldp_sysname: "System Name",
+        lldp_chassis: "Chassis ID",
+        lldp_remport: "Remote Port",
+        lldp_portdesc: "Port Description",
+        lldp_mgmtip: "Mgmt IP",
+        lldp_caps: "Capabilities",
+        lldp_ttl: "TTL",
+        lldp_none: "No neighbors discovered",
         stp_pcs: "Path cost",
         stp_pcs_long: "Long (32 bit)",
         stp_pcs_short: "Short (16 bit)",
@@ -4473,9 +4483,27 @@ tabHooks.lag = {
     }
 };
 
+var LLDP_CAPS = [
+    [0x0002, "Repeater"], [0x0004, "Bridge"], [0x0008, "WLAN"],
+    [0x0010, "Router"], [0x0020, "Phone"], [0x0040, "DOCSIS"], [0x0080, "Station"]
+];
+
+function lldpFmtCaps(bits) {
+    if (!bits) return "-";
+    var out = [];
+    LLDP_CAPS.forEach(function(c) {
+        if (bits & c[0]) out.push(c[1]);
+    });
+    return out.length ? out.join(", ") : "0x" + bits.toString(16);
+}
+
 function lldpLoad() {
     return getJSON("/lldp.json").then(function(s) {
         $("lldp_en").checked = s.on;
+        if (s.stats) {
+            $("lldp_stats").textContent = "TX: " + s.stats.tx + "  RX: " + s.stats.rx +
+                "  Discarded: " + s.stats.disc + "  Ageouts: " + s.stats.age;
+        }
         var tb = $("lldp_table").tBodies[0];
         tb.innerHTML = "";
         byPort(s.portStatus).forEach(function(p) {
@@ -4498,17 +4526,53 @@ function lldpLoad() {
             sw.firstChild.checked = p.permitted;
             tr.insertCell().appendChild(sw);
         });
+        return getJSON("/lldp_neighbors.json");
+    }).then(function(nbrs) {
+        var tb = $("lldp_nbr_table").tBodies[0];
+        tb.innerHTML = "";
+        if (!nbrs || !nbrs.length) {
+            var empty = tb.insertRow();
+            var td = empty.insertCell();
+            td.colSpan = 8;
+            td.className = "mut";
+            td.textContent = t("lldp_none");
+            return;
+        }
+        byPort(nbrs).forEach(function(n) {
+            var tr = tb.insertRow();
+            tr.insertCell().textContent = n.port;
+            tr.insertCell().textContent = n.sysName || "-";
+            tr.insertCell().textContent = n.chassis || "-";
+            tr.insertCell().textContent = n.portId || "-";
+            tr.insertCell().textContent = n.portDesc || "-";
+            tr.insertCell().textContent = n.mgmtIp || "-";
+            tr.insertCell().textContent = lldpFmtCaps(n.caps);
+            tr.insertCell().textContent = n.ttl + "s";
+        });
     });
 }
 
 $("lldp_en").addEventListener("change", function() {
     var el = this;
-    postCmd("lldp " + (el.checked ? "on" : "off")).catch(function() {
+    postCmd("lldp " + (el.checked ? "on" : "off")).then(function() {
+        setTimeout(lldpLoad, 300);
+    }).catch(function() {
         el.checked = !el.checked
     });
 });
+$("lldp_clear").addEventListener("click", function() {
+    postCmd("lldp clear").then(lldpLoad).catch(function() {});
+});
+var lldpPoller = new Poller(function() {
+    return lldpLoad().catch(function() {});
+}, 5000);
 tabHooks.lldp = {
-    enter: lldpLoad
+    enter: function() {
+        lldpPoller.start();
+    },
+    leave: function() {
+        lldpPoller.stop();
+    }
 };
 
 function eeeLoad() {

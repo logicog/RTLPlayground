@@ -12,6 +12,7 @@
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_port.h"
+#include "rtl837x_lldp.h"
 #include "machine.h"
 #include "page_impl.h"
 #include <test/support.h>
@@ -22,6 +23,7 @@ extern uint16_t slen;
 extern uint8_t  vlan_names[VLAN_NAMES_SIZE];
 extern uint16_t vlan_ptr;
 extern uint16_t management_vlan;
+extern bool     lldp_enabled;
 
 /* The response body: what follows the blank line after the header. */
 static const char *body(void)
@@ -220,6 +222,48 @@ static void t_status_counters(void)
 	CHECK(balanced(), "valid JSON");
 }
 
+static void t_lldp(void)
+{
+	printf("[test] /lldp.json and /lldp_neighbors.json report status, stats, and neighbors\n");
+	hw_reset(); out_reset();
+	lldp_enabled = true;
+	lldp_tx_frames = 12;
+	lldp_rx_frames = 5;
+	lldp_rx_discarded = 1;
+	lldp_rx_ageouts = 2;
+	memset(lldp_neighbors, 0, sizeof(lldp_neighbors));
+	lldp_neighbors[2].ttl = 95;
+	lldp_neighbors[2].caps_enabled = 0x0014;
+	lldp_neighbors[2].mgmt_ip[0] = 192;
+	lldp_neighbors[2].mgmt_ip[1] = 0;
+	lldp_neighbors[2].mgmt_ip[2] = 2;
+	lldp_neighbors[2].mgmt_ip[3] = 10;
+	strcpy(lldp_neighbors[2].chassis, "02:00:00:00:00:01");
+	strcpy(lldp_neighbors[2].port_id, "Port 1");
+	strcpy(lldp_neighbors[2].sys_name, "peer-switch");
+	strcpy(lldp_neighbors[2].port_desc, "uplink");
+
+	send_lldp();
+	CHECK(has("\"on\":true"), "lldp enabled flag");
+	CHECK(has("\"tx\":12"), "tx counter");
+	CHECK(has("\"rx\":5"), "rx counter");
+	CHECK(slen <= TCP_OUTBUF_SIZE, "/lldp.json fits outbuf");
+	CHECK(balanced(), "/lldp.json valid JSON");
+
+	out_reset();
+	send_lldp_neighbors();
+	CHECK(has("\"port\":3"), "physical port 3 for logical port 2");
+	CHECK(has("\"sysName\":\"peer-switch\""), "neighbor sysName");
+	CHECK(has("\"chassis\":\"02:00:00:00:00:01\""), "neighbor chassis");
+	CHECK(has("\"portId\":\"Port 1\""), "neighbor portId");
+	CHECK(has("\"portDesc\":\"uplink\""), "neighbor portDesc");
+	CHECK(has("\"mgmtIp\":\"192.0.2.10\""), "neighbor mgmtIp");
+	CHECK(has("\"caps\":20"), "neighbor capabilities");
+	CHECK(has("\"ttl\":95"), "neighbor ttl");
+	CHECK(slen <= TCP_OUTBUF_SIZE, "/lldp_neighbors.json fits outbuf");
+	CHECK(balanced(), "/lldp_neighbors.json valid JSON");
+}
+
 int main(void)
 {
 	printf("== httpd/page_impl.c JSON tests ==\n");
@@ -229,6 +273,7 @@ int main(void)
 	t_l2_page();
 	t_status_counters();
 	t_status_macs();
+	t_lldp();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

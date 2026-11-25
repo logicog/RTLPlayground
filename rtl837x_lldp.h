@@ -11,6 +11,12 @@
 #define LLDP_HOLD_MULTIPLIER 4
 #define LLDP_FAST_TX_COUNT   4
 
+#define LLDP_MAX_PORTS       9
+#define LLDP_CHASSIS_MAX     20
+#define LLDP_PORTID_MAX      24
+#define LLDP_SYSNAME_MAX     24
+#define LLDP_PORTDESC_MAX    24
+
 #define LLDP_PORT_ID_TLV_TYPE 2
 #define LLDP_PORT_ID_PREFIX "Port "
 #define LLDP_PORT_ID_PREFIX_LENGTH 5
@@ -46,6 +52,10 @@
 #define LLDP_MAU_1000BASE_X_FD 22
 #define LLDP_MAU_1000BASE_T_HD 29
 #define LLDP_MAU_1000BASE_T_FD 30
+#define LLDP_MAU_10GBASE_X 34
+#define LLDP_MAU_10GBASE_T 46
+#define LLDP_MAU_2500BASE_T 54
+#define LLDP_MAU_5GBASE_T 55
 #define PHYSR_SPEED(v) ((((v) & 0x0600) >> 7) | (((v) & 0x0030) >> 4))
 #define PHYSR_SPEED_10M 0
 #define PHYSR_SPEED_100M 1
@@ -54,6 +64,9 @@
 #define PHYSR_FULL_DUPLEX 0x0008
 #define PHY_ANEG_CTRL_ENABLE 0x1000
 #define LINKS_CODE_1000M 2
+#define LINKS_CODE_10G   4
+#define LINKS_CODE_2G5   5
+#define LINKS_CODE_5G    6
 #define PHY_ANEG_ADV_10BASE_T_HD 0x0020
 #define PHY_ANEG_ADV_10BASE_T_FD 0x0040
 #define PHY_ANEG_ADV_100BASE_TX_HD 0x0080
@@ -78,10 +91,29 @@
 
 #define LLDP_MAX_PAYLOAD 128
 
+struct lldp_neighbor {
+	uint16_t ttl;
+	uint16_t caps_enabled;
+	uint8_t  mgmt_ip[4];
+	char     chassis[LLDP_CHASSIS_MAX];
+	char     port_id[LLDP_PORTID_MAX];
+	char     sys_name[LLDP_SYSNAME_MAX];
+	char     port_desc[LLDP_PORTDESC_MAX];
+};
+
+extern __xdata struct lldp_neighbor lldp_neighbors[LLDP_MAX_PORTS];
+extern __xdata uint16_t lldp_tx_frames;
+extern __xdata uint16_t lldp_rx_frames;
+extern __xdata uint16_t lldp_rx_discarded;
+extern __xdata uint16_t lldp_rx_ageouts;
+
 void lldp_init(void) __banked;
 void lldp_tick(void) __banked;
+void lldp_in(void) __banked;
 void lldp_send(void) __banked;
 void lldp_shutdown(uint16_t ports) __banked;
+void lldp_clear_neighbors(void) __banked;
+void lldp_show(void) __banked;
 void lldp_set_addresses(void) __banked;
 void lldp_set_rtl_wrapper(void) __banked;
 uint8_t lldp_sysname(__xdata uint8_t *p) __banked;

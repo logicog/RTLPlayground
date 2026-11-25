@@ -15,6 +15,7 @@
 #include "machine.h"
 #include "rtl837x_stp.h"
 #include "rtl837x_lacp.h"
+#include "rtl837x_lldp.h"
 #include "page_impl.h"
 #include "syslog.h"
 #include "dhcp.h"
@@ -658,6 +659,13 @@ void send_lag(void)
 	char_to_html('}');
 }
 
+static void json_str_x(__xdata const char *s, uint8_t max_len)
+{
+	static __xdata uint8_t k;
+	for (k = 0; k < max_len && s[k]; k++)
+		json_char_to_html(s[k]);
+}
+
 void send_lldp(void)
 {
 	dbg_string("send_lldp called\n");
@@ -665,7 +673,15 @@ void send_lldp(void)
 
 	str_code_to_html("{" JSONQUOTE("on") ":");
 	bool_to_json(lldp_enabled);
-	str_code_to_html("," JSONQUOTE("portStatus") ":[");
+	str_code_to_html("," JSONQUOTE("stats") ":{" JSONQUOTE("tx") ":");
+	itoa16_html(lldp_tx_frames);
+	str_code_to_html("," JSONQUOTE("rx") ":");
+	itoa16_html(lldp_rx_frames);
+	str_code_to_html("," JSONQUOTE("disc") ":");
+	itoa16_html(lldp_rx_discarded);
+	str_code_to_html("," JSONQUOTE("age") ":");
+	itoa16_html(lldp_rx_ageouts);
+	str_code_to_html("}," JSONQUOTE("portStatus") ":[");
 
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		str_code_to_html("{" JSONQUOTE("port") ":");
@@ -685,6 +701,52 @@ void send_lldp(void)
 	}
 	char_to_html(']');
 	char_to_html('}');
+}
+
+void send_lldp_neighbors(void)
+{
+	static __xdata uint8_t i;
+	static __xdata uint8_t first;
+
+	dbg_string("send_lldp_neighbors called\n");
+	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
+
+	char_to_html('[');
+	first = 1;
+	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
+		if (i >= LLDP_MAX_PORTS || !lldp_neighbors[i].ttl)
+			continue;
+		if (slen + 220 > TCP_OUTBUF_SIZE)
+			break;
+		if (!first)
+			char_to_html(',');
+		first = 0;
+
+		str_code_to_html("{" JSONQUOTE("port") ":");
+		itoa_html(machine.log_to_phys_port[i]);
+		str_code_to_html("," JSONQUOTE("chassis") ":\"");
+		json_str_x(lldp_neighbors[i].chassis, LLDP_CHASSIS_MAX);
+		str_code_to_html("\"," JSONQUOTE("portId") ":\"");
+		json_str_x(lldp_neighbors[i].port_id, LLDP_PORTID_MAX);
+		str_code_to_html("\"," JSONQUOTE("portDesc") ":\"");
+		json_str_x(lldp_neighbors[i].port_desc, LLDP_PORTDESC_MAX);
+		str_code_to_html("\"," JSONQUOTE("sysName") ":\"");
+		json_str_x(lldp_neighbors[i].sys_name, LLDP_SYSNAME_MAX);
+		str_code_to_html("\"," JSONQUOTE("mgmtIp") ":\"");
+		if (lldp_neighbors[i].mgmt_ip[0] | lldp_neighbors[i].mgmt_ip[1]
+		    | lldp_neighbors[i].mgmt_ip[2] | lldp_neighbors[i].mgmt_ip[3]) {
+			itoa_html(lldp_neighbors[i].mgmt_ip[0]); char_to_html('.');
+			itoa_html(lldp_neighbors[i].mgmt_ip[1]); char_to_html('.');
+			itoa_html(lldp_neighbors[i].mgmt_ip[2]); char_to_html('.');
+			itoa_html(lldp_neighbors[i].mgmt_ip[3]);
+		}
+		str_code_to_html("\"," JSONQUOTE("caps") ":");
+		itoa16_html(lldp_neighbors[i].caps_enabled);
+		str_code_to_html("," JSONQUOTE("ttl") ":");
+		itoa16_html(lldp_neighbors[i].ttl);
+		char_to_html('}');
+	}
+	char_to_html(']');
 }
 
 

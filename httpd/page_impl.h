@@ -37,6 +37,7 @@ void send_cmd_log(void);
 void send_lag(void);
 void send_stp(void) __banked;
 void send_lldp(void);
+void send_lldp_neighbors(void);
 void send_stp_counters(void) __banked;
 void send_vlanlist(void);
 
