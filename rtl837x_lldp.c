@@ -17,7 +17,7 @@
 extern __xdata bool lldp_enabled;
 extern __xdata uint8_t sfr_data[4];
 extern __code const struct machine machine;
-extern __code const uint8_t *hex;
+static __code const char lldp_hex[] = "0123456789abcdef";
 static __code const uint8_t lldp_oui_8021[3] = {0x00, 0x80, 0xc2};
 static __code const uint8_t lldp_oui_8023[3] = {0x00, 0x12, 0x0f};
 
@@ -137,8 +137,8 @@ static void lldp_fmt_mac(__xdata char *dst, __xdata const uint8_t *mac)
 
     for (i = 0; i < 6; i++) {
         b = mac[i];
-        *dst++ = hex[b >> 4];
-        *dst++ = hex[b & 0x0f];
+        *dst++ = lldp_hex[b >> 4];
+        *dst++ = lldp_hex[b & 0x0f];
         if (i < 5)
             *dst++ = ':';
     }

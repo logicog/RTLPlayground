@@ -24,8 +24,6 @@ bool     lldp_enabled = true;
 char     hostname[24] = "switch_test";
 char     port_names[9][PORT_NAME_SIZE];
 uint32_t ticks;
-const uint8_t hex_chars[] = "0123456789abcdef";
-const uint8_t *hex = hex_chars;
 
 const struct machine machine = {
 	.machine_name = "HOSTTEST",
