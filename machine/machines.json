@@ -336,8 +336,8 @@
   },
   {
     "machine": "XIAOMI_SW_106T_A",
-    "friendly_name": "SW-106T-A_XM",
-    "pcb": "SW_106T_A_XM"
+    "friendly_name": "Xiaomi SW-106T-A",
+    "pcb": "MD09HT_V30"
   },
   {
     "machine": "XIKESTOR_SKS3200M_8GPY1XF",

@@ -2,7 +2,7 @@
 #include "machine_defs.h"
 
 /*
- * Xiaomi SW-106T-A_XM (RTL8372N, 4 x 2.5G RJ45 + 2 x SFP+).
+ * Xiaomi SW-106T-A on PCB MD09HT V30 (RTL8372N, 4 x 2.5G RJ45 + 2 x SFP+).
  * Copper PHYs need MDI pair polarity 0x03 on 0xa90 (see .mdi_reverse);
  * with the reset default physical ports 1 and 2 never link.
  *
