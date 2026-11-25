@@ -550,6 +550,94 @@ static void scenario_bad_l4_checksum(void)
 	      "bad checksum control: the file that follows is intact");
 }
 
+/* Lay a bare IPv4/TCP header into uip_buf with a chosen data offset and option
+ * bytes, so a malformed header can be fed to uip_input() directly. */
+static void put_tcp(uint8_t flags, uint8_t offset_words, const uint8_t *opt, int optlen,
+		    uint32_t seq, uint16_t total_len)
+{
+	memset(uip_buf, 0, UIP_LLH_LEN + 20 + 20 + (optlen > 0 ? optlen : 0));
+	TCPH->vhl = 0x45;
+	TCPH->len[0] = (uint8_t)(total_len >> 8);
+	TCPH->len[1] = (uint8_t)(total_len & 0xff);
+	TCPH->ttl = 64;
+	TCPH->proto = UIP_PROTO_TCP;
+	TCPH->srcipaddr[0] = hton16(0x0a00); TCPH->srcipaddr[1] = hton16(0x0002);
+	TCPH->destipaddr[0] = hton16(0x0a00); TCPH->destipaddr[1] = hton16(0x0001);
+	TCPH->srcport = hton16(40000);
+	TCPH->destport = hton16(80);
+	wr32(TCPH->seqno, seq);
+	wr32(TCPH->ackno, cli_rcv_nxt);
+	TCPH->tcpoffset = (uint8_t)(offset_words << 4);
+	TCPH->flags = flags;
+	TCPH->wnd[0] = (uint8_t)(cli_window >> 8);
+	TCPH->wnd[1] = (uint8_t)(cli_window & 0xff);
+	if (optlen > 0)
+		memcpy(&uip_buf[UIP_LLH_LEN + 40], opt, optlen);
+}
+
+/* A SYN whose option walk, left unbounded, never terminates: NOOP, then an
+ * unknown option of length 255 that wraps an 8-bit cursor from 1 back to 0.
+ * With the walk bounded, the SYN is parsed and a SYN-ACK goes out. If this
+ * ever regresses the walk spins and the bench hangs - that is the symptom. */
+static void scenario_malformed_tcp_options(void)
+{
+	static const uint8_t opts[4] = { 0x01, 0x03, 0xff, 0x00 };
+
+	uip_init();
+	httpd_init();
+	cli_window = MSS_FULL;
+	cli_rcv_nxt = 0;
+	/* uip_init leaves the slot's MSS alone; clear it so the default is seen. */
+	uip_conns[0].initialmss = uip_conns[0].mss = 0;
+	put_tcp(TCP_SYN, 6 /* 24-byte header */, opts, sizeof(opts), 1000, 44);
+	uip_len = 44;
+	uip_input();
+	CHECK(uip_len && (TCPH->flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK),
+	      "malformed SYN options: the walk terminates and a SYN-ACK is sent");
+	CHECK(uip_conns[0].mss == UIP_TCP_MSS && uip_conns[0].initialmss == UIP_TCP_MSS,
+	      "malformed SYN options: no MSS is parsed, the connection keeps the default");
+}
+
+/* A segment claiming a 60-byte TCP header (data offset 15) while only 40 bytes
+ * arrived. Unguarded, uip_len underflows and uip_appdata is carried past
+ * uip_buf (ASan catches the read). Guarded, the segment is dropped and the
+ * connection keeps working. */
+static void scenario_oversized_data_offset(void)
+{
+	session_start(MSS_FULL);
+	put_tcp(TCP_ACK, 15 /* 60-byte header */, NULL, 0, cli_seq, 40);
+	uip_len = 40;
+	uip_input();
+	CHECK(uip_conn_active(0),
+	      "oversized data offset: the segment is dropped, the connection survives");
+
+	stream_len = 0;
+	request_file(MSS_FULL);
+	drain(MSS_FULL);
+	CHECK(first_body_mismatch() == -1,
+	      "oversized data offset: a normal request after it still serves the file");
+}
+
+/* A SYN advertising MSS 0 (option 02 04 00 00). uip_send clamps to conn->mss,
+ * so storing 0 would leave a connection that can never send and holds its slot
+ * until timeout. The option must be ignored and the default MSS kept. */
+static void scenario_mss_zero(void)
+{
+	static const uint8_t mss0[4] = { 0x02, 0x04, 0x00, 0x00 };
+
+	uip_init();
+	httpd_init();
+	cli_window = MSS_FULL;
+	cli_rcv_nxt = 0;
+	/* uip_init leaves the slot's MSS alone; clear it so the default is seen. */
+	uip_conns[0].initialmss = uip_conns[0].mss = 0;
+	put_tcp(TCP_SYN, 6 /* 24-byte header */, mss0, sizeof(mss0), 1000, 44);
+	uip_len = 44;
+	uip_input();
+	CHECK(uip_conns[0].mss == UIP_TCP_MSS && uip_conns[0].initialmss == UIP_TCP_MSS,
+	      "an advertised MSS of 0 is ignored, the connection keeps the default");
+}
+
 
 /* Private HTTP lifecycle values; drive the real callback, not a model. */
 enum { TSTATE_NONE = 0, TSTATE_TX = 1, TSTATE_POST = 4 };
@@ -1304,6 +1392,9 @@ int main(int argc, char **argv)
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();
 	scenario_bad_l4_checksum();
+	scenario_malformed_tcp_options();
+	scenario_oversized_data_offset();
+	scenario_mss_zero();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();
