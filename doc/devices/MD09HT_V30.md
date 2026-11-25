@@ -55,6 +55,13 @@ This is an unmanaged device and the stock firmware stores no factory MAC, so
 `mac_flash_offset` is `0` and the address is derived from the chip UUID (locally
 administered, `06:` prefix), stable per unit.
 
+### Device
+
+<img src="photos/MD09HT_V30/device-front.jpg" width="600" />
+
+The front panel labels the four RJ45 ports `1`-`4` (`2.5GE`) and the two cages
+`5` and `6` (`10G SFP+`), which matches the physical port numbering used here.
+
 ### PCB overview
 
 Top side, silkscreen `MD09HT` / `V30` at the right edge:
