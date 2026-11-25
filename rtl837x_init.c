@@ -230,15 +230,10 @@ void rtl8372_init(void) __banked
 	}
 
 	// r0a90:000000f3 R0a90-000000fc
+	// Boards whose copper pairs are wired the other way round override this;
+	// 0 keeps the reset default so every other board behaves as before.
 	reg_read_m(RTL837X_CFG_PHY_MDI_REVERSE);
-	{
-		uint8_t mdi = machine.mdi_reverse;
-		if (!mdi)
-			mdi = 0x0c;
-		else if (mdi == 0x10)
-			mdi = 0x00;
-		sfr_mask_data(0, 0x0f, mdi);
-	}
+	sfr_mask_data(0, 0x0f, machine.mdi_reverse ? machine.mdi_reverse : 0x0c);
 	reg_write_m(RTL837X_CFG_PHY_MDI_REVERSE);
 
 	// Disable PHYs for configuration
