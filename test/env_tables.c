@@ -91,7 +91,7 @@ struct dhcp_state dhcp_state;
 bool     stp_enabled;
 bool lldp_enabled;
 uint16_t lldp_logical_port_status;
-struct lldp_neighbor lldp_neighbors[LLDP_MAX_PORTS];
+struct lldp_neighbor lldp_neighbors[LLDP_NUM_PORTS];
 uint16_t lldp_tx_frames;
 uint16_t lldp_rx_frames;
 uint16_t lldp_rx_discarded;

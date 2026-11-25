@@ -2,6 +2,7 @@
 #define _LLDP_H_
 
 #include <stdint.h>
+#include "machine.h"
 
 #define LLDP_MIN_ETHERNET_PAYLOAD_LENGTH 46
 #define LLDP_ETHERTYPE       0x88cc
@@ -11,7 +12,8 @@
 #define LLDP_HOLD_MULTIPLIER 4
 #define LLDP_FAST_TX_COUNT   4
 
-#define LLDP_MAX_PORTS       9
+#define LLDP_NUM_PORTS       (MACHINE_MAX_PORT - MACHINE_MIN_PORT + 1)
+#define LLDP_PORT_IDX(p)     ((uint8_t)((p) - MACHINE_MIN_PORT))
 #define LLDP_MAX_VLANS       16
 #define LLDP_CHASSIS_MAX     20
 #define LLDP_PORTID_MAX      24
@@ -107,7 +109,7 @@ struct lldp_neighbor {
 	char     port_desc[LLDP_PORTDESC_MAX];
 };
 
-extern __xdata struct lldp_neighbor lldp_neighbors[LLDP_MAX_PORTS];
+extern __xdata struct lldp_neighbor lldp_neighbors[LLDP_NUM_PORTS];
 extern __xdata uint16_t lldp_tx_frames;
 extern __xdata uint16_t lldp_rx_frames;
 extern __xdata uint16_t lldp_rx_discarded;

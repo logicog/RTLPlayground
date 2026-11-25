@@ -29,7 +29,7 @@ __xdata bool lldp_was_enabled;
 __xdata uint16_t lldp_links_last;
 __xdata uint16_t lldp_logical_port_status = 0xffff;
 
-__xdata struct lldp_neighbor lldp_neighbors[LLDP_MAX_PORTS];
+__xdata struct lldp_neighbor lldp_neighbors[LLDP_NUM_PORTS];
 __xdata uint16_t lldp_tx_frames;
 __xdata uint16_t lldp_rx_frames;
 __xdata uint16_t lldp_rx_discarded;
@@ -76,17 +76,16 @@ static uint16_t lldp_links(void) __reentrant
 
 static void lldp_age_neighbors(uint16_t links)
 {
-    static __xdata uint8_t i;
+    static __xdata uint8_t i, idx;
 
     for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-        if (i >= LLDP_MAX_PORTS)
-            break;
-        if (!lldp_neighbors[i].ttl)
+        idx = LLDP_PORT_IDX(i);
+        if (!lldp_neighbors[idx].ttl)
             continue;
         if (!(links & ((uint16_t)1 << i))) {
-            lldp_neighbors[i].ttl = 0;
+            lldp_neighbors[idx].ttl = 0;
             lldp_rx_ageouts++;
-        } else if (--lldp_neighbors[i].ttl == 0) {
+        } else if (--lldp_neighbors[idx].ttl == 0) {
             lldp_rx_ageouts++;
         }
     }
@@ -226,7 +225,7 @@ void lldp_in(void) __banked
     }
 
     port = ((uint8_t)HTONS(LLDP_H->rtl_tag.pmask)) & 0x0f;
-    if (!MACHINE_PORT_VALID(port) || port >= LLDP_MAX_PORTS) {
+    if (!MACHINE_PORT_VALID(port)) {
         lldp_rx_discarded++;
         return;
     }
@@ -315,16 +314,16 @@ void lldp_in(void) __banked
     lldp_rx_frames++;
     if (rx_tmp.ttl == 0) {
         // Shutdown LLDPDU: expire immediately
-        lldp_neighbors[port].ttl = 0;
+        lldp_neighbors[LLDP_PORT_IDX(port)].ttl = 0;
         return;
     }
 
-    memcpy(&lldp_neighbors[port], &rx_tmp, sizeof(struct lldp_neighbor));
+    memcpy(&lldp_neighbors[LLDP_PORT_IDX(port)], &rx_tmp, sizeof(struct lldp_neighbor));
 }
 
 void lldp_show(void) __banked
 {
-    static __xdata uint8_t i;
+    static __xdata uint8_t i, idx;
     static __xdata uint8_t found;
     static __xdata char ipbuf[16];
 
@@ -342,7 +341,8 @@ void lldp_show(void) __banked
 
     found = 0;
     for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-        if (i >= LLDP_MAX_PORTS || !lldp_neighbors[i].ttl)
+        idx = LLDP_PORT_IDX(i);
+        if (!lldp_neighbors[idx].ttl)
             continue;
         if (!found) {
             print_string("Port  SysName  Chassis  RemotePort  MgmtIP  TTL\n");
@@ -350,24 +350,24 @@ void lldp_show(void) __banked
         }
         print_phys_port(i);
         print_string("  ");
-        if (lldp_neighbors[i].sys_name[0])
-            print_string_x(lldp_neighbors[i].sys_name);
+        if (lldp_neighbors[idx].sys_name[0])
+            print_string_x(lldp_neighbors[idx].sys_name);
         else
             write_char('-');
         print_string("  ");
-        print_string_x(lldp_neighbors[i].chassis);
+        print_string_x(lldp_neighbors[idx].chassis);
         print_string("  ");
-        print_string_x(lldp_neighbors[i].port_id);
+        print_string_x(lldp_neighbors[idx].port_id);
         print_string("  ");
-        if (lldp_neighbors[i].mgmt_ip[0] | lldp_neighbors[i].mgmt_ip[1]
-            | lldp_neighbors[i].mgmt_ip[2] | lldp_neighbors[i].mgmt_ip[3]) {
-            lldp_fmt_ipv4(ipbuf, lldp_neighbors[i].mgmt_ip);
+        if (lldp_neighbors[idx].mgmt_ip[0] | lldp_neighbors[idx].mgmt_ip[1]
+            | lldp_neighbors[idx].mgmt_ip[2] | lldp_neighbors[idx].mgmt_ip[3]) {
+            lldp_fmt_ipv4(ipbuf, lldp_neighbors[idx].mgmt_ip);
             print_string_x(ipbuf);
         } else {
             write_char('-');
         }
         print_string("  ");
-        itoa_short(lldp_neighbors[i].ttl);
+        itoa_short(lldp_neighbors[idx].ttl);
         print_string("s\n");
     }
     if (!found)

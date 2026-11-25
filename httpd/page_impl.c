@@ -705,7 +705,7 @@ void send_lldp(void)
 
 void send_lldp_neighbors(void)
 {
-	static __xdata uint8_t i, v;
+	static __xdata uint8_t i, idx, v;
 	static __xdata uint8_t first;
 
 	dbg_string("send_lldp_neighbors called\n");
@@ -714,7 +714,8 @@ void send_lldp_neighbors(void)
 	char_to_html('[');
 	first = 1;
 	for (i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
-		if (i >= LLDP_MAX_PORTS || !lldp_neighbors[i].ttl)
+		idx = LLDP_PORT_IDX(i);
+		if (!lldp_neighbors[idx].ttl)
 			continue;
 		if (slen + 320 > TCP_OUTBUF_SIZE)
 			break;
@@ -725,35 +726,35 @@ void send_lldp_neighbors(void)
 		str_code_to_html("{" JSONQUOTE("port") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 		str_code_to_html("," JSONQUOTE("chassis") ":\"");
-		json_str_x(lldp_neighbors[i].chassis, LLDP_CHASSIS_MAX);
+		json_str_x(lldp_neighbors[idx].chassis, LLDP_CHASSIS_MAX);
 		str_code_to_html("\"," JSONQUOTE("portId") ":\"");
-		json_str_x(lldp_neighbors[i].port_id, LLDP_PORTID_MAX);
+		json_str_x(lldp_neighbors[idx].port_id, LLDP_PORTID_MAX);
 		str_code_to_html("\"," JSONQUOTE("portDesc") ":\"");
-		json_str_x(lldp_neighbors[i].port_desc, LLDP_PORTDESC_MAX);
+		json_str_x(lldp_neighbors[idx].port_desc, LLDP_PORTDESC_MAX);
 		str_code_to_html("\"," JSONQUOTE("sysName") ":\"");
-		json_str_x(lldp_neighbors[i].sys_name, LLDP_SYSNAME_MAX);
+		json_str_x(lldp_neighbors[idx].sys_name, LLDP_SYSNAME_MAX);
 		str_code_to_html("\"," JSONQUOTE("mgmtIp") ":\"");
-		if (lldp_neighbors[i].mgmt_ip[0] | lldp_neighbors[i].mgmt_ip[1]
-		    | lldp_neighbors[i].mgmt_ip[2] | lldp_neighbors[i].mgmt_ip[3]) {
-			itoa_html(lldp_neighbors[i].mgmt_ip[0]); char_to_html('.');
-			itoa_html(lldp_neighbors[i].mgmt_ip[1]); char_to_html('.');
-			itoa_html(lldp_neighbors[i].mgmt_ip[2]); char_to_html('.');
-			itoa_html(lldp_neighbors[i].mgmt_ip[3]);
+		if (lldp_neighbors[idx].mgmt_ip[0] | lldp_neighbors[idx].mgmt_ip[1]
+		    | lldp_neighbors[idx].mgmt_ip[2] | lldp_neighbors[idx].mgmt_ip[3]) {
+			itoa_html(lldp_neighbors[idx].mgmt_ip[0]); char_to_html('.');
+			itoa_html(lldp_neighbors[idx].mgmt_ip[1]); char_to_html('.');
+			itoa_html(lldp_neighbors[idx].mgmt_ip[2]); char_to_html('.');
+			itoa_html(lldp_neighbors[idx].mgmt_ip[3]);
 		}
 		str_code_to_html("\"," JSONQUOTE("caps") ":");
-		itoa16_html(lldp_neighbors[i].caps_enabled);
+		itoa16_html(lldp_neighbors[idx].caps_enabled);
 		str_code_to_html("," JSONQUOTE("pvid") ":");
-		itoa16_html(lldp_neighbors[i].pvid);
+		itoa16_html(lldp_neighbors[idx].pvid);
 		str_code_to_html("," JSONQUOTE("vlans") ":[");
-		for (v = 0; v < lldp_neighbors[i].vlan_count && v < LLDP_MAX_VLANS; v++) {
+		for (v = 0; v < lldp_neighbors[idx].vlan_count && v < LLDP_MAX_VLANS; v++) {
 			if (v)
 				char_to_html(',');
-			itoa16_html(lldp_neighbors[i].vlans[v]);
+			itoa16_html(lldp_neighbors[idx].vlans[v]);
 		}
 		str_code_to_html("]," JSONQUOTE("vlanTotal") ":");
-		itoa_html(lldp_neighbors[i].vlan_total);
+		itoa_html(lldp_neighbors[idx].vlan_total);
 		str_code_to_html("," JSONQUOTE("ttl") ":");
-		itoa16_html(lldp_neighbors[i].ttl);
+		itoa16_html(lldp_neighbors[idx].ttl);
 		char_to_html('}');
 	}
 	char_to_html(']');
