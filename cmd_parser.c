@@ -654,7 +654,7 @@ void parse_vlan(void)
 		if (!vlan_settings.vlan)
 			goto err;
 
-		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
+		if (cmd_words_len == 3 && cmd_compare(2, "d")) {
 			vlan_delete(vlan_settings.vlan);
 			return;
 		}
