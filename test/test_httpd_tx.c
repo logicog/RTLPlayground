@@ -140,7 +140,8 @@ void print_string_newline_no_syslog(const char *p) { (void)p; }
 void set_sys_led_state(uint8_t state) { (void)state; }
 void cmd_parser(void) { }
 void execute_config(void) { }
-void execute_commands(uint8_t *p) { (void)p; }
+static unsigned exec_calls;
+void execute_commands(uint8_t *p) { (void)p; exec_calls++; }
 void clear_command_history(void) { }
 void udp_callbacks(void) { }
 void tcpip_output(void) { }
@@ -1085,6 +1086,35 @@ static void scenario_fragmented_get_without_cookie(void)
 	      "fragmented GET without cookie: authentication is not carried over");
 }
 
+static void scenario_post_path_without_separator(void)
+{
+	static const char logged_in[] =
+		"POST /cmd HTTP/1.1\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"Content-Length: 7\r\n"
+		"Content-Type: text/plain\r\n"
+		"\r\n"
+		"vlan 5\n";
+	static const char bare[] = "POST /cmd\r\n\r\nvlan 6\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	last_session_use[0] = fake_now;
+	exec_calls = 0;
+	client_send(TCP_ACK | TCP_PSH, logged_in, (int)strlen(logged_in));
+	CHECK(exec_calls == 1,
+	      "POST path without separator: control request with a cookie runs");
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	last_session_use[0] = fake_now;
+	client_send(TCP_ACK | TCP_PSH, bare, (int)strlen(bare));
+	CHECK(exec_calls == 1,
+	      "POST path without separator: headers of the previous request do not authenticate it");
+	CHECK(stream_contains("HTTP/1.1 400 Bad Request\r\n"),
+	      "POST path without separator: the request is refused");
+}
+
 static void scenario_get_header_timeout(void)
 {
 	static const char partial[] =
@@ -1409,6 +1439,7 @@ int main(int argc, char **argv)
 	scenario_fragmented_get_cookie_value();
 	scenario_split_get_header_terminator();
 	scenario_fragmented_get_without_cookie();
+	scenario_post_path_without_separator();
 	scenario_get_header_timeout();
 	scenario_oversized_get_header();
 	scenario_split_method_names();

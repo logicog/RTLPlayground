@@ -764,7 +764,8 @@ void handle_post(uint16_t body_off)
 		// Find end of request path
 		while (*p && !is_separator(*p))
 			p++;
-		*p++ = NUL;
+		if (*p)
+			*p++ = NUL;
 
 		// Find end of request header
 		boundary[0] =NUL;
