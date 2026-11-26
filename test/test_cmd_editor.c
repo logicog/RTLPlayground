@@ -38,6 +38,18 @@ static void test_backspace(void) {
     CHECK(t_strcmp((char *)cmd_buffer, "hello") == 0, "backspace then retype yields 'hello'");
 }
 
+static void test_second_line_waits(void) {
+    printf("[test] a second line waits until the first is taken\n");
+    env_reset();
+    feed("ab\ncd\n");
+    CHECK(cmd_available == 1 && t_strcmp((char *)cmd_buffer, "ab") == 0,
+          "the first of two lines is left as it was typed");
+    cmd_available = 0;
+    feed("");
+    CHECK(cmd_available == 1 && t_strcmp((char *)cmd_buffer, "cd") == 0,
+          "the second line follows once the first is taken");
+}
+
 /* C4 part 1: a line that fills the buffer must not spin forever. */
 static void test_full_line_no_hang(void) {
     char big[200];
@@ -71,6 +83,7 @@ int main(void) {
     test_backspace();
     test_full_line_no_hang();
     test_full_line_no_overflow();
+    test_second_line_waits();
     printf("\n%d checks, %d failed\n", tests_run, tests_failed);
     return tests_failed ? 1 : 0;
 }

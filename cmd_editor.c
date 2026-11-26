@@ -38,7 +38,7 @@ void cmd_editor_init(void) __banked
  */
 void cmd_edit(void) __banked
 {
-	while (l != sbuf_ptr) {
+	while (l != sbuf_ptr && !cmd_available) {
 		if (sbuf[l] >= ' ' && sbuf[l] < 127) { // A printable character, copy to command line
 			// Reserve one byte for the terminating NUL written on Enter. When the
 			// line is full, drop the character but still fall through to advance the
@@ -187,9 +187,6 @@ void cmd_edit(void) __banked
 				cmd_line_len--;
 			}
 		}
-		// If the command buffer is currently in use, we cannot copy to it
-		if (cmd_available)
-			break;
 		// Check whether return was pressed:
 		if (sbuf[l] == '\n' || sbuf[l] == '\r') {
 			write_char('\n');
