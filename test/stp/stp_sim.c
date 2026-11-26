@@ -1317,6 +1317,18 @@ static void scen_guard_change_clears(void)
 	check(ticks_forwarding(3, NULL, 5) == 5 * STP_HZ, "a port with STP off keeps forwarding");
 }
 
+static void scen_cost_too_many_digits(void)
+{
+	printf("69. a port cost with too many digits is refused\n");
+	reset_all();
+	sim_cmd("stp port 4 cost 5");
+	sim_cmd("stp port 4 cost 4294967297");
+	check(stp_pcost[3] == 5, "a cost that would wrap to 1 leaves the old one");
+	sim_cmd("stp port 4 cost 200000000");
+	check(stp_pcost[3] == 200000000UL, "the highest cost is still accepted");
+	stp_pcost[3] = 0;
+}
+
 static void scen_guard_lag_change(void)
 {
 	struct sim_bpdu r = rogue_on(3);
@@ -2615,6 +2627,7 @@ int main(int argc, char **argv)
 	scen_guard_link_flap();
 	scen_guard_change_clears();
 	scen_guard_lag_change();
+	scen_cost_too_many_digits();
 	scen_proposal_agreement();
 	scen_no_agreement();
 	scen_sync_on_proposal();

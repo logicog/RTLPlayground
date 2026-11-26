@@ -107,9 +107,12 @@ void stp_parse(void) __banked __reentrant
 			stp_cli_cost = 0;
 			{
 			__xdata uint8_t *cp = &cmd_buffer[cmd_words_b[4]];
+			uint8_t digits = 0;
 			if (*cp < '0' || *cp > '9')
 				goto err;
 			while (*cp >= '0' && *cp <= '9') {
+				if (++digits > 9)
+					goto err;
 				stp_cli_cost = stp_cli_cost * 10 + (*cp - '0');
 				cp++;
 			}
