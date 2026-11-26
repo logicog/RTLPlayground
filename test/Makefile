@@ -14,7 +14,7 @@ SRCROOT  = ..
 CFLAGS   = -std=gnu11 -g -O1 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unknown-pragmas \
            -Wno-pointer-sign \
            -DRTLP_HOST_TEST \
-           -fsanitize=address,undefined -fno-omit-frame-pointer \
+           -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer \
            -include sdcc_shim.h -Istub -I$(SRCROOT) -I$(SRCROOT)/httpd -I$(SRCROOT)/uip
 ifeq ($(findstring clang,$(shell $(CC) --version 2>/dev/null)),)
 CFLAGS  += -Wno-builtin-declaration-mismatch

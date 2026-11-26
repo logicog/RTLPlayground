@@ -48,5 +48,5 @@ puts("startup CR/LF/CRLF, comments, NUL, overlong and burst-boundary cases passe
 }
 """
 (out/'startup_crlf.c').write_text(harness+body+tests)
-subprocess.run(['gcc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie',str(out/'startup_crlf.c'),'-o',str(out/'test_startup_crlf')],check=True)
+subprocess.run(['gcc','-std=gnu11','-Wall','-Wextra','-Werror','-g','-fsanitize=address,undefined','-fno-sanitize-recover=undefined','-fno-omit-frame-pointer','-no-pie',str(out/'startup_crlf.c'),'-o',str(out/'test_startup_crlf')],check=True)
 subprocess.run([str(out/'test_startup_crlf')],check=True)
