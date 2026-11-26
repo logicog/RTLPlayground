@@ -51,11 +51,12 @@ void send_stp(void) __banked
 	str_code_to_html("{" JSONQUOTE("on") ":");
 	bool_to_json(stp_enabled);
 	str_code_to_html(","  JSONQUOTE("type") ":");
-	if(stp_rstp) {
+	if (stp_rstp == STP_VER_MSTP)
+		str_code_to_html(JSONQUOTE("mstp"));
+	else if (stp_rstp)
 		str_code_to_html(JSONQUOTE("rstp"));
-	} else {
+	else
 		str_code_to_html(JSONQUOTE("stp"));
-	}
 	str_code_to_html("," JSONQUOTE("prio") ":");
 	itoa_html(stp_prio >> 4);
 	str_code_to_html("," JSONQUOTE("hello") ":");
@@ -85,19 +86,17 @@ void send_stp(void) __banked
 	str_code_to_html("," JSONQUOTE("rFwd") ":");
 	itoa_html(stp_root_port == 0xff ? stp_fwddelay_s : stp_root_fwd);
 	str_code_to_html("," JSONQUOTE("rootPrio") ":\"");
-	byte_to_html(root_bridge.prio);
-	byte_to_html(root_bridge.ext);
+	byte_to_html(stp_rv[0].root.prio);
+	byte_to_html(stp_rv[0].root.ext);
 	str_code_to_html("\"," JSONQUOTE("rootMac") ":\"");
 	for (j = 0; j < 6; j++)
-		byte_to_html(root_bridge.mac[j]);
+		byte_to_html(stp_rv[0].root.mac[j]);
 	str_code_to_html("\"," JSONQUOTE("myMac") ":\"");
 	for (j = 0; j < 6; j++)
 		byte_to_html(uip_ethaddr.addr[j]);
 	str_code_to_html("\"," JSONQUOTE("cost") ":\"0x");
-	byte_to_html(root_bridge_cost >> 24);
-	byte_to_html(root_bridge_cost >> 16);
-	byte_to_html(root_bridge_cost >> 8);
-	byte_to_html(root_bridge_cost);
+	for (j = 0; j < 4; j++)
+		byte_to_html(stp_rv[0].ext[j]);
 	str_code_to_html("\"," JSONQUOTE("weRoot") ":");
 	bool_to_json(stp_root_port == 0xff ? 1 : 0);
 	str_code_to_html("," JSONQUOTE("tc") ":\"0x");
@@ -141,11 +140,11 @@ void send_stp(void) __banked
 		itoa_html((stp_link_prev >> i) & 1);
 		str_code_to_html("," JSONQUOTE("lg") ":");
 		itoa_html((stp_legacy >> i) & 1);
-		dsg = stp_dpid[i] && stp_info_while[i];
+		dsg = stp_info_while[i] != 0;
 		str_code_to_html("," JSONQUOTE("db") ":\"");
 		if (dsg) {
-			pi_prio = stp_dbridge[i].prio; pi_ext = stp_dbridge[i].ext;
-			pi_mac = stp_dbridge[i].mac;
+			pi_prio = stp_pv[i].dbr.prio; pi_ext = stp_pv[i].dbr.ext;
+			pi_mac = stp_pv[i].dbr.mac;
 		} else {
 			pi_prio = stp_prio; pi_ext = 0;
 			pi_mac = uip_ethaddr.addr;
@@ -157,10 +156,12 @@ void send_stp(void) __banked
 			st = stp_loop_held[i] - 1;
 			j = stp_ent_id(st);
 		}
-		byte_to_html(dsg ? (stp_dpid[i] >> 8) : stp_pprio[st]);
-		byte_to_html(dsg ? stp_dpid[i] : j);
+		byte_to_html(dsg ? stp_pv[i].dpid[0] : stp_pprio[st]);
+		byte_to_html(dsg ? stp_pv[i].dpid[1] : j);
 		str_code_to_html("\"," JSONQUOTE("dc") ":\"0x");
-		pi_u32 = dsg ? stp_dcost[i] : root_bridge_cost; u32hex_html();
+		pi_mac = dsg ? stp_pv[i].ext : stp_rv[0].ext;
+		for (j = 0; j < 4; j++)
+			byte_to_html(pi_mac[j]);
 		str_code_to_html("\"},");
 	}
 	slen -= 1; // remove comma
