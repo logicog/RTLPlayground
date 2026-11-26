@@ -28,7 +28,6 @@
 		   I2CBUS_VALID(I2C_BUS_FROM_SCL_PIN(scl)) | \
 		   I2CBUS_VALID(I2C_BUS_FROM_SDA_PIN(sda))))
 
-
 #define I2C_BUS_FROM_SDA_PIN(sda_pin) \
 	((sda_pin) == GPIO47_I2C_SDA0 ? 0 : \
 	 (sda_pin) == GPIO49_I2C_SDA1 ? 1 : \
@@ -41,7 +40,6 @@
 	 (scl_pin) == GPIO48_I2C_SCL1 ? 1 : \
 	 (scl_pin) == GPIO50_I2C_SCL2_UART1_TX ? 2 : \
 	 (scl_pin) == GPIO40_I2C_SCL3_MDC1 ? 3 : I2CBUS_INVALID)
-
 
 #ifndef FRIENDLY_NAME
 	#error FRIENDLY_NAME missing

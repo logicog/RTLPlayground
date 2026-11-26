@@ -126,9 +126,9 @@ struct machine {
 	// random resets. Costs management-plane speed only, the ASIC keeps
 	// forwarding in hardware.
 	uint8_t flash_sio;
-	// Copper PHY MDI pair polarity, built with MDI_CFG() from machine_defs.h.
-	// 0 keeps the reset default (0x0c), which every board without mirrored
-	// pairs relies on.
+	// Copper PHY MDI pair polarity, built with MDI_CFG(). Zero means "not
+	// overridden" and keeps the reset default, which every board without
+	// mirrored pairs relies on.
 	uint8_t mdi_cfg;
 };
 
