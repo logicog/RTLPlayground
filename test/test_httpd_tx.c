@@ -448,6 +448,27 @@ static void scenario_steady_window(void)
 	      "control: file content without duplicates or gaps");
 }
 
+static void scenario_request_with_handshake_ack(void)
+{
+	uip_init();
+	httpd_init();
+	authenticated = 1;
+
+	cli_seq = 1000;
+	cli_rcv_nxt = 0;
+	cli_window = MSS_FULL;
+	stream_len = 0;
+	last_tx_len = 0;
+
+	client_send(TCP_SYN, NULL, 0);
+	request_file(MSS_FULL);
+	drain(MSS_FULL);
+	report("request with the handshake ACK");
+
+	CHECK(stream_len >= body_offset() + FILE_LEN && first_body_mismatch() == -1,
+	      "handshake: a request in the segment that completes it is answered");
+}
+
 /* The client stops draining, so the window in the ACK is smaller than the
  * segment that ACK covers. */
 static void scenario_shrinking_window(void)
@@ -1388,6 +1409,7 @@ int main(int argc, char **argv)
 
 	printf("== httpd: accounting for the bytes actually sent ==\n");
 	scenario_steady_window();
+	scenario_request_with_handshake_ack();
 	scenario_shrinking_window();
 	scenario_growing_window();
 	scenario_rexmit_after_shrink();

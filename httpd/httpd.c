@@ -882,6 +882,8 @@ void httpd_appcall(void)
 		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
 		s->fw_reset_pending = 0; // explicitly initialize reused XDATA appstate
+		if (uip_newdata())
+			goto newdata;
 	} else if (uip_closed()) {
 		dbg_string("Connection closed\n");
 		s->tstate = TSTATE_CLOSED;
@@ -959,6 +961,7 @@ void httpd_appcall(void)
 			goto do_send;
 		}
 	} else if (uip_newdata() && s->tstate != TSTATE_TX) {
+newdata:
 		cont_len = 0;
 		dbg_char('<'); dbg_short(uip_len); dbg_char('\n');
 		__xdata uint8_t *p = uip_appdata;
