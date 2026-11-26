@@ -957,7 +957,7 @@ void parse_port(void)
 		} else if (cmd_compare(3, "permit")) {
 			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
 		} else {
-			print_string ("Unknown port <port> lldp [block|permit] command\n");
+			cmd_error("Unknown port <port> lldp [block|permit] command\n");
 		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
@@ -1678,7 +1678,7 @@ void parse_storm(void)
 	return;
 
 err:
-	print_string("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
+	cmd_error("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
 }
 
 void parse_syslog(void)
@@ -1756,7 +1756,7 @@ void parse_session(void)
 		 * 65535; a zero-second timeout is not useful either, so both
 		 * tests are needed. */
 		if (!atoi_short(cmd_words_b[1]) || !atoi_results_short) {
-			print_string("Must be 1-65535 s\n");
+			cmd_error("Must be 1-65535 s\n");
 			return;
 		}
 		session_timeout = atoi_results_short;
