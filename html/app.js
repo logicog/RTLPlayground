@@ -5263,18 +5263,16 @@ function doWriteConfig(txt, fromLog) {
 $("saveBtn").addEventListener("click", function() {
     toast(t("cw_collect"));
     Promise.all([
-        getText("/config").catch(function() {
-            return ""
-        }),
-        getText("/cmd_log").catch(function() {
-            return ""
-        }),
+        getText("/config"),
+        getText("/cmd_log"),
     ]).then(function(r) {
         var cur = r[0].replace(/\0[\s\S]*$/, "").split(/\r?\n/).map(function(l) {
             return l.trim().replace(/\s+/g, " ")
         }).filter(Boolean);
         var merged = mergeConf(cur, [r[1].replace(/\0[\s\S]*$/, "")]);
         writeConfig(merged.join("\n"), t("cw_save_title"), true);
+    }).catch(function(e) {
+        toast(e.message || String(e), "err")
     });
 });
 
