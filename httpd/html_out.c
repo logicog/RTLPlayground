@@ -8,12 +8,6 @@ extern __xdata uint16_t slen;
 __code const uint8_t * __code const HTTP_RESPONSE_JSON = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
 __code const uint8_t * __code const HTTP_RESPONSE_TXT = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\n";
 
-// Convert (uint8_t) bool to ascii '0' or '1' char push on html-buffer.
-void bool_to_html(char c)
-{
-	outbuf[slen++] = c ? '1' : '0';
-}
-
 void bool_to_json(char c)
 {
 	str_code_to_html(c ? "true" : "false");

@@ -109,19 +109,6 @@ static void temp_to_html(void)
 	char_to_html('C');
 }
 
-uint16_t stat_content(void)
-{
-	dbg_string("stat_content called\n");
-	return 0;
-}
-
-
-uint16_t port_status(void)
-{
-	dbg_string("port_status called\n");
-	return 0;
-}
-
 /* Converts sfr_data[] into raw hex string.
    Suppress leading zeros.
 */

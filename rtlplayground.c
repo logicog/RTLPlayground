@@ -453,7 +453,7 @@ char strcmp(__xdata const uint8_t *a, __code const uint8_t *b)
 
 /*
  * True when b is a prefix of a. Unlike strcmp() the byte after the match is not
- * compared, and unlike is_word_x() it need not be a separator.
+ * compared, and unlike is_word() it need not be a separator.
  */
 bool strstart(__xdata const uint8_t *a, __code const uint8_t *b)
 {
