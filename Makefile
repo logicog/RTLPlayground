@@ -79,7 +79,8 @@ endif
 
 # PCB information
 ifneq ($(strip $(MACHINE_SRC)),)
-MACHINE_CHIPSET := $(shell sed -n 's/^#define MACHINE_CHIPSET //p' $(MACHINE_SRC) 2>/dev/null | head -n 1)
+H := \#
+MACHINE_CHIPSET := $(shell sed -n 's/^$Hdefine MACHINE_CHIPSET //p' $(MACHINE_SRC) 2>/dev/null | head -n 1)
 else
 MACHINE_CHIPSET =
 endif
