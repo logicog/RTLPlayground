@@ -1619,6 +1619,9 @@ void parse_bw(void)
 		*(((uint8_t *) &bw) + hex_size) = hexvalue[i++];
 	} while (hex_size);
 
+	if (bw < 16)
+		goto err;
+
 	if (is_in) {
 		bandwidth_ingress_set(port, bw);
 	} else {
