@@ -103,7 +103,23 @@ $(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_POR
 $(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
+# Check the same C and assembly as the firmware when the 8051 tools are installed.
+# Neither crypto object needs a board configuration or web assets.
+# At XRAM base 0xb1 the working state crosses a 256-byte page boundary.
+SDCC ?= $(firstword $(wildcard $(SRCROOT)/toolchain/sdcc-*/bin/sdcc) $(shell command -v sdcc))
+S51 ?= $(shell command -v ucsim_51 || command -v s51)
+
 run: $(TESTS)
+ifneq ($(and $(SDCC),$(S51)),)
+	$(SDCC) -mmcs51 -I$(SRCROOT) -c $(SRCROOT)/crypto/blake3.c -o $(BUILDDIR)/blake3.rel
+	$(patsubst %sdcc,%sdas8051,$(SDCC)) -plosgff -o $(BUILDDIR)/blake_regs.rel $(SRCROOT)/crypto/blake_regs.asm
+	$(SDCC) -mmcs51 -I$(SRCROOT) --xram-loc 0xb1 -Wl-bBANK4=0x4000 test_blake3.c $(BUILDDIR)/blake3.rel $(BUILDDIR)/blake_regs.rel -o $(BUILDDIR)/blake3-test.ihx
+	printf 'run\nquit\n' | timeout 30 $(S51) -q -t 8051 -c - -I 'if=xram[0xffff],out=$(BUILDDIR)/digest.bin' $(BUILDDIR)/blake3-test.ihx
+	test "$$(od -An -v -tx1 -N32 $(BUILDDIR)/digest.bin | tr -d ' \n')" = 7545b332ac37d71ec8a24e908031ac68764ccc013f25af318f315deb565eed01
+	test "$$(od -An -v -tx1 -j32 $(BUILDDIR)/digest.bin | tr -d ' \n')" = 2047414b746c001b0fef90efb8a73cec8df2ab16e0d80d14a8b43238b2a89873
+else
+	@echo "SKIP 8051 BLAKE3 vectors (requires SDCC and uCsim)"
+endif
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \
