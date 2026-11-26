@@ -328,7 +328,7 @@ static void client_send(uint8_t flags, const char *payload, int plen)
 	if (plen > 0)
 		memcpy(&uip_buf[UIP_LLH_LEN + 20 + hlen], payload, plen);
 
-	uip_len = 20 + hlen + plen;
+	uip_len = UIP_LLH_LEN + 20 + hlen + plen;
 	uip_input();
 	trace("input");
 	cli_seq += plen;
@@ -594,7 +594,7 @@ static void scenario_malformed_tcp_options(void)
 	/* uip_init leaves the slot's MSS alone; clear it so the default is seen. */
 	uip_conns[0].initialmss = uip_conns[0].mss = 0;
 	put_tcp(TCP_SYN, 6 /* 24-byte header */, opts, sizeof(opts), 1000, 44);
-	uip_len = 44;
+	uip_len = UIP_LLH_LEN + 44;
 	uip_input();
 	CHECK(uip_len && (TCPH->flags & (TCP_SYN | TCP_ACK)) == (TCP_SYN | TCP_ACK),
 	      "malformed SYN options: the walk terminates and a SYN-ACK is sent");
@@ -610,7 +610,7 @@ static void scenario_oversized_data_offset(void)
 {
 	session_start(MSS_FULL);
 	put_tcp(TCP_ACK, 15 /* 60-byte header */, NULL, 0, cli_seq, 40);
-	uip_len = 40;
+	uip_len = UIP_LLH_LEN + 40;
 	uip_input();
 	CHECK(uip_conn_active(0),
 	      "oversized data offset: the segment is dropped, the connection survives");
@@ -636,7 +636,7 @@ static void scenario_mss_zero(void)
 	/* uip_init leaves the slot's MSS alone; clear it so the default is seen. */
 	uip_conns[0].initialmss = uip_conns[0].mss = 0;
 	put_tcp(TCP_SYN, 6 /* 24-byte header */, mss0, sizeof(mss0), 1000, 44);
-	uip_len = 44;
+	uip_len = UIP_LLH_LEN + 44;
 	uip_input();
 	CHECK(uip_conns[0].mss == UIP_TCP_MSS && uip_conns[0].initialmss == UIP_TCP_MSS,
 	      "an advertised MSS of 0 is ignored, the connection keeps the default");
@@ -668,7 +668,7 @@ static void scenario_urg_inline(void)
 	TCPH->wnd[0] = MSS_FULL >> 8; TCPH->wnd[1] = MSS_FULL & 0xff;
 	TCPH->urgp[0] = 0; TCPH->urgp[1] = 2;	/* urgent pointer one past the byte */
 	uip_buf[UIP_LLH_LEN + 40] = 'x';
-	uip_len = 41;
+	uip_len = UIP_LLH_LEN + 41;
 	uip_input();
 	CHECK(uip_conn_active(0),
 	      "URG segment: delivered inline, no out-of-bounds, connection survives");
@@ -690,6 +690,44 @@ static void scenario_urg_get(void)
 	drain(MSS_FULL);
 	CHECK(first_body_mismatch() == -1,
 	      "URG GET: the request is read inline and the file is served");
+}
+
+#define ICMPH		((struct uip_icmpip_hdr *)&uip_buf[UIP_LLH_LEN])
+#define ECHO_LEN	(20 + 8 + 16)
+
+static void put_echo_request(uint16_t total_len)
+{
+	memset(uip_buf, 0xa5, sizeof(uip_buf));
+	memset(uip_buf, 0, UIP_LLH_LEN + ECHO_LEN);
+	ICMPH->vhl = 0x45;
+	ICMPH->len[0] = (uint8_t)(total_len >> 8);
+	ICMPH->len[1] = (uint8_t)(total_len & 0xff);
+	ICMPH->ttl = 64;
+	ICMPH->proto = UIP_PROTO_ICMP;
+	ICMPH->srcipaddr[0] = hton16(0x0a00); ICMPH->srcipaddr[1] = hton16(0x0002);
+	ICMPH->destipaddr[0] = hton16(0x0a00); ICMPH->destipaddr[1] = hton16(0x0001);
+	ICMPH->type = 8;
+	uip_len = UIP_LLH_LEN + ECHO_LEN;
+}
+
+static void scenario_ip_length_beyond_frame(void)
+{
+	uip_init();
+
+	put_echo_request(ECHO_LEN);
+	uip_input();
+	CHECK(uip_len == ECHO_LEN && ICMPH->type == 0,
+	      "IP length control: an echo request that fits its frame is answered");
+
+	put_echo_request(ECHO_LEN + 1);
+	uip_input();
+	CHECK(uip_len == 0,
+	      "IP length: a packet claiming one byte more than the frame holds is dropped");
+
+	put_echo_request(ECHO_LEN + UIP_LLH_LEN);
+	uip_input();
+	CHECK(uip_len == 0,
+	      "IP length: the link-level header does not count towards the packet");
 }
 
 
@@ -1480,6 +1518,7 @@ int main(int argc, char **argv)
 	scenario_mss_zero();
 	scenario_urg_inline();
 	scenario_urg_get();
+	scenario_ip_length_beyond_frame();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();
