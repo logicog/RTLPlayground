@@ -78,6 +78,7 @@ struct dhcp_pkt {
 #define DHCP_OPT ((__xdata uint8_t *)(uip_appdata) + sizeof (struct dhcp_pkt))
 
 __xdata uint32_t long_value;
+static __xdata uint16_t opt_end;
 
 
 void dhcp_print_ip(__xdata uint8_t *a)
@@ -259,7 +260,8 @@ uint8_t long_opt(void)
 
 void parse_opts(void)
 {
-	while (DHCP_OPT[dhcp_state.opt_ptr] && DHCP_OPT[dhcp_state.opt_ptr] != DHCP_END) {
+	while (dhcp_state.opt_ptr < opt_end && DHCP_OPT[dhcp_state.opt_ptr]
+	       && DHCP_OPT[dhcp_state.opt_ptr] != DHCP_END) {
 		switch(DHCP_OPT[dhcp_state.opt_ptr]) {
 		case DHCP_SUBNET_MASK:
 			ip_opt(&dhcp_state.subnet[0]);
@@ -302,6 +304,9 @@ void parse_opts(void)
 
 void parse_dhcp(void)
 {
+	if (uip_datalen() < sizeof(struct dhcp_pkt) + 3)
+		return;
+	opt_end = uip_datalen() - sizeof(struct dhcp_pkt);
 	if (DHCP_P->tid != dhcp_state.transaction_id)
 		return;
 	if (DHCP_P->cookie[0] != 0x63 || DHCP_P->cookie[1] != 0x82 || DHCP_P->cookie[2] != 0x53 || DHCP_P->cookie[3] != 0x63)
