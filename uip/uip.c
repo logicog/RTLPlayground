@@ -1182,6 +1182,11 @@ uip_process(u8_t flag) __banked
      UDP/IP headers, but let the UDP application do all the hard
      work. If the application sets uip_slen, it has a packet to
      send. */
+  if(uip_len < UIP_IPUDPH_LEN) {
+    UIP_STAT(++uip_stat.udp.drop);
+    UIP_LOG("udp: too short.");
+    goto drop;
+  }
 #if UIP_UDP_CHECKSUMS
   uip_len = uip_len - UIP_IPUDPH_LEN;
   uip_appdata = &uip_buf[UIP_LLH_LEN + UIP_IPUDPH_LEN];
