@@ -210,10 +210,10 @@ void rtl8372_init(void) __banked
 		phy_config(8);	// PHY configuration: External 8221B?
 	if (machine.n_10g)
 		phy_config_8261(3, 0);
-	if (machine.n_10g == 2)
-		phy_config_8261(8, 1);
 	else
 		phy_config(3);	// PHY configuration: all internal PHYs?
+	if (machine.n_10g == 2)
+		phy_config_8261(8, 1);
 	// Set the MAC SerDes Modes Bits 0-4: SDS 0 = 0x2 (0x2), Bits 5-9: SDS 1: 1f (off)
 	// r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-00000bff r7b20:00000bff R7b20-000003ff r7b20:000003ff R7b20-000003e2 r7b20:000003e2 R7b20-000003e2
 	if (machine.n_10g == 1) {
