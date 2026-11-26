@@ -73,6 +73,7 @@ var LANG = {
         i_temp: "Temperature",
         i_flash: "Flash",
         i_syslog: "Syslog",
+        i_lldp: "LLDP neighbours",
         p_state: "State",
         p_disabled: "disabled",
         p_up: "up",
@@ -167,6 +168,11 @@ var LANG = {
         stp_ctrx: "TC received",
         stp_cttx: "TC sent",
         stp_cage: "Last BPDU [s]",
+        lldp_nb_title: "Neighbours",
+        lldp_nb_chassis: "Chassis ID",
+        lldp_nb_portid: "Port ID",
+        lldp_nb_sysname: "System Name",
+        lldp_nb_ttl: "TTL",
         st_title: "Port statistics",
         st_h: "totals since boot",
         st_txg: "TX good",
@@ -2911,7 +2917,8 @@ function renderInfo() {
         ["i_pcb", "pcb_ver"],
         ["i_temp", "chip_temp"],
         ["i_flash", "flash_size"],
-        ["i_syslog", "syslog_server"]
+        ["i_syslog", "syslog_server"],
+        ["i_lldp", "lldp_neighbors"]
     ];
     var tb = $("sysinfo");
     tb.innerHTML = "";
@@ -4498,6 +4505,18 @@ function lldpLoad() {
             sw.firstChild.checked = p.permitted;
             tr.insertCell().appendChild(sw);
         });
+        var nb = $("lldp_nb_table").tBodies[0];
+        nb.innerHTML = "";
+        (s.neighbors || []).sort(function(a, b) {
+            return a.port - b.port
+        }).forEach(function(n) {
+            var tr = nb.insertRow();
+            tr.insertCell().textContent = n.port;
+            tr.insertCell().textContent = n.chassis;
+            tr.insertCell().textContent = n.portId;
+            tr.insertCell().textContent = n.sysName;
+            tr.insertCell().textContent = n.ttl;
+        });
     });
 }
 
@@ -4507,8 +4526,14 @@ $("lldp_en").addEventListener("change", function() {
         el.checked = !el.checked
     });
 });
+var lldpPoller = new Poller(lldpLoad, 5000);
 tabHooks.lldp = {
-    enter: lldpLoad
+    enter: function() {
+        lldpPoller.start()
+    },
+    leave: function() {
+        lldpPoller.stop()
+    }
 };
 
 function eeeLoad() {
