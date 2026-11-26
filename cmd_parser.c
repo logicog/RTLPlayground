@@ -1935,9 +1935,9 @@ void cmd_parser(void) __banked
 				}
 				write_char('\n');
 			} else {
-				if (dhcp_state.state)
-					dhcp_stop();
 				if (parse_ip(cmd_words_b[1]) != 0) {
+					if (dhcp_state.state)
+						dhcp_stop();
 					uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
 					print_string("Setting ip: ");
 					print_ip(ip); write_char('\n');
