@@ -2496,6 +2496,7 @@ function modal(title, bodyEl, buttons) {
 
 function closeModal() {
     S.detail = null;
+    if (ctrPoll) ctrPoll.stop();
     $("mback").classList.remove("show")
 }
 $("mx").addEventListener("click", closeModal);
