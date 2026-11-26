@@ -367,6 +367,7 @@ $(OUTPUT): $(BUILDDIR)/rtlplayground.img $(CONFIG) $(CONFIG_STAMP) | tools
 	fi
 
 .PHONY: clean distclean all $(SUBDIRS) $(SUBDIRSCLEAN) create_build_dir
+.DELETE_ON_ERROR:
 
 # Every machine description is checked by compiling its selected PCB source.
 MACHINE_DEFS := $(shell jq -er 'if type == "array" then .[].machine else error("expected an array") end' $(MACHINE_REGISTRY))
