@@ -2384,7 +2384,7 @@ var CONF_CMDS = [
     /^ntp\s+interval\s+\d{1,4}$/,
     /^ntp\s+timezone\s+[+-]?\d{1,2}(:\d{2})?$/,
     /^ntp\s+dst\s+(off|eu|us)$/,
-    /^passwd\s+\S+$/, /^hostname\s+\S{1,23}$/,
+    /^passwd +[^ ]/, /^hostname\s+\S{1,23}$/,
     /^vlan\s+\d+\s+(d|mgmt)$/m,
     /^vlan\s+\d+(\s+[a-zA-Z]\w*)?(\s+\d+t?)*$/m,
     /^pvid\s+\d+\s+\d+$/m,
@@ -5054,7 +5054,7 @@ tabHooks.system = {
 
 var CONF_OVERWRITE = [
     /^ip\b/, /^gw\b/, /^netmask\b/, /^hostname\b/,
-    /^syslog\s+ip\b/, /^syslog\s+port\b/, /^dns\s+server\b/, /^passwd\b/, /^session\b/,
+    /^syslog\s+ip\b/, /^syslog\s+port\b/, /^dns\s+server\b/, /^session\b/,
     /^ntp\s+server\b/, /^ntp\s+interval\b/, /^ntp\s+timezone\b/, /^ntp\s+dst\b/,
     /^vlan\s+\d{1,4}\s+mgmt$/, /^vlan\s+\d{1,4}(?!\s+mgmt\b)/,
     /^pvid\s+\d{1,2}\b/,
@@ -5067,6 +5067,12 @@ var CONF_OVERWRITE = [
 ];
 var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
+function normalizeConfigLine(line) {
+    // The tokenizer skips spaces before the password. Its value can contain spaces.
+    if (/^\s*passwd\b/.test(line)) return line.replace(/^ *passwd +/, "passwd ");
+    return line.trim().replace(/\s+/g, " ");
+}
+
 function mergeConf(base, texts) {
     var conf = base.slice();
 
@@ -5077,7 +5083,7 @@ function mergeConf(base, texts) {
     }
     texts.forEach(function(txt) {
         txt.split(/\r?\n/).forEach(function(line) {
-            line = line.trim().replace(/\s+/g, " ");
+            line = normalizeConfigLine(line);
             if (!line) return;
             var m;
             if ((m = line.match(/^vlan (\d{1,4}) d$/))) {
@@ -5109,6 +5115,7 @@ function mergeConf(base, texts) {
             }
             if (line === "ip dhcp") drop(/^(netmask|gw|dns server) /);
             if (!isConfCmd(line)) return;
+            if (line.startsWith("passwd ")) drop(/^ *passwd(?: |$)/);
             if ((m = line.match(/^port (\d{1,2}) name$/))) {
                 drop(new RegExp("^port " + m[1] + " name( |$)"));
                 return;
@@ -5211,7 +5218,7 @@ function writeConfig(txt, title, fromLog) {
             bytes = new Blob([v]).size,
             long = cfgLongLine(v);
         var unknown = v.split("\n").filter(function(l) {
-            return l.trim() && !isConfCmd(l.trim().replace(/\s+/g, " "))
+            return l.trim() && !isConfCmd(normalizeConfigLine(l))
         });
         info.textContent = t("cw_info", {
             n: bytes
@@ -5273,9 +5280,7 @@ $("saveBtn").addEventListener("click", function() {
         getText("/config"),
         getText("/cmd_log"),
     ]).then(function(r) {
-        var cur = r[0].replace(/\0[\s\S]*$/, "").split(/\r?\n/).map(function(l) {
-            return l.trim().replace(/\s+/g, " ")
-        }).filter(Boolean);
+        var cur = r[0].replace(/\0[\s\S]*$/, "").split(/[\r\n]+/).map(normalizeConfigLine).filter(Boolean);
         var merged = mergeConf(cur, [r[1].replace(/\0[\s\S]*$/, "")]);
         writeConfig(merged.join("\n"), t("cw_save_title"), true);
     }).catch(function(e) {
