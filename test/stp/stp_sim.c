@@ -1803,6 +1803,34 @@ static void scen_migrate_back(void)
 	check(last_tx[1].version == 2, "an RST BPDU after the migrate time switches it back to RSTP");
 }
 
+static void scen_guard_acts_once(void)
+{
+	struct sim_bpdu r = rogue_on(3);
+	int writes;
+
+	printf("70. a guard that has stopped a port is not run again for every BPDU\n");
+	reset_all();
+	sim_cmd("stp port 4 guard bpdu");
+	links_set(1 << 3);
+	secs(6);
+	bpdu_in(&r);
+	check(stp_pflags[3] & STP_PF_TRIPPED, "the BPDU trips the BPDU guard on port 4");
+	writes = mstp_writes;
+	for (int i = 0; i < 10; i++)
+		bpdu_in(&r);
+	check(mstp_writes == writes, "ten more BPDUs write nothing to the port state");
+	reset_all();
+	sim_cmd("stp port 4 guard root");
+	links_set(1 << 3);
+	secs(6);
+	bpdu_in(&r);
+	check_state(3, 1, "a better root on a root guard port blocks it");
+	writes = mstp_writes;
+	for (int i = 0; i < 10; i++)
+		bpdu_in(&r);
+	check(mstp_writes == writes && port_state(3) == 1, "ten more of them keep it blocked without a write");
+}
+
 static void scen_legacy_root_tcn(void)
 {
 	struct sim_bpdu r;
@@ -2629,6 +2657,7 @@ int main(int argc, char **argv)
 	scen_migrate_to_stp();
 	scen_migrate_back();
 	scen_legacy_root_tcn();
+	scen_guard_acts_once();
 	scen_alternate_agrees();
 	scen_agreement_from_alternate();
 	scen_timer_relation();
