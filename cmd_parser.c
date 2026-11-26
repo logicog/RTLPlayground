@@ -809,9 +809,9 @@ void parse_ingress(void)
 				cmd_error("cannot set the ingress filter for port "); print_phys_port(log_port); write_char('\n');
 				return;
 			}
-			print_string("All ports ingress filter set to: ");
-			print_port_ingress_filter_mode(mode); write_char('\n');
 		}
+		print_string("All ports ingress filter set to: ");
+		print_port_ingress_filter_mode(mode); write_char('\n');
 	} else {
 		for(uint8_t w = 1; w < cmd_words_len; w++) {
 			idx = cmd_words_b[w];
