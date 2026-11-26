@@ -2470,6 +2470,20 @@ static void scen_loop_peer_edge_recovery(void)
 	check(!(stp_pflags[7] & STP_PF_OPEREDGE), "the new loop revokes the recovered edge status");
 }
 
+static void scen_loop_returns_while_learning(void)
+{
+	struct sim_bpdu own = loop_from_port8();
+
+	printf("71. a loop that comes back while the held port is learning blocks it again\n");
+	loop_ports_ready();
+	bpdu_in(&own);
+	check_state(7, 1, "a frame from port 8 returning on port 1 blocks port 8");
+	follow_root(18);
+	check_state(7, 2, "with no more returned frames port 8 reaches learning");
+	bpdu_in(&own);
+	check_state(7, 1, "a returned frame during learning takes it back to discarding");
+}
+
 static void scen_loop_peer_heard_bpdu(void)
 {
 	struct sim_bpdu own = loop_from_port8();
@@ -2646,6 +2660,7 @@ int main(int argc, char **argv)
 	scen_tc_needs_forwarding();
 	scen_root_port_needs_link();
 	scen_loop_peer_edge_recovery();
+	scen_loop_returns_while_learning();
 	scen_loop_peer_heard_bpdu();
 	scen_loop_peer_autoedge_off();
 	scen_mikrotik_wire_capture();
