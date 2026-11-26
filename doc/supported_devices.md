@@ -15,6 +15,7 @@ The following devices have been tested and are fully working:
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5GPOE-V1.2.md)                                   | 8M    | 8 + 1 |
 | Hasivo   | S1100P-8GT-1SX-S | No     | [S1100P-8GT-1SX-73N-S-V1.01](devices/S1100P-8GT-1SX-73N-S-V1.01.md)                   | 2M    | 8 + 1 |
 | Hasivo   | S1100WP_8GT_1SX_SE | Yes  | [S1100W-8GT-1SX_SE-V1.05](devices/S1100W-8GT-1SX_SE_V1.05.md)                         | 2M    | 8 + 1 |
+| Hasivo   | S600WP-4GT-2XGT-SE | Yes  | [RTL-4GT-2XGT-SE V1.01](devices/RTL-4GT-2XGT-SE_V1.01.md)                             | 2M    | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V2.0](devices/PCB-K0402W-V2.0.md)                                         | 2M    | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-K0801W-V2.0](devices/PCB-K0801W-V2.0.md)                                         |       | 8 + 1 |
