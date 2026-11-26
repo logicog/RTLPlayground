@@ -3391,12 +3391,15 @@ $("stpbapply").addEventListener("click", function() {
     if (prio !== String(s.prio)) cmds.push("stp prio " + prio);
     if ($("stppcs").value !== s.pcs) cmds.push("stp pathcost " + $("stppcs").value);
     if ($("stpbh").value !== s.bh) cmds.push("stp bpdu " + $("stpbh").value);
-    [
+    var times = [
         ["stphello", "hello"],
         ["stpmaxage", "maxage"],
-        ["stpfwd", "fwd"],
+        ["stpfwd", "fwd"]
+    ];
+    if (+$("stpmaxage").value > +s.maxage) times.reverse();
+    times.concat([
         ["stptxhold", "txhold"]
-    ].forEach(function(f) {
+    ]).forEach(function(f) {
         var v = $(f[0]).value;
         if (String(v) !== String(s[f[1]])) cmds.push("stp " + f[1] + " " + v);
     });
