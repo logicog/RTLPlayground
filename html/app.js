@@ -5604,8 +5604,8 @@ function wolSend() {
         toast(t("wol_mac_err"), "err");
         return;
     }
-    if (vlan !== "" && ($("wolvlan").validity.badInput ||
-        !/^\d{1,4}$/.test(vlan) || +vlan > 4094)) {
+    if ($("wolvlan").validity.badInput || (vlan !== "" &&
+        (!/^\d{1,4}$/.test(vlan) || +vlan > 4094))) {
         toast(t("wol_vlan_err"), "err");
         return;
     }
