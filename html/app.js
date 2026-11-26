@@ -2643,20 +2643,21 @@ function Poller(fn, ms) {
 Poller.prototype.start = function() {
     if (this.on) return;
     this.on = true;
-    this.tick()
+    this.gen = (this.gen || 0) + 1;
+    this.tick(this.gen)
 };
 Poller.prototype.stop = function() {
     this.on = false;
     clearTimeout(this.t)
 };
-Poller.prototype.tick = function() {
+Poller.prototype.tick = function(gen) {
     var self = this;
-    if (!self.on) return;
+    if (!self.on || gen !== self.gen) return;
     var quiet = document.hidden || Date.now() - lastInput > IDLE_STOP_MS;
     var run = quiet ? Promise.resolve() : Promise.resolve().then(self.fn).catch(function() {});
     run.then(function() {
-        if (self.on) self.t = setTimeout(function() {
-            self.tick()
+        if (self.on && gen === self.gen) self.t = setTimeout(function() {
+            self.tick(gen)
         }, self.ms);
     });
 };
