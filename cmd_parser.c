@@ -643,10 +643,11 @@ void parse_vlan(void)
 			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
 			if (dhcp_state.state != DHCP_OFF)
 				dhcp_start();
-			if (!vlan_settings.vlan)
+			if (!vlan_settings.vlan) {
 				print_string("Management VLAN disabled\n");
-			else
+			} else {
 				print_string("Management VLAN set to "); print_short(management_vlan); write_char('\n');
+			}
 			return;
 		}
 
