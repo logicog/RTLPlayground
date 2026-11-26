@@ -1012,10 +1012,14 @@ void parse_port(void)
 		phy_set_speed();
 	} else if (cmd_compare(2, "duplex")) {
 		print_string(" DUPLEX\n");
-		if (cmd_compare(3, "full"))
+		if (cmd_compare(3, "full")) {
 			phy_settings.duplex = PHY_DUPLEX_FULL;
-		else
+		} else if (cmd_compare(3, "half")) {
 			phy_settings.duplex = PHY_DUPLEX_HALF;
+		} else {
+			cmd_error("Usage: port <port> duplex full|half\n");
+			return;
+		}
 		phy_set_duplex();
 	} else {
 		cmd_error("Unknown port command\n");
@@ -2099,12 +2103,14 @@ void cmd_parser(void) __banked
 				print_string("LLDP enabled\n");
 				lldp_enabled = 1;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
-			} else {
+			} else if (cmd_compare(1, "off")) {
 				print_string("LLDP disabled\n");
 				if (lldp_enabled)
 					lldp_shutdown(lldp_logical_port_status);
 				lldp_enabled = 0;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
+			} else {
+				cmd_error("Usage: lldp on|off\n");
 			}
 		}
 		else {
