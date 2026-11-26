@@ -37,26 +37,32 @@ __code const struct machine machine = {
     .port_led_set = { 0, 0, 0, 3, 2, 2, 0, 0, 3 },
     .mac_flash_offset = 0,
     .led_sets = {
-        { // RJ45 ports 3-4 (normal wiring)
+        { /* RJ45 ports 3-4 (normal wiring) */
+            /* Amber LED: 10M/100M/1G link and activity */
             LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
+            /* Green LED: 2.5G link and activity */
             LEDS_2G5 | LEDS_LINK | LEDS_ACT,
             0,
             0
         },
-        { // unused
+        { /* unused */
             0,
             0,
             0,
             0
         },
-        { // RJ45 ports 1-2 (reversed wiring)
+        { /* RJ45 ports 1-2 (reversed wiring) */
+            /* Green LED: 2.5G link and activity */
             LEDS_2G5 | LEDS_LINK | LEDS_ACT,
+            /* Amber LED: 10M/100M/1G link and activity */
             LEDS_1G | LEDS_100M | LEDS_10M | LEDS_LINK | LEDS_ACT,
             0,
             0
         },
-        { // SFP ports 5-6
+        { /* SFP+ cages 5-6 */
+            /* White LED with a blue tinge: 10G link and activity */
             LEDS_10G | LEDS_LINK | LEDS_ACT,
+            /* Same white LED: 1G/2.5G link and activity */
             LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,
             0,
             0
