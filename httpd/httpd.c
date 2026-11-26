@@ -211,28 +211,6 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 }
 
 
-bool is_word_x(__xdata uint8_t * lhs_str_p, __xdata uint8_t * rhs_str_p)
-{
-	uint8_t u, c;
-
-	while (1) {
-		u = *lhs_str_p++;
-		c = *rhs_str_p++;
-
-		if (c == NUL) {
-			/* ';' separates cookies in a Cookie header, so it ends a value too. */
-			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r' && u != ';')
-				return false;
-			return true;
-		}
-
-		if (c != u) {
-			return false;
-		}
-	}
-}
-
-
 uint8_t parse_short(__xdata uint8_t *p)
 {
 	uint8_t err = 1;
@@ -764,7 +742,8 @@ void handle_post(uint16_t body_off)
 		// Find end of request path
 		while (*p && !is_separator(*p))
 			p++;
-		*p++ = NUL;
+		if (*p)
+			*p++ = NUL;
 
 		// Find end of request header
 		boundary[0] =NUL;

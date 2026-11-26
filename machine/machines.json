@@ -65,6 +65,11 @@
     "pcb": "S600W_4GT_2XGT_SE"
   },
   {
+    "machine": "HASIVO_S600WP_4GT_2XGT_SE",
+    "friendly_name": "Hasivo S600WP-4GT-2XGT-SE",
+    "pcb": "RTL_4GT_2XGT_SE_V1_01"
+  },
+  {
     "machine": "HISOURCE_HI_K0402WS_V2_0",
     "friendly_name": "Hisource Hi-K0402WS",
     "pcb": "PCB_K0402W_V2_0"
@@ -256,7 +261,7 @@
   },
   {
     "machine": "S604GTP_2SX_SL",
-    "friendly_name":  "POEPlus S604GTP-2SX-SL",
+    "friendly_name": "POEPlus S604GTP-2SX-SL",
     "pcb": "RTL_4GT_2S__V1_04"
   },
   {
@@ -358,5 +363,10 @@
     "machine": "ZOERAX_HG0402XG",
     "friendly_name": "ZoeRax HG0402XG",
     "pcb": "HG0402XG_V1_1"
+  },
+  {
+    "machine": "SODOLA_SL_SWTGW0108P",
+    "friendly_name": "Sodola SL-SWTGW0108P",
+    "pcb": "S1100W_8GT_1SX_73N_V1_04"
   }
 ]

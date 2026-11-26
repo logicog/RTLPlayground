@@ -279,6 +279,7 @@ void phy_set_speed(void) __banked
 	uint16_t v;
 
 	print_string("Setting port "); print_phys_port(phy_settings.port);
+	phy_settings.is10g_port = 0;
 	if (machine.n_10g && phy_settings.port == 3)
 		phy_settings.is10g_port = 1;
 	if (machine.n_10g == 2 && phy_settings.port == 8)

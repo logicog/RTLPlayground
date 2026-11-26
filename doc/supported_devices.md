@@ -4,7 +4,7 @@ The following devices have been tested and are fully working:
 | Brand    | Type            | Managed | PCB                                                                                   | Flash | Ports |
 |----------|-----------------|---------|---------------------------------------------------------------------------------------|-------|-------|
 | Ampcom   | WAM902-SWTG018AS| No      | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               | 0.5M  | 8 + 1 |
-| Binardat | 2G06-04210GSM   | No      | [PCB-SWTG024AS-A-2.0.1](devices/20240111.md)                                          | 0.5M  | 4 + 2 |
+| Binardat | 2G06-04210GSM   | No      | [PCB-SWTG024AS-A-2.0.1](devices/20240111.md)                                          | 16M   | 4 + 2 |
 | Davuaz   | Da-K6501W       | No      | [PCB-K0501W-V2.0](devices/PCB-K0501W-V2.0.md)                                         |       | 5 + 1 |
 | DOTX     | DX-1009N        | No      | [PCB-SWTG118AS-V1.0-11430](devices/PCB-SWTG118AS-V1.0-11430.md)                       | 0.5M  | 8 + 1 |
 | FOXNEO   | FNS-1200P       | No      | [PCB-K0402W-U13-V2.0](devices/PCB-K0402W-U13-V2.0.md)                                 | 2M    | 4 + 2 |
@@ -15,6 +15,7 @@ The following devices have been tested and are fully working:
 | Guangnianwei | 7018-2.5G   | No      | [F7008-2.5GPOE-V1.2](devices/F7008-2.5GPOE-V1.2.md)                                   | 8M    | 8 + 1 |
 | Hasivo   | S1100P-8GT-1SX-S | No     | [S1100P-8GT-1SX-73N-S-V1.01](devices/S1100P-8GT-1SX-73N-S-V1.01.md)                   | 2M    | 8 + 1 |
 | Hasivo   | S1100WP_8GT_1SX_SE | Yes  | [S1100W-8GT-1SX_SE-V1.05](devices/S1100W-8GT-1SX_SE_V1.05.md)                         | 2M    | 8 + 1 |
+| Hasivo   | S600WP-4GT-2XGT-SE | Yes  | [RTL-4GT-2XGT-SE V1.01](devices/RTL-4GT-2XGT-SE_V1.01.md)                             | 2M    | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V2.0](devices/PCB-K0402W-V2.0.md)                                         | 2M    | 4 + 2 |
 | Hisource | Hi-K0402WS      | No      | [PCB-K0402W-V3.0](devices/PCB-K0402W-V3.0.md)                                         |       | 4 + 2 |
 | Hisource | Hi-K0801WS      | No      | [PCB-K0801W-V2.0](devices/PCB-K0801W-V2.0.md)                                         |       | 8 + 1 |
@@ -64,7 +65,9 @@ The following devices have been tested and are fully working:
 | Sodola   | SL902-SWTGW124AS| Yes     | [PCB-SWTG024AS-V2.1.1_19023](devices/PCB-SWTG024AS-V2.1.1_19023.md)                   | 2M    | 4 + 2 |
 | Sodola   | SL902-SWTGW215AS| Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 5 + 1 |
 | Sodola   | SGT0108S        | No      | [25GF_10G_V1.03](devices/25GF_10G_V1.03.md)                                           | 0.5M | 8 + 1 |
+| Sodola   | SL-SWTGW0108P   | Yes     | [S1100W-8GT-1SX_73N V1.04](devices/S1100W-8GT-1SX_73N_V1.04.md)                       | 2M    | 8 + 1 |
 | Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                                         |       | 4 + 2 |
+| Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                               |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1_REV.A1](devices/270-NB1-MS206B004A1_REV.A1.md)                   | 2M    | 4 + 2 |
 | Vimin    | S250402-N       | No      | [SR-S25G2206F-N-V1.2](devices/SR-S25G2206F-N-V1.2.md)                                 | 2M    | 4 + 2 |
 | XikeStor | SKS3200-4E2X    | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |

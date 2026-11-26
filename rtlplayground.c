@@ -453,7 +453,7 @@ char strcmp(__xdata const uint8_t *a, __code const uint8_t *b)
 
 /*
  * True when b is a prefix of a. Unlike strcmp() the byte after the match is not
- * compared, and unlike is_word_x() it need not be a separator.
+ * compared, and unlike is_word() it need not be a separator.
  */
 bool strstart(__xdata const uint8_t *a, __code const uint8_t *b)
 {
@@ -989,9 +989,11 @@ void handle_rx(void)
 				tcpip_output();
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0806)) { // ARP
-			uip_arp_arpin();
-			if (uip_len) {
-			    tcpip_output();
+			if (!management_vlan || management_vlan == rx_packet_vlan) {
+				uip_arp_arpin();
+				if (uip_len) {
+					tcpip_output();
+				}
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0800)) { // IPv4
 			if (!management_vlan || management_vlan == rx_packet_vlan) {

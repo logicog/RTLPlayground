@@ -643,10 +643,11 @@ void parse_vlan(void)
 			port_l2_static_mgmt(uip_ethaddr.addr, management_vlan, false);
 			if (dhcp_state.state != DHCP_OFF)
 				dhcp_start();
-			if (!vlan_settings.vlan)
+			if (!vlan_settings.vlan) {
 				print_string("Management VLAN disabled\n");
-			else
+			} else {
 				print_string("Management VLAN set to "); print_short(management_vlan); write_char('\n');
+			}
 			return;
 		}
 
@@ -654,7 +655,7 @@ void parse_vlan(void)
 		if (!vlan_settings.vlan)
 			goto err;
 
-		if (cmd_words_len == 3 && cmd_buffer[cmd_words_b[2]] == 'd') {
+		if (cmd_words_len == 3 && cmd_compare(2, "d")) {
 			vlan_delete(vlan_settings.vlan);
 			return;
 		}
@@ -809,9 +810,9 @@ void parse_ingress(void)
 				cmd_error("cannot set the ingress filter for port "); print_phys_port(log_port); write_char('\n');
 				return;
 			}
-			print_string("All ports ingress filter set to: ");
-			print_port_ingress_filter_mode(mode); write_char('\n');
 		}
+		print_string("All ports ingress filter set to: ");
+		print_port_ingress_filter_mode(mode); write_char('\n');
 	} else {
 		for(uint8_t w = 1; w < cmd_words_len; w++) {
 			idx = cmd_words_b[w];
@@ -957,7 +958,7 @@ void parse_port(void)
 		} else if (cmd_compare(3, "permit")) {
 			lldp_logical_port_status |= (uint16_t)1 << phy_settings.port;
 		} else {
-			print_string ("Unknown port <port> lldp [block|permit] command\n");
+			cmd_error("Unknown port <port> lldp [block|permit] command\n");
 		}
 	} else if (machine.is_sfp[phy_settings.port]) {
 		print_string(" is SFP no PHY information available.\n");
@@ -1012,10 +1013,14 @@ void parse_port(void)
 		phy_set_speed();
 	} else if (cmd_compare(2, "duplex")) {
 		print_string(" DUPLEX\n");
-		if (cmd_compare(3, "full"))
+		if (cmd_compare(3, "full")) {
 			phy_settings.duplex = PHY_DUPLEX_FULL;
-		else
+		} else if (cmd_compare(3, "half")) {
 			phy_settings.duplex = PHY_DUPLEX_HALF;
+		} else {
+			cmd_error("Usage: port <port> duplex full|half\n");
+			return;
+		}
 		phy_set_duplex();
 	} else {
 		cmd_error("Unknown port command\n");
@@ -1619,6 +1624,9 @@ void parse_bw(void)
 		*(((uint8_t *) &bw) + hex_size) = hexvalue[i++];
 	} while (hex_size);
 
+	if (bw < 16)
+		goto err;
+
 	if (is_in) {
 		bandwidth_ingress_set(port, bw);
 	} else {
@@ -1678,7 +1686,7 @@ void parse_storm(void)
 	return;
 
 err:
-	print_string("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
+	cmd_error("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
 }
 
 void parse_syslog(void)
@@ -1756,7 +1764,7 @@ void parse_session(void)
 		 * 65535; a zero-second timeout is not useful either, so both
 		 * tests are needed. */
 		if (!atoi_short(cmd_words_b[1]) || !atoi_results_short) {
-			print_string("Must be 1-65535 s\n");
+			cmd_error("Must be 1-65535 s\n");
 			return;
 		}
 		session_timeout = atoi_results_short;
@@ -1935,9 +1943,9 @@ void cmd_parser(void) __banked
 				}
 				write_char('\n');
 			} else {
-				if (dhcp_state.state)
-					dhcp_stop();
 				if (parse_ip(cmd_words_b[1]) != 0) {
+					if (dhcp_state.state)
+						dhcp_stop();
 					uip_ipaddr(&uip_hostaddr, ip[0], ip[1], ip[2], ip[3]);
 					print_string("Setting ip: ");
 					print_ip(ip); write_char('\n');
@@ -2099,12 +2107,14 @@ void cmd_parser(void) __banked
 				print_string("LLDP enabled\n");
 				lldp_enabled = 1;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_TRAP);
-			} else {
+			} else if (cmd_compare(1, "off")) {
 				print_string("LLDP disabled\n");
 				if (lldp_enabled)
 					lldp_shutdown(lldp_logical_port_status);
 				lldp_enabled = 0;
 				trap_rma_set(RTL837X_RMA0E_CONF, RTL837X_RMA_ACT_FORWARD);
+			} else {
+				cmd_error("Usage: lldp on|off\n");
 			}
 		}
 		else {

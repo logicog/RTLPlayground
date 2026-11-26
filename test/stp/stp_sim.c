@@ -1317,6 +1317,18 @@ static void scen_guard_change_clears(void)
 	check(ticks_forwarding(3, NULL, 5) == 5 * STP_HZ, "a port with STP off keeps forwarding");
 }
 
+static void scen_cost_too_many_digits(void)
+{
+	printf("69. a port cost with too many digits is refused\n");
+	reset_all();
+	sim_cmd("stp port 4 cost 5");
+	sim_cmd("stp port 4 cost 4294967297");
+	check(stp_pcost[3] == 5, "a cost that would wrap to 1 leaves the old one");
+	sim_cmd("stp port 4 cost 200000000");
+	check(stp_pcost[3] == 200000000UL, "the highest cost is still accepted");
+	stp_pcost[3] = 0;
+}
+
 static void scen_guard_lag_change(void)
 {
 	struct sim_bpdu r = rogue_on(3);
@@ -2580,6 +2592,18 @@ static void scen_port_id_panel(void)
 	check_state(6, 1, "its BPDU coming back on another port blocks chip port 6");
 }
 
+static void scen_cli_typo_keeps_setting(void)
+{
+	printf("68. a mistyped guard or edge value changes nothing\n");
+	reset_all();
+	sim_cmd("stp port 4 guard root");
+	sim_cmd("stp port 4 guard rooot");
+	check(stp_pflags[3] & STP_PF_ROOTGUARD, "the root guard survives a mistyped value");
+	sim_cmd("stp port 4 edge on");
+	sim_cmd("stp port 4 edge onn");
+	check(stp_pflags[3] & STP_PF_ADMEDGE, "the edge setting survives a mistyped value");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2615,6 +2639,7 @@ int main(int argc, char **argv)
 	scen_guard_link_flap();
 	scen_guard_change_clears();
 	scen_guard_lag_change();
+	scen_cost_too_many_digits();
 	scen_proposal_agreement();
 	scen_no_agreement();
 	scen_sync_on_proposal();
@@ -2650,6 +2675,7 @@ int main(int argc, char **argv)
 	scen_loop_peer_autoedge_off();
 	scen_mikrotik_wire_capture();
 	scen_port_id_panel();
+	scen_cli_typo_keeps_setting();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;
