@@ -799,7 +799,7 @@ void send_storm(void)
 			bool_to_json(reg_bit_test(RTL837X_STORM_CTRL + (t << 2), i));
 
 			str_code_to_html("," JSONQUOTE("unit") ":");
-			idx = STORM_METER(i, t);
+			idx = storm_meter(i, t);
 
 			if (reg_bit_test(RTL837X_METER_MODE + ((idx >> 5) << 2), idx & 0x1f)) {
 				str_code_to_html(JSONQUOTE("pps"));
@@ -809,7 +809,7 @@ void send_storm(void)
 
 			str_code_to_html("," JSONQUOTE("rate") ":\"0x");
 
-			reg_read_m(RTL837X_METER_RATE + (STORM_METER(i, t) << 2));
+			reg_read_m(RTL837X_METER_RATE + (idx << 2));
 			byte_to_html(sfr_data[1]);
 			byte_to_html(sfr_data[2]);
 			byte_to_html(sfr_data[3]);
