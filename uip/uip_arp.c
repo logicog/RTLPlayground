@@ -167,7 +167,7 @@ uip_arp_timer(void) __banked
   for(uint8_t i = 0; i < UIP_ARPTAB_SIZE; ++i) {
     tabptr = &arp_table[i];
     if((tabptr->ipaddr[0] | tabptr->ipaddr[1]) != 0 &&
-       arptime - tabptr->time >= UIP_ARP_MAXAGE) {
+       (u8_t)(arptime - tabptr->time) >= UIP_ARP_MAXAGE) {
       memset(tabptr->ipaddr, 0, 4);
     }
   }
@@ -211,7 +211,7 @@ uip_arp_update(__xdata u16_t * __xdata ipaddr, __xdata struct uip_eth_addr * __x
     tmpage = 0;
     c = 0;
     for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
-      if(arptime - arp_table[i].time > tmpage) {
+      if((u8_t)(arptime - arp_table[i].time) > tmpage) {
 	tmpage = arptime - arp_table[i].time;
 	c = i;
       }
