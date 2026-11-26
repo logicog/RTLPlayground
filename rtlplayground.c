@@ -989,9 +989,11 @@ void handle_rx(void)
 				tcpip_output();
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0806)) { // ARP
-			uip_arp_arpin();
-			if (uip_len) {
-			    tcpip_output();
+			if (!management_vlan || management_vlan == rx_packet_vlan) {
+				uip_arp_arpin();
+				if (uip_len) {
+					tcpip_output();
+				}
 			}
 		} else if (ETH_IN->ether_type == HTONS(0x0800)) { // IPv4
 			if (!management_vlan || management_vlan == rx_packet_vlan) {
