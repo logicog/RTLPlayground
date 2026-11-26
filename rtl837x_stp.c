@@ -1233,6 +1233,11 @@ void stp_timers(void) __banked
 					stp_seen_stp &= ~((uint16_t)1 << stp_i);
 					stp_seen_rstp &= ~((uint16_t)1 << stp_i);
 					stp_mdelay[stp_i] = STP_MIGRATE;
+					if (stp_pflags[stp_i] & STP_PF_ADMEDGE) {
+						port_timers[stp_i] = 0;
+						stp_pflags[stp_i] |= STP_PF_OPEREDGE;
+						stp_state_set(stp_i, STP_FORWARDING);
+					}
 				} else {
 					port_timers[stp_i] = 0;
 					stp_info_while[stp_i] = 0;
