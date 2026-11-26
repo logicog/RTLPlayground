@@ -11,6 +11,25 @@
 #endif
 #define MACHINE_PCB_INFO MACHINE_STR(MACHINE_PCB_NAME)
 
+// MDI pair polarity of the four internal PHYs, one argument per PHY (port 1
+// first). An invalid argument is caught at compile time the same way I2CBUS()
+// does it.
+//
+// A board that does not care leaves the field at zero, which means "not
+// overridden" and keeps the reset default. The bit cannot simply default to
+// MDI_DEFAULT in MACHINE_COMMON_SETTING because SDCC rejects a board that
+// overrides an already specified initializer (error 203).
+#define MDI_DEFAULT  0x0c
+#define MDI_CFG_SET  0x10
+#define MDI_STRAIGHT 0
+#define MDI_SWAPPED  1
+#define MDI_CFG_VALID(p) (0 * sizeof(char[((p) == MDI_STRAIGHT || (p) == MDI_SWAPPED) ? 1 : 0]))
+#define MDI_CFG(p1, p2, p3, p4) \
+	((uint8_t)(MDI_CFG_SET | (p1) | ((p2) << 1) | ((p3) << 2) | ((p4) << 3) | \
+		   MDI_CFG_VALID(p1) | MDI_CFG_VALID(p2) | MDI_CFG_VALID(p3) | MDI_CFG_VALID(p4)))
+// Register value to write: the configured polarity, or the reset default.
+#define MDI_CFG_VALUE(cfg) ((cfg) ? (uint8_t)((cfg) & 0x0f) : MDI_DEFAULT)
+
 
 #ifndef MACHINE_CHIPSET
 	#include "machine/default_machine.h"

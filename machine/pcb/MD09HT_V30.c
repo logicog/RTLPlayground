@@ -3,8 +3,8 @@
 
 /*
  * Xiaomi SW-106T-A on PCB MD09HT V30 (RTL8372N, 4 x 2.5G RJ45 + 2 x SFP+).
- * Copper PHYs need MDI pair polarity 0x03 on 0xa90 (see .mdi_reverse);
- * with the reset default physical ports 1 and 2 never link.
+ * Copper PHYs need MDI pair polarity 0x03 on 0xa90 (see .mdi_cfg); with the
+ * reset default physical ports 1 and 2 never link.
  *
  * Physical RJ45 1-4 map to logical 4-7; the left SFP+ cage is logical 8
  * (SDS1, detect GPIO38) and the right one logical 3 (SDS0, detect GPIO37).
@@ -32,7 +32,6 @@ __code const struct machine machine = {
 
     .reset_pin = GPIO_NA,
     .flash_sio = 0,
-	/* Ports 1 and 2 have their MDI pairs swapped, 3 and 4 do not. */
 	.mdi_cfg = MDI_CFG(MDI_SWAPPED, MDI_SWAPPED, MDI_STRAIGHT, MDI_STRAIGHT),
     .high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 3, 2, 2, 0, 0, 3 },
