@@ -2580,6 +2580,18 @@ static void scen_port_id_panel(void)
 	check_state(6, 1, "its BPDU coming back on another port blocks chip port 6");
 }
 
+static void scen_cli_typo_keeps_setting(void)
+{
+	printf("68. a mistyped guard or edge value changes nothing\n");
+	reset_all();
+	sim_cmd("stp port 4 guard root");
+	sim_cmd("stp port 4 guard rooot");
+	check(stp_pflags[3] & STP_PF_ROOTGUARD, "the root guard survives a mistyped value");
+	sim_cmd("stp port 4 edge on");
+	sim_cmd("stp port 4 edge onn");
+	check(stp_pflags[3] & STP_PF_ADMEDGE, "the edge setting survives a mistyped value");
+}
+
 int main(int argc, char **argv)
 {
 	verbose = argc > 1 && argv[1][0] == '-' ? (argv[1][1] == 'd' ? 2 : 1) : 0;
@@ -2650,6 +2662,7 @@ int main(int argc, char **argv)
 	scen_loop_peer_autoedge_off();
 	scen_mikrotik_wire_capture();
 	scen_port_id_panel();
+	scen_cli_typo_keeps_setting();
 	if (failures) {
 		printf("\n%d check(s) failed\n", failures);
 		return 1;

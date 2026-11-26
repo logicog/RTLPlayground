@@ -95,13 +95,13 @@ void stp_parse(void) __banked __reentrant
 			 * port from topology changes and lets it skip the listen period,
 			 * so leaving it set would keep the old behaviour until the next
 			 * "stp off"/"stp on". An admin edge is operational immediately. */
+			if (!cmd_compare(4, "on") && !cmd_compare(4, "auto") && !cmd_compare(4, "off"))
+				goto err;
 			stp_pflags[port] &= ~(STP_PF_ADMEDGE | STP_PF_AUTOEDGE | STP_PF_OPEREDGE);
 			if (cmd_compare(4, "on"))
 				stp_pflags[port] |= STP_PF_ADMEDGE | STP_PF_OPEREDGE;
 			else if (cmd_compare(4, "auto"))
 				stp_pflags[port] |= STP_PF_AUTOEDGE;
-			else if (!cmd_compare(4, "off"))
-				goto err;
 		} else if (cmd_compare(3, "cost")) {
 			/* raw 802.1D value, 0..200000000; 0 = auto (speed-based) */
 			stp_cli_cost = 0;
@@ -133,13 +133,13 @@ void stp_parse(void) __banked __reentrant
 				goto err;
 			stp_pprio[port] = atoi_results_u8;
 		} else if (cmd_compare(3, "guard")) {
+			if (!cmd_compare(4, "bpdu") && !cmd_compare(4, "root") && !cmd_compare(4, "none"))
+				goto err;
 			stp_pflags[port] &= ~(STP_PF_BPDUGUARD | STP_PF_ROOTGUARD);
 			if (cmd_compare(4, "bpdu"))
 				stp_pflags[port] |= STP_PF_BPDUGUARD;
 			else if (cmd_compare(4, "root"))
 				stp_pflags[port] |= STP_PF_ROOTGUARD;
-			else if (!cmd_compare(4, "none"))
-				goto err;
 			if (stp_pflags[port] & STP_PF_TRIPPED) {
 				stp_pflags[port] &= ~STP_PF_TRIPPED;
 				stp_port_admin(port);
