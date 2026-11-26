@@ -718,8 +718,18 @@ class Handler(SimpleHTTPRequestHandler):
                     "port": i,
                     "name": "",
                     "permitted": True,
+                    "listening": True,
                 }
                 for i in range(1, PORTS + 1)
+            ],
+            "neighbors": [
+                {
+                    "port": 3,
+                    "chassis": "00:11:22:33:44:55",
+                    "portId": "eth0",
+                    "sysName": "desk-pc",
+                    "ttl": 117,
+                }
             ],
         }
 
