@@ -2437,7 +2437,9 @@ function postCmd(cmd, quiet) {
         if (!r.ok) throw new Error(((r.body || "").split("\n")[0]) || t("t_rejected", {
             c: cmd
         }));
-        if (isConfCmd(cmd.trim())) setDirty(true);
+        if (cmd.split("\n").some(function(l) {
+                return isConfCmd(l.trim())
+            })) setDirty(true);
         if (!quiet) toast(t("t_applied", {
             c: cmd
         }), "ok");
