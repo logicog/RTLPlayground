@@ -107,9 +107,10 @@ struct machine {
 	// random resets. Costs management-plane speed only, the ASIC keeps
 	// forwarding in hardware.
 	uint8_t flash_sio;
-	// Copper PHY MDI pair polarity written to 0xa90 during the RTL8372 init.
-	// 0 keeps the reset default (0x0c); boards with mirrored pairs set the value.
-	uint8_t mdi_reverse;
+	// Copper PHY MDI pair polarity, built with MDI_CFG() from machine_defs.h.
+	// 0 keeps the reset default (0x0c), which every board without mirrored
+	// pairs relies on.
+	uint8_t mdi_cfg;
 };
 
 struct machine_runtime

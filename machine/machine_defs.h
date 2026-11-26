@@ -28,6 +28,17 @@
 		   I2CBUS_VALID(I2C_BUS_FROM_SCL_PIN(scl)) | \
 		   I2CBUS_VALID(I2C_BUS_FROM_SDA_PIN(sda))))
 
+// MDI pair polarity of the four internal PHYs. MDI_CFG() takes one argument
+// per PHY (port 1 first). An invalid argument is caught at compile time the
+// same way I2CBUS() does it. The result is always non-zero, so a board that
+// does not set the field keeps the zero-initialized default.
+#define MDI_STRAIGHT 0
+#define MDI_SWAPPED  1
+#define MDI_CFG_VALID(p) (0 * sizeof(char[((p) == MDI_STRAIGHT || (p) == MDI_SWAPPED) ? 1 : 0]))
+#define MDI_CFG(p1, p2, p3, p4) \
+	((uint8_t)(0x10 | (p1) | ((p2) << 1) | ((p3) << 2) | ((p4) << 3) | \
+		   MDI_CFG_VALID(p1) | MDI_CFG_VALID(p2) | MDI_CFG_VALID(p3) | MDI_CFG_VALID(p4)))
+
 #define I2C_BUS_FROM_SDA_PIN(sda_pin) \
 	((sda_pin) == GPIO47_I2C_SDA0 ? 0 : \
 	 (sda_pin) == GPIO49_I2C_SDA1 ? 1 : \

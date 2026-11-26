@@ -32,7 +32,8 @@ __code const struct machine machine = {
 
     .reset_pin = GPIO_NA,
     .flash_sio = 0,
-    .mdi_reverse = 0x03,
+	/* Ports 1 and 2 have their MDI pairs swapped, 3 and 4 do not. */
+	.mdi_cfg = MDI_CFG(MDI_SWAPPED, MDI_SWAPPED, MDI_STRAIGHT, MDI_STRAIGHT),
     .high_leds = { .mux = LED_28_SYS | LED_29, .enable = LED_27 | LED_28_SYS | LED_29 },
     .port_led_set = { 0, 0, 0, 3, 2, 2, 0, 0, 3 },
     .mac_flash_offset = 0,
