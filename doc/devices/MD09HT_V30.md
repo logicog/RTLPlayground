@@ -46,6 +46,24 @@ must be `0x03`; with the reset default `0x0c` physical ports 1 and 2 never link.
 One LED per port, driven through a custom `led_mux`. All LEDs stay off while a
 port has no link; the activity LED follows the traffic.
 
+| Ports | LED |
+|---|---|
+| RJ45 1-4 | green = 2.5G, amber = 10M/100M/1G |
+| SFP+ 5-6 | one white LED per cage, it looks slightly blue |
+
+| Ports | LED |
+|---|---|
+| RJ45 1-4 | green = 2.5G, amber = 10M/100M/1G |
+| SFP+ 5-6 | one white LED per cage, it looks slightly blue |
+
+The two copper led-sets differ only in slot order because ports 1-2 are wired the
+other way round.
+
+Verified on hardware: each cage has **one** LED. With the 10G signal moved to the second
+led-set slot and the first slot disabled, the link came up at 10G but the LED stayed dark,
+so the second slot drove nothing - a 1G or 2.5G module would never have lit the cage. All
+speeds and the link/activity blink now share that single slot.
+
 ### Flash
 
 Retail units carry a cFeon `Q80C-104HIP` (EN25Q80C, 8 Mbit / 1 MB) on the back
@@ -79,17 +97,3 @@ Bottom side:
 - 12 V / 1 A external supply, 4.0/1.7 mm DC plug
 - plastic case, unpopulated reset button footprint
 
-## LEDs
-
-| Ports | LED |
-|---|---|
-| RJ45 1-4 | green = 2.5G, amber = 10M/100M/1G |
-| SFP+ 5-6 | one white LED per cage, it looks slightly blue |
-
-The two copper led-sets differ only in slot order because ports 1-2 are wired the
-other way round.
-
-Verified on hardware: each cage has **one** LED. With the 10G signal moved to the second
-led-set slot and the first slot disabled, the link came up at 10G but the LED stayed dark,
-so the second slot drove nothing - a 1G or 2.5G module would never have lit the cage. All
-speeds and the link/activity blink now share that single slot.
