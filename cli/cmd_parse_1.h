@@ -71,7 +71,6 @@ void cmd_parse_session(void);
 void cmd_parse_sfp(void);
 void cmd_parse_stat(void);
 void cmd_parse_storm(void);
-void cmd_parse_stp(void) __banked __reentrant;
 void cmd_parse_syslog(void);
 void cmd_parse_temp(void);
 void cmd_parse_version(void);

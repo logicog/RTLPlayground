@@ -2,6 +2,7 @@
 
 #include "cmd_parse_util.h"
 #include "cmd_parse_1.h"
+#include "cmd_parse_stp.h"
 #include "cmd_parse_health.h"
 #include "rtl837x_flash.h"
 #include "version.h"
