@@ -41,7 +41,6 @@
 	 (scl_pin) == GPIO50_I2C_SCL2_UART1_TX ? 2 : \
 	 (scl_pin) == GPIO40_I2C_SCL3_MDC1 ? 3 : I2CBUS_INVALID)
 
-
 #ifndef FRIENDLY_NAME
 	#error FRIENDLY_NAME missing
 #endif
