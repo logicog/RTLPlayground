@@ -38,6 +38,19 @@ static void test_backspace(void) {
     CHECK(t_strcmp((char *)cmd_buffer, "hello") == 0, "backspace then retype yields 'hello'");
 }
 
+static void test_backspace_full_line(void) {
+    char full[CMD_BUF_SIZE - 1];
+    printf("[test] backspace on a full line stays inside cmd_buffer\n");
+    env_reset();
+    t_memset(full, 'c', sizeof(full));
+    feed_n(full, sizeof(full));
+    feed("\b");
+    CHECK(cmd_line_len == CMD_BUF_SIZE - 2, "the full line is one character shorter");
+    feed("d\n");
+    CHECK(cmd_buffer[CMD_BUF_SIZE - 3] == 'c' && cmd_buffer[CMD_BUF_SIZE - 2] == 'd'
+          && cmd_buffer[CMD_BUF_SIZE - 1] == 0, "the line ends with the character typed after it");
+}
+
 static void test_second_line_waits(void) {
     printf("[test] a second line waits until the first is taken\n");
     env_reset();
@@ -116,6 +129,7 @@ int main(void) {
     printf("== cmd_editor host tests ==\n");
     test_basic_line();
     test_backspace();
+    test_backspace_full_line();
     test_unknown_escape("Home (ESC [ H)", "\033[H");
     test_unknown_escape("Home (ESC [ 1 ~)", "\033[1~");
     test_unknown_escape("F1 (ESC O P)", "\033OP");
