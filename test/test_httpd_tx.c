@@ -622,6 +622,52 @@ static void scenario_oversized_data_offset(void)
 	      "oversized data offset: a normal request after it still serves the file");
 }
 
+/* A data segment claiming a 16-byte TCP header (data offset 4), shorter than
+ * the 20-byte base header. Unguarded, its payload length comes out 4 bytes
+ * longer than the segment, and rcv_nxt acknowledges bytes never sent. Guarded,
+ * the segment is dropped and the connection keeps working. */
+static void scenario_short_data_offset(void)
+{
+	uint32_t rcv_nxt;
+
+	session_start(MSS_FULL);
+	rcv_nxt = rd32(uip_conns[0].rcv_nxt);
+	put_tcp(TCP_ACK | TCP_PSH, 4 /* 16-byte header */, NULL, 0, cli_seq, 44);
+	memcpy(&uip_buf[UIP_LLH_LEN + 40], "abcd", 4);
+	uip_len = 44;
+	uip_input();
+	CHECK(uip_len == 0 && rd32(uip_conns[0].rcv_nxt) == rcv_nxt,
+	      "short data offset: the segment is dropped, rcv_nxt does not move");
+
+	stream_len = 0;
+	request_file(MSS_FULL);
+	drain(MSS_FULL);
+	CHECK(first_body_mismatch() == -1,
+	      "short data offset: a normal request after it still serves the file");
+}
+
+/* A 44-byte SYN claiming a 60-byte TCP header. Unguarded, the option walk
+ * reads 16 bytes past the segment, left there by an earlier frame, and takes
+ * an MSS from them. Guarded, the SYN is dropped and no connection is opened. */
+static void scenario_syn_oversized_data_offset(void)
+{
+	static const uint8_t noops[4] = { 0x01, 0x01, 0x01, 0x01 };
+	static const uint8_t stale_mss[4] = { 0x02, 0x04, 0x00, 0x40 };
+
+	uip_init();
+	httpd_init();
+	cli_window = MSS_FULL;
+	cli_rcv_nxt = 0;
+	put_tcp(TCP_SYN, 15 /* 60-byte header */, noops, sizeof(noops), 1000, 44);
+	memcpy(&uip_buf[UIP_LLH_LEN + 44], stale_mss, sizeof(stale_mss));
+	uip_len = 44;
+	uip_input();
+	CHECK(uip_len == 0 && uip_conns[0].tcpstateflags == UIP_CLOSED,
+	      "SYN with an oversized data offset: dropped, no connection opened");
+	CHECK(uip_conns[0].mss != 0x40,
+	      "SYN with an oversized data offset: no MSS is taken from past the segment");
+}
+
 /* A SYN advertising MSS 0 (option 02 04 00 00). uip_send clamps to conn->mss,
  * so storing 0 would leave a connection that can never send and holds its slot
  * until timeout. The option must be ignored and the default MSS kept. */
@@ -1477,6 +1523,8 @@ int main(int argc, char **argv)
 	scenario_bad_l4_checksum();
 	scenario_malformed_tcp_options();
 	scenario_oversized_data_offset();
+	scenario_short_data_offset();
+	scenario_syn_oversized_data_offset();
 	scenario_mss_zero();
 	scenario_urg_inline();
 	scenario_urg_get();
