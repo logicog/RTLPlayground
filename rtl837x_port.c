@@ -44,6 +44,7 @@ void port_mirror_set(uint8_t port, __xdata uint16_t rx_pmask, __xdata uint16_t t
 	print_short(rx_pmask); print_string(", tx mask: "); print_short(tx_pmask);
 	write_char('\n');
 
+	REG_SET(RTL837X_MIR_SAMPLE_CTRL, 0);
 	REG_WRITE(RTL837x_MIRROR_CONF, rx_pmask >> 8, rx_pmask, tx_pmask >> 8, tx_pmask);
 	REG_WRITE(RTL837x_MIRROR_CTRL, 0, 0, 0, (port << 1) | 0x1);
 }

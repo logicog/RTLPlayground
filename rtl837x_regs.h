@@ -258,6 +258,8 @@
  */
 #define RTL837x_MIRROR_CONF		0x604c
 #define RTL837x_MIRROR_CTRL		0x6048
+#define RTL837x_MIRROR_CTRL_EN		0x01
+#define RTL837X_MIR_SAMPLE_CTRL		0x50ec
 
 /*
  * Link Aggregation aka Trunking
