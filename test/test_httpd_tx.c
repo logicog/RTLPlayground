@@ -208,6 +208,7 @@ extern u16_t uip_listenports[UIP_LISTENPORTS];
 static uint32_t cli_seq;	/* next sequence number we send */
 static uint32_t cli_rcv_nxt;	/* next sequence number we expect */
 static uint16_t cli_window;	/* what we advertise */
+static uint16_t cli_urgp;	/* urgent pointer, sent when TCP_URG is set */
 
 static uint8_t stream[STREAM_MAX];	/* bytes accepted from the server */
 static int stream_len;
@@ -315,6 +316,8 @@ static void client_send(uint8_t flags, const char *payload, int plen)
 	TCPH->wnd[0] = (uint8_t)(cli_window >> 8);
 	TCPH->wnd[1] = (uint8_t)(cli_window & 0xff);
 	TCPH->tcpchksum = 0;
+	TCPH->urgp[0] = (uint8_t)(cli_urgp >> 8);
+	TCPH->urgp[1] = (uint8_t)(cli_urgp & 0xff);
 
 	if (hlen == 24) {
 		uint8_t *opt = &uip_buf[UIP_LLH_LEN + 40];
@@ -637,6 +640,56 @@ static void scenario_mss_zero(void)
 	uip_input();
 	CHECK(uip_conns[0].mss == UIP_TCP_MSS && uip_conns[0].initialmss == UIP_TCP_MSS,
 	      "an advertised MSS of 0 is ignored, the connection keeps the default");
+}
+
+#define TCP_URG 0x20
+
+/* A segment with URG set and an urgent pointer past the payload. Advancing
+ * uip_appdata by the urgent pointer ran httpd off the end of uip_buf
+ * (CVE-2020-17437, ASan SEGVs without the fix); delivered inline, the byte is
+ * just data and the connection carries on. */
+static void scenario_urg_inline(void)
+{
+	session_start(MSS_FULL);
+
+	memset(uip_buf, 0, UIP_LLH_LEN + 41);
+	TCPH->vhl = 0x45;
+	TCPH->len[0] = 0; TCPH->len[1] = 41;	/* 20 IP + 20 TCP + 1 data */
+	TCPH->ttl = 64;
+	TCPH->proto = UIP_PROTO_TCP;
+	TCPH->srcipaddr[0] = hton16(0x0a00); TCPH->srcipaddr[1] = hton16(0x0002);
+	TCPH->destipaddr[0] = hton16(0x0a00); TCPH->destipaddr[1] = hton16(0x0001);
+	TCPH->srcport = hton16(40000);
+	TCPH->destport = hton16(80);
+	wr32(TCPH->seqno, cli_seq);
+	wr32(TCPH->ackno, cli_rcv_nxt);
+	TCPH->tcpoffset = 5 << 4;
+	TCPH->flags = TCP_ACK | TCP_URG;
+	TCPH->wnd[0] = MSS_FULL >> 8; TCPH->wnd[1] = MSS_FULL & 0xff;
+	TCPH->urgp[0] = 0; TCPH->urgp[1] = 2;	/* urgent pointer one past the byte */
+	uip_buf[UIP_LLH_LEN + 40] = 'x';
+	uip_len = 41;
+	uip_input();
+	CHECK(uip_conn_active(0),
+	      "URG segment: delivered inline, no out-of-bounds, connection survives");
+	CHECK(uip_len == 40 && rd32(TCPH->ackno) == cli_seq + 1,
+	      "URG segment: the byte is acknowledged, rcv_nxt moves by exactly one");
+}
+
+/* A GET with URG set and the urgent pointer inside the request. Delivered
+ * inline, httpd sees the whole request and serves the file; skipping the
+ * urgent bytes instead would leave it a request with its start missing. */
+static void scenario_urg_get(void)
+{
+	static const char get[] = "GET " FILE_NAME " HTTP/1.1\r\nHost: sw\r\n\r\n";
+
+	session_start(MSS_FULL);
+	cli_urgp = 4;
+	client_send(TCP_ACK | TCP_PSH | TCP_URG, get, (int)strlen(get));
+	cli_urgp = 0;
+	drain(MSS_FULL);
+	CHECK(first_body_mismatch() == -1,
+	      "URG GET: the request is read inline and the file is served");
 }
 
 
@@ -1425,6 +1478,8 @@ int main(int argc, char **argv)
 	scenario_malformed_tcp_options();
 	scenario_oversized_data_offset();
 	scenario_mss_zero();
+	scenario_urg_inline();
+	scenario_urg_get();
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();

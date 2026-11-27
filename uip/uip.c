@@ -1640,26 +1640,32 @@ uip_process(u8_t flag) __banked
       goto tcp_send_nodata;
     }
 
-    /* Check the URG flag. If this is set, the segment carries urgent
-       data that we must pass to the application. */
-    if((BUF->flags & TCP_URG) != 0) {
 #if UIP_URGDATA > 0
-      uip_urglen = (BUF->urgp[0] << 8) | BUF->urgp[1];
-      if(uip_urglen > uip_len) {
-	/* There is more urgent data in the next segment to come. */
-	uip_urglen = uip_len;
+    /* Check the URG flag. If this is set, the segment carries urgent data
+       that we must pass to the application out of band. */
+    if((BUF->flags & TCP_URG) != 0) {
+      tmp16 = (BUF->urgp[0] << 8) | BUF->urgp[1];
+      if(tmp16 > uip_len) {
+	/* There is more urgent data in the next segment to come. Cap the
+	   urgent data length at the segment length for further processing. */
+	tmp16 = uip_len;
       }
+      uip_urglen = tmp16;
       uip_add_rcv_nxt(uip_urglen);
       uip_len -= uip_urglen;
       uip_urgdata = uip_appdata;
       uip_appdata += uip_urglen;
     } else {
       uip_urglen = 0;
-#else /* UIP_URGDATA > 0 */
-      uip_appdata = ((char *)uip_appdata) + ((BUF->urgp[0] << 8) | BUF->urgp[1]);
-      uip_len -= (BUF->urgp[0] << 8) | BUF->urgp[1];
-#endif /* UIP_URGDATA > 0 */
     }
+#else /* UIP_URGDATA > 0 */
+    /* The urgent pointer is ignored and any urgent data is delivered to the
+       application inline, as RFC 6093 (Section 2.1) recommends. Advancing
+       uip_appdata past it by the urgent pointer instead moved the pointer
+       outside uip_buf (CVE-2020-17437) and left rcv_nxt short of the bytes
+       so consumed. uip_len then carries the whole segment to the normal data
+       path below, which acknowledges it. */
+#endif /* UIP_URGDATA > 0 */
 
     /* If uip_len > 0 we have TCP data in the packet, and we flag this
        by setting the UIP_NEWDATA flag and update the sequence number
