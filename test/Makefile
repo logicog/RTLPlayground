@@ -95,7 +95,9 @@ $(BUILDDIR)/test_httpd_tx: $(SRCROOT)/sessions.c
 
 $(BUILDDIR)/test_startup_crlf: test_startup_crlf.py $(SRCROOT)/cmd_parser.c $(SRCROOT)/rtl837x_common.h | $(BUILDDIR)
 	python3 $< --emit > $(BUILDDIR)/startup_crlf.c
-	$(CC) $(CFLAGS) $(BUILDDIR)/startup_crlf.c -o $@ $(LDFLAGS) -no-pie
+	$(CC) $(CFLAGS) $(BUILDDIR)/startup_crlf.c $(SRCROOT)/passwd_hash.c -o $@ $(LDFLAGS) -no-pie
+
+$(BUILDDIR)/test_httpd_tx $(BUILDDIR)/test_startup_crlf: $(SRCROOT)/passwd_hash.c $(SRCROOT)/passwd_hash.h $(SRCROOT)/httpd/request_buffer.h $(SRCROOT)/crypto/blake3.h
 
 # CPU VLAN initialization with full and reduced user-port ranges.
 $(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DMACHINE_MAX_PORT=7

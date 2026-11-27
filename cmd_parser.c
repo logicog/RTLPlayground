@@ -7,6 +7,7 @@
 
 #include <8051.h>
 #include "cmd_parser.h"
+#include "passwd_hash.h"
 #include "rtl837x_common.h"
 #include "rtl837x_port.h"
 #include "rtl837x_flash.h"
@@ -50,8 +51,6 @@ extern __code const uint8_t * __code const hex;
 
 extern __xdata uint8_t flash_buf[FLASH_BUF_SIZE];
 extern __xdata struct flash_region_t flash_region;
-
-extern __xdata char passwd[21];
 
 extern __xdata uint16_t session_timeout;
 
@@ -1489,14 +1488,7 @@ void parse_passwd(void)
 {
 	// cmd_words_len can be more then 2 if a SPACE in the password.
 	if (cmd_words_len >= 2) {
-		uint8_t i = cmd_words_b[1];		
-		uint8_t c = 0;
-		uint8_t j = 0;
-		do {
-			c = cmd_buffer[i++];
-			passwd[j++] = c;
-		} while (c != NUL && j < 20);
-		passwd[j] = NUL;
+		passwd_set(cmd_buffer + cmd_words_b[1]);
 		/* Logins made with the old password end here. With one session the next
 		 * login pushed a leftover one out; with several it would stay valid. */
 		session_init();
@@ -2156,7 +2148,6 @@ void clear_command_history(void) __banked
 
 
 #define FLASH_READ_BURST_SIZE 0x100
-#define PASSWORD "1234"
 
 #if CONFIG_LEN % FLASH_READ_BURST_SIZE
 	#error "CONFIG_LEN not a multiple of FLASH_READ_BURST_SIZE"
@@ -2167,7 +2158,7 @@ void execute_config(void) __banked
 	__xdata uint8_t pages_left = CONFIG_LEN / FLASH_READ_BURST_SIZE;
 
 	// Set default password, it can be overwritten in the configuration file
-	strtox(passwd, PASSWORD);
+	passwd_reset();
 	save_cmd = 0;
 
 	uint8_t cmd_idx = 0;

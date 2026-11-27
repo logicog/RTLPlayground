@@ -15,13 +15,14 @@ harness=r"""
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include "httpd/request_buffer.h"
 #include "rtl837x_common.h"
 """ + words + r"""
 #define FLASH_READ_BURST_SIZE 256
-#define PASSWORD "test-default"
 uint8_t flash_buf[FLASH_READ_BURST_SIZE],cmd_buffer[CMD_BUF_SIZE],save_cmd,err_status;
-char passwd[21],image[CONFIG_LEN],seen[16][CMD_BUF_SIZE];int count;
+char image[CONFIG_LEN],seen[16][CMD_BUF_SIZE];int count;
 struct {uint32_t addr;uint16_t len;} flash_region;
+union http_request_buffer request_buf;
 uint16_t strtox(uint8_t*d,const char*s){strcpy((char *)d,s);return strlen(s);}
 void flash_read_bulk(uint8_t*d){memcpy(d,image+(flash_region.addr-CONFIG_START),FLASH_READ_BURST_SIZE);}
 void print_string(const char*s){(void)s;}
@@ -33,6 +34,12 @@ void session_init(void){}
 bool strstart(const uint8_t *line, const uint8_t *prefix)
 {
 	return strncmp((const char *)line, (const char *)prefix, strlen((const char *)prefix)) == 0;
+}
+void blake3_digest(struct blake3_work *work, uint8_t len)
+{
+	static const char input[] = "\0xyztest";
+	assert(len == sizeof(input) - 1 && !memcmp(work->block, input, len));
+	memcpy(work->block, "0123456789abcdef", 16);
 }
 void parse_passwd(void);
 void cmd_parser(void)
@@ -58,8 +65,15 @@ run("one\0ignored");assert(count==1&&!strcmp(seen[0],"one"));
 char longline[300];memset(longline,'x',sizeof longline);strcpy(longline+280,"\r\nok\r\n");run(longline);assert(count==1&&!strcmp(seen[0],"ok"));
 /* CR at the end of a flash burst, LF at the start of the next. */
 char boundary[300];memset(boundary,'\n',255);strcpy(boundary+255,"\r\nok\r\n");run(boundary);assert(count==1&&!strcmp(seen[0],"ok"));
-run("passwd first\npasswd blake3 old");
-assert(!strcmp(passwd, "blake3 old"));
+#define RECORD "passwd blake3 1 0078797a 30313233343536373839616263646566"
+run("passwd old\n  " RECORD);
+assert(passwd_login("pwd=test", sizeof("pwd=test") - 1) == PASSWD_LOGIN_PENDING);
+passwd_hash_step();
+assert(!passwd_hash_busy && passwd_hash_finish() == PASSWD_LOGIN_ACCEPTED);
+run("");
+assert(passwd_login("pwd=1234", sizeof("pwd=1234") - 1) == PASSWD_LOGIN_ACCEPTED);
+run(RECORD "\npasswd blake3 old");
+assert(passwd_login("pwd=blake3+old", sizeof("pwd=blake3+old") - 1) == PASSWD_LOGIN_ACCEPTED);
 puts("startup CR/LF/CRLF, comments, NUL, overlong and burst-boundary cases passed");return 0;
 }
 """

@@ -75,7 +75,6 @@ __xdata uint16_t short_parsed;
 __xdata uint8_t postbody_endpoint;
 static __xdata struct timer postbody_timer;
 
-__xdata char passwd[21];
 // Up to four logins at once, see sessions.c
 __xdata uint8_t authenticated;
 __xdata uint32_t now;
@@ -88,6 +87,7 @@ __xdata uint32_t now;
 #define TSTATE_MULTIPART	5
 #define TSTATE_POSTBODY		6
 #define TSTATE_HEADER		7
+#define TSTATE_PASSWORD_HASH	8
 
 extern __xdata uint16_t crc_value;
 __xdata uint16_t crc_final;
@@ -102,6 +102,7 @@ inline uint8_t is_separator(uint8_t c)
 
 void httpd_init(void) __banked
 {
+	passwd_hash_pending = 0;
 	config_upload = 0; // xdata is not zeroed by the startup code
 	// Start listening to port 80
 	uip_listen(HTONS(80));
@@ -166,49 +167,6 @@ __xdata uint8_t *header_value(__xdata uint8_t *p, __code const uint8_t *name)
 	while (*p == ' ' || *p == '\t')
 		p++;
 	return p;
-}
-
-
-bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
-{
-	uint8_t u, s;
-
-	while(1) {
-		u = *uri_str_p++;
-		s = *src_str_p++;
-
-		if (s == NUL) {
-			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
-				return false;
-			return true;
-		}
-
-		if (u == '%') {
-			bool again = true;
-			u = 0;
-
-			while(1) {
-				// Swap instruction is fine for rotation
-				u = (u << 4) | (u >> 4);
-
-				uint8_t p = *uri_str_p++;
-				u |= p - '0' < 10 ? (p - '0') : (p - 'A' + 10);
-
-				// force `jbc`-instruction.
-				if (again) {
-					again = false;
-				} else {
-					break;
-				}
-			}
-		} else if (u == '+') {
-			u = ' ';
-		}
-
-		if (s != u) {
-			return false;
-		}
-	}
 }
 
 
@@ -623,9 +581,9 @@ static void run_cmd_body(__xdata uint8_t *body)
 }
 
 
-static void run_login_body(__xdata uint8_t *body)
+static void login_reply(enum passwd_login_result result)
 {
-	if (strstart(body, "pwd=") && is_url_word_x(body + 4, passwd)) {
+	if (result == PASSWD_LOGIN_ACCEPTED) {
 		dbg_string("Password accepted!\n");
 		read_reg_timer(&now);
 		slen = strtox(outbuf, "HTTP/1.1 302 Found\r\nConnection: close\r\nLocation: index.html\r\n" \
@@ -638,6 +596,16 @@ static void run_login_body(__xdata uint8_t *body)
 	}
 }
 
+
+static void run_login_body(__xdata uint8_t *body)
+{
+	enum passwd_login_result result = passwd_login(body, content_length);
+	if (result == PASSWD_LOGIN_PENDING) {
+		uip_conn->appstate.tstate = TSTATE_PASSWORD_HASH;
+	} else {
+		login_reply(result);
+	}
+}
 
 static uint8_t post_body_take(__xdata uint8_t *p)
 {
@@ -858,6 +826,9 @@ void httpd_appcall(void)
 	print_byte(s->tstate);
 	write_char(' ');
 #endif
+	if (s->tstate == TSTATE_PASSWORD_HASH && (uip_closed() || uip_aborted() || uip_timedout())) {
+		passwd_hash_cancel();
+	}
 	if(uip_connected()) {
 		dbg_string("Connected...\n");
 		s->tstate = TSTATE_NONE;
@@ -871,6 +842,12 @@ void httpd_appcall(void)
 		dbg_string("Connection aborted\n");
 		uip_close();
 		s->tstate = TSTATE_CLOSED;
+	} else if (s->tstate == TSTATE_PASSWORD_HASH) {
+		uip_len = 0;
+		if (uip_poll() && !passwd_hash_busy) {
+			login_reply(passwd_hash_finish());
+			goto do_send;
+		}
 	} else if (uip_poll()) {
 		uip_len = 0;
 		if (s->tstate == TSTATE_ACKED) {
@@ -942,7 +919,6 @@ void httpd_appcall(void)
 		cont_len = 0;
 		dbg_char('<'); dbg_short(uip_len); dbg_char('\n');
 		__xdata uint8_t *p = uip_appdata;
-		uint16_t body_off = 0;
 		// Mark end of request header with \0
 		p[uip_len] = 0;
 #ifdef DEBUG
@@ -951,6 +927,8 @@ void httpd_appcall(void)
 		dbg_char('\n');
 #endif
 		p = uip_appdata;
+		// Limit the offset's lifetime so SDCC can keep it in registers.
+		uint16_t body_off = 0;
 		if (s->tstate != TSTATE_MULTIPART && s->tstate != TSTATE_POSTBODY) {
 			if (s->tstate != TSTATE_HEADER)
 				pre_acc = 0;
@@ -966,9 +944,9 @@ void httpd_appcall(void)
 		if (s->tstate == TSTATE_MULTIPART || s->tstate == TSTATE_POSTBODY
 		    || is_word(config_buf, "POST")) {
 			handle_post(body_off);
-			// If this is an ongoing post stream, then wait for the next packet
-			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART
-			    || s->tstate == TSTATE_POSTBODY) {
+			// Wait for more POST data or for the password digest.
+			if (s->tstate == TSTATE_POST || s->tstate == TSTATE_MULTIPART || s->tstate == TSTATE_POSTBODY
+			    || s->tstate == TSTATE_PASSWORD_HASH) {
 				uip_len = 0;
 				return;
 			}

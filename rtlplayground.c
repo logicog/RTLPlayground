@@ -6,6 +6,7 @@
 #include "rtl837x_sfr.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_common.h"
+#include "httpd/request_buffer.h"
 #include "rtl837x_flash.h"
 #include "rtl837x_pins.h"
 #include "rtl837x_phy.h"
@@ -1220,7 +1221,7 @@ static void handle_tick(void)
 
 void idle(void)
 {
-	if (!(tick_pending || rx_irq || link_irq || cmd_available)) {
+	if (!(tick_pending || rx_irq || link_irq || cmd_available || passwd_hash_busy)) {
 		health_sleep_start();
 		PCON |= 1;
 		health_sleep_end();
@@ -1260,6 +1261,10 @@ void idle(void)
 		print_cmd_prompt();
 	}
 	health_phase(HEALTH_PH_CMD);
+	// One digest per pass lets RX, link changes and protocol timers run during login.
+	if (passwd_hash_busy) {
+		passwd_hash_step();
+	}
 }
 
 
