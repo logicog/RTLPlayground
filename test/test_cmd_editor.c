@@ -65,10 +65,53 @@ static void test_full_line_no_overflow(void) {
     CHECK(1, "128-char line + Enter completes without ASan overflow");
 }
 
+static void test_unknown_escape(const char *name, const char *seq) {
+    printf("[test] %s does not hang the editor\n", name);
+    env_reset();
+    feed("ab");
+    watchdog_arm(5, name);
+    feed(seq);
+    watchdog_disarm();
+    feed("c\n");
+    CHECK(cmd_available == 1, "the line after the sequence is accepted");
+    CHECK(t_strcmp((char *)cmd_buffer, "abc") == 0, "the sequence leaves the line as it was");
+}
+
+static void test_escape_in_pieces(void) {
+    printf("[test] Delete arriving in two pieces still deletes\n");
+    env_reset();
+    feed("abc\033[D");
+    watchdog_arm(5, "split Delete sequence");
+    feed("\033[3");
+    feed("~");
+    watchdog_disarm();
+    feed("\n");
+    CHECK(t_strcmp((char *)cmd_buffer, "ab") == 0, "cursor-left then a split Delete removes the 'c'");
+}
+
+static void test_escape_then_enter(void) {
+    printf("[test] Enter inside an unfinished sequence is kept\n");
+    env_reset();
+    feed("ab");
+    watchdog_arm(5, "unfinished sequence before Enter");
+    feed("\033[1\n");
+    watchdog_disarm();
+    CHECK(cmd_available == 1, "Enter after an unfinished sequence still ends the line");
+    CHECK(t_strcmp((char *)cmd_buffer, "ab") == 0, "the unfinished sequence adds nothing to the line");
+}
+
 int main(void) {
     printf("== cmd_editor host tests ==\n");
     test_basic_line();
     test_backspace();
+    test_unknown_escape("Home (ESC [ H)", "\033[H");
+    test_unknown_escape("Home (ESC [ 1 ~)", "\033[1~");
+    test_unknown_escape("F1 (ESC O P)", "\033OP");
+    test_unknown_escape("F5 (ESC [ 1 5 ~)", "\033[15~");
+    test_unknown_escape("Ctrl-Right (ESC [ 1 ; 5 C)", "\033[1;5C");
+    test_unknown_escape("a lone ESC", "\033");
+    test_escape_in_pieces();
+    test_escape_then_enter();
     test_full_line_no_hang();
     test_full_line_no_overflow();
     printf("\n%d checks, %d failed\n", tests_run, tests_failed);

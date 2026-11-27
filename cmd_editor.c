@@ -59,10 +59,19 @@ void cmd_edit(void) __banked
 					write_char('\010'); // BS works like cursor-left
 			}
 		} else if (sbuf[l] == '\033') { // ESC-Sequence
-			// Wait until we have at least 3 characters including the ESC character in the serial buffer
-			if (((sbuf_ptr + SBUF_SIZE - l) & SBUF_MASK) < 3)
+			static __xdata uint8_t seq_len, seq_type, i;
+			seq_len = (sbuf_ptr - l) & SBUF_MASK;
+			seq_type = sbuf[(l + 1) & SBUF_MASK];
+			if (seq_len < 2)
+				break;
+			if (seq_type != '[' && seq_type != 'O') {
+				l++;
+				l &= SBUF_MASK;
 				continue;
-			if (((sbuf_ptr > l ? sbuf_ptr - l : SBUF_SIZE + sbuf_ptr - l) >= 4)
+			}
+			if (seq_len < 3)
+				break;
+			if (seq_len >= 4
 				   && sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == '3' && sbuf[(l + 3) & SBUF_MASK] == '~') { // DEL
 				if (cursor < cmd_line_len) {
 					write_char('\033'); write_char('['); write_char('1'); write_char('P'); // Delete to end of line
@@ -169,7 +178,19 @@ void cmd_edit(void) __banked
 				l += 3;
 				l &= SBUF_MASK;
 				continue;
-			} else { // An unknown or not yet complete Escape sequence: wait
+			} else { // An unknown or not yet complete Escape sequence
+				i = 2;
+				if (seq_type == '[') {
+					while (i < seq_len && sbuf[(l + i) & SBUF_MASK] >= ' '
+					       && sbuf[(l + i) & SBUF_MASK] < '@')
+						i++;
+				}
+				if (i == seq_len)
+					break;
+				if (sbuf[(l + i) & SBUF_MASK] >= ' ')
+					i++;
+				l += i;
+				l &= SBUF_MASK;
 				continue;
 			}
 		} else if (sbuf[l] == 127 || sbuf[l] == 8) {  // Backspace DEL or BS/^H
