@@ -78,3 +78,20 @@ Bottom side:
 - RTL8372N (DRQFN) with RTL8224N PHYs
 - 12 V / 1 A external supply, 4.0/1.7 mm DC plug
 - plastic case, unpopulated reset button footprint
+
+## LEDs
+
+| Ports | LED |
+|---|---|
+| RJ45 1-4 | green = 2.5G, amber = 10M/100M/1G |
+| SFP+ 5-6 | one white LED per cage, it looks slightly blue |
+
+The two copper led-sets differ only in slot order because ports 1-2 are wired the
+other way round.
+
+**Open point (needs hardware verification):** each SFP+ cage carries a single LED,
+but the board definition currently assigns the lower speeds to a second led-set slot.
+If that slot really drives nothing, a 1G/2.5G module would not light the cage at all.
+Flashing a 1G or 2.5G module is required to settle this; only 10G modules were
+available at the time of writing, and a 10GBASE-T module always presents 10G to the
+host, so it cannot answer the question.
