@@ -878,7 +878,7 @@ void parse_mirror(void)
 		goto err;
 
 	// The first argument is the mirroring (monitor) port
-	uint8_t ret = cmd_parse_port(cmd_words_b[1]);
+	uint8_t ret = cmd_parse_port_separator(cmd_words_b[1]);
 	if (ret == 0)
 		goto err;
 	mirroring_port = atoi_results_u8;
@@ -895,6 +895,10 @@ void parse_mirror(void)
 		port = atoi_results_u8;
 
 		ret = cmd_buffer[idx];
+		if (ret == 't' || ret == 'r')
+			idx++;
+		if (!cmd_is_space_or_nul(idx))
+			goto err;
 		uint16_t pmask = ((uint16_t)1) << port;
 		if (ret != 't')
 			rx_pmask |= pmask;
