@@ -5056,7 +5056,7 @@ var CONF_OVERWRITE = [
     /^port\s+\d{1,2}(?!\s+(name|lldp)\b)/, /^port\s+\d{1,2}\s+name\b/,
     /^mirror\b/,
     /^lag\s+\d\b/, /^laghash\s+\d\b/, /^isolate\s+\d{1,2}\b/,
-    /^stp\s+(prio|hello|maxage|fwd|txhold|version)\b/,
+    /^stp\s+(prio|hello|maxage|fwd|txhold|version|pathcost|bpdu)\b/,
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
     /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
 ];
