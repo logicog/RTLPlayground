@@ -16,7 +16,7 @@
 #define SESSION_TIMEOUT_DEFAULT 3600
 
 /* Seconds of inactivity after which a session cookie stops validating.
- * Configurable with the "session" command, see cli/cmd_parse_session.c. */
+ * Configurable with the "session" command, see cli/cmd_parse_1.c. */
 __xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 
 #define CMARK_S 6
