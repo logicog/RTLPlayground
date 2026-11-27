@@ -525,7 +525,7 @@ class Handler(SimpleHTTPRequestHandler):
         state['lacp_ports'] = lacp_ports
     def _parse_lldp(self, pieces):
         global state
-        state.lldp_enabled = (pieces[0] == "on")
+        state["lldp_enabled"] = (pieces[0] == "on")
 
     def _parse_ntp(self, pieces):
         global state
@@ -743,7 +743,7 @@ class Handler(SimpleHTTPRequestHandler):
         global state
         vlan_id = self._int_param(query, "vid")
 
-        vlan = state["vlans"][vlan_id]
+        vlan = state["vlans"].get(vlan_id)
         if vlan and vlan["active"]:
             return {
                 "name": vlan["name"],
