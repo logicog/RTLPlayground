@@ -220,6 +220,8 @@ void handle_sfp(void) __banked
 			}
 		}
 
+		if (machine.sfp_port[sfp].pin_los == GPIO_NA)
+			continue;
 		if (!gpio_pin_test(machine.sfp_port[sfp].pin_los)) {
 			if (sfp_pins_last & (0x2 << (sfp << 2))) { // 0x2 0x08
 				sfp_pins_last &= ~(0x02 << (sfp << 2));
