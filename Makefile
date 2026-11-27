@@ -59,11 +59,11 @@ else ifneq ($(strip $(MACHINE)),)
 	FRIENDLY_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 0 then error("MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR)") elif length == 1 then .[0].friendly_name else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
 	MACHINE_PCB_NAME := $(shell jq -er --arg machine "$(MACHINE)" '[.[] | select(.machine == $$machine)] | if length == 0 then error("MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR)") elif length == 1 then .[0].pcb else error("expected exactly one machine entry") end' $(MACHINE_DESCRIPTOR))
 	ifeq ($(strip $(FRIENDLY_NAME)),)
-	$(error MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR))
+    $(error MACHINE='$(MACHINE)' has no valid entry in $(MACHINE_DESCRIPTOR))
 	endif
 	MACHINE_SRC = machine/pcb/$(MACHINE_PCB_NAME).c
 	else
-	$(error Machine registry $(MACHINE_DESCRIPTOR) does not exist)
+    $(error Machine registry $(MACHINE_DESCRIPTOR) does not exist)
 	endif
 else
 	MACHINE_SRC =
