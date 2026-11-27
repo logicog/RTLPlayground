@@ -1,6 +1,8 @@
 #include "cmd_parse_1.h"
 #include "cmd_parse_util.h"
 #include "cmd_parse_2_debug.h"
+#include "cmd_parse_2_feature.h"
+#include "cmd_parse_2_show.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
@@ -1841,10 +1843,22 @@ void cmd_parse_debug(void) {
 		cmd_parse_debug_sdsset();
 	}
 }
-void cmd_parse_feature(void) {
 
+void cmd_parse_feature(void) {
+	if (cmd_words_len < 2)
+		return;
+	if (cmd_compare(1, "igmp")) {
+		cmd_parse_feature_igmp();
+	} else if (cmd_compare(1, "lldp")) {
+		cmd_parse_feature_lldp();
+	} else if (cmd_compare(1, "stp")) {
+		cmd_parse_feature_stp();
+	}
 }
+
 void cmd_parse_lag(void) {
+	if (cmd_words_len < 2)
+		return;
 
 }
 void cmd_parse_help(void) {
@@ -1857,7 +1871,32 @@ void cmd_parse_remove(void) {
 
 }
 void cmd_parse_show(void) {
+	if (cmd_words_len < 2)
+		return;
 
+	if (cmd_compare(1, "bw")) {
+		cmd_parse_show_bw();
+	} else if (cmd_compare(1, "debug")) {
+		cmd_parse_show_debug();
+	} else if (cmd_compare(1, "eee")) {
+		cmd_parse_show_eee();
+	} else if (cmd_compare(1, "feature")) {
+		cmd_parse_show_feature();
+	} else if (cmd_compare(1, "lag")) {
+		cmd_parse_show_lag();
+	} else if (cmd_compare(1, "mirror")) {
+		cmd_parse_show_mirror();
+	} else if (cmd_compare(1, "port")) {
+		cmd_parse_show_port();
+	} else if (cmd_compare(1, "port-isolation")) {
+		cmd_parse_show_port_isolation();
+	} else if (cmd_compare(1, "status")) {
+		cmd_parse_show_status();
+	} else if (cmd_compare(1, "system")) {
+		cmd_parse_show_system();
+	} else if (cmd_compare(1, "vlan")) {
+		cmd_parse_show_vlan();
+	}
 }
 void cmd_parse_stp(void) {
 

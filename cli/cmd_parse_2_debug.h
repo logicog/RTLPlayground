@@ -1,5 +1,5 @@
-#ifndef FORK_CMD_PARSE_DEBUG_H
-#define FORK_CMD_PARSE_DEBUG_H
+#ifndef _CMD_PARSE_DEBUG_H
+#define _CMD_PARSE_DEBUG_H
 #include "cmd_parse_util.h"
 
 void cmd_parse_debug_cabletest(void);
