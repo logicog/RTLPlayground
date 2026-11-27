@@ -368,5 +368,10 @@
     "machine": "SODOLA_SL_SWTGW0108P",
     "friendly_name": "Sodola SL-SWTGW0108P",
     "pcb": "S1100W_8GT_1SX_73N_V1_04"
+  },
+  {
+    "machine": "ZX-SWTG024AS",
+    "friendly_name": "ZX-SWTG024AS",
+    "pcb": "PCB_SWTG024AS_V1_0_16584"
   }
 ]
