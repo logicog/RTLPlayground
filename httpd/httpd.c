@@ -1,5 +1,6 @@
 
 #include "httpd.h"
+#include "request_buffer.h"
 #include "page_impl.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
@@ -52,9 +53,9 @@ __xdata uint8_t boundary[72];
 // a client may split the request anywhere, including inside a boundary or a
 // part header, so a configuration upload is parsed only once it is complete;
 // sized for a full config sector plus the multipart framing around it
-#define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 __xdata uint8_t config_upload;
-__xdata uint8_t config_buf[CONFIG_UPLOAD_BUF];
+__xdata union http_request_buffer request_buf;
+#define config_buf (request_buf.bytes)
 // bytes buffered in config_buf so far (HTTP header, POST body, or a firmware
 // part header); accumulates across TCP segments
 __xdata uint16_t pre_acc;
