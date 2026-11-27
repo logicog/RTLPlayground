@@ -44,7 +44,10 @@ TABLE_ENV = support.c hw_mock.c env_tables.c $(SRCROOT)/cmd_editor.c \
             $(SRCROOT)/rtl837x_port.c $(SRCROOT)/httpd/page_impl.c \
             $(SRCROOT)/httpd/html_out.c
 
-all: run
+all: run stp
+
+stp:
+	$(MAKE) -C stp
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
@@ -105,5 +108,6 @@ run: $(TESTS)
 
 clean:
 	rm -rf $(BUILDDIR)
+	$(MAKE) -C stp clean
 
-.PHONY: all run clean
+.PHONY: all run stp clean
