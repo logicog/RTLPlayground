@@ -4699,6 +4699,10 @@ function scApply(n) {
             u = $("scu" + ty + n).value,
             v = inp.value.trim(),
             want = "off";
+        if (inp.validity.badInput) {
+            toast(t("sc_err"), "err");
+            return;
+        }
         if (v !== "" && v !== "0") {
             var x = Number(v);
             if (!Number.isInteger(x) || x < 1 || (u === "pps" && x > 1048575) || (u === "kbps" && x > 10000000)) {
