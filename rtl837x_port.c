@@ -629,6 +629,7 @@ void port_eee_enable(__xdata uint8_t port,__xdata uint8_t speed) __banked
 	// Enable all speeds up to the specified speed
 	if (speed & EEE_100) {
 			print_string("100m\n");
+			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV2, 0);
 			// Enable EEE advertisement for 100BASE-T via EEE Advertisement Reg
 			phy_write(port, PHY_MMD_AN, PHY_EEE_ADV, PHY_EEE_BIT_100M);
 			if (!(speed & EEE_NORESET))
