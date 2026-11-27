@@ -13,7 +13,7 @@
 
 extern __code const struct machine machine;
 
-// Temporatly for str to hex convertion value.
+// Temporary for str to hex convertion value.
 // Support up to 32_bits.
 __xdata uint8_t hexvalue[4] = { 0 };
 
