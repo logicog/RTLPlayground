@@ -280,11 +280,6 @@ void cmd_parse_gw(void)
 		}
 	}
 }
-/*
- * "history" command
- */
-
-
 
 __xdata uint8_t cmd_history[CMD_HISTORY_SIZE];
 __xdata uint16_t cmd_history_ptr;
@@ -332,11 +327,6 @@ void cmd_history_save(void)
 		cmd_history[--p & CMD_HISTORY_MASK] = cmd_buffer[i];
 	} while (i);
 }
-/*
- * "hostname" command
- */
-
-
 
 void cmd_parse_hostname(void)
 {
@@ -361,11 +351,6 @@ void cmd_parse_hostname(void)
 		cmd_error("hostname [name] - the name must not contain spaces\n");
 	}
 }
-/*
- * "igmp" command
- */
-
-
 
 void cmd_parse_igmp(void)
 {
@@ -379,11 +364,6 @@ void cmd_parse_igmp(void)
 		cmd_error("igmp on|off|show\n");
 	}
 }
-/*
- * "ingress" command
- */
-
-
 
 bool vlan_ingress_mode_parse(char c, __xdata vlan_ingress_mode_t *mode)
 {
@@ -452,11 +432,6 @@ void cmd_parse_ingress(void)
 err:
 	cmd_error("ingress [p]<u/t/a>...\n");
 }
-/*
- * "ip" command
- */
-
-
 
 extern __xdata struct dhcp_state dhcp_state;
 
@@ -490,11 +465,6 @@ void cmd_parse_ip(void)
 		}
 	}
 }
-/*
- * "isolate" command
- */
-
-
 
 void cmd_parse_isolate(void)
 {
@@ -545,11 +515,6 @@ void cmd_parse_isolate(void)
 err:
 	cmd_error("isolate <port> [show|off] [port]...\n");
 }
-/*
- * "l2" command
- */
-
-
 
 void cmd_parse_l2(void)
 {
@@ -558,11 +523,6 @@ void cmd_parse_l2(void)
 	else
 		port_l2_learned();
 }
-/*
- * "lacp" command
- */
-
-
 
 void cmd_parse_lacp(void)
 {
@@ -573,11 +533,6 @@ void cmd_parse_lacp(void)
 	else
 		cmd_error("lacp (show | off); a group starts LACP with: lag <1-4> lacp <port>...\n");
 }
-/*
- * "lag" command
- */
-
-
 
 extern volatile __xdata uint8_t sfr_data[4];
 
@@ -655,11 +610,6 @@ void cmd_parse_lag(void)
 err:
 	cmd_error("lag (show | <1-4> (d | [lacp] <port>...))\n");
 }
-/*
- * "laghash" command
- */
-
-
 
 void cmd_parse_laghash(void)
 {
@@ -701,21 +651,11 @@ void cmd_parse_laghash(void)
 err:
 	cmd_error("laghash <1-4> [smac|dmac|sip|dip|sport|dport]\n");
 }
-/*
- * "leds" command
- */
-
-
 
 void cmd_parse_leds(void)
 {
 	leds_dump();
 }
-/*
- * "lldp" command
- */
-
-
 
 extern __xdata bool lldp_enabled;
 
@@ -735,11 +675,6 @@ void cmd_parse_lldp(void)
 		cmd_error("Usage: lldp on|off\n");
 	}
 }
-/*
- * "mac" command
- */
-
-
 
 extern __xdata uint16_t management_vlan;
 
@@ -781,11 +716,6 @@ void cmd_parse_mac(void)
 	write_char('\n');
 	print_string("Save the startup config to keep it across reboots\n");
 }
-/*
- * "mirror" command
- */
-
-
 
 extern volatile __xdata uint8_t sfr_data[4];
 
@@ -859,11 +789,6 @@ err:
 	cmd_error("Port/command missing: mirror [status/off/<mirroring port> [port][t/r]]...\n");
 	return;
 }
-/*
- * "mtu" command
- */
-
-
 
 void cmd_parse_mtu(void)
 {
@@ -900,11 +825,6 @@ err:
 	cmd_error("mtu [port] [size]\n");
 	return;
 }
-/*
- * "netmask" command
- */
-
-
 
 void cmd_parse_netmask(void)
 {
@@ -922,14 +842,6 @@ void cmd_parse_netmask(void)
 	}
 	write_char('\n');
 }
-/*
- * Command line interface of the NTP client for the RTL837x platform
- * This code is in the Public Domain
- */
-
-
-
-
 
 static uint8_t ntp_cli_server(void) __reentrant
 {
@@ -1029,11 +941,6 @@ void cmd_parse_ntp(void) __banked __reentrant
 err:
 	print_string("Error: ntp [on|off|server <name>|interval <1-1440>|timezone <+hh:mm>|dst off|eu|us]\n");
 }
-/*
- * "passwd" command
- */
-
-
 
 extern __xdata char passwd[21];
 
@@ -1056,11 +963,6 @@ void cmd_parse_passwd(void)
 	}
 	cmd_error("Missing password\n");
 }
-/*
- * "phyget" command
- */
-
-
 
 void cmd_parse_phyget(void)
 {
@@ -1109,11 +1011,6 @@ err:
 	cmd_error("phyget <phy-id> <dev-id> <hex:reg>\n");
 	return;
 }
-/*
- * "physet" command
- */
-
-
 
 void cmd_parse_physet(void)
 {
@@ -1173,11 +1070,6 @@ err:
 	cmd_error("physet <phy-id> <dev-id> <hex:reg> <hex:val>\n");
 	return;
 }
-/*
- * "port" command
- */
-
-
 
 extern __code const struct machine machine;
 extern __xdata bool lldp_enabled;
@@ -1300,11 +1192,6 @@ void cmd_parse_port(void)
 		cmd_error("Unknown port command\n");
 	}
 }
-/*
- * "pvid" command
- */
-
-
 
 void cmd_parse_pvid(void)
 {
@@ -1315,11 +1202,6 @@ void cmd_parse_pvid(void)
 		cmd_error("pvid <port> <0-4094>\n");
 	}
 }
-/*
- * "regget" command
- */
-
-
 
 void cmd_parse_regget(void)
 {
@@ -1352,11 +1234,6 @@ err:
 	cmd_error("regget <hexvalue>\n\tlike: regget 0BB0 or regget 0c");
 	return;
 }
-/*
- * "regset" command
- */
-
-
 
 extern volatile __xdata uint8_t sfr_data[4];
 
@@ -1404,22 +1281,12 @@ void cmd_parse_regset(void)
 err:
 	cmd_error("regset <hexvalue> <hexvalue>\n\tlike regset 0b abcd1234.");
 }
-/*
- * "reset" command
- */
-
-
 
 void cmd_parse_reset(void)
 {
 	print_string("\nRESET\n\n");
 	reset_chip();
 }
-/*
- * "rnd" command
- */
-
-
 
 extern volatile __xdata uint8_t sfr_data[4];
 
@@ -1437,22 +1304,12 @@ void cmd_parse_rnd(void)
 	print_byte(sfr_data[3]);
 	write_char('\n');
 }
-/*
- * "sds" command
- */
-
-
 
 void cmd_parse_sds(void)
 {
 	print_reg(RTL837X_REG_SDS_MODES);
 	write_char('\n');
 }
-/*
- * "sdsget" command
- */
-
-
 
 void cmd_parse_sdsget(void)
 {
@@ -1496,11 +1353,6 @@ err:
 	cmd_error("sdsget <sds-id> <hex:page> <hex:reg>\n");
 	return;
 }
-/*
- * "sdsset" command
- */
-
-
 
 void cmd_parse_sdsset(void)
 {
@@ -1556,11 +1408,6 @@ err:
 	cmd_error("sdsset <sds-id> <hex:page> <hex:reg> <hex:val>\n");
 	return;
 }
-/*
- * "session" command
- */
-
-
 
 extern __xdata uint16_t session_timeout;
 
@@ -1581,11 +1428,6 @@ void cmd_parse_session(void)
 	itoa_short(session_timeout);
 	print_string(" s\n");
 }
-/*
- * "sfp" command
- */
-
-
 
 extern __code const struct machine machine;
 
@@ -1673,21 +1515,11 @@ void cmd_parse_sfp(void)
 err:
 	cmd_error("\nUsage:\n\tsfp\n\tsfp [1|2] [1g|2g5|10g]\n");
 }
-/*
- * "stat" command
- */
-
-
 
 void cmd_parse_stat(void)
 {
 	port_stats_print();
 }
-/*
- * "storm" command
- */
-
-
 
 static __code const char * __code const storm_types[STORM_TYPES] = { "bcast", "mcast", "ucast", "umcast" };
 
@@ -1739,18 +1571,9 @@ void cmd_parse_storm(void)
 err:
 	cmd_error("usage: storm [<port> bcast|mcast|ucast|umcast <rate> pps|kbps|off]\n");
 }
-/*
- * Command line interface of the Spanning Tree Protocol for the RTL837x platform
- * This code is in the Public Domain
- */
-
-
-
-
 
 __xdata uint32_t stp_cli_cost;
 __xdata uint8_t  stp_cli_val;
-
 
 void cmd_parse_stp(void) __banked __reentrant
 {
@@ -1958,11 +1781,6 @@ err:
 	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: stp on|off|status|clear | prio <0-15> | hello <1-10> | maxage <6-40> | fwd <4-30> | txhold <1-10> | version rstp|stp | pathcost long|short | bpdu filter|flood | port <1-9>|lag <1-4> on|off|mcheck|edge|cost|prio|guard|filter ...\n");
 }
-/*
- * "syslog" command
- */
-
-
 
 /* Scratch for cmd_parse_syslog(), in xdata: a local here would take internal RAM
  * the linker has none of. */
@@ -2035,11 +1853,6 @@ void cmd_parse_syslog(void)
 			  "  port sets the destination UDP port (default 514)\n");
 	}
 }
-/*
- * "temp" command
- */
-
-
 
 static void print_temperature(uint16_t reg)
 {
@@ -2064,11 +1877,6 @@ void cmd_parse_temp(void)
 	print_string("At power-on:      ");
 	print_temperature(RTL837X_TM_RESULT_POWERON);
 }
-/*
- * "version" command
- */
-
-
 
 extern __code const struct machine machine;
 
@@ -2087,11 +1895,6 @@ void cmd_parse_version(void)
 {
 	print_sw_version();
 }
-/*
- * "vlan" command
- */
-
-
 
 extern __code const uint8_t * __code const hex;
 extern __xdata struct dhcp_state dhcp_state;
