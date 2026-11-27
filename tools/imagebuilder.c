@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 			printf("Expected LJMP at offset 0.\n");
 			return 5;
 	}
-	for (int b = BANK0_SIZE; b < BANK_STRIDE + BANK0_SIZE; b ++) {
+	for (int b = BANK0_SIZE - OFFSET; b < BANK_STRIDE + BANK0_SIZE; b ++) {
 		if (buffer[b]) {
 			printf("Error: Bank 0: code segment too large at 0x%x!\n", b);
 			return 5;
