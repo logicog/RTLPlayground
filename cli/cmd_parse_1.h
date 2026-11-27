@@ -1,6 +1,9 @@
 #ifndef _CMD_PARSE_1_H
 #define _CMD_PARSE_1_H
 
+// #define DEBUG
+// #define REGDBG 1
+
 #include "dns.h"
 #include "machine.h"
 #include "ntp.h"

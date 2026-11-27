@@ -10,7 +10,7 @@
 #include "uip.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_stp.h"
-#include "cli/cmd_parse_stp.h"
+#include "cli/cmd_parse_1.h"
 
 #define NPORTS 9 /* indices 0..8, front-panel 1..9 */
 #define PORT(n) ((n) - 1)
