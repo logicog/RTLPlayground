@@ -5,21 +5,16 @@
 
 #include <stdint.h>
 #include "rtl837x_common.h"
-#include "cmd_parser.h"
+#include "cmd_parse_util.h"
+#include "cmd_parse_dns.h"
 #include "dns.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
-extern __xdata uint8_t cmd_words_len;
-extern __xdata uint8_t cmd_words_b[15];
-extern __xdata uint8_t ip[4];
-uint8_t cmd_compare(uint8_t start, __code const uint8_t * cmd);
-uint8_t parse_ip(uint8_t idx);
 
 
-void dns_parse(void) __banked __reentrant
+void cmd_parse_dns(void) __banked __reentrant
 {
 	__xdata uint8_t *s;
 	uint8_t n;

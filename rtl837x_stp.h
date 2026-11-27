@@ -7,7 +7,6 @@ void stp_in(void) __banked;
 void stp_setup(void) __banked;
 void stp_timers(void) __banked;
 void stp_off(void) __banked;
-void stp_parse(void) __banked __reentrant;
 void stp_defaults(void) __banked;
 void stp_status(void) __banked;
 void stp_port_admin(uint8_t port) __banked;

@@ -5,18 +5,13 @@
 
 #include <stdint.h>
 #include "rtl837x_common.h"
-#include "cmd_parser.h"
+#include "cmd_parse_util.h"
+#include "cmd_parse_ntp.h"
 #include "ntp.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
-extern __xdata uint8_t cmd_words_len;
-extern __xdata uint8_t cmd_words_b[15];
-extern __xdata uint16_t atoi_results_short;
-uint8_t cmd_compare(uint8_t start, __code const uint8_t * cmd);
-uint8_t atoi_short(uint8_t idx);
 
 
 static uint8_t ntp_cli_server(void) __reentrant
@@ -65,7 +60,7 @@ static uint8_t ntp_cli_timezone(void) __reentrant
 }
 
 
-void ntp_parse(void) __banked __reentrant
+void cmd_parse_ntp(void) __banked __reentrant
 {
 	if (cmd_compare(0, "time")) {
 		ntp_show_time();

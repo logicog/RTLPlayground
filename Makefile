@@ -172,6 +172,7 @@ create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)"
 	mkdir -p "$(BUILDDIR)/uip"
 	mkdir -p "$(BUILDDIR)/httpd"
+	mkdir -p "$(BUILDDIR)/cli"
 	mkdir -p "$(BUILDDIR)/machine"
 	mkdir -p "$(BUILDDIR)/machine/pcb"
 	mkdir -p "$(BUILDDIR)/crypto"
@@ -209,17 +210,14 @@ SRCS = \
 	$(MACHINE_SRC) \
 	$(MACHINE_INIT_SRC) \
 	cmd_editor.c \
-	cmd_parser.c \
 	dhcp.c \
 	html_data.c \
 	rtlplayground.c \
 	boot.c \
 	sfp.c \
 	dns.c \
-	dns_cli.c \
 	sessions.c \
 	ntp.c \
-	ntp_cli.c \
 	syslog.c \
 	timer.c \
 	udp_apps.c \
@@ -242,8 +240,64 @@ SRCS += \
 	rtl837x_lldp.c \
 	rtl837x_storm.c \
 	rtl837x_lacp.c \
-	rtl837x_trap.c \
-	rtl837x_stp_cli.c
+	rtl837x_trap.c
+# Command line parser. cli/cmd_parser.c tokenizes the line and dispatches on its
+# first word, the verb; cli/cmd_parse_<verb>.c parses the rest of the command.
+# A new verb needs its name added to CLI_VERBS and a case in cli/cmd_parser.c.
+CLI_VERBS = \
+	bw \
+	dns \
+	eee \
+	factory_reset \
+	flash \
+	gpio \
+	gw \
+	history \
+	hostname \
+	igmp \
+	ingress \
+	ip \
+	isolate \
+	l2 \
+	lacp \
+	lag \
+	laghash \
+	leds \
+	lldp \
+	mac \
+	mirror \
+	mtu \
+	netmask \
+	ntp \
+	passwd \
+	phyget \
+	physet \
+	port \
+	pvid \
+	regget \
+	regset \
+	reset \
+	rnd \
+	sds \
+	sdsget \
+	sdsset \
+	session \
+	sfp \
+	stat \
+	storm \
+	stp \
+	syslog \
+	temp \
+	version \
+	vlan
+SRCS += \
+	cli/cmd_parser.c \
+	cli/cmd_parse_util.c \
+	$(CLI_VERBS:%=cli/cmd_parse_%.c)
+# The "health" command exists only with HEALTH=1
+ifneq ($(HEALTH),)
+SRCS += cli/cmd_parse_health.c
+endif
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c \

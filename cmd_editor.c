@@ -1,4 +1,4 @@
-#include "cmd_parser.h"
+#include "cli/cmd_parser.h"
 #include "machine.h"
 
 #pragma codeseg BANK2
