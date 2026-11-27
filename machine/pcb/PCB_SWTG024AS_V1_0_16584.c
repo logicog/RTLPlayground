@@ -1,3 +1,13 @@
+/*
+ * ZX-SWTG024AS on PCB-SWTG024AS-V1.0-16584 (RTL8372, 4 x 2.5G RJ45 + 2 x SFP+).
+ *
+ * Physical RJ45 1-4 map to logical 4-7. The left SFP+ cage (J4, SDS1, detect
+ * GPIO30) is logical 8, the right one (J2, SDS0, detect GPIO50) is logical 3.
+ *
+ * Copper LEDs: green for 2.5G, amber for 10M/100M/1G. Each SFP+ cage carries a
+ * single green LED, so every speed and the blink share that one slot.
+ */
+
 #define MACHINE_CHIPSET RTL8372
 #include "machine_defs.h"
 
