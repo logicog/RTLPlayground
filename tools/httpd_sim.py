@@ -101,6 +101,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/bandwidth.json": self._api_bandwidth,
             "/cmd_log": self._api_cmd_log,
             "/counters.json": self._api_counters,
+            "/dot1x.json": self._api_dot1x,
             "/debug": self._api_debug,
             "/eee.json": self._api_eee,
             "/information.json": self._api_information,
@@ -709,6 +710,32 @@ class Handler(SimpleHTTPRequestHandler):
             "lags": state["lags"],
             "ports": state["lacp_ports"]
             }
+
+    def _api_dot1x(self):
+        ports = []
+        for i in range(1, PORTS + 1):
+            p = {
+                "portNum": i,
+                "mode": "auto" if i == 2 else "force-unauth" if i == 3 else "off",
+                "action": "guest" if i == 3 else "drop",
+                "authorized": i == 2,
+            }
+            if i == 2:
+                p["state"] = "authenticated"
+                p["identity"] = "alice"
+                p["mab"] = True
+                p["viaMab"] = False
+                p["ok"] = 3
+                p["fail"] = 1
+            ports.append(p)
+        return {
+            "on": True,
+            "guest": 99,
+            "ports": ports,
+            "server": "192.168.1.10",
+            "serverPort": 1812,
+            "secretSet": True,
+        }
 
     def _api_lldp(self):
         return {
