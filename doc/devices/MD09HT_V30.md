@@ -51,11 +51,6 @@ port has no link; the activity LED follows the traffic.
 | RJ45 1-4 | green = 2.5G, amber = 10M/100M/1G |
 | SFP+ 5-6 | one white LED per cage, it looks slightly blue |
 
-| Ports | LED |
-|---|---|
-| RJ45 1-4 | green = 2.5G, amber = 10M/100M/1G |
-| SFP+ 5-6 | one white LED per cage, it looks slightly blue |
-
 The two copper led-sets differ only in slot order because ports 1-2 are wired the
 other way round.
 
