@@ -212,7 +212,7 @@ var LANG = {
         v_nomember: "Select at least one member port (or delete the VLAN instead)",
         v_vid_first: "Enter a VLAN ID first",
         v_mgmt_q: "Set VLAN {n} as management VLAN?",
-        v_vid_err: "VLAN ID already exists",
+        v_vid_dup: "VLAN ID already exists",
         v_mgmt_d: "The switch will start tagging its own traffic with that VLAN. If the port you are connected through does not carry it, this page becomes unreachable and the setting can only be undone over the console.",
         v_mgmt_tt: "The management VLAN cannot be deleted, you need to assign management to another VLAN first.",
         l2_title: "MAC address table",
@@ -3948,7 +3948,7 @@ function addVlan() {
     var vid = parseInt($("nvlid").value, 10);
     for (const r of $("vtable").tBodies[0].rows) {
         if (r.firstChild.firstChild.dataset.id == vid) {
-            toast(t("v_vid_err"), "err");
+            toast(t("v_vid_dup"), "err");
             return;
         }
     }
