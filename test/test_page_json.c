@@ -83,13 +83,18 @@ static void t_vlan(void)
 	port_pvid_set(0, 10);
 	port_pvid_set(2, 10);
 	port_pvid_set(4, 20);
-	send_vlan(10);
+	CHECK(!send_vlan(10), "a VLAN in the table is sent");
 	char want[32];
 	snprintf(want, sizeof want, "\"untagged_members\":[");
 	CHECK(has(want), "untagged_members is the entry word");
 	CHECK(has("\"name\":\"lab\""), "name comes from the name table");
 	CHECK(has("\"pvid\":[1,3]"), "pvid array has ports 1 and 3, not 5");
 	CHECK(balanced(), "valid JSON");
+
+	/* 4095 is reserved, and an overlong vid parses as 0xffff */
+	slen = 0;
+	CHECK(send_vlan(0xfff) && send_vlan(0xffff) && !slen,
+	      "an ID outside the table is an error and writes no entry");
 }
 
 static void t_vlanlist(void)
