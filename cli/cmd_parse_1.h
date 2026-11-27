@@ -1,6 +1,32 @@
 #ifndef _CMD_PARSE_1_H
 #define _CMD_PARSE_1_H
 
+#include "dns.h"
+#include "machine.h"
+#include "ntp.h"
+#include "phy.h"
+#include "rtl837x_bandwidth.h"
+#include "rtl837x_cabletest.h"
+#include "rtl837x_common.h"
+#include "rtl837x_flash.h"
+#include "rtl837x_igmp.h"
+#include "rtl837x_lacp.h"
+#include "rtl837x_leds.h"
+#include "rtl837x_lldp.h"
+#include "rtl837x_phy.h"
+#include "rtl837x_port.h"
+#include "rtl837x_regs.h"
+#include "rtl837x_sfr.h"
+#include "rtl837x_storm.h"
+#include "rtl837x_stp.h"
+#include "rtl837x_trap.h"
+#include "sessions.h"
+#include "sfp.h"
+#include <stdint.h>
+#include "uip/uip.h"
+#include "version.h"
+
+
 void cmd_parse_bw(void);
 void cmd_parse_dns(void) __banked __reentrant;
 void cmd_parse_eee(void);

@@ -1,4 +1,10 @@
-#include cmd_parse_1.h
+#include "cmd_parse_1.h"
+#include "cmd_parse_util.h"
+
+#define TIMES_OK(h, m, f)       ((uint16_t)2 * ((f) - 1) >= (m) && (m) >= (uint16_t)2 * ((h) + 1))
+
+#pragma codeseg BANK2
+#pragma constseg BANK2
 
 void cmd_parse_bw(void)
 {
@@ -7,6 +13,7 @@ void cmd_parse_bw(void)
 
 	if (cmd_arg_port_separator(cmd_words_b[2]) == 0)
 		goto err;
+
 	uint8_t port = atoi_results_u8;
 
 	if (cmd_compare(1, "status")) {

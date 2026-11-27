@@ -1,18 +1,8 @@
-/*
- * A Command parser for RTL Switch configuration
- *
- * This file tokenizes a command line and hands it to the parser of the verb,
- * the first word of the command. The verbs live in cmd_parse_<verb>.c, the
- * helpers they share in cmd_parse_util.c.
- */
-
 // #define DEBUG
 
 #include "cmd_parse_util.h"
 #include "cmd_parse_1.h"
 #include "cmd_parse_health.h"
-
-#include "cmd_parse_vlan.h"
 #include "rtl837x_flash.h"
 #include "version.h"
 

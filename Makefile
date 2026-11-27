@@ -241,59 +241,12 @@ SRCS += \
 	rtl837x_storm.c \
 	rtl837x_lacp.c \
 	rtl837x_trap.c
-# Command line parser. cli/cmd_parser.c tokenizes the line and dispatches on its
-# first word, the verb; cli/cmd_parse_<verb>.c parses the rest of the command.
-# A new verb needs its name added to CLI_VERBS and a case in cli/cmd_parser.c.
-CLI_VERBS = \
-	bw \
-	dns \
-	eee \
-	factory_reset \
-	flash \
-	gpio \
-	gw \
-	history \
-	hostname \
-	igmp \
-	ingress \
-	ip \
-	isolate \
-	l2 \
-	lacp \
-	lag \
-	laghash \
-	leds \
-	lldp \
-	mac \
-	mirror \
-	mtu \
-	netmask \
-	ntp \
-	passwd \
-	phyget \
-	physet \
-	port \
-	pvid \
-	regget \
-	regset \
-	reset \
-	rnd \
-	sds \
-	sdsget \
-	sdsset \
-	session \
-	sfp \
-	stat \
-	storm \
-	stp \
-	syslog \
-	temp \
-	version \
-	vlan
+
 SRCS += \
 	cli/cmd_parser.c \
 	cli/cmd_parse_util.c \
-	$(CLI_VERBS:%=cli/cmd_parse_%.c)
+	cli/cmd_parse_1.c \
+
 # The "health" command exists only with HEALTH=1
 ifneq ($(HEALTH),)
 SRCS += cli/cmd_parse_health.c
