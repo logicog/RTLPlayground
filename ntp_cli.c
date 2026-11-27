@@ -115,5 +115,6 @@ void ntp_parse(void) __banked __reentrant
 		return;
 	}
 err:
+	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: ntp [on|off|server <name>|interval <1-1440>|timezone <+hh:mm>|dst off|eu|us]\n");
 }
