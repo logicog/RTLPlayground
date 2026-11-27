@@ -2415,6 +2415,7 @@ var CONF_CMDS = [
     /^lldp\s+(on|off)$/,
     /^bw\s+(in|out)\s+\d+\s+\S+$/,
     /^storm\s+\d+\s+(bcast|mcast|ucast|umcast)\s+(off|\d+\s+(pps|kbps))$/,
+    /^macsec\s+\d+\s+(off|key\s+[0-9a-fA-F]{32}\s+peer\s+[0-9a-fA-F]{16})$/,
 ];
 
 function isConfCmd(line) {
@@ -5063,7 +5064,7 @@ var CONF_OVERWRITE = [
     /^lag\s+\d\b/, /^laghash\s+\d\b/, /^isolate\s+\d{1,2}\b/,
     /^stp\s+(prio|hello|maxage|fwd|txhold|version|pathcost|bpdu)\b/,
     /^stp\s+(port\s+\d{1,2}|lag\s+[1-4])\s+(edge|cost|prio|guard|filter|p2p)\b/,
-    /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/,
+    /^igmp\b/, /^mtu\s+\d{1,2}\b/, /^storm\s+\d{1,2}\s+(bcast|mcast|ucast|umcast)\b/, /^macsec\s+\d{1,2}\b/,
 ];
 var CONF_TOGGLE = [/^(syslog)\s+(on|off)$/, /^(ntp)\s+(on|off)$/, /^(stp)\s+(on|off)$/, /^(lldp)\s+(on|off)$/, /^(stp\s+(port\s+\d{1,2}|lag\s+[1-4]))\s+(on|off)$/];
 
