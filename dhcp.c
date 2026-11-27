@@ -35,6 +35,7 @@ __xdata uip_ipaddr_t server;
 #define DHCP_MESSAGE_OFFER	2
 #define DHCP_MESSAGE_REQUEST	3
 #define DHCP_MESSAGE_ACK	5
+#define DHCP_MESSAGE_NAK	6
 #define DHCP_LEASE 		51
 #define DHCP_LEASE_LEN		4
 #define DHCP_RENEWAL 		58
@@ -310,8 +311,8 @@ void parse_dhcp(void)
 	dhcp_state.opt_ptr = 0;
 	if (DHCP_OPT[dhcp_state.opt_ptr++] != DHCP_MESSAGE_TYPE || DHCP_OPT[dhcp_state.opt_ptr++] != DHCP_MESSAGE_TYPE_LEN)
 		return;
-	if (DHCP_OPT[dhcp_state.opt_ptr] == DHCP_MESSAGE_OFFER) {
-		dhcp_state.opt_ptr++;
+	uint8_t type = DHCP_OPT[dhcp_state.opt_ptr++];
+	if (type == DHCP_MESSAGE_OFFER && dhcp_state.state == DHCP_DISCOVER_SENT) {
 		dhcp_state.current_ip[0] = DHCP_P->your_ip[0];
 		dhcp_state.current_ip[1] = DHCP_P->your_ip[1];
 		dhcp_state.current_ip[2] = DHCP_P->your_ip[2];
@@ -320,7 +321,11 @@ void parse_dhcp(void)
 		print_string("DHCP offer received for IP "); dhcp_print_ip(dhcp_state.current_ip);
 		write_char('\n');
 		dhcp_send_request();
-	} else if (DHCP_OPT[dhcp_state.opt_ptr++] == DHCP_MESSAGE_ACK) {
+	} else if (type == DHCP_MESSAGE_NAK && dhcp_state.state == DHCP_REQUEST_SENT) {
+		print_string("DHCP NAK, starting over\n");
+		dhcp_state.current_ip[0] = dhcp_state.current_ip[1] = dhcp_state.current_ip[2] = dhcp_state.current_ip[3] = 0;
+		dhcp_state.state = DHCP_START;
+	} else if (type == DHCP_MESSAGE_ACK && dhcp_state.state == DHCP_REQUEST_SENT) {
 		parse_opts();
 		print_string("DHCP ACK, our IP is "); dhcp_print_ip(dhcp_state.current_ip);
 		write_char('\n');
