@@ -1121,6 +1121,65 @@ static void scenario_login_without_cookie_replaces_least_recently_used(void)
 	fake_now = 0;
 }
 
+static int cookie_opens(const char *cookie, const char *stored)
+{
+	char get[256];
+
+	snprintf(get, sizeof(get), "GET " PROTECTED_FILE_NAME " HTTP/1.1\r\nHost: sw\r\n%s\r\n", cookie);
+	session_start(MSS_FULL);
+	strcpy(session_id, stored);
+	last_session_use[0] = fake_now;
+	client_send(TCP_ACK | TCP_PSH, get, (int)strlen(get));
+	return stream_contains("HTTP/1.1 200 OK\r\n") && !stream_contains("Location: login.html\r\n");
+}
+
+/* Only the stored session id opens a protected page, and only while it is
+ * fresh. An empty slot must not match an empty cookie value. */
+static void scenario_session_cookie_must_match(void)
+{
+	static const char post[] =
+		"POST /login HTTP/1.1\r\n"
+		"Content-Length: 8\r\n"
+		"Content-Type: application/x-www-form-urlencoded\r\n"
+		"\r\n"
+		"pwd=4321";
+	static const char get[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: session=0123456789ab\r\n"
+		"\r\n";
+
+	CHECK(cookie_opens("Cookie: session=0123456789ab\r\n", "0123456789ab"),
+	      "session control: the stored id opens the protected page");
+	CHECK(!cookie_opens("Cookie: session=0123456789ac\r\n", "0123456789ab"),
+	      "session: an id that differs in its last character is refused");
+	CHECK(!cookie_opens("Cookie: session=0123456789a\r\n", "0123456789ab"),
+	      "session: a prefix of the id is refused");
+	CHECK(!cookie_opens("Cookie: session=0123456789abc\r\n", "0123456789ab"),
+	      "session: the id with a character added is refused");
+	CHECK(!cookie_opens("Cookie: session=\r\n", "0123456789ab"),
+	      "session: an empty value is refused");
+	CHECK(!cookie_opens("Cookie: session=\r\n", ""),
+	      "session: an empty value does not match an empty slot");
+	CHECK(!cookie_opens("", "0123456789ab"),
+	      "session: no cookie at all is refused");
+
+	session_timeout = 200;
+	fake_now = 1000;
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+	last_session_use[0] = 0;
+	client_send(TCP_ACK | TCP_PSH, get, (int)strlen(get));
+	CHECK(stream_contains("Location: login.html\r\n"),
+	      "session: an id that has not been used for longer than the timeout is refused");
+	fake_now = 0;
+
+	login_session_start();
+	client_send(TCP_ACK | TCP_PSH, post, (int)strlen(post));
+	CHECK(!stream_contains("Location: index.html\r\n") && !stream_contains("Set-Cookie"),
+	      "login: a wrong password gets no session");
+}
+
 static void scenario_fragmented_get_without_cookie(void)
 {
 	static const char first[] =
@@ -1508,6 +1567,7 @@ int main(int argc, char **argv)
 
 	scenario_login_with_valid_cookie_reuses_its_slot();
 	scenario_login_without_cookie_replaces_least_recently_used();
+	scenario_session_cookie_must_match();
 
 	printf("\n%s (%d failure%s)\n",
 	       failures ? "BENCH: FAILURES" : "BENCH: ALL PASS",
