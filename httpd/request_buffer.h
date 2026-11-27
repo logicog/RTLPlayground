@@ -3,6 +3,7 @@
 
 #include "rtl837x_common.h"
 #include "crypto/blake3.h"
+#include "passwd_hash.h"
 
 #define CONFIG_UPLOAD_BUF (CONFIG_LEN + 384)
 
@@ -18,5 +19,7 @@ _Static_assert(sizeof(union http_request_buffer) == CONFIG_UPLOAD_BUF,
                "password workspace must fit the request buffer");
 
 extern __xdata union http_request_buffer request_buf;
+// The password workspace is only valid while a login owns the request buffer.
+#define passwd_hash_busy (passwd_hash_pending && request_buf.password.remaining)
 
 #endif
