@@ -349,8 +349,8 @@ var LANG = {
         sy_bytes: "bytes",
         cw_title: "Write this startup configuration?",
         cw_save_title: "Save running configuration to flash?",
-        cw_info: "{n} / 2048 bytes, replayed line by line on every boot",
-        cw_toolarge: "Too large: the config sector accepts at most 2048 bytes. Remove lines first.",
+        cw_info: "{n} / 4095 bytes, replayed line by line on every boot",
+        cw_toolarge: "Too large: the config sector accepts at most 4095 bytes. Remove lines first.",
         cw_longline: "Line {n} is {m} bytes long: the switch can only replay lines up to 126 bytes and would skip it on boot, so the write is refused. Shorten it first.",
         cw_unknown: "Not in the known config grammar (will still be written): ",
         cw_empty: "(empty)",
@@ -658,8 +658,8 @@ var LANG = {
         sy_bytes: "バイト",
         cw_title: "この起動設定を書き込みますか?",
         cw_save_title: "実行中の設定をフラッシュに保存しますか?",
-        cw_info: "{n} / 2048 バイト、起動のたびに 1 行ずつ実行されます",
-        cw_toolarge: "サイズ超過: 設定セクタは最大 2048 バイトです。先に行を削除してください。",
+        cw_info: "{n} / 4095 バイト、起動のたびに 1 行ずつ実行されます",
+        cw_toolarge: "サイズ超過: 設定セクタは最大 4095 バイトです。先に行を削除してください。",
         cw_longline: "{n} 行目は {m} バイトです: スイッチが起動時に実行できる行は 126 バイトまでで、この行は読み飛ばされるため、書き込みを拒否します。先に短くしてください。",
         cw_unknown: "既知の設定文法に含まれない行 (そのまま書き込まれます): ",
         cw_empty: "(空)",
@@ -1043,8 +1043,8 @@ var LANG = {
         sy_bytes: "字节",
         cw_title: "写入此启动配置?",
         cw_save_title: "将运行配置保存到 Flash?",
-        cw_info: "{n} / 2048 字节，每次启动时逐行执行",
-        cw_toolarge: "过大: 配置扇区最多容纳 2048 字节。请先删除部分行。",
+        cw_info: "{n} / 4095 字节，每次启动时逐行执行",
+        cw_toolarge: "过大: 配置扇区最多容纳 4095 字节。请先删除部分行。",
         cw_longline: "第 {n} 行有 {m} 字节: 交换机启动时只能执行不超过 126 字节的行，该行会被跳过，因此拒绝写入。请先缩短该行。",
         cw_unknown: "不属于已知配置语法的行 (仍会写入): ",
         cw_empty: "(空)",
@@ -1351,8 +1351,8 @@ var LANG = {
         sy_bytes: "bytes",
         cw_title: "¿Escribir esta configuración de inicio?",
         cw_save_title: "¿Guardar la configuración en ejecución en flash?",
-        cw_info: "{n} / 2048 bytes, reaplicada línea a línea en cada arranque",
-        cw_toolarge: "Demasiado grande: el sector de configuración admite como máximo 2048 bytes. Elimina líneas primero.",
+        cw_info: "{n} / 4095 bytes, reaplicada línea a línea en cada arranque",
+        cw_toolarge: "Demasiado grande: el sector de configuración admite como máximo 4095 bytes. Elimina líneas primero.",
         cw_unknown: "No está en la gramática de configuración conocida (aun así se escribirá): ",
         cw_empty: "(vacío)",
         cw_writing: "Escribiendo configuración...",
@@ -1781,8 +1781,8 @@ var LANG = {
         sy_bytes: "bytes",
         cw_title: "Enregistrer cette configuration de démarrage?",
         cw_save_title: "Enregistrer la configuration active en mémoire flash?",
-        cw_info: "{n} / 2048 bytes, qui seront rejouées ligne par ligne à chaque redémarrage",
-        cw_toolarge: "Trop grand : La quota du secteur de démarrage ne peut excéder 2048 bytes. Supprimez des lignes.",
+        cw_info: "{n} / 4095 bytes, qui seront rejouées ligne par ligne à chaque redémarrage",
+        cw_toolarge: "Trop grand : La quota du secteur de démarrage ne peut excéder 4095 bytes. Supprimez des lignes.",
         cw_longline: "La ligne {n} est longue de {m} bytes: Le commutateur ne peut exécuter des lignes de plus de 126 bytes et les omettra donc au démarragee, l'écriture est refusé. Raccourcissez les d'abord.",
         cw_unknown: "Ne respecte pas la grammaire de configuration (sera néanmoins sauvegardé): ",
         cw_empty: "(vide)",
@@ -2169,8 +2169,8 @@ var LANG = {
         sy_bytes: "Bytes",
         cw_title: "Diese Startkonfiguration schreiben?",
         cw_save_title: "Laufende Konfiguration im Flash speichern?",
-        cw_info: "{n} / 2048 Bytes, wird bei jedem Start Zeile für Zeile ausgeführt",
-        cw_toolarge: "Zu gross: Der Konfigurationssektor fasst höchstens 2048 Bytes. Zuerst Zeilen entfernen.",
+        cw_info: "{n} / 4095 Bytes, wird bei jedem Start Zeile für Zeile ausgeführt",
+        cw_toolarge: "Zu gross: Der Konfigurationssektor fasst höchstens 4095 Bytes. Zuerst Zeilen entfernen.",
         cw_longline: "Zeile {n} ist {m} Bytes lang: Der Switch kann beim Start nur Zeilen bis 126 Bytes ausführen und würde sie überspringen, deshalb wird das Schreiben abgelehnt. Zuerst kürzen.",
         cw_unknown: "Nicht in der bekannten Konfigurationssyntax (wird trotzdem geschrieben): ",
         cw_empty: "(leer)",
@@ -4944,8 +4944,8 @@ function cfgBytes() {
     var v = $("cfgedit").value,
         n = new Blob([v]).size;
     var el = $("cfgbytes");
-    el.textContent = n + " / 2048 " + t("sy_bytes");
-    el.style.color = (n > 2048 || cfgLongLine(v)) ? "var(--bad)" : "";
+    el.textContent = n + " / 4095 " + t("sy_bytes");
+    el.style.color = (n > 4095 || cfgLongLine(v)) ? "var(--bad)" : "";
     return n;
 }
 $("cfgedit").addEventListener("input", cfgBytes);
@@ -5211,9 +5211,9 @@ function writeConfig(txt, title, fromLog) {
         info.textContent = t("cw_info", {
             n: bytes
         });
-        ok.disabled = bytes > 2048 || !!long;
+        ok.disabled = bytes > 4095 || !!long;
         warn.style.color = ok.disabled ? "var(--bad)" : "var(--warn)";
-        warn.textContent = bytes > 2048 ? t("cw_toolarge") : long ? t("cw_longline", long) : (unknown.length ? t("cw_unknown") + unknown.join(" | ") : "");
+        warn.textContent = bytes > 4095 ? t("cw_toolarge") : long ? t("cw_longline", long) : (unknown.length ? t("cw_unknown") + unknown.join(" | ") : "");
     }
     ed.addEventListener("input", refresh);
     refresh();
