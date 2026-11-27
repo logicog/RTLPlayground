@@ -89,9 +89,7 @@ Bottom side:
 The two copper led-sets differ only in slot order because ports 1-2 are wired the
 other way round.
 
-**Open point (needs hardware verification):** each SFP+ cage carries a single LED,
-but the board definition currently assigns the lower speeds to a second led-set slot.
-If that slot really drives nothing, a 1G/2.5G module would not light the cage at all.
-Flashing a 1G or 2.5G module is required to settle this; only 10G modules were
-available at the time of writing, and a 10GBASE-T module always presents 10G to the
-host, so it cannot answer the question.
+Verified on hardware: each cage has **one** LED. With the 10G signal moved to the second
+led-set slot and the first slot disabled, the link came up at 10G but the LED stayed dark,
+so the second slot drove nothing - a 1G or 2.5G module would never have lit the cage. All
+speeds and the link/activity blink now share that single slot.
