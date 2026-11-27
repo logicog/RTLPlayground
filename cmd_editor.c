@@ -103,9 +103,11 @@ void cmd_edit(void) __banked
 				l &= SBUF_MASK;
 				continue;
 			} else if (sbuf[l] == '\033' && sbuf[(l + 1) & SBUF_MASK] == '[' && sbuf[(l + 2) & SBUF_MASK] == 'A') { // <CURSOR-UP>
-				for (uint8_t i = 0; i < cmd_line_len; i++)
-					current_cmdline[i] = cmd_buffer[i];
-				current_cmdline[cmd_line_len] = 0;
+				if (history_editptr == 0xffff) {
+					for (uint8_t i = 0; i < cmd_line_len; i++)
+						current_cmdline[i] = cmd_buffer[i];
+					current_cmdline[cmd_line_len] = 0;
+				}
 				__xdata uint16_t p;
 				if (history_editptr == 0xffff)
 					p = (cmd_history_ptr - 2) & CMD_HISTORY_MASK;
