@@ -59,10 +59,12 @@ __code const struct machine machine = {
             0,
             0
         },
-        { /* SFP+ cages 5-6 */
-            /* White LED with a blue tinge: 10G link and activity */
+        { /* SFP+ cages 5-6: one white LED per cage, it looks slightly blue */
+            /* White LED: 10G link and activity */
             LEDS_10G | LEDS_LINK | LEDS_ACT,
-            /* Same white LED: 1G/2.5G link and activity */
+            /* Lower speeds. Only a single LED is wired to the cage as far as we can
+             * tell, so this slot probably drives nothing - it stays here until a
+             * 1G/2.5G module shows where those speeds are actually indicated. */
             LEDS_2G5 | LEDS_1G | LEDS_LINK | LEDS_ACT,
             0,
             0
