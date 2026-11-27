@@ -203,7 +203,7 @@ void cmd_edit(void) __banked
 				for (uint8_t i = cursor; i <= cmd_line_len; i++)
 					write_char('\010');
 				cursor--;
-				for (uint8_t i = cursor; i <= cmd_line_len; i++)
+				for (uint8_t i = cursor; i < cmd_line_len; i++)
 					cmd_buffer[i] = cmd_buffer[i+1];
 				cmd_line_len--;
 			}
