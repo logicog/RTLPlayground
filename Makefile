@@ -246,6 +246,7 @@ SRCS += \
 	cli/cmd_parser.c \
 	cli/cmd_parse_util.c \
 	cli/cmd_parse_1.c \
+	cli/cmd_parse_2_debug.c \
 	cli/cmd_parse_stp.c
 
 # The "health" command exists only with HEALTH=1

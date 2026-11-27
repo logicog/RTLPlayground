@@ -10,7 +10,7 @@
 __xdata uint32_t stp_cli_cost;
 __xdata uint8_t  stp_cli_val;
 
-void cmd_parse_stp(void) __banked __reentrant
+void cmd_parse_stp__(void) __banked __reentrant
 {
 	uint8_t port;
 

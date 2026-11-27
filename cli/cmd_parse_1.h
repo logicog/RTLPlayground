@@ -46,7 +46,7 @@ void cmd_parse_ip(void);
 void cmd_parse_isolate(void);
 void cmd_parse_l2(void);
 void cmd_parse_lacp(void);
-void cmd_parse_lag(void);
+void cmd_parse_lag__(void);
 void cmd_parse_laghash(void);
 void cmd_parse_leds(void);
 void cmd_parse_lldp(void);
@@ -58,7 +58,7 @@ void cmd_parse_ntp(void) __banked __reentrant;
 void cmd_parse_passwd(void);
 void cmd_parse_phyget(void);
 void cmd_parse_physet(void);
-void cmd_parse_port(void);
+void cmd_parse_port__(void);
 void cmd_parse_pvid(void);
 void cmd_parse_regget(void);
 void cmd_parse_regset(void);
@@ -74,9 +74,23 @@ void cmd_parse_storm(void);
 void cmd_parse_syslog(void);
 void cmd_parse_temp(void);
 void cmd_parse_version(void);
-void cmd_parse_vlan(void);
+void cmd_parse_vlan__(void);
 
 void clear_command_history(void) __banked;
 void print_sw_version(void) __banked;
+
+
+/* New Handlers */
+
+void cmd_parse_debug(void);
+void cmd_parse_feature(void);
+void cmd_parse_lag(void);
+void cmd_parse_help(void);
+void cmd_parse_port(void);
+void cmd_parse_remove(void);
+void cmd_parse_show(void);
+void cmd_parse_stp(void);
+void cmd_parse_system(void);
+void cmd_parse_vlan(void);
 
 #endif

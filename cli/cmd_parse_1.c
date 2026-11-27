@@ -1,5 +1,6 @@
 #include "cmd_parse_1.h"
 #include "cmd_parse_util.h"
+#include "cmd_parse_2_debug.h"
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
@@ -534,7 +535,7 @@ void cmd_parse_lacp(void)
 
 extern volatile __xdata uint8_t sfr_data[4];
 
-void cmd_parse_lag(void)
+void cmd_parse_lag__(void)
 {
 	__xdata uint8_t group;
 	__xdata uint16_t members = 0;
@@ -1074,7 +1075,7 @@ extern __xdata bool lldp_enabled;
 
 __xdata char port_names[9][PORT_NAME_SIZE];
 
-void cmd_parse_port(void)
+void cmd_parse_port__(void)
 {
 	if (cmd_words_len < 3) {
 		cmd_error("\nUsage:" \
@@ -1701,7 +1702,7 @@ static inline uint8_t isletter(uint8_t l)
 	return (l <= ('z'-'a'));
 }
 
-void cmd_parse_vlan(void)
+void cmd_parse_vlan__(void)
 {
 	vlan_settings.vlan = 0;
 	vlan_settings.members = 0;
@@ -1803,4 +1804,67 @@ void cmd_parse_vlan(void)
 	return;
 err:
 	cmd_error("vlan (<vlan-id>|show) [port][t]...\n");
+}
+
+
+/* New parsers -- delete all above here when finished */
+
+void cmd_parse_debug(void) {
+	if (cmd_words_len < 2)
+		return;
+
+	if (cmd_compare(1, "cabletest")) {
+		cmd_parse_debug_cabletest();
+	} else if (cmd_compare(1, "dns")) {
+		cmd_parse_debug_dns();
+	} else if (cmd_compare(1, "leds")) {
+		cmd_parse_debug_leds();
+	} else if (cmd_compare(1, "flash")) {
+		cmd_parse_debug_flash();
+	} else if (cmd_compare(1, "gpio")) {
+		cmd_parse_debug_gpio();
+	} else if (cmd_compare(1, "phyget")) {
+		cmd_parse_debug_phyget();
+	} else if (cmd_compare(1, "physet")) {
+		cmd_parse_debug_physet();
+	} else if (cmd_compare(1, "regget")) {
+		cmd_parse_debug_regget();
+	} else if (cmd_compare(1, "regset")) {
+		cmd_parse_debug_regset();
+	} else if (cmd_compare(1, "rnd")) {
+		cmd_parse_debug_rnd();
+	} else if (cmd_compare(1, "sds")) {
+		cmd_parse_debug_sds();
+	} else if (cmd_compare(1, "sdsget")) {
+		cmd_parse_debug_sdsget();
+	} else if (cmd_compare(1, "sdsset")) {
+		cmd_parse_debug_sdsset();
+	}
+}
+void cmd_parse_feature(void) {
+
+}
+void cmd_parse_lag(void) {
+
+}
+void cmd_parse_help(void) {
+	cmd_error("Sorry, there is no help at the moment.\n");
+}
+void cmd_parse_port(void) {
+
+}
+void cmd_parse_remove(void) {
+
+}
+void cmd_parse_show(void) {
+
+}
+void cmd_parse_stp(void) {
+
+}
+void cmd_parse_system(void) {
+
+}
+void cmd_parse_vlan(void) {
+
 }

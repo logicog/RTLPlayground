@@ -97,6 +97,33 @@ void cmd_parser(void) __banked
 	print_byte(cmd_words_b[5]); write_char(' ');
 	print_byte(cmd_words_b[6]); write_char('\n');
 #endif
+
+	if (cmd_words_len < 1)
+		return;
+
+	if (cmd_compare(0, "debug")) {
+		cmd_parse_debug();
+	} else if (cmd_compare(0, "feature")) {
+		cmd_parse_feature();
+	} else if (cmd_compare(0, "lag")) {
+		cmd_parse_lag();
+	} else if (cmd_compare(0, "help")) {
+		cmd_parse_help();
+	} else if (cmd_compare(0, "port")) {
+		cmd_parse_port();
+	} else if (cmd_compare(0, "remove")) {
+		cmd_parse_remove();
+	} else if (cmd_compare(0, "show")) {
+		cmd_parse_show();
+	} else if (cmd_compare(0, "stp")) {
+		cmd_parse_stp();
+	} else if (cmd_compare(0, "system")) {
+		cmd_parse_system();
+	} else if (cmd_compare(0, "vlan")) {
+		cmd_parse_vlan();
+	}
+	
+// OLD HANDLERS HERE:
 	if (cmd_words_len >= 1) {
 		if (cmd_compare(0, "reset")) {
 			cmd_parse_reset();
@@ -109,7 +136,7 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "flash")) {
 			cmd_parse_flash();
 		} else if (cmd_compare(0, "port")) {
-			cmd_parse_port();
+			cmd_parse_port__();
 		} else if (cmd_compare(0, "mtu")) {
 			cmd_parse_mtu();
 		} else if (cmd_compare(0, "syslog")) {
@@ -133,7 +160,7 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "hostname")) {
 			cmd_parse_hostname();
 		} else if (cmd_compare(0, "stp")) {
-			cmd_parse_stp();
+			cmd_parse_stp__();
 #ifdef HEALTH
 		} else if (cmd_compare(0, "health")) {
 			cmd_parse_health();
@@ -143,13 +170,13 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "pvid")) {
 			cmd_parse_pvid();
 		} else if (cmd_compare(0, "vlan")) {
-			cmd_parse_vlan();
+			cmd_parse_vlan__();
 		} else if (cmd_compare(0, "isolate")) {
 			cmd_parse_isolate();
 		} else if (cmd_compare(0, "mirror")) {
 			cmd_parse_mirror();
 		} else if (cmd_compare(0, "lag")) {
-			cmd_parse_lag();
+			cmd_parse_lag__();
 		} else if (cmd_compare(0, "laghash")) {
 			cmd_parse_laghash();
 		} else if (cmd_compare(0, "sds")) {
