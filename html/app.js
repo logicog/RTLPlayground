@@ -3946,6 +3946,10 @@ function validVlanName(n) {
 
 function addVlan() {
     var vid = parseInt($("nvlid").value, 10);
+    if (!(vid >= 1 && vid <= 4094)) {
+        toast(t("v_vid_err"), "err");
+        return;
+    }
     for (const r of $("vtable").tBodies[0].rows) {
         if (r.firstChild.firstChild.dataset.id == vid) {
             toast(t("v_vid_dup"), "err");
