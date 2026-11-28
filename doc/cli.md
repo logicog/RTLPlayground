@@ -68,7 +68,7 @@
 | `stp txhold 5` | `stp txhold 5` |
 | `lacp show` | `show lag lacp` |
 | `lacp off` | Remove this, disables all LACP; when would you do this? |
-| `lacp off 1` | `remove lag 2 lacp` |
+| `lacp off 1` | `lag 1 static <ports>` |
 | `pvid <port> <vid>` | `port 1 pvid 3` |
 | `vlan 2 show` | `show vlan 2` |
 | `vlan 2 mgmt` | `system mgmt-vlan 2` |
