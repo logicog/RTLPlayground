@@ -293,11 +293,13 @@ __xdata uint8_t *scan_header(__xdata uint8_t * __xdata p)
 			 * cookies in any order. Match "session" not "session=" -
 			 * is_word() requires a separator after the match and '=' is
 			 * one, so this also rejects a longer key like "sessionx". */
+			uint8_t name_start = 1;
 			while (*v && *v != '\r' && *v != '\n') {
-				if (is_word(v, "session")) {
+				if (name_start && is_word(v, "session")) {
 					session = v + 8;	/* past "session=" */
 					break;
 				}
+				name_start = *v == ' ' || *v == ';';
 				v++;
 			}
 		}

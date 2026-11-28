@@ -1120,6 +1120,22 @@ static void scenario_fragmented_get_cookie_value(void)
 	      "fragmented GET cookie value: split session value authenticates");
 }
 
+static void scenario_cookie_with_longer_name(void)
+{
+	static const char get[] =
+		"GET " PROTECTED_FILE_NAME " HTTP/1.1\r\n"
+		"Host: sw\r\n"
+		"Cookie: grafana_session=abcdef; session=0123456789ab\r\n"
+		"\r\n";
+
+	session_start(MSS_FULL);
+	strcpy(session_id, "0123456789ab");
+
+	client_send(TCP_ACK | TCP_PSH, get, (int)strlen(get));
+	CHECK(stream_contains("HTTP/1.1 200 OK\r\n") && !stream_contains("Location: login.html\r\n"),
+	      "cookie: another cookie whose name ends in session does not hide ours");
+}
+
 static void scenario_split_get_header_terminator(void)
 {
 	static const char first[] =
@@ -1627,6 +1643,7 @@ int main(int argc, char **argv)
 	scenario_reset_after_ack();
 	scenario_fragmented_get_cookie();
 	scenario_fragmented_get_cookie_value();
+	scenario_cookie_with_longer_name();
 	scenario_split_get_header_terminator();
 	scenario_fragmented_get_without_cookie();
 	scenario_post_path_without_separator();
