@@ -1289,8 +1289,17 @@ uip_process(u8_t flag) __banked
     UIP_LOG("tcp: bad checksum.");
     goto drop;
   }
-  
-  
+
+  /* Check that the TCP header length covers the 20-byte base header and
+     fits the segment. A shorter one makes the data length computed below
+     run past the segment; a longer one makes it underflow, carrying
+     uip_appdata past uip_buf, and has a SYN's option walk read bytes that
+     never arrived. */
+  c = (BUF->tcpoffset >> 4) << 2;
+  if(c < UIP_TCPH_LEN || uip_len < c + UIP_IPH_LEN) {
+    goto drop;
+  }
+
   /* Demultiplex this segment. */
   /* First check any active connections. */
   for(uip_connr = &uip_conns[0]; uip_connr <= &uip_conns[UIP_CONNS - 1];
@@ -1477,12 +1486,6 @@ uip_process(u8_t flag) __banked
   /* Calculated the length of the data, if the application has sent
      any data to us. */
   c = (BUF->tcpoffset >> 4) << 2;
-  /* Check that the indicated length of the TCP header is not too large
-     for the total packet length, or the subtraction below underflows
-     uip_len and uip_appdata reaches past uip_buf. */
-  if(uip_len < c + UIP_IPH_LEN) {
-    goto drop;
-  }
   /* uip_len will contain the length of the actual TCP data. This is
      calculated by subtracing the length of the TCP header (in
      c) and the length of the IP header (20 bytes). */
