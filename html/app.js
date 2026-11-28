@@ -4617,8 +4617,8 @@ function bwLoad() {
 /* The bw command takes kbit/s and converts to 16-kbit register steps itself. */
 function bwHex(mbit) {
     var kbit = Math.round(mbit * 1000);
-    if (kbit < 16 || kbit > 10000000) return null;
-    var x = kbit.toString(16);
+    if (!(kbit >= 16 && kbit <= 10000000)) return null;
+    var x = kbit.toString(16).padStart(4, "0");
     return x.length % 2 ? "0" + x : x;
 }
 
