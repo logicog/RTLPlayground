@@ -36,6 +36,19 @@
 
 ## Fixed
 
+- 10G RJ45 ports (RTL8261BE)
+  - On the Hasivo S600WP-4GT-2XGT-SE the ports linked but received nothing. They now receive at 1G,
+    2.5G and 10G. Both of the next two changes are needed for that.
+  - The SerDes of an RTL8261BE port is set up once in `rtl8372_init()`, before the PHYs, like the
+    stock firmware. It was first set up from `check_links()` after the PHY had linked and then
+    again on every link change of any port; on the S600WP that reset stops RX on a port linked at
+    1G until the next boot.
+  - New machine field `rtl8261_sds_inv` for the RTL8261BE SerDes lane polarity (MMD30 0xc1,
+    `PHY_MMD30_SDS_GLOBAL_CFG`, flags `RTL8261_HSO_INV` and `RTL8261_HSI_INV`), set per board.
+    The ZX310S boards keep `RTL8261_HSI_INV` (0xc1 = 0x0167), the S600W(P)-4GT-2XGT-SE needs
+    `RTL8261_HSO_INV` (0x01a7) like its stock firmware.
+  - Hasivo S600W(P)-4GT-2XGT-SE: front ports 5 and 6 were swapped in the web interface and CLI.
+
 - Time
   - `rtl8372_init()` sets SDS 0 to SGMII as the stock firmware does. The masks were 0, so on RTL8372
     boards without 10G ports both SerDes stayed off, and with SDS 0 off `RTL837X_REG_SEC_COUNTER`
