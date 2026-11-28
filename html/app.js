@@ -2448,7 +2448,7 @@ function postCmd(cmd, quiet) {
             c: cmd
         }), "ok");
         return r;
-    }, function(e) {
+    }).catch(function(e) {
         toast(e.message || t("t_failed", {
             c: cmd
         }), "err");
