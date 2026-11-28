@@ -295,6 +295,11 @@
     "pcb": "PCB_SWTG115AS_V2_1_17443"
   },
   {
+    "machine": "SODOLA_SGT0108S",
+    "friendly_name": "Sodola SGT0108S",
+    "pcb": "25GF_10G_V1_03"
+  },
+  {
     "machine": "STEAMEMO_IG204_V1",
     "friendly_name": "Steamemo IG204 V1",
     "pcb": "PB_2131"

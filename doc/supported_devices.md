@@ -64,8 +64,9 @@ The following devices have been tested and are fully working:
 | Sodola   | SL902-SWTG024AS | Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 4 + 2 |
 | Sodola   | SL902-SWTGW124AS| Yes     | [PCB-SWTG024AS-V2.1.1_19023](devices/PCB-SWTG024AS-V2.1.1_19023.md)                   | 2M    | 4 + 2 |
 | Sodola   | SL902-SWTGW215AS| Yes     | [PCB-SWTG024AS-V2.1.0_19023](devices/PCB-SWTG024AS-V2.1.0_19023.md)                   | 2M    | 5 + 1 |
+| Sodola   | SGT0108S        | No      | [25GF_10G_V1.03](devices/25GF_10G_V1.03.md)                                           | 0.5M | 8 + 1 |
 | Sodola   | SL-SWTGW0108P   | Yes     | [S1100W-8GT-1SX_73N V1.04](devices/S1100W-8GT-1SX_73N_V1.04.md)                       | 2M    | 8 + 1 |
-| Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                               |       | 4 + 2 |
+| Steamemo | IG204-V1        | No      | [PB-2131](devices/PB-2131.md)                                                         |       | 4 + 2 |
 | TRENDnet | TEG-S562        | No      | [270-NB1-MS206B004A1_REV.A1](devices/270-NB1-MS206B004A1_REV.A1.md)                   | 2M    | 4 + 2 |
 | Vimin    | S250402-N       | No      | [SR-S25G2206F-N-V1.2](devices/SR-S25G2206F-N-V1.2.md)                                 | 2M    | 4 + 2 |
 | Xiaomi   | SW-106T-A       | No      | [MD09HT V30](devices/MD09HT_V30.md)                                                  | 1M    | 4 + 2 |
