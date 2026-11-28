@@ -3627,7 +3627,13 @@ function rangeStr(list) {
     return parts.join(", ");
 }
 
+var vlanQ = Promise.resolve();
+
 function vlanRefresh() {
+    return vlanQ = vlanQ.catch(function() {}).then(vlanFill);
+}
+
+function vlanFill() {
     var tb = $("vtable").tBodies[0];
     tb.style = "cursor:pointer;"
     return getJSON("/vlanlist.json").then(function(d) {
