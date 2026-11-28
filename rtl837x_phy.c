@@ -134,8 +134,8 @@ void phy_config_8261(uint8_t phy, uint8_t sds) __banked
 	phy_write(phy, PHY_MMD30, 0x00c2, 0x880d); // p031e.00c2:880d P000008.1e0000c2:880d
 	phy_write(phy, PHY_MMD30, 0x03f1, 0x0072); // p031e.03f1:0072 P000008.1e0003f1:0072
 	phy_write(phy, PHY_MMD30, 0x02a2, 0x0010); // p031e.02a2:0010 P000008.1e0002a2:0010
-	phy_write(phy, PHY_MMD30, 0x00c1, 0x0127); // p031e.00c1:0127 P000008.1e0000c1:0127
-	phy_write(phy, PHY_MMD30, 0x00c1, 0x0167); // p031e.00c1:0127 P000008.1e0000c1:0167
+	phy_write(phy, PHY_MMD30, PHY_MMD30_SDS_GLOBAL_CFG, 0x0127); // p031e.00c1:0127 P000008.1e0000c1:0127
+	phy_modify(phy, PHY_MMD30, PHY_MMD30_SDS_GLOBAL_CFG, RTL8261_HSO_INV | RTL8261_HSI_INV, machine.rtl8261_sds_inv); // per board, ZX310S: P000008.1e0000c1:0167
 
 	sds_write_v(sds, 0x21, 0x00, 0x4096); // Q002100:4906
 	sds_write_v(sds, 0x36, 0x05, 0x4000); // Q003605:4000

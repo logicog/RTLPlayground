@@ -31,6 +31,10 @@
 #define MDI_CFG_VALUE(cfg) ((cfg) ? (uint8_t)((cfg) & 0x0f) : MDI_DEFAULT)
 
 
+// rtl8261_sds_inv flags, the RTL8261BE datasheet names
+#define RTL8261_HSO_INV 0x80	// PHY to switch
+#define RTL8261_HSI_INV 0x40	// switch to PHY
+
 #ifndef MACHINE_CHIPSET
 	#include "machine/default_machine.h"
 #endif
@@ -130,6 +134,8 @@ struct machine {
 	// overridden" and keeps the reset default, which every board without
 	// mirrored pairs relies on.
 	uint8_t mdi_cfg;
+	// RTL8261BE SerDes lane polarity (MMD30 0xc1) per board, 0 = no inversion
+	uint8_t rtl8261_sds_inv;
 };
 
 struct machine_runtime

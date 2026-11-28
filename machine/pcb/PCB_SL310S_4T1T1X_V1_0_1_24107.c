@@ -5,6 +5,7 @@ __code const struct machine machine = {
 	MACHINE_COMMON_SETTING,
 	.n_sfp = 1,
 	.n_10g = 1,
+	.rtl8261_sds_inv = RTL8261_HSI_INV,	// as the ZX310S-4T2XT OEM firmware, not verified on this board
 	.log_to_phys_port = {0, 0, 0, 5, 1, 2, 3, 4, 6},
 	.phys_to_log_port = {4, 5, 6, 7, 3, 8, 0, 0, 0},
 	.is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 1},
