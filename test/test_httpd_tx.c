@@ -143,7 +143,9 @@ void execute_config(void) { }
 static unsigned exec_calls;
 void execute_commands(uint8_t *p) { (void)p; exec_calls++; }
 void clear_command_history(void) { }
-void udp_callbacks(void) { }
+static unsigned udp_calls;
+static uint16_t udp_datalen;
+void udp_callbacks(void) { udp_calls++; udp_datalen = uip_datalen(); }
 void tcpip_output(void) { }
 void get_random_32(void) { }
 static uint32_t fake_now;
@@ -805,6 +807,49 @@ static void scenario_upload_reset_owner(void)
 	httpd_appcall();
 	CHECK(reset_calls == 0, "failed CRC verdict ACK does not reset");
 
+}
+
+#define UDPH		((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
+
+static void put_udp(uint16_t total_len)
+{
+	memset(uip_buf, 0, UIP_LLH_LEN + 20 + 8 + 4);
+	UDPH->vhl = 0x45;
+	UDPH->len[0] = (uint8_t)(total_len >> 8);
+	UDPH->len[1] = (uint8_t)(total_len & 0xff);
+	UDPH->ttl = 64;
+	UDPH->proto = UIP_PROTO_UDP;
+	UDPH->srcipaddr[0] = hton16(0x0a00); UDPH->srcipaddr[1] = hton16(0x0002);
+	UDPH->destipaddr[0] = hton16(0x0a00); UDPH->destipaddr[1] = hton16(0x0001);
+	UDPH->srcport = hton16(40000);
+	UDPH->destport = hton16(5353);
+	uip_len = UIP_LLH_LEN + 20 + 8 + 4;
+}
+
+/* An IP length that ends inside the UDP header must not reach the application:
+ * the data length is that length minus both headers. */
+static void scenario_udp_shorter_than_its_header(void)
+{
+	uip_ipaddr_t any = { 0, 0 };
+	struct uip_udp_conn *c;
+
+	uip_init();
+	c = uip_udp_new(&any, 0);
+	uip_udp_bind(c, hton16(5353));
+
+	udp_calls = 0;
+	put_udp(20 + 8 + 4);
+	uip_input();
+	CHECK(udp_calls == 1 && udp_datalen == 4,
+	      "short UDP control: a whole datagram reaches the application with its length");
+
+	udp_calls = 0;
+	put_udp(20 + 4);
+	uip_input();
+	CHECK(udp_calls == 0,
+	      "short UDP: a datagram that ends inside its header is dropped");
+	uip_udp_remove(c);
+	uip_len = 0;
 }
 
 static void scenario_fragmented_post_header(void)
@@ -1483,6 +1528,7 @@ int main(int argc, char **argv)
 	scenario_upload_reset_owner();
 	scenario_fragmented_post_header();
 	scenario_split_content_type();
+	scenario_udp_shorter_than_its_header();
 	scenario_split_header_terminator();
 	scenario_header_then_body();
 	scenario_header_with_partial_body();
