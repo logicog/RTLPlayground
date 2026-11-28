@@ -336,8 +336,11 @@ void phy_set_speed(void) __banked
 			// bits 0-4: 0x1 (802.3 supported), Extended Next Page format used
 			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_ADV, 0x15e1);
 			// Multi-GBASE-TBASE-T AN Control 1 Register (MMD 7.0x0020)
-			// bit 14: SLAVE, bit 13: Multi-Port device, bit 8: 2.5GBit available, 1: LD
-			phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
+			// bit 14: SLAVE, bit 13: Multi-Port device, bit 12: 10G, bit 8: 5G, bit 7: 2.5G, bit 0: LD
+			if (phy_settings.is10g_port)
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x7181);
+			else
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
 			// GBCR (1000Base-T Control Register, MMD 31.0xA412)
 			if (phy_settings.is10g_port)
 				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0000, 0x0e00);
@@ -387,11 +390,11 @@ void phy_set_speed(void) __banked
 				// GBCR (1000Base-T Control Register, MMD 31.0xA412)
 				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 			} else if (phy_settings.speed == PHY_SPEED_5G) {
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
-				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0400, 0x0000);
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6101);
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 			} else if (phy_settings.speed == PHY_SPEED_10G) {
-				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x6081);
-				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0800, 0x0000);
+				phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_MGBASE_CTRL, 0x7001);
+				phy_modify(phy_settings.port, PHY_MMD31, PHY_MMD31_GBCR, 0x0200, 0x0000);
 			}
 		}
 		phy_write(phy_settings.port, PHY_MMD_AN, PHY_ANEG_CTRL, 0x3000);	// Enable AN
