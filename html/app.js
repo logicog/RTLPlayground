@@ -3044,7 +3044,8 @@ function buildPorts() {
             id: "pen" + i
         }), h("i")]);
         sw.firstChild.checked = p.enabled;
-        tr.insertCell().appendChild(sw);
+        var swc = tr.insertCell();
+        if (!p.isSFP) swc.appendChild(sw);
         tr.insertCell().appendChild(h("input", {
             class: "in sm",
             id: "pmtu" + i,
@@ -3082,7 +3083,7 @@ function applyPort(i) {
     var p = S.ports[i],
         cmds = [];
     var name = $("pname" + i).value.trim();
-    var en = $("pen" + i).checked;
+    var en = p.isSFP || $("pen" + i).checked;
     var spd = $("pspd" + i).value;
     var mtu = parseInt($("pmtu" + i).value, 10);
     var oldName = p.name || "";
@@ -3094,10 +3095,8 @@ function applyPort(i) {
         cmds.push("port " + p.port + " name" + (name ? " " + name : ""));
     }
     if (!en) cmds.push("port " + p.port + " off");
-    else if (p.isSFP) {
-        if (!p.enabled) cmds.push("port " + p.port + " on");
-        cmds.push("sfp " + S.sfpSlot[i] + " " + spd);
-    } else cmds.push("port " + p.port + " " + spd);
+    else if (p.isSFP) cmds.push("sfp " + S.sfpSlot[i] + " " + spd);
+    else cmds.push("port " + p.port + " " + spd);
     if (mtu && mtu !== S.mtu[i]) {
         if (mtu < 64 || mtu > 16383) {
             toast(t("pt_mtu_err"), "err");

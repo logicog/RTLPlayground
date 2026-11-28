@@ -965,7 +965,7 @@ void parse_port(void)
 			cmd_error("Unknown port <port> lldp [block|permit] command\n");
 		}
 	} else if (machine.is_sfp[phy_settings.port]) {
-		print_string(" is SFP no PHY information available.\n");
+		cmd_error("an SFP port has no PHY to set up\n");
 	} else if (cmd_compare(2, "cabletest")) {
 		if (cmd_words_len > 3 && cmd_compare(3, "show"))
 			cabletest_show();
