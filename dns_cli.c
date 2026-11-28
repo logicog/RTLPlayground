@@ -59,5 +59,6 @@ void dns_parse(void) __banked __reentrant
 		return;
 	}
 err:
+	err_status = ERR_INVALID_ARGUMENT;
 	print_string("Error: dns [server <ip> [<ip>]|lookup <name>]\n");
 }
