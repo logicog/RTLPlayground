@@ -90,7 +90,7 @@ void leds_dump(void) __banked
 	for (uint8_t i = MACHINE_MIN_PORT; i <= MACHINE_MAX_PORT; i++) {
 		reg_read_m(RTL837X_LED_PORT_SET_SEL);
 		__xdata uint8_t set = sfr_data[3 - (i >> 2)];
-		set = (set >> ((i & 3) << 1));
+		set = (set >> ((i & 3) << 1)) & 3;
 		print_string("Port "); write_char('0' + i); print_string(": SET ");
 		write_char('0' + set);
 		print_string(": ");
