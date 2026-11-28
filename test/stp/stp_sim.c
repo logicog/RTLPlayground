@@ -117,7 +117,7 @@ static void sim_cmd(const char *line)
 		if (cmd_buffer[i] != ' ' && (i == 0 || cmd_buffer[i - 1] == ' '))
 			cmd_words_b[cmd_words_len++] = i;
 	err_status = ERR_OK;
-	cmd_parse_stp();
+	cmd_parse_stp__();
 }
 
 void execute_config(void)
