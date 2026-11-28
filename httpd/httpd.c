@@ -1014,7 +1014,8 @@ void httpd_appcall(void)
 				send_basic_info();
 			} else if (!strcmp(q, "/vlan.json")) {
 				parse_short(q + 15);
-				send_vlan(short_parsed);
+				if (send_vlan(short_parsed))
+					send_bad_request();
 			} else if (is_word(q, "/counters.json")) {
 				uint8_t cport = q[20] - '0';
 				if (send_counters(cport))

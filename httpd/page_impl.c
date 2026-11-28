@@ -264,11 +264,16 @@ void send_basic_info(void)
 	char_to_html('}');
 }
 
-void send_vlan(uint16_t vlan)
+/* Send a VLAN entry
+ * Returns an error for an ID outside the table: vlan_get() then leaves
+ * sfr_data holding whatever the last table read put there.
+ */
+bool send_vlan(uint16_t vlan)
 {
+	if (vlan_get(vlan) < 0)
+		return true;
 	slen = strtox(outbuf, HTTP_RESPONSE_JSON);
 	dbg_string("sending VLAN\n");
-	vlan_get(vlan);
 	str_code_to_html("{" JSONQUOTE("untagged_members") ":[");
 
 	uint32_t m = ((uint32_t)sfr_data[0] << 24) |
@@ -321,6 +326,7 @@ void send_vlan(uint16_t vlan)
 	}
 	char_to_html(']');
 	char_to_html('}');
+	return false;
 }
 
 /* Send counters
