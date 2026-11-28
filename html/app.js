@@ -3073,7 +3073,7 @@ function portsStatus() {
         if (mc) mc.textContent = parseInt(p.macs, 16) & 0x1fff;
         if (el) el.innerHTML = linkBadge(p);
         var sel = $("pspd" + i),
-            v = p.isSFP ? 0 : ADVSEL[parseInt(p.adv, 2)];
+            v = p.speed || (p.isSFP ? 0 : ADVSEL[parseInt(p.adv, 2)]);
         if (sel && v && document.activeElement !== sel) sel.value = v;
     });
 }

@@ -977,6 +977,27 @@ void send_ports(void)
 			if(!!(w & 0x20))
 				json_add_array_string_item(JSONQUOTE("10M-HD"));
 
+			// Send current speed setting (forced or auto)
+			str_code_to_html("," JSONQUOTE("speed") ":");
+			phy_read(i, PHY_MMD_AN, PHY_ANEG_CTRL);
+			uint16_t an_ctrl = SFR_DATA_U16;
+			if (!(an_ctrl & 0x1000)) { // AN disabled = forced mode
+				phy_read(i, PHY_MMD_PMAPMD, 0);
+				uint16_t forced = SFR_DATA_U16;
+				uint8_t s1 = ((uint8_t)forced & 0x40) ? 0x2 : 0x0;
+				if (forced & 0x2000) s1 |= 0x1;
+				uint8_t s2 = ((uint8_t)forced >> 2) & 0xf;
+				// s1 & 0x3: 0=10M, 1=100M, 2=1G; s1 & 0x1: duplex (0=full, 1=half)
+				if (s2 == 6) str_code_to_html(JSONQUOTE("2g5"));
+				else if (s2 == 7) str_code_to_html(JSONQUOTE("5g"));
+				else if (s1 == 0x2 && (s1 & 0x1)) str_code_to_html(JSONQUOTE("100m half"));
+				else if (s1 == 0x2) str_code_to_html(JSONQUOTE("100m full"));
+				else if (s1 == 0x1 && (s1 & 0x1)) str_code_to_html(JSONQUOTE("10m half"));
+				else if (s1 == 0x1) str_code_to_html(JSONQUOTE("10m full"));
+				else str_code_to_html(JSONQUOTE("1g"));
+			} else {
+				str_code_to_html(JSONQUOTE("auto"));
+			}
 			char_to_html(']');
 		}
 		str_code_to_html("," JSONQUOTE("mtu") ":\"0x");
