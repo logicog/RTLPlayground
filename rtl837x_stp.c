@@ -998,6 +998,8 @@ void stp_in(void) __banked
 
 	/* BPDU guard: an edge-facing port must never see a BPDU - shut it down. */
 	if (stp_pflags[port] & STP_PF_BPDUGUARD) {
+		if (stp_pflags[port] & STP_PF_TRIPPED)
+			return;
 		print_string("STP: BPDU guard tripped, disabling port ");
 		print_port_nl(port);
 		stp_pflags[port] |= STP_PF_TRIPPED;
@@ -1074,9 +1076,11 @@ void stp_in(void) __banked
 
 	if ((stp_pflags[port] & STP_PF_ROOTGUARD)
 	    && cmpBytes((__xdata uint8_t *)&STP_I->root, (__xdata uint8_t *)&root_bridge, 8) < 0) {
-		print_string("STP: root guard blocking port ");
-		print_port_nl(port);
-		stp_state_set(port, STP_DISCARDING);
+		if (stp_state_get(port) != STP_DISCARDING) {
+			print_string("STP: root guard blocking port ");
+			print_port_nl(port);
+			stp_state_set(port, STP_DISCARDING);
+		}
 		port_timers[port] = FWD_TICKS;
 		stp_pflags[port] &= ~STP_PF_OPEREDGE;
 		return;
