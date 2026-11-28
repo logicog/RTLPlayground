@@ -125,6 +125,11 @@
     "pcb": "PCB_310S_4T2XT_V1_0_0_22273"
   },
   {
+    "machine": "HORACO_ZX_AFGW_SWTG218ANS_150",
+    "friendly_name": "Horaco ZX-AFGW-SWTG218ANS-150",
+    "pcb": "PCB_AFG_SWTG118ANS_V1_2_17459"
+  },
+  {
     "machine": "HORACO_ZX_SG4T2",
     "friendly_name": "Horaco ZX-SG4T2",
     "pcb": "PCB_SWTG024AS_A_V2_0_1_19650__UNMANAGED"

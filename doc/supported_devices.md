@@ -27,6 +27,7 @@ The following devices have been tested and are fully working:
 | Horaco   | HC-SWTGW215AS   | Yes     | [SWTG024AS-A-V2.0.1_19650_5C_1SFP](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)           | 2M    | 5 + 1 |
 | Horaco   | HC-SWTGW218AS   | Yes     | [PCB-SWTG018AS-A V2.0.1_19649](devices/PCB-SWTG018AS-A-V2.0.1_19649.md)               |       | 8 + 1 |
 | Horaco   | HC-SWTGW218AS   | Yes     | [SWTG118AS-V2.1](devices/PCB-SWTG118AS-V2.0-16029.md)                                 | 2M    | 8 + 1 |
+| Horaco   | ZX-AFGW-SWTG218ANS-150 | Yes     | [PCB-AFG-SWTG118ANS-V1.2-17459](devices/PCB-AFG-SWTG118ANS-V1.2-17459.md)             | 2M    | 8 + 1 |
 | Horaco   | ZX-SG4T2        | No      | [SWTG024AS-A-V2.0.1_19650_4C_2SFP](devices/PCB-SWTG024AS-A-V2.0.1_19650.md)           | 0.5M  | 4 + 2 |
 | Horaco   | ZX-SWTG124AS    | Yes     | [PCB-SWTG024AS-V2.0-17452](devices/PCB-SWTG024AS-V2.0-17452.md)                       |       | 4 + 2 |
 | Horaco   | ZX-SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.1-17462](devices/PCB-SWTG118AS-V2.1-17462.md)                       | 2M    | 8 + 1 |
