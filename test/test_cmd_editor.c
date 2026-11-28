@@ -20,6 +20,8 @@
 extern __xdata uint8_t cmd_line_len;
 extern uint8_t cmd_buffer[];
 extern uint8_t cmd_available;
+extern uint8_t cmd_history[];
+extern uint16_t cmd_history_ptr;
 
 static void test_basic_line(void) {
     printf("[test] basic line entry + Enter\n");
@@ -125,6 +127,22 @@ static void test_escape_then_enter(void) {
     CHECK(t_strcmp((char *)cmd_buffer, "ab") == 0, "the unfinished sequence adds nothing to the line");
 }
 
+static void test_history_keeps_typed_line(void) {
+    static const char hist[] = "one\ntwo\n";
+    printf("[test] the typed line comes back after a walk through the history\n");
+    env_reset();
+    for (uint8_t i = 0; i < sizeof(hist) - 1; i++)
+        cmd_history[i] = hist[i];
+    cmd_history_ptr = sizeof(hist) - 1;
+    feed("abc");
+    feed("\033[A");
+    feed("\033[A");
+    feed("\033[B");
+    feed("\033[B");
+    feed("\n");
+    CHECK(t_strcmp((char *)cmd_buffer, "abc") == 0, "two up and two down give the typed line back");
+}
+
 int main(void) {
     printf("== cmd_editor host tests ==\n");
     test_basic_line();
@@ -141,6 +159,7 @@ int main(void) {
     test_full_line_no_hang();
     test_full_line_no_overflow();
     test_second_line_waits();
+    test_history_keeps_typed_line();
     printf("\n%d checks, %d failed\n", tests_run, tests_failed);
     return tests_failed ? 1 : 0;
 }
