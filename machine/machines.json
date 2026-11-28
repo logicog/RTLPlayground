@@ -373,5 +373,10 @@
     "machine": "ZX-SWTG024AS",
     "friendly_name": "ZX-SWTG024AS",
     "pcb": "PCB_SWTG024AS_V1_0_16584"
+  },
+  {
+    "machine": "NPA_AP_7024_2_5G",
+    "friendly_name": "NPA AP-7024-2.5G",
+    "pcb": "F7005_2_5GPOE_V1_0"
   }
 ]

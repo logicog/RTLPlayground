@@ -20,6 +20,12 @@
     work, and the fitted T25S40 cannot be read in DIO mode on this board, so the
     target selects single-IO flash reads (`flash_sio`). New machine target
     `MACHINE_2G5F4_10G2_V1_01`, see `doc/devices/2G5F4_10G2_V1.01.md`.
+  - Support the NPA AP-7024-2.5G (PCB marking `F7005-2.5GPOE-V1.0`), an RTL8372N
+    based 4x2.5G + 2xSFP+ unmanaged switch with a 512 KB Bright Moon `T25S40`
+    flash. Unlike the other 4+2 boards each SFP+ cage has its own I2C bus
+    (bus 0 for the left, bus 1 for the right cage), no reset button is fitted
+    and the T25S40 needs single-IO flash reads (`flash_sio`). New machine target
+    `MACHINE_NPA_AP_7024_2_5G`, see `doc/devices/F7005-2.5GPOE-V1.0.md`.
 
 - Web UI
   - Compress the embedded assets (minify + gzip) and switch to a single-page layout. #315
