@@ -191,7 +191,8 @@ bool is_url_word_x(__xdata uint8_t *uri_str_p, __xdata uint8_t *src_str_p)
 				u = (u << 4) | (u >> 4);
 
 				uint8_t p = *uri_str_p++;
-				u |= p - '0' < 10 ? (p - '0') : (p - 'A' + 10);
+				// | 0x20 folds 'A'-'F' onto 'a'-'f'; both cases are valid
+				u |= p - '0' < 10 ? (p - '0') : ((p | 0x20) - 'a' + 10);
 
 				// force `jbc`-instruction.
 				if (again) {
