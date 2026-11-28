@@ -575,6 +575,8 @@ static void stp_loop_hold_peer(uint8_t port, uint8_t by) __reentrant
 		stp_forget(port);
 		stp_tcwhile[port] = 0;
 	}
+	if (stp_state_get(port) != STP_DISCARDING)
+		stp_state_set(port, STP_DISCARDING);
 	stp_loop_held[port] = by + 1;
 	stp_backup |= (uint16_t)1 << port;
 	port_timers[port] = FWD_TICKS;
