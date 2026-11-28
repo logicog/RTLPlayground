@@ -5080,7 +5080,7 @@ function mergeConf(base, texts) {
             line = line.trim().replace(/\s+/g, " ");
             if (!line) return;
             var m;
-            if ((m = line.match(/^vlan (\d{1,4}) d$/))) {
+            if ((m = line.match(/^vlan (?!1 )(\d{1,4}) d$/))) {
                 drop(new RegExp("^vlan " + m[1] + "( |$)"));
                 return;
             }
