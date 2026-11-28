@@ -28,6 +28,7 @@ TESTS = $(BUILDDIR)/test_cmd_editor \
         $(BUILDDIR)/test_port_tables \
         $(BUILDDIR)/test_page_json \
         $(BUILDDIR)/test_httpd_tx \
+        $(BUILDDIR)/test_startup_crlf \
         $(BUILDDIR)/test_tick_gate \
         $(BUILDDIR)/test_health_idle \
         $(BUILDDIR)/test_timer \
@@ -92,13 +93,35 @@ $(BUILDDIR)/test_httpd_tx: test_httpd_tx.c $(SRCROOT)/httpd/httpd.c $(SRCROOT)/u
 # the login sessions httpd.c calls into
 $(BUILDDIR)/test_httpd_tx: $(SRCROOT)/sessions.c
 
+$(BUILDDIR)/test_startup_crlf: test_startup_crlf.py $(SRCROOT)/cmd_parser.c $(SRCROOT)/rtl837x_common.h | $(BUILDDIR)
+	python3 $< --emit > $(BUILDDIR)/startup_crlf.c
+	$(CC) $(CFLAGS) $(BUILDDIR)/startup_crlf.c $(SRCROOT)/passwd_hash.c -o $@ $(LDFLAGS) -no-pie
+
+$(BUILDDIR)/test_httpd_tx $(BUILDDIR)/test_startup_crlf: $(SRCROOT)/passwd_hash.c $(SRCROOT)/passwd_hash.h $(SRCROOT)/httpd/request_buffer.h $(SRCROOT)/crypto/blake3.h
+
 # CPU VLAN initialization with full and reduced user-port ranges.
 $(BUILDDIR)/test_cpu_vlan_restricted: CFLAGS += -DMACHINE_MAX_PORT=7
 $(BUILDDIR)/test_cpu_vlan_8372: CFLAGS += -DMACHINE_MAX_PORT=7 -DMACHINE_MIN_PORT=3 -DRTLP_TEST_IS8373=0
 $(BUILDDIR)/test_cpu_vlan_full $(BUILDDIR)/test_cpu_vlan_restricted $(BUILDDIR)/test_cpu_vlan_8372: test_cpu_vlan.c $(TABLE_ENV) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(filter %.c,$^) -o $@ $(LDFLAGS)
 
+# Check the same C and assembly as the firmware when the 8051 tools are installed.
+# Neither crypto object needs a board configuration or web assets.
+# At XRAM base 0xb1 the working state crosses a 256-byte page boundary.
+SDCC ?= $(firstword $(wildcard $(SRCROOT)/toolchain/sdcc-*/bin/sdcc) $(shell command -v sdcc))
+S51 ?= $(shell command -v ucsim_51 || command -v s51)
+
 run: $(TESTS)
+ifneq ($(and $(SDCC),$(S51)),)
+	$(SDCC) -mmcs51 -I$(SRCROOT) -c $(SRCROOT)/crypto/blake3.c -o $(BUILDDIR)/blake3.rel
+	$(patsubst %sdcc,%sdas8051,$(SDCC)) -plosgff -o $(BUILDDIR)/blake_regs.rel $(SRCROOT)/crypto/blake_regs.asm
+	$(SDCC) -mmcs51 -I$(SRCROOT) --xram-loc 0xb1 -Wl-bBANK4=0x4000 test_blake3.c $(BUILDDIR)/blake3.rel $(BUILDDIR)/blake_regs.rel -o $(BUILDDIR)/blake3-test.ihx
+	printf 'run\nquit\n' | timeout 30 $(S51) -q -t 8051 -c - -I 'if=xram[0xffff],out=$(BUILDDIR)/digest.bin' $(BUILDDIR)/blake3-test.ihx
+	test "$$(od -An -v -tx1 -N32 $(BUILDDIR)/digest.bin | tr -d ' \n')" = 7545b332ac37d71ec8a24e908031ac68764ccc013f25af318f315deb565eed01
+	test "$$(od -An -v -tx1 -j32 $(BUILDDIR)/digest.bin | tr -d ' \n')" = 2047414b746c001b0fef90efb8a73cec8df2ab16e0d80d14a8b43238b2a89873
+else
+	@echo "SKIP 8051 BLAKE3 vectors (requires SDCC and uCsim)"
+endif
 	@fail=0; for t in $(TESTS); do \
 		echo "=== $$t ==="; \
 		$$t || fail=1; \

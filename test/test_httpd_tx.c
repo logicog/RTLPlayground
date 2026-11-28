@@ -23,6 +23,7 @@
 #undef NTOHS
 
 #include "httpd.h"
+#include "httpd/request_buffer.h"
 #include "uip.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
@@ -168,6 +169,7 @@ uint16_t strtox(uint8_t *dst, const char *s)
 	uint16_t n = 0;
 
 	while (s[n]) { dst[n] = (uint8_t)s[n]; n++; }
+	dst[n] = 0;
 	return n;
 }
 
@@ -204,7 +206,6 @@ void send_lldp(void) {}
 extern uint8_t authenticated;
 extern char session_id[];
 extern uint32_t last_session_use[];
-extern char passwd[21];
 extern uint16_t session_timeout;
 
 /* uip.c defines the listen table but no header declares it; the bench reads it
@@ -428,7 +429,67 @@ static int stream_contains(const char *needle)
 static void login_session_start(void)
 {
 	session_start(MSS_FULL);
-	strcpy(passwd, "1234");
+	passwd_reset();
+}
+
+/* uCsim checks the real mixer. This fixture checks the salt and decoded
+ * password supplied by HTTP on the first round. */
+void blake3_digest(struct blake3_work *work, uint8_t len)
+{
+	static const char input[] = "\0xyz01234567890123456789";
+	if (len != sizeof(work->block)) {
+		bool matches = len == sizeof(input) - 1 && !memcmp(work->block, input, len);
+		memset(work->block, matches, sizeof(work->block));
+	}
+}
+
+static void start_hash_login(const char *last_digit)
+{
+	/* Split the final escape in a fully encoded, 20-byte password. */
+	static const char request[] = "POST /login HTTP/1.1\r\n"
+				      "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: 64\r\n\r\n"
+				      "pwd=%30%31%32%33%34%35%36%37%38%39%30%31%32%33%34%35%36%37%38%3";
+	session_start(MSS_FULL);
+	client_send(TCP_ACK | TCP_PSH, request, sizeof(request) - 1);
+	client_send(TCP_ACK | TCP_PSH, last_digit, 1);
+}
+
+static void run_hash_iterations(void)
+{
+	unsigned steps = 0;
+	while (passwd_hash_busy && steps < 42) {
+		passwd_hash_step();
+		steps++;
+	}
+	CHECK(steps == 42 && !passwd_hash_busy, "hash login: runs the configured 42 iterations");
+}
+
+static void scenario_hashed_login(void)
+{
+	const char *record = "blake3 42 0078797a 01010101010101010101010101010101";
+	passwd_set(record);
+	start_hash_login("9");
+	run_periodic(1);
+	CHECK(passwd_hash_busy && !stream_len, "hash login: waits for the digest");
+	client_send(TCP_FIN | TCP_ACK, NULL, 0);
+	CHECK(!passwd_hash_busy, "hash login: disconnect releases the request buffer");
+
+	start_hash_login("9");
+	run_hash_iterations();
+	run_periodic(1);
+	CHECK(stream_contains("Set-Cookie: session="), "hash login: matching password grants a session");
+	start_hash_login("8");
+	run_hash_iterations();
+	run_periodic(1);
+	CHECK(stream_contains("Location: login.html") && !stream_contains("Set-Cookie:"),
+	      "hash login: wrong password receives no session");
+
+	start_hash_login("9");
+	run_hash_iterations();
+	passwd_set(record);
+	run_periodic(1);
+	CHECK(stream_contains("Location: login.html") && !stream_contains("Set-Cookie:"),
+	      "hash login: setting the password revokes a completed login before reply");
 }
 
 static void report(const char *tag)
@@ -1603,6 +1664,7 @@ int main(int argc, char **argv)
 	scenario_upload_end_of_area();
 	scenario_upload_broken_matches();
 
+	scenario_hashed_login();
 	scenario_login_with_valid_cookie_reuses_its_slot();
 	scenario_login_without_cookie_replaces_least_recently_used();
 
