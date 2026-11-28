@@ -172,6 +172,7 @@ create_build_dir: $(SDCC)
 	mkdir -p "$(BUILDDIR)"
 	mkdir -p "$(BUILDDIR)/uip"
 	mkdir -p "$(BUILDDIR)/httpd"
+	mkdir -p "$(BUILDDIR)/cli"
 	mkdir -p "$(BUILDDIR)/machine"
 	mkdir -p "$(BUILDDIR)/machine/pcb"
 	mkdir -p "$(BUILDDIR)/crypto"
@@ -209,17 +210,14 @@ SRCS = \
 	$(MACHINE_SRC) \
 	$(MACHINE_INIT_SRC) \
 	cmd_editor.c \
-	cmd_parser.c \
 	dhcp.c \
 	html_data.c \
 	rtlplayground.c \
 	boot.c \
 	sfp.c \
 	dns.c \
-	dns_cli.c \
 	sessions.c \
 	ntp.c \
-	ntp_cli.c \
 	syslog.c \
 	timer.c \
 	udp_apps.c \
@@ -242,8 +240,18 @@ SRCS += \
 	rtl837x_lldp.c \
 	rtl837x_storm.c \
 	rtl837x_lacp.c \
-	rtl837x_trap.c \
-	rtl837x_stp_cli.c
+	rtl837x_trap.c
+
+SRCS += \
+	cli/cmd_parser.c \
+	cli/cmd_parse_util.c \
+	cli/cmd_parse_1.c \
+	cli/cmd_parse_stp.c
+
+# The "health" command exists only with HEALTH=1
+ifneq ($(HEALTH),)
+SRCS += cli/cmd_parse_health.c
+endif
 SRCS += \
 	httpd/httpd.c \
 	httpd/page_impl.c \

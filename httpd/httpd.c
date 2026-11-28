@@ -3,7 +3,7 @@
 #include "page_impl.h"
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
-#include "cmd_parser.h"
+#include "cli/cmd_parser.h"
 #include "rtl837x_flash.h"
 #include "uip.h"
 #include "timer.h"
@@ -16,7 +16,7 @@
 #define SESSION_TIMEOUT_DEFAULT 3600
 
 /* Seconds of inactivity after which a session cookie stops validating.
- * Configurable with the "session" command, see cmd_parser.c. */
+ * Configurable with the "session" command, see cli/cmd_parse_1.c. */
 __xdata uint16_t session_timeout = SESSION_TIMEOUT_DEFAULT;
 
 #define CMARK_S 6

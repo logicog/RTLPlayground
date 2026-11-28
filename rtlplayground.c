@@ -21,7 +21,7 @@
 #include "rtl837x_lldp.h"
 #include "rtl837x_cabletest.h"
 #include "dhcp.h"
-#include "cmd_parser.h"
+#include "cli/cmd_parser.h"
 #include "cmd_editor.h"
 #include "uip/uipopt.h"
 #include "uip/uip.h"
