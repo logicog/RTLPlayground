@@ -64,6 +64,10 @@
     and it was cleared only in `main()`, after the C startup code had copied and cleared them.
     This showed as a random web session timeout and LLDP blocked on some ports without config.
 
+- 10G RJ45 ports (RTL8261BE)
+  - `port <n> auto` now advertises 5G and 10G on these ports, it left a 10G partner at 2.5G. The
+    forced 5G and 10G settings advertise their speed instead of 2.5G.
+
 ## Breaking changes
 
 - Config
