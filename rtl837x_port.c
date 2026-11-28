@@ -772,7 +772,7 @@ void port_eee_status(uint8_t port) __banked
 		print_string("     ");
 
 	reg_read_m(RTL8373_PHY_EEE_ABLTY);
-	if (sfr_data[3] & (1 << port))
+	if (SFR_DATA_U16 & PORT_BIT(port))
 		print_string(" ACTIVE   ");
 	else
 		print_string(" INACTIVE ");
