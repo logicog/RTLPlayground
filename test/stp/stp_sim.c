@@ -1929,6 +1929,21 @@ static void scen_agreement_from_alternate(void)
 	check_state(1, 3, "the agreement in an alternate-role BPDU opens it");
 }
 
+static void scen_admin_edge_link_up(void)
+{
+	printf("72. an admin edge port forwards as soon as its link comes up\n");
+	reset_all();
+	sim_cmd("stp port 4 edge on");
+	links_set(1 << 3);
+	secs(2);
+	check_state(3, 3, "port 4 forwards within two seconds of link up");
+	links_set(0);
+	secs(2);
+	links_set(1 << 3);
+	secs(2);
+	check_state(3, 3, "and again after the link went away and came back");
+}
+
 static void scen_timer_relation(void)
 {
 	printf("42. bridge times must keep 2*(fwd-1) >= maxage >= 2*(hello+1)\n");
@@ -2657,6 +2672,7 @@ int main(int argc, char **argv)
 	scen_alternate_agrees();
 	scen_agreement_from_alternate();
 	scen_timer_relation();
+	scen_admin_edge_link_up();
 	scen_recent_root();
 	scen_recent_backup();
 	scen_short_bpdu();
