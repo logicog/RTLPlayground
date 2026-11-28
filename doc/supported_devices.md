@@ -51,6 +51,7 @@ The following devices have been tested and are fully working:
 | MokerLink| ZX_SWTGW218AS   | Yes     | [PCB-SWTG118AS-V2.0-16029](devices/PCB-SWTG118AS-V2.0-16029.md)                       | 2M    | 8 + 1 |
 | Netcore  | GS9             | No      | [PB-2132](devices/PB-2132.md)                                                         | 4M    | 8 + 1 |
 | Nicgiga  | S25-0402-N      | No      | [SR-S25G2206F-N-V1.2](devices/SR-S25G2206F-N-V1.2.md)                                 | 2M    | 4 + 2 |
+| NPA      | AP-7024-2.5G    | No      | [F7005-2.5GPOE-V1.0](devices/F7005-2.5GPOE-V1.0.md)                                   | 0.5M  | 4 + 2 |
 | ONT      | ONT-S207CW-62TS-SE | No   | [PCB-SWTG024AS-A-2.0.1](devices/NONAME-20240111.md)                                   | 0.5M  | 4 + 2 |
 | POEPlus  | S604GTP-2SX-SL  | Yes     | [RTL-4GT-2S+ V1.04](devices/RTL-4GT-2S+_V1.04.md)                                     | 2M    | 4 + 2 |
 | RealHD   | PSW8-25MG       | Yes     | [PCB-AFGW SWTG218ANS V2.0.2](devices/PCB-AFGW-SWTG218ANS_V2.0.2_23308.md)             | 2M    | 8 + 1 |
