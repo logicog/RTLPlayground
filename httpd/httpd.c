@@ -138,7 +138,7 @@ bool is_word(__xdata uint8_t *xdata_str_p, __code const uint8_t * __xdata code_s
 		c = *code_str_p++;
 
 		if (c == NUL) {
-			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != '?' && u != '=' && u != '\n' && u != '\r')
+			if (u != NUL && u != ' ' && u != '\t' && u != ':' && u != ';' && u != '?' && u != '=' && u != '\n' && u != '\r')
 				return false;
 			return true;
 		}
