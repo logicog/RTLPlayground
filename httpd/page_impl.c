@@ -568,7 +568,7 @@ void send_lag(void)
 	for (uint8_t l=0; l < 4; l++) {
 		bool isLACP = lacp_lag_ports[l] > 0;
 		str_code_to_html("{" JSONQUOTE("lagNum") ":");
-		itoa_html(l);
+		itoa_html(l+1);
 		str_code_to_html("," JSONQUOTE("type") ":");
 
 		if (isLACP) {
@@ -625,7 +625,7 @@ void send_lag(void)
 		str_code_to_html("{" JSONQUOTE("p") ":");
 		itoa_html(machine.log_to_phys_port[i]);
 		str_code_to_html("," JSONQUOTE("lag") ":");
-		itoa_html(lacp_port_lag[i]);
+		itoa_html(lacp_port_lag[i]+1);
 		str_code_to_html("," JSONQUOTE("a") ":\"");
 		byte_to_html(lacp_actor_state[i]);
 		str_code_to_html("\"," JSONQUOTE("pt") ":\"");

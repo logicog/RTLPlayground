@@ -212,8 +212,8 @@ List of MAC addresses
 ```json
 {
     "lags":[
-        {"lagNum":0,"type":"static","members":[],"hash":"3f"},
-        {"lagNum":1,"type":"lacp","members":[6,7],"active_members":[6],"valid":true,"aggregator":"ce11a001a010","hash":"7e"},
+        {"lagNum":1,"type":"static","members":[],"hash":"3f"},
+        {"lagNum":2,"type":"lacp","members":[6,7],"active_members":[6],"valid":true,"aggregator":"ce11a001a010","hash":"7e"},
         ...
     ],
     "ports":[
@@ -237,7 +237,7 @@ Object representing static and LACP lags
 
 | Property | Description
 |----------|------------
-| `lagNum` | 0-4 the identifier for the LAG
+| `lagNum` | 1-4 the identifier for the LAG
 | `type` | `static` or `lacp`
 | `members` | The physical port numbers that are configured to be in the LAG
 | `active_members` | For LACP LAGs, the members that currently participating
