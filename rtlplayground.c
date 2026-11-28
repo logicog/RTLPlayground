@@ -1129,17 +1129,14 @@ void check_links(void)
 			uint8_t p5 = sfr_data[2] >> 4;
 			uint8_t p5_last = linkbits_last[2] >> 4;
 			cpy_4(linkbits_last, sfr_data);
-			// Handle link change of the RTL8221 PHY, adjust SDS mode, RTL8261BE always uses SDS_QXGMII
+			// Handle link change of the RTL8221 PHY, adjust SDS mode. The RTL8261BE SerDes
+			// are set up once in rtl8372_init(), as the stock firmware does.
 			if (!machine.n_10g && p5_last != p5) {
 				if (p5 == 0x5)	// 2.5GBit Mode
 					sds_config(0, SDS_HISGMII);
 				else		// 1GBit and 100Mbit
 					sds_config(0, SDS_SGMII);
 			}
-			if (machine.n_10g)
-				sds_config(0, SDS_QXGMII);
-			if (machine.n_10g == 2)
-				sds_config(1, SDS_QXGMII);
 		} else {
 			cpy_4(linkbits_last, sfr_data);
 		}

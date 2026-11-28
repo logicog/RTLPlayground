@@ -206,6 +206,11 @@ void rtl8372_init(void) __banked
 	print_string("\nrtl8372_init called\n");
 
 	sds_init();
+	// The stock firmware sets up each RTL8261BE SerDes before its PHY, and only once
+	if (machine.n_10g)
+		sds_config(0, SDS_QXGMII);
+	if (machine.n_10g == 2)
+		sds_config(1, SDS_QXGMII);
 	if (machine.n_10g != 2)
 		phy_config(8);	// PHY configuration: External 8221B?
 	if (machine.n_10g)
