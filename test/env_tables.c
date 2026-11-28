@@ -96,7 +96,18 @@ uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
 struct uip_eth_addr uip_ethaddr = { .addr = { 0x02, 0x11, 0x22, 0x33, 0x44, 0x55 } };
 
 /* ---- leaf calls into subsystems not under test ---- */
-void     flash_read_bulk(uint8_t *dst) { (void)dst; }
+/* Like the driver, this leaves flash_region.len at what the last transfer
+ * carried (1 to 4 bytes), not at the length that was asked for. */
+uint8_t  flash_image[CONFIG_LEN];
+uint32_t flash_bytes_read;
+void     flash_read_bulk(uint8_t *dst)
+{
+	for (uint16_t i = 0; i < flash_region.len; i++)
+		dst[i] = flash_image[(flash_region.addr + i) % CONFIG_LEN];
+	flash_bytes_read += flash_region.len;
+	if (flash_region.len > 4)
+		flash_region.len = ((flash_region.len - 1) & 3) + 1;
+}
 const char *get_flash_size_str(void) { return "2M"; }
 uint8_t  sfp_read_reg(uint8_t slot, uint8_t reg) { (void)slot; (void)reg; return 0; }
 bool     gpio_pin_test(uint8_t pin) { (void)pin; return false; }

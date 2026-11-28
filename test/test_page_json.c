@@ -185,6 +185,27 @@ static void t_l2_page(void)
 	CHECK(balanced(), "every page is valid JSON");
 }
 
+extern uint8_t flash_image[CONFIG_LEN];
+extern uint32_t flash_bytes_read;
+
+static void t_config(void)
+{
+	char cfg[301];
+
+	printf("[test] /config reads the flash a chunk at a time\n");
+	for (int i = 0; i < 300; i++)
+		cfg[i] = (i % 20 == 19) ? '\n' : 'a' + i % 20;
+	cfg[300] = 0;
+	memset(flash_image, 0, sizeof(flash_image));
+	memcpy(flash_image, cfg, 300);
+	hw_reset(); out_reset();
+	flash_bytes_read = 0;
+	send_config();
+	printf("      %u bytes read from the flash\n", (unsigned)flash_bytes_read);
+	CHECK(!strcmp(body(), cfg), "the configuration is sent up to its NUL");
+	CHECK(flash_bytes_read <= 2 * 256 + 300, "two chunks are scanned for the NUL, then the text is read");
+}
+
 static void t_status_macs(void)
 {
 	const char *p1, *end, *mac;
@@ -229,6 +250,7 @@ int main(void)
 	t_l2_page();
 	t_status_counters();
 	t_status_macs();
+	t_config();
 	printf("\n%d checks, %d failed\n", tests_run, tests_failed);
 	return tests_failed ? 1 : 0;
 }

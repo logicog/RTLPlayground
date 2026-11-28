@@ -1052,18 +1052,20 @@ void send_config(void)
 	__xdata uint32_t pos = CONFIG_START;
 	__xdata uint16_t valid_len = 0;
 	__xdata uint16_t len_left = CONFIG_LEN;
+	__xdata uint16_t chunk;
 	__xdata uint8_t flash_buf[256];
 	
 	slen = strtox(outbuf, HTTP_RESPONSE_TXT);
 	
 	// Scan through config to find the end of valid data (null terminator)
 	do {
+		chunk = (len_left > 256) ? 256 : len_left;
 		flash_region.addr = pos;
-		flash_region.len = (len_left > 256) ? 256 : len_left;
+		flash_region.len = chunk;
 		flash_read_bulk(flash_buf);
 		
 		// Look for null terminator in this chunk
-		for (uint16_t i = 0; i < flash_region.len; i++) {
+		for (uint16_t i = 0; i < chunk; i++) {
 			if (flash_buf[i] == 0) {
 				// Found end of valid data
 				valid_len += i;
@@ -1071,9 +1073,9 @@ void send_config(void)
 			}
 		}
 		
-		valid_len += flash_region.len;
-		len_left -= flash_region.len;
-		pos += flash_region.len;
+		valid_len += chunk;
+		len_left -= chunk;
+		pos += chunk;
 	} while (len_left > 0);
 	
 found_end:
