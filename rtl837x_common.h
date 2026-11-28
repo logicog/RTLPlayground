@@ -198,7 +198,6 @@ bool strstart_x(__xdata const uint8_t *a, __xdata const uint8_t *b);
 void tcpip_output(void);
 uint8_t read_flash(uint8_t bank, __code const uint8_t *addr);
 void get_random_32(void);
-void read_reg_timer(__xdata uint32_t * tmr);
 bool gpio_pin_test(uint8_t pin);
 void set_sys_led_state(uint8_t state);
 void sds_read(uint8_t sds_id, uint8_t page, uint8_t reg);
