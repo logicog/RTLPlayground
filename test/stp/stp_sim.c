@@ -10,6 +10,7 @@
 #include "uip.h"
 #include "rtl837x_regs.h"
 #include "rtl837x_stp.h"
+#include "cli/cmd_parse_stp.h"
 
 #define NPORTS 9 /* indices 0..8, front-panel 1..9 */
 #define PORT(n) ((n) - 1)
@@ -99,7 +100,7 @@ uint8_t atoi_byte(uint8_t idx)
 	return (uint8_t)n;
 }
 
-uint8_t cmd_parse_port_separator(uint8_t idx)
+uint8_t cmd_arg_port_separator(uint8_t idx)
 {
 	if (!atoi_byte(idx) || atoi_results_u8 < 1 || atoi_results_u8 > NPORTS)
 		return 0;
@@ -116,7 +117,7 @@ static void sim_cmd(const char *line)
 		if (cmd_buffer[i] != ' ' && (i == 0 || cmd_buffer[i - 1] == ' '))
 			cmd_words_b[cmd_words_len++] = i;
 	err_status = ERR_OK;
-	stp_parse();
+	cmd_parse_stp__();
 }
 
 void execute_config(void)

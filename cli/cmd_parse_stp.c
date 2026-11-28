@@ -1,33 +1,16 @@
-/*
- * Command line interface of the Spanning Tree Protocol for the RTL837x platform
- * This code is in the Public Domain
- */
+#include "cmd_parse_stp.h"
+#include "cmd_parse_1.h"
+#include "cmd_parse_util.h"
 
-#include <stdint.h>
-#include "rtl837x_common.h"
-#include "rtl837x_stp.h"
-#include "machine.h"
+#define TIMES_OK(h, m, f)       ((uint16_t)2 * ((f) - 1) >= (m) && (m) >= (uint16_t)2 * ((h) + 1))
 
 #pragma codeseg BANK2
 #pragma constseg BANK2
 
-extern __xdata uint8_t cmd_buffer[CMD_BUF_SIZE];
-extern __xdata uint8_t cmd_words_len;
-extern __xdata uint8_t cmd_words_b[15];
-uint8_t cmd_compare(uint8_t start, __code const uint8_t * cmd);
-uint8_t atoi_byte(uint8_t idx);
-uint8_t cmd_parse_port_separator(uint8_t idx);
-extern __xdata uint8_t atoi_results_u8;
-extern __xdata char save_cmd;
-extern __xdata uint8_t err_status;
-
-#define TIMES_OK(h, m, f)	((uint16_t)2 * ((f) - 1) >= (m) && (m) >= (uint16_t)2 * ((h) + 1))
-
 __xdata uint32_t stp_cli_cost;
 __xdata uint8_t  stp_cli_val;
 
-
-void stp_parse(void) __banked __reentrant
+void cmd_parse_stp__(void) __banked __reentrant
 {
 	uint8_t port;
 
@@ -63,7 +46,7 @@ void stp_parse(void) __banked __reentrant
 				goto err;
 			port = STP_LAG_BASE - 1 + atoi_results_u8;
 		} else {
-			if (!cmd_parse_port_separator(cmd_words_b[2]))
+			if (!cmd_arg_port_separator(cmd_words_b[2]))
 				goto err;
 			port = atoi_results_u8;
 			if (stp_ent_of[port] != port) {

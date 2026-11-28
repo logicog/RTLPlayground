@@ -32,6 +32,5 @@ void dns_init(void) __banked;
 void dns_lookup(void) __banked;
 void dns_show(void) __banked;
 void dns_callback(uint16_t lport) __banked __reentrant;
-void dns_parse(void) __banked __reentrant;
 
 #endif

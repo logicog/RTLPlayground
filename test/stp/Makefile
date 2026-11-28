@@ -11,7 +11,7 @@ CFLAGS  += -Wno-builtin-declaration-mismatch
 endif
 LDFLAGS  = -fsanitize=address,undefined
 
-SRCS = stp_sim.c $(SRCROOT)/rtl837x_stp.c $(SRCROOT)/rtl837x_stp_cli.c $(SRCROOT)/timer.c
+SRCS = stp_sim.c $(SRCROOT)/rtl837x_stp.c $(SRCROOT)/cli/cmd_parse_stp.c $(SRCROOT)/timer.c
 
 all: build/stp_sim
 	./build/stp_sim

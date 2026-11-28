@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_regs.h"
-#include "cmd_parser.h"
+#include "cli/cmd_parser.h"
 #include "uip/uip.h"
 #include "dns.h"
 #include "ntp.h"
