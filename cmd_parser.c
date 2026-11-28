@@ -500,6 +500,53 @@ void parse_mac_cmd(void)
 }
 
 
+/*
+ * Static MAC addresses and learning limits:
+ *   l2 static <mac> <vlan> <port>   a static entry for mac in vlan, on port
+ *   l2 static <mac> <vlan> d        remove the entry for mac in vlan
+ *   l2 limit <port> <n>|off         learn at most n addresses on port
+ * The switch's own MAC is left to port_l2_static_mgmt(): moving or removing
+ * its entry would cut off the management interface.
+ */
+static void parse_l2_security(void)
+{
+	if (cmd_compare(1, "static")) {
+		if (cmd_words_len != 5 || !parse_mac(cmd_words_b[2]) || (mac_parse_result[0] & 0x01)
+		    || !(mac_parse_result[0] | mac_parse_result[1] | mac_parse_result[2]
+			 | mac_parse_result[3] | mac_parse_result[4] | mac_parse_result[5])
+		    || !memcmp(mac_parse_result, uip_ethaddr.addr, 6)
+		    || !atoi_short(cmd_words_b[3]) || !atoi_results_short || atoi_results_short > 4094)
+			goto err_static;
+		if (cmd_buffer[cmd_words_b[4]] == 'd' && cmd_buffer[cmd_words_b[4] + 1] == NUL) {
+			port_l2_static(mac_parse_result, atoi_results_short, true);
+			return;
+		}
+		if (!cmd_parse_port_separator(cmd_words_b[4]))
+			goto err_static;
+		l2_static_port = atoi_results_u8;
+		port_l2_static(mac_parse_result, atoi_results_short, false);
+		return;
+err_static:
+		cmd_error("l2 static <unicast mac, not the switch's> <vlan 1-4094> <port>|d\n");
+		return;
+	}
+
+	if (cmd_words_len != 4 || !cmd_parse_port_separator(cmd_words_b[2]))
+		goto err;
+	__xdata uint8_t port = atoi_results_u8;
+	if (cmd_compare(1, "limit")) {
+		if (cmd_compare(3, "off"))
+			atoi_results_short = L2_LEARN_UNLIMITED;
+		else if (!atoi_short(cmd_words_b[3]) || atoi_results_short >= L2_LEARN_UNLIMITED)
+			goto err;
+		REG_SET(RTL837X_L2_LRN_PORT_CONSTRAINT + (port << 2), atoi_results_short);
+		return;
+	}
+err:
+	cmd_error("l2 limit <port> <0-4159>|off\n");
+}
+
+
 void parse_lag(void)
 {
 	__xdata uint8_t group;
@@ -1991,6 +2038,8 @@ void cmd_parser(void) __banked
 		} else if (cmd_compare(0, "l2")) {
 			if (cmd_compare(1, "forget"))
 				port_l2_forget();
+			else if (cmd_compare(1, "static") || cmd_compare(1, "limit"))
+				parse_l2_security();
 			else
 				port_l2_learned();
 		} else if (cmd_compare(0, "igmp")) {

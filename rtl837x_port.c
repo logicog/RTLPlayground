@@ -470,7 +470,7 @@ void port_l2_setup(void) __banked
 			mask = PMASK_CPU | PMASK_9;
 		REG_SET(RTL837X_PORT_ISOLATION_BASE + idx, mask);
 	}
-	// When maximim entries learned, then simply flood the packet
+	// Frames from new sources beyond a port's limit are dropped (doc/l2.md)
 	reg_bit_set(RTL837X_L2_LRN_PORT_CONSTRT_ACT, 0);
 
 }
@@ -951,14 +951,17 @@ bool port_ingress_vlan_filter_get(uint8_t port) __banked
 	return reg_bit_test(RTL837X_VLAN_PORT_IGR_FLTR, port);
 }
 
+// The logical port a static entry from port_l2_static() points to
+__xdata uint8_t l2_static_port;
+
 // C1 bit 0: static (no aging); age at C3[4:2] must be non-zero or the
 // entry is invisible to lookup
 static void l2_mgmt_entry_fill(__xdata uint8_t *mac, __xdata uint16_t vlan)
 {
 	REG_WRITE(RTL837x_TBL_DATA_IN_A, mac[2], mac[3], mac[4], mac[5]);
-	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | ((CPU_LOGICAL_PORT & 0x3) << 6) | (vlan >> 8),
+	REG_WRITE(RTL837x_TBL_DATA_IN_B, 0x20 | ((l2_static_port & 0x3) << 6) | (vlan >> 8),
 		  vlan & 0xff, mac[0], mac[1]);
-	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0x00, 0x01, 0x00, (7 << 2) | (CPU_LOGICAL_PORT >> 2));
+	REG_WRITE(RTL837x_TBL_DATA_IN_C, 0x00, 0x01, 0x00, (7 << 2) | (l2_static_port >> 2));
 }
 
 static void l2_mgmt_tbl_prepare(void)
@@ -972,12 +975,22 @@ static void l2_mgmt_tbl_prepare(void)
 /** Pin the management MAC to the CPU port; remove_entry deletes it */
 void port_l2_static_mgmt(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked
 {
-	wait_table_ready();
-
 	// vlan 0 = management VLAN disabled: untagged management resolves in
 	// VLAN 1; clients in other VLANs keep their learned entry and age as before
 	if (!vlan)
 		vlan = 1;
+	l2_static_port = CPU_LOGICAL_PORT;
+	port_l2_static(mac, vlan, remove_entry);
+}
+
+/**
+ * A static unicast entry for mac in vlan, on logical port l2_static_port;
+ * remove_entry deletes the entry for mac in vlan, whatever its port
+ */
+void port_l2_static(__xdata uint8_t *mac, __xdata uint16_t vlan, __xdata bool remove_entry) __banked
+{
+	wait_table_ready();
+
 	l2_mgmt_entry_fill(mac, vlan);
 	l2_mgmt_tbl_prepare();
 	if (remove_entry) {
