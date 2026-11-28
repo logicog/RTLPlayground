@@ -4,6 +4,9 @@
 
 ## Added
 
+- CLI
+  - `reboot now`, `reboot in <minutes>`, `reboot cancel` and `reboot`: immediate or scheduled reboot.
+
 - Devices
   - Support the POE Plus S604GTP-2SX-SL (PCB marking `Hasivo RTL-4GT-2S+ V1.04`), an
     RTL8372 based 4x2.5G PoE + 2xSFP+ switch. The power LED (SYS LED, pad 28) is
@@ -75,6 +78,7 @@
     So `vlan 1 4u` is not valid anymore.
     Replace it with `vlan 1 4`.
 - Commands
+  - `reset` is now `reboot now`.
   - port zero/`0` is treated as the `CPU_PORT`. #326
   - Many commands don't accept the CPU_PORT anymore. See #334.
     When the CPU_PORT is needed, the command/service will add the CPU_PORT automaticly.
