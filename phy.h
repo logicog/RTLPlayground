@@ -39,6 +39,11 @@
 #define PHY_EEE_BIT_10G		0x08
 
 /*
+ * MMD 30 Registers
+ */
+#define PHY_MMD30_SDS_GLOBAL_CFG 0x00c1
+
+/*
  * MMD 31 Registers
  */
 #define PHY_MMD31_FEDCR     0xa400

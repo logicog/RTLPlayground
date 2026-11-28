@@ -6,6 +6,7 @@ __code const struct machine machine = {
     .mac_flash_offset = 0x1FC000,
     .n_sfp = 0,
     .n_10g = 2,
+    .rtl8261_sds_inv = RTL8261_HSO_INV,	// as the stock firmware sets it
     .log_to_phys_port = {0, 0, 0, 6, 1, 2, 3, 4, 5},
     .phys_to_log_port = {4, 5, 6, 7, 8, 3, 0, 0, 0},
     .is_sfp = {0, 0, 0, 0, 0, 0, 0, 0, 0},
