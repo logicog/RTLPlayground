@@ -84,7 +84,8 @@ static uint32_t config_erase_addr, config_write_addr;
 static int config_erases, config_writes;
 static uint8_t flash_written[1024];
 static size_t flash_written_len;
-static int flash_write_bad;
+static uint32_t flash_written_base = FIRMWARE_UPLOAD_START;
+static int flash_write_bad, flash_writes_past_area;
 
 const char * const mime_strings[] = { "text/html", "image/svg+xml", "image/x-icon",
 			 "image/png", "text/javascript", "text/css", "text/plain" };
@@ -118,7 +119,12 @@ void flash_write_bytes(uint8_t *ptr)
 			memcpy(written_config, ptr, written_config_len);
 		return;
 	}
-	if (flash_region.addr != FIRMWARE_UPLOAD_START + flash_written_len ||
+	if (flash_region.addr + flash_region.len > (uint32_t)FIRMWARE_UPLOAD_START * 2
+	    || flash_region.addr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+		flash_writes_past_area++;
+		return;
+	}
+	if (flash_region.addr != flash_written_base + flash_written_len ||
 	    flash_region.len > sizeof(flash_written) - flash_written_len) {
 		flash_write_bad = 1;
 		return;
@@ -1433,6 +1439,50 @@ static int upload_in_two(uint8_t *body, uint16_t body_len, uint16_t split)
 		&& flash_written_len == UPLOAD_LEN + 1 && !flash_written[UPLOAD_LEN];
 }
 
+static int upload_at_end_of_area(uint16_t len)
+{
+	uint8_t body[FLASH_PAGE_SIZE + 8 + sizeof(UPLOAD_TRAILER)];
+
+	memset(body, 'A', len);
+	memcpy(body + len, UPLOAD_TRAILER, sizeof(UPLOAD_TRAILER) - 1);
+
+	flash_written_base = (uint32_t)FIRMWARE_UPLOAD_START * 2 - FLASH_PAGE_SIZE;
+	uptr = flash_written_base;
+	write_len = 0;
+	bindex = 0;
+	verify_crc = 0;
+	slen = 0;
+	flash_written_len = 0;
+	flash_write_bad = 0;
+	flash_writes_past_area = 0;
+	strcpy((char *)boundary, UPLOAD_BOUNDARY);
+	uip_conn = &uip_conns[0];
+	uip_conn->appstate.tstate = TSTATE_POST;
+
+	upload_settings.p = body;
+	upload_settings.bptr = 0;
+	upload_settings.plen = len + sizeof(UPLOAD_TRAILER) - 1;
+	stream_upload();
+	flash_written_base = FIRMWARE_UPLOAD_START;
+	return uip_conn->appstate.tstate == TSTATE_NONE && !flash_write_bad;
+}
+
+static void scenario_upload_end_of_area(void)
+{
+	printf("\n-- upload: the end of the image area --\n");
+
+	CHECK(upload_at_end_of_area(FLASH_PAGE_SIZE - 1)
+	      && flash_written_len == FLASH_PAGE_SIZE && !flash_writes_past_area,
+	      "upload: an image one byte short of the area is staged with its terminator");
+	CHECK(upload_at_end_of_area(FLASH_PAGE_SIZE)
+	      && flash_written_len == FLASH_PAGE_SIZE && !flash_writes_past_area,
+	      "upload: an image that fills the area writes nothing behind it");
+	CHECK(upload_at_end_of_area(FLASH_PAGE_SIZE + 1)
+	      && flash_written_len == FLASH_PAGE_SIZE && !flash_writes_past_area
+	      && slen >= 12 && !memcmp(outbuf, "HTTP/1.1 400", 12),
+	      "upload: an image one byte longer than the area is refused, nothing written behind it");
+}
+
 static void scenario_upload_cr_before_boundary(void)
 {
 	uint8_t body[UPLOAD_LEN + sizeof(UPLOAD_TRAILER)];
@@ -1550,6 +1600,7 @@ int main(int argc, char **argv)
 	scenario_upload("no part Content-Type", "", 0);
 	scenario_upload_cr_before_boundary();
 	scenario_upload_last_byte();
+	scenario_upload_end_of_area();
 	scenario_upload_broken_matches();
 
 	scenario_login_with_valid_cookie_reuses_its_slot();

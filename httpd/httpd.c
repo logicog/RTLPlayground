@@ -437,12 +437,16 @@ uint8_t stream_upload(void)
 		// Have we reached the end of the part?
 		if (!boundary[bindex]) {
 			s->tstate = TSTATE_NONE;
+			if (uptr + write_len > (uint32_t)FIRMWARE_UPLOAD_START * 2)
+				goto past_area;
 			dbg_string("len 2: "); dbg_short(write_len); dbg_char(' ');
-			flash_region.addr = uptr;
-			flash_region.len = write_len;
-			flash_write_bytes(flash_buf);
-			uptr += write_len;
-			write_len = 0;
+			if (write_len) {
+				flash_region.addr = uptr;
+				flash_region.len = write_len;
+				flash_write_bytes(flash_buf);
+				uptr += write_len;
+				write_len = 0;
+			}
 			if (verify_crc) {
 				dbg_string("CRC16: "); dbg_short(crc_final); dbg_char('\n');
 				// Both bodies are 33 bytes; Content-Length lets the
@@ -463,10 +467,12 @@ uint8_t stream_upload(void)
 				}
 			}
 			// Make sure there is a 0 at the end of the uploaded data
-			flash_buf[0] = 0;
-			flash_region.addr = uptr;
-			flash_region.len = 1;
-			flash_write_bytes(flash_buf);
+			if (uptr < (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+				flash_buf[0] = 0;
+				flash_region.addr = uptr;
+				flash_region.len = 1;
+				flash_write_bytes(flash_buf);
+			}
 			if (upload_settings.bptr >= upload_settings.plen)
 				return 0;
 			return 1;
@@ -493,6 +499,7 @@ uint8_t stream_upload(void)
 				 * keeps writing, and on a flash exactly this size the address
 				 * wraps onto the running image at zero. */
 				if (uptr >= (uint32_t)FIRMWARE_UPLOAD_START * 2) {
+past_area:
 					print_string("Upload runs past the image area! Aborting.\n");
 					slen = strtox(outbuf, "HTTP/1.1 400 Bad Request\r\nContent-Length: 30\r\n"
 						"Content-Type: text/plain\r\n\r\n"
