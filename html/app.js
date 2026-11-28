@@ -2991,14 +2991,12 @@ var SFPRATES = [
     ["100m", "100M"]
 ];
 var ADVSEL = {
-    63: "auto",
-    31: "auto",
-    32: "2g5",
-    16: "1g",
-    8: "100m full",
-    4: "100m half",
-    2: "10m full",
-    1: "10m half"
+    "2.5G": "2g5",
+    "1G": "1g",
+    "100M-FD": "100m full",
+    "100M-HD": "100m half",
+    "10M-FD": "10m full",
+    "10M-HD": "10m half"
 };
 
 function speedLabel(s) {
@@ -3073,7 +3071,8 @@ function portsStatus() {
         if (mc) mc.textContent = parseInt(p.macs, 16) & 0x1fff;
         if (el) el.innerHTML = linkBadge(p);
         var sel = $("pspd" + i),
-            v = p.isSFP ? 0 : ADVSEL[parseInt(p.adv, 2)];
+            a = p.adv || [],
+            v = a.length === 6 ? "auto" : a.length === 1 ? ADVSEL[a[0]] : 0;
         if (sel && v && document.activeElement !== sel) sel.value = v;
     });
 }
